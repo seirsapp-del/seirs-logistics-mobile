@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx expo *)",
+      "Bash(npx @nestjs/cli new seirs-backend --package-manager npm --skip-git)",
+      "Bash(npm cache *)",
+      "Bash(npm install *)",
+      "Bash(ipconfig)",
+      "Bash(npx tsc *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); deps={**d.get\\('dependencies',{}\\),**d.get\\('devDependencies',{}\\)}; [print\\(k\\) for k in sorted\\(deps\\) if 'location' in k.lower\\(\\) or 'map' in k.lower\\(\\) or 'date' in k.lower\\(\\)]\")",
+      "Bash(node -e \"const d=require\\('./package.json'\\); const deps={...d.dependencies,...\\(d.devDependencies||{}\\)}; Object.keys\\(deps\\).filter\\(k=>/location|map|date/i.test\\(k\\)\\).forEach\\(k=>console.log\\(k,deps[k]\\)\\)\")",
+      "Bash(PGPASSWORD='Whoareyoupls80#' psql -h localhost -U postgres -d seirs_db -c \"SELECT id, name, email, phone, role, \\\\\"isActive\\\\\", \\\\\"createdAt\\\\\" FROM users ORDER BY \\\\\"createdAt\\\\\" DESC;\")",
+      "Bash(where psql *)",
+      "Bash(where pg_isready)",
+      "Read(//c/Program Files/PostgreSQL/**)",
+      "Bash(PGPASSWORD='Whoareyoupls80#' \"/c/Program Files/PostgreSQL/18/bin/psql.exe\" -h localhost -U postgres -d seirs_db -c \"SELECT id, name, email, phone, role, \\\\\"isActive\\\\\", \\\\\"createdAt\\\\\" FROM users ORDER BY \\\\\"createdAt\\\\\" DESC;\")",
+      "Bash(PGPASSWORD='Whoareyoupls80#' \"/c/Program Files/PostgreSQL/18/bin/psql.exe\" -h localhost -U postgres -d seirs_db -c \"SELECT d.id, u.name, u.email, d.\\\\\"vehicleType\\\\\", d.\\\\\"vehiclePlate\\\\\", d.status, d.\\\\\"isOnline\\\\\", d.rating, d.\\\\\"totalDeliveries\\\\\", d.\\\\\"walletBalance\\\\\", d.\\\\\"createdAt\\\\\" FROM drivers d JOIN users u ON d.\\\\\"userId\\\\\" = u.id ORDER BY d.\\\\\"createdAt\\\\\" DESC;\")",
+      "Bash(PGPASSWORD='Whoareyoupls80#' \"/c/Program Files/PostgreSQL/18/bin/psql.exe\" -h localhost -U postgres -d seirs_db -c \"SELECT id, \\\\\"trackingCode\\\\\", \\\\\"pickupAddress\\\\\", \\\\\"dropoffAddress\\\\\", status, price, \\\\\"createdAt\\\\\" FROM deliveries ORDER BY \\\\\"createdAt\\\\\" DESC LIMIT 10;\")",
+      "Bash(PGPASSWORD='Whoareyoupls80#' \"/c/Program Files/PostgreSQL/18/bin/psql.exe\" -h localhost -U postgres -d seirs_db -c \"UPDATE users SET role = 'admin' WHERE email = 'Oyadeyio761@gmail.com' RETURNING id, name, email, role;\")",
+      "Bash(curl -s http://localhost:3000/api/v1/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"test\",\"password\":\"test\"}')",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.scripts, null, 2\\)\\)\")",
+      "Bash(npm run *)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/typescript/package.json'\\).version\\)\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"Oyadeyio761@gmail.com\\\\\",\\\\\"password\\\\\":\\\\\"Ibadan80#\\\\\"}\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"oyadeyio761@gmail.com\\\\\",\\\\\"password\\\\\":\\\\\"Ibadan80#\\\\\"}\")",
+      "Bash(PGPASSWORD='Whoareyoupls80#' \"/c/Program Files/PostgreSQL/18/bin/psql.exe\" -h localhost -U postgres -d seirs_db -c \"UPDATE users SET email = LOWER\\(email\\); SELECT email, role FROM users;\")",
+      "Bash(grep -E \"^\\(bcrypt|ts-node|pg\\)$\")",
+      "Bash(npx ts-node *)",
+      "Bash(python -c \"import sys,json; p=json.load\\(sys.stdin\\); deps={**p.get\\('dependencies',{}\\), **p.get\\('devDependencies',{}\\)}; [print\\(k,v\\) for k,v in sorted\\(deps.items\\(\\)\\) if any\\(x in k for x in ['location','maps','expo-','socket']\\)]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('expo',{}\\).get\\('plugins',[]\\), indent=2\\)\\); print\\('---ios---'\\); print\\(json.dumps\\(d.get\\('expo',{}\\).get\\('ios',{}\\).get\\('infoPlist',{}\\), indent=2\\)\\)\")",
+      "Bash(python -c \"import sys,json; print\\(json.load\\(sys.stdin\\)['version']\\)\")",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npm list *)",
+      "Bash(xargs grep *)"
+    ]
+  }
+}

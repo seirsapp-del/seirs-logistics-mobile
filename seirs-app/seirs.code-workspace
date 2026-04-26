@@ -1,0 +1,10 @@
+{
+  "folders": [
+    { "name": "backend", "path": "./seirs-backend" },
+    { "name": "mobile",  "path": "./seirs-mobile" },
+    { "name": "admin",   "path": "./seirs-admin" }
+  ],
+  "settings": {
+    "typescript.tsdk": "mobile/node_modules/typescript/lib"
+  }
+}

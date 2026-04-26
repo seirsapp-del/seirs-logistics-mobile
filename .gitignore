@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Environment variables (never commit)
+.env
+.env.local
+.env.production
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Compiled seed scripts
+seed.js
+seed.js.map
+seed.d.ts
+
+# Uploads (user files)
+uploads/
+
+# Expo
+.expo/
+*.expo/
+
+# Flutter build artifacts
+seirs_logistics_app/.dart_tool/
+seirs_logistics_app/.idea/
+seirs_logistics_app/build/
+seirs_logistics_app/android/.gradle/
+seirs_logistics_app/android/.kotlin/
+seirs_logistics_app/android/local.properties
+seirs_logistics_app/android/app/google-services.json
+seirs_logistics_app/ios/Flutter/Generated.xcconfig
+seirs_logistics_app/ios/Flutter/ephemeral/
+seirs_logistics_app/ios/Flutter/flutter_export_environment.sh
+seirs_logistics_app/ios/Runner/GeneratedPluginRegistrant.h
+seirs_logistics_app/ios/Runner/GeneratedPluginRegistrant.m
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
