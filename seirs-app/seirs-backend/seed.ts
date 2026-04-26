@@ -8,13 +8,15 @@ import { Client } from 'pg';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 
-const DB = {
-  host:     process.env.DB_HOST     ?? 'localhost',
-  port:     Number(process.env.DB_PORT ?? 5432),
-  user:     process.env.DB_USERNAME ?? 'postgres',
-  password: process.env.DB_PASSWORD ?? 'Whoareyoupls80#',
-  database: process.env.DB_NAME     ?? 'seirs_db',
-};
+const DB: any = process.env.DATABASE_URL
+  ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
+  : {
+      host:     process.env.DB_HOST     ?? 'localhost',
+      port:     Number(process.env.DB_PORT ?? 5432),
+      user:     process.env.DB_USERNAME ?? 'postgres',
+      password: process.env.DB_PASSWORD ?? 'Whoareyoupls80#',
+      database: process.env.DB_NAME     ?? 'seirs_db',
+    };
 
 const hash = (pw: string) => bcrypt.hash(pw, 12);
 

@@ -90,7 +90,7 @@ export default function RegisterScreen() {
             <Text style={[styles.label, { color: theme.textSecond }]}>First name</Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
-              placeholder="e.g. Oluwaseye"
+              placeholder="e.g. Emeka"
               placeholderTextColor={theme.textSecond}
               autoComplete="given-name"
               autoCapitalize="words"
@@ -103,7 +103,7 @@ export default function RegisterScreen() {
             <Text style={[styles.label, { color: theme.textSecond }]}>Middle name <Text style={{ fontWeight: '400' }}>(optional)</Text></Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
-              placeholder="e.g. Israel"
+              placeholder="e.g. Chukwu"
               placeholderTextColor={theme.textSecond}
               autoCapitalize="words"
               value={middleName}
@@ -115,7 +115,7 @@ export default function RegisterScreen() {
             <Text style={[styles.label, { color: theme.textSecond }]}>Last name</Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
-              placeholder="e.g. Oyadeyi"
+              placeholder="e.g. Okonkwo"
               placeholderTextColor={theme.textSecond}
               autoComplete="family-name"
               autoCapitalize="words"

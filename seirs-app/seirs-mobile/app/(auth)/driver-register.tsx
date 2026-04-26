@@ -109,7 +109,7 @@ export default function DriverRegisterScreen() {
             <Text style={[styles.label, { color: theme.textSecond }]}>First name</Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
-              placeholder="e.g. Chukwuemeka"
+              placeholder="e.g. Emeka"
               placeholderTextColor={theme.textSecond}
               autoComplete="given-name"
               autoCapitalize="words"
@@ -122,7 +122,7 @@ export default function DriverRegisterScreen() {
             <Text style={[styles.label, { color: theme.textSecond }]}>Middle name <Text style={{ fontWeight: '400' }}>(optional)</Text></Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
-              placeholder="e.g. Tunde"
+              placeholder="e.g. Chukwu"
               placeholderTextColor={theme.textSecond}
               autoCapitalize="words"
               value={middleName}
