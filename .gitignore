@@ -5,12 +5,14 @@ node_modules/
 .env
 .env.local
 .env.production
+.env*.local
 
 # Build output
 dist/
 build/
 .next/
 out/
+web-build/
 
 # TypeScript build info
 *.tsbuildinfo
@@ -26,6 +28,10 @@ uploads/
 # Expo
 .expo/
 *.expo/
+expo-env.d.ts
+
+# Metro
+.metro-health-check*
 
 # Flutter build artifacts
 seirs_logistics_app/.dart_tool/
@@ -41,8 +47,20 @@ seirs_logistics_app/ios/Flutter/flutter_export_environment.sh
 seirs_logistics_app/ios/Runner/GeneratedPluginRegistrant.h
 seirs_logistics_app/ios/Runner/GeneratedPluginRegistrant.m
 
+# Native / signing keys
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
 # OS / editor
 .DS_Store
+*.pem
 Thumbs.db
 .vscode/
 *.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
