@@ -30,8 +30,8 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`🚀 Seirs API running on http://localhost:${port}/api/v1`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 Seirs API running on port ${port}`);
 }
 
 bootstrap();
