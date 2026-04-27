@@ -1,5 +1,5 @@
 import {
-  Injectable, Logger, NotFoundException, BadRequestException,
+  Injectable, Logger, BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -12,13 +12,15 @@ import { User } from '../users/user.entity';
 
 const PLATFORM_COMMISSION = 0.20; // 20%
 
-// Convert naira to kobo
-const toKobo = (naira: number) => Math.round(naira * 100);
-const toNaira = (kobo: number) => kobo / 100;
+const toKobo  = (naira: number) => Math.round(naira * 100);
+const toNaira = (kobo:  number) => kobo / 100;
 
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
+
+  // Set lazily to avoid circular dependency with FraudModule
+  fraudService?: any;
 
   constructor(
     @InjectRepository(Payment) private paymentsRepo: Repository<Payment>,
@@ -48,7 +50,7 @@ export class PaymentsService {
     };
   }
 
-  // ── Initiate payment (card via Flutterwave) ───────────────────────────────
+  // ── Initiate card payment via Flutterwave hosted page ────────────────────
 
   async initiateCardPayment(delivery: Delivery, customer: User): Promise<{
     authorizationUrl: string;
@@ -87,15 +89,15 @@ export class PaymentsService {
     return { authorizationUrl: paymentLink, reference: txRef, paymentId: payment.id };
   }
 
-  // COD — payment is recorded as pending until driver confirms delivery
+  // COD — recorded as pending until driver confirms delivery
   async initiateCOD(delivery: Delivery, customer: User): Promise<Payment> {
     const payment = this.paymentsRepo.create({
       customer,
       delivery,
-      amountKobo:  toKobo(delivery.price),
-      method:      PaymentMethod.COD,
-      status:      PaymentStatus.PENDING,
-      provider:    'internal',
+      amountKobo:   toKobo(delivery.price),
+      method:       PaymentMethod.COD,
+      status:       PaymentStatus.PENDING,
+      provider:     'internal',
       escrowStatus: EscrowStatus.HELD,
     });
     return this.paymentsRepo.save(payment);
@@ -132,7 +134,7 @@ export class PaymentsService {
     return this.paymentsRepo.save(payment);
   }
 
-  // ── Webhook / verification ────────────────────────────────────────────────
+  // ── Verify Flutterwave payment (webhook + manual) ─────────────────────────
 
   async confirmFlutterwavePayment(txRef: string): Promise<Payment | null> {
     const payment = await this.paymentsRepo.findOne({
@@ -146,8 +148,9 @@ export class PaymentsService {
 
     if (result.success) {
       await this.paymentsRepo.update(payment.id, {
-        status:       PaymentStatus.SUCCESS,
-        escrowStatus: EscrowStatus.HELD,
+        status:                    PaymentStatus.SUCCESS,
+        escrowStatus:              EscrowStatus.HELD,
+        flutterwaveTransactionId:  result.transactionId,
       });
       payment.status       = PaymentStatus.SUCCESS;
       payment.escrowStatus = EscrowStatus.HELD;
@@ -159,7 +162,7 @@ export class PaymentsService {
     return payment;
   }
 
-  // ── Escrow release (called when delivery is completed) ────────────────────
+  // ── Escrow release — called when delivery is completed ────────────────────
 
   async releaseEscrow(deliveryId: string, driverUserId: string): Promise<void> {
     const payment = await this.paymentsRepo.findOne({
@@ -173,18 +176,15 @@ export class PaymentsService {
 
     if (payment.escrowStatus === EscrowStatus.RELEASED) return;
 
-    // Calculate driver earnings (price minus platform commission)
     const driverShareKobo = Math.round(payment.amountKobo * (1 - PLATFORM_COMMISSION));
 
     await this.dataSource.transaction(async (manager) => {
-      // Credit driver wallet
       let driverWallet = await manager.findOne(Wallet, {
         where: { user: { id: driverUserId } },
         lock: { mode: 'pessimistic_write' },
       });
 
       if (!driverWallet) {
-        // Create wallet on the fly if first earning
         const driverUser = { id: driverUserId } as User;
         driverWallet = manager.create(Wallet, { user: driverUser, balanceKobo: 0 });
         await manager.save(Wallet, driverWallet);
@@ -194,7 +194,6 @@ export class PaymentsService {
         balanceKobo: driverWallet.balanceKobo + driverShareKobo,
       });
 
-      // Mark escrow released
       await manager.update(Payment, payment.id, {
         escrowStatus: EscrowStatus.RELEASED,
         releasedAt:   new Date(),
@@ -203,11 +202,11 @@ export class PaymentsService {
 
     this.logger.log(
       `Escrow released for delivery ${deliveryId}. ` +
-      `Driver receives ₦${toNaira(driverShareKobo)} (${(1 - PLATFORM_COMMISSION) * 100}%)`
+      `Driver receives ₦${toNaira(driverShareKobo)} (${(1 - PLATFORM_COMMISSION) * 100}%)`,
     );
   }
 
-  // ── Refund escrow (called when delivery fails/cancels) ────────────────────
+  // ── Refund escrow — called when delivery fails or cancels ────────────────
 
   async refundEscrow(deliveryId: string, customerUserId: string): Promise<void> {
     const payment = await this.paymentsRepo.findOne({
@@ -216,13 +215,18 @@ export class PaymentsService {
 
     if (!payment || payment.escrowStatus !== EscrowStatus.HELD) return;
 
-    // For card payments, refund via Flutterwave
-    // Requires numeric transaction ID — logged here for now, wired in production
-    if (payment.method === PaymentMethod.CARD) {
-      this.logger.warn(`Card refund needed for txRef ${payment.providerReference} — trigger manually in Flutterwave dashboard`);
+    if (payment.method === PaymentMethod.CARD && payment.flutterwaveTransactionId) {
+      try {
+        await this.flutterwaveService.refundTransaction(
+          payment.flutterwaveTransactionId,
+          toNaira(payment.amountKobo),
+        );
+        this.logger.log(`Card refund issued via Flutterwave for delivery ${deliveryId}`);
+      } catch (e) {
+        this.logger.error(`Card refund failed for ${payment.providerReference}: ${e.message}`);
+      }
     }
 
-    // For wallet payments, return to customer wallet
     if (payment.method === PaymentMethod.WALLET) {
       await this.dataSource.transaction(async (manager) => {
         const wallet = await manager.findOne(Wallet, {
@@ -245,7 +249,7 @@ export class PaymentsService {
     this.logger.log(`Refund processed for delivery ${deliveryId}`);
   }
 
-  // ── Driver withdrawal ─────────────────────────────────────────────────────
+  // ── Driver withdrawal via Flutterwave transfer ───────────────────────────
 
   async requestWithdrawal(userId: string, amountNaira: number): Promise<{ message: string }> {
     const amountKobo = toKobo(amountNaira);
@@ -264,25 +268,48 @@ export class PaymentsService {
       throw new BadRequestException('Insufficient wallet balance.');
     }
 
-    if (!wallet.bankAccountNumber) {
+    if (!wallet.bankAccountNumber || !wallet.bankCode) {
       throw new BadRequestException('Please add a bank account before withdrawing.');
     }
 
+    // Deduct from wallet first — refund if transfer fails
     await this.dataSource.transaction(async (manager) => {
       await manager.update(Wallet, wallet.id, {
         balanceKobo: wallet.balanceKobo - amountKobo,
       });
     });
 
-    // TODO: trigger actual Paystack transfer in production
-    this.logger.log(`Withdrawal of ₦${amountNaira} requested by user ${userId}`);
+    const reference = `SRS-WD-${uuidv4().slice(0, 8).toUpperCase()}`;
+    const { success } = await this.flutterwaveService.transferToBank({
+      amountNaira,
+      bankCode:      wallet.bankCode,
+      accountNumber: wallet.bankAccountNumber,
+      accountName:   wallet.bankAccountName,
+      reference,
+      narration:     'Seirs driver earnings withdrawal',
+    });
+
+    if (!success) {
+      // Restore wallet balance — transfer failed
+      await this.walletsRepo.update(wallet.id, {
+        balanceKobo: wallet.balanceKobo,
+      });
+      throw new BadRequestException('Transfer failed. Please try again or contact support.');
+    }
+
+    this.logger.log(`Withdrawal of ₦${amountNaira} sent to ${wallet.bankAccountNumber} (ref: ${reference})`);
+
+    // Flag large withdrawals for fraud review (async — non-blocking)
+    if (this.fraudService) {
+      this.fraudService.checkWithdrawal(userId, amountKobo).catch(() => {});
+    }
 
     return { message: `₦${amountNaira.toLocaleString()} withdrawal initiated. Arrives in 1-2 business days.` };
   }
 
   async updateBankDetails(
     userId: string,
-    data: { bankName: string; bankAccountNumber: string; bankAccountName: string },
+    data: { bankName: string; bankCode: string; bankAccountNumber: string; bankAccountName: string },
   ) {
     const wallet = await this.getOrCreateWallet({ id: userId } as User);
     await this.walletsRepo.update(wallet.id, data);
@@ -295,5 +322,11 @@ export class PaymentsService {
       order: { createdAt: 'DESC' },
       take: 50,
     });
+  }
+
+  // ── Nigerian bank list (for driver bank account setup UI) ────────────────
+
+  async getNigerianBanks() {
+    return this.flutterwaveService.getNigerianBanks();
   }
 }

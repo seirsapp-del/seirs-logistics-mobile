@@ -54,6 +54,10 @@ export class Driver {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   lastLng: number;
 
+  // Timestamp of last GPS update — used for velocity anomaly detection
+  @Column({ nullable: true })
+  locationUpdatedAt: Date;
+
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
   rating: number;        // 0.00 – 5.00
 

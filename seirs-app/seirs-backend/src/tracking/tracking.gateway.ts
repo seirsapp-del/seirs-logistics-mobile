@@ -8,28 +8,43 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { RedisService } from './redis.service';
 
 // Events the server emits to clients
 export const WsEvents = {
-  DRIVER_LOCATION:    'driver:location',      // live GPS update
-  DELIVERY_STATUS:    'delivery:status',      // status change
-  DRIVER_ASSIGNED:    'delivery:assigned',    // driver matched
-  ETA_UPDATE:         'delivery:eta',         // ETA recalculated
-  DELIVERY_COMPLETE:  'delivery:completed',   // package delivered
+  DRIVER_LOCATION:   'driver:location',
+  DELIVERY_STATUS:   'delivery:status',
+  DRIVER_ASSIGNED:   'delivery:assigned',
+  ETA_UPDATE:        'delivery:eta',
+  DELIVERY_COMPLETE: 'delivery:completed',
 };
 
-// Events clients send to the server
 const ClientEvents = {
-  JOIN_DELIVERY:      'join:delivery',        // customer tracks a delivery
-  LEAVE_DELIVERY:     'leave:delivery',
-  DRIVER_UPDATE_LOC:  'driver:update-location', // driver sends GPS ping
-  JOIN_DRIVER_POOL:   'join:driver-pool',     // driver goes online
+  JOIN_DELIVERY:     'join:delivery',
+  LEAVE_DELIVERY:    'leave:delivery',
+  DRIVER_UPDATE_LOC: 'driver:update-location',
+  JOIN_DRIVER_POOL:  'join:driver-pool',
 };
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  // CORS restricted — origins set via ALLOWED_ORIGINS env var (comma-separated)
+  cors: {
+    origin: (origin: string, callback: Function) => {
+      const allowed = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3001')
+        .split(',')
+        .map(o => o.trim());
+      // Allow mobile apps (no origin header) and listed origins
+      if (!origin || allowed.includes(origin) || allowed.includes('*')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  },
   namespace: '/tracking',
 })
 export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -38,13 +53,47 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   private readonly logger = new Logger(TrackingGateway.name);
 
-  // Map socket.id → driverId (for cleanup on disconnect)
+  // socket.id → { userId, role }
+  private authedClients = new Map<string, { userId: string; role: string }>();
+
+  // socket.id → driverId (for cleanup)
   private connectedDrivers = new Map<string, string>();
 
-  constructor(private redisService: RedisService) {}
+  constructor(
+    private redisService: RedisService,
+    private jwtService:   JwtService,
+    private cfg:          ConfigService,
+  ) {}
+
+  // Verify JWT from handshake auth or Authorization header
+  private extractUser(client: Socket): { userId: string; role: string } | null {
+    try {
+      const token =
+        client.handshake.auth?.token?.replace('Bearer ', '') ??
+        client.handshake.headers?.authorization?.replace('Bearer ', '');
+
+      if (!token) return null;
+
+      const payload = this.jwtService.verify(token, {
+        secret: this.cfg.get<string>('JWT_SECRET'),
+      });
+      return { userId: payload.sub, role: payload.role };
+    } catch {
+      return null;
+    }
+  }
 
   handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+    const user = this.extractUser(client);
+    if (user) {
+      this.authedClients.set(client.id, user);
+      // Auto-join personal notification room
+      client.join(`user:${user.userId}`);
+      this.logger.log(`Client ${client.id} connected (userId=${user.userId})`);
+    } else {
+      // Unauthenticated connections allowed — they can only join public delivery rooms
+      this.logger.log(`Unauthenticated client connected: ${client.id}`);
+    }
   }
 
   handleDisconnect(client: Socket) {
@@ -53,16 +102,16 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
       this.connectedDrivers.delete(client.id);
       this.logger.log(`Driver ${driverId} disconnected`);
     }
+    this.authedClients.delete(client.id);
   }
 
-  // Customer joins a room to track their delivery
+  // Customer joins a room to track their delivery (public — no auth required)
   @SubscribeMessage(ClientEvents.JOIN_DELIVERY)
   async joinDeliveryRoom(
     @MessageBody() data: { deliveryId: string },
     @ConnectedSocket() client: Socket,
   ) {
     await client.join(`delivery:${data.deliveryId}`);
-    this.logger.log(`Client ${client.id} tracking delivery ${data.deliveryId}`);
     return { event: 'joined', deliveryId: data.deliveryId };
   }
 
@@ -74,27 +123,45 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     await client.leave(`delivery:${data.deliveryId}`);
   }
 
-  // Driver registers as online and links their socket
+  // Driver registers as online — requires valid JWT with driver role
   @SubscribeMessage(ClientEvents.JOIN_DRIVER_POOL)
   joinDriverPool(
     @MessageBody() data: { driverId: string },
     @ConnectedSocket() client: Socket,
   ) {
+    const user = this.authedClients.get(client.id);
+    if (!user || user.role !== 'driver') {
+      client.emit('error', { message: 'Authentication required to join driver pool' });
+      return;
+    }
+
     this.connectedDrivers.set(client.id, data.driverId);
     client.join(`driver:${data.driverId}`);
-    this.logger.log(`Driver ${data.driverId} joined pool`);
   }
 
-  // Driver sends GPS ping → store in Redis + broadcast to delivery room
+  // Driver sends GPS ping — verify it's the actual driver, not someone spoofing
   @SubscribeMessage(ClientEvents.DRIVER_UPDATE_LOC)
   async updateDriverLocation(
     @MessageBody() data: { driverId: string; deliveryId: string; lat: number; lng: number },
     @ConnectedSocket() client: Socket,
   ) {
-    // Persist to Redis
+    const user = this.authedClients.get(client.id);
+    if (!user || user.role !== 'driver') {
+      client.emit('error', { message: 'Authentication required' });
+      return;
+    }
+
+    // Validate lat/lng ranges
+    if (
+      typeof data.lat !== 'number' || typeof data.lng !== 'number' ||
+      data.lat < -90 || data.lat > 90 ||
+      data.lng < -180 || data.lng > 180
+    ) {
+      return;
+    }
+
     await this.redisService.setDriverLocation(data.driverId, data.lat, data.lng);
 
-    // Broadcast to everyone tracking this delivery
     this.server.to(`delivery:${data.deliveryId}`).emit(WsEvents.DRIVER_LOCATION, {
       driverId:  data.driverId,
       lat:       data.lat,
@@ -103,17 +170,30 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     });
   }
 
-  // Called by DeliveriesService when delivery status changes
+  // Client joins personal notification room — requires auth
+  @SubscribeMessage('join:user')
+  joinUserRoom(
+    @MessageBody() data: { userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const user = this.authedClients.get(client.id);
+    // Only allow joining your own room
+    if (!user || user.userId !== data.userId) {
+      client.emit('error', { message: 'Authentication required' });
+      return;
+    }
+    client.join(`user:${user.userId}`);
+    return { event: 'joined:user', userId: user.userId };
+  }
+
+  // ── Server → client broadcast helpers ─────────────────────────────────────
+
   broadcastStatusChange(deliveryId: string, status: string, extra?: object) {
     this.server.to(`delivery:${deliveryId}`).emit(WsEvents.DELIVERY_STATUS, {
-      deliveryId,
-      status,
-      timestamp: Date.now(),
-      ...extra,
+      deliveryId, status, timestamp: Date.now(), ...extra,
     });
   }
 
-  // Called when a driver is matched — notify customer
   broadcastDriverAssigned(deliveryId: string, driver: any) {
     this.server.to(`delivery:${deliveryId}`).emit(WsEvents.DRIVER_ASSIGNED, {
       deliveryId,
@@ -128,26 +208,13 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     });
   }
 
-  // Notify specific driver of a new job request
   notifyDriver(driverId: string, delivery: any) {
     this.server.to(`driver:${driverId}`).emit('job:request', {
-      delivery,
-      timestamp: Date.now(),
+      delivery, timestamp: Date.now(),
     });
   }
 
-  // Push an in-app notification to a specific user (any role)
   notifyUser(userId: string, notification: any) {
     this.server.to(`user:${userId}`).emit('notification', notification);
-  }
-
-  // Client joins their personal room to receive notifications
-  @SubscribeMessage('join:user')
-  joinUserRoom(
-    @MessageBody() data: { userId: string },
-    @ConnectedSocket() client: Socket,
-  ) {
-    client.join(`user:${data.userId}`);
-    return { event: 'joined:user', userId: data.userId };
   }
 }

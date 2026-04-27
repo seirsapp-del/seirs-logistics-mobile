@@ -7,6 +7,7 @@ import { Driver, DriverStatus } from '../drivers/driver.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { FraudFlag, FraudFlagStatus } from '../fraud/fraud-flag.entity';
 import { FraudService } from '../fraud/fraud.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AdminService {
@@ -16,6 +17,7 @@ export class AdminService {
     @InjectRepository(Delivery)  private deliveriesRepo: Repository<Delivery>,
     @InjectRepository(FraudFlag) private flagsRepo:      Repository<FraudFlag>,
     private readonly fraudService: FraudService,
+    private readonly mailService:  MailService,
   ) {}
 
   // ── Dashboard stats ───────────────────────────────────────────────────────
@@ -189,9 +191,19 @@ export class AdminService {
     return { driver, deliveries, deliveryCount, totalEarned: Number(earned?.total ?? 0) };
   }
 
-  async updateDriverStatus(id: string, status: string) {
+  async updateDriverStatus(id: string, status: string, rejectionReason?: string) {
     await this.driversRepo.update(id, { status: status as DriverStatus });
-    return this.driversRepo.findOne({ where: { id }, relations: ['user'] });
+    const driver = await this.driversRepo.findOne({ where: { id }, relations: ['user'] });
+
+    if (driver?.user) {
+      if (status === DriverStatus.APPROVED) {
+        this.mailService.sendDriverApproved(driver.user.email, driver.user.name).catch(() => {});
+      } else if (status === DriverStatus.REJECTED) {
+        this.mailService.sendDriverRejected(driver.user.email, driver.user.name, rejectionReason).catch(() => {});
+      }
+    }
+
+    return driver;
   }
 
   // ── Deliveries ────────────────────────────────────────────────────────────

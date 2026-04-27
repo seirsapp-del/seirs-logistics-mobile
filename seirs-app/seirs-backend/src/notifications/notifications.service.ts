@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './notification.entity';
+import { FcmService } from './fcm.service';
+import { User } from '../users/user.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -12,6 +14,8 @@ export class NotificationsService {
 
   constructor(
     @InjectRepository(Notification) private repo: Repository<Notification>,
+    @InjectRepository(User)         private usersRepo: Repository<User>,
+    private readonly fcm: FcmService,
   ) {}
 
   async create(
@@ -30,7 +34,30 @@ export class NotificationsService {
       this.trackingGateway.notifyUser(userId, saved);
     }
 
+    // Send FCM push notification
+    this.sendPush(userId, title, body, {
+      type,
+      ...(deliveryId    && { deliveryId }),
+      ...(trackingCode  && { trackingCode }),
+    }).catch(() => {/* non-fatal */});
+
     return saved;
+  }
+
+  private async sendPush(
+    userId: string,
+    title: string,
+    body: string,
+    data: Record<string, string>,
+  ): Promise<void> {
+    const user = await this.usersRepo.findOne({ where: { id: userId }, select: ['id', 'fcmToken'] });
+    if (!user?.fcmToken) return;
+
+    const tokenIsStale = await this.fcm.sendToToken(user.fcmToken, title, body, data);
+    if (tokenIsStale) {
+      // Clear invalid token so we stop trying to push to it
+      await this.usersRepo.update(userId, { fcmToken: null });
+    }
   }
 
   async findByUser(userId: string, page = 1, limit = 20) {

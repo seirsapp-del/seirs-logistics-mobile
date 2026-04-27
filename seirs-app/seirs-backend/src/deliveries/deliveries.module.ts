@@ -13,6 +13,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { FallbackModule } from '../fallback/fallback.module';
 import { FallbackService } from '../fallback/fallback.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MailService } from '../mail/mail.service';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ export class DeliveriesModule implements OnModuleInit {
     private paymentsService:      PaymentsService,
     private fallbackService:      FallbackService,
     private notificationsService: NotificationsService,
+    private mailService:          MailService,
   ) {}
 
   onModuleInit() {
@@ -42,6 +44,7 @@ export class DeliveriesModule implements OnModuleInit {
     this.deliveriesService.paymentsService      = this.paymentsService;
     this.deliveriesService.fallbackService      = this.fallbackService;
     this.deliveriesService.notificationsService = this.notificationsService;
+    this.deliveriesService.mailService          = this.mailService;
 
     // Give NotificationsService a reference to the gateway for WS delivery
     this.notificationsService.trackingGateway = this.trackingGateway;

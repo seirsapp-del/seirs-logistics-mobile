@@ -1,9 +1,12 @@
 import {
   Body, Controller, Get, Param, Post, Patch,
   UseGuards, RawBodyRequest, Req, Headers,
+  HttpCode, HttpStatus,
 } from '@nestjs/common';
+import { createHash, timingSafeEqual } from 'crypto';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
 import { DeliveriesService } from '../deliveries/deliveries.service';
@@ -66,6 +69,13 @@ export class PaymentsController {
 
   // ── Driver endpoints ─────────────────────────────────────────────────────
 
+  // GET /api/v1/payments/banks — Nigerian bank list for driver bank setup
+  @UseGuards(JwtAuthGuard)
+  @Get('banks')
+  getNigerianBanks() {
+    return this.paymentsService.getNigerianBanks();
+  }
+
   // POST /api/v1/payments/withdraw  { amountNaira: 5000 }
   @UseGuards(JwtAuthGuard)
   @Post('withdraw')
@@ -81,30 +91,52 @@ export class PaymentsController {
   @Patch('bank-details')
   updateBankDetails(
     @CurrentUser() user: User,
-    @Body() body: { bankName: string; bankAccountNumber: string; bankAccountName: string },
+    @Body() body: { bankName: string; bankCode: string; bankAccountNumber: string; bankAccountName: string },
   ) {
     return this.paymentsService.updateBankDetails(user.id, body);
   }
 
-  // ── Flutterwave Webhook (no JWT — called by Flutterwave server) ──────────
+  // ── Flutterwave Webhook (no JWT — Flutterwave server calls this) ───────────
   // POST /api/v1/payments/webhook/flutterwave
-  // Set the same FLW_WEBHOOK_HASH in your Flutterwave dashboard → Webhooks
+  // Set FLW_WEBHOOK_HASH in your env to the same Secret Hash configured in
+  // Flutterwave dashboard → Settings → Webhooks
+  @Public()
+  @HttpCode(HttpStatus.OK)
   @Post('webhook/flutterwave')
   async flutterwaveWebhook(
     @Body() body: any,
-    @Headers('verif-hash') hash: string,
+    @Headers('verif-hash') receivedHash: string,
   ) {
     const expectedHash = process.env.FLW_WEBHOOK_HASH ?? '';
-    if (expectedHash && hash !== expectedHash) {
+
+    // Reject immediately if webhook secret is not configured
+    if (!expectedHash) {
+      return { received: false, reason: 'webhook not configured' };
+    }
+
+    // Timing-safe comparison prevents hash oracle / timing attacks
+    let hashesMatch = false;
+    try {
+      hashesMatch = timingSafeEqual(
+        Buffer.from(receivedHash  ?? '', 'utf8'),
+        Buffer.from(expectedHash,       'utf8'),
+      );
+    } catch {
+      hashesMatch = false;
+    }
+
+    if (!hashesMatch) {
       return { received: false };
     }
 
+    // Idempotency: confirmFlutterwavePayment already no-ops if already SUCCESS
     if (body.event === 'charge.completed' && body.data?.status === 'successful') {
       const txRef = body.data?.tx_ref;
       if (txRef) {
         await this.paymentsService.confirmFlutterwavePayment(txRef);
       }
     }
+
     return { received: true };
   }
 }

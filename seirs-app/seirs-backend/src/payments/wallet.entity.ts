@@ -28,6 +28,10 @@ export class Wallet {
   @Column({ nullable: true })
   bankName: string;
 
+  // Paystack bank code, e.g. "058" for GTBank — required for transfers
+  @Column({ nullable: true })
+  bankCode: string;
+
   @Column({ nullable: true })
   bankAccountNumber: string;
 

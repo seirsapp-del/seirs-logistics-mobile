@@ -12,7 +12,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "co.seirs.app",
       "config": {
-        "googleMapsApiKey": "AIzaSyAvMkPsFLms7sJY8rd_44mf-ibQaYGEJPs"
+        "googleMapsApiKey": "AIzaSyD4sOfs9SBTWE36xzak3aTwsbt-a0mgcSc"
       }
     },
     "android": {
@@ -32,12 +32,6 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION",
-        "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",

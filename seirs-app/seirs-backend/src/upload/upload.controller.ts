@@ -1,31 +1,24 @@
 import {
-  Controller, Post, UploadedFile, UseGuards,
+  Controller, Post, Query, UploadedFile, UseGuards,
   UseInterceptors, BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
-import { v4 as uuidv4 } from 'uuid';
+import { memoryStorage } from 'multer';
+import { extname } from 'path';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { ConfigService } from '@nestjs/config';
+import { UploadService } from './upload.service';
 
-const uploadDir = join(process.cwd(), 'uploads');
-if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+type UploadFolder = 'kyc' | 'proof' | 'avatars';
 
 @UseGuards(JwtAuthGuard)
 @Controller('upload')
 export class UploadController {
-  constructor(private readonly cfg: ConfigService) {}
+  constructor(private readonly uploadService: UploadService) {}
 
+  // POST /api/v1/upload?folder=kyc|proof|avatars
   @Post()
   @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: uploadDir,
-      filename: (_req, file, cb) => {
-        cb(null, `${uuidv4()}${extname(file.originalname).toLowerCase()}`);
-      },
-    }),
+    storage: memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
     fileFilter: (_req, file, cb) => {
       if (/\.(jpe?g|png|pdf)$/i.test(extname(file.originalname))) {
@@ -35,9 +28,18 @@ export class UploadController {
       }
     },
   }))
-  uploadFile(@UploadedFile() file: Express.Multer.File) {
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('folder') folder: string,
+  ) {
     if (!file) throw new BadRequestException('No file provided.');
-    const base = this.cfg.get<string>('API_URL', 'http://localhost:3000');
-    return { url: `${base}/uploads/${file.filename}` };
+
+    const validFolders: UploadFolder[] = ['kyc', 'proof', 'avatars'];
+    const dest: UploadFolder = validFolders.includes(folder as UploadFolder)
+      ? (folder as UploadFolder)
+      : 'kyc';
+
+    const url = await this.uploadService.uploadBuffer(file.buffer, file.originalname, dest);
+    return { url };
   }
 }

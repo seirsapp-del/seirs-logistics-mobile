@@ -56,15 +56,19 @@ export class Payment {
   @Column({ type: 'enum', enum: EscrowStatus, nullable: true })
   escrowStatus: EscrowStatus;
 
-  // Provider reference (Paystack/Flutterwave transaction ID)
+  // Flutterwave tx_ref (used for verification and refunds)
   @Column({ nullable: true })
   providerReference: string;
 
+  // Flutterwave numeric transaction ID (needed for issuing refunds)
+  @Column({ nullable: true, type: 'bigint' })
+  flutterwaveTransactionId: number;
+
   // Which provider processed this payment
   @Column({ nullable: true })
-  provider: string; // 'paystack' | 'flutterwave' | 'internal'
+  provider: string; // 'flutterwave' | 'internal'
 
-  // Authorization URL to redirect customer to (Paystack)
+  // Hosted payment page URL returned by Flutterwave
   @Column({ nullable: true })
   authorizationUrl: string;
 

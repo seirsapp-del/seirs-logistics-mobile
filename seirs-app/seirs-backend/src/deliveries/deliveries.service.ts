@@ -17,11 +17,12 @@ function generateTrackingCode(): string {
 export class DeliveriesService {
   private readonly logger = new Logger(DeliveriesService.name);
 
-  matchingService?:    any;
-  trackingGateway?:    any;
-  paymentsService?:    any;
-  fallbackService?:    any;
+  matchingService?:      any;
+  trackingGateway?:      any;
+  paymentsService?:      any;
+  fallbackService?:      any;
   notificationsService?: any;
+  mailService?:          any;
 
   constructor(
     @InjectRepository(Delivery) private repo: Repository<Delivery>,
@@ -172,15 +173,36 @@ export class DeliveriesService {
       this.trackingGateway.broadcastStatusChange(id, status);
     }
 
+    // Fetch customer for email (delivery.customer may not have email loaded)
+    const withCustomer = await this.repo.findOne({ where: { id }, relations: ['customer'] });
+    const customer = withCustomer?.customer;
+
     // In-app notifications on status change
-    if (this.notificationsService && delivery.customer) {
+    if (this.notificationsService && customer) {
       if (status === DeliveryStatus.DELIVERED) {
         this.notificationsService
-          .notifyDeliveryComplete(delivery.customer.id, delivery.trackingCode, id)
+          .notifyDeliveryComplete(customer.id, delivery.trackingCode, id)
           .catch(() => {});
       } else {
         this.notificationsService
-          .notifyStatusUpdate(delivery.customer.id, delivery.trackingCode, status, delivery.id)
+          .notifyStatusUpdate(customer.id, delivery.trackingCode, status, delivery.id)
+          .catch(() => {});
+      }
+    }
+
+    // Email notifications on status change
+    if (this.mailService && customer?.email) {
+      if (status === DeliveryStatus.PICKED_UP) {
+        this.mailService
+          .sendDeliveryPickedUp(customer.email, customer.name, delivery.trackingCode)
+          .catch(() => {});
+      } else if (status === DeliveryStatus.DELIVERED) {
+        this.mailService
+          .sendDeliveryComplete(customer.email, customer.name, delivery.trackingCode)
+          .catch(() => {});
+      } else if (status === DeliveryStatus.FAILED) {
+        this.mailService
+          .sendDeliveryFailed(customer.email, customer.name, delivery.trackingCode)
           .catch(() => {});
       }
     }
@@ -232,16 +254,16 @@ export class DeliveriesService {
 
     await this.repo.update(id, { customerRating: rating, customerComment: comment });
 
-    // Recalculate driver's average rating
+    // Recalculate driver's average rating with a single AVG() query (no N+1)
     if (delivery.driver?.id) {
-      const allRatings = await this.repo
+      const result = await this.repo
         .createQueryBuilder('d')
-        .select('d.customerRating', 'r')
+        .select('AVG(d.customerRating)', 'avg')
         .where('d.driver_id = :driverId', { driverId: delivery.driver.id })
         .andWhere('d.customerRating IS NOT NULL')
-        .getRawMany();
+        .getRawOne();
 
-      const avg = allRatings.reduce((sum, r) => sum + Number(r.r), 0) / allRatings.length;
+      const avg = parseFloat(result?.avg ?? '0');
 
       await this.repo.manager
         .getRepository('Driver')
