@@ -4,142 +4,238 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import {
+  Colors, Spacing, Radius, FontSize, FontWeight, Shadows, ActionColors, CLOUD_DANCER,
+} from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationBell } from '@/components/NotificationBell';
+import { paymentsApi, deliveriesApi } from '@/services/api';
 
-const QUICK_ACTIONS: { id: string; icon: string; label: string; desc: string; route: string }[] = [
-  { id: 'send',     icon: '📤', label: 'Send Package',  desc: 'Book a delivery', route: '/(customer)/send' },
-  { id: 'track',    icon: '📍', label: 'Track Package', desc: 'Live tracking',   route: '/(customer)/track' },
-  { id: 'schedule', icon: '🗓️', label: 'Schedule',      desc: 'Book in advance', route: '/(customer)/schedule' },
-  { id: 'business', icon: '🏢', label: 'Business',      desc: 'Bulk deliveries', route: '/(customer)/business' },
-];
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
-const DELIVERY_OPTIONS = [
-  {
-    id: 'instant',
-    icon: '⚡',
-    label: 'Instant',
-    desc: 'Delivered within hours',
-    color: '#F4600C',
-    eta: '1-3 hrs',
-  },
-  {
-    id: 'standard',
-    icon: '🚀',
-    label: 'Standard',
-    desc: 'Next day delivery',
-    color: '#3B82F6',
-    eta: '24 hrs',
-  },
-  {
-    id: 'economy',
-    icon: '💚',
-    label: 'Economy',
-    desc: 'Affordable option',
-    color: '#22C55E',
-    eta: '2-3 days',
-  },
-];
+const QUICK_ACTIONS = [
+  { id: 'request', icon: 'cube-outline',    label: 'Request',  route: '/(customer)/send'     },
+  { id: 'send',    icon: 'paper-plane',     label: 'Send',     route: '/(customer)/send'     },
+  { id: 'track',   icon: 'location',        label: 'Track',    route: '/(customer)/track'    },
+  { id: 'history', icon: 'time',            label: 'History',  route: '/(customer)/history'  },
+] as const;
+
+const FEATURES = [
+  { icon: 'flash',           label: 'Fast & Reliable' },
+  { icon: 'shield-checkmark', label: 'Safe & Secure' },
+  { icon: 'pricetag',        label: 'Transparent Pricing' },
+  { icon: 'people',          label: 'Pro Drivers' },
+] as const;
 
 export default function CustomerHomeScreen() {
-  const router = useRouter();
+  const router      = useRouter();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
-  const { user, logout } = useAuth();
+  const theme       = Colors[colorScheme ?? 'light'];
+  const isDark      = colorScheme === 'dark';
+  const { user }    = useAuth();
+
+  const [balance,   setBalance]   = useState<number>(0);
+  const [recents,   setRecents]   = useState<any[]>([]);
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
 
+  useEffect(() => {
+    paymentsApi.wallet()
+      .then((b: any) => setBalance(b?.balanceNaira ?? 0))
+      .catch(() => {});
+    deliveriesApi.myDeliveries(1, 3)
+      .then((d: any) => setRecents(d?.items ?? []))
+      .catch(() => {});
+  }, []);
+
+  const walletGradient = isDark
+    ? ([theme.walletCard, theme.walletCardEnd] as const)
+    : ([theme.walletCard, theme.walletCardEnd] as const);
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.primary }]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <View style={[styles.header, { backgroundColor: theme.background }]}>
           <View>
-            <Text style={styles.greeting}>Good day, {firstName} 👋</Text>
-            <Text style={styles.headerSub}>Where are you sending to today?</Text>
+            <Text style={[styles.greeting, { color: theme.textSecond }]}>{getGreeting()},</Text>
+            <Text style={[styles.name, { color: theme.text }]}>{firstName} 👋</Text>
           </View>
           <View style={styles.headerRight}>
             <NotificationBell />
-            <Pressable onPress={logout} style={styles.avatarBtn}>
+            <Pressable style={[styles.avatar, { backgroundColor: theme.primary }]}>
               <Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text>
             </Pressable>
           </View>
         </View>
 
-        {/* Main CTA */}
-        <View style={[styles.ctaCard, { backgroundColor: theme.surface }, Shadows.md]}>
-          <Text style={[styles.ctaTitle, { color: theme.text }]}>Send a package</Text>
-          <Text style={[styles.ctaDesc, { color: theme.textSecond }]}>
-            Enter pickup and drop-off to get instant quotes
-          </Text>
+        {/* ── Wallet Balance Card ─────────────────────────────────────────── */}
+        <View style={styles.cardWrap}>
+          <LinearGradient
+            colors={walletGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.walletCard, isDark ? Shadows.orange : Shadows.lg]}
+          >
+            {/* Top row */}
+            <View style={styles.walletTop}>
+              <Text style={styles.walletLabel}>Wallet Balance</Text>
+              <Pressable
+                style={styles.walletTopUp}
+                onPress={() => router.push('/(customer)/wallet')}
+              >
+                <Ionicons name="add" size={18} color={isDark ? '#fff' : CLOUD_DANCER} />
+              </Pressable>
+            </View>
+
+            {/* Amount */}
+            <Text style={styles.walletAmount}>
+              ₦{balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Text>
+            <Text style={styles.walletSub}>+12.5% this week</Text>
+
+            {/* Wallet actions */}
+            <View style={styles.walletActions}>
+              {(['Top Up', 'Send', 'History'] as const).map((label) => (
+                <Pressable
+                  key={label}
+                  style={styles.walletActionBtn}
+                  onPress={() => router.push('/(customer)/wallet')}
+                >
+                  <Text style={styles.walletActionText}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* ── Quick Actions ──────────────────────────────────────────────── */}
+        <View style={styles.section}>
+          <View style={styles.actionsRow}>
+            {QUICK_ACTIONS.map((a) => {
+              const ac = ActionColors[a.id];
+              const bg  = isDark ? ac.dark.bg   : ac.bg;
+              const col = isDark ? ac.dark.icon  : ac.icon;
+              return (
+                <Pressable
+                  key={a.id}
+                  style={styles.actionItem}
+                  onPress={() => router.push(a.route as any)}
+                >
+                  <View style={[styles.actionIcon, { backgroundColor: bg }]}>
+                    <Ionicons name={a.icon as any} size={24} color={col} />
+                  </View>
+                  <Text style={[styles.actionLabel, { color: theme.textSecond }]}>{a.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ── Recent Activity ────────────────────────────────────────────── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
+            <Pressable onPress={() => router.push('/(customer)/history')}>
+              <Text style={[styles.seeAll, { color: theme.primary }]}>View All</Text>
+            </Pressable>
+          </View>
+
+          {recents.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: theme.surface }, Shadows.sm]}>
+              <Ionicons name="cube-outline" size={40} color={theme.textThird} />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>No deliveries yet</Text>
+              <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
+                Book your first delivery and it will appear here
+              </Text>
+              <Pressable
+                style={[styles.emptyBtn, { backgroundColor: theme.primary }]}
+                onPress={() => router.push('/(customer)/send')}
+              >
+                <Text style={styles.emptyBtnText}>Book Delivery</Text>
+              </Pressable>
+            </View>
+          ) : (
+            recents.map((d) => (
+              <View
+                key={d.id}
+                style={[styles.activityRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+              >
+                <View style={[styles.activityDot, { backgroundColor: statusColor(d.status) }]} />
+                <View style={styles.activityInfo}>
+                  <Text style={[styles.activityTitle, { color: theme.text }]} numberOfLines={1}>
+                    {d.dropoffAddress}
+                  </Text>
+                  <Text style={[styles.activitySub, { color: theme.textSecond }]}>
+                    {d.trackingCode} · {d.status}
+                  </Text>
+                </View>
+                <Text style={[styles.activityAmount, { color: theme.text }]}>
+                  ₦{Number(d.price).toLocaleString()}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* ── Book CTA ───────────────────────────────────────────────────── */}
+        <View style={[styles.ctaSection, { marginHorizontal: Spacing.md }]}>
           <Pressable
-            style={[styles.ctaBtn, { backgroundColor: theme.primary }]}
+            style={[styles.ctaBtn, { backgroundColor: theme.primary }, Shadows.orange]}
             onPress={() => router.push('/(customer)/send')}
           >
-            <Text style={styles.ctaBtnText}>Book Delivery →</Text>
+            <Ionicons name="cube" size={20} color="#fff" />
+            <Text style={styles.ctaBtnText}>Book a Delivery</Text>
+            <Ionicons name="arrow-forward" size={20} color="#fff" />
           </Pressable>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            {QUICK_ACTIONS.map((action) => (
-              <Pressable
-                key={action.id}
-                style={[styles.actionCard, { backgroundColor: theme.surface }, Shadows.sm]}
-                onPress={() => router.push(action.route as any)}
-              >
-                <Text style={styles.actionIcon}>{action.icon}</Text>
-                <Text style={[styles.actionLabel, { color: theme.text }]}>{action.label}</Text>
-                <Text style={[styles.actionDesc, { color: theme.textSecond }]}>{action.desc}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
+        {/* ── Feature Highlights ─────────────────────────────────────────── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.featuresRow}
+        >
+          {FEATURES.map((f) => (
+            <View
+              key={f.label}
+              style={[styles.featureChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            >
+              <Ionicons name={f.icon as any} size={16} color={theme.primary} />
+              <Text style={[styles.featureText, { color: theme.textSecond }]}>{f.label}</Text>
+            </View>
+          ))}
+        </ScrollView>
 
-        {/* Delivery Options */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Delivery Options</Text>
-          <View style={styles.optionsRow}>
-            {DELIVERY_OPTIONS.map((opt) => (
-              <Pressable
-                key={opt.id}
-                style={[styles.optionCard, { backgroundColor: theme.surface }, Shadows.sm]}
-                onPress={() => {}}
-              >
-                <View style={[styles.optionIconWrap, { backgroundColor: opt.color + '18' }]}>
-                  <Text style={styles.optionIcon}>{opt.icon}</Text>
-                </View>
-                <Text style={[styles.optionLabel, { color: theme.text }]}>{opt.label}</Text>
-                <Text style={[styles.optionEta, { color: opt.color }]}>{opt.eta}</Text>
-                <Text style={[styles.optionDesc, { color: theme.textSecond }]}>{opt.desc}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Recent deliveries placeholder */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Deliveries</Text>
-          <View style={[styles.emptyState, { backgroundColor: theme.surface }, Shadows.sm]}>
-            <Text style={styles.emptyIcon}>📭</Text>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No deliveries yet</Text>
-            <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
-              Your delivery history will appear here
-            </Text>
-          </View>
-        </View>
-
-        <View style={{ height: Spacing.xl }} />
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function statusColor(status: string) {
+  const map: Record<string, string> = {
+    delivered: '#22C55E',
+    assigned:  '#00C2FF',
+    picked_up: '#F4600C',
+    failed:    '#EF4444',
+    cancelled: '#71717A',
+  };
+  return map[status] ?? '#A1A1AA';
 }
 
 const styles = StyleSheet.create({
@@ -147,146 +243,234 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xxl,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   greeting: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    color: '#fff',
-    marginBottom: 4,
-  },
-  headerSub: {
     fontSize: FontSize.sm,
-    color: 'rgba(255,255,255,0.80)',
+    fontWeight: FontWeight.medium,
+  },
+  name: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    marginTop: 2,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  avatarBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     color: '#fff',
-    fontSize: FontSize.md,
+    fontSize: FontSize.base,
     fontWeight: FontWeight.bold,
   },
-  ctaCard: {
-    marginHorizontal: Spacing.xl,
-    marginTop: -Spacing.lg,
-    borderRadius: Radius.lg,
+
+  // Wallet card
+  cardWrap: {
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  walletCard: {
+    borderRadius: Radius.xl,
     padding: Spacing.lg,
   },
-  ctaTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
+  walletTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: Spacing.xs,
   },
-  ctaDesc: {
+  walletLabel: {
+    color: 'rgba(255,255,255,0.75)',
     fontSize: FontSize.sm,
-    lineHeight: 20,
-    marginBottom: Spacing.md,
+    fontWeight: FontWeight.medium,
   },
-  ctaBtn: {
-    height: 48,
-    borderRadius: Radius.md,
+  walletTopUp: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  ctaBtnText: {
+  walletAmount: {
     color: '#fff',
-    fontSize: FontSize.base,
+    fontSize: FontSize['3xl'],
+    fontWeight: FontWeight.bold,
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  walletSub: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.medium,
+    marginBottom: Spacing.md,
+  },
+  walletActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  walletActionBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: Radius.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  walletActionText: {
+    color: '#fff',
+    fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
   },
+
+  // Quick actions
   section: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xl,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
   },
   sectionTitle: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.bold,
-    marginBottom: Spacing.md,
   },
-  actionsGrid: {
+  seeAll: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+  },
+  actionsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
+    justifyContent: 'space-between',
   },
-  actionCard: {
-    width: '47%',
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-    gap: 4,
+  actionItem: {
+    alignItems: 'center',
+    gap: Spacing.xs,
+    flex: 1,
   },
   actionIcon: {
-    fontSize: 28,
-    marginBottom: 4,
+    width: 56,
+    height: 56,
+    borderRadius: Radius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 2,
   },
   actionLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+  },
+
+  // Recent activity
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
+  },
+  activityDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  activityInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  activityTitle: {
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
   },
-  actionDesc: {
+  activitySub: {
     fontSize: FontSize.xs,
   },
-  optionsRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  optionCard: {
-    flex: 1,
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-    alignItems: 'center',
-    gap: 4,
-  },
-  optionIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  optionIcon: {
-    fontSize: 24,
-  },
-  optionLabel: {
-    fontSize: FontSize.sm,
+  activityAmount: {
+    fontSize: FontSize.base,
     fontWeight: FontWeight.bold,
   },
-  optionEta: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-  },
-  optionDesc: {
-    fontSize: FontSize.xs,
-    textAlign: 'center',
-  },
-  emptyState: {
+
+  // Empty state
+  emptyCard: {
     padding: Spacing.xl,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     alignItems: 'center',
     gap: Spacing.sm,
-  },
-  emptyIcon: {
-    fontSize: 40,
   },
   emptyTitle: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
+    marginTop: Spacing.xs,
   },
   emptyDesc: {
     fontSize: FontSize.sm,
     textAlign: 'center',
     lineHeight: 20,
+    maxWidth: 240,
+  },
+  emptyBtn: {
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: 12,
+    borderRadius: Radius.full,
+  },
+  emptyBtnText: {
+    color: '#fff',
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.semibold,
+  },
+
+  // CTA
+  ctaSection: {
+    marginBottom: Spacing.lg,
+  },
+  ctaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    height: 56,
+    borderRadius: Radius.xl,
+  },
+  ctaBtnText: {
+    color: '#fff',
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    flex: 1,
+    textAlign: 'center',
+  },
+
+  // Feature chips
+  featuresRow: {
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
+    paddingBottom: Spacing.sm,
+  },
+  featureChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+  },
+  featureText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
   },
 });

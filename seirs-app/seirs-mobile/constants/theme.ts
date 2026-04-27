@@ -1,79 +1,112 @@
 import { Platform } from 'react-native';
 
+// ─── Pantone 2026 Color of the Year ──────────────────────────────────────────
+// "Cloud Dancer" — soft airy white, tranquility + clarity
+// Used as: light mode background AND dark mode text (creates mode coherence)
+export const CLOUD_DANCER = '#F5F0EB';
+
 // ─── Seirs Brand Palette ──────────────────────────────────────────────────────
 export const Palette = {
-  // Primary — Orange (action, energy, warmth)
-  orange50:  '#FFF3E0',
-  orange100: '#FFE0B2',
-  orange200: '#FFCC80',
-  orange300: '#FFB74D',
-  orange400: '#FFA726',
+  // Primary — Seirs Orange (action, energy, speed)
+  orange50:  '#FFF3EE',
+  orange100: '#FFE0D0',
+  orange200: '#FFBFA0',
+  orange300: '#FF9A6C',
+  orange400: '#FF7A40',
   orange500: '#F4600C', // ← Primary brand color
-  orange600: '#E55A0B',
-  orange700: '#C94E09',
-  orange800: '#AC4207',
-  orange900: '#7A2E05',
+  orange600: '#D95209',
+  orange700: '#B84208',
+  orange800: '#8F3206',
+  orange900: '#5C1F03',
 
-  // Dark — Navy (trust, professionalism)
-  navy50:  '#E8EDF2',
-  navy100: '#C5D0DC',
-  navy200: '#9FB0C3',
-  navy300: '#7890AB',
-  navy400: '#577898',
+  // Navy — Seirs Dark (trust, professionalism, depth)
+  navy50:  '#EEF2F7',
+  navy100: '#D0DAE8',
+  navy200: '#A3B8D4',
+  navy300: '#7596BF',
+  navy400: '#4A74AB',
   navy500: '#2C5282',
   navy600: '#1E3A5F',
   navy700: '#162D4A',
   navy800: '#0D1B2A', // ← Primary dark color
   navy900: '#060D14',
 
+  // True Black scale (Stealth Premium dark mode)
+  black:   '#000000',
+  ink900:  '#0A0A0A', // dark mode background
+  ink800:  '#111111',
+  ink700:  '#141414', // dark mode surface
+  ink600:  '#1A1A1A',
+  ink500:  '#1E1E1E', // dark mode surface2
+  ink400:  '#242424',
+  ink300:  '#2A2A2A', // dark mode border
+  ink200:  '#333333',
+  ink100:  '#444444',
+
+  // Pantone Cloud Dancer scale
+  cloud50:  '#FDFCFB',
+  cloud100: '#FAF7F4',
+  cloud200: '#F5F0EB', // ← Cloud Dancer (Pantone 2026)
+  cloud300: '#EDE4D9',
+  cloud400: '#E0D4C4',
+  cloud500: '#C8BAA6',
+
   // Neutrals
   white:   '#FFFFFF',
-  gray50:  '#F9FAFB',
-  gray100: '#F3F4F6',
-  gray200: '#E5E7EB',
-  gray300: '#D1D5DB',
-  gray400: '#9CA3AF',
-  gray500: '#6B7280',
-  gray600: '#4B5563',
-  gray700: '#374151',
-  gray800: '#1F2937',
-  gray900: '#111827',
-  black:   '#000000',
+  gray50:  '#FAFAFA',
+  gray100: '#F4F4F5',
+  gray200: '#E4E4E7',
+  gray300: '#D1D1D6',
+  gray400: '#A1A1AA',
+  gray500: '#71717A',
+  gray600: '#52525B',
+  gray700: '#3F3F46',
+  gray800: '#27272A',
+  gray900: '#18181B',
 
-  // Semantic
+  // Semantic — vibrant for both modes
   success:  '#22C55E',
-  warning:  '#FACC15',
+  warning:  '#FFBE0B',
   error:    '#EF4444',
-  info:     '#3B82F6',
+  info:     '#00C2FF',
 
-  // Status colors (delivery states)
-  assigned:  '#3B82F6', // blue
-  pickedUp:  '#F4600C', // orange
-  inTransit: '#8B5CF6', // purple
-  delivered: '#22C55E', // green
-  failed:    '#EF4444', // red
-  cancelled: '#9CA3AF', // gray
+  // Teal accent (from Mockup 1 palette)
+  teal:    '#2EC4B6',
+
+  // Delivery status
+  assigned:  '#00C2FF',
+  pickedUp:  '#F4600C',
+  inTransit: '#A855F7',
+  delivered: '#22C55E',
+  failed:    '#EF4444',
+  cancelled: '#71717A',
 };
 
 // ─── App Theme ────────────────────────────────────────────────────────────────
 export const Colors = {
   light: {
-    // Core
-    primary:    Palette.orange500,
-    primaryDark: Palette.orange700,
-    primaryLight: Palette.orange100,
+    // Core identity
+    primary:       Palette.orange500,
+    primaryDark:   Palette.orange700,
+    primaryLight:  Palette.orange100,
+    secondary:     Palette.navy800,
 
-    background:    Palette.gray50,
+    // Surfaces — Cloud Dancer as the base
+    background:    CLOUD_DANCER,       // #F5F0EB — Pantone 2026
     surface:       Palette.white,
-    surfaceSecond: Palette.gray100,
+    surfaceSecond: Palette.cloud100,   // #FAF7F4
+    surfaceThird:  Palette.cloud300,   // #EDE4D9
 
-    text:         Palette.gray900,
-    textSecond:   Palette.gray500,
-    textInverted: Palette.white,
+    // Typography
+    text:          Palette.navy800,    // deep navy on Cloud Dancer
+    textSecond:    Palette.gray500,
+    textThird:     Palette.gray400,
+    textInverted:  Palette.white,
     textOnPrimary: Palette.white,
 
-    border:    Palette.gray200,
-    divider:   Palette.gray100,
+    // Structure
+    border:        Palette.cloud400,   // #E0D4C4 — warm border
+    divider:       Palette.cloud300,
 
     // Navigation
     tint:            Palette.orange500,
@@ -81,15 +114,20 @@ export const Colors = {
     tabIconSelected: Palette.orange500,
     navBackground:   Palette.white,
 
-    // Shadows & overlays
+    // Cards — wallet uses navy on Cloud Dancer
+    walletCard:    Palette.navy800,
+    walletCardEnd: Palette.navy600,
+
+    // Overlays
     shadow:  Palette.black,
-    overlay: 'rgba(0, 0, 0, 0.5)',
+    overlay: 'rgba(13, 27, 42, 0.5)',
 
     // Semantic
     success:  Palette.success,
     warning:  Palette.warning,
     error:    Palette.error,
     info:     Palette.info,
+    teal:     Palette.teal,
 
     // Status
     statusAssigned:  Palette.assigned,
@@ -103,38 +141,49 @@ export const Colors = {
   },
 
   dark: {
-    // Core
-    primary:    Palette.orange400,
-    primaryDark: Palette.orange600,
-    primaryLight: Palette.orange900,
+    // Core identity
+    primary:       Palette.orange500,
+    primaryDark:   Palette.orange700,
+    primaryLight:  Palette.orange900,
+    secondary:     CLOUD_DANCER,       // Cloud Dancer becomes accent on black
 
-    background:    Palette.navy800,
-    surface:       Palette.navy700,
-    surfaceSecond: Palette.navy600,
+    // Surfaces — Stealth Premium true blacks
+    background:    Palette.ink900,     // #0A0A0A
+    surface:       Palette.ink700,     // #141414
+    surfaceSecond: Palette.ink500,     // #1E1E1E
+    surfaceThird:  Palette.ink400,     // #242424
 
-    text:         Palette.gray50,
-    textSecond:   Palette.gray400,
-    textInverted: Palette.gray900,
+    // Typography — Cloud Dancer on black
+    text:          CLOUD_DANCER,       // #F5F0EB — warm white on black
+    textSecond:    Palette.gray400,    // #A1A1AA
+    textThird:     Palette.gray500,
+    textInverted:  Palette.navy800,
     textOnPrimary: Palette.white,
 
-    border:    Palette.navy600,
-    divider:   Palette.navy700,
+    // Structure
+    border:        Palette.ink300,     // #2A2A2A
+    divider:       Palette.ink400,
 
     // Navigation
-    tint:            Palette.orange400,
+    tint:            Palette.orange500,
     tabIconDefault:  Palette.gray500,
-    tabIconSelected: Palette.orange400,
-    navBackground:   Palette.navy800,
+    tabIconSelected: Palette.orange500,
+    navBackground:   Palette.ink900,
 
-    // Shadows & overlays
+    // Cards — wallet uses orange gradient on black
+    walletCard:    Palette.orange500,
+    walletCardEnd: Palette.orange800,
+
+    // Overlays
     shadow:  Palette.black,
-    overlay: 'rgba(0, 0, 0, 0.7)',
+    overlay: 'rgba(0, 0, 0, 0.75)',
 
     // Semantic
     success:  Palette.success,
     warning:  Palette.warning,
     error:    Palette.error,
     info:     Palette.info,
+    teal:     Palette.teal,
 
     // Status
     statusAssigned:  Palette.assigned,
@@ -150,87 +199,108 @@ export const Colors = {
 
 // ─── Spacing Scale ────────────────────────────────────────────────────────────
 export const Spacing = {
-  xs:  4,
-  sm:  8,
-  md:  16,
-  lg:  24,
-  xl:  32,
-  xxl: 48,
+  xs:    4,
+  sm:    8,
+  md:    16,
+  lg:    24,
+  xl:    32,
+  xxl:   48,
   '3xl': 64,
 };
 
 // ─── Border Radius ────────────────────────────────────────────────────────────
 export const Radius = {
-  sm:   6,
-  md:   10,
-  lg:   16,
-  xl:   24,
+  xs:   4,
+  sm:   8,
+  md:   12,
+  lg:   20,
+  xl:   28,
+  xxl:  36,
   full: 9999,
 };
 
 // ─── Typography ───────────────────────────────────────────────────────────────
 export const FontSize = {
-  xs:   11,
-  sm:   13,
-  base: 15,
-  md:   17,
-  lg:   20,
-  xl:   24,
+  xs:    11,
+  sm:    13,
+  base:  15,
+  md:    17,
+  lg:    20,
+  xl:    24,
   '2xl': 28,
-  '3xl': 32,
-  '4xl': 40,
+  '3xl': 34,
+  '4xl': 42,
 };
 
 export const FontWeight = {
-  regular: '400' as const,
-  medium:  '500' as const,
-  semibold:'600' as const,
-  bold:    '700' as const,
-  black:   '900' as const,
+  regular:  '400' as const,
+  medium:   '500' as const,
+  semibold: '600' as const,
+  bold:     '700' as const,
+  black:    '900' as const,
 };
 
 export const Fonts = Platform.select({
   ios: {
-    sans:    'system-ui',
-    serif:   'ui-serif',
-    rounded: 'ui-rounded',
-    mono:    'ui-monospace',
+    sans:    'SF Pro Display',
+    rounded: 'SF Pro Rounded',
+    mono:    'SF Mono',
   },
   default: {
     sans:    'normal',
-    serif:   'serif',
     rounded: 'normal',
     mono:    'monospace',
   },
   web: {
-    sans:    "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif:   "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, sans-serif",
-    mono:    "SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace",
+    sans:    "Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+    rounded: "'SF Pro Rounded', sans-serif",
+    mono:    "SFMono-Regular, Menlo, Consolas, monospace",
   },
 });
 
 // ─── Shadows ─────────────────────────────────────────────────────────────────
 export const Shadows = {
-  sm: {
-    shadowColor: Palette.black,
+  xs: {
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  sm: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 3,
   },
   md: {
-    shadowColor: Palette.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 12,
+    elevation: 5,
   },
   lg: {
-    shadowColor: Palette.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.14,
-    shadowRadius: 16,
+    shadowRadius: 20,
     elevation: 8,
   },
+  orange: {
+    shadowColor: '#F4600C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.30,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+};
+
+// ─── Quick Action Colors ───────────────────────────────────────────────────────
+export const ActionColors = {
+  request:  { bg: '#FFF0E8', icon: Palette.orange500, dark: { bg: '#2A1608', icon: Palette.orange400 } },
+  send:     { bg: '#E8F0FF', icon: '#3A86FF',         dark: { bg: '#0A1628', icon: '#5A9FFF' } },
+  track:    { bg: '#E8FAF8', icon: Palette.teal,      dark: { bg: '#082420', icon: '#3DDDD0' } },
+  history:  { bg: '#FFFAE8', icon: Palette.warning,   dark: { bg: '#281E04', icon: '#FFD040' } },
 };

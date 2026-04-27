@@ -4,54 +4,102 @@ import {
   StyleSheet,
   Pressable,
   Dimensions,
-  Image,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { Colors, Spacing, Radius, FontSize, FontWeight, CLOUD_DANCER } from '@/constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
+const FEATURES = [
+  { icon: 'flash',            text: 'Same-day delivery across Africa & Europe' },
+  { icon: 'location',         text: 'Live GPS tracking on every package' },
+  { icon: 'shield-checkmark', text: 'Insured & secured payments' },
+];
+
 export default function OnboardingScreen() {
-  const router = useRouter();
+  const router      = useRouter();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme       = Colors[colorScheme ?? 'light'];
+  const isDark      = colorScheme === 'dark';
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Hero section */}
-      <View style={[styles.hero, { backgroundColor: theme.primary }]}>
-        <View style={styles.logoWrapper}>
+    <View style={{ flex: 1, backgroundColor: '#0D1B2A' }}>
+      <StatusBar barStyle="light-content" />
+
+      {/* Hero — full dark navy with floating elements */}
+      <LinearGradient
+        colors={['#0D1B2A', '#162D4A', '#0D1B2A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
+        {/* Decorative orbs */}
+        <View style={[styles.orb1, { backgroundColor: 'rgba(244,96,12,0.15)' }]} />
+        <View style={[styles.orb2, { backgroundColor: 'rgba(46,196,182,0.10)' }]} />
+
+        {/* Logo */}
+        <View style={styles.logoBlock}>
+          <View style={styles.logoIconWrap}>
+            <Ionicons name="cube" size={36} color="#F4600C" />
+          </View>
           <Text style={styles.logoText}>SEIRS</Text>
-          <Text style={styles.logoSub}>Logistics</Text>
+          <Text style={styles.logoSub}>LOGISTICS</Text>
         </View>
-        <Text style={styles.heroTagline}>Deliver anything,{'\n'}anywhere in Africa.</Text>
 
-        {/* Decorative circles */}
-        <View style={[styles.circle1, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
-        <View style={[styles.circle2, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
-      </View>
+        {/* Tagline */}
+        <Text style={styles.tagline}>
+          Deliver anything,{'\n'}anywhere — instantly.
+        </Text>
 
-      {/* Bottom card */}
-      <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.lg]}>
-        <Text style={[styles.title, { color: theme.text }]}>
+        {/* Feature pills */}
+        <View style={styles.pills}>
+          {FEATURES.map((f) => (
+            <View key={f.text} style={styles.pill}>
+              <Ionicons name={f.icon as any} size={14} color="#F4600C" />
+              <Text style={styles.pillText}>{f.text}</Text>
+            </View>
+          ))}
+        </View>
+      </LinearGradient>
+
+      {/* Bottom sheet */}
+      <View
+        style={[
+          styles.sheet,
+          {
+            backgroundColor: isDark ? '#141414' : CLOUD_DANCER,
+          },
+        ]}
+      >
+        <Text style={[styles.sheetTitle, { color: theme.text }]}>
           Fast. Reliable.{'\n'}Smart Delivery.
         </Text>
-        <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-          Connect with drivers, track packages in real time, and get the best delivery price automatically.
+        <Text style={[styles.sheetSub, { color: theme.textSecond }]}>
+          Connect with verified drivers, track packages in real time, and get the best price automatically.
         </Text>
 
         <Pressable
-          style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
+          style={styles.primaryBtn}
           onPress={() => router.push('/(auth)/register')}
         >
-          <Text style={[styles.primaryBtnText, { color: theme.textOnPrimary }]}>
-            Get Started
-          </Text>
+          <LinearGradient
+            colors={['#F4600C', '#D95209']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.primaryBtnGradient}
+          >
+            <Text style={styles.primaryBtnText}>Get Started</Text>
+            <Ionicons name="arrow-forward" size={20} color="#fff" />
+          </LinearGradient>
         </Pressable>
 
         <Pressable
-          style={[styles.secondaryBtn, { borderColor: theme.border }]}
+          style={[styles.secondaryBtn, { borderColor: theme.border, backgroundColor: theme.surface }]}
           onPress={() => router.push('/(auth)/login')}
         >
           <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
@@ -63,9 +111,11 @@ export default function OnboardingScreen() {
           style={styles.driverLink}
           onPress={() => router.push('/(auth)/driver-register')}
         >
+          <Ionicons name="car" size={16} color="#F4600C" />
           <Text style={[styles.driverLinkText, { color: theme.primary }]}>
-            Become a driver →
+            Become a driver
           </Text>
+          <Ionicons name="arrow-forward" size={14} color="#F4600C" />
         </Pressable>
       </View>
     </View>
@@ -73,101 +123,139 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   hero: {
-    height: height * 0.48,
+    height: height * 0.52,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    position: 'relative',
+    paddingHorizontal: Spacing.xl,
   },
-  logoWrapper: {
+  orb1: {
+    position: 'absolute',
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    top: -80,
+    right: -100,
+  },
+  orb2: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    bottom: -60,
+    left: -80,
+  },
+  logoBlock: {
     alignItems: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
+  },
+  logoIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: 'rgba(244,96,12,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(244,96,12,0.3)',
   },
   logoText: {
-    fontSize: 52,
+    fontSize: FontSize['3xl'],
     fontWeight: FontWeight.black,
     color: '#FFFFFF',
-    letterSpacing: 8,
+    letterSpacing: 6,
   },
   logoSub: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.xs,
     fontWeight: FontWeight.medium,
-    color: 'rgba(255,255,255,0.75)',
-    letterSpacing: 4,
-    textTransform: 'uppercase',
-    marginTop: -4,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 5,
+    marginTop: 2,
   },
-  heroTagline: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.medium,
-    color: 'rgba(255,255,255,0.90)',
+  tagline: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 28,
+    lineHeight: 30,
+    marginBottom: Spacing.xl,
   },
-  circle1: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    bottom: -100,
-    right: -80,
+  pills: {
+    gap: Spacing.sm,
+    width: '100%',
   },
-  circle2: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    top: -50,
-    left: -60,
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  card: {
+  pillText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
     flex: 1,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
+  },
+  sheet: {
+    flex: 1,
+    borderTopLeftRadius: Radius.xxl,
+    borderTopRightRadius: Radius.xxl,
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xl,
     marginTop: -Radius.xl,
   },
-  title: {
+  sheetTitle: {
     fontSize: FontSize['2xl'],
     fontWeight: FontWeight.bold,
     lineHeight: 36,
     marginBottom: Spacing.sm,
   },
-  subtitle: {
+  sheetSub: {
     fontSize: FontSize.base,
     lineHeight: 22,
     marginBottom: Spacing.xl,
   },
   primaryBtn: {
-    height: 54,
-    borderRadius: Radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
     marginBottom: Spacing.md,
   },
+  primaryBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 56,
+    gap: Spacing.sm,
+  },
   primaryBtnText: {
+    color: '#fff',
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
   },
   secondaryBtn: {
-    height: 54,
-    borderRadius: Radius.md,
+    height: 56,
+    borderRadius: Radius.xl,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.lg,
   },
   secondaryBtnText: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.base,
     fontWeight: FontWeight.medium,
   },
   driverLink: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
     paddingVertical: Spacing.sm,
   },
   driverLinkText: {
