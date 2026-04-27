@@ -5,19 +5,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows, Palette } from '@/constants/theme';
+import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
 import { RatingModal } from '@/components/RatingModal';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  pending:    { label: 'Pending',    color: Palette.info,       icon: '🔍' },
-  assigned:   { label: 'Assigned',   color: Palette.orange500,  icon: '🚀' },
-  picked_up:  { label: 'Picked Up',  color: Palette.orange600,  icon: '📦' },
-  in_transit: { label: 'In Transit', color: '#8B5CF6',          icon: '🛵' },
-  delivered:  { label: 'Delivered',  color: Palette.success,    icon: '✅' },
-  cancelled:  { label: 'Cancelled',  color: Palette.gray400,    icon: '🚫' },
-  failed:     { label: 'Failed',     color: Palette.error,      icon: '❌' },
+  pending:    { label: 'Pending',    color: '#00C2FF', icon: 'search-outline' },
+  assigned:   { label: 'Assigned',   color: '#F4600C', icon: 'navigate-outline' },
+  picked_up:  { label: 'Picked Up',  color: '#D95209', icon: 'cube-outline' },
+  in_transit: { label: 'In Transit', color: '#8B5CF6', icon: 'navigate' },
+  delivered:  { label: 'Delivered',  color: '#22C55E', icon: 'checkmark-circle' },
+  cancelled:  { label: 'Cancelled',  color: '#71717A', icon: 'close-circle-outline' },
+  failed:     { label: 'Failed',     color: '#EF4444', icon: 'alert-circle-outline' },
 };
 
 interface RatingTarget {
@@ -43,11 +44,7 @@ export default function HistoryScreen() {
 
   const load = useCallback(async (reset = false) => {
     const nextPage = reset ? 1 : page;
-    if (reset) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
+    reset ? setLoading(true) : setLoadingMore(true);
     try {
       const data = await deliveriesApi.myDeliveries(nextPage, 20);
       const items = data?.items ?? [];
@@ -55,7 +52,7 @@ export default function HistoryScreen() {
       setPage(nextPage + 1);
       setTotalPages(data?.pages ?? 1);
     } catch {
-      // silently fail — show empty state
+      // silently fail
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -77,7 +74,7 @@ export default function HistoryScreen() {
   };
 
   const renderItem = ({ item: d }: { item: any }) => {
-    const status = STATUS_CONFIG[d.status] ?? { label: d.status, color: Palette.gray400, icon: '📦' };
+    const status = STATUS_CONFIG[d.status] ?? { label: d.status, color: '#A1A1AA', icon: 'cube-outline' };
     const canRate = d.status === 'delivered' && !ratedIds.has(d.id) && !d.customerRating;
     return (
       <Pressable
@@ -87,7 +84,7 @@ export default function HistoryScreen() {
         {/* Status + tracking code */}
         <View style={styles.cardTop}>
           <View style={[styles.statusBadge, { backgroundColor: status.color + '18' }]}>
-            <Text style={{ fontSize: 12 }}>{status.icon}</Text>
+            <Ionicons name={status.icon as any} size={12} color={status.color} />
             <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
           </View>
           <Text style={[styles.trackCode, { color: theme.textSecond }]}>{d.trackingCode}</Text>
@@ -98,7 +95,7 @@ export default function HistoryScreen() {
           <View style={[styles.routeDot, { backgroundColor: theme.success }]} />
           <Text style={[styles.routeAddr, { color: theme.text }]} numberOfLines={1}>{d.pickupAddress}</Text>
         </View>
-        <View style={[styles.routeLine, { backgroundColor: theme.border }]} />
+        <View style={[styles.routeConnector, { backgroundColor: theme.border }]} />
         <View style={styles.routeRow}>
           <View style={[styles.routeDot, { backgroundColor: theme.error }]} />
           <Text style={[styles.routeAddr, { color: theme.text }]} numberOfLines={1}>{d.dropoffAddress}</Text>
@@ -116,7 +113,7 @@ export default function HistoryScreen() {
           </Text>
         </View>
 
-        <Text style={[styles.date, { color: theme.textSecond }]}>
+        <Text style={[styles.date, { color: theme.textThird }]}>
           {new Date(d.createdAt).toLocaleDateString('en-NG', {
             day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
           })}
@@ -124,10 +121,11 @@ export default function HistoryScreen() {
 
         {canRate && (
           <Pressable
-            style={[styles.rateBtn, { borderColor: theme.primary }]}
+            style={[styles.rateBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
             onPress={() => setRatingTarget({ id: d.id, trackingCode: d.trackingCode, driverName: d.driver?.name ?? 'your driver' })}
           >
-            <Text style={[styles.rateBtnText, { color: theme.primary }]}>⭐ Rate this delivery</Text>
+            <Ionicons name="star" size={14} color={theme.primary} />
+            <Text style={[styles.rateBtnText, { color: theme.primary }]}>Rate this delivery</Text>
           </Pressable>
         )}
       </Pressable>
@@ -143,7 +141,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.text }]}>My Deliveries</Text>
         <Text style={[styles.subtitle, { color: theme.textSecond }]}>
@@ -156,14 +154,18 @@ export default function HistoryScreen() {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xl }}
+        contentContainerStyle={{ paddingHorizontal: Spacing.md, paddingBottom: Spacing.xl }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         onEndReached={() => { if (page <= totalPages && !loadingMore) load(); }}
         onEndReachedThreshold={0.3}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={theme.primary} style={{ marginVertical: Spacing.lg }} /> : null}
+        ListFooterComponent={loadingMore
+          ? <ActivityIndicator color={theme.primary} style={{ marginVertical: Spacing.lg }} />
+          : null}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📭</Text>
+            <View style={[styles.emptyIconWrap, { backgroundColor: theme.surface }]}>
+              <Ionicons name="cube-outline" size={48} color={theme.textThird} />
+            </View>
             <Text style={[styles.emptyTitle, { color: theme.text }]}>No deliveries yet</Text>
             <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
               Book your first delivery to see it here
@@ -172,6 +174,7 @@ export default function HistoryScreen() {
               style={[styles.bookBtn, { backgroundColor: theme.primary }]}
               onPress={() => router.push('/(customer)/send')}
             >
+              <Ionicons name="cube" size={16} color="#fff" />
               <Text style={styles.bookBtnText}>Book a Delivery</Text>
             </Pressable>
           </View>
@@ -192,29 +195,34 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  header:      { padding: Spacing.xl, paddingBottom: Spacing.md },
-  title:       { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold },
-  subtitle:    { fontSize: FontSize.sm, marginTop: 4 },
-  emptyState:  { paddingTop: Spacing.xxl, alignItems: 'center', gap: Spacing.md },
-  emptyIcon:   { fontSize: 64 },
-  emptyTitle:  { fontSize: FontSize.lg, fontWeight: FontWeight.semibold },
-  emptyDesc:   { fontSize: FontSize.sm, textAlign: 'center', lineHeight: 22 },
-  bookBtn:     { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: Radius.full, marginTop: Spacing.sm },
-  bookBtnText: { color: '#fff', fontWeight: FontWeight.semibold, fontSize: FontSize.base },
-  card:        { borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.md },
-  cardTop:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.full },
+  header:      { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.md },
+  title:       { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
+  subtitle:    { fontSize: FontSize.sm, marginTop: 2 },
+
+  emptyState:   { paddingTop: Spacing.xl * 2, alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.md },
+  emptyIconWrap:{ width: 88, height: 88, borderRadius: 44, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.xs },
+  emptyTitle:   { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  emptyDesc:    { fontSize: FontSize.sm, textAlign: 'center', lineHeight: 22 },
+  bookBtn:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm + 4, borderRadius: Radius.full, marginTop: Spacing.xs },
+  bookBtnText:  { color: '#fff', fontWeight: FontWeight.semibold, fontSize: FontSize.base },
+
+  card:        { borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.sm },
+  cardTop:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
   statusText:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
   trackCode:   { fontSize: FontSize.xs, letterSpacing: 1 },
-  routeRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  routeDot:    { width: 10, height: 10, borderRadius: 5 },
-  routeAddr:   { flex: 1, fontSize: FontSize.sm },
-  routeLine:   { width: 2, height: 12, marginLeft: 4, marginVertical: 2 },
+
+  routeRow:       { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  routeDot:       { width: 9, height: 9, borderRadius: 5 },
+  routeAddr:      { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  routeConnector: { width: 1.5, height: 10, marginLeft: 4, marginVertical: 2 },
+
   cardDivider: { height: 1, marginVertical: Spacing.sm },
   meta:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  metaText:    { fontSize: FontSize.sm, textTransform: 'capitalize' },
+  metaText:    { fontSize: FontSize.sm, textTransform: 'capitalize', color: '#71717A' },
   metaPrice:   { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   date:        { fontSize: FontSize.xs, marginTop: 4 },
-  rateBtn:     { marginTop: Spacing.sm, borderWidth: 1.5, borderRadius: Radius.md, height: 40, justifyContent: 'center', alignItems: 'center' },
+
+  rateBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: Spacing.sm, borderWidth: 1.5, borderRadius: Radius.lg, height: 40 },
   rateBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
 });

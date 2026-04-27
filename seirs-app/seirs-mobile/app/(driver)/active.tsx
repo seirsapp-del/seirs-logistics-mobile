@@ -3,27 +3,26 @@ import {
   ScrollView, ActivityIndicator, Alert, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows, Palette } from '@/constants/theme';
+import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi, driversApi, uploadApi } from '@/services/api';
 
-const STATUS_STEPS = [
-  { key: 'assigned',   label: 'Head to Pickup',    icon: '🗺️',  action: 'Mark Picked Up',    next: 'picked_up'  },
-  { key: 'picked_up',  label: 'Package Collected',  icon: '📦',  action: 'Start Delivery',    next: 'in_transit' },
-  { key: 'in_transit', label: 'En Route',            icon: '🚀',  action: 'Confirm Delivered', next: 'delivered'  },
-  { key: 'delivered',  label: 'Delivered!',           icon: '✅',  action: null,                next: null         },
+const STATUS_STEPS: {
+  key: string; label: string; icon: string;
+  action: string | null; next: string | null;
+  gradient: readonly [string, string];
+}[] = [
+  { key: 'assigned',   label: 'Head to Pickup',   icon: 'map-outline',            action: 'Mark Picked Up',    next: 'picked_up',  gradient: ['#00C2FF', '#0095CC'] },
+  { key: 'picked_up',  label: 'Package Collected', icon: 'cube-outline',           action: 'Start Delivery',    next: 'in_transit', gradient: ['#F4600C', '#B84208'] },
+  { key: 'in_transit', label: 'En Route',           icon: 'navigate-outline',       action: 'Confirm Delivered', next: 'delivered',  gradient: ['#8B5CF6', '#6D28D9'] },
+  { key: 'delivered',  label: 'Delivered!',          icon: 'checkmark-circle-outline', action: null,             next: null,         gradient: ['#22C55E', '#15803D'] },
 ];
-
-const STATUS_COLOR: Record<string, string> = {
-  assigned:   Palette.info,
-  picked_up:  Palette.orange500,
-  in_transit: '#8B5CF6',
-  delivered:  '#22C55E',
-};
 
 export default function ActiveDeliveryScreen() {
   const { id }      = useLocalSearchParams<{ id: string }>();
@@ -70,7 +69,6 @@ export default function ActiveDeliveryScreen() {
     }
   };
 
-  // ── Proof of delivery photo ────────────────────────────────────────────────
   const takeProofPhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
@@ -88,7 +86,6 @@ export default function ActiveDeliveryScreen() {
     }
   };
 
-  // ── Advance status ─────────────────────────────────────────────────────────
   const advanceStatus = async () => {
     if (!delivery) return;
     const step = STATUS_STEPS.find(s => s.key === delivery.status);
@@ -98,24 +95,16 @@ export default function ActiveDeliveryScreen() {
 
     if (nextStatus === 'delivered') {
       if (!proofReady) {
-        Alert.alert(
-          'Proof of Delivery Required',
-          'Please take a photo of the delivered package before confirming.',
-          [
-            { text: 'Take Photo', onPress: takeProofPhoto },
-            { text: 'Cancel', style: 'cancel' },
-          ],
-        );
+        Alert.alert('Proof Required', 'Please take a photo before confirming delivery.', [
+          { text: 'Take Photo', onPress: takeProofPhoto },
+          { text: 'Cancel', style: 'cancel' },
+        ]);
         return;
       }
-      Alert.alert(
-        'Confirm Delivery',
-        'Has the package been handed to the recipient?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Yes, Delivered', onPress: () => doUpdate(nextStatus) },
-        ],
-      );
+      Alert.alert('Confirm Delivery', 'Has the package been handed to the recipient?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Yes, Delivered', onPress: () => doUpdate(nextStatus) },
+      ]);
     } else {
       doUpdate(nextStatus);
     }
@@ -125,14 +114,11 @@ export default function ActiveDeliveryScreen() {
     setUpdating(true);
     try {
       let photoUrl: string | undefined;
-
       if (nextStatus === 'delivered' && proofUri) {
         const uploaded = await uploadApi.file(proofUri);
         photoUrl = uploaded.url;
       }
-
       await deliveriesApi.updateStatus(delivery.id, nextStatus as any, photoUrl);
-
       if (nextStatus === 'delivered') {
         stopBroadcast();
         Alert.alert(
@@ -150,7 +136,6 @@ export default function ActiveDeliveryScreen() {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
@@ -163,49 +148,65 @@ export default function ActiveDeliveryScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
         <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>📭</Text>
+          <View style={[styles.emptyIconWrap, { backgroundColor: theme.surface }]}>
+            <Ionicons name="cube-outline" size={52} color={theme.textThird} />
+          </View>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>Delivery not found</Text>
-          <Pressable onPress={() => router.back()} style={[styles.btn, { backgroundColor: theme.primary, marginTop: Spacing.lg }]}>
-            <Text style={styles.btnText}>Go Back</Text>
+          <Pressable onPress={() => router.back()} style={[styles.actionBtn, { backgroundColor: theme.primary, marginTop: Spacing.md }]}>
+            <Text style={styles.actionBtnText}>Go Back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  const step        = STATUS_STEPS.find(s => s.key === delivery.status) ?? STATUS_STEPS[0];
-  const statusColor = STATUS_COLOR[delivery.status] ?? theme.primary;
+  const stepConfig  = STATUS_STEPS.find(s => s.key === delivery.status) ?? STATUS_STEPS[0];
   const isDone      = delivery.status === 'delivered';
   const needsProof  = delivery.status === 'in_transit';
+  const statusIndex = STATUS_STEPS.findIndex(s => s.key === delivery.status);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+      {/* Header */}
       <View style={[styles.headerBar, { borderBottomColor: theme.border }]}>
         {!isDone && (
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={[styles.backText, { color: theme.primary }]}>← Jobs</Text>
+          <Pressable onPress={() => router.back()} style={[styles.backCircle, { backgroundColor: theme.surface }]}>
+            <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
         )}
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Active Delivery</Text>
-        <Text style={[styles.trackCode, { color: theme.textSecond }]}>{delivery.trackingCode}</Text>
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Active Delivery</Text>
+          <Text style={[styles.trackCode, { color: theme.textSecond }]}>{delivery.trackingCode}</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+
         {/* Status banner */}
-        <View style={[styles.statusBanner, { backgroundColor: statusColor }]}>
-          <Text style={styles.statusIcon}>{step.icon}</Text>
-          <Text style={styles.statusLabel}>{step.label}</Text>
-          <View style={styles.liveDot}>
-            <View style={styles.liveDotInner} />
-            <Text style={styles.liveText}>GPS BROADCASTING</Text>
-          </View>
+        <View style={[styles.bannerWrap, Shadows.md]}>
+          <LinearGradient
+            colors={stepConfig.gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.statusBanner}
+          >
+            <View style={styles.bannerIconWrap}>
+              <Ionicons name={stepConfig.icon as any} size={36} color="#fff" />
+            </View>
+            <Text style={styles.statusLabel}>{stepConfig.label}</Text>
+            <View style={styles.gpsPill}>
+              <View style={styles.gpsDot} />
+              <Text style={styles.gpsText}>GPS BROADCASTING</Text>
+            </View>
+          </LinearGradient>
         </View>
 
         {/* Route card */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Delivery Route</Text>
           <View style={styles.routeRow}>
-            <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
+            <View style={[styles.routeDot, { backgroundColor: '#22C55E' }]} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.routeLabel, { color: theme.textSecond }]}>Pickup</Text>
               <Text style={[styles.routeAddr, { color: theme.text }]}>{delivery.pickupAddress}</Text>
@@ -213,7 +214,7 @@ export default function ActiveDeliveryScreen() {
           </View>
           <View style={[styles.routeLine, { backgroundColor: theme.border }]} />
           <View style={styles.routeRow}>
-            <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
+            <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.routeLabel, { color: theme.textSecond }]}>Dropoff</Text>
               <Text style={[styles.routeAddr, { color: theme.text }]}>{delivery.dropoffAddress}</Text>
@@ -224,24 +225,23 @@ export default function ActiveDeliveryScreen() {
         {/* Package info */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Package Details</Text>
-          <View style={styles.infoGrid}>
-            {[
-              ['Description',   delivery.packageDescription],
-              ['Size',          delivery.packageSize],
-              ['Fragile',       delivery.isFragile ? '⚠️ Yes — handle carefully' : 'No'],
-              ['Distance',      `${Number(delivery.distanceKm).toFixed(1)} km`],
-              ['Your Earnings', `₦${Number(delivery.driverEarnings).toLocaleString()}`],
-            ].map(([label, value]) => (
-              <View key={label} style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecond }]}>{label}</Text>
-                <Text style={[
-                  styles.infoValue,
-                  { color: label === 'Your Earnings' ? '#22C55E' : theme.text },
-                  label === 'Your Earnings' && styles.earnings,
-                ]}>{value}</Text>
-              </View>
-            ))}
-          </View>
+          {[
+            { label: 'Description',   value: delivery.packageDescription,                          icon: 'cube-outline' },
+            { label: 'Size',          value: delivery.packageSize,                                  icon: 'resize-outline' },
+            { label: 'Fragile',       value: delivery.isFragile ? 'Yes — handle carefully' : 'No', icon: 'warning-outline' },
+            { label: 'Distance',      value: `${Number(delivery.distanceKm).toFixed(1)} km`,       icon: 'map-outline' },
+            { label: 'Your Earnings', value: `₦${Number(delivery.driverEarnings).toLocaleString()}`, icon: 'cash-outline' },
+          ].map(({ label, value, icon }) => (
+            <View key={label} style={styles.infoRow}>
+              <Ionicons name={icon as any} size={16} color={theme.textThird} />
+              <Text style={[styles.infoLabel, { color: theme.textSecond }]}>{label}</Text>
+              <Text style={[
+                styles.infoValue,
+                { color: label === 'Your Earnings' ? '#22C55E' : theme.text },
+                label === 'Your Earnings' && { fontWeight: FontWeight.bold },
+              ]}>{value}</Text>
+            </View>
+          ))}
         </View>
 
         {/* Customer info */}
@@ -260,7 +260,7 @@ export default function ActiveDeliveryScreen() {
           </View>
         )}
 
-        {/* Proof of delivery section — shown when in_transit */}
+        {/* Proof of delivery */}
         {needsProof && (
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Proof of Delivery</Text>
@@ -271,12 +271,13 @@ export default function ActiveDeliveryScreen() {
               <View style={styles.proofPreview}>
                 <Image source={{ uri: proofUri }} style={styles.proofImage} resizeMode="cover" />
                 <Pressable onPress={takeProofPhoto} style={[styles.retakeBtn, { borderColor: theme.border }]}>
+                  <Ionicons name="camera-outline" size={16} color={theme.primary} />
                   <Text style={[styles.retakeText, { color: theme.primary }]}>Retake Photo</Text>
                 </Pressable>
               </View>
             ) : (
-              <Pressable onPress={takeProofPhoto} style={[styles.cameraBtn, { borderColor: theme.primary }]}>
-                <Text style={styles.cameraIcon}>📸</Text>
+              <Pressable onPress={takeProofPhoto} style={[styles.cameraBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '08' }]}>
+                <Ionicons name="camera-outline" size={36} color={theme.primary} />
                 <Text style={[styles.cameraBtnText, { color: theme.primary }]}>Take Proof Photo</Text>
               </Pressable>
             )}
@@ -287,44 +288,51 @@ export default function ActiveDeliveryScreen() {
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Progress</Text>
           {STATUS_STEPS.filter(s => s.key !== 'delivered').map((s, i) => {
-            const statusIndex = STATUS_STEPS.findIndex(x => x.key === delivery.status);
-            const stepIndex   = STATUS_STEPS.findIndex(x => x.key === s.key);
-            const done   = stepIndex < statusIndex || delivery.status === 'delivered';
-            const active = s.key === delivery.status;
+            const thisIndex = STATUS_STEPS.findIndex(x => x.key === s.key);
+            const done      = thisIndex < statusIndex || delivery.status === 'delivered';
+            const active    = s.key === delivery.status;
             return (
-              <View key={s.key} style={styles.stepRow}>
-                <View style={[
-                  styles.stepDot,
-                  done   && { backgroundColor: '#22C55E' },
-                  active && { backgroundColor: statusColor },
-                  !done && !active && { backgroundColor: theme.border },
-                ]}>
-                  <Text style={styles.stepDotText}>{done ? '✓' : i + 1}</Text>
+              <View key={s.key}>
+                <View style={styles.stepRow}>
+                  <View style={[
+                    styles.stepDot,
+                    done   && { backgroundColor: '#22C55E' },
+                    active && { backgroundColor: stepConfig.gradient[0] },
+                    !done && !active && { backgroundColor: theme.border },
+                  ]}>
+                    {done
+                      ? <Ionicons name="checkmark" size={14} color="#fff" />
+                      : <Text style={styles.stepNum}>{i + 1}</Text>}
+                  </View>
+                  <Text style={[
+                    styles.stepLabel,
+                    { color: !done && !active ? theme.textSecond : theme.text },
+                    active && { fontWeight: FontWeight.bold },
+                  ]}>{s.label}</Text>
                 </View>
-                <Text style={[
-                  styles.stepLabel,
-                  { color: !done && !active ? theme.textSecond : theme.text },
-                  active && { fontWeight: FontWeight.bold },
-                ]}>{s.label}</Text>
+                {i < STATUS_STEPS.length - 2 && (
+                  <View style={[styles.stepLine, { backgroundColor: done ? '#22C55E' : theme.border }]} />
+                )}
               </View>
             );
           })}
         </View>
 
-        <View style={{ height: Spacing.xl }} />
       </ScrollView>
 
-      {!isDone && step.action && (
+      {/* Footer CTA */}
+      {!isDone && stepConfig.action && (
         <View style={[styles.footer, { borderTopColor: theme.border, backgroundColor: theme.surface }]}>
           {needsProof && !proofReady && (
-            <Text style={[styles.proofWarning, { color: theme.textSecond }]}>
-              📸 Take a proof photo first
-            </Text>
+            <View style={styles.proofWarningRow}>
+              <Ionicons name="camera-outline" size={15} color={theme.textSecond} />
+              <Text style={[styles.proofWarning, { color: theme.textSecond }]}>Take a proof photo first</Text>
+            </View>
           )}
           <Pressable
             style={[
-              styles.btn,
-              { backgroundColor: statusColor },
+              styles.actionBtn,
+              { backgroundColor: stepConfig.gradient[0] },
               (updating || (needsProof && !proofReady)) && { opacity: 0.5 },
             ]}
             onPress={advanceStatus}
@@ -332,7 +340,7 @@ export default function ActiveDeliveryScreen() {
           >
             {updating
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>{step.action}</Text>}
+              : <Text style={styles.actionBtnText}>{stepConfig.action}</Text>}
           </Pressable>
         </View>
       )}
@@ -341,51 +349,60 @@ export default function ActiveDeliveryScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerBar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderBottomWidth: 1 },
-  backBtn:      { minWidth: 60 },
-  backText:     { fontSize: FontSize.base, fontWeight: FontWeight.medium },
+  headerBar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
+  backCircle:   { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  headerCenter: { alignItems: 'center', gap: 2 },
   headerTitle:  { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-  trackCode:    { fontSize: FontSize.xs, letterSpacing: 1, minWidth: 60, textAlign: 'right' },
-  statusBanner: { alignItems: 'center', paddingVertical: Spacing.xl, gap: Spacing.sm },
-  statusIcon:   { fontSize: 48 },
-  statusLabel:  { color: '#fff', fontSize: FontSize.xl, fontWeight: FontWeight.bold },
-  liveDot:      { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  liveDotInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
-  liveText:     { color: 'rgba(255,255,255,0.8)', fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 1 },
-  card:         { marginHorizontal: Spacing.xl, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md },
+  trackCode:    { fontSize: FontSize.xs, letterSpacing: 1 },
+
+  bannerWrap:     { marginHorizontal: Spacing.md, marginVertical: Spacing.md, borderRadius: Radius.xl, overflow: 'hidden' },
+  statusBanner:   { padding: Spacing.lg, alignItems: 'center', gap: Spacing.sm },
+  bannerIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  statusLabel:    { color: '#fff', fontSize: FontSize.xl, fontWeight: FontWeight.bold },
+  gpsPill:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: Spacing.md, paddingVertical: 5, borderRadius: Radius.full },
+  gpsDot:         { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' },
+  gpsText:        { color: 'rgba(255,255,255,0.9)', fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 1 },
+
+  card:         { marginHorizontal: Spacing.md, borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.md },
   cardTitle:    { fontSize: FontSize.base, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
+
   routeRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
-  dot:          { width: 12, height: 12, borderRadius: 6, marginTop: 4 },
-  routeLine:    { width: 2, height: 20, marginLeft: 5, marginVertical: 2 },
+  routeDot:     { width: 10, height: 10, borderRadius: 5, marginTop: 5 },
+  routeLine:    { width: 1.5, height: 18, marginLeft: 4, marginVertical: 3 },
   routeLabel:   { fontSize: FontSize.xs, marginBottom: 2 },
-  routeAddr:    { fontSize: FontSize.sm },
-  infoGrid:     { gap: Spacing.sm },
-  infoRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  infoLabel:    { fontSize: FontSize.sm },
-  infoValue:    { fontSize: FontSize.sm, maxWidth: '60%', textAlign: 'right' },
-  earnings:     { fontWeight: FontWeight.bold, fontSize: FontSize.base },
-  customerRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  avatar:       { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  avatarText:   { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  customerName: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  customerPhone:{ fontSize: FontSize.sm, marginTop: 2 },
+  routeAddr:    { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+
+  infoRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.xs },
+  infoLabel:    { flex: 1, fontSize: FontSize.sm },
+  infoValue:    { fontSize: FontSize.sm, maxWidth: '55%', textAlign: 'right' },
+
+  customerRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  avatar:        { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  avatarText:    { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  customerName:  { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  customerPhone: { fontSize: FontSize.sm, marginTop: 2 },
+
   proofHint:    { fontSize: FontSize.sm, lineHeight: 20, marginBottom: Spacing.md },
   proofPreview: { gap: Spacing.sm },
-  proofImage:   { width: '100%', height: 180, borderRadius: Radius.md },
-  retakeBtn:    { borderWidth: 1, borderRadius: Radius.md, paddingVertical: Spacing.sm, alignItems: 'center' },
+  proofImage:   { width: '100%', height: 180, borderRadius: Radius.lg },
+  retakeBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.lg, height: 44 },
   retakeText:   { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  cameraBtn:    { borderWidth: 2, borderStyle: 'dashed', borderRadius: Radius.md, paddingVertical: Spacing.xl, alignItems: 'center', gap: Spacing.sm },
-  cameraIcon:   { fontSize: 32 },
+  cameraBtn:    { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, paddingVertical: Spacing.xl, alignItems: 'center', gap: Spacing.sm },
   cameraBtnText:{ fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  proofWarning: { fontSize: FontSize.xs, textAlign: 'center', marginBottom: Spacing.sm },
-  stepRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  stepDot:      { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  stepDotText:  { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-  stepLabel:    { fontSize: FontSize.base },
-  footer:       { padding: Spacing.xl, borderTopWidth: 1 },
-  btn:          { height: 56, borderRadius: Radius.lg, justifyContent: 'center', alignItems: 'center' },
-  btnText:      { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
+
+  stepRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  stepDot:    { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  stepNum:    { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+  stepLabel:  { flex: 1, fontSize: FontSize.base },
+  stepLine:   { width: 1.5, height: 16, marginLeft: 13, marginBottom: 4 },
+
+  footer:          { position: 'absolute', bottom: 0, left: 0, right: 0, padding: Spacing.md, borderTopWidth: 1 },
+  proofWarningRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+  proofWarning:    { fontSize: FontSize.xs, textAlign: 'center' },
+  actionBtn:       { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },
+  actionBtnText:   { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
+
   empty:        { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl, gap: Spacing.md },
-  emptyIcon:    { fontSize: 64 },
+  emptyIconWrap:{ width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center' },
   emptyTitle:   { fontSize: FontSize.lg, fontWeight: FontWeight.semibold },
 });

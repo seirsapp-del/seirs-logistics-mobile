@@ -1,16 +1,23 @@
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
 import { driversApi } from '@/services/api';
 
+type MenuItem = {
+  icon: string;
+  label: string;
+  onPress: () => void;
+};
+
 export default function DriverProfileScreen() {
-  const router      = useRouter();
-  const colorScheme = useColorScheme();
-  const theme       = Colors[colorScheme ?? 'light'];
+  const router           = useRouter();
+  const colorScheme      = useColorScheme();
+  const theme            = Colors[colorScheme ?? 'light'];
   const { user, logout } = useAuth();
 
   const [driverData, setDriverData] = useState<any>(null);
@@ -21,11 +28,11 @@ export default function DriverProfileScreen() {
 
   const firstName = user?.name?.split(' ')[0] ?? 'Driver';
 
-  const menu = [
-    { icon: '📄', label: 'My Documents (KYC)', onPress: () => router.push('/(driver)/kyc') },
-    { icon: '💰', label: 'Earnings & Payouts',  onPress: () => router.push('/(driver)/earnings') },
-    { icon: '🔔', label: 'Notifications',        onPress: () => router.push('/notifications' as any) },
-    { icon: '❓', label: 'Help & Support',       onPress: () => Alert.alert('Help', 'Email us at support@seirs.co') },
+  const menu: MenuItem[] = [
+    { icon: 'shield-checkmark-outline', label: 'My Documents (KYC)', onPress: () => router.push('/(driver)/kyc') },
+    { icon: 'cash-outline',             label: 'Earnings & Payouts',  onPress: () => router.push('/(driver)/earnings') },
+    { icon: 'notifications-outline',    label: 'Notifications',       onPress: () => router.push('/notifications' as any) },
+    { icon: 'help-circle-outline',      label: 'Help & Support',      onPress: () => Alert.alert('Help', 'Email us at support@seirs.co') },
   ];
 
   const handleLogout = () => {
@@ -42,80 +49,107 @@ export default function DriverProfileScreen() {
     : '#F59E0B';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>Profile</Text>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
 
-      {/* Avatar + info */}
-      <View style={styles.avatarSection}>
-        <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-          <Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: theme.text }]}>Profile</Text>
         </View>
-        <Text style={[styles.name, { color: theme.text }]}>{user?.name}</Text>
-        <View style={styles.badgeRow}>
-          <View style={[styles.badge, { backgroundColor: theme.primary + '18' }]}>
-            <Text style={[styles.badgeText, { color: theme.primary }]}>DRIVER</Text>
+
+        {/* Avatar card */}
+        <View style={[styles.avatarCard, { backgroundColor: theme.surface }, Shadows.sm]}>
+          <View style={[styles.avatarRing, { borderColor: theme.primary + '30' }]}>
+            <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
+              <Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text>
+            </View>
           </View>
-          {driverData?.status && (
-            <View style={[styles.badge, { backgroundColor: kycColor + '18' }]}>
-              <Text style={[styles.badgeText, { color: kycColor }]}>
-                KYC {driverData.status.toUpperCase()}
+          <Text style={[styles.name, { color: theme.text }]}>{user?.name}</Text>
+          <Text style={[styles.email, { color: theme.textSecond }]}>{user?.email}</Text>
+
+          {/* Badges */}
+          <View style={styles.badgeRow}>
+            <View style={[styles.badge, { backgroundColor: theme.primary + '15' }]}>
+              <Text style={[styles.badgeText, { color: theme.primary }]}>DRIVER</Text>
+            </View>
+            {driverData?.status && (
+              <View style={[styles.badge, { backgroundColor: kycColor + '15' }]}>
+                <Text style={[styles.badgeText, { color: kycColor }]}>
+                  KYC {driverData.status.toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {driverData?.rating != null && (
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={14} color="#FFBE0B" />
+              <Text style={[styles.rating, { color: theme.textSecond }]}>
+                {Number(driverData.rating).toFixed(1)} rating
               </Text>
             </View>
           )}
         </View>
-        {driverData?.rating != null && (
-          <Text style={[styles.rating, { color: theme.textSecond }]}>
-            ⭐ {Number(driverData.rating).toFixed(1)} rating
-          </Text>
-        )}
-      </View>
 
-      {/* Menu */}
-      <View style={[styles.menuCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-        {menu.map((item, i, arr) => (
-          <Pressable
-            key={item.label}
-            style={[
-              styles.menuRow,
-              i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.divider },
-            ]}
-            onPress={item.onPress}
-          >
-            <Text style={styles.menuIcon}>{item.icon}</Text>
-            <Text style={[styles.menuLabel, { color: theme.text }]}>{item.label}</Text>
-            <Text style={[styles.menuArrow, { color: theme.textSecond }]}>›</Text>
-          </Pressable>
-        ))}
-      </View>
+        {/* Menu */}
+        <View style={[styles.menuCard, { backgroundColor: theme.surface }, Shadows.sm]}>
+          {menu.map((item, i, arr) => (
+            <Pressable
+              key={item.label}
+              style={[
+                styles.menuRow,
+                i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.divider },
+              ]}
+              onPress={item.onPress}
+            >
+              <View style={[styles.menuIconWrap, { backgroundColor: theme.surfaceSecond }]}>
+                <Ionicons name={item.icon as any} size={20} color={theme.primary} />
+              </View>
+              <Text style={[styles.menuLabel, { color: theme.text }]}>{item.label}</Text>
+              <Ionicons name="chevron-forward" size={18} color={theme.textThird} />
+            </Pressable>
+          ))}
+        </View>
 
-      <Text style={[styles.version, { color: theme.textSecond }]}>Seirs v1.0.0</Text>
+        <Text style={[styles.version, { color: theme.textThird }]}>Seirs v1.0.0</Text>
 
-      <Pressable style={[styles.logoutBtn, { borderColor: theme.error }]} onPress={handleLogout}>
-        <Text style={[styles.logoutText, { color: theme.error }]}>Sign Out</Text>
-      </Pressable>
+        {/* Sign out */}
+        <Pressable
+          style={[styles.logoutBtn, { backgroundColor: theme.error + '12', borderColor: theme.error + '30' }]}
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={20} color={theme.error} />
+          <Text style={[styles.logoutText, { color: theme.error }]}>Sign Out</Text>
+        </Pressable>
+
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  header:        { padding: Spacing.xl, paddingBottom: 0 },
-  title:         { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold },
-  avatarSection: { alignItems: 'center', paddingVertical: Spacing.xl, gap: Spacing.sm },
-  avatar:        { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
-  avatarText:    { color: '#fff', fontSize: FontSize['2xl'], fontWeight: FontWeight.bold },
-  name:          { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  badgeRow:      { flexDirection: 'row', gap: Spacing.sm },
-  badge:         { paddingHorizontal: Spacing.md, paddingVertical: 4, borderRadius: Radius.full },
-  badgeText:     { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, letterSpacing: 1 },
-  rating:        { fontSize: FontSize.sm },
-  menuCard:      { marginHorizontal: Spacing.xl, borderRadius: Radius.lg, overflow: 'hidden' },
-  menuRow:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.md + 2, gap: Spacing.md },
-  menuIcon:      { fontSize: 20 },
-  menuLabel:     { flex: 1, fontSize: FontSize.base },
-  menuArrow:     { fontSize: FontSize.lg },
-  version:       { textAlign: 'center', fontSize: FontSize.xs, marginTop: Spacing.xl },
-  logoutBtn:     { marginHorizontal: Spacing.xl, marginTop: Spacing.md, height: 52, borderRadius: Radius.md, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
-  logoutText:    { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  header:     { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.md },
+  title:      { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
+
+  avatarCard:  { marginHorizontal: Spacing.md, marginBottom: Spacing.md, borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center', gap: 6 },
+  avatarRing:  { width: 92, height: 92, borderRadius: 46, borderWidth: 3, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.xs },
+  avatar:      { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
+  avatarText:  { color: '#fff', fontSize: FontSize['2xl'], fontWeight: FontWeight.bold },
+  name:        { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  email:       { fontSize: FontSize.sm },
+
+  badgeRow:    { flexDirection: 'row', gap: Spacing.sm, marginTop: 4 },
+  badge:       { paddingHorizontal: Spacing.md, paddingVertical: 4, borderRadius: Radius.full },
+  badgeText:   { fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 1.5 },
+  ratingRow:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  rating:      { fontSize: FontSize.sm },
+
+  menuCard:    { marginHorizontal: Spacing.md, borderRadius: Radius.xl, overflow: 'hidden', marginBottom: Spacing.md },
+  menuRow:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, gap: Spacing.md },
+  menuIconWrap:{ width: 40, height: 40, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
+  menuLabel:   { flex: 1, fontSize: FontSize.base, fontWeight: FontWeight.medium },
+
+  version:    { textAlign: 'center', fontSize: FontSize.xs, marginBottom: Spacing.md },
+  logoutBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, marginHorizontal: Spacing.md, height: 52, borderRadius: Radius.xl, borderWidth: 1 },
+  logoutText: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 });
