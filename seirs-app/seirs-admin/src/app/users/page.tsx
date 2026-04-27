@@ -4,8 +4,8 @@ import { adminApi } from '@/lib/api';
 
 const ROLE_COLORS: Record<string, string> = {
   customer: 'bg-blue-100 text-blue-700',
-  driver:   'bg-orange-100 text-orange-700',
-  admin:    'bg-purple-100 text-purple-700',
+  driver:   'bg-[#F4600C]/10 text-[#F4600C]',
+  admin:    'bg-violet-100 text-violet-700',
 };
 
 export default function UsersPage() {
@@ -30,13 +30,13 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <main className="p-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Users</h1>
+            <h1 className="text-2xl font-bold text-[#0D1B2A]">Users</h1>
             {data && (
-              <p className="text-sm text-gray-500 mt-1">{data.total.toLocaleString()} total</p>
+              <p className="text-sm text-[#0D1B2A]/50 mt-1">{data.total.toLocaleString()} total</p>
             )}
           </div>
           <div className="flex gap-2">
@@ -44,49 +44,47 @@ export default function UsersPage() {
               <button
                 key={r}
                 onClick={() => setRole(r)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                   role === r
                     ? 'bg-[#F4600C] text-white border-[#F4600C]'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                    : 'bg-white text-[#0D1B2A]/50 border-[#EDE4D9] hover:border-[#0D1B2A]/20'
                 }`}
               >
-                {r || 'All'}
+                {r ? r.charAt(0).toUpperCase() + r.slice(1) : 'All'}
               </button>
             ))}
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-gray-400">Loading...</div>
+          <div className="text-center py-20 text-[#0D1B2A]/30">Loading…</div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-[#F5F0EB] border-b border-[#EDE4D9]">
                 <tr>
                   {['User', 'Phone', 'Role', 'Status', 'Joined', 'Actions'].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">
-                      {h}
-                    </th>
+                    <th key={h} className="text-left px-4 py-3 font-semibold text-[#0D1B2A]/40 text-xs uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-[#F5F0EB]">
                 {data?.users?.map((u: any) => (
-                  <tr key={u.id} className="hover:bg-gray-50">
+                  <tr key={u.id} className="hover:bg-[#F5F0EB] transition-colors">
                     <td className="px-4 py-3">
-                      <a href={`/users/${u.id}`} className="font-medium text-gray-900 hover:text-[#F4600C]">{u.name}</a>
-                      <div className="text-xs text-gray-400">{u.email}</div>
+                      <a href={`/users/${u.id}`} className="font-medium text-[#0D1B2A] hover:text-[#F4600C] transition-colors">{u.name}</a>
+                      <div className="text-xs text-[#0D1B2A]/40">{u.email}</div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{u.phone ?? '—'}</td>
+                    <td className="px-4 py-3 text-[#0D1B2A]/60">{u.phone ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${ROLE_COLORS[u.role] ?? 'bg-gray-100 text-gray-600'}`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${ROLE_COLORS[u.role] ?? 'bg-[#0D1B2A]/5 text-[#0D1B2A]/50'}`}>
                         {u.role}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       {u.isActive !== false ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-green-700">
-                          <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
                           Active
                         </span>
                       ) : (
@@ -96,7 +94,7 @@ export default function UsersPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
+                    <td className="px-4 py-3 text-[#0D1B2A]/40 text-xs">
                       {new Date(u.createdAt).toLocaleDateString('en-NG', {
                         day: 'numeric', month: 'short', year: 'numeric',
                       })}
@@ -104,10 +102,10 @@ export default function UsersPage() {
                     <td className="px-4 py-3">
                       <button
                         onClick={() => toggleBan(u.id, u.isActive !== false)}
-                        className={`text-xs px-3 py-1.5 rounded-lg font-medium ${
+                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
                           u.isActive !== false
                             ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                         }`}
                       >
                         {u.isActive !== false ? 'Ban' : 'Unban'}
@@ -119,18 +117,18 @@ export default function UsersPage() {
             </table>
 
             {data?.users?.length === 0 && (
-              <div className="text-center py-16 text-gray-400">No users found</div>
+              <div className="text-center py-16 text-[#0D1B2A]/30">No users found</div>
             )}
 
             {data?.total > 20 && (
-              <div className="flex justify-center gap-3 p-4 border-t border-gray-50">
+              <div className="flex justify-center gap-3 p-4 border-t border-[#F5F0EB]">
                 <button onClick={() => load(page - 1)} disabled={page === 1}
-                  className="px-4 py-2 text-sm rounded-lg border border-gray-200 disabled:opacity-40 hover:border-gray-400">
+                  className="px-4 py-2 text-sm rounded-lg border border-[#EDE4D9] disabled:opacity-40 hover:bg-[#F5F0EB] transition-colors">
                   Previous
                 </button>
-                <span className="px-4 py-2 text-sm text-gray-500">Page {page}</span>
+                <span className="px-4 py-2 text-sm text-[#0D1B2A]/50">Page {page}</span>
                 <button onClick={() => load(page + 1)} disabled={page * 20 >= data.total}
-                  className="px-4 py-2 text-sm rounded-lg border border-gray-200 disabled:opacity-40 hover:border-gray-400">
+                  className="px-4 py-2 text-sm rounded-lg border border-[#EDE4D9] disabled:opacity-40 hover:bg-[#F5F0EB] transition-colors">
                   Next
                 </button>
               </div>

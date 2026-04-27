@@ -3,6 +3,12 @@
 @tailwind utilities;
 
 :root {
-  --primary: #F4600C;
-  --navy:    #0D1B2A;
+  --primary:      #F4600C;
+  --primary-dark: #D95209;
+  --navy:         #0D1B2A;
+  --cloud:        #F5F0EB;
+}
+
+body {
+  background-color: #F5F0EB;
 }

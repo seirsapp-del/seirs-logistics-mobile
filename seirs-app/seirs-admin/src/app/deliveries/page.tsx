@@ -2,23 +2,24 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
+import { MapPin, Navigation } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
-  pending:    'bg-yellow-100 text-yellow-800',
-  assigned:   'bg-blue-100 text-blue-800',
-  picked_up:  'bg-orange-100 text-orange-800',
-  in_transit: 'bg-purple-100 text-purple-800',
-  delivered:  'bg-green-100 text-green-800',
-  failed:     'bg-red-100 text-red-800',
-  cancelled:  'bg-gray-100 text-gray-600',
+  pending:    'bg-amber-100 text-amber-700',
+  assigned:   'bg-blue-100 text-blue-700',
+  picked_up:  'bg-[#F4600C]/10 text-[#F4600C]',
+  in_transit: 'bg-violet-100 text-violet-700',
+  delivered:  'bg-emerald-100 text-emerald-700',
+  failed:     'bg-red-100 text-red-700',
+  cancelled:  'bg-[#0D1B2A]/5 text-[#0D1B2A]/50',
 };
 
 export default function DeliveriesPage() {
   const searchParams = useSearchParams();
   const statusFilter = searchParams.get('status') ?? '';
 
-  const [data, setData] = useState<any>(null);
-  const [page, setPage]   = useState(1);
+  const [data, setData]       = useState<any>(null);
+  const [page, setPage]       = useState(1);
   const [loading, setLoading] = useState(true);
 
   const load = (p = 1) => {
@@ -40,8 +41,8 @@ export default function DeliveriesPage() {
     <div className="min-h-screen">
       <main className="p-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Deliveries</h1>
-          <div className="flex gap-2">
+          <h1 className="text-2xl font-bold text-[#0D1B2A]">Deliveries</h1>
+          <div className="flex gap-2 flex-wrap">
             {['', 'pending', 'assigned', 'in_transit', 'delivered', 'failed'].map((s) => (
               <a
                 key={s}
@@ -49,53 +50,57 @@ export default function DeliveriesPage() {
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                   statusFilter === s
                     ? 'bg-[#F4600C] text-white border-[#F4600C]'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                    : 'bg-white text-[#0D1B2A]/50 border-[#EDE4D9] hover:border-[#0D1B2A]/20'
                 }`}
               >
-                {s || 'All'}
+                {s ? s.replace('_', ' ') : 'All'}
               </a>
             ))}
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-gray-400">Loading...</div>
+          <div className="text-center py-20 text-[#0D1B2A]/30">Loading…</div>
         ) : (
           <>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-100">
+                <thead className="bg-[#F5F0EB] border-b border-[#EDE4D9]">
                   <tr>
                     {['Tracking', 'Customer', 'Route', 'Status', 'Price', 'Created', 'Actions'].map((h) => (
-                      <th key={h} className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">
-                        {h}
-                      </th>
+                      <th key={h} className="text-left px-4 py-3 font-semibold text-[#0D1B2A]/40 text-xs uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[#F5F0EB]">
                   {data?.deliveries?.map((d: any) => (
-                    <tr key={d.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs font-bold text-gray-900">{d.trackingCode}</td>
-                      <td className="px-4 py-3 text-gray-700">{d.customer?.name ?? '—'}</td>
+                    <tr key={d.id} className="hover:bg-[#F5F0EB] transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs font-bold text-[#0D1B2A]">{d.trackingCode}</td>
+                      <td className="px-4 py-3 text-[#0D1B2A]/70">{d.customer?.name ?? '—'}</td>
                       <td className="px-4 py-3 max-w-xs">
-                        <div className="text-xs text-gray-600 truncate" title={d.pickupAddress}>📍 {d.pickupAddress}</div>
-                        <div className="text-xs text-gray-600 truncate" title={d.dropoffAddress}>🏁 {d.dropoffAddress}</div>
+                        <div className="flex items-start gap-1 text-xs text-[#0D1B2A]/60 mb-0.5" title={d.pickupAddress}>
+                          <MapPin size={10} className="mt-0.5 shrink-0 text-[#F4600C]" />
+                          <span className="truncate">{d.pickupAddress}</span>
+                        </div>
+                        <div className="flex items-start gap-1 text-xs text-[#0D1B2A]/60" title={d.dropoffAddress}>
+                          <Navigation size={10} className="mt-0.5 shrink-0 text-emerald-500" />
+                          <span className="truncate">{d.dropoffAddress}</span>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[d.status] ?? 'bg-gray-100'}`}>
-                          {d.status}
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${STATUS_COLORS[d.status] ?? 'bg-[#0D1B2A]/5'}`}>
+                          {d.status.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-semibold text-gray-900">₦{d.price?.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">
+                      <td className="px-4 py-3 font-semibold text-[#0D1B2A]">₦{d.price?.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-[#0D1B2A]/40 text-xs">
                         {new Date(d.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3">
                         {!['delivered', 'cancelled', 'failed'].includes(d.status) && (
                           <button
                             onClick={() => handleCancel(d.id)}
-                            className="text-xs text-red-600 hover:text-red-800 font-medium"
+                            className="text-xs text-red-600 hover:text-red-800 font-medium transition-colors"
                           >
                             Cancel
                           </button>
@@ -107,26 +112,25 @@ export default function DeliveriesPage() {
               </table>
 
               {data?.deliveries?.length === 0 && (
-                <div className="text-center py-16 text-gray-400">No deliveries found</div>
+                <div className="text-center py-16 text-[#0D1B2A]/30">No deliveries found</div>
               )}
             </div>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
+            <div className="flex items-center justify-between mt-4 text-sm text-[#0D1B2A]/50">
               <span>Total: {data?.total?.toLocaleString()} deliveries</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => load(page - 1)}
                   disabled={page <= 1}
-                  className="px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40"
+                  className="px-3 py-1.5 rounded-lg border border-[#EDE4D9] hover:bg-[#F5F0EB] disabled:opacity-40 transition-colors text-xs font-medium"
                 >
                   ← Prev
                 </button>
-                <span className="px-3 py-1.5">Page {page}</span>
+                <span className="px-3 py-1.5 text-xs">Page {page}</span>
                 <button
                   onClick={() => load(page + 1)}
                   disabled={data?.deliveries?.length < 20}
-                  className="px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40"
+                  className="px-3 py-1.5 rounded-lg border border-[#EDE4D9] hover:bg-[#F5F0EB] disabled:opacity-40 transition-colors text-xs font-medium"
                 >
                   Next →
                 </button>

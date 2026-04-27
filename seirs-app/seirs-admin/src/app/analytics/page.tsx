@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
+import { Star } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -43,23 +44,23 @@ export default function AnalyticsPage() {
     }).finally(() => setLoading(false));
   }, [days]);
 
-  const totalRevenue = revenue.reduce((s, r) => s + r.revenue, 0);
+  const totalRevenue    = revenue.reduce((s, r) => s + r.revenue, 0);
   const totalDeliveries = revenue.reduce((s, r) => s + r.count, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <main className="p-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+          <h1 className="text-2xl font-bold text-[#0D1B2A]">Analytics</h1>
           <div className="flex gap-2">
             {[7, 14, 30, 90].map(d => (
               <button
                 key={d}
                 onClick={() => setDays(d)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                   days === d
                     ? 'bg-[#F4600C] text-white border-[#F4600C]'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                    : 'bg-white text-[#0D1B2A]/50 border-[#EDE4D9] hover:border-[#0D1B2A]/20'
                 }`}
               >
                 {d}d
@@ -69,39 +70,38 @@ export default function AnalyticsPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-gray-400">Loading analytics...</div>
+          <div className="text-center py-20 text-[#0D1B2A]/30">Loading analytics…</div>
         ) : (
           <div className="space-y-6">
-            {/* Summary cards */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Revenue</p>
+              <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] p-6">
+                <p className="text-xs font-semibold text-[#0D1B2A]/40 uppercase tracking-wide">Total Revenue</p>
                 <p className="text-3xl font-black text-[#0D1B2A] mt-1">{fmt(totalRevenue)}</p>
-                <p className="text-xs text-gray-400 mt-1">last {days} days</p>
+                <p className="text-xs text-[#0D1B2A]/30 mt-1">last {days} days</p>
               </div>
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Deliveries Completed</p>
+              <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] p-6">
+                <p className="text-xs font-semibold text-[#0D1B2A]/40 uppercase tracking-wide">Deliveries Completed</p>
                 <p className="text-3xl font-black text-[#0D1B2A] mt-1">{totalDeliveries.toLocaleString()}</p>
-                <p className="text-xs text-gray-400 mt-1">last {days} days</p>
+                <p className="text-xs text-[#0D1B2A]/30 mt-1">last {days} days</p>
               </div>
             </div>
 
-            {/* Revenue chart */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Daily Revenue (₦)</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] p-6">
+              <h2 className="text-sm font-semibold text-[#0D1B2A]/60 mb-4">Daily Revenue (₦)</h2>
               {revenue.length > 0 ? (
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={revenue} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#EDE4D9" />
                     <XAxis
                       dataKey="day"
                       tickFormatter={(v) => new Date(v).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })}
-                      tick={{ fontSize: 11 }}
+                      tick={{ fontSize: 11, fill: '#0D1B2A', opacity: 0.4 }}
                     />
-                    <YAxis tickFormatter={(v) => fmt(v)} tick={{ fontSize: 11 }} width={60} />
+                    <YAxis tickFormatter={(v) => fmt(v)} tick={{ fontSize: 11, fill: '#0D1B2A', opacity: 0.4 }} width={60} />
                     <Tooltip
                       formatter={(v: any) => [fmt(Number(v)), 'Revenue']}
                       labelFormatter={(l) => new Date(l).toLocaleDateString('en-NG', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      contentStyle={{ borderRadius: 8, border: '1px solid #EDE4D9', boxShadow: 'none' }}
                     />
                     <Line
                       type="monotone"
@@ -109,19 +109,18 @@ export default function AnalyticsPage() {
                       stroke="#F4600C"
                       strokeWidth={2}
                       dot={false}
-                      activeDot={{ r: 4 }}
+                      activeDot={{ r: 4, fill: '#F4600C' }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-60 flex items-center justify-center text-gray-400 text-sm">No data yet</div>
+                <div className="h-60 flex items-center justify-center text-[#0D1B2A]/30 text-sm">No data yet</div>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-6">
-              {/* Deliveries by status */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-sm font-semibold text-gray-700 mb-4">Deliveries by Status</h2>
+              <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] p-6">
+                <h2 className="text-sm font-semibold text-[#0D1B2A]/60 mb-4">Deliveries by Status</h2>
                 {byStatus.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
@@ -132,9 +131,7 @@ export default function AnalyticsPage() {
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
-                        label={({ status, percent }) =>
-                          `${status} ${(percent * 100).toFixed(0)}%`
-                        }
+                        label={({ status, percent }) => `${status} ${(percent * 100).toFixed(0)}%`}
                         labelLine={false}
                       >
                         {byStatus.map((entry) => (
@@ -145,29 +142,31 @@ export default function AnalyticsPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-56 flex items-center justify-center text-gray-400 text-sm">No data yet</div>
+                  <div className="h-56 flex items-center justify-center text-[#0D1B2A]/30 text-sm">No data yet</div>
                 )}
               </div>
 
-              {/* Top drivers */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-sm font-semibold text-gray-700 mb-4">Top Drivers</h2>
+              <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] p-6">
+                <h2 className="text-sm font-semibold text-[#0D1B2A]/60 mb-4">Top Drivers</h2>
                 <div className="space-y-2">
                   {topDrivers.slice(0, 8).map((d: any, i: number) => (
                     <div key={d.id} className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
+                      <span className="text-xs font-bold text-[#0D1B2A]/30 w-4">{i + 1}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{d.user?.name}</p>
-                        <p className="text-xs text-gray-400 capitalize">{d.vehicleType}</p>
+                        <p className="text-sm font-medium text-[#0D1B2A] truncate">{d.user?.name}</p>
+                        <p className="text-xs text-[#0D1B2A]/40 capitalize">{d.vehicleType}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-gray-900">{d.totalDeliveries}</p>
-                        <p className="text-xs text-yellow-500">⭐ {Number(d.rating).toFixed(1)}</p>
+                        <p className="text-sm font-semibold text-[#0D1B2A]">{d.totalDeliveries}</p>
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Star size={10} fill="#FFBE0B" color="#FFBE0B" />
+                          <span className="text-xs text-[#0D1B2A]/50">{Number(d.rating).toFixed(1)}</span>
+                        </div>
                       </div>
                     </div>
                   ))}
                   {topDrivers.length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-8">No drivers yet</p>
+                    <p className="text-sm text-[#0D1B2A]/30 text-center py-8">No drivers yet</p>
                   )}
                 </div>
               </div>
