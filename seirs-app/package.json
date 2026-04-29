@@ -1,0 +1,22 @@
+{
+  "name": "seirs-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "shared"
+  ],
+  "scripts": {
+    "customer": "npm run start --workspace=apps/customer-app",
+    "driver":   "npm run start --workspace=apps/driver-app",
+    "admin":    "npm run dev   --workspace=apps/admin-dashboard",
+    "backend":  "npm run start:dev --workspace=backend"
+  },
+  "dependencies": {
+    "react":     "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "overrides": {
+    "react":     "19.1.0",
+    "react-dom": "19.1.0"
+  }
+}
