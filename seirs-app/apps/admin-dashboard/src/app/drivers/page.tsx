@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { adminApi } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
 import { Bike, Car, Truck, Star } from 'lucide-react';
@@ -16,7 +16,7 @@ const VEHICLE_ICONS: Record<string, LucideIcon> = {
   bicycle: Bike, motorcycle: Bike, tricycle: Truck, car: Car, van: Truck,
 };
 
-export default function DriversPage() {
+function DriversContent() {
   const searchParams = useSearchParams();
   const statusFilter = searchParams.get('status') ?? '';
 
@@ -135,5 +135,13 @@ export default function DriversPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function DriversPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-20 text-[#0D1B2A]/30">Loading…</div>}>
+      <DriversContent />
+    </Suspense>
   );
 }

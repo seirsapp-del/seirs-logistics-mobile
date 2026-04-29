@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { adminApi } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
 import { MapPin, Navigation } from 'lucide-react';
@@ -14,7 +14,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled:  'bg-[#0D1B2A]/5 text-[#0D1B2A]/50',
 };
 
-export default function DeliveriesPage() {
+function DeliveriesContent() {
   const searchParams = useSearchParams();
   const statusFilter = searchParams.get('status') ?? '';
 
@@ -140,5 +140,13 @@ export default function DeliveriesPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function DeliveriesPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-20 text-[#0D1B2A]/30">Loading…</div>}>
+      <DeliveriesContent />
+    </Suspense>
   );
 }
