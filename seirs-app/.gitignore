@@ -32,3 +32,10 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Claude Code internal files
+.claude/
+
+# Legacy apps (replaced by apps/ monorepo)
+seirs-mobile/
+seirs-admin/

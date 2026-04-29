@@ -1,10 +1,14 @@
 {
   "folders": [
-    { "name": "backend", "path": "./seirs-backend" },
-    { "name": "mobile",  "path": "./seirs-mobile" },
-    { "name": "admin",   "path": "./seirs-admin" }
+    { "name": "Root",             "path": "."                    },
+    { "name": "Customer App",     "path": "apps/customer-app"    },
+    { "name": "Driver App",       "path": "apps/driver-app"      },
+    { "name": "Admin Dashboard",  "path": "apps/admin-dashboard" },
+    { "name": "Shared",           "path": "shared"               },
+    { "name": "Backend (NestJS)", "path": "seirs-backend"        }
   ],
   "settings": {
-    "typescript.tsdk": "mobile/node_modules/typescript/lib"
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "editor.formatOnSave": true
   }
 }

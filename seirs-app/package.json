@@ -9,7 +9,7 @@
     "customer": "npm run start --workspace=apps/customer-app",
     "driver":   "npm run start --workspace=apps/driver-app",
     "admin":    "npm run dev   --workspace=apps/admin-dashboard",
-    "backend":  "npm run start:dev --workspace=backend"
+    "backend":  "npm run start:dev --workspace=seirs-backend"
   },
   "dependencies": {
     "react":     "19.1.0",
