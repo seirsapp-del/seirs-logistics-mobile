@@ -443,6 +443,43 @@ export class AuthService {
     return { requiresOtp: true, email, message: 'Account created. Please verify your email.' };
   }
 
+  async adminLogin(email: string, password: string) {
+    const user = await this.usersRepo
+      .createQueryBuilder('u')
+      .addSelect('u.password')
+      .addSelect('u.failedLoginAttempts')
+      .addSelect('u.lockedUntil')
+      .where('LOWER(u.email) = LOWER(:email)', { email: email.trim() })
+      .getOne();
+
+    if (!user || user.role !== UserRole.ADMIN) {
+      throw new UnauthorizedException('Invalid email or password.');
+    }
+    if (!user.isActive) throw new UnauthorizedException('Account suspended. Contact support.');
+
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const retryAfter = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+      throw new HttpException(
+        `Too many failed attempts. Try again in ${retryAfter} minute${retryAfter === 1 ? '' : 's'}.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
+      const attempts = (user.failedLoginAttempts ?? 0) + 1;
+      const update: Partial<typeof user> = { failedLoginAttempts: attempts };
+      if (attempts >= AuthService.MAX_ATTEMPTS) {
+        update.lockedUntil = new Date(Date.now() + AuthService.LOCKOUT_MS);
+      }
+      await this.usersRepo.update(user.id, update as any);
+      throw new UnauthorizedException('Invalid email or password.');
+    }
+
+    await this.usersRepo.update(user.id, { failedLoginAttempts: 0, lockedUntil: null });
+    return this.buildAuthResponse(user);
+  }
+
   async businessLogin(email: string, password: string) {
     const user = await this.usersRepo
       .createQueryBuilder('u')

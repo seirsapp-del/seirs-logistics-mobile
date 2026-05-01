@@ -82,8 +82,8 @@ async function seed() {
     const pw     = await hash(u.password);
 
     await client.query(
-      `INSERT INTO users (id, name, email, phone, password, role, "isActive", "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, $4, $5, $6, true, NOW(), NOW())`,
+      `INSERT INTO users (id, name, email, phone, password, role, "isActive", "emailVerified", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, true, true, NOW(), NOW())`,
       [userId, u.name, u.email, u.phone, pw, u.role],
     );
 

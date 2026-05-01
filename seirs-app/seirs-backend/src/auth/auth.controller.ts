@@ -31,6 +31,12 @@ export class AuthController {
     return this.authService.businessLogin(body.email, body.password);
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Post('admin-login')
+  adminLogin(@Body() body: { email: string; password: string }) {
+    return this.authService.adminLogin(body.email, body.password);
+  }
+
   @Post('verify-otp')
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto);
