@@ -68,6 +68,16 @@ function isAllowed(role: string | undefined, permission: string): boolean {
   return perms.includes('*') || perms.includes(permission);
 }
 
+/**
+ * Returns true when the role is recognised by our permission map.
+ * Older admin tokens may only carry role='admin' (legacy) — those should
+ * fail open (let the page render and let the backend enforce real perms),
+ * never redirect, to avoid a redirect loop.
+ */
+function isKnownGranularRole(role: string | undefined): boolean {
+  return !!role && role in ROLE_PERMS;
+}
+
 export function middleware(request: NextRequest) {
   const token        = request.cookies.get('seirs_admin_token')?.value;
   const { pathname } = request.nextUrl;
@@ -87,27 +97,32 @@ export function middleware(request: NextRequest) {
   }
 
   // RBAC: check role permission for the requested path
+  // Fail-open: if we can't decode a granular admin role, allow through.
+  // The page itself + backend API guards remain the source of truth.
   if (token && !isLoginPage) {
     const role = decodeJwtRole(token);
 
-    // Find matching permission for this path (longest prefix match for nested routes)
-    let permission: string | undefined;
-    let bestLen = -1;
-    for (const [path, perm] of Object.entries(PATH_PERMISSIONS)) {
-      if ((pathname === path || pathname.startsWith(path + '/')) && path.length > bestLen) {
-        permission = perm;
-        bestLen = path.length;
+    if (isKnownGranularRole(role)) {
+      // Find matching permission for this path (longest prefix match)
+      let permission: string | undefined;
+      let bestLen = -1;
+      for (const [path, perm] of Object.entries(PATH_PERMISSIONS)) {
+        if ((pathname === path || pathname.startsWith(path + '/')) && path.length > bestLen) {
+          permission = perm;
+          bestLen = path.length;
+        }
       }
-    }
 
-    if (permission && !isAllowed(role, permission)) {
-      // Send forbidden users to dashboard root (or login if even that's denied)
-      const fallback = isAllowed(role, 'overview') ? '/' : '/login';
-      if (pathname !== fallback) {
-        const url = request.nextUrl.clone();
-        url.pathname = fallback;
-        url.searchParams.set('denied', '1');
-        return NextResponse.redirect(url);
+      if (permission && !isAllowed(role, permission)) {
+        // Forbidden: redirect to dashboard root if accessible, else just allow
+        // (never redirect to /login — that loops with the auth check above).
+        if (isAllowed(role, 'overview') && pathname !== '/') {
+          const url = request.nextUrl.clone();
+          url.pathname = '/';
+          url.searchParams.set('denied', '1');
+          return NextResponse.redirect(url);
+        }
+        // No safe redirect target — let the page render with a "denied" banner
       }
     }
   }

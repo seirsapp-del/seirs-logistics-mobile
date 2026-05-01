@@ -28,7 +28,8 @@ export default function AdminNav() {
   useEffect(() => {
     const u = getUser();
     setUser(u);
-    setRole(u?.adminRole as AdminRoleType | undefined);
+    // Fall back to legacy `role: 'admin'` if granular adminRole isn't set
+    setRole((u?.adminRole ?? (u as any)?.role) as AdminRoleType | undefined);
     const saved = localStorage.getItem('seirs_nav_collapsed');
     if (saved === 'true') setCollapsed(true);
   }, []);

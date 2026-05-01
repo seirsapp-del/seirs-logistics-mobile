@@ -44,14 +44,22 @@ const PERMISSIONS: Record<AdminRoleType, string[]> = {
   partner_manager:   ['partners','partner-redirects','specialists','deliveries','overview'],
 };
 
+// Legacy users that pre-date granular adminRole carry role='admin' on the
+// User record but no adminRole. Treat them as super_admin so the sidebar
+// renders properly and they retain full access until their record is migrated.
+function isLegacyAdmin(role: AdminRoleType | string | undefined): boolean {
+  return role === 'admin';
+}
+
 export function canAccess(role: AdminRoleType | undefined, page: string): boolean {
   if (!role) return false;
+  if (isLegacyAdmin(role)) return true;
   const perms = PERMISSIONS[role] ?? [];
   return perms.includes('*') || perms.includes(page);
 }
 
 export function isSuperAdmin(role: AdminRoleType | undefined): boolean {
-  return role === AdminRole.SUPER_ADMIN;
+  return role === AdminRole.SUPER_ADMIN || isLegacyAdmin(role);
 }
 
 export interface NavSection {
