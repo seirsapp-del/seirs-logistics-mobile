@@ -10,7 +10,7 @@ import { FlutterwaveService } from './flutterwave.service';
 import { Delivery } from '../deliveries/delivery.entity';
 import { User } from '../users/user.entity';
 
-const PLATFORM_COMMISSION = 0.20; // 20%
+const PLATFORM_COMMISSION = 0.30; // 30% per Master Spec V7 §3.4
 
 const toKobo  = (naira: number) => Math.round(naira * 100);
 const toNaira = (kobo:  number) => kobo / 100;

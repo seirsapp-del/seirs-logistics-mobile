@@ -7,8 +7,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   Bell, MapPin, Star, TrendingUp, Truck, Zap,
   ChevronRight, Target, Wifi, WifiOff, Package,
-  Navigation, Clock,
+  Navigation, Clock, AlignLeft,
 } from 'lucide-react-native';
+import { Drawer } from '@/components/Drawer';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -41,6 +42,7 @@ export default function DriverHomeScreen() {
   const [loading,    setLoading]    = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [driverData, setDriverData] = useState<any>(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   const locationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketRef        = useRef<Socket | null>(null);
@@ -122,7 +124,10 @@ export default function DriverHomeScreen() {
         {/* ── Mission Control Header ─────────────────────────────────────── */}
         <LinearGradient colors={navGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerGrad}>
           <View style={styles.headerRow}>
-            <View>
+            <Pressable style={styles.headerBtn} onPress={() => setDrawerVisible(true)}>
+              <AlignLeft size={22} color="#fff" strokeWidth={2} />
+            </Pressable>
+            <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={styles.headerGreet}>Mission Control</Text>
               <Text style={styles.headerName}>Hi, {firstName}</Text>
             </View>
@@ -294,6 +299,9 @@ export default function DriverHomeScreen() {
 
         <View style={{ height: Spacing.xl }} />
       </ScrollView>
+
+      {/* Hamburger Drawer */}
+      <Drawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />
     </SafeAreaView>
   );
 }

@@ -26,7 +26,7 @@ export interface PriceResult {
 // Base rates in Nigerian Naira — adjust per country in Phase 5
 const BASE_FARE    = 300;
 const PER_KM_RATE  = 80;
-const PLATFORM_CUT = 0.20; // 20% platform commission
+const PLATFORM_CUT = 0.30; // 30% platform commission per Master Spec V7 §3.4
 
 const SIZE_MULTIPLIER: Record<PackageSize, number> = {
   [PackageSize.SMALL]:  1.0,

@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
+import { HamburgerButton } from '@/components/HamburgerButton';
 import { MOCK_DRIVER_DELIVERIES } from '@/constants/driverMockData';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -46,7 +47,10 @@ export default function DriverHistoryScreen() {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Text style={[styles.title, { color: theme.text }]}>My Trips</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <HamburgerButton />
+          <Text style={[styles.title, { color: theme.text }]}>My Trips</Text>
+        </View>
         <View style={[styles.earnBadge, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '40' }]}>
           <Ionicons name="trending-up" size={13} color={theme.primary} />
           <Text style={[styles.earnBadgeText, { color: theme.primary }]}>₦{totalEarned.toLocaleString()} earned</Text>

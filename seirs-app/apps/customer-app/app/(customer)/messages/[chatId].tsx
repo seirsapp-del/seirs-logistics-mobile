@@ -51,12 +51,7 @@ export default function ChatScreen() {
             <Text style={[styles.headerSub, { color: '#22C55E' }]}>Online</Text>
           </View>
         </View>
-        <Pressable
-          style={[styles.callBtn, { backgroundColor: isDark ? '#001020' : '#DBEAFE' }]}
-          onPress={() => router.push({ pathname: '/(customer)/call', params: { driverId: driver.id } })}
-        >
-          <Ionicons name="call-outline" size={18} color={theme.primary} />
-        </Pressable>
+        {/* Phone calls are disabled per spec §1.12 — chat only */}
       </View>
 
       {/* Messages */}

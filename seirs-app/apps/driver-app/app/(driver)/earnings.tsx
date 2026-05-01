@@ -7,6 +7,7 @@ import {
   Bell, TrendingUp, ArrowUpCircle, Landmark, Ribbon,
   ArrowDownCircle, Receipt, ChevronRight, Target, Calendar,
 } from 'lucide-react-native';
+import { HamburgerButton } from '@/components/HamburgerButton';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -63,7 +64,10 @@ export default function EarningsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
         <View style={styles.pageHeader}>
-          <Text style={[styles.pageTitle, { color: theme.text }]}>Earnings</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <HamburgerButton />
+            <Text style={[styles.pageTitle, { color: theme.text }]}>Earnings</Text>
+          </View>
           <Pressable style={[styles.headerBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.push('/(driver)/notifications' as any)}>
             <Bell size={20} color={theme.text} strokeWidth={1.75} />
           </Pressable>

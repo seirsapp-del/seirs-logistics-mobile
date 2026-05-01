@@ -145,12 +145,7 @@ export default function TripDetailsScreen() {
                     >
                       <Ionicons name="chatbubble-outline" size={18} color="#2EC4B6" />
                     </Pressable>
-                    <Pressable
-                      style={[styles.driverActionBtn, { backgroundColor: isDark ? '#001020' : '#DBEAFE', borderColor: theme.primary }]}
-                      onPress={() => router.push({ pathname: '/(customer)/call', params: { driverId: trip.driver!.id } })}
-                    >
-                      <Ionicons name="call-outline" size={18} color={theme.primary} />
-                    </Pressable>
+                    {/* Phone calls disabled per spec §1.12 — chat only */}
                   </View>
                 )}
                 {isCompleted && trip.rating && (

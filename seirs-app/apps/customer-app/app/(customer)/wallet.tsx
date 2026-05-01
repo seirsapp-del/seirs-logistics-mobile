@@ -13,6 +13,7 @@ import {
   CreditCard, ArrowDownCircle, ArrowUpCircle, Receipt,
   Plus, ArrowUp, Clock,
 } from 'lucide-react-native';
+import { HamburgerButton } from '@/components/HamburgerButton';
 
 type Tab = 'all' | 'credit' | 'debit';
 
@@ -62,7 +63,10 @@ export default function WalletScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>My Wallet</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <HamburgerButton />
+            <Text style={[styles.title, { color: theme.text }]}>My Wallet</Text>
+          </View>
           <Pressable
             style={[styles.iconBtn, { backgroundColor: theme.surfaceSecond }]}
             onPress={() => router.push('/(customer)/payment-methods' as any)}

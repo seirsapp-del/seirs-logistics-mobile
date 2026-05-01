@@ -54,7 +54,6 @@ export default function DriverLayout() {
       <Tabs.Screen name="job/[id]"              options={{ href: null }} />
       <Tabs.Screen name="delivery/[id]"         options={{ href: null }} />
       <Tabs.Screen name="messages/[chatId]"     options={{ href: null }} />
-      <Tabs.Screen name="call"                  options={{ href: null }} />
       <Tabs.Screen name="notifications"         options={{ href: null }} />
       <Tabs.Screen name="ratings"               options={{ href: null }} />
       <Tabs.Screen name="withdrawal"            options={{ href: null }} />

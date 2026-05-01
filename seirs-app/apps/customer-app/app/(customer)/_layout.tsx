@@ -69,7 +69,6 @@ export default function CustomerLayout() {
 
       {/* Communication */}
       <Tabs.Screen name="messages/[chatId]" options={{ href: null }} />
-      <Tabs.Screen name="call"              options={{ href: null }} />
 
       {/* Trip */}
       <Tabs.Screen name="trip/[id]"         options={{ href: null }} />

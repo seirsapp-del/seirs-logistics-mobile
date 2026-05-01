@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
+import { HamburgerButton } from '@/components/HamburgerButton';
 import { MOCK_DRIVER } from '@/constants/driverMockData';
 
 const TIER_COLORS: Record<string, string> = {
@@ -98,7 +99,10 @@ export default function DriverProfileScreen() {
 
         {/* Header */}
         <View style={styles.pageHeader}>
-          <Text style={[styles.pageTitle, { color: theme.text }]}>Profile</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <HamburgerButton />
+            <Text style={[styles.pageTitle, { color: theme.text }]}>Profile</Text>
+          </View>
           <Pressable
             style={[styles.notifBtn, { backgroundColor: theme.surfaceSecond }]}
             onPress={() => router.push('/(driver)/notifications')}

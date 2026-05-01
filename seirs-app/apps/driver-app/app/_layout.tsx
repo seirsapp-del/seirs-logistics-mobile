@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
 import { API_BASE } from '@/constants/config';
 import { configureApi } from '@/services/api';
@@ -79,10 +80,12 @@ function OTAUpdateChecker() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <OTAUpdateChecker />
-        <RootStack />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <OTAUpdateChecker />
+          <RootStack />
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

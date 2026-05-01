@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
+import { HamburgerButton } from '@/components/HamburgerButton';
 import { MOCK_USER, MOCK_TRIPS } from '@/constants/mockData';
 
 type MenuSection = { title: string; items: MenuItem[] };
@@ -75,7 +76,10 @@ export default function ProfileScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Profile</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <HamburgerButton />
+            <Text style={[styles.title, { color: theme.text }]}>Profile</Text>
+          </View>
           <Pressable style={[styles.settingsBtn, { backgroundColor: theme.surfaceSecond }]}>
             <Ionicons name="settings-outline" size={20} color={theme.text} />
           </Pressable>

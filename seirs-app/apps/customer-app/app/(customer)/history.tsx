@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
+import { HamburgerButton } from '@/components/HamburgerButton';
 import { MOCK_TRIPS } from '@/constants/mockData';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -53,11 +54,14 @@ export default function HistoryScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Text style={[styles.title, { color: theme.text }]}>My Trips</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-          {filtered.length} trip{filtered.length !== 1 ? 's' : ''}
-        </Text>
+      <View style={[styles.header, { borderBottomColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+        <HamburgerButton />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.title, { color: theme.text }]}>My Trips</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecond }]}>
+            {filtered.length} trip{filtered.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
       </View>
 
       {/* Filter tabs */}

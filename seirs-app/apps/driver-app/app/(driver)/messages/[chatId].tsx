@@ -66,12 +66,7 @@ export default function DriverChatScreen() {
             <Text style={[styles.headerSub, { color: theme.textSecond }]}>Trip #{chat.tripId}</Text>
           </View>
         </View>
-        <Pressable
-          style={[styles.callBtn, { backgroundColor: '#22C55E18' }]}
-          onPress={() => router.push({ pathname: '/(driver)/call', params: { name: chat.customer.name } })}
-        >
-          <Ionicons name="call-outline" size={20} color="#22C55E" />
-        </Pressable>
+        {/* Phone calls disabled per spec §2.7 — chat only */}
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>

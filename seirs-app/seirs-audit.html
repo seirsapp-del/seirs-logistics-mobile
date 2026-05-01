@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SEIRS Platform — Full Architecture & Specification Audit</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:    #0F2B4C;
+    --blue:    #3A7BD5;
+    --blue-lt: #EFF6FF;
+    --dark:    #111827;
+    --mid:     #6B7280;
+    --light:   #F5F5F0;
+    --white:   #FFFFFF;
+    --border:  #E5E7EB;
+    --success: #16A34A;
+    --warning: #D97706;
+    --crit:    #DC2626;
+    --crit-lt: #FEF2F2;
+    --high:    #EA580C;
+    --high-lt: #FFF7ED;
+    --med:     #CA8A04;
+    --med-lt:  #FEFCE8;
+    --low:     #2563EB;
+    --low-lt:  #EFF6FF;
+    --radius:  8px;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--dark);
+    background: #fff;
+  }
+
+  /* ── Cover ── */
+  .cover {
+    min-height: 100vh;
+    background: linear-gradient(145deg, var(--navy) 0%, #1A3A5C 55%, #0A1F38 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 40px;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: rgba(58,123,213,0.08);
+  }
+  .cover::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: -60px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: rgba(58,123,213,0.06);
+  }
+  .cover-logo {
+    font-size: 56px;
+    font-weight: 800;
+    letter-spacing: 10px;
+    color: var(--blue);
+    margin-bottom: 6px;
+  }
+  .cover-sub {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+  }
+  .cover-divider {
+    width: 48px; height: 3px;
+    background: var(--blue);
+    border-radius: 2px;
+    margin: 0 auto 32px;
+  }
+  .cover-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 12px;
+    line-height: 1.2;
+  }
+  .cover-desc {
+    font-size: 14px;
+    color: rgba(255,255,255,0.55);
+    max-width: 500px;
+    line-height: 1.8;
+    margin-bottom: 48px;
+  }
+  .cover-verdict {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+  }
+  .verdict-card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius);
+    padding: 16px 24px;
+    text-align: center;
+    min-width: 120px;
+  }
+  .verdict-num {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .verdict-num.red   { color: var(--crit); }
+  .verdict-num.orange{ color: #F97316; }
+  .verdict-num.yellow{ color: #FACC15; }
+  .verdict-num.blue  { color: #60A5FA; }
+  .verdict-num.green { color: #4ADE80; }
+  .verdict-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .cover-meta {
+    font-size: 11px;
+    color: rgba(255,255,255,0.25);
+    position: relative; z-index: 1;
+  }
+
+  /* ── Content wrapper ── */
+  .content {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 56px 40px;
+  }
+
+  /* ── Section ── */
+  .section {
+    margin-bottom: 56px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--border);
+  }
+  .section-num {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--navy);
+    flex: 1;
+  }
+  .section-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-red    { background: var(--crit-lt); color: var(--crit); }
+  .badge-orange { background: var(--high-lt); color: var(--high); }
+  .badge-yellow { background: var(--med-lt);  color: var(--med); }
+  .badge-blue   { background: var(--blue-lt); color: var(--blue); }
+  .badge-green  { background: #DCFCE7; color: var(--success); }
+  .badge-navy   { background: #E0E7F0; color: var(--navy); }
+
+  /* ── Subsection ── */
+  .sub {
+    margin-bottom: 28px;
+  }
+  .sub-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--mid);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sub-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  p { margin-bottom: 12px; color: var(--dark); font-size: 13px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 12px;
+  }
+  thead tr { background: var(--navy); color: #fff; }
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  thead th:first-child { border-radius: 6px 0 0 0; }
+  thead th:last-child  { border-radius: 0 6px 0 0; }
+  tbody tr:nth-child(even) { background: var(--light); }
+  tbody tr:hover { background: var(--blue-lt); }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.55;
+  }
+  td:first-child { font-weight: 600; color: var(--navy); white-space: nowrap; }
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--blue);
+    background: var(--blue-lt);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin: 1px 0;
+  }
+
+  /* ── Status chips ── */
+  .ok   { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:600; background:#DCFCE7; color:var(--success); }
+  .warn { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:600; background:var(--med-lt); color:var(--med); }
+  .bad  { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:600; background:var(--crit-lt); color:var(--crit); }
+  .na   { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:600; background:#F3F4F6; color:var(--mid); }
+
+  /* ── Severity flaw cards ── */
+  .flaw-section { margin-bottom: 32px; }
+  .flaw-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .flaw-header.crit   { background: var(--crit);  color: #fff; }
+  .flaw-header.high   { background: var(--high);  color: #fff; }
+  .flaw-header.med    { background: var(--med);   color: #fff; }
+  .flaw-header.low    { background: var(--low);   color: #fff; }
+  .flaw-count {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.25);
+    padding: 2px 10px;
+    border-radius: 10px;
+  }
+  .flaw-table { margin-bottom: 0; }
+  .flaw-table thead tr { background: rgba(0,0,0,0.06); }
+  .flaw-table.crit-t thead tr { background: #B91C1C; }
+  .flaw-table.high-t thead tr { background: #C2410C; }
+  .flaw-table.med-t  thead tr { background: #A16207; }
+  .flaw-table.low-t  thead tr { background: #1D4ED8; }
+  .flaw-table thead th { color: #fff; }
+  .flaw-table tbody tr:nth-child(even).crit-e { background: #FFF5F5; }
+  .flaw-table tbody tr:nth-child(even).high-e { background: #FFF8F5; }
+  .flaw-table tbody tr:nth-child(even).med-e  { background: #FEFDF0; }
+  .flaw-table tbody tr:nth-child(even).low-e  { background: #EFF6FF; }
+  .flaw-table tbody tr:nth-child(even) { background: var(--light); }
+  .flaw-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .flaw-num.c { color: var(--crit); }
+  .flaw-num.h { color: var(--high); }
+  .flaw-num.m { color: var(--med); }
+  .flaw-num.l { color: var(--low); }
+
+  /* ── Alert box ── */
+  .alert {
+    display: flex;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    border-left: 4px solid;
+  }
+  .alert.crit  { background: var(--crit-lt); border-color: var(--crit); }
+  .alert.warn  { background: var(--high-lt); border-color: var(--high); }
+  .alert.info  { background: var(--blue-lt); border-color: var(--blue); }
+  .alert.good  { background: #DCFCE7; border-color: var(--success); }
+  .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .alert-body { flex: 1; }
+  .alert-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .alert.crit  .alert-title { color: var(--crit); }
+  .alert.warn  .alert-title { color: var(--high); }
+  .alert.info  .alert-title { color: var(--blue); }
+  .alert.good  .alert-title { color: var(--success); }
+  .alert-body p { font-size: 12.5px; color: var(--dark); margin: 0; }
+
+  /* ── Stat row ── */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+    background: #fff;
+  }
+  .stat-num {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-num.red    { color: var(--crit); }
+  .stat-num.orange { color: var(--high); }
+  .stat-num.yellow { color: var(--med); }
+  .stat-num.blue   { color: var(--blue); }
+  .stat-num.green  { color: var(--success); }
+  .stat-num.navy   { color: var(--navy); }
+  .stat-label { font-size: 11px; color: var(--mid); font-weight: 500; }
+
+  /* ── 2-col grid ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .info-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    background: #fff;
+  }
+  .info-card h4 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .info-card ul { list-style: none; padding: 0; }
+  .info-card li {
+    font-size: 12px;
+    color: var(--mid);
+    padding: 5px 0;
+    border-bottom: 1px solid #F3F4F6;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .info-card li:last-child { border-bottom: none; }
+  .info-card li::before { content: '—'; color: var(--blue); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .info-card li strong { color: var(--dark); font-weight: 600; }
+
+  /* ── Progress bar ── */
+  .progress-wrap { margin-bottom: 20px; }
+  .progress-item { margin-bottom: 12px; }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--dark);
+  }
+  .progress-pct { color: var(--mid); font-weight: 500; }
+  .progress-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 4px;
+  }
+  .fill-crit   { background: var(--crit); }
+  .fill-high   { background: var(--high); }
+  .fill-med    { background: var(--med); }
+  .fill-low    { background: var(--blue); }
+  .fill-green  { background: var(--success); }
+  .fill-navy   { background: var(--navy); }
+
+  /* ── Scale table ── */
+  .scale-row td:first-child { white-space: nowrap; }
+
+  /* ── Verdict section ── */
+  .verdict-box {
+    background: var(--navy);
+    border-radius: 10px;
+    padding: 32px 36px;
+    color: #fff;
+    margin-bottom: 32px;
+  }
+  .verdict-box h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #fff;
+  }
+  .verdict-box p {
+    color: rgba(255,255,255,0.75);
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .verdict-box ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 12px;
+  }
+  .verdict-box li {
+    color: rgba(255,255,255,0.75);
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    gap: 10px;
+  }
+  .verdict-box li:last-child { border-bottom: none; }
+  .verdict-box li::before { content: '→'; color: var(--blue); flex-shrink: 0; font-weight: 700; }
+  .verdict-tag {
+    display: inline-block;
+    background: var(--crit);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 8px 20px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+  }
+
+  /* ── Page break ── */
+  .page-break { page-break-before: always; }
+
+  @media print {
+    body { font-size: 12px; }
+    .cover { min-height: auto; padding: 80px 40px; }
+    .stat-row { grid-template-columns: repeat(4, 1fr); }
+    .two-col { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ COVER ═══ -->
+<div class="cover">
+  <div class="cover-logo">SEIRS</div>
+  <div class="cover-sub">Logistics Platform</div>
+  <div class="cover-divider"></div>
+  <div class="cover-title">Full Architecture &amp; Specification Audit</div>
+  <div class="cover-desc">
+    A comprehensive evaluation of the SEIRS platform against the Master Implementation
+    Specification V7. Covers all four apps, the backend API, security posture,
+    integration integrity, and readiness for production.
+  </div>
+  <div class="cover-verdict">
+    <div class="verdict-card">
+      <div class="verdict-num red">10</div>
+      <div class="verdict-label">Critical Flaws</div>
+    </div>
+    <div class="verdict-card">
+      <div class="verdict-num orange">14</div>
+      <div class="verdict-label">High Priority</div>
+    </div>
+    <div class="verdict-card">
+      <div class="verdict-num yellow">14</div>
+      <div class="verdict-label">Medium Priority</div>
+    </div>
+    <div class="verdict-card">
+      <div class="verdict-num blue">10</div>
+      <div class="verdict-label">Low Priority</div>
+    </div>
+    <div class="verdict-card">
+      <div class="verdict-num green">~38%</div>
+      <div class="verdict-label">Spec Complete</div>
+    </div>
+  </div>
+  <div class="cover-meta">Audit Date: May 2026 &nbsp;·&nbsp; Spec Version: V7 Final &nbsp;·&nbsp; Branch: main</div>
+</div>
+
+<!-- ═══ CONTENT ═══ -->
+<div class="content">
+
+  <!-- ══ SECTION 1: Admin Dashboard ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">Admin Dashboard Evaluation</div>
+      <span class="section-badge badge-red">35% Complete</span>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-num navy">10</div>
+        <div class="stat-label">Pages Built</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num red">23+</div>
+        <div class="stat-label">Pages Required</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num red">13</div>
+        <div class="stat-label">Missing Pages</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num red">1</div>
+        <div class="stat-label">Admin Roles (8 Required)</div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Missing Pages (Confirmed Absent)</div>
+      <table>
+        <thead>
+          <tr><th>Required Page</th><th>Spec Section</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Real-Time Ops Map</td><td>§3.2</td><td><span class="bad">Missing — listed as suggestion only</span></td></tr>
+          <tr><td>Ticketing System</td><td>§3.8</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>CMS (Content Management)</td><td>§3.7</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Promotions</td><td>§3.2</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Wallet / Payouts</td><td>§3.2</td><td><span class="bad">Missing — no dedicated payout page</span></td></tr>
+          <tr><td>Partner Accounts</td><td>§3.2</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Partner Redirects</td><td>§3.2</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Specialist Partners</td><td>§3.2, §4.5</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Duplicate Accounts</td><td>§3.2</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>User Suggestions</td><td>§3.2, §3.7</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Audit Log</td><td>§3.2, §3.6</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Referrals</td><td>§3.2</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Insurance Partners</td><td>§3.2, §2.8</td><td><span class="bad">Missing entirely</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">RBAC — Entire System Absent</div>
+      <div class="alert crit">
+        <div class="alert-icon">&#9888;</div>
+        <div class="alert-body">
+          <div class="alert-title">Critical: Single Admin Role</div>
+          <p>The spec defines 8 distinct permission roles enforced at the API level on every route. The current implementation has exactly one role: <strong>admin</strong>. Any compromised admin credential gives full unrestricted access to financial data, KYC documents, and all user PII. This is both a security failure and a compliance failure under NDPR.</p>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Role (Spec §3.1)</th><th>Access Scope</th><th>Implemented</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Super Admin (CEO)</td><td>Everything — no restrictions</td><td><span class="warn">Partial (all admins have this)</span></td></tr>
+          <tr><td>Operations Manager</td><td>Full operations; no staff management</td><td><span class="bad">Not implemented</span></td></tr>
+          <tr><td>Support Agent</td><td>Tickets + read-only profiles; no financials</td><td><span class="bad">Not implemented</span></td></tr>
+          <tr><td>Finance Officer</td><td>Wallet, payouts, revenue, fraud; no user mgmt</td><td><span class="bad">Not implemented</span></td></tr>
+          <tr><td>Driver Compliance Officer</td><td>KYC, driver approval; no financials</td><td><span class="bad">Not implemented</span></td></tr>
+          <tr><td>Media / Content Manager</td><td>CMS drafts only; no user data</td><td><span class="bad">Not implemented (CMS absent)</span></td></tr>
+          <tr><td>Analyst</td><td>Read-only aggregated analytics; no PII</td><td><span class="bad">Not implemented</span></td></tr>
+          <tr><td>Partner Manager</td><td>Partner accounts only</td><td><span class="bad">Not implemented</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Dashboard KPIs &amp; Charts — Incomplete</div>
+      <div class="two-col">
+        <div class="info-card">
+          <h4>KPI Cards — 4 of 7 present</h4>
+          <ul>
+            <li><strong>Total deliveries</strong> — present</li>
+            <li><strong>Total revenue</strong> — present</li>
+            <li><strong>Active drivers online</strong> — present</li>
+            <li><strong>Total users</strong> — present</li>
+            <li><strong style="color:var(--crit)">New customer signups this week</strong> — missing</li>
+            <li><strong style="color:var(--crit)">Open support tickets</strong> — missing (no ticketing)</li>
+            <li><strong style="color:var(--crit)">Unreviewed fraud flags</strong> — missing</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <h4>Charts — 2 of 9 present</h4>
+          <ul>
+            <li><strong>Revenue line chart</strong> — present</li>
+            <li><strong>Deliveries-by-status donut</strong> — present</li>
+            <li><strong style="color:var(--crit)">Deliveries by vehicle type</strong> — missing</li>
+            <li><strong style="color:var(--crit)">Deliveries by package category</strong> — missing</li>
+            <li><strong style="color:var(--crit)">Driver online hours area chart</strong> — missing</li>
+            <li><strong style="color:var(--crit)">Top 10 drivers sparkline table</strong> — missing</li>
+            <li><strong style="color:var(--crit)">Delivery zone heatmap</strong> — missing</li>
+            <li><strong style="color:var(--crit)">Customer acquisition line chart</strong> — missing</li>
+            <li><strong style="color:var(--crit)">Referral conversion funnel</strong> — missing</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Pricing Engine — Severely Underpowered</div>
+      <table>
+        <thead>
+          <tr><th>Pricing Feature</th><th>Spec §3.4</th><th>Current State</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Base fare, per-km, per-kg, platform fee</td><td>Required</td><td><span class="ok">Present</span></td></tr>
+          <tr><td>Vehicle type multipliers (7 vehicles)</td><td>Required</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>Package category surcharges</td><td>Required</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>Time-of-day surge multiplier</td><td>Required</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>Zone-based surcharges (e.g. Lagos Island)</td><td>Required</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>Fuel price auto-adjustment (DPR feed)</td><td>Required</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>CBN exchange rate auto-adjustment</td><td>Required</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>Sensitivity thresholds configuration</td><td>Required</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>Auto-adjustment audit trail</td><td>Required</td><td><span class="bad">Missing (audit log absent)</span></td></tr>
+          <tr><td>Manual lock / disable auto-adjustment</td><td>Required</td><td><span class="bad">Missing</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 2: System Integration Audit ══ -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">System Integration Audit</div>
+      <span class="section-badge badge-orange">Major Gaps</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Customer App — Feature Gap Matrix</div>
+      <table>
+        <thead>
+          <tr><th>Spec Requirement</th><th>Section</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>6-slide auto-advancing onboarding</td><td>§1.1</td><td><span class="bad">3 static slides only — missing 4, 5, 6; no auto-advance</span></td></tr>
+          <tr><td>Email OTP verification before app access</td><td>§1.3</td><td><span class="warn">Not documented — implementation uncertain</span></td></tr>
+          <tr><td>Age 18+ confirmation checkbox at registration</td><td>§1.3</td><td><span class="bad">Not in architecture</span></td></tr>
+          <tr><td>Account ID: CUST-XXXXXXXX auto-assigned</td><td>§1.3</td><td><span class="bad">Not mentioned</span></td></tr>
+          <tr><td>Apple Sign-In (iOS mandatory)</td><td>§1.2</td><td><span class="bad">Not documented</span></td></tr>
+          <tr><td>"Remember Me" with Expo SecureStore</td><td>§1.2</td><td><span class="bad">Not documented</span></td></tr>
+          <tr><td>Sliding Send / Ride action button</td><td>§1.5</td><td><span class="bad">Absent — standard button only</span></td></tr>
+          <tr><td>Customisable widget row (home screen)</td><td>§1.5</td><td><span class="bad">Absent</span></td></tr>
+          <tr><td>Dark mode toggle in hamburger</td><td>§G1, §1.5</td><td><span class="bad">Not implemented</span></td></tr>
+          <tr><td>Google Maps with traffic + heatmap + clustering</td><td>§G4</td><td><span class="bad">Broken — spec explicitly flags this</span></td></tr>
+          <tr><td>Package photo upload in booking (min 1, max 5)</td><td>§1.6</td><td><span class="bad">Not in booking flow</span></td></tr>
+          <tr><td>10 package categories in booking</td><td>§1.6</td><td><span class="bad">Not documented</span></td></tr>
+          <tr><td>Partner Store as delivery destination</td><td>§1.6</td><td><span class="bad">Not in booking flow</span></td></tr>
+          <tr><td>Escrow balance display (Available vs Pending)</td><td>§1.9</td><td><span class="bad">Not in wallet screen</span></td></tr>
+          <tr><td>Fix Withdraw button (explicitly broken)</td><td>§1.9</td><td><span class="bad">Still broken per spec</span></td></tr>
+          <tr><td>Share Tracking Link — web-accessible URL</td><td>§1.8</td><td><span class="bad">Not implemented</span></td></tr>
+          <tr><td>Cash on Delivery removed</td><td>§1.9</td><td><span class="warn">Unconfirmed removal</span></td></tr>
+          <tr><td>Chat: text only, no phone numbers visible</td><td>§1.12</td><td><span class="bad">Violated — Call screen shows phone + call button</span></td></tr>
+          <tr><td>Referral deep-links for university campaigns</td><td>§1.13</td><td><span class="bad">Not documented</span></td></tr>
+          <tr><td>i18n: all UI strings in translation files</td><td>§G3, §1.14</td><td><span class="warn">Language screen exists; full translation unconfirmed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Driver App — Feature Gap Matrix</div>
+      <table>
+        <thead>
+          <tr><th>Spec Requirement</th><th>Section</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Profile picture mandatory before going online</td><td>§2.1</td><td><span class="bad">Not enforced / not documented</span></td></tr>
+          <tr><td>Vehicle ownership proof in KYC</td><td>§2.1</td><td><span class="bad">Architecture shows 3 of 5 required KYC documents</span></td></tr>
+          <tr><td>Vehicle insurance certificate in KYC</td><td>§2.1</td><td><span class="bad">Missing from KYC screen</span></td></tr>
+          <tr><td>Mission control dashboard (§2.2 redesign)</td><td>§2.2</td><td><span class="bad">Basic home — no sparklines, goal tracker, heatmap</span></td></tr>
+          <tr><td>Demand heatmap mini-map on home</td><td>§2.2, §2.10</td><td><span class="bad">Listed as suggestion only — not built</span></td></tr>
+          <tr><td>Proof of delivery enforced before marking Delivered</td><td>§2.3</td><td><span class="warn">Mentioned but enforcement unclear</span></td></tr>
+          <tr><td>Driver cannot initiate chat post-delivery</td><td>§2.7</td><td><span class="bad">Not documented or enforced</span></td></tr>
+          <tr><td>Insurance partner provider listing during KYC</td><td>§2.8</td><td><span class="bad">Completely absent</span></td></tr>
+          <tr><td>Driver referral system</td><td>§2.9</td><td><span class="bad">Not documented in driver app</span></td></tr>
+          <tr><td>Earnings goal tracker</td><td>§2.4</td><td><span class="bad">Listed as suggestion only</span></td></tr>
+          <tr><td>Weekly Monday earnings push notification</td><td>§2.4</td><td><span class="bad">Not documented</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Admin API — Missing Backend Routes</div>
+      <p>The Admin NestJS module exposes only 6 GET routes. No write/action routes are documented for critical operations, meaning UI buttons likely call undocumented or non-existent endpoints.</p>
+      <table>
+        <thead>
+          <tr><th>Required Admin Action</th><th>Current API</th><th>Gap</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Approve / reject driver KYC</td><td><span class="mono">GET /admin/drivers</span></td><td><span class="bad">No PATCH route documented</span></td></tr>
+          <tr><td>Approve partner store redirects</td><td>None</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Create / assign / resolve tickets</td><td>None</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Publish CMS content</td><td>None</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Approve payout withdrawals</td><td>None</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Generate audit log entry (on all actions)</td><td>None</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Manage partner accounts</td><td>None</td><td><span class="bad">Missing entirely</span></td></tr>
+          <tr><td>Update pricing engine variables</td><td><span class="mono">GET /admin/analytics</span></td><td><span class="bad">No POST/PATCH for pricing</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Business / Partner App</div>
+      <div class="alert crit">
+        <div class="alert-icon">&#9888;</div>
+        <div class="alert-body">
+          <div class="alert-title">Batch 4 Does Not Exist</div>
+          <p>The spec defines Batch 4 as a full standalone app with two user types (Partner Store owners, Business Senders) and substantial feature sets. The current architecture contains only a "Business" settings screen in the customer app that redirects to a sales page. Zero of §4.2 or §4.3 features are built: no bulk delivery, no CSV upload, no recurring schedules, no business wallet, no partner store dashboard, no specialist delivery booking, no team member roles.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 3: Architecture & Engineering Quality ══ -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">Architecture &amp; Engineering Quality</div>
+      <span class="section-badge badge-orange">Scale Risk</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Stack Assessment</div>
+      <div class="alert good">
+        <div class="alert-icon">&#10003;</div>
+        <div class="alert-body">
+          <div class="alert-title">Tech Stack is Correct</div>
+          <p>NestJS + PostgreSQL + Redis + Cloudflare R2 + Firebase FCM is a well-proven combination. The monorepo with <strong>@seirs/shared</strong> is the right call for keeping theme tokens, API types, and models consistent across apps. The fundamental choices are sound; the gaps are in implementation depth, not architecture direction.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Single Points of Failure</div>
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Risk</th><th>Recommended Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Railway single instance</td><td>Entire backend on one container. At ~1,000 concurrent WebSocket connections + API traffic, it will destabilize.</td><td>Horizontal scaling via Railway services + Redis WebSocket adapter for Socket.IO</td></tr>
+          <tr><td>WebSocket gateway (single process)</td><td>If the NestJS process restarts, all active deliveries lose real-time tracking. Redis pub/sub adapter not confirmed.</td><td>Implement <span class="mono">@nestjs/platform-socket.io</span> with Redis adapter; confirm adapter is wired</td></tr>
+          <tr><td>No job queue</td><td>Emails, push notifications, and payment webhook retries run synchronously in request cycles. A Flutterwave webhook failure drops the payment event permanently.</td><td>Add BullMQ; move email, push, and webhook retry to async queues with exponential back-off</td></tr>
+          <tr><td>No read replica</td><td>Analytics queries (revenue aggregations, heatmaps) compete with transactional writes on a single PostgreSQL instance. Degraded write latency at scale.</td><td>Add Railway PostgreSQL replica; route all analytics queries to replica</td></tr>
+          <tr><td>No spatial indexing</td><td>Nearest-driver matching and partner store proximity are full table scans without PostGIS.</td><td>Enable PostGIS extension; add geometry column to <span class="mono">drivers</span> table; use <span class="mono">ST_DWithin</span> queries</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Scale Readiness by User Volume</div>
+      <table class="scale-row">
+        <thead>
+          <tr><th>User Volume</th><th>Assessment</th><th>Blockers</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>0 – 500</td><td><span class="ok">Acceptable</span></td><td>None structural — bugs and missing features are the issue</td></tr>
+          <tr><td>500 – 5,000</td><td><span class="warn">At Risk</span></td><td>Redis WebSocket adapter needed; per-user rate limiting needed</td></tr>
+          <tr><td>5,000 – 50,000</td><td><span class="bad">Not Ready</span></td><td>Horizontal scaling, read replicas, BullMQ queue all required</td></tr>
+          <tr><td>50,000 – 1,000,000</td><td><span class="bad">Fundamental Changes Needed</span></td><td>PostGIS, dedicated analytics DB (TimescaleDB), CDN for API, search infra (Typesense/Meilisearch)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Other Engineering Gaps</div>
+      <div class="two-col">
+        <div class="info-card">
+          <h4>Missing Infrastructure</h4>
+          <ul>
+            <li>No error tracking (Sentry) — production bugs invisible</li>
+            <li>No structured logging — only Railway's raw stdout</li>
+            <li>No email service provider documented (OTP emails, reset links)</li>
+            <li>No SMS gateway (for future SMS OTP per spec)</li>
+            <li>No database migration strategy documented</li>
+            <li>No backup or point-in-time recovery plan</li>
+            <li>No database connection pooling (PgBouncer or TypeORM pool tuning)</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <h4>API Design Issues</h4>
+          <ul>
+            <li>Admin module is a flat set of GET routes — RBAC enforcement cannot be bolted on without refactor</li>
+            <li>Matching service "internal" — unclear if synchronous (blocks booking API) or async</li>
+            <li>No documented versioning strategy beyond <span class="mono">/api/v1</span></li>
+            <li>Rate limiting is global throttle — per-user limits missing (spec §3.6)</li>
+            <li>No Flutterwave webhook signature verification documented</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 4: UI/UX Benchmarking ══ -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">UI/UX &amp; Product Quality Benchmarking</div>
+      <span class="section-badge badge-yellow">Below Industry Standard</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">vs. Uber / Bolt</div>
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Uber / Bolt</th><th>SEIRS Current</th><th>Gap</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Live map on home</td><td>Immediate — nearby drivers visible before first tap</td><td>Static greeting + recent trips list</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>Booking steps</td><td>3 taps to confirmed booking</td><td>6 screens of friction</td><td><span class="bad">Too many steps</span></td></tr>
+          <tr><td>Surge pricing UI</td><td>Prominently displayed; user can wait it out</td><td>No surge pricing UI exists</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>Driver pin on map</td><td>Rotates with heading; animated movement</td><td>Static pin, no heading</td><td><span class="warn">Needs improvement</span></td></tr>
+          <tr><td>ETA countdown</td><td>Second-by-second live ticker</td><td>Static text; not confirmed live</td><td><span class="warn">Uncertain</span></td></tr>
+          <tr><td>Quick re-book from history</td><td>One-tap repeat previous trip</td><td>Not present</td><td><span class="bad">Missing</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">vs. DHL / GIG Logistics</div>
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>DHL</th><th>SEIRS Current</th><th>Gap</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Proof of delivery visible to sender</td><td>Photo + signature + location + timestamp shown to sender</td><td>Driver uploads proof; sender visibility unconfirmed</td><td><span class="warn">Visibility gap</span></td></tr>
+          <tr><td>Public tracking (no login)</td><td>Works on web with code only</td><td>Tracking screen requires app navigation</td><td><span class="bad">No web tracking URL</span></td></tr>
+          <tr><td>Insurance at booking</td><td>Standard upsell step with clear coverage summary</td><td>Not in booking flow</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>Downloadable receipt (PDF)</td><td>Auto-generated, downloadable</td><td>Download button exists; implementation unclear</td><td><span class="warn">Uncertain</span></td></tr>
+          <tr><td>Complaint with ticket number</td><td>Reference number issued immediately</td><td>Report screen exists; no ticket system in admin</td><td><span class="bad">Loop incomplete</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">vs. Wolt / Amazon Logistics</div>
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Wolt / Amazon</th><th>SEIRS Current</th><th>Gap</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Package category selection UX</td><td>Visual branded cards with illustrations</td><td>Dropdown list (if present)</td><td><span class="warn">Below standard</span></td></tr>
+          <tr><td>Delivery milestone animations</td><td>Celebratory animation on Delivered</td><td>Static step bar</td><td><span class="warn">Missing delight</span></td></tr>
+          <tr><td>Dark mode</td><td>Full system-level support, polished</td><td>Not implemented</td><td><span class="bad">Missing</span></td></tr>
+          <tr><td>Proactive ETA push updates</td><td>Auto-push at every milestone change</td><td>Notification structure unclear</td><td><span class="warn">Uncertain</span></td></tr>
+          <tr><td>Delivery photo in confirmation</td><td>"Delivered to: [location + photo]" sent to customer</td><td>Not surfaced to customer</td><td><span class="bad">Missing</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 5: Design System & Consistency ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">Design System &amp; Consistency</div>
+      <span class="section-badge badge-red">Spec Violations Found</span>
+    </div>
+
+    <div class="alert crit">
+      <div class="alert-icon">&#9888;</div>
+      <div class="alert-body">
+        <div class="alert-title">The Architecture Document Itself Violates the Design Spec</div>
+        <p>The <strong>seirs-architecture.html</strong> document uses <strong style="color:var(--crit)">#FF6B00 orange</strong> as the primary brand accent and renders the SEIRS logo in orange — which the spec (§G1) explicitly removes as a brand color. This suggests the production apps are still using the old orange palette, which contradicts the Navy + Sky Blue color system confirmed in V7.</p>
+      </div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Color Token Comparison</div>
+      <table>
+        <thead>
+          <tr><th>Token</th><th>Spec V7 (§G1)</th><th>Architecture Doc</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Background</td><td>#F5F5F0 (Pantone Cloud Dancer)</td><td>#F8FAFC</td><td><span class="warn">Mismatch</span></td></tr>
+          <tr><td>Primary Brand</td><td>#0F2B4C (Deep Navy)</td><td>#0D1B2A</td><td><span class="warn">Close but wrong</span></td></tr>
+          <tr><td>Accent / CTA</td><td>#3A7BD5 (Sky Blue)</td><td>#3A86FF</td><td><span class="warn">Slightly off</span></td></tr>
+          <tr><td>Orange / Brand accent</td><td><strong>Removed entirely</strong></td><td>#FF6B00 — used as <span class="mono">--accent</span></td><td><span class="bad">Direct violation</span></td></tr>
+          <tr><td>SEIRS logo color</td><td>Navy / Blue</td><td>Rendered in orange (<span class="mono">var(--accent)</span>)</td><td><span class="bad">Direct violation</span></td></tr>
+          <tr><td>Icons</td><td>Lucide SVG only — zero emoji</td><td>Emoji used throughout as UI elements</td><td><span class="bad">Direct violation</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Additional Consistency Gaps</div>
+      <div class="two-col">
+        <div class="info-card">
+          <h4>Dark Mode</h4>
+          <ul>
+            <li>Spec: both light and dark available at launch (§G1)</li>
+            <li>Current: dark mode listed only as a future suggestion</li>
+            <li>Dark token set fully defined in spec — tokens are ready to apply</li>
+            <li>No dark mode toggle in hamburger menu implemented</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <h4>Shared Design System</h4>
+          <ul>
+            <li><strong>@seirs/shared</strong> package exists — correct foundation</li>
+            <li>Business App not yet built — shared components untested across 4 apps</li>
+            <li>React Native vs Next.js use different rendering — shared tokens only, not components</li>
+            <li>No documented design token naming convention in architecture</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 6: Security & Reliability ══ -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">Security &amp; Reliability</div>
+      <span class="section-badge badge-red">Critical Issues Found</span>
+    </div>
+
+    <div class="alert crit">
+      <div class="alert-icon">&#9888;</div>
+      <div class="alert-body">
+        <div class="alert-title">Immediate Action Required: Credentials in Source File</div>
+        <p>The file <strong>seirs-architecture.html</strong>, committed to the repository, contains plaintext production credentials: <strong>admin@seirs.co</strong>, <strong>oyadeyio762@gmail.com</strong>, and <strong>oyadeyio761@gmail.com</strong> — all with the same password. If this repository is or has ever been public, or accessible to any contributor, these accounts are compromised. Rotate all passwords immediately and remove credentials from the file.</p>
+      </div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Security Requirements Gap Matrix (§3.6)</div>
+      <table>
+        <thead>
+          <tr><th>Security Requirement</th><th>Status</th><th>Risk if Unaddressed</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>2FA — Google Authenticator TOTP</td><td><span class="bad">Not implemented</span></td><td>Single password compromise = full admin breach</td></tr>
+          <tr><td>Session timeout: 30 min inactivity</td><td><span class="bad">Not documented</span></td><td>Unattended sessions leave admin open</td></tr>
+          <tr><td>Max 2 concurrent sessions per admin</td><td><span class="bad">Not documented</span></td><td>Credential sharing / stolen sessions go undetected</td></tr>
+          <tr><td>5 failed attempts → 15 min lockout</td><td><span class="bad">Not documented</span></td><td>Brute-force attack on admin accounts possible</td></tr>
+          <tr><td>Per-user rate limiting</td><td><span class="bad">Confirmed missing</span></td><td>Individual API abuse not throttled</td></tr>
+          <tr><td>Audit log: immutable, undeletable</td><td><span class="bad">Not implemented</span></td><td>Zero accountability; compliance failure</td></tr>
+          <tr><td>Phone numbers masked for lower roles</td><td><span class="na">N/A — no RBAC</span></td><td>All admin accounts see full PII</td></tr>
+          <tr><td>KYC docs: Compliance + Super Admin only</td><td><span class="na">N/A — no RBAC</span></td><td>Any admin can view driver identity documents</td></tr>
+          <tr><td>CSP headers</td><td><span class="bad">Not documented</span></td><td>XSS vulnerability window on admin dashboard</td></tr>
+          <tr><td>No email enumeration on forgot password</td><td><span class="bad">Not confirmed</span></td><td>Attacker can identify registered email addresses</td></tr>
+          <tr><td>Sensitive fields encrypted at rest</td><td><span class="bad">Not confirmed</span></td><td>DB breach exposes PII and financial data in plaintext</td></tr>
+          <tr><td>Strong password policy (12+ chars)</td><td><span class="bad">Not documented</span></td><td>Weak admin passwords possible</td></tr>
+          <tr><td>CORS whitelist — admin domain only</td><td><span class="bad">Not confirmed</span></td><td>Cross-origin requests from unauthorized domains</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Payment Security Gaps</div>
+      <table>
+        <thead>
+          <tr><th>Gap</th><th>Impact</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>No Flutterwave webhook signature verification documented</td><td>Any actor can POST a fake payment-complete event to mark deliveries as paid without actual payment</td></tr>
+          <tr><td>No webhook retry queue with exponential back-off</td><td>Failed payment events are permanently lost; wallet states become inconsistent</td></tr>
+          <tr><td>Same-source withdrawal rule not documented at API level</td><td>Funds could be withdrawn to a different account than the deposit source</td></tr>
+          <tr><td>Escrow state model absent</td><td>No separation of Available vs Pending balance; premature withdrawals possible</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Chat / Privacy Violation</div>
+      <div class="alert crit">
+        <div class="alert-icon">&#9888;</div>
+        <div class="alert-body">
+          <div class="alert-title">Call Screen Exposes Driver Phone Number</div>
+          <p>The Customer App's "Call" screen displays the driver's avatar, name, <strong>phone number</strong>, and a call button. The spec (§1.12) explicitly states: <em>"Text only. No phone numbers visible. No call button inside chat."</em> This is a direct contradiction that creates a harassment vector and a privacy liability. All communication must route through in-app chat only.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 7: Full Flaw Breakdown ══ -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div class="section-title">Full Flaw Breakdown</div>
+      <span class="section-badge badge-navy">48 Total Flaws</span>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-num red">10</div>
+        <div class="stat-label">Critical</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num orange">14</div>
+        <div class="stat-label">High Priority</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num yellow">14</div>
+        <div class="stat-label">Medium Priority</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num blue">10</div>
+        <div class="stat-label">Low Priority</div>
+      </div>
+    </div>
+
+    <!-- CRITICAL -->
+    <div class="flaw-section">
+      <div class="flaw-header crit">
+        Critical — Fix Immediately Before Any User Has Access
+        <span class="flaw-count">10 flaws</span>
+      </div>
+      <table class="flaw-table crit-t">
+        <thead>
+          <tr><th>#</th><th>Flaw</th><th>Impact</th><th>Recommended Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="flaw-num c">C-01</td>
+            <td><strong>Credentials in seirs-architecture.html</strong></td>
+            <td>Full account compromise if repository ever accessed by unauthorized party</td>
+            <td>Rotate all 3 passwords immediately; remove credentials from file; add to .gitignore if test-only</td>
+          </tr>
+          <tr>
+            <td class="flaw-num c">C-02</td>
+            <td><strong>No RBAC system</strong></td>
+            <td>Any admin credential breach exposes financials, KYC, full user PII with no containment</td>
+            <td>Implement NestJS Guards with <span class="mono">permissions[]</span> array on AdminUser; enforce on every route via decorator</td>
+          </tr>
+          <tr>
+            <td class="flaw-num c">C-03</td>
+            <td><strong>Maps broken platform-wide</strong></td>
+            <td>Core product feature non-functional — delivery tracking, booking, driver positioning all fail</td>
+            <td>Rebuild with Google Maps SDK: React Native Maps (mobile) + Google Maps JS API (admin). Add traffic layer, Places Autocomplete, route polyline, clustering, heatmap</td>
+          </tr>
+          <tr>
+            <td class="flaw-num c">C-04</td>
+            <td><strong>Wallet withdrawal button broken</strong></td>
+            <td>Drivers and customers cannot cash out; trust-destroying for the platform</td>
+            <td>Debug Flutterwave payout endpoint; confirm bank account verification and same-source withdrawal rule work end-to-end</td>
+          </tr>
+          <tr>
+            <td class="flaw-num c">C-05</td>
+            <td><strong>No 2FA on admin dashboard</strong></td>
+            <td>Single password compromise = full platform access; financial and user data at risk</td>
+            <td>Implement TOTP using <span class="mono">otplib</span>; QR code setup flow on first login; enforce 2FA before any admin action</td>
+          </tr>
+          <tr>
+            <td class="flaw-num c">C-06</td>
+            <td><strong>Ticketing system entirely missing</strong></td>
+            <td>Customer complaints go nowhere; support team has no tooling; SLA compliance impossible</td>
+            <td>Build Ticket entity, assignment engine, status flow (Open → In Progress → Resolved → Closed), escalation chain, SLA timer</td>
+          </tr>
+          <tr>
+            <td class="flaw-num c">C-07</td>
+            <td><strong>Email OTP at registration unconfirmed</strong></td>
+            <td>Users may access app with unverified email; fraud and duplicate accounts undetectable</td>
+            <td>Confirm OTP implementation with email provider (Resend / SendGrid); 6-digit code, 15-min expiry, verify before first session</td>
+          </tr>
+          <tr>
+            <td class="flaw-num c">C-08</td>
+            <td><strong>Call screen exposes phone numbers</strong></td>
+            <td>Privacy violation; harassment vector; direct spec violation (§1.12)</td>
+            <td>Remove Call screen; remove phone field from driver info card; all contact via in-app text chat only</td>
+          </tr>
+          <tr>
+            <td class="flaw-num c">C-09</td>
+            <td><strong>No audit log</strong></td>
+            <td>Zero accountability for admin actions; cannot satisfy NDPR compliance audit</td>
+            <td>Add immutable <span class="mono">admin_audit_log</span> table; hook all admin mutations via NestJS interceptor; disallow deletes at DB level</td>
+          </tr>
+          <tr>
+            <td class="flaw-num c">C-10</td>
+            <td><strong>Business / Partner App does not exist</strong></td>
+            <td>Entire Batch 4 revenue stream and spec deliverable absent</td>
+            <td>Begin Batch 4 implementation per spec §4.1–§4.6 as a separate Expo app</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- HIGH -->
+    <div class="flaw-section">
+      <div class="flaw-header high">
+        High Priority — Fix Before Beta Testing
+        <span class="flaw-count">14 flaws</span>
+      </div>
+      <table class="flaw-table high-t">
+        <thead>
+          <tr><th>#</th><th>Flaw</th><th>Impact</th><th>Recommended Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="flaw-num h">H-01</td>
+            <td><strong>Pricing engine lacks dynamic adjustment</strong></td>
+            <td>Fares are wrong for surge/zones; platform cannot adapt to Nigeria's volatile fuel economy</td>
+            <td>Add vehicle multipliers, category surcharges, surge, zone pricing; connect DPR fuel + CBN rate API feeds</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-02</td>
+            <td><strong>No CMS</strong></td>
+            <td>Admin cannot update legal docs, push blog posts, or manage promotions without code deploy</td>
+            <td>Build CMS module: rich text editor, draft → Super Admin review → scheduled publish; manage legal docs, customer stories, promo banners</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-03</td>
+            <td><strong>Dark mode absent</strong></td>
+            <td>Confirmed launch feature per spec; poor UX for night-time drivers on OLED screens</td>
+            <td>Implement NativeWind dark mode tokens in @seirs/shared; toggle stored in SecureStore; persists across sessions</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-04</td>
+            <td><strong>i18n incomplete</strong></td>
+            <td>Cannot serve Yoruba, Igbo, Hausa users; rural and university campaigns non-functional</td>
+            <td>Audit all components for hardcoded strings; migrate to react-i18next; create 4-language JSON translation files; validate RTL-readiness</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-05</td>
+            <td><strong>Missing 3 KYC documents in driver app</strong></td>
+            <td>Unverified drivers can go online; customer safety risk</td>
+            <td>Add vehicle ownership proof, insurance certificate, and mandatory profile photo upload slots; gate online status behind <span class="mono">hasRequiredKyc()</span> guard</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-06</td>
+            <td><strong>No session management on admin</strong></td>
+            <td>No inactivity logout; no concurrent session limit; no brute-force lockout</td>
+            <td>Implement 30-min inactivity timeout via Redis TTL; track sessions per user; lock after 5 failed attempts; alert Super Admin on lockout</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-07</td>
+            <td><strong>Demand heatmap absent</strong></td>
+            <td>Drivers misposition themselves; platform efficiency drops; directly hurts driver earnings</td>
+            <td>Build heatmap overlay using active order locations with grid aggregation; expose via <span class="mono">GET /deliveries/heatmap</span>; render on driver home mini-map</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-08</td>
+            <td><strong>Onboarding has 3 slides instead of 6</strong></td>
+            <td>Misses trader, farmer, and business user segments; lower conversion rate</td>
+            <td>Add slides 4–6 (ride sharing, bulk delivery, partner stores); implement auto-advance (4–5s), crossfade transitions, progress dots, skip button</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-09</td>
+            <td><strong>No Flutterwave webhook signature verification</strong></td>
+            <td>Fake payment events can mark deliveries as paid without real payment</td>
+            <td>Verify <span class="mono">verif-hash</span> header on every inbound webhook; reject unsigned requests with 401</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-10</td>
+            <td><strong>Partner store system absent</strong></td>
+            <td>Redirect-to-store flow (§2.3) is non-functional; admin cannot approve redirects; no partner store on-map</td>
+            <td>Build PartnerStore entity, redirect request flow, admin approval endpoint, store marker on all map instances</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-11</td>
+            <td><strong>No referral deep-link implementation</strong></td>
+            <td>Referral links don't open app to pre-filled registration; university campaigns broken</td>
+            <td>Implement Expo deep-links (<span class="mono">expo-linking</span>) with <span class="mono">referralCode</span> param auto-populating registration form</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-12</td>
+            <td><strong>Driver chat initiation restriction absent</strong></td>
+            <td>Drivers can message customers after delivery — harassment vector</td>
+            <td>Add delivery-status check in chat WebSocket gateway; block new messages 1 hour after confirmed delivery; delete from inbox at 48 hours</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-13</td>
+            <td><strong>No webhook retry queue</strong></td>
+            <td>Failed payment notifications lost permanently; wallet states become inconsistent</td>
+            <td>Implement BullMQ queue with exponential back-off (1s → 5s → 30s → 5min → give up); alert Finance Officer on permanent failure</td>
+          </tr>
+          <tr>
+            <td class="flaw-num h">H-14</td>
+            <td><strong>Real-time ops map missing</strong></td>
+            <td>Ops team cannot see live driver/delivery positions; dispatch is blind</td>
+            <td>Add Google Maps JS API page to admin; feed driver positions from Redis via WebSocket; show all active deliveries + driver pins</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- MEDIUM -->
+    <div class="flaw-section">
+      <div class="flaw-header med">
+        Medium Priority — Fix Before Public Launch
+        <span class="flaw-count">14 flaws</span>
+      </div>
+      <table class="flaw-table med-t">
+        <thead>
+          <tr><th>#</th><th>Flaw</th><th>Impact</th><th>Recommended Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="flaw-num m">M-01</td><td><strong>Orange brand color still in use</strong></td><td>Wrong brand identity everywhere; direct spec violation</td><td>Update @seirs/shared theme tokens; replace <span class="mono">#FF6B00</span> with <span class="mono">#0F2B4C</span> / <span class="mono">#3A7BD5</span></td></tr>
+          <tr><td class="flaw-num m">M-02</td><td><strong>Emoji in functional UI</strong></td><td>Spec G2: zero emoji as UI elements; inconsistent icon system</td><td>Audit all components; replace each emoji with Lucide SVG equivalent at matching size</td></tr>
+          <tr><td class="flaw-num m">M-03</td><td><strong>Booking flow is 6 steps</strong></td><td>Excessive friction; above industry benchmark; higher drop-off</td><td>Compress to 3–4 steps: combine package details + address; combine fare review + payment</td></tr>
+          <tr><td class="flaw-num m">M-04</td><td><strong>No live map on home screen</strong></td><td>Misses the strongest first-impression feature in logistics apps</td><td>Add map card to home showing 3–5 nearest available driver pins; links to booking</td></tr>
+          <tr><td class="flaw-num m">M-05</td><td><strong>Analytics charts incomplete</strong></td><td>Ops team missing 7 of 9 required charts for business decisions</td><td>Add vehicle-type bar chart, category chart, driver-hours area chart, heatmap, acquisition line, sparkline driver table, referral funnel</td></tr>
+          <tr><td class="flaw-num m">M-06</td><td><strong>Escrow balance not displayed</strong></td><td>Customers cannot see what is locked vs. available; support tickets increase</td><td>Add escrow model to Payments module; display Available / Pending split in wallet UI</td></tr>
+          <tr><td class="flaw-num m">M-07</td><td><strong>Share Tracking Link — not web-accessible</strong></td><td>Recipients cannot track without app; friction for senders sharing with customers</td><td>Create public <span class="mono">/track/:code</span> route on Next.js website; render without auth; show driver pin + ETA</td></tr>
+          <tr><td class="flaw-num m">M-08</td><td><strong>Insurance partner listing absent</strong></td><td>Revenue stream lost; KYC incomplete for uninsured drivers</td><td>Build insurance partner CMS entries; show provider list during KYC if no certificate uploaded; track referral signups</td></tr>
+          <tr><td class="flaw-num m">M-09</td><td><strong>No duplicate account detection</strong></td><td>Multiple accounts per user circumvents bans and fraud detection</td><td>Add phone + email cross-role uniqueness check at registration; build admin Duplicates page</td></tr>
+          <tr><td class="flaw-num m">M-10</td><td><strong>Earnings goal tracker absent</strong></td><td>Driver retention and motivation feature missing; drivers leave for competitors</td><td>Add goal-setting in driver settings; progress bar widget on home screen; "₦X from your goal" text</td></tr>
+          <tr><td class="flaw-num m">M-11</td><td><strong>Package photo upload missing from booking</strong></td><td>No photo means no evidence in disputes; spec §1.6 requires min 1, max 5</td><td>Add image picker to booking step 1; upload to Cloudflare R2 before delivery created; attach to delivery record</td></tr>
+          <tr><td class="flaw-num m">M-12</td><td><strong>No user suggestion system</strong></td><td>Product feedback loop broken; CMS inbox for suggestions doesn't exist</td><td>Add suggestion submission screen in customer app settings; admin Suggestions inbox page</td></tr>
+          <tr><td class="flaw-num m">M-13</td><td><strong>Legal documents incomplete</strong></td><td>App Store compliance risk; NDPR compliance risk; launch blocker for iOS</td><td>Write and publish all 8 legal documents: ToS, Privacy Policy (NDPR), Community Guidelines, Driver Code of Conduct, Refund Policy, Insurance &amp; Liability, Age Policy, Cookie Policy</td></tr>
+          <tr><td class="flaw-num m">M-14</td><td><strong>Proof of delivery not surfaced to sender</strong></td><td>Customers cannot confirm what was delivered; disputes harder to resolve</td><td>Expose delivery <span class="mono">proofPhoto</span> URL on receipt/trip screen; display with timestamp and location</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- LOW -->
+    <div class="flaw-section">
+      <div class="flaw-header low">
+        Low Priority — Polish Before App Store Submission
+        <span class="flaw-count">10 flaws</span>
+      </div>
+      <table class="flaw-table low-t">
+        <thead>
+          <tr><th>#</th><th>Flaw</th><th>Impact</th><th>Recommended Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="flaw-num l">L-01</td><td><strong>No map marker clustering</strong></td><td>Map unusable in dense driver areas; performance degrades</td><td>Add <span class="mono">react-native-maps-super-cluster</span> or Google Maps clustering library</td></tr>
+          <tr><td class="flaw-num l">L-02</td><td><strong>No PostGIS for geo queries</strong></td><td>Nearest-driver matching is a full table scan; latency grows with driver count</td><td>Enable PostGIS; add geometry column to drivers table; use <span class="mono">ST_DWithin</span> for proximity queries</td></tr>
+          <tr><td class="flaw-num l">L-03</td><td><strong>No DB connection pooling</strong></td><td>Connection exhaustion under concurrent load</td><td>Add PgBouncer or tune TypeORM connection pool for Railway's containerized environment</td></tr>
+          <tr><td class="flaw-num l">L-04</td><td><strong>No error tracking</strong></td><td>Production bugs invisible; no crash reporting</td><td>Integrate Sentry for React Native (both apps) and NestJS backend</td></tr>
+          <tr><td class="flaw-num l">L-05</td><td><strong>No complaint ticket number shown to user</strong></td><td>Spec §1.11: "ticket number issued, response time shown" — users cannot follow up</td><td>Return ticket ID from complaint POST endpoint; display in app with expected response SLA</td></tr>
+          <tr><td class="flaw-num l">L-06</td><td><strong>Sliding action button absent</strong></td><td>Spec §1.5: Send/Ride toggle at bottom of home; UX feature for ride-share discovery</td><td>Add sliding segmented control to home screen; routes to Send or Ride booking flow</td></tr>
+          <tr><td class="flaw-num l">L-07</td><td><strong>No weather widget</strong></td><td>Spec §1.5: optional home widget via OpenWeatherMap free tier</td><td>Integrate OpenWeatherMap API; add as optional widget in customisable widget row</td></tr>
+          <tr><td class="flaw-num l">L-08</td><td><strong>"Become a Driver" link not platform-aware</strong></td><td>Spec §1.1: link should open Play Store on Android, App Store on iOS</td><td>Use <span class="mono">Platform.OS</span> conditional with correct store deep link for each platform</td></tr>
+          <tr><td class="flaw-num l">L-09</td><td><strong>CORS whitelist not confirmed</strong></td><td>Unauthorized cross-origin requests possible against the API</td><td>Confirm NestJS <span class="mono">CorsModule</span> whitelists only admin domain + mobile app bundle IDs</td></tr>
+          <tr><td class="flaw-num l">L-10</td><td><strong>Ride-sharing feature decision pending</strong></td><td>Spec has an open question: "live at launch or coming soon?" — unresolved</td><td>Decide; implement full UI or "Coming Soon" placeholder. Do not leave unresolved for App Store submission</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 8: Final Verdict ══ -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <div class="section-title">Final Verdict</div>
+    </div>
+
+    <div class="verdict-box">
+      <div class="verdict-tag">NOT PRODUCTION READY</div>
+      <h3>Platform is approximately 38% complete relative to V7 specification</h3>
+      <p>The foundation is technically sound. The stack choices are correct, the monorepo structure is right, and the core delivery flow works at small scale. But the platform has critical unresolved issues that make it unsuitable for public access at any user volume.</p>
+      <ul>
+        <li>Maps — the platform's primary visual and functional feature — are broken across all apps</li>
+        <li>Wallet withdrawal is broken — drivers cannot be paid</li>
+        <li>There is no RBAC — any admin breach exposes everything to everyone</li>
+        <li>There is no 2FA on the admin dashboard handling live financial data</li>
+        <li>There is no audit trail for any admin action</li>
+        <li>There is no ticketing system — support team has zero tooling</li>
+        <li>Batch 4 (Business / Partner App) does not exist</li>
+        <li>Plaintext credentials are committed to the repository</li>
+      </ul>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Completion by Component</div>
+      <div class="progress-wrap">
+        <div class="progress-item">
+          <div class="progress-label"><span>Customer App</span><span class="progress-pct">55%</span></div>
+          <div class="progress-bar"><div class="progress-fill fill-med" style="width:55%"></div></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-label"><span>Driver App</span><span class="progress-pct">50%</span></div>
+          <div class="progress-bar"><div class="progress-fill fill-high" style="width:50%"></div></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-label"><span>Admin Dashboard</span><span class="progress-pct">35%</span></div>
+          <div class="progress-bar"><div class="progress-fill fill-crit" style="width:35%"></div></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-label"><span>Business / Partner App</span><span class="progress-pct">0%</span></div>
+          <div class="progress-bar"><div class="progress-fill fill-crit" style="width:2%"></div></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-label"><span>Backend API</span><span class="progress-pct">45%</span></div>
+          <div class="progress-bar"><div class="progress-fill fill-high" style="width:45%"></div></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-label"><span>Security (§3.6 compliance)</span><span class="progress-pct">25%</span></div>
+          <div class="progress-bar"><div class="progress-fill fill-crit" style="width:25%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Estimated Implementation Timeline to Spec</div>
+      <table>
+        <thead>
+          <tr><th>Batch / Area</th><th>Scope</th><th>Estimated Effort</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Critical Security (C-01 to C-09)</td><td>Credential rotation, RBAC, 2FA, audit log, session management, webhook security</td><td>2–3 weeks</td></tr>
+          <tr><td>Maps Rebuild (G4)</td><td>Google Maps SDK across all 3 apps — traffic, clustering, heatmap, Places API</td><td>2–3 weeks</td></tr>
+          <tr><td>Admin Dashboard completion (Batch 3)</td><td>13 missing pages, pricing engine, ticketing, CMS, real-time ops map</td><td>5–7 weeks</td></tr>
+          <tr><td>Customer App completion (Batch 1)</td><td>Onboarding, dark mode, i18n, booking photo upload, wallet fixes, tracking URL</td><td>3–4 weeks</td></tr>
+          <tr><td>Driver App completion (Batch 2)</td><td>KYC remaining docs, demand heatmap, insurance partners, driver home redesign</td><td>3–4 weeks</td></tr>
+          <tr><td>Business / Partner App (Batch 4)</td><td>Full new standalone app from scratch</td><td>8–10 weeks</td></tr>
+          <tr><td>Legal documents, App Store prep (G5, G6)</td><td>8 legal documents, App Store compliance checks, Apple Sign-In</td><td>1–2 weeks</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Path to Industry Standard</div>
+      <p>To reach the level of DHL, Uber, or Wolt on the Nigerian market, the following capabilities are non-negotiable beyond spec compliance:</p>
+      <div class="two-col">
+        <div class="info-card">
+          <h4>Must-Have for Competitiveness</h4>
+          <ul>
+            <li>Live map on home screen — strongest first-impression signal in logistics</li>
+            <li>Pricing engine as dynamic as any ride-hailing platform: zone-aware, fuel-indexed, surge-capable</li>
+            <li>Full i18n in Yoruba, Igbo, Hausa — genuine competitive moat; no competitor has executed this well in Nigeria</li>
+            <li>Booking in 3 steps maximum — each additional step costs conversion</li>
+            <li>Public web tracking URL — shareable with recipients who don't have the app</li>
+            <li>Driver earnings motivation features — goal tracker, weekly summaries, demand heatmap keep drivers active</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <h4>Structural Investments for Scale</h4>
+          <ul>
+            <li>PostGIS on PostgreSQL — geo-queries are the core of driver matching</li>
+            <li>BullMQ job queue — all async operations (email, push, payments) must be decoupled</li>
+            <li>Redis WebSocket adapter — real-time tracking must survive multi-instance deployment</li>
+            <li>Sentry error tracking — invisible bugs in production are existential at scale</li>
+            <li>Read replica for analytics — protect transactional write performance</li>
+            <li>Backup + point-in-time recovery strategy before first external user</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert info">
+      <div class="alert-icon">&#8505;</div>
+      <div class="alert-body">
+        <div class="alert-title">Recommended Next Step</div>
+        <p>Address all 10 Critical flaws before onboarding any real user. Begin with <strong>C-01 (credential rotation)</strong> today, then <strong>C-08 (remove phone numbers from Call screen)</strong> and <strong>C-04 (wallet withdrawal)</strong> as these have zero new code dependencies. Then proceed with <strong>C-03 (maps)</strong> and <strong>C-02 (RBAC)</strong> as parallel workstreams.</p>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /content -->
+</body>
+</html>

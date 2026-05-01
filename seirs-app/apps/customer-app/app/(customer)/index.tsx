@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
+import { Drawer } from '@/components/Drawer';
 import { MOCK_TRIPS, MOCK_USER } from '@/constants/mockData';
 import {
   AlignLeft, MapPin, Package, Car, Clock, Search,
@@ -352,64 +353,8 @@ export default function CustomerHomeScreen() {
         </Pressable>
       </View>
 
-      {/* ── Hamburger Drawer (simple overlay) ────────────────────────────── */}
-      {drawerVisible && (
-        <Pressable
-          style={StyleSheet.absoluteFillObject}
-          onPress={() => setDrawerVisible(false)}
-        >
-          <View style={[styles.drawerOverlay]}>
-            <Pressable
-              style={[styles.drawer, { backgroundColor: theme.surface }]}
-              onPress={() => {}}
-            >
-              {/* Profile summary */}
-              <View style={[styles.drawerProfile, { borderBottomColor: theme.border }]}>
-                <Avatar name={user?.name ?? MOCK_USER.name} size={52} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.drawerName, { color: theme.text }]}>{user?.name ?? MOCK_USER.name}</Text>
-                  <Text style={[styles.drawerEmail, { color: theme.textSecond }]}>{user?.email ?? ''}</Text>
-                </View>
-              </View>
-
-              {/* Menu items */}
-              {[
-                { label: 'Settings',        route: '/(customer)/profile'                },
-                { label: 'Notifications',   route: '/notifications'                     },
-                { label: 'Language',        route: '/(customer)/language'               },
-                { label: 'Help / FAQ',      route: '/(customer)/help'                   },
-                { label: 'Privacy Policy',  route: '/(customer)/privacy'                },
-                { label: 'Business Account',route: '/(customer)/business'               },
-                { label: 'Contact Support', route: '/(customer)/help'                   },
-              ].map(item => (
-                <Pressable
-                  key={item.label}
-                  style={[styles.drawerItem, { borderBottomColor: theme.border }]}
-                  onPress={() => { setDrawerVisible(false); router.push(item.route as any); }}
-                >
-                  <Text style={[styles.drawerItemText, { color: theme.text }]}>{item.label}</Text>
-                  <ChevronRight size={16} color={theme.textThird} strokeWidth={2} />
-                </Pressable>
-              ))}
-
-              {/* Light/Dark toggle placeholder */}
-              <View style={[styles.drawerItem, { borderBottomColor: theme.border }]}>
-                <Text style={[styles.drawerItemText, { color: theme.text }]}>
-                  {isDark ? 'Light Mode' : 'Dark Mode'}
-                </Text>
-              </View>
-
-              {/* Sign Out */}
-              <Pressable
-                style={styles.drawerSignOut}
-                onPress={() => { setDrawerVisible(false); }}
-              >
-                <Text style={[styles.drawerSignOutText, { color: theme.error }]}>Sign Out</Text>
-              </Pressable>
-            </Pressable>
-          </View>
-        </Pressable>
-      )}
+      {/* ── Hamburger Drawer ────────────────────────────────────────────── */}
+      <Drawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />
     </SafeAreaView>
   );
 }

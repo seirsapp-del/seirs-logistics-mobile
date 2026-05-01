@@ -262,7 +262,7 @@ export class AdminService {
   private pricingConfig = {
     baseFare:      300,
     perKmRate:     80,
-    platformCut:   0.20,
+    platformCut:   0.30,
     surgeActive:   false,
     surgeMultiplier: 1.0,
   };
