@@ -1,80 +1,63 @@
 import { Platform } from 'react-native';
 
-// ─── Legacy export kept so old imports don't break ───────────────────────────
-export const CLOUD_DANCER = '#F8FAFC';
-
-// ─── Seirs Brand Palette ──────────────────────────────────────────────────────
+// ─── Seirs Brand Palette — V7 (Navy + Sky Blue) ──────────────────────────────
 export const Palette = {
-  // Light-mode primary — Seirs Blue (trust, fintech, clarity)
-  blue50:   '#EFF6FF',
-  blue100:  '#DBEAFE',
-  blue200:  '#BFDBFE',
-  blue300:  '#93C5FD',
-  blue400:  '#60A5FA',
-  blue500:  '#3A86FF', // ← Light mode primary
-  blue600:  '#1D6AE5',
-  blue700:  '#1A56CC',
-  blue800:  '#1E40AF',
-  blue900:  '#1E3A8A',
+  // Deep Navy — light mode primary brand
+  navy900: '#0A1E36',
+  navy800: '#0F2B4C', // ← Light mode primary brand
+  navy700: '#1A3A63',
+  navy600: '#1E4A80',
+  navy500: '#235A9C',
 
-  // Dark-mode primary — Seirs Orange (action, energy, speed)
-  orange50:  '#FFF7ED',
-  orange100: '#FFEDD5',
-  orange200: '#FED7AA',
-  orange300: '#FDBA74',
-  orange400: '#FB923C',
-  orange500: '#FF6B00', // ← Dark mode primary / action
-  orange600: '#EA580C',
-  orange700: '#C2410C',
-  orange800: '#9A3412',
-  orange900: '#7C2D12',
+  // Sky Blue — accent / CTA
+  sky900:  '#1A3D6B',
+  sky800:  '#1E4F8C',
+  sky700:  '#2563B0',
+  sky600:  '#2D72CC',
+  sky500:  '#3A7BD5', // ← Light mode accent / CTA
+  sky400:  '#58A6FF', // ← Dark mode primary accent
+  sky300:  '#79B8FF', // ← Dark mode CTA
+  sky200:  '#A8D4FF',
+  sky100:  '#D1E9FF',
+  sky50:   '#EBF5FF',
 
-  // Secondary — Teal
-  teal:    '#2EC4B6',
-  teal600: '#0D9488',
-
-  // Electric Blue — dark mode secondary / info
-  electricBlue: '#00C2FF',
-
-  // Accent
-  yellow: '#FFBE0B',
-
-  // True Black scale (premium dark surfaces)
+  // True Black scale
   black:   '#000000',
-  ink900:  '#0A0A0A',
-  ink800:  '#111111',
-  ink700:  '#141414',
-  ink600:  '#1A1A1A',
-  ink500:  '#1E1E1E',
-  ink400:  '#242424',
-  ink300:  '#222222',
-  ink200:  '#333333',
-  ink100:  '#444444',
+  ink900:  '#0D1117', // ← Dark mode background
+  ink800:  '#161B22', // ← Dark mode surface/cards
+  ink700:  '#1C2128',
+  ink600:  '#21262D',
+  ink500:  '#30363D', // ← Dark mode border
+  ink400:  '#3D444D',
+  ink300:  '#444C56',
+  ink200:  '#545D68',
 
-  // Light surfaces (clean, airy)
+  // Light surfaces
   white:   '#FFFFFF',
-  gray50:  '#F8FAFC',
-  gray100: '#F1F5F9',
-  gray200: '#E5E7EB',
+  cloud:   '#F5F5F0', // ← Light mode background (Pantone Cloud Dancer 2026)
+  gray50:  '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB', // ← Light mode border
   gray300: '#D1D5DB',
   gray400: '#9CA3AF',
-  gray500: '#6B7280',
+  gray500: '#6B7280', // ← Text secondary
   gray600: '#4B5563',
   gray700: '#374151',
   gray800: '#1F2937',
-  gray900: '#0B0F19',
+  gray900: '#111827', // ← Light mode text primary
 
   // Semantic
-  success:  '#22C55E',
-  warning:  '#FFBE0B',
-  error:    '#EF4444',
-  info:     '#00C2FF',
+  success:      '#16A34A', // ← Light mode success
+  successDark:  '#3FB950', // ← Dark mode success
+  warning:      '#D97706', // ← Light mode warning
+  warningDark:  '#F0883E', // ← Dark mode warning
+  error:        '#EF4444',
 
   // Delivery status (mode-independent)
-  assigned:  '#3A86FF',
-  pickedUp:  '#FF6B00',
+  assigned:  '#3A7BD5',
+  pickedUp:  '#D97706',
   inTransit: '#A855F7',
-  delivered: '#22C55E',
+  delivered: '#16A34A',
   failed:    '#EF4444',
   cancelled: '#6B7280',
 };
@@ -83,48 +66,48 @@ export const Palette = {
 export const Colors = {
   light: {
     // Identity
-    primary:       Palette.blue500,    // #3A86FF
-    primaryDark:   Palette.blue600,    // #1D6AE5
-    primaryLight:  Palette.blue50,     // #EFF6FF
-    secondary:     Palette.teal,       // #2EC4B6
+    primary:       Palette.navy800,   // #0F2B4C — Deep Navy
+    primaryDark:   Palette.navy900,   // #0A1E36
+    primaryLight:  Palette.sky50,     // #EBF5FF
+    accent:        Palette.sky500,    // #3A7BD5 — Sky Blue CTA
+    accentDark:    Palette.sky700,    // #2563B0
 
-    // Surfaces — clean white / soft gray
-    background:    Palette.gray50,     // #F8FAFC
-    surface:       Palette.white,      // #FFFFFF
-    surfaceSecond: Palette.gray100,    // #F1F5F9
-    surfaceThird:  Palette.gray200,    // #E5E7EB
+    // Surfaces
+    background:    Palette.cloud,     // #F5F5F0 — Cloud Dancer 2026
+    surface:       Palette.white,     // #FFFFFF
+    surfaceSecond: Palette.gray100,   // #F3F4F6
+    surfaceThird:  Palette.gray200,   // #E5E7EB
 
-    // Typography — deep on white
-    text:          Palette.gray900,    // #0B0F19
-    textSecond:    Palette.gray500,    // #6B7280
-    textThird:     Palette.gray400,    // #9CA3AF
+    // Typography
+    text:          Palette.gray900,   // #111827
+    textSecond:    Palette.gray500,   // #6B7280
+    textThird:     Palette.gray400,   // #9CA3AF
     textInverted:  Palette.white,
     textOnPrimary: Palette.white,
 
     // Structure
-    border:        Palette.gray200,    // #E5E7EB
+    border:        Palette.gray200,   // #E5E7EB
     divider:       Palette.gray100,
 
     // Navigation
-    tint:            Palette.blue500,
+    tint:            Palette.sky500,
     tabIconDefault:  Palette.gray400,
-    tabIconSelected: Palette.blue500,
+    tabIconSelected: Palette.sky500,
     navBackground:   Palette.white,
 
-    // Wallet card (blue gradient — fintech feel)
-    walletCard:    Palette.blue500,
-    walletCardEnd: Palette.blue600,
+    // Wallet card
+    walletCard:    Palette.navy800,
+    walletCardEnd: Palette.sky700,
 
     // Overlays
     shadow:  Palette.black,
-    overlay: 'rgba(11, 15, 25, 0.5)',
+    overlay: 'rgba(15, 43, 76, 0.5)',
 
     // Semantic
     success:  Palette.success,
     warning:  Palette.warning,
     error:    Palette.error,
-    info:     Palette.info,
-    teal:     Palette.teal,
+    info:     Palette.sky500,
 
     // Delivery status
     statusAssigned:  Palette.assigned,
@@ -135,62 +118,68 @@ export const Colors = {
     statusCancelled: Palette.cancelled,
 
     icon: Palette.gray500,
+
+    // Kept for backward compat — maps to accent
+    primary2: Palette.sky500,
   },
 
   dark: {
     // Identity
-    primary:       Palette.orange500,  // #FF6B00 — action, orange
-    primaryDark:   Palette.orange700,  // #C2410C
-    primaryLight:  Palette.orange900,  // #7C2D12
-    secondary:     Palette.electricBlue, // #00C2FF — info, blue
+    primary:       Palette.sky400,    // #58A6FF — Primary accent (dark)
+    primaryDark:   Palette.sky500,    // #3A7BD5
+    primaryLight:  Palette.ink700,    // #1C2128
+    accent:        Palette.sky300,    // #79B8FF — CTA (dark)
+    accentDark:    Palette.sky400,    // #58A6FF
 
-    // Surfaces — true black, premium
-    background:    Palette.black,      // #000000
-    surface:       Palette.ink900,     // #0A0A0A
-    surfaceSecond: Palette.ink800,     // #111111
-    surfaceThird:  Palette.ink600,     // #1A1A1A
+    // Surfaces
+    background:    Palette.ink900,    // #0D1117
+    surface:       Palette.ink800,    // #161B22
+    surfaceSecond: Palette.ink700,    // #1C2128
+    surfaceThird:  Palette.ink600,    // #21262D
 
-    // Typography — white on black
-    text:          Palette.white,      // #FFFFFF
-    textSecond:    Palette.gray400,    // #A1A1AA
-    textThird:     Palette.gray500,    // #6B7280
-    textInverted:  Palette.black,
+    // Typography
+    text:          '#E6EDF3',
+    textSecond:    '#8B949E',
+    textThird:     Palette.ink400,    // #3D444D
+    textInverted:  Palette.ink900,
     textOnPrimary: Palette.white,
 
     // Structure
-    border:        Palette.ink300,     // #222222
+    border:        Palette.ink500,    // #30363D
     divider:       Palette.ink600,
 
     // Navigation
-    tint:            Palette.orange500,
-    tabIconDefault:  Palette.gray500,
-    tabIconSelected: Palette.orange500,
-    navBackground:   Palette.black,
+    tint:            Palette.sky400,
+    tabIconDefault:  '#8B949E',
+    tabIconSelected: Palette.sky400,
+    navBackground:   Palette.ink900,
 
-    // Wallet card (orange-to-black — Tesla meets Uber Night)
-    walletCard:    Palette.orange500,
-    walletCardEnd: Palette.black,
+    // Wallet card
+    walletCard:    Palette.sky900,
+    walletCardEnd: Palette.ink800,
 
     // Overlays
     shadow:  Palette.black,
     overlay: 'rgba(0, 0, 0, 0.8)',
 
     // Semantic
-    success:  Palette.success,
-    warning:  Palette.warning,
+    success:  Palette.successDark,   // #3FB950
+    warning:  Palette.warningDark,   // #F0883E
     error:    Palette.error,
-    info:     Palette.info,
-    teal:     Palette.teal,
+    info:     Palette.sky400,
 
     // Delivery status
     statusAssigned:  Palette.assigned,
-    statusPickedUp:  Palette.pickedUp,
+    statusPickedUp:  Palette.warningDark,
     statusInTransit: Palette.inTransit,
-    statusDelivered: Palette.delivered,
+    statusDelivered: Palette.successDark,
     statusFailed:    Palette.failed,
     statusCancelled: Palette.cancelled,
 
-    icon: Palette.gray400,
+    icon: '#8B949E',
+
+    // Kept for backward compat — maps to accent
+    primary2: Palette.sky300,
   },
 };
 
@@ -285,18 +274,17 @@ export const Shadows = {
     shadowRadius: 24,
     elevation: 8,
   },
-  // Colored glows
-  blue: {
-    shadowColor: '#3A86FF',
+  navy: {
+    shadowColor: '#0F2B4C',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.30,
+    shadowOpacity: 0.28,
     shadowRadius: 14,
     elevation: 6,
   },
-  orange: {
-    shadowColor: '#FF6B00',
+  sky: {
+    shadowColor: '#3A7BD5',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.30,
     shadowRadius: 14,
     elevation: 6,
   },
@@ -304,8 +292,11 @@ export const Shadows = {
 
 // ─── Quick Action Colors ──────────────────────────────────────────────────────
 export const ActionColors = {
-  request:  { bg: '#EFF6FF', icon: '#3A86FF',  dark: { bg: '#1A0C00', icon: '#FF6B00'  } },
-  send:     { bg: '#F0FDFA', icon: '#2EC4B6',  dark: { bg: '#001820', icon: '#00C2FF'  } },
-  track:    { bg: '#FFFBEB', icon: '#FFBE0B',  dark: { bg: '#1C1500', icon: '#FFBE0B'  } },
-  history:  { bg: '#F5F3FF', icon: '#8B5CF6',  dark: { bg: '#110020', icon: '#A855F7'  } },
+  request:  { bg: '#EBF5FF', icon: '#3A7BD5', dark: { bg: '#1C2128', icon: '#58A6FF' } },
+  send:     { bg: '#EBF5FF', icon: '#0F2B4C', dark: { bg: '#1C2128', icon: '#79B8FF' } },
+  track:    { bg: '#FEF9EE', icon: '#D97706', dark: { bg: '#1C2128', icon: '#F0883E' } },
+  history:  { bg: '#F5F3FF', icon: '#7C3AED', dark: { bg: '#1C2128', icon: '#A78BFA' } },
 };
+
+// ─── Legacy alias ─────────────────────────────────────────────────────────────
+export const CLOUD_DANCER = Palette.cloud;

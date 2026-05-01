@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { Colors } from '@/constants/theme';
 import { API_BASE } from '@/constants/config';
 import { configureApi } from '@/services/api';
 import * as Updates from 'expo-updates';
+import { initI18n } from '@/i18n';
 
 // Wire the shared API service to this app's backend URL
 configureApi(API_BASE);
@@ -77,6 +78,14 @@ function OTAUpdateChecker() {
 }
 
 export default function RootLayout() {
+  const [i18nReady, setI18nReady] = useState(false);
+
+  useEffect(() => {
+    initI18n().then(() => setI18nReady(true));
+  }, []);
+
+  if (!i18nReady) return null;
+
   return (
     <SafeAreaProvider>
       <AuthProvider>

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PackageSize, UrgencyLevel } from './delivery.entity';
-import { VehicleType } from '../drivers/driver.entity';
+import { FxService } from '../fx/fx.service';
 
 interface PriceInput {
   distanceKm:  number;
@@ -11,6 +11,7 @@ interface PriceInput {
 
 export interface PriceResult {
   price:          number;
+  usdPrice:       number;
   driverEarnings: number;
   breakdown: {
     base:        number;
@@ -23,9 +24,9 @@ export interface PriceResult {
 }
 
 // Base rates in Nigerian Naira — adjust per country in Phase 5
-const BASE_FARE     = 300;
-const PER_KM_RATE   = 80;
-const PLATFORM_CUT  = 0.20; // 20% platform commission
+const BASE_FARE    = 300;
+const PER_KM_RATE  = 80;
+const PLATFORM_CUT = 0.20; // 20% platform commission
 
 const SIZE_MULTIPLIER: Record<PackageSize, number> = {
   [PackageSize.SMALL]:  1.0,
@@ -41,6 +42,8 @@ const URGENCY_MULTIPLIER: Record<UrgencyLevel, number> = {
 
 @Injectable()
 export class PricingService {
+  constructor(private readonly fx: FxService) {}
+
   calculate(input: PriceInput): PriceResult {
     const base       = BASE_FARE;
     const distance   = Math.round(input.distanceKm * PER_KM_RATE);
@@ -48,13 +51,15 @@ export class PricingService {
     const urgencyFee = Math.round((base + distance + sizeFee) * (URGENCY_MULTIPLIER[input.urgency] - 1));
     const fragileFee = input.isFragile ? 150 : 0;
 
-    const subtotal   = base + distance + sizeFee + urgencyFee + fragileFee;
+    const subtotal    = base + distance + sizeFee + urgencyFee + fragileFee;
     const platformFee = Math.round(subtotal * PLATFORM_CUT);
     const price       = subtotal;
     const driverEarnings = subtotal - platformFee;
+    const usdPrice    = this.fx.ngnToUsd(price);
 
     return {
       price,
+      usdPrice,
       driverEarnings,
       breakdown: { base, distance, sizeFee, urgencyFee, fragileFee, platformFee },
     };

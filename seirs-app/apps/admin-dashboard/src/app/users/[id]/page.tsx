@@ -53,7 +53,7 @@ export default function UserDetailPage() {
       <main className="p-8 max-w-4xl mx-auto">
         {/* Profile card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 flex items-start gap-6">
-          <div className="w-16 h-16 rounded-full bg-[#F4600C] flex items-center justify-center text-white text-2xl font-black shrink-0">
+          <div className="w-16 h-16 rounded-full bg-[#3A7BD5] flex items-center justify-center text-white text-2xl font-black shrink-0">
             {user.name?.[0]?.toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "316746512222",
+    "project_id": "seirs-app-3a930",
+    "storage_bucket": "seirs-app-3a930.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:316746512222:android:053509ccbcff6dd03f81cf",
+        "android_client_info": {
+          "package_name": "co.seirs.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJe2rlxNxOBQL0xtfZjosQbl5SxLMMdcY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:316746512222:android:8435e9133ca73a833f81cf",
+        "android_client_info": {
+          "package_name": "co.seirs.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJe2rlxNxOBQL0xtfZjosQbl5SxLMMdcY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

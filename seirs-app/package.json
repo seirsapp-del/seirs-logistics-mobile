@@ -3,13 +3,16 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "shared"
+    "shared",
+    "seirs-backend"
   ],
   "scripts": {
-    "customer": "npm run start --workspace=apps/customer-app",
-    "driver":   "npm run start --workspace=apps/driver-app",
-    "admin":    "npm run dev   --workspace=apps/admin-dashboard",
-    "backend":  "npm run start:dev --workspace=seirs-backend"
+    "customer": "npm run start     --workspace=apps/customer-app",
+    "driver":   "npm run start     --workspace=apps/driver-app",
+    "admin":    "npm run dev       --workspace=apps/admin-dashboard",
+    "business": "npm run start     --workspace=apps/business-app",
+    "backend":  "npm run start:dev --workspace=seirs-backend",
+    "website":  "npm run dev       --workspace=apps/seirs-website"
   },
   "dependencies": {
     "react":     "19.1.0",

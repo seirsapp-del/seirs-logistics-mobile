@@ -20,6 +20,8 @@ import { BulkModule } from './bulk/bulk.module';
 import { RoutingModule } from './routing/routing.module';
 import { MailModule } from './mail/mail.module';
 import { UploadModule } from './upload/upload.module';
+import { BusinessModule } from './business/business.module';
+import { FxModule } from './fx/fx.module';
 
 @Module({
   imports: [
@@ -75,6 +77,8 @@ import { UploadModule } from './upload/upload.module';
     RoutingModule,
     MailModule,
     UploadModule,
+    BusinessModule,
+    FxModule,
   ],
 })
 export class AppModule {}

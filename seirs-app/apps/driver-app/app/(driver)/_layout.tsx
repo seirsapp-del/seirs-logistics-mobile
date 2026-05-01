@@ -1,20 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Briefcase, Receipt, Wallet, MessageCircle, User } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize } from '@/constants/theme';
-
-type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
-
-function TabIcon({ name, color, focused }: { name: IoniconsName; color: string; focused: boolean }) {
-  return (
-    <Ionicons
-      name={focused ? name : (`${name}-outline` as IoniconsName)}
-      size={24}
-      color={color}
-    />
-  );
-}
 
 export default function DriverLayout() {
   const cs     = useColorScheme();
@@ -36,52 +24,47 @@ export default function DriverLayout() {
           paddingBottom:   10 + insets.bottom,
           paddingTop:      8,
         },
-        tabBarLabelStyle: {
-          fontSize:   FontSize.xs,
-          fontWeight: '600',
-          marginTop:  2,
-        },
+        tabBarLabelStyle: { fontSize: FontSize.xs, fontWeight: '600', marginTop: 2 },
       }}
     >
-      {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
       <Tabs.Screen
         name="index"
-        options={{ title: 'Jobs', tabBarIcon: (p) => <TabIcon name="briefcase" color={p.color} focused={p.focused} /> }}
+        options={{ title: 'Jobs', tabBarIcon: ({ color }) => <Briefcase size={22} color={color} strokeWidth={1.75} /> }}
       />
       <Tabs.Screen
         name="history"
-        options={{ title: 'Trips', tabBarIcon: (p) => <TabIcon name="receipt" color={p.color} focused={p.focused} /> }}
+        options={{ title: 'Trips', tabBarIcon: ({ color }) => <Receipt size={22} color={color} strokeWidth={1.75} /> }}
       />
       <Tabs.Screen
         name="earnings"
-        options={{ title: 'Earnings', tabBarIcon: (p) => <TabIcon name="cash" color={p.color} focused={p.focused} /> }}
+        options={{ title: 'Earnings', tabBarIcon: ({ color }) => <Wallet size={22} color={color} strokeWidth={1.75} /> }}
       />
       <Tabs.Screen
         name="messages/index"
-        options={{ title: 'Messages', tabBarIcon: (p) => <TabIcon name="chatbubbles" color={p.color} focused={p.focused} /> }}
+        options={{ title: 'Messages', tabBarIcon: ({ color }) => <MessageCircle size={22} color={color} strokeWidth={1.75} /> }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profile', tabBarIcon: (p) => <TabIcon name="person" color={p.color} focused={p.focused} /> }}
+        options={{ title: 'Profile', tabBarIcon: ({ color }) => <User size={22} color={color} strokeWidth={1.75} /> }}
       />
 
-      {/* ── Hidden routes ────────────────────────────────────────────────── */}
-      <Tabs.Screen name="active"                   options={{ href: null }} />
-      <Tabs.Screen name="kyc"                      options={{ href: null }} />
-      <Tabs.Screen name="job/[id]"                 options={{ href: null }} />
-      <Tabs.Screen name="delivery/[id]"            options={{ href: null }} />
-      <Tabs.Screen name="messages/[chatId]"        options={{ href: null }} />
-      <Tabs.Screen name="call"                     options={{ href: null }} />
-      <Tabs.Screen name="notifications"            options={{ href: null }} />
-      <Tabs.Screen name="ratings"                  options={{ href: null }} />
-      <Tabs.Screen name="withdrawal"               options={{ href: null }} />
-      <Tabs.Screen name="add-bank"                 options={{ href: null }} />
-      <Tabs.Screen name="transaction/[id]"         options={{ href: null }} />
-      <Tabs.Screen name="vehicle"                  options={{ href: null }} />
-      <Tabs.Screen name="schedule"                 options={{ href: null }} />
-      <Tabs.Screen name="help"                     options={{ href: null }} />
-      <Tabs.Screen name="notification-settings"    options={{ href: null }} />
-      <Tabs.Screen name="privacy"                  options={{ href: null }} />
+      {/* Hidden routes */}
+      <Tabs.Screen name="active"                options={{ href: null }} />
+      <Tabs.Screen name="kyc"                   options={{ href: null }} />
+      <Tabs.Screen name="job/[id]"              options={{ href: null }} />
+      <Tabs.Screen name="delivery/[id]"         options={{ href: null }} />
+      <Tabs.Screen name="messages/[chatId]"     options={{ href: null }} />
+      <Tabs.Screen name="call"                  options={{ href: null }} />
+      <Tabs.Screen name="notifications"         options={{ href: null }} />
+      <Tabs.Screen name="ratings"               options={{ href: null }} />
+      <Tabs.Screen name="withdrawal"            options={{ href: null }} />
+      <Tabs.Screen name="add-bank"              options={{ href: null }} />
+      <Tabs.Screen name="transaction/[id]"      options={{ href: null }} />
+      <Tabs.Screen name="vehicle"               options={{ href: null }} />
+      <Tabs.Screen name="schedule"              options={{ href: null }} />
+      <Tabs.Screen name="help"                  options={{ href: null }} />
+      <Tabs.Screen name="notification-settings" options={{ href: null }} />
+      <Tabs.Screen name="privacy"               options={{ href: null }} />
     </Tabs>
   );
 }

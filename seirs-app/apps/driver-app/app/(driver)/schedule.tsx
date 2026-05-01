@@ -2,7 +2,10 @@ import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ArrowLeft, Calendar, Clock, ChevronRight, Bell, BellOff,
+  MapPin, Package, ChevronDown,
+} from 'lucide-react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -10,17 +13,23 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 
 type DayId = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
-interface DaySchedule {
-  enabled: boolean;
-  start:   string;
-  end:     string;
+interface DaySchedule { enabled: boolean; start: string; end: string; }
+
+interface PreBookedJob {
+  id: string;
+  date: string;
+  time: string;
+  customer: string;
+  pickup: string;
+  dropoff: string;
+  fare: number;
+  vehicle: string;
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => {
-  const h    = i.toString().padStart(2, '0');
-  const ampm = i < 12 ? 'AM' : 'PM';
   const h12  = i === 0 ? 12 : i > 12 ? i - 12 : i;
-  return { value: `${h}:00`, label: `${h12}:00 ${ampm}` };
+  const ampm = i < 12 ? 'AM' : 'PM';
+  return { value: `${i.toString().padStart(2, '0')}:00`, label: `${h12}:00 ${ampm}` };
 });
 
 const DEFAULT_SCHEDULE: Record<DayId, DaySchedule> = {
@@ -39,16 +48,51 @@ const DAY_LABELS: Record<DayId, string> = {
   Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday',
 };
 
+const MOCK_PREBOOKED: PreBookedJob[] = [
+  {
+    id: 'pb1',
+    date: 'Today',
+    time: '14:00',
+    customer: 'Amaka Obi',
+    pickup: '15 Adeola Odeku, Victoria Island',
+    dropoff: 'Ikeja City Mall, Airport Road',
+    fare: 4800,
+    vehicle: 'Car',
+  },
+  {
+    id: 'pb2',
+    date: 'Tomorrow',
+    time: '09:30',
+    customer: 'Biodun Adeyemi',
+    pickup: 'Lekki Phase 1 Roundabout',
+    dropoff: 'Trade Fair Complex, Lagos',
+    fare: 7200,
+    vehicle: 'Van',
+  },
+  {
+    id: 'pb3',
+    date: 'Thu, 2 May',
+    time: '11:00',
+    customer: 'Chidinma Eze',
+    pickup: 'Surulere Market',
+    dropoff: 'Agege Stadium, Lagos',
+    fare: 2500,
+    vehicle: 'Motorcycle',
+  },
+];
+
 export default function ScheduleScreen() {
   const router  = useRouter();
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [schedule, setSchedule] = useState<Record<DayId, DaySchedule>>(DEFAULT_SCHEDULE);
-  const [saving,   setSaving]   = useState(false);
-  const [saved,    setSaved]    = useState(false);
-  const [pickerOpen, setPickerOpen] = useState<{ day: DayId; field: 'start' | 'end' } | null>(null);
+  const [schedule,    setSchedule]    = useState<Record<DayId, DaySchedule>>(DEFAULT_SCHEDULE);
+  const [reminders,   setReminders]   = useState(true);
+  const [saving,      setSaving]      = useState(false);
+  const [saved,       setSaved]       = useState(false);
+  const [pickerOpen,  setPickerOpen]  = useState<{ day: DayId; field: 'start' | 'end' } | null>(null);
+  const [showSched,   setShowSched]   = useState(true);
 
   const toggle = (day: DayId) =>
     setSchedule(prev => ({ ...prev, [day]: { ...prev[day], enabled: !prev[day].enabled } }));
@@ -67,10 +111,10 @@ export default function ScheduleScreen() {
   const activeDays = DAYS.filter(d => schedule[d].enabled).length;
 
   const fmtTime = (t: string) => {
-    const [h, m] = t.split(':').map(Number);
-    const ampm   = h < 12 ? 'AM' : 'PM';
-    const h12    = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+    const [h] = t.split(':').map(Number);
+    const ampm = h < 12 ? 'AM' : 'PM';
+    const h12  = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:00 ${ampm}`;
   };
 
   return (
@@ -79,111 +123,163 @@ export default function ScheduleScreen() {
 
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={20} color={theme.text} />
+          <ArrowLeft size={20} color={theme.text} strokeWidth={1.75} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>My Schedule</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Schedule</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Summary */}
-        <View style={[styles.summaryCard, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
-          <Ionicons name="calendar-outline" size={20} color={theme.primary} />
-          <Text style={[styles.summaryText, { color: theme.text }]}>
-            Active <Text style={{ color: theme.primary, fontWeight: FontWeight.bold }}>{activeDays} days</Text> this week
-          </Text>
+        {/* Pre-booked jobs */}
+        <View style={styles.sectionRow}>
+          <View style={styles.sectionLeft}>
+            <Calendar size={18} color={theme.primary} strokeWidth={1.75} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Upcoming Jobs</Text>
+          </View>
+          <Text style={[styles.sectionCount, { color: theme.textThird }]}>{MOCK_PREBOOKED.length} scheduled</Text>
         </View>
 
-        {/* Day rows */}
-        {DAYS.map(day => {
-          const s = schedule[day];
-          return (
-            <View key={day} style={[styles.dayCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
-              <View style={styles.dayHeader}>
-                <View style={styles.dayLeft}>
-                  <Text style={[styles.dayName, { color: theme.text }]}>{DAY_LABELS[day]}</Text>
-                  <Text style={[styles.dayShort, { color: theme.textThird }]}>{day}</Text>
+        {MOCK_PREBOOKED.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Package size={32} color={theme.textThird} strokeWidth={1.5} />
+            <Text style={[styles.emptyText, { color: theme.textSecond }]}>No scheduled jobs yet</Text>
+          </View>
+        ) : (
+          MOCK_PREBOOKED.map(job => (
+            <View key={job.id} style={[styles.jobCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+              <View style={styles.jobTop}>
+                <View style={[styles.timeBadge, { backgroundColor: theme.primary + '15' }]}>
+                  <Clock size={12} color={theme.primary} strokeWidth={1.75} />
+                  <Text style={[styles.timeText, { color: theme.primary }]}>{job.date} · {fmtTime(job.time)}</Text>
                 </View>
-                <Switch
-                  value={s.enabled}
-                  onValueChange={() => toggle(day)}
-                  trackColor={{ false: theme.border, true: theme.primary + '80' }}
-                  thumbColor={s.enabled ? theme.primary : theme.textThird}
-                />
+                <Text style={[styles.jobFare, { color: theme.primary }]}>₦{job.fare.toLocaleString()}</Text>
               </View>
+              <Text style={[styles.jobCustomer, { color: theme.text }]}>{job.customer}</Text>
+              <View style={styles.addrRow}>
+                <MapPin size={12} color="#16A34A" strokeWidth={1.75} />
+                <Text style={[styles.addrText, { color: theme.textSecond }]} numberOfLines={1}>{job.pickup}</Text>
+              </View>
+              <View style={styles.addrRow}>
+                <MapPin size={12} color="#EF4444" strokeWidth={1.75} />
+                <Text style={[styles.addrText, { color: theme.textSecond }]} numberOfLines={1}>{job.dropoff}</Text>
+              </View>
+              <View style={styles.jobBottom}>
+                <Text style={[styles.vehicleChip, { color: theme.textThird, borderColor: theme.border }]}>{job.vehicle}</Text>
+                <Pressable style={[styles.remindBtn, { backgroundColor: theme.primary + '15' }]}>
+                  <Bell size={12} color={theme.primary} strokeWidth={1.75} />
+                  <Text style={[styles.remindText, { color: theme.primary }]}>Remind me</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))
+        )}
 
-              {s.enabled && (
-                <View style={[styles.timeRow, { borderTopColor: theme.border }]}>
-                  <View style={styles.timePair}>
-                    <Text style={[styles.timeLabel, { color: theme.textThird }]}>Start</Text>
+        {/* 30-min reminders toggle */}
+        <View style={[styles.reminderCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+          <View style={styles.reminderLeft}>
+            {reminders
+              ? <Bell    size={20} color={theme.primary}    strokeWidth={1.75} />
+              : <BellOff size={20} color={theme.textThird} strokeWidth={1.75} />
+            }
+            <View>
+              <Text style={[styles.reminderTitle, { color: theme.text }]}>30-minute reminders</Text>
+              <Text style={[styles.reminderSub, { color: theme.textThird }]}>Push alert before each scheduled job</Text>
+            </View>
+          </View>
+          <Switch
+            value={reminders}
+            onValueChange={setReminders}
+            trackColor={{ false: theme.border, true: theme.primary }}
+            thumbColor="#fff"
+          />
+        </View>
+
+        {/* Availability schedule */}
+        <Pressable style={styles.sectionRow} onPress={() => setShowSched(v => !v)}>
+          <View style={styles.sectionLeft}>
+            <Clock size={18} color={theme.primary} strokeWidth={1.75} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Availability Hours</Text>
+          </View>
+          <View style={styles.sectionRight}>
+            <Text style={[styles.sectionCount, { color: theme.textThird }]}>{activeDays} days active</Text>
+            <ChevronDown size={16} color={theme.textThird} strokeWidth={1.75} style={{ transform: [{ rotate: showSched ? '180deg' : '0deg' }] }} />
+          </View>
+        </Pressable>
+
+        {showSched && (
+          <View style={[styles.schedCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+            {DAYS.map((day, i) => (
+              <View
+                key={day}
+                style={[styles.dayRow, i < DAYS.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}
+              >
+                <Switch
+                  value={schedule[day].enabled}
+                  onValueChange={() => toggle(day)}
+                  trackColor={{ false: theme.border, true: theme.primary }}
+                  thumbColor="#fff"
+                  style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
+                />
+                <Text style={[styles.dayLabel, { color: schedule[day].enabled ? theme.text : theme.textThird }]}>
+                  {DAY_LABELS[day]}
+                </Text>
+                {schedule[day].enabled ? (
+                  <View style={styles.timePickers}>
                     <Pressable
-                      style={[styles.timeChip, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}
-                      onPress={() => setPickerOpen(prev => prev?.day === day && prev.field === 'start' ? null : { day, field: 'start' })}
+                      style={[styles.timePill, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}
+                      onPress={() => setPickerOpen({ day, field: 'start' })}
                     >
-                      <Ionicons name="time-outline" size={14} color={theme.textSecond} />
-                      <Text style={[styles.timeChipText, { color: theme.text }]}>{fmtTime(s.start)}</Text>
+                      <Text style={[styles.timePillText, { color: theme.text }]}>{fmtTime(schedule[day].start)}</Text>
+                    </Pressable>
+                    <Text style={[styles.timeSep, { color: theme.textThird }]}>–</Text>
+                    <Pressable
+                      style={[styles.timePill, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}
+                      onPress={() => setPickerOpen({ day, field: 'end' })}
+                    >
+                      <Text style={[styles.timePillText, { color: theme.text }]}>{fmtTime(schedule[day].end)}</Text>
                     </Pressable>
                   </View>
-                  <Ionicons name="arrow-forward" size={14} color={theme.textThird} />
-                  <View style={styles.timePair}>
-                    <Text style={[styles.timeLabel, { color: theme.textThird }]}>End</Text>
-                    <Pressable
-                      style={[styles.timeChip, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}
-                      onPress={() => setPickerOpen(prev => prev?.day === day && prev.field === 'end' ? null : { day, field: 'end' })}
-                    >
-                      <Ionicons name="time-outline" size={14} color={theme.textSecond} />
-                      <Text style={[styles.timeChipText, { color: theme.text }]}>{fmtTime(s.end)}</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              )}
+                ) : (
+                  <Text style={[styles.dayOff, { color: theme.textThird }]}>Day off</Text>
+                )}
+              </View>
+            ))}
 
-              {/* Inline hour picker */}
-              {pickerOpen?.day === day && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hourPicker}>
+            {/* Time picker dropdown */}
+            {pickerOpen && (
+              <View style={[styles.pickerOverlay, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.md]}>
+                <Text style={[styles.pickerTitle, { color: theme.text }]}>
+                  {DAY_LABELS[pickerOpen.day]} — {pickerOpen.field === 'start' ? 'Start' : 'End'} time
+                </Text>
+                <ScrollView style={{ maxHeight: 200 }}>
                   {HOURS.map(h => (
                     <Pressable
                       key={h.value}
-                      style={[
-                        styles.hourChip,
-                        {
-                          backgroundColor: schedule[day][pickerOpen.field] === h.value ? theme.primary : theme.surfaceSecond,
-                          borderColor:     schedule[day][pickerOpen.field] === h.value ? theme.primary : theme.border,
-                        },
-                      ]}
-                      onPress={() => setTime(day, pickerOpen.field, h.value)}
+                      style={[styles.pickerRow, schedule[pickerOpen.day][pickerOpen.field] === h.value && { backgroundColor: theme.primary + '18' }]}
+                      onPress={() => setTime(pickerOpen.day, pickerOpen.field, h.value)}
                     >
-                      <Text style={[styles.hourText, { color: schedule[day][pickerOpen.field] === h.value ? '#fff' : theme.textSecond }]}>
+                      <Text style={[styles.pickerItem, { color: schedule[pickerOpen.day][pickerOpen.field] === h.value ? theme.primary : theme.text }]}>
                         {h.label}
                       </Text>
                     </Pressable>
                   ))}
                 </ScrollView>
-              )}
-            </View>
-          );
-        })}
+              </View>
+            )}
 
-        {saved && (
-          <View style={[styles.savedBanner, { backgroundColor: '#22C55E18', borderColor: '#22C55E30' }]}>
-            <Ionicons name="checkmark-circle-outline" size={16} color="#22C55E" />
-            <Text style={[styles.savedText, { color: '#22C55E' }]}>Schedule saved successfully.</Text>
+            <Pressable
+              style={[styles.saveBtn, { backgroundColor: theme.primary }, saving && { opacity: 0.7 }]}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              <Text style={styles.saveBtnText}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save Schedule'}</Text>
+            </Pressable>
           </View>
         )}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: Spacing.xl }} />
       </ScrollView>
-
-      <View style={[styles.ctaBar, { backgroundColor: theme.navBackground, borderTopColor: theme.border }]}>
-        <Pressable
-          style={[styles.saveBtn, { backgroundColor: theme.primary }]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save Schedule'}</Text>
-        </Pressable>
-      </View>
     </SafeAreaView>
   );
 }
@@ -191,33 +287,50 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   header:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
   backBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  title:   { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  title:   { fontSize: FontSize.md, fontWeight: FontWeight.bold as any },
+  content: { padding: Spacing.md, gap: Spacing.md },
 
-  content: { padding: Spacing.md, gap: Spacing.sm },
+  sectionRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionLeft:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  sectionRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  sectionTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  sectionCount: { fontSize: FontSize.sm },
 
-  summaryCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
-  summaryText: { fontSize: FontSize.base },
+  emptyCard: { alignItems: 'center', padding: Spacing.xl, borderRadius: Radius.xl, borderWidth: 1, gap: Spacing.sm },
+  emptyText: { fontSize: FontSize.sm },
 
-  dayCard:   { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
-  dayHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dayLeft:   { gap: 2 },
-  dayName:   { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  dayShort:  { fontSize: FontSize.xs },
+  jobCard:    { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
+  jobTop:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  timeBadge:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full },
+  timeText:   { fontSize: FontSize.xs, fontWeight: FontWeight.semibold as any },
+  jobFare:    { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  jobCustomer:{ fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
+  addrRow:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  addrText:   { fontSize: FontSize.sm, flex: 1 },
+  jobBottom:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  vehicleChip:{ fontSize: FontSize.xs, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.full },
+  remindBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full },
+  remindText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold as any },
 
-  timeRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingTop: Spacing.sm, borderTopWidth: 0.5 },
-  timePair: { flex: 1, gap: 4 },
-  timeLabel:{ fontSize: FontSize.xs },
-  timeChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.sm, paddingVertical: 8, borderRadius: Radius.lg, borderWidth: 1 },
-  timeChipText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  reminderCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+  reminderLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },
+  reminderTitle:{ fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
+  reminderSub:  { fontSize: FontSize.xs, marginTop: 2 },
 
-  hourPicker: { gap: Spacing.sm, paddingTop: Spacing.sm },
-  hourChip:   { paddingHorizontal: Spacing.sm, paddingVertical: 7, borderRadius: Radius.md, borderWidth: 1 },
-  hourText:   { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
+  schedCard: { borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden' },
+  dayRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md },
+  dayLabel:  { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.medium as any },
+  dayOff:    { fontSize: FontSize.sm },
+  timePickers:{ flexDirection: 'row', alignItems: 'center', gap: 6 },
+  timePill:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.lg, borderWidth: 1 },
+  timePillText:{ fontSize: FontSize.xs, fontWeight: FontWeight.medium as any },
+  timeSep:    { fontSize: FontSize.sm },
 
-  savedBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
-  savedText:   { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  pickerOverlay: { margin: Spacing.md, borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden', padding: Spacing.md },
+  pickerTitle:   { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any, marginBottom: Spacing.sm },
+  pickerRow:     { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: Radius.md },
+  pickerItem:    { fontSize: FontSize.base },
 
-  ctaBar:      { padding: Spacing.md, borderTopWidth: 1 },
-  saveBtn:     { height: 54, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },
-  saveBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  saveBtn:     { margin: Spacing.md, marginTop: 0, height: 48, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },
+  saveBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
 });

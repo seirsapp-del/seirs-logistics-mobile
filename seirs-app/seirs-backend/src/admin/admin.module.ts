@@ -8,9 +8,16 @@ import { Delivery } from '../deliveries/delivery.entity';
 import { FraudModule } from '../fraud/fraud.module';
 import { MailModule } from '../mail/mail.module';
 import { FraudFlag } from '../fraud/fraud-flag.entity';
+import { CmsItem } from './cms-item.entity';
+import { SupportTicket } from './support-ticket.entity';
+import { AuditLogEntry } from './audit-log.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Driver, Delivery, FraudFlag]), FraudModule, MailModule],
+  imports: [
+    TypeOrmModule.forFeature([User, Driver, Delivery, FraudFlag, CmsItem, SupportTicket, AuditLogEntry]),
+    FraudModule,
+    MailModule,
+  ],
   controllers: [AdminController],
   providers: [AdminService],
   exports: [AdminService],

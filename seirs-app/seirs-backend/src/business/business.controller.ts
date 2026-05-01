@@ -1,0 +1,155 @@
+import {
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
+  UseGuards, UploadedFile, UseInterceptors, ParseIntPipe, DefaultValuePipe,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { User } from '../users/user.entity';
+import { BusinessService } from './business.service';
+
+@UseGuards(JwtAuthGuard)
+@Controller()
+export class BusinessController {
+  constructor(private readonly svc: BusinessService) {}
+
+  // ─── Business Sender ─────────────────────────────────────────────────────────
+
+  @Get('business/dashboard')
+  businessDashboard(@CurrentUser() user: User) {
+    return this.svc.businessDashboard(user.id);
+  }
+
+  @Get('business/deliveries')
+  getDeliveries(
+    @CurrentUser() user: User,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('status') status?: string,
+  ) {
+    return this.svc.getDeliveries(user.id, page, status);
+  }
+
+  @Post('business/deliveries')
+  createDelivery(@CurrentUser() user: User, @Body() body: any) {
+    return this.svc.createDelivery(user.id, body);
+  }
+
+  @Post('business/deliveries/csv')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadCsv(@CurrentUser() user: User, @UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new Error('No file uploaded.');
+    const text = file.buffer.toString('utf8');
+    const rows = parseCsv(text);
+    return this.svc.uploadCsvDeliveries(user.id, rows);
+  }
+
+  @Get('business/wallet')
+  getWallet(@CurrentUser() user: User) {
+    return this.svc.getWallet(user.id);
+  }
+
+  @Post('business/wallet/fund')
+  fundWallet(@CurrentUser() user: User, @Body('amount') amount: number) {
+    return this.svc.fundWallet(user.id, amount);
+  }
+
+  @Get('business/wallet/transactions')
+  getTransactions(
+    @CurrentUser() user: User,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.svc.getTransactions(user.id, page);
+  }
+
+  @Get('business/team')
+  getTeam(@CurrentUser() user: User) {
+    return this.svc.getTeam(user.id);
+  }
+
+  @Post('business/team/invite')
+  inviteTeamMember(@CurrentUser() user: User, @Body() body: any) {
+    return this.svc.inviteTeamMember(user.id, body);
+  }
+
+  @Delete('business/team/:id')
+  removeTeamMember(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.svc.removeTeamMember(user.id, id);
+  }
+
+  @Get('business/loyalty')
+  getLoyalty(@CurrentUser() user: User) {
+    return this.svc.getLoyalty(user.id);
+  }
+
+  // ─── Partner Store ────────────────────────────────────────────────────────────
+
+  @Get('partner/dashboard')
+  partnerDashboard(@CurrentUser() user: User) {
+    return this.svc.partnerDashboard(user.id);
+  }
+
+  @Get('partner/inventory')
+  getInventory(
+    @CurrentUser() user: User,
+    @Query('status') status?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+  ) {
+    return this.svc.getInventory(user.id, status, page);
+  }
+
+  @Post('partner/scan')
+  scanPackage(@CurrentUser() user: User, @Body('qrCode') qrCode: string) {
+    return this.svc.scanPackage(user.id, qrCode);
+  }
+
+  @Patch('partner/packages/:id/collect')
+  markCollected(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.svc.markCollected(user.id, id);
+  }
+
+  @Get('partner/earnings')
+  getEarnings(
+    @CurrentUser() user: User,
+    @Query('period') period: 'week' | 'month' = 'week',
+  ) {
+    return this.svc.getEarnings(user.id, period);
+  }
+
+  @Get('partner/settings')
+  getSettings(@CurrentUser() user: User) {
+    return this.svc.getSettings(user.id);
+  }
+
+  @Patch('partner/settings')
+  updateSettings(@CurrentUser() user: User, @Body() body: any) {
+    return this.svc.updateSettings(user.id, body);
+  }
+}
+
+// Simple CSV parser: supports quoted fields
+function parseCsv(text: string): Array<{ recipientName: string; recipientPhone: string; address?: string }> {
+  const lines = text.trim().split('\n').slice(1); // skip header
+  return lines
+    .map((line) => {
+      const cols = splitCsvLine(line);
+      return {
+        recipientName:  (cols[0] ?? '').trim(),
+        recipientPhone: (cols[1] ?? '').trim(),
+        address:        (cols[2] ?? '').trim(),
+      };
+    })
+    .filter((r) => r.recipientName);
+}
+
+function splitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuote = false;
+  for (const ch of line) {
+    if (ch === '"') { inQuote = !inQuote; continue; }
+    if (ch === ',' && !inQuote) { result.push(current); current = ''; continue; }
+    current += ch;
+  }
+  result.push(current);
+  return result;
+}

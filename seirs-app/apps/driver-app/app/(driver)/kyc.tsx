@@ -3,9 +3,14 @@ import {
   ScrollView, ActivityIndicator, Alert, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ArrowLeft, CreditCard, Camera, FileText, Car, Shield,
+  Users, CheckCircle, Clock, XCircle, UploadCloud, ChevronRight,
+  ExternalLink,
+} from 'lucide-react-native';
 import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { uploadApi } from '@/services/api';
@@ -16,68 +21,89 @@ interface DocItem {
   id:       string;
   label:    string;
   desc:     string;
-  icon:     string;
+  Icon:     any;
   status:   DocStatus;
   required: boolean;
   url?:     string;
+  sides?:   'front_back';
+  urlBack?: string;
 }
 
-const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; icon: string }> = {
-  not_uploaded: { label: 'Not Uploaded', color: '#A1A1AA', icon: 'ellipse-outline' },
-  uploaded:     { label: 'Under Review', color: '#FACC15', icon: 'time-outline' },
-  verified:     { label: 'Verified',     color: '#22C55E', icon: 'checkmark-circle' },
-  rejected:     { label: 'Rejected',     color: '#EF4444', icon: 'close-circle' },
+const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; Icon: any }> = {
+  not_uploaded: { label: 'Not Uploaded', color: '#A1A1AA', Icon: UploadCloud   },
+  uploaded:     { label: 'Under Review', color: '#D97706', Icon: Clock         },
+  verified:     { label: 'Verified',     color: '#16A34A', Icon: CheckCircle   },
+  rejected:     { label: 'Rejected',     color: '#EF4444', Icon: XCircle       },
 };
 
 const INITIAL_DOCS: DocItem[] = [
-  { id: 'national_id',     label: 'National ID / NIN',   icon: 'card-outline',          desc: 'Government-issued national ID or NIN slip',          status: 'not_uploaded', required: true  },
-  { id: 'selfie',          label: 'Selfie with ID',       icon: 'camera-outline',        desc: 'Hold your ID next to your face',                     status: 'not_uploaded', required: true  },
-  { id: 'vehicle_doc',     label: 'Vehicle Document',     icon: 'document-text-outline', desc: 'Vehicle registration / roadworthiness certificate',  status: 'not_uploaded', required: true  },
-  { id: 'drivers_license', label: "Driver's Licence",     icon: 'car-outline',           desc: "Valid driver's licence",                             status: 'not_uploaded', required: true  },
-  { id: 'guarantor',       label: 'Guarantor Letter',     icon: 'people-outline',        desc: 'Letter from a guarantor (optional but recommended)', status: 'not_uploaded', required: false },
+  { id: 'national_id_front', label: 'National ID — Front',      Icon: CreditCard, desc: 'Government-issued ID or NIN slip (front side)',      status: 'not_uploaded', required: true  },
+  { id: 'national_id_back',  label: 'National ID — Back',       Icon: CreditCard, desc: 'Back side of your National ID or NIN slip',           status: 'not_uploaded', required: true  },
+  { id: 'selfie',            label: 'Selfie / Profile photo',   Icon: Camera,     desc: 'Clear photo of your face — used on your driver profile', status: 'not_uploaded', required: true  },
+  { id: 'drivers_license',   label: "Driver's Licence",         Icon: Car,        desc: "Valid Nigerian driver's licence",                     status: 'not_uploaded', required: true  },
+  { id: 'vehicle_photo',     label: 'Vehicle Photo',            Icon: Car,        desc: 'Full photo of your vehicle showing the plate',        status: 'not_uploaded', required: true  },
+  { id: 'ownership_proof',   label: 'Vehicle Ownership Proof',  Icon: FileText,   desc: 'Vehicle registration or ownership certificate',       status: 'not_uploaded', required: true  },
+  { id: 'insurance_cert',    label: 'Insurance Certificate',    Icon: Shield,     desc: 'Valid vehicle insurance certificate',                 status: 'not_uploaded', required: true  },
+  { id: 'guarantor',         label: 'Guarantor Letter',         Icon: Users,      desc: 'Letter from a guarantor (recommended, not required)', status: 'not_uploaded', required: false },
+];
+
+const INSURANCE_PARTNERS = [
+  { name: 'AXA Mansard', desc: 'Vehicle & third-party cover', url: 'https://axamansard.com' },
+  { name: 'Leadway Assurance', desc: 'Motorcycle & auto insurance', url: 'https://leadway.com' },
+  { name: 'Aiico Insurance', desc: 'Affordable driver policies', url: 'https://aiicoplc.com' },
+  { name: 'Cornerstone Insurance', desc: 'Motor & liability cover', url: 'https://cornerstoneinsuranceplc.com' },
 ];
 
 export default function KycScreen() {
+  const router      = useRouter();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
+  const isDark      = colorScheme === 'dark';
 
   const [docs,      setDocs]      = useState<DocItem[]>(INITIAL_DOCS);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [showInsurance, setShowInsurance] = useState(false);
 
-  const verified = docs.filter(d => d.status === 'verified').length;
-  const total    = docs.filter(d => d.required).length;
-  const progress = total > 0 ? (verified / total) * 100 : 0;
+  const requiredDocs = docs.filter(d => d.required);
+  const verified     = requiredDocs.filter(d => d.status === 'verified').length;
+  const uploaded     = requiredDocs.filter(d => d.status === 'uploaded' || d.status === 'verified').length;
+  const progress     = requiredDocs.length > 0 ? (uploaded / requiredDocs.length) * 100 : 0;
+
+  const allSubmitted = requiredDocs.every(d => d.status !== 'not_uploaded');
+
+  const pickImage = async (source: 'camera' | 'library'): Promise<string | null> => {
+    if (source === 'camera') {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission required', 'Camera access is needed.'); return null; }
+      const r = await ImagePicker.launchCameraAsync({ quality: 0.85, allowsEditing: true });
+      return r.canceled ? null : r.assets[0].uri;
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission required', 'Photo library access is needed.'); return null; }
+      const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: true });
+      return r.canceled ? null : r.assets[0].uri;
+    }
+  };
 
   const handleUpload = async (docId: string) => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      const cam = await ImagePicker.requestCameraPermissionsAsync();
-      if (cam.status !== 'granted') {
-        Alert.alert('Permission Required', 'Photo library or camera access is needed to upload documents.');
-        return;
-      }
-    }
     Alert.alert('Upload Document', 'Choose how to provide the document', [
-      { text: 'Camera',       onPress: () => pickAndUpload(docId, 'camera') },
-      { text: 'Photo Library', onPress: () => pickAndUpload(docId, 'library') },
+      { text: 'Camera',        onPress: () => doUpload(docId, 'camera')  },
+      { text: 'Photo Library', onPress: () => doUpload(docId, 'library') },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
 
-  const pickAndUpload = async (docId: string, source: 'camera' | 'library') => {
-    let result: ImagePicker.ImagePickerResult;
-    if (source === 'camera') {
-      result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true });
-    } else {
-      result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true });
-    }
-    if (result.canceled || !result.assets[0]) return;
+  const doUpload = async (docId: string, source: 'camera' | 'library') => {
+    const uri = await pickImage(source);
+    if (!uri) return;
     setUploading(docId);
     try {
-      const { url } = await uploadApi.file(result.assets[0].uri);
-      setDocs(prev => prev.map(d => d.id === docId ? { ...d, status: 'uploaded', url } : d));
-    } catch (e: any) {
-      Alert.alert('Upload Failed', e.message ?? 'Could not upload document. Please try again.');
+      const uploaded = await uploadApi.uploadFile(uri, 'kyc');
+      setDocs(prev => prev.map(d =>
+        d.id === docId ? { ...d, status: 'uploaded' as DocStatus, url: uploaded.url } : d,
+      ));
+    } catch {
+      Alert.alert('Upload failed', 'Please try again.');
     } finally {
       setUploading(null);
     }
@@ -85,136 +111,180 @@ export default function KycScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
+          <ArrowLeft size={20} color={theme.text} strokeWidth={1.75} />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Identity Verification</Text>
+        <View style={{ width: 36 }} />
+      </View>
 
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Verification (KYC)</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            Complete verification to start accepting jobs
-          </Text>
-        </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
         {/* Progress card */}
-        <View style={[styles.progressCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <View style={styles.progressRow}>
-            <Text style={[styles.progressLabel, { color: theme.text }]}>{verified}/{total} documents verified</Text>
-            <Text style={[styles.progressPct, { color: theme.primary }]}>{Math.round(progress)}%</Text>
-          </View>
-          <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
-            <View style={[styles.progressFill, { backgroundColor: theme.primary, width: `${progress}%` }]} />
-          </View>
-          {verified === total ? (
-            <View style={styles.progressNoteRow}>
-              <Ionicons name="checkmark-circle" size={15} color={theme.success} />
-              <Text style={[styles.progressNote, { color: theme.success }]}>
-                All documents verified! You can now accept deliveries.
+        <View style={[styles.progressCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+          <View style={styles.progressTop}>
+            <View>
+              <Text style={[styles.progressTitle, { color: theme.text }]}>Verification Progress</Text>
+              <Text style={[styles.progressSub, { color: theme.textSecond }]}>
+                {uploaded} of {requiredDocs.length} required documents submitted
               </Text>
             </View>
-          ) : (
-            <View style={styles.progressNoteRow}>
-              <Ionicons name="time-outline" size={15} color={theme.textSecond} />
-              <Text style={[styles.progressNote, { color: theme.textSecond }]}>
-                Documents are reviewed within 24 hours.
+            <Text style={[styles.progressPct, { color: theme.primary }]}>{Math.round(progress)}%</Text>
+          </View>
+          <View style={[styles.progressTrack, { backgroundColor: theme.surfaceSecond }]}>
+            <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: theme.primary }]} />
+          </View>
+          {allSubmitted && (
+            <View style={[styles.submittedBanner, { backgroundColor: '#16A34A18' }]}>
+              <CheckCircle size={16} color="#16A34A" strokeWidth={1.75} />
+              <Text style={[styles.submittedText, { color: '#16A34A' }]}>
+                All documents submitted — review within 24 hours
               </Text>
             </View>
           )}
         </View>
 
         {/* Document list */}
-        <View style={styles.docSection}>
-          {docs.map((doc) => {
-            const cfg = STATUS_CONFIG[doc.status];
-            return (
-              <View key={doc.id} style={[styles.docCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-                <View style={[styles.docIconWrap, { backgroundColor: theme.surfaceSecond }]}>
-                  <Ionicons name={doc.icon as any} size={24} color={theme.textSecond} />
-                </View>
-                <View style={styles.docInfo}>
-                  <View style={styles.docTitleRow}>
-                    <Text style={[styles.docLabel, { color: theme.text }]}>{doc.label}</Text>
-                    {!doc.required && (
-                      <View style={[styles.optBadge, { backgroundColor: theme.border }]}>
-                        <Text style={[styles.optText, { color: theme.textSecond }]}>Optional</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={[styles.docDesc, { color: theme.textSecond }]}>{doc.desc}</Text>
-                  <View style={styles.statusRow}>
-                    <Ionicons name={cfg.icon as any} size={13} color={cfg.color} />
-                    <Text style={[styles.statusLabel, { color: cfg.color }]}>{cfg.label}</Text>
-                  </View>
-                  {doc.url && doc.status === 'uploaded' && (
-                    <Image source={{ uri: doc.url }} style={styles.thumb} resizeMode="cover" />
-                  )}
-                </View>
-                {(doc.status === 'not_uploaded' || doc.status === 'rejected') && (
-                  <Pressable
-                    style={[styles.uploadBtn, { backgroundColor: doc.status === 'rejected' ? theme.error : theme.primary }]}
-                    onPress={() => handleUpload(doc.id)}
-                    disabled={uploading === doc.id}
-                  >
-                    {uploading === doc.id ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <>
-                        <Ionicons name={doc.status === 'rejected' ? 'reload-outline' : 'cloud-upload-outline'} size={14} color="#fff" />
-                        <Text style={styles.uploadBtnText}>{doc.status === 'rejected' ? 'Re-upload' : 'Upload'}</Text>
-                      </>
-                    )}
-                  </Pressable>
-                )}
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Required Documents</Text>
+        {docs.filter(d => d.required).map(doc => {
+          const cfg        = STATUS_CONFIG[doc.status];
+          const isUploading = uploading === doc.id;
+          return (
+            <Pressable
+              key={doc.id}
+              style={[styles.docCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+              onPress={() => doc.status !== 'verified' && handleUpload(doc.id)}
+              disabled={isUploading || doc.status === 'verified'}
+            >
+              <View style={[styles.docIconWrap, { backgroundColor: theme.primary + '15' }]}>
+                <doc.Icon size={22} color={theme.primary} strokeWidth={1.5} />
               </View>
-            );
-          })}
-        </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.docLabel, { color: theme.text }]}>{doc.label}</Text>
+                <Text style={[styles.docDesc,  { color: theme.textThird }]} numberOfLines={1}>{doc.desc}</Text>
+              </View>
+              {isUploading ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <View style={[styles.statusChip, { backgroundColor: cfg.color + '18' }]}>
+                  <cfg.Icon size={13} color={cfg.color} strokeWidth={1.75} />
+                  <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
 
-        {/* Security note */}
-        <View style={[styles.infoBox, { backgroundColor: theme.surfaceSecond }]}>
-          <View style={styles.infoTitleRow}>
-            <Ionicons name="lock-closed-outline" size={16} color={theme.textSecond} />
-            <Text style={[styles.infoTitle, { color: theme.text }]}>Your data is secure</Text>
+        {/* Optional documents */}
+        <Text style={[styles.sectionTitle, { color: theme.text, marginTop: Spacing.md }]}>Optional</Text>
+        {docs.filter(d => !d.required).map(doc => {
+          const cfg        = STATUS_CONFIG[doc.status];
+          const isUploading = uploading === doc.id;
+          return (
+            <Pressable
+              key={doc.id}
+              style={[styles.docCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+              onPress={() => doc.status !== 'verified' && handleUpload(doc.id)}
+              disabled={isUploading || doc.status === 'verified'}
+            >
+              <View style={[styles.docIconWrap, { backgroundColor: theme.textThird + '18' }]}>
+                <doc.Icon size={22} color={theme.textThird} strokeWidth={1.5} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.docLabel, { color: theme.text }]}>{doc.label}</Text>
+                <Text style={[styles.docDesc,  { color: theme.textThird }]} numberOfLines={1}>{doc.desc}</Text>
+              </View>
+              {isUploading ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <View style={[styles.statusChip, { backgroundColor: cfg.color + '18' }]}>
+                  <cfg.Icon size={13} color={cfg.color} strokeWidth={1.75} />
+                  <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
+
+        {/* Insurance partners */}
+        <Pressable
+          style={[styles.insuranceHeader, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+          onPress={() => setShowInsurance(v => !v)}
+        >
+          <View style={[styles.docIconWrap, { backgroundColor: '#3A7BD518' }]}>
+            <Shield size={22} color={theme.primary} strokeWidth={1.5} />
           </View>
-          <Text style={[styles.infoText, { color: theme.textSecond }]}>
-            Documents are encrypted and used only for identity verification. They are not shared with third parties.
-          </Text>
-        </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.docLabel, { color: theme.text }]}>Need vehicle insurance?</Text>
+            <Text style={[styles.docDesc, { color: theme.textThird }]}>View our partner insurance providers</Text>
+          </View>
+          <ChevronRight
+            size={18}
+            color={theme.textThird}
+            strokeWidth={1.75}
+            style={{ transform: [{ rotate: showInsurance ? '90deg' : '0deg' }] }}
+          />
+        </Pressable>
 
+        {showInsurance && (
+          <View style={[styles.insuranceList, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            {INSURANCE_PARTNERS.map((p, i) => (
+              <View
+                key={p.name}
+                style={[
+                  styles.insuranceRow,
+                  i < INSURANCE_PARTNERS.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.insName, { color: theme.text }]}>{p.name}</Text>
+                  <Text style={[styles.insDesc, { color: theme.textThird }]}>{p.desc}</Text>
+                </View>
+                <ExternalLink size={16} color={theme.primary} strokeWidth={1.75} />
+              </View>
+            ))}
+            <Text style={[styles.insNote, { color: theme.textThird }]}>
+              Seirs earns a referral fee when you purchase through a partner. This does not affect your premium.
+            </Text>
+          </View>
+        )}
+
+        <View style={{ height: Spacing.xl }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  header:   { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.md },
-  title:    { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
-  subtitle: { fontSize: FontSize.sm, marginTop: 2, lineHeight: 20 },
+  header:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
+  backBtn:       { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  headerTitle:   { fontSize: FontSize.md, fontWeight: FontWeight.bold as any },
+  content:       { padding: Spacing.md, gap: Spacing.sm },
 
-  progressCard:     { marginHorizontal: Spacing.md, borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.md, gap: Spacing.sm },
-  progressRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  progressLabel:    { fontSize: FontSize.base, fontWeight: FontWeight.medium },
-  progressPct:      { fontSize: FontSize.base, fontWeight: FontWeight.bold },
-  progressTrack:    { height: 8, borderRadius: 4, overflow: 'hidden' },
-  progressFill:     { height: '100%', borderRadius: 4 },
-  progressNoteRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  progressNote:     { fontSize: FontSize.xs, flex: 1 },
+  progressCard:  { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.md },
+  progressTop:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  progressTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  progressSub:   { fontSize: FontSize.sm, marginTop: 2 },
+  progressPct:   { fontSize: FontSize.xl, fontWeight: FontWeight.bold as any },
+  progressTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  progressFill:  { height: 8, borderRadius: 4 },
+  submittedBanner:{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.sm, borderRadius: Radius.md },
+  submittedText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium as any, flex: 1 },
 
-  docSection: { paddingHorizontal: Spacing.md, gap: Spacing.sm },
-  docCard:    { borderRadius: Radius.xl, padding: Spacing.md, flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
-  docIconWrap:{ width: 48, height: 48, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  docInfo:    { flex: 1, gap: 3 },
-  docTitleRow:{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' },
-  docLabel:   { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  optBadge:   { paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.full },
-  optText:    { fontSize: 10, fontWeight: FontWeight.medium },
-  docDesc:    { fontSize: FontSize.xs, lineHeight: 16 },
-  statusRow:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statusLabel:{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  thumb:      { width: '100%', height: 80, borderRadius: Radius.md, marginTop: Spacing.xs },
-  uploadBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, borderRadius: Radius.lg, alignSelf: 'flex-start' },
-  uploadBtnText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  sectionTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold as any, marginBottom: 4 },
 
-  infoBox:      { margin: Spacing.md, borderRadius: Radius.xl, padding: Spacing.md, gap: Spacing.xs },
-  infoTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  infoTitle:    { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  infoText:     { fontSize: FontSize.sm, lineHeight: 20 },
+  docCard:       { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+  docIconWrap:   { width: 44, height: 44, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  docLabel:      { fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
+  docDesc:       { fontSize: FontSize.xs, marginTop: 2 },
+  statusChip:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full },
+  statusText:    { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
+
+  insuranceHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1, marginTop: Spacing.sm },
+  insuranceList:   { borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden', marginTop: -Spacing.xs },
+  insuranceRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md },
+  insName:         { fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
+  insDesc:         { fontSize: FontSize.xs, marginTop: 2 },
+  insNote:         { fontSize: FontSize.xs, padding: Spacing.md, lineHeight: 18 },
 });

@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsISO8601, IsOptional, IsString, MinLength } from 'class-validator';
 import { UserRole } from '../../users/user.entity';
 import { VehicleType } from '../../drivers/driver.entity';
 
@@ -17,10 +17,17 @@ export class RegisterDto {
   password: string;
 
   @IsEnum(UserRole)
-  role: UserRole; // 'customer' or 'driver'
+  role: UserRole;
 
-  // Required only when role === 'driver'
   @IsOptional()
   @IsEnum(VehicleType)
   vehicleType?: VehicleType;
+
+  @IsOptional()
+  @IsBoolean()
+  ageConfirmed?: boolean;
+
+  @IsOptional()
+  @IsISO8601()
+  termsAcceptedAt?: string;
 }

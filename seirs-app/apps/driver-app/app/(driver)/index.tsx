@@ -4,7 +4,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Bell, MapPin, Star, TrendingUp, Truck, Zap,
+  ChevronRight, Target, Wifi, WifiOff, Package,
+  Navigation, Clock,
+} from 'lucide-react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -17,12 +21,14 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { SOCKET_URL } from '@/constants/config';
 
 const URGENCY_COLOR: Record<string, string> = {
-  economy:  '#22C55E',
-  standard: '#3A86FF',
-  instant:  '#FF6B00',
+  economy:  '#16A34A',
+  standard: '#3A7BD5',
+  instant:  '#EF4444',
 };
 
-export default function DriverJobsScreen() {
+const GOAL_TARGET = 50000;
+
+export default function DriverHomeScreen() {
   const router      = useRouter();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
@@ -47,322 +53,309 @@ export default function DriverJobsScreen() {
   const fetchDeliveries = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const data = await driversApi.myDeliveries();
-      setDeliveries(data ?? []);
-    } catch { /* driver may not be approved */ }
-    finally { setLoading(false); setRefreshing(false); }
+      const res = await driversApi.getAvailableJobs();
+      setDeliveries(res ?? []);
+    } catch {
+      setDeliveries([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  useEffect(() => {
-    if (!user) return;
-    const socket = io(`${SOCKET_URL}/tracking`, { transports: ['websocket'] });
-    socketRef.current = socket;
-    socket.on('connect', () => socket.emit('join:user', { userId: user.id }));
-    socket.on('job:request',  () => fetchDeliveries(true));
-    socket.on('notification', (n: any) => {
-      if (n?.type === 'DELIVERY_ASSIGNED' || n?.type === 'JOB_REQUEST') fetchDeliveries(true);
-    });
-    return () => { socket.disconnect(); };
-  }, [user?.id]);
+  useEffect(() => { fetchDeliveries(); }, [fetchDeliveries]);
 
-  useEffect(() => {
-    if (isOnline) { startLocationBroadcast(); fetchDeliveries(); }
-    else          { stopLocationBroadcast(); setDeliveries([]); }
-    return () => stopLocationBroadcast();
-  }, [isOnline]);
-
-  const startLocationBroadcast = async () => {
+  const startLocationUpdates = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return;
+
     locationInterval.current = setInterval(async () => {
-      try {
-        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        await driversApi.updateLocation(pos.coords.latitude, pos.coords.longitude);
-      } catch { /* GPS unavailable */ }
-    }, 5000);
+      const loc = await Location.getCurrentPositionAsync({});
+      driversApi.updateLocation(loc.coords.latitude, loc.coords.longitude).catch(() => {});
+    }, 15000);
   };
 
-  const stopLocationBroadcast = () => {
-    if (locationInterval.current) { clearInterval(locationInterval.current); locationInterval.current = null; }
+  const stopLocationUpdates = () => {
+    if (locationInterval.current) clearInterval(locationInterval.current);
   };
 
-  const handleToggle = async (val: boolean) => {
+  const handleToggleOnline = async () => {
     setToggling(true);
-    try { await driversApi.toggleOnline(val); setIsOnline(val); }
-    catch { /* revert on failure */ }
-    finally { setToggling(false); }
+    try {
+      const next = !isOnline;
+      await driversApi.setOnlineStatus(next);
+      setIsOnline(next);
+      if (next) {
+        await startLocationUpdates();
+        await fetchDeliveries();
+      } else {
+        stopLocationUpdates();
+      }
+    } catch {
+      // revert on error
+    } finally {
+      setToggling(false);
+    }
   };
 
-  const todayDeliveries = deliveries.filter(
-    (d) => d.status === 'delivered' && new Date(d.deliveredAt).toDateString() === new Date().toDateString()
-  ).length;
+  const weekEarnings  = driverData?.weekEarnings  ?? 0;
+  const todayEarnings = driverData?.todayEarnings ?? 0;
+  const rating        = driverData?.rating        ?? 4.8;
+  const tripCount     = driverData?.totalTrips    ?? 0;
+  const goalPct       = Math.min((weekEarnings / GOAL_TARGET) * 100, 100);
+  const walletBal     = driverData?.balance       ?? 0;
 
-  const assigned   = deliveries.filter(d => d.status === 'assigned');
-  const inProgress = deliveries.filter(d => ['picked_up', 'in_transit'].includes(d.status));
+  const activeJob = deliveries.find(d => d.status === 'assigned' || d.status === 'picked_up');
+  const pendingJobs = deliveries.filter(d => d.status === 'pending').slice(0, 3);
 
-  const headerColors = isOnline
-    ? (['#FF6B00', '#C2410C'] as const)
-    : (['#0B1D3A', '#1A2E5A'] as const);
+  const navGrad: [string, string] = isDark
+    ? ['#0D1117', '#161B22']
+    : ['#0F2B4C', '#1A3A63'];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchDeliveries(); }} />
-        }
-        contentContainerStyle={{ paddingBottom: Spacing.xl }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchDeliveries(); }} tintColor={theme.primary} />}
       >
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <LinearGradient colors={headerColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Hey, {firstName} 👋</Text>
-            <Text style={styles.headerSub}>
-              {toggling ? 'Updating…' : isOnline ? 'Online — receiving jobs' : 'You are offline'}
-            </Text>
-          </View>
-          <View style={styles.headerRight}>
-            <NotificationBell />
-            <View style={styles.onlineToggle}>
-              <Text style={styles.onlineLabel}>{isOnline ? 'Online' : 'Offline'}</Text>
-              <Switch
-                value={isOnline}
-                onValueChange={handleToggle}
-                disabled={toggling}
-                trackColor={{ false: 'rgba(255,255,255,0.25)', true: 'rgba(255,255,255,0.5)' }}
-                thumbColor="#fff"
-              />
+
+        {/* ── Mission Control Header ─────────────────────────────────────── */}
+        <LinearGradient colors={navGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerGrad}>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.headerGreet}>Mission Control</Text>
+              <Text style={styles.headerName}>Hi, {firstName}</Text>
             </View>
+            <View style={styles.headerActions}>
+              <Pressable style={styles.headerBtn} onPress={() => router.push('/(driver)/notifications' as any)}>
+                <NotificationBell color="#fff" size={22} />
+              </Pressable>
+              <Pressable style={styles.headerBtn} onPress={() => router.push('/(driver)/kyc' as any)}>
+                <Truck size={22} color="#fff" strokeWidth={1.5} />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Online/Offline toggle */}
+          <View style={[styles.toggleCard, { backgroundColor: isOnline ? 'rgba(22,163,74,0.25)' : 'rgba(255,255,255,0.1)' }]}>
+            <View style={styles.toggleLeft}>
+              {isOnline
+                ? <Wifi   size={24} color="#4ADE80" strokeWidth={1.75} />
+                : <WifiOff size={24} color="rgba(255,255,255,0.6)" strokeWidth={1.75} />
+              }
+              <View>
+                <Text style={styles.toggleStatus}>{isOnline ? 'You are ONLINE' : 'You are OFFLINE'}</Text>
+                <Text style={styles.toggleSub}>
+                  {isOnline ? 'Receiving new job requests' : 'Go online to start earning'}
+                </Text>
+              </View>
+            </View>
+            {toggling
+              ? <ActivityIndicator color="#fff" />
+              : (
+                <Switch
+                  value={isOnline}
+                  onValueChange={handleToggleOnline}
+                  trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#16A34A' }}
+                  thumbColor="#fff"
+                />
+              )
+            }
           </View>
         </LinearGradient>
 
-        {/* ── Stats ───────────────────────────────────────────────────────── */}
-        <View style={styles.statsRow}>
-          {[
-            { label: "Today's Trips",  value: String(todayDeliveries), icon: 'cube-outline' },
-            { label: 'Rating',         value: driverData ? `${Number(driverData.rating).toFixed(1)}` : '—', icon: 'star' },
-            { label: 'KYC Status',     value: driverData?.status ?? '—', icon: 'shield-checkmark-outline' },
-          ].map((stat) => (
-            <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-              <Ionicons name={stat.icon as any} size={18} color={theme.primary} />
-              <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecond }]}>{stat.label}</Text>
+        {/* ── Active job card ───────────────────────────────────────────── */}
+        {activeJob && (
+          <Pressable
+            style={[styles.activeCard, { backgroundColor: '#16A34A15', borderColor: '#16A34A40' }, Shadows.md]}
+            onPress={() => router.push({ pathname: '/(driver)/job/[id]', params: { id: activeJob.id } })}
+          >
+            <View style={styles.activeTop}>
+              <View style={[styles.activeDot, { backgroundColor: '#16A34A' }]} />
+              <Text style={[styles.activeLabel, { color: '#16A34A' }]}>ACTIVE JOB</Text>
+              <ChevronRight size={16} color="#16A34A" strokeWidth={1.75} style={{ marginLeft: 'auto' }} />
             </View>
-          ))}
-        </View>
-
-        {/* ── Active Delivery ─────────────────────────────────────────────── */}
-        {inProgress.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Delivery</Text>
-            {inProgress.map((d) => (
-              <Pressable
-                key={d.id}
-                style={[styles.activeCard, Shadows.md]}
-                onPress={() => router.push({ pathname: '/(driver)/active', params: { id: d.id } })}
-              >
-                <LinearGradient colors={['#0B1D3A', '#1A2E5A']} style={styles.activeCardGradient}>
-                  <View style={styles.activeBadge}>
-                    <Ionicons name="navigate" size={12} color="#fff" />
-                    <Text style={styles.activeBadgeText}>
-                      {d.status === 'picked_up' ? 'Heading to Dropoff' : 'In Progress'}
-                    </Text>
-                  </View>
-                  <View style={styles.routeBlock}>
-                    <View style={styles.routeRow}>
-                      <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
-                      <Text style={styles.routeText} numberOfLines={1}>{d.pickupAddress}</Text>
-                    </View>
-                    <View style={[styles.routeLine, { backgroundColor: 'rgba(255,255,255,0.2)' }]} />
-                    <View style={styles.routeRow}>
-                      <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
-                      <Text style={styles.routeText} numberOfLines={1}>{d.dropoffAddress}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.continueText}>Tap to continue →</Text>
-                </LinearGradient>
-              </Pressable>
-            ))}
-          </View>
+            <Text style={[styles.activeCustomer, { color: theme.text }]}>{activeJob.customer?.name ?? 'Customer'}</Text>
+            <View style={styles.activeRow}>
+              <Navigation size={14} color={theme.textThird} strokeWidth={1.75} />
+              <Text style={[styles.activeAddr, { color: theme.textSecond }]} numberOfLines={1}>
+                {activeJob.dropoffAddress}
+              </Text>
+            </View>
+          </Pressable>
         )}
 
-        {/* ── Job Requests ────────────────────────────────────────────────── */}
+        {/* ── Widgets row ──────────────────────────────────────────────── */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.widgetRow} contentContainerStyle={styles.widgetContent}>
+
+          {/* Wallet */}
+          <Pressable style={[styles.widgetCard, styles.walletWidget, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/withdrawal' as any)}>
+            <View style={styles.widgetIcon}>
+              <TrendingUp size={18} color={theme.primary} strokeWidth={1.75} />
+            </View>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Wallet</Text>
+            <Text style={[styles.widgetValue, { color: theme.text }]}>₦{walletBal.toLocaleString()}</Text>
+            <Text style={[styles.widgetSub, { color: theme.textThird }]}>Today ₦{todayEarnings.toLocaleString()}</Text>
+          </Pressable>
+
+          {/* Goal tracker */}
+          <View style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={styles.widgetIcon}>
+              <Target size={18} color="#D97706" strokeWidth={1.75} />
+            </View>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Weekly Goal</Text>
+            <Text style={[styles.widgetValue, { color: theme.text }]}>₦{(weekEarnings / 1000).toFixed(1)}k</Text>
+            <View style={[styles.goalTrack, { backgroundColor: theme.surfaceSecond }]}>
+              <View style={[styles.goalFill, { width: `${goalPct}%`, backgroundColor: goalPct >= 100 ? '#16A34A' : '#D97706' }]} />
+            </View>
+            <Text style={[styles.widgetSub, { color: theme.textThird }]}>{Math.round(goalPct)}% of ₦50k</Text>
+          </View>
+
+          {/* Rating */}
+          <Pressable style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/ratings' as any)}>
+            <View style={styles.widgetIcon}>
+              <Star size={18} color="#FFBE0B" strokeWidth={1.75} />
+            </View>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Rating</Text>
+            <Text style={[styles.widgetValue, { color: rating < 3.5 ? '#EF4444' : theme.text }]}>{rating.toFixed(1)}</Text>
+            {rating < 3.5 && <Text style={[styles.ratingWarn, { color: '#EF4444' }]}>Below threshold</Text>}
+            <Text style={[styles.widgetSub, { color: theme.textThird }]}>{tripCount} trips</Text>
+          </Pressable>
+
+          {/* Heatmap */}
+          <Pressable style={[styles.widgetCard, styles.heatmapWidget, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => {}}>
+            <View style={styles.widgetIcon}>
+              <MapPin size={18} color="#EF4444" strokeWidth={1.75} />
+            </View>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Demand Map</Text>
+            <View style={[styles.heatmapBox, { backgroundColor: theme.surfaceSecond }]}>
+              <Text style={[styles.heatmapPlaceholder, { color: theme.textThird }]}>Live heatmap</Text>
+            </View>
+          </Pressable>
+        </ScrollView>
+
+        {/* ── Available jobs ────────────────────────────────────────────── */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              {isOnline
-                ? `Incoming Requests${assigned.length ? ` (${assigned.length})` : ''}`
-                : 'Go online to see jobs'
-              }
-            </Text>
-            {isOnline && assigned.length > 0 && (
-              <View style={[styles.badge, { backgroundColor: theme.primary }]}>
-                <Text style={styles.badgeText}>{assigned.length}</Text>
+          <View style={styles.sectionRow}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Available Jobs</Text>
+            {isOnline && (
+              <View style={[styles.liveDot]}>
+                <View style={[styles.livePulse, { backgroundColor: '#16A34A' }]} />
+                <Text style={[styles.liveText, { color: '#16A34A' }]}>Live</Text>
               </View>
             )}
           </View>
 
           {!isOnline ? (
-            <View style={[styles.stateCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-              <View style={[styles.stateIconWrap, { backgroundColor: theme.surfaceSecond }]}>
-                <Ionicons name="moon" size={32} color={theme.textThird} />
-              </View>
-              <Text style={[styles.stateTitle, { color: theme.text }]}>You're offline</Text>
-              <Text style={[styles.stateDesc, { color: theme.textSecond }]}>
-                Toggle online above to start receiving delivery requests
-              </Text>
+            <View style={[styles.offlineBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <WifiOff size={32} color={theme.textThird} strokeWidth={1.5} />
+              <Text style={[styles.offlineTitle, { color: theme.text }]}>You're offline</Text>
+              <Text style={[styles.offlineSub, { color: theme.textSecond }]}>Go online to start receiving job requests.</Text>
             </View>
           ) : loading ? (
-            <ActivityIndicator color={theme.primary} style={{ marginTop: Spacing.xl }} />
-          ) : assigned.length === 0 ? (
-            <View style={[styles.stateCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-              <View style={[styles.stateIconWrap, { backgroundColor: theme.surfaceSecond }]}>
-                <Ionicons name="search" size={32} color={theme.primary} />
-              </View>
-              <Text style={[styles.stateTitle, { color: theme.text }]}>Looking for jobs</Text>
-              <Text style={[styles.stateDesc, { color: theme.textSecond }]}>
-                Delivery requests will appear here. Pull down to refresh.
-              </Text>
+            <ActivityIndicator color={theme.primary} style={{ marginTop: Spacing.lg }} />
+          ) : pendingJobs.length === 0 ? (
+            <View style={[styles.emptyBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Package size={32} color={theme.textThird} strokeWidth={1.5} />
+              <Text style={[styles.emptyText, { color: theme.textSecond }]}>No jobs nearby. Stay online — new requests come in frequently.</Text>
             </View>
           ) : (
-            assigned.map((job) => {
-              const urgencyCol = URGENCY_COLOR[job.urgency] ?? '#00C2FF';
-              return (
-                <View key={job.id} style={[styles.jobCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-                  {/* Job header */}
-                  <View style={styles.jobHeader}>
-                    <View style={[styles.urgencyPill, { backgroundColor: urgencyCol + '20' }]}>
-                      <Ionicons name="flash" size={12} color={urgencyCol} />
-                      <Text style={[styles.urgencyText, { color: urgencyCol }]}>
-                        {job.urgency?.toUpperCase()}
-                      </Text>
-                    </View>
-                    <Text style={[styles.jobPrice, { color: theme.primary }]}>
-                      ₦{Number(job.price).toLocaleString()}
-                    </Text>
-                  </View>
-
-                  {/* Route */}
-                  <View style={styles.jobRoute}>
-                    <View style={styles.routeRow}>
-                      <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
-                      <Text style={[styles.jobRouteText, { color: theme.text }]} numberOfLines={1}>
-                        {job.pickupAddress}
-                      </Text>
-                    </View>
-                    <View style={[styles.routeLine, { backgroundColor: theme.border }]} />
-                    <View style={styles.routeRow}>
-                      <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
-                      <Text style={[styles.jobRouteText, { color: theme.text }]} numberOfLines={1}>
-                        {job.dropoffAddress}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Meta */}
-                  <View style={[styles.metaRow, { backgroundColor: theme.surfaceSecond }]}>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="cube-outline" size={14} color={theme.textSecond} />
-                      <Text style={[styles.metaText, { color: theme.textSecond }]}>{job.packageSize}</Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="navigate-outline" size={14} color={theme.textSecond} />
-                      <Text style={[styles.metaText, { color: theme.textSecond }]}>
-                        {Number(job.distanceKm).toFixed(1)} km
-                      </Text>
-                    </View>
-                    {job.isFragile && (
-                      <View style={styles.metaItem}>
-                        <Ionicons name="warning-outline" size={14} color="#FFBE0B" />
-                        <Text style={[styles.metaText, { color: '#FFBE0B' }]}>Fragile</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Actions */}
-                  <View style={styles.jobActions}>
-                    <Pressable
-                      style={[styles.skipBtn, { borderColor: theme.border }]}
-                      onPress={() => setDeliveries(prev => prev.filter(d => d.id !== job.id))}
-                    >
-                      <Text style={[styles.skipText, { color: theme.textSecond }]}>Skip</Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.acceptBtn, { backgroundColor: theme.primary }]}
-                      onPress={() => router.push({ pathname: '/(driver)/active', params: { id: job.id } })}
-                    >
-                      <Ionicons name="checkmark" size={18} color="#fff" />
-                      <Text style={styles.acceptText}>Accept Job</Text>
-                    </Pressable>
+            pendingJobs.map(job => (
+              <Pressable
+                key={job.id}
+                style={[styles.jobCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+                onPress={() => router.push({ pathname: '/(driver)/job/[id]', params: { id: job.id } })}
+              >
+                <View style={[styles.urgBadge, { backgroundColor: (URGENCY_COLOR[job.urgency] ?? theme.primary) + '18' }]}>
+                  <Zap size={12} color={URGENCY_COLOR[job.urgency] ?? theme.primary} strokeWidth={2} />
+                  <Text style={[styles.urgText, { color: URGENCY_COLOR[job.urgency] ?? theme.primary }]}>
+                    {job.urgency ?? 'standard'}
+                  </Text>
+                </View>
+                <View style={styles.jobInfo}>
+                  <Text style={[styles.jobCustomer, { color: theme.text }]}>{job.customer?.name ?? 'Customer'}</Text>
+                  <View style={styles.addrRow}>
+                    <MapPin size={12} color={theme.textThird} strokeWidth={1.75} />
+                    <Text style={[styles.jobAddr, { color: theme.textSecond }]} numberOfLines={1}>{job.pickupAddress}</Text>
                   </View>
                 </View>
-              );
-            })
+                <View style={styles.jobRight}>
+                  <Text style={[styles.jobFare, { color: theme.primary }]}>₦{(job.driverEarnings ?? job.price ?? 0).toLocaleString()}</Text>
+                  <View style={styles.distRow}>
+                    <Clock size={12} color={theme.textThird} strokeWidth={1.75} />
+                    <Text style={[styles.jobDist, { color: theme.textThird }]}>{job.distanceKm ?? '?'} km</Text>
+                  </View>
+                </View>
+                <ChevronRight size={16} color={theme.textThird} strokeWidth={1.75} />
+              </Pressable>
+            ))
           )}
         </View>
 
+        <View style={{ height: Spacing.xl }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing.xl,
-  },
-  greeting:     { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: '#fff', marginBottom: 4 },
-  headerSub:    { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.75)' },
-  headerRight:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  onlineToggle: { alignItems: 'center', gap: 2 },
-  onlineLabel:  { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  headerGrad:    { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing.lg, gap: Spacing.md },
+  headerRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  headerGreet:   { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.6)', letterSpacing: 1, textTransform: 'uppercase' },
+  headerName:    { fontSize: FontSize.xl, fontWeight: FontWeight.bold as any, color: '#fff' },
+  headerActions: { flexDirection: 'row', gap: Spacing.sm },
+  headerBtn:     { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
 
-  statsRow: {
-    flexDirection: 'row', gap: Spacing.sm,
-    paddingHorizontal: Spacing.md, marginTop: -Spacing.lg, marginBottom: Spacing.md,
-  },
-  statCard:  { flex: 1, padding: Spacing.sm, borderRadius: Radius.lg, alignItems: 'center', gap: 3 },
-  statValue: { fontSize: FontSize.md, fontWeight: FontWeight.bold, marginTop: 2 },
-  statLabel: { fontSize: FontSize.xs, textAlign: 'center' },
+  toggleCard:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.md, borderRadius: Radius.xl, gap: Spacing.md },
+  toggleLeft:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },
+  toggleStatus:  { fontSize: FontSize.base, fontWeight: FontWeight.bold as any, color: '#fff' },
+  toggleSub:     { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
 
-  section:       { paddingHorizontal: Spacing.md, marginBottom: Spacing.md },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md },
-  sectionTitle:  { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-  badge:         { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
-  badgeText:     { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+  activeCard:    { marginHorizontal: Spacing.md, marginTop: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5, padding: Spacing.md, gap: Spacing.xs },
+  activeTop:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  activeDot:     { width: 8, height: 8, borderRadius: 4 },
+  activeLabel:   { fontSize: FontSize.xs, fontWeight: FontWeight.black as any, letterSpacing: 1 },
+  activeCustomer:{ fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  activeRow:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+  activeAddr:    { fontSize: FontSize.sm, flex: 1 },
 
-  activeCard:         { borderRadius: Radius.xl, overflow: 'hidden', marginBottom: Spacing.sm },
-  activeCardGradient: { padding: Spacing.md },
-  activeBadge:        { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FF6B00', borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: Spacing.sm },
-  activeBadgeText:    { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-  continueText:       { color: '#FF6B00', fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginTop: Spacing.sm, textAlign: 'right' },
+  widgetRow:     { marginTop: Spacing.md },
+  widgetContent: { paddingHorizontal: Spacing.md, gap: Spacing.sm },
+  widgetCard:    { width: 130, borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: 4 },
+  walletWidget:  { width: 150 },
+  heatmapWidget: { width: 160 },
+  widgetIcon:    { width: 32, height: 32, borderRadius: Radius.md, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  widgetLabel:   { fontSize: FontSize.xs },
+  widgetValue:   { fontSize: FontSize.lg, fontWeight: FontWeight.bold as any },
+  widgetSub:     { fontSize: FontSize.xs },
+  ratingWarn:    { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
+  goalTrack:     { height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 4 },
+  goalFill:      { height: 4, borderRadius: 2 },
+  heatmapBox:    { height: 50, borderRadius: Radius.md, marginTop: 4, justifyContent: 'center', alignItems: 'center' },
+  heatmapPlaceholder: { fontSize: FontSize.xs },
 
-  stateCard:     { padding: Spacing.xl, borderRadius: Radius.xl, alignItems: 'center', gap: Spacing.sm },
-  stateIconWrap: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.sm },
-  stateTitle:    { fontSize: FontSize.lg, fontWeight: FontWeight.semibold },
-  stateDesc:     { fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20, maxWidth: 240 },
+  section:       { paddingHorizontal: Spacing.md, paddingTop: Spacing.lg },
+  sectionRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.md },
+  sectionTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  liveDot:       { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  livePulse:     { width: 8, height: 8, borderRadius: 4 },
+  liveText:      { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
 
-  jobCard:    { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, marginBottom: Spacing.md, overflow: 'hidden' },
-  jobHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
-  urgencyPill:{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
-  urgencyText:{ fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-  jobPrice:   { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
+  offlineBox:    { alignItems: 'center', padding: Spacing.xl, borderRadius: Radius.xl, borderWidth: 1, gap: Spacing.sm },
+  offlineTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  offlineSub:    { fontSize: FontSize.sm, textAlign: 'center' },
+  emptyBox:      { alignItems: 'center', padding: Spacing.lg, borderRadius: Radius.xl, borderWidth: 1, gap: Spacing.sm },
+  emptyText:     { fontSize: FontSize.sm, textAlign: 'center' },
 
-  jobRoute:    { gap: 3, marginBottom: Spacing.sm },
-  routeBlock:  { gap: 3 },
-  routeRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  dot:         { width: 10, height: 10, borderRadius: 5 },
-  routeLine:   { width: 2, height: 14, marginLeft: 4 },
-  routeText:   { flex: 1, fontSize: FontSize.sm, color: 'rgba(255,255,255,0.9)' },
-  jobRouteText:{ flex: 1, fontSize: FontSize.sm },
-
-  metaRow:  { flexDirection: 'row', gap: Spacing.md, padding: Spacing.sm, borderRadius: Radius.md, marginBottom: Spacing.md },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
-
-  jobActions: { flexDirection: 'row', gap: Spacing.sm },
-  skipBtn:    { flex: 1, height: 48, borderRadius: Radius.lg, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
-  skipText:   { fontSize: FontSize.base, fontWeight: FontWeight.medium },
-  acceptBtn:  { flex: 2, height: 48, borderRadius: Radius.lg, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: Spacing.xs },
-  acceptText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  jobCard:       { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1, marginBottom: Spacing.sm },
+  urgBadge:      { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full },
+  urgText:       { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any, textTransform: 'capitalize' },
+  jobInfo:       { flex: 1, gap: 3 },
+  addrRow:       { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  jobCustomer:   { fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
+  jobAddr:       { fontSize: FontSize.xs, flex: 1 },
+  jobRight:      { alignItems: 'flex-end', gap: 4 },
+  jobFare:       { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  distRow:       { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  jobDist:       { fontSize: FontSize.xs },
 });

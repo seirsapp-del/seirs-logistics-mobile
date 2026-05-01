@@ -21,7 +21,6 @@ const DB: any = process.env.DATABASE_URL
 const hash = (pw: string) => bcrypt.hash(pw, 12);
 
 // ── Accounts ──────────────────────────────────────────────────────────────────
-// Change these passwords immediately after first login.
 const USERS = [
   {
     email: 'oyadeyio761@gmail.com',
@@ -104,18 +103,7 @@ async function seed() {
   }
 
   await client.end();
-
-  console.log(`
-✅  Seed complete.
-
-⚠️  IMPORTANT — change these passwords immediately after first login:
-    oyadeyio761@gmail.com  →  Seirs@Driver1
-    oyadeyio762@gmail.com  →  Seirs@User762
-    seirs.app@gmail.com    →  Seirs@AppGmail
-    admin@seirs.co         →  Seirs@Admin2024
-
-    Admin dashboard: http://localhost:3000/admin/admin.html
-`);
+  console.log('\n✅  Seed complete.\n');
 }
 
 seed().catch(err => { console.error(err); process.exit(1); });

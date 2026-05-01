@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Seirs — Services, Costs & Action Plan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:    #0F2B4C;
+    --sky:     #3A7BD5;
+    --dark:    #0F2B4C;
+    --mid:     #374151;
+    --muted:   #6B7280;
+    --light:   #F5F5F0;
+    --border:  #E5E7EB;
+    --white:   #ffffff;
+    --success: #16A34A;
+    --warning: #D97706;
+    --danger:  #DC2626;
+    --radius:  8px;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--dark);
+    background: #fff;
+  }
+
+  /* ── Cover Page ── */
+  .cover {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0F2B4C 0%, #1a3a5c 60%, #0a2240 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 40px;
+    page-break-after: always;
+  }
+  .cover-logo { font-size: 64px; font-weight: 800; letter-spacing: 8px; color: #fff; margin-bottom: 4px; }
+  .cover-logo span { color: #3A7BD5; }
+  .cover-sub { font-size: 13px; color: rgba(255,255,255,0.4); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 56px; }
+  .cover-title { font-size: 34px; font-weight: 700; color: #fff; margin-bottom: 16px; line-height: 1.2; }
+  .cover-desc { font-size: 15px; color: rgba(255,255,255,0.55); max-width: 500px; line-height: 1.9; margin-bottom: 56px; }
+  .cover-pills { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 56px; }
+  .pill {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.75);
+    padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500;
+  }
+  .pill.sky { background: rgba(58,123,213,0.25); border-color: rgba(58,123,213,0.5); color: #93C5FD; }
+  .cover-meta { font-size: 12px; color: rgba(255,255,255,0.25); }
+  .cover-divider { width: 60px; height: 3px; background: #3A7BD5; border-radius: 2px; margin: 0 auto 32px; }
+
+  /* ── Content Layout ── */
+  .content { max-width: 1100px; margin: 0 auto; padding: 48px 40px 80px; }
+
+  /* ── Section Headers ── */
+  .section { margin-bottom: 60px; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 28px; padding-bottom: 14px;
+    border-bottom: 2px solid var(--border);
+  }
+  .section-icon {
+    width: 38px; height: 38px; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .icon-navy   { background: #EBF3FF; }
+  .icon-green  { background: #DCFCE7; }
+  .icon-amber  { background: #FEF3C7; }
+  .icon-red    { background: #FEE2E2; }
+  .icon-purple { background: #F3E8FF; }
+
+  .section-title { font-size: 22px; font-weight: 700; color: var(--navy); }
+  .section-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .section-badge {
+    font-size: 11px; font-weight: 600;
+    padding: 3px 12px; border-radius: 12px; margin-left: auto;
+  }
+  .badge-navy   { background: #DBEAFE; color: var(--navy); }
+  .badge-green  { background: #DCFCE7; color: var(--success); }
+  .badge-amber  { background: #FEF3C7; color: var(--warning); }
+  .badge-red    { background: #FEE2E2; color: var(--danger); }
+
+  /* ── Services Overview Table ── */
+  .table-wrap { overflow-x: auto; margin-bottom: 32px; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead tr { background: var(--navy); color: #fff; }
+  thead th {
+    padding: 11px 14px; text-align: left;
+    font-weight: 600; font-size: 11px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+    white-space: nowrap;
+  }
+  thead th:first-child { border-radius: 6px 0 0 0; }
+  thead th:last-child  { border-radius: 0 6px 0 0; }
+  tbody tr:nth-child(even) { background: #F9FAFB; }
+  tbody tr:hover { background: #EBF3FF; }
+  tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  td .mono {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    color: var(--sky); background: #EBF3FF;
+    padding: 2px 6px; border-radius: 4px;
+    display: inline-block; margin: 1px 0;
+  }
+  td.svc-name { font-weight: 700; color: var(--navy); min-width: 140px; }
+  td.svc-name .tag {
+    font-size: 10px; font-weight: 600; padding: 2px 7px;
+    border-radius: 10px; display: inline-block; margin-top: 4px;
+  }
+  .tag-infra   { background: #DBEAFE; color: #1D4ED8; }
+  .tag-payment { background: #DCFCE7; color: #15803D; }
+  .tag-comms   { background: #FEF3C7; color: #92400E; }
+  .tag-maps    { background: #F3E8FF; color: #6D28D9; }
+  .tag-mobile  { background: #FEE2E2; color: #B91C1C; }
+  .tag-data    { background: #E0F2FE; color: #0369A1; }
+
+  /* ── Cost Table ── */
+  .cost-table thead tr { background: var(--navy); }
+  .cost-table thead th.phase-col { text-align: center; min-width: 90px; }
+  .cost-table thead th.phase-col.highlight-col { background: #1a3a5c; }
+  .cost-table tbody td.phase-val { text-align: center; font-weight: 600; white-space: nowrap; }
+  .cost-table tbody td.total-row { background: #EBF3FF; font-weight: 700; font-size: 13px; }
+  .cost-table tbody tr.total-row td { background: #0F2B4C; color: #fff; font-weight: 700; font-size: 13px; border-bottom: none; }
+  .cost-table tbody tr.total-row td:first-child { border-radius: 0 0 0 6px; }
+  .cost-table tbody tr.total-row td:last-child  { border-radius: 0 0 6px 0; }
+  .free   { color: var(--success); }
+  .low    { color: #059669; }
+  .mid-c  { color: var(--warning); }
+  .high   { color: var(--danger); }
+  .pct    { color: #6D28D9; font-size: 11px; }
+  .note   { font-size: 10.5px; color: var(--muted); margin-top: 3px; font-weight: 400; }
+
+  /* ── Task Cards ── */
+  .task-group-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--muted);
+    margin: 40px 0 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .task-group-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .task-card {
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px;
+    margin-bottom: 16px; background: #fff;
+    display: flex; gap: 20px;
+    page-break-inside: avoid;
+  }
+  .task-card.urgent { border-left: 4px solid var(--danger); }
+  .task-card.high   { border-left: 4px solid var(--warning); }
+  .task-card.medium { border-left: 4px solid var(--sky); }
+  .task-card.low    { border-left: 4px solid #9CA3AF; }
+
+  .task-number {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .num-urgent { background: #FEE2E2; color: var(--danger); }
+  .num-high   { background: #FEF3C7; color: var(--warning); }
+  .num-medium { background: #DBEAFE; color: var(--sky); }
+  .num-low    { background: #F3F4F6; color: var(--muted); }
+
+  .task-body { flex: 1; }
+  .task-title { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .task-why   { font-size: 12px; color: var(--muted); margin-bottom: 14px; line-height: 1.6; }
+  .task-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 9px;
+    border-radius: 10px; display: inline-block; margin-left: 8px;
+    vertical-align: middle;
+  }
+  .tbadge-urgent { background: #FEE2E2; color: var(--danger); }
+  .tbadge-high   { background: #FEF3C7; color: var(--warning); }
+  .tbadge-medium { background: #DBEAFE; color: var(--sky); }
+
+  .steps { list-style: none; padding: 0; }
+  .steps li {
+    padding: 8px 0 8px 28px; position: relative;
+    border-bottom: 1px solid #F3F4F6; font-size: 12.5px;
+    color: var(--mid); line-height: 1.6;
+  }
+  .steps li:last-child { border-bottom: none; padding-bottom: 0; }
+  .steps li::before {
+    content: attr(data-n);
+    position: absolute; left: 0; top: 9px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--navy); color: #fff;
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .steps li code {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    background: #F3F4F6; color: var(--navy);
+    padding: 1px 6px; border-radius: 4px;
+  }
+  .steps li .path { color: var(--sky); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .steps li strong { color: var(--navy); }
+  .steps li .warn { color: var(--danger); font-weight: 600; }
+
+  .env-block {
+    background: var(--navy); border-radius: var(--radius);
+    padding: 12px 16px; margin: 10px 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: rgba(255,255,255,0.85); line-height: 1.8;
+  }
+  .env-key { color: #93C5FD; }
+  .env-val { color: #6EE7B7; }
+  .env-comment { color: rgba(255,255,255,0.35); }
+
+  /* ── Callout Boxes ── */
+  .callout {
+    padding: 14px 18px; border-radius: var(--radius); margin: 16px 0;
+    font-size: 12.5px; line-height: 1.7;
+  }
+  .callout-red    { background: #FEF2F2; border-left: 4px solid var(--danger); color: #7F1D1D; }
+  .callout-blue   { background: #EBF3FF; border-left: 4px solid var(--sky); color: #1E3A5F; }
+  .callout-green  { background: #F0FDF4; border-left: 4px solid var(--success); color: #14532D; }
+  .callout-amber  { background: #FFFBEB; border-left: 4px solid var(--warning); color: #78350F; }
+  .callout strong { font-weight: 700; }
+
+  /* ── One-time costs table ── */
+  .onetime-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  .onetime-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+  .onetime-card h4 { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  .onetime-card .price { font-size: 22px; font-weight: 800; color: var(--sky); }
+  .onetime-card .price span { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .onetime-card p { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
+
+  /* ── Summary bar ── */
+  .summary-bar {
+    background: var(--navy); border-radius: 12px; padding: 24px 32px;
+    display: flex; flex-wrap: wrap; gap: 0; margin-bottom: 48px;
+  }
+  .summary-item { flex: 1; min-width: 140px; text-align: center; padding: 8px 16px; border-right: 1px solid rgba(255,255,255,0.1); }
+  .summary-item:last-child { border-right: none; }
+  .summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
+  .summary-value { font-size: 20px; font-weight: 800; color: #fff; }
+  .summary-value.sky { color: #93C5FD; }
+  .summary-value.green { color: #6EE7B7; }
+  .summary-value.amber { color: #FCD34D; }
+
+  /* ── Footer ── */
+  .doc-footer {
+    text-align: center; padding: 40px 0; color: var(--muted);
+    font-size: 12px; border-top: 1px solid var(--border); margin-top: 60px;
+  }
+
+  @media print {
+    .cover { page-break-after: always; }
+    .task-card { page-break-inside: avoid; }
+    .section { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ COVER ══════════════════ -->
+<div class="cover">
+  <div class="cover-logo">SEIRS<span>.</span></div>
+  <div class="cover-sub">Logistics Platform</div>
+  <div class="cover-divider"></div>
+  <div class="cover-title">Services, Cost Projections<br>&amp; Action Plan</div>
+  <div class="cover-desc">
+    Every third-party service the platform uses or will use — what it does, why we chose it,
+    and exactly what it costs from test phase through 100,000 users.
+    Plus every outstanding task numbered and explained step by step.
+  </div>
+  <div class="cover-pills">
+    <span class="pill">14 Services</span>
+    <span class="pill">6 Scale Phases</span>
+    <span class="pill sky">21 Action Items</span>
+    <span class="pill">NDPR Compliant</span>
+    <span class="pill">Railway · Vercel · Firebase · Flutterwave</span>
+  </div>
+  <div class="cover-meta">Generated 30 April 2026 &nbsp;·&nbsp; Seirs Logistics Ltd &nbsp;·&nbsp; Confidential</div>
+</div>
+
+<!-- ══════════════════ CONTENT ══════════════════ -->
+<div class="content">
+
+  <!-- ══ Summary Bar ══ -->
+  <div class="summary-bar">
+    <div class="summary-item">
+      <div class="summary-label">Test Phase</div>
+      <div class="summary-value green">$0 / mo</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">First Live</div>
+      <div class="summary-value sky">~$23 / mo</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">500 Users</div>
+      <div class="summary-value sky">~$35 / mo</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">1,000 Users</div>
+      <div class="summary-value amber">~$80 / mo</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">10,000 Users</div>
+      <div class="summary-value amber">~$370 / mo</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">100,000 Users</div>
+      <div class="summary-value" style="color:#F87171;">~$2,400 / mo</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 1 — SERVICES OVERVIEW
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-navy">🛠</div>
+      <div>
+        <div class="section-title">Platform Services — Overview</div>
+        <div class="section-sub">Every service in the stack, what it does, and why we chose it</div>
+      </div>
+      <span class="section-badge badge-navy">14 Services</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:160px">Service</th>
+            <th>What it does</th>
+            <th>Why Seirs uses it</th>
+            <th>Free Tier</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr>
+            <td class="svc-name">
+              Railway
+              <br><span class="tag tag-infra">Infrastructure</span>
+            </td>
+            <td>
+              Cloud hosting for the NestJS backend API and PostgreSQL database. Automatically builds from GitHub, manages containers, handles zero-downtime deploys.
+            </td>
+            <td>
+              The simplest path from a GitHub repo to a running backend. No Kubernetes, no Docker config, no DevOps team needed. Scales vertically with one slider. PostgreSQL is a first-class addon.
+            </td>
+            <td>$5 credit/month. Enough for a dev server running at low load.</td>
+            <td><span class="mono">ACTIVE</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Vercel
+              <br><span class="tag tag-infra">Infrastructure</span>
+            </td>
+            <td>
+              Static site hosting and CDN for the Next.js admin dashboard and the seirs.co company website. Automatic HTTPS, preview deployments per pull request.
+            </td>
+            <td>
+              Our frontend apps are Next.js — Vercel is built by the Next.js team, giving first-class support. The free Hobby tier handles thousands of pageviews with global CDN at zero cost. Deploy in 30 seconds from git push.
+            </td>
+            <td>Unlimited deployments, 100GB bandwidth, custom domain, HTTPS — all free on Hobby.</td>
+            <td><span class="mono">ACTIVE</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Cloudflare R2
+              <br><span class="tag tag-infra">Storage</span>
+            </td>
+            <td>
+              Object storage (like AWS S3) for user-uploaded files: KYC documents, proof-of-delivery photos, business registration certificates, profile images.
+            </td>
+            <td>
+              R2 is S3-compatible (our backend already uses the AWS SDK to talk to it) but has zero egress fees. At our scale, this saves significant money vs S3. Cloudflare's CDN serves the files fast globally. Already configured and working.
+            </td>
+            <td>10 GB storage, 1M Class A ops (writes), 10M Class B ops (reads) — free every month.</td>
+            <td><span class="mono">ACTIVE</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Cloudflare
+              <br><span class="tag tag-infra">DNS / CDN</span>
+            </td>
+            <td>
+              DNS management for seirs.co. Proxies all traffic through Cloudflare's network, providing DDoS protection, bot filtering, and global caching. Also manages SSL certificates.
+            </td>
+            <td>
+              The domain is already on Cloudflare. Free DDoS protection that would cost thousands elsewhere. Handles DNS changes instantly (vs 24-48hr TTL elsewhere). The WAF Pro add-on will be needed at scale for the admin dashboard.
+            </td>
+            <td>Full DNS management, DDoS protection, and basic CDN — permanently free.</td>
+            <td><span class="mono">ACTIVE</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Firebase FCM
+              <br><span class="tag tag-comms">Push Notifications</span>
+            </td>
+            <td>
+              Firebase Cloud Messaging — sends push notifications to Android and iOS devices. Used for: delivery status updates, OTP codes (fallback), driver pings, payout confirmations, partner store new-package alerts.
+            </td>
+            <td>
+              The only free, reliable, cross-platform push notification service at any scale. Google maintains it. Our backend already has it wired up — it just needs the service account key set as an environment variable.
+            </td>
+            <td>Completely free. No limits on messages sent, no cost at any scale.</td>
+            <td><span class="mono">CONFIGURED</span><br><span class="note">⚠ Needs key rotation</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Flutterwave
+              <br><span class="tag tag-payment">Payments</span>
+            </td>
+            <td>
+              Nigerian-licensed payment processor. Handles: customer card payments, wallet top-ups for businesses, driver payout disbursements, partner store weekly payouts. Supports Naira, cards, bank transfer, USSD.
+            </td>
+            <td>
+              CBN-licensed, built for Nigeria. Supports all local payment methods. Paystack and Flutterwave are the only viable options — Flutterwave has slightly broader African coverage and already has our keys wired in. 1.4% fee on domestic transactions (no monthly fee).
+            </td>
+            <td>Sandbox environment is free. Production: 1.4% per domestic card transaction.</td>
+            <td><span class="mono">ACTIVE</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Resend
+              <br><span class="tag tag-comms">Email</span>
+            </td>
+            <td>
+              Transactional email service. Sends: OTP verification codes, welcome emails, password reset links, delivery confirmation emails, weekly earnings summaries for drivers, payout notifications.
+            </td>
+            <td>
+              Modern, developer-friendly SMTP with excellent deliverability. Free tier of 3,000 emails/month covers us through the early hundreds of users. Emails sent from noreply@seirs.co using our verified domain. Already configured and working.
+            </td>
+            <td>3,000 emails/month, 100/day. More than enough for 0–500 users.</td>
+            <td><span class="mono">ACTIVE</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Google Maps Platform
+              <br><span class="tag tag-maps">Location</span>
+            </td>
+            <td>
+              Maps display in all apps, address autocomplete when creating deliveries, route calculation for drivers, geocoding (address ↔ coordinates), real-time ETA estimation, partner store location markers.
+            </td>
+            <td>
+              The industry standard. No viable alternative at this quality level in Nigeria. Google gives $200/month free credit — enough to cover the platform up to ~1,000 active users. Mobile map display is entirely free (no charge for showing maps in Android/iOS apps — only API calls cost money).
+            </td>
+            <td>$200/month credit. Mobile map display is always free. API calls use the credit first.</td>
+            <td><span class="mono">PENDING</span><br><span class="note">API key needed</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Expo EAS
+              <br><span class="tag tag-mobile">Mobile</span>
+            </td>
+            <td>
+              Expo Application Services — cloud build system for React Native apps. Produces signed APKs and IPAs for the Play Store and App Store. Also handles OTA (Over-The-Air) updates: ship JS-layer fixes to users without a full app store review.
+            </td>
+            <td>
+              We use Expo/React Native for all 3 mobile apps (customer, driver, business). EAS is Expo's own build system — the only supported path for production builds. OTA updates are critical: bug fixes reach users in minutes instead of days of App Store review.
+            </td>
+            <td>Free: 30 builds/month, unlimited OTA updates. Enough for testing and early launch.</td>
+            <td><span class="mono">PENDING</span><br><span class="note">Expo username needed</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Redis (Upstash)
+              <br><span class="tag tag-data">Caching</span>
+            </td>
+            <td>
+              In-memory data store used for: caching exchange rates (avoid redundant API calls), session rate-limit counters, real-time WebSocket connection state, delivery matching queues, frequently-read driver location data.
+            </td>
+            <td>
+              <code>ioredis</code> is already in the backend dependencies. Upstash provides serverless Redis with a generous free tier (10,000 commands/day) — no separate server to manage. At scale, Redis is essential for performance: PostgreSQL cannot handle per-second location updates from thousands of drivers.
+            </td>
+            <td>10,000 commands/day, 256MB storage — free forever on Upstash.</td>
+            <td><span class="mono">PLANNED</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              ExchangeRate-API
+              <br><span class="tag tag-data">FX Rates</span>
+            </td>
+            <td>
+              Provides live USD/NGN and other currency exchange rates. Used in the pricing engine to auto-adjust delivery prices when the Naira fluctuates, so the platform never operates at a loss during currency volatility.
+            </td>
+            <td>
+              Free tier (1,500 req/month) is permanent overkill for our use case: we fetch the rate once every 6 hours (≈120 req/month) and cache it. No scraping, no unreliable CBN website dependency, no maintenance. Simple REST API.
+            </td>
+            <td>1,500 requests/month — more than enough at every scale level.</td>
+            <td><span class="mono">PENDING</span><br><span class="note">API key needed</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Google Play Developer
+              <br><span class="tag tag-mobile">Distribution</span>
+            </td>
+            <td>
+              Android app distribution channel. Required to publish the customer app, driver app, and business app to the Google Play Store. Provides app review, crash reporting dashboard, and update rollout controls.
+            </td>
+            <td>
+              The only way to distribute Android apps to the general public in Nigeria (and globally). One-time registration fee of $25, then no recurring cost. 97% of Nigerian smartphones run Android.
+            </td>
+            <td>$25 one-time registration. No recurring fee. Unlimited app updates.</td>
+            <td><span class="mono">PENDING</span><br><span class="note">Deferred — pre-store phase</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Apple Developer
+              <br><span class="tag tag-mobile">Distribution</span>
+            </td>
+            <td>
+              iOS app distribution channel. Required to publish to the App Store and to distribute TestFlight beta builds. Also required for Apple Sign-In and push notifications on iPhone.
+            </td>
+            <td>
+              Needed when you're ready to reach iPhone users. Nigeria's smartphone market is predominantly Android (~97%), but business users and high-value customers often use iPhones. Annual renewal required — let it lapse and apps are removed.
+            </td>
+            <td>$99/year ($8.25/month equivalent). No per-download or per-user fee.</td>
+            <td><span class="mono">PENDING</span><br><span class="note">Deferred — pre-store phase</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name">
+              Google Cloud Translation
+              <br><span class="tag tag-data">Translation</span>
+            </td>
+            <td>
+              Machine translation API. Planned use: auto-translate new UI strings added during development into Yoruba, Igbo, and Hausa as suggestions for human review, rather than blocking on manual translation.
+            </td>
+            <td>
+              We already have human-written translations for all 4 languages across all apps. This is only useful as a development workflow tool — translate a new string automatically, then a native speaker reviews it. The free tier (500K chars/month) covers this indefinitely.
+            </td>
+            <td>500,000 characters/month free. Covers all development translation needs permanently.</td>
+            <td><span class="mono">OPTIONAL</span></td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 2 — COST BREAKDOWN
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-green">💰</div>
+      <div>
+        <div class="section-title">Cost Breakdown by Scale Phase</div>
+        <div class="section-sub">Monthly recurring costs in USD. "Users" = registered accounts, not monthly active. Flutterwave is a % of payment volume — shown separately.</div>
+      </div>
+      <span class="section-badge badge-green">Monthly USD</span>
+    </div>
+
+    <div class="callout callout-blue">
+      <strong>How to read this table:</strong> Each phase represents total registered users on the platform across all 4 apps (customer, driver, business/partner). Costs shown are infrastructure costs only.
+      Flutterwave's 1.4% fee comes out of payment revenue — it is not a fixed cost you pay upfront.
+      Google Maps is free under the $200/month credit through ~1,000 active users.
+    </div>
+
+    <div class="table-wrap">
+      <table class="cost-table">
+        <thead>
+          <tr>
+            <th style="width:150px">Service</th>
+            <th class="phase-col">Test<br><span style="font-weight:400;font-size:10px">Dev / Sandbox</span></th>
+            <th class="phase-col">First Live<br><span style="font-weight:400;font-size:10px">0–100 users</span></th>
+            <th class="phase-col">500 Users</th>
+            <th class="phase-col">1,000 Users</th>
+            <th class="phase-col highlight-col">10,000 Users</th>
+            <th class="phase-col highlight-col">100,000 Users</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Railway<br><span class="note">API + PostgreSQL</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">Free $5 credit</div></td>
+            <td class="phase-val"><span class="low">$15</span><div class="note">0.5 vCPU, 512MB<br>+ small DB</div></td>
+            <td class="phase-val"><span class="low">$25</span><div class="note">1 vCPU, 1GB<br>+ DB addon</div></td>
+            <td class="phase-val"><span class="mid-c">$45</span><div class="note">1 vCPU, 2GB<br>+ DB addon</div></td>
+            <td class="phase-val"><span class="mid-c">$150</span><div class="note">2 vCPU, 4GB<br>+ read replica</div></td>
+            <td class="phase-val"><span class="high">$600</span><div class="note">Multiple workers<br>Consider AWS RDS</div></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Vercel<br><span class="note">Admin + Website</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">Hobby (free)</div></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="low">$20</span><div class="note">Pro plan<br>(team features)</div></td>
+            <td class="phase-val"><span class="low">$40</span><div class="note">Pro, higher usage</div></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Cloudflare R2<br><span class="note">File Storage</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">Well within free tier</div></td>
+            <td class="phase-val"><span class="free">$1</span><div class="note">~70GB docs/photos</div></td>
+            <td class="phase-val"><span class="low">$3</span></td>
+            <td class="phase-val"><span class="low">$20</span></td>
+            <td class="phase-val"><span class="mid-c">$80</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Cloudflare<br><span class="note">DNS + CDN</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="mid-c">$25</span><div class="note">Pro (WAF for admin)</div></td>
+            <td class="phase-val"><span class="mid-c">$25</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Firebase FCM<br><span class="note">Push Notifications</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">Always free</div></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Flutterwave<br><span class="note">Payments</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">Sandbox</div></td>
+            <td class="phase-val"><span class="pct">1.4% GMV</span><div class="note">~$5 est. revenue</div></td>
+            <td class="phase-val"><span class="pct">1.4% GMV</span><div class="note">~$30 est.</div></td>
+            <td class="phase-val"><span class="pct">1.4% GMV</span><div class="note">~$60 est.</div></td>
+            <td class="phase-val"><span class="pct">1.4% GMV</span><div class="note">~$600 est.</div></td>
+            <td class="phase-val"><span class="pct">1.4% GMV</span><div class="note">~$6,000 est.<br>Negotiate rate</div></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Resend<br><span class="note">Transactional Email</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">3K emails/mo free</div></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">~1,500/mo (OK)</div></td>
+            <td class="phase-val"><span class="low">$20</span><div class="note">Pro — 50K/mo</div></td>
+            <td class="phase-val"><span class="low">$20</span><div class="note">Still on Pro</div></td>
+            <td class="phase-val"><span class="mid-c">$90</span><div class="note">Business — 100K/mo</div></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Google Maps<br><span class="note">$200/mo credit</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">Within $200 credit</div></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">~$60 usage = $0</div></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">~$150 usage = $0</div></td>
+            <td class="phase-val"><span class="mid-c">$100</span><div class="note">~$300 usage<br>$200 credit = $100</div></td>
+            <td class="phase-val"><span class="high">$1,800</span><div class="note">~$2,000 usage<br>Cache aggressively</div></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Expo EAS<br><span class="note">Mobile Builds + OTA</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">30 builds/mo free</div></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="low">$99</span><div class="note">EAS Production<br>Unlimited builds</div></td>
+            <td class="phase-val"><span class="low">$99</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Redis (Upstash)<br><span class="note">Caching / Queues</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">10K cmds/day free</div></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="low">$5</span><div class="note">Pay-as-you-go</div></td>
+            <td class="phase-val"><span class="low">$20</span></td>
+            <td class="phase-val"><span class="mid-c">$80</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">ExchangeRate-API<br><span class="note">USD/NGN Rate</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">Always free tier</div></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Apple Developer<br><span class="note">iOS App Store</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">Deferred</div></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="low">$8</span><div class="note">$99/yr ÷ 12</div></td>
+            <td class="phase-val"><span class="low">$8</span></td>
+            <td class="phase-val"><span class="low">$8</span></td>
+            <td class="phase-val"><span class="low">$8</span></td>
+          </tr>
+
+          <tr>
+            <td class="svc-name" style="font-weight:700">Google Cloud Translation<br><span class="note">Dev workflow only</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span></td>
+            <td class="phase-val"><span class="free">$0</span><div class="note">500K chars/mo free</div></td>
+          </tr>
+
+          <!-- TOTAL ROW -->
+          <tr class="total-row">
+            <td style="font-weight:800;font-size:14px;">TOTAL / MONTH</td>
+            <td class="phase-val" style="color:#6EE7B7;font-size:16px;font-weight:800">$0</td>
+            <td class="phase-val" style="color:#93C5FD;font-size:16px;font-weight:800">~$23</td>
+            <td class="phase-val" style="color:#93C5FD;font-size:16px;font-weight:800">~$34</td>
+            <td class="phase-val" style="color:#FCD34D;font-size:16px;font-weight:800">~$81</td>
+            <td class="phase-val" style="color:#FCD34D;font-size:16px;font-weight:800">~$442</td>
+            <td class="phase-val" style="color:#F87171;font-size:16px;font-weight:800">~$2,822</td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+    <!-- One-Time Costs -->
+    <div class="section-header" style="margin-top:40px;">
+      <div class="section-title" style="font-size:16px">One-Time Costs</div>
+    </div>
+    <div class="onetime-grid">
+      <div class="onetime-card">
+        <h4>Google Play Developer Account</h4>
+        <div class="price">$25 <span>one-time, no renewal</span></div>
+        <p>Pay once and publish unlimited apps forever. Required to list on the Google Play Store. Can be paid via card at play.google.com/console.</p>
+      </div>
+      <div class="onetime-card">
+        <h4>Apple Developer Program</h4>
+        <div class="price">$99 <span>per year ($8.25/mo)</span></div>
+        <p>Annual subscription. Lets you publish to the App Store and distribute TestFlight betas. Must renew yearly or apps are removed. Enroll at developer.apple.com.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-amber">
+      <strong>Flutterwave (1.4% of GMV) is not in the total above</strong> because it scales with your revenue, not your costs.
+      At 100K users, if average order value is ₦2,500 (~$1.50) and each active user places 4 deliveries/month:
+      20,000 active users × 4 × ₦2,500 = ₦200M GMV → 1.4% = ₦2.8M (~$1,700) in processing fees per month.
+      At that scale, negotiate a custom rate — Flutterwave offers volume discounts at this level.
+    </div>
+
+    <div class="callout callout-blue">
+      <strong>Google Maps at 100K users is the single largest cost driver.</strong> Mitigation strategies built into the codebase:
+      debounce address autocomplete (don't call per keystroke), cache direction results for identical routes,
+      use Geocoding only once per address, and batch driver location updates via WebSocket rather than per-update API calls.
+      With aggressive caching, the $1,800 estimate could be reduced to $400–600.
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       SECTION 3 — YOUR ACTION PLAN
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-red">✅</div>
+      <div>
+        <div class="section-title">Your Action Plan — 21 Tasks</div>
+        <div class="section-sub">Numbered, prioritised, with exact step-by-step instructions for each</div>
+      </div>
+      <span class="section-badge badge-red">Do in order</span>
+    </div>
+
+    <!-- ── GROUP: CRITICAL (Do Today) ── -->
+    <div class="task-group-label">🔴 Critical — Do Today</div>
+
+    <!-- TASK 1 -->
+    <div class="task-card urgent">
+      <div class="task-number num-urgent">1</div>
+      <div class="task-body">
+        <div class="task-title">Revoke the Exposed Firebase Service Account Key <span class="task-badge tbadge-urgent">Security</span></div>
+        <div class="task-why">The Firebase private key was pasted into chat. Even in a private conversation, this is a risk — logs, backups, sync. Revoke it now before anything else.</div>
+        <ol class="steps">
+          <li data-n="1">Go to <strong>console.cloud.google.com</strong> and sign in with the Google account linked to Firebase.</li>
+          <li data-n="2">At the top, click the project selector → choose <strong>seirs-app-3a930</strong>.</li>
+          <li data-n="3">Left sidebar → <strong>IAM &amp; Admin</strong> → <strong>Service Accounts</strong>.</li>
+          <li data-n="4">Find the row: <code>firebase-adminsdk-fbsvc@seirs-app-3a930.iam.gserviceaccount.com</code> → click it.</li>
+          <li data-n="5">Click the <strong>Keys</strong> tab. Find the key with ID starting <code>952fd807ec</code>.</li>
+          <li data-n="6">Click the three-dot menu → <strong>Delete key</strong> → confirm. The old key is now invalid.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 2 -->
+    <div class="task-card urgent">
+      <div class="task-number num-urgent">2</div>
+      <div class="task-body">
+        <div class="task-title">Generate a New Firebase Key &amp; Update Railway <span class="task-badge tbadge-urgent">Security</span></div>
+        <div class="task-why">You need a replacement key immediately — push notifications will stop working without it.</div>
+        <ol class="steps">
+          <li data-n="1">Go to <strong>console.firebase.google.com</strong> → click the <strong>⚙ gear icon</strong> → <strong>Project Settings</strong>.</li>
+          <li data-n="2">Click the <strong>Service Accounts</strong> tab.</li>
+          <li data-n="3">Click <strong>"Generate New Private Key"</strong> → click <strong>Generate Key</strong> in the popup.</li>
+          <li data-n="4">A JSON file downloads automatically. <strong>Do not share or open this file in chat.</strong></li>
+          <li data-n="5">Open the JSON file in a text editor. Copy the entire contents (the full <code>{ ... }</code> block).</li>
+          <li data-n="6">Go to <strong>Railway</strong> dashboard → your backend service → <strong>Variables</strong> tab.</li>
+          <li data-n="7">Find or add the variable: <code>FIREBASE_SERVICE_ACCOUNT_JSON</code></li>
+          <li data-n="8">Paste the full JSON as the value. Railway accepts multi-line values. Save.</li>
+          <li data-n="9">Also open your local <span class="path">seirs-backend/.env</span> file → replace the value of <code>FIREBASE_SERVICE_ACCOUNT_JSON</code> with the new JSON.</li>
+          <li data-n="10">Railway will auto-redeploy. In the deploy logs, look for: <em>"Firebase Admin SDK initialised — push notifications enabled"</em></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ── GROUP: This Week ── -->
+    <div class="task-group-label">🟠 High Priority — This Week</div>
+
+    <!-- TASK 3 -->
+    <div class="task-card high">
+      <div class="task-number num-high">3</div>
+      <div class="task-body">
+        <div class="task-title">Register Mobile Apps in Firebase Console (Android + iOS) <span class="task-badge tbadge-high">Firebase</span></div>
+        <div class="task-why">Without registering each app in Firebase, google-services.json doesn't exist and push notifications won't work on device.</div>
+        <ol class="steps">
+          <li data-n="1">Firebase Console → <strong>Project Overview</strong> → click the <strong>Android icon</strong> (+ Add app).</li>
+          <li data-n="2">Android package name — use: <code>co.seirs.customer</code> for customer app, <code>co.seirs.driver</code> for driver, <code>co.seirs.business</code> for business. Tell me if you want different IDs.</li>
+          <li data-n="3">App nickname: "Customer App", "Driver App", "Business App" — optional but helpful.</li>
+          <li data-n="4">Click <strong>Register app</strong>. Download the <code>google-services.json</code> file.</li>
+          <li data-n="5">Place each <code>google-services.json</code> in: <span class="path">apps/customer-app/</span>, <span class="path">apps/driver-app/</span>, <span class="path">apps/business-app/</span>.</li>
+          <li data-n="6">Repeat steps 1–4 but click the <strong>iOS icon</strong>. Use bundle IDs: <code>co.seirs.customer</code>, <code>co.seirs.driver</code>, <code>co.seirs.business</code>.</li>
+          <li data-n="7">Download <code>GoogleService-Info.plist</code> for each iOS app and place them in the same folders.</li>
+          <li data-n="8">Tell me the exact bundle IDs you registered and I'll wire them into <span class="path">app.json</span> for each app.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 4 -->
+    <div class="task-card high">
+      <div class="task-number num-high">4</div>
+      <div class="task-body">
+        <div class="task-title">Sign Up for ExchangeRate-API &amp; Add Key to Railway <span class="task-badge tbadge-high">Config</span></div>
+        <div class="task-why">The pricing engine needs a live USD/NGN rate to auto-adjust delivery prices for currency volatility.</div>
+        <ol class="steps">
+          <li data-n="1">Go to <strong>exchangerate-api.com</strong> → click <strong>Get Free Key</strong>.</li>
+          <li data-n="2">Sign up with your email (no card needed). Verify your email.</li>
+          <li data-n="3">On the dashboard, copy your <strong>API Key</strong>.</li>
+          <li data-n="4">Railway → backend service → Variables → add: <code>EXCHANGE_RATE_API_KEY=your_key_here</code></li>
+          <li data-n="5">Also add to your local <span class="path">seirs-backend/.env</span>: <code>EXCHANGE_RATE_API_KEY=your_key_here</code></li>
+          <li data-n="6">Tell me the key and I'll wire it into the backend PricingEngine to auto-refresh every 6 hours.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 5 -->
+    <div class="task-card high">
+      <div class="task-number num-high">5</div>
+      <div class="task-body">
+        <div class="task-title">Create Google Maps API Key &amp; Wire Into Apps <span class="task-badge tbadge-high">Maps</span></div>
+        <div class="task-why">Maps have never been built yet — this is a full implementation task. But it cannot start without the key.</div>
+        <ol class="steps">
+          <li data-n="1">Go to <strong>console.cloud.google.com</strong> → select project <strong>seirs-app-3a930</strong> (use the same project as Firebase to keep billing in one place).</li>
+          <li data-n="2">Left sidebar → <strong>APIs &amp; Services</strong> → <strong>Library</strong>. Enable these four APIs: <strong>Maps SDK for Android</strong>, <strong>Maps SDK for iOS</strong>, <strong>Places API</strong>, <strong>Directions API</strong>.</li>
+          <li data-n="3">Left sidebar → <strong>APIs &amp; Services</strong> → <strong>Credentials</strong> → <strong>+ Create Credentials</strong> → <strong>API key</strong>.</li>
+          <li data-n="4">Click <strong>Edit API key</strong> → under <strong>API restrictions</strong> → restrict to: Maps SDK Android, Maps SDK iOS, Places API, Directions API.</li>
+          <li data-n="5">Copy the key.</li>
+          <li data-n="6">Railway → Variables → add: <code>GOOGLE_MAPS_API_KEY=your_key</code>. Also add to <span class="path">.env</span>.</li>
+          <li data-n="7">Share the key with me and I'll build: address autocomplete in delivery creation screens, driver route display, ops map in admin dashboard, and partner store map markers.</li>
+        </ol>
+        <div class="callout callout-blue" style="margin-top:12px;">
+          <strong>Billing note:</strong> Go to console.cloud.google.com → Billing → confirm a billing account is attached to the project. Without billing, the Maps API won't work even though it's free under the $200 credit.
+        </div>
+      </div>
+    </div>
+
+    <!-- TASK 6 -->
+    <div class="task-card high">
+      <div class="task-number num-high">6</div>
+      <div class="task-body">
+        <div class="task-title">Provide Expo Username → Wire Business App to EAS <span class="task-badge tbadge-high">Mobile</span></div>
+        <div class="task-why">Without the correct owner/slug in app.json, EAS builds will fail and OTA updates won't be routed to the right channel.</div>
+        <ol class="steps">
+          <li data-n="1">Open a terminal and run: <code>npx eas whoami</code> — this shows your Expo username.</li>
+          <li data-n="2">Alternatively, go to <strong>expo.dev</strong> → log in → your username is top-right.</li>
+          <li data-n="3">Tell me your Expo username. I will then:
+            <br>• Update <span class="path">apps/business-app/app.json</span> with the correct <code>owner</code> and <code>slug</code>
+            <br>• Create <span class="path">apps/business-app/eas.json</span> with development, preview, and production build profiles
+            <br>• Verify <span class="path">apps/customer-app/eas.json</span> and <span class="path">apps/driver-app/eas.json</span> are correct
+          </li>
+          <li data-n="4">After I update the files: run <code>cd apps/business-app && npx eas init</code> to link the project to your Expo account.</li>
+          <li data-n="5">To push OTA updates to customer and driver apps: <code>cd apps/customer-app && npx eas update --channel preview --message "i18n + theme updates"</code>. Repeat for driver-app.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ── GROUP: Before Launch ── -->
+    <div class="task-group-label">🔵 Before Launch — Set Up This Month</div>
+
+    <!-- TASK 7 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">7</div>
+      <div class="task-body">
+        <div class="task-title">Deploy Company Website to Vercel &amp; Connect seirs.co <span class="task-badge tbadge-medium">Website</span></div>
+        <div class="task-why">The website is built and ready. It just needs to be deployed and pointed at your domain so Shopify stops showing up.</div>
+        <ol class="steps">
+          <li data-n="1">Push your latest code to GitHub (the <span class="path">apps/seirs-website/</span> folder is in the monorepo).</li>
+          <li data-n="2">Go to <strong>vercel.com</strong> → <strong>Add New Project</strong> → import your GitHub repo.</li>
+          <li data-n="3">In the Vercel setup:
+            <br>• <strong>Root Directory:</strong> <code>apps/seirs-website</code>
+            <br>• <strong>Build Command:</strong> <code>npm run build</code>
+            <br>• <strong>Output Directory:</strong> <code>.next</code>
+            <br>• <strong>Framework:</strong> Next.js (auto-detected)
+          </li>
+          <li data-n="4">Click <strong>Deploy</strong>. Vercel gives you a <code>.vercel.app</code> preview URL — check that it looks correct.</li>
+          <li data-n="5">In Vercel project → <strong>Settings</strong> → <strong>Domains</strong> → Add <code>seirs.co</code> and <code>www.seirs.co</code>.</li>
+          <li data-n="6">Vercel shows you a CNAME value like <code>cname.vercel-dns.com</code>.</li>
+          <li data-n="7">In <strong>Cloudflare DNS</strong> for seirs.co: delete the existing Shopify CNAME record. Add a new <strong>CNAME</strong>: Name = <code>www</code>, Target = <code>cname.vercel-dns.com</code>, Proxy = ON.</li>
+          <li data-n="8">For the apex domain (<code>seirs.co</code> without www): add an <strong>A record</strong> pointing to Vercel's IP (Vercel shows you this). Or use a redirect from seirs.co → www.seirs.co.</li>
+          <li data-n="9">Wait 2–5 minutes. Vercel auto-provisions SSL. Your site goes live at seirs.co.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 8 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">8</div>
+      <div class="task-body">
+        <div class="task-title">Update ALLOWED_ORIGINS in Railway <span class="task-badge tbadge-medium">Security</span></div>
+        <div class="task-why">The backend currently only allows requests from the Railway URL. Once the admin dashboard and website have real domains, those origins need to be added or the browser will block API calls.</div>
+        <ol class="steps">
+          <li data-n="1">Railway → backend service → Variables tab.</li>
+          <li data-n="2">Find <code>ALLOWED_ORIGINS</code>. Update it to include all production origins (comma-separated, no trailing slash):
+            <div class="env-block">
+              <span class="env-key">ALLOWED_ORIGINS</span>=<span class="env-val">https://admin.seirs.co,https://seirs.co,https://www.seirs.co,https://seirs-logistics-mobile-production.up.railway.app</span>
+            </div>
+          </li>
+          <li data-n="3">Also update your local <span class="path">.env</span> to include the same list.</li>
+          <li data-n="4">Save and redeploy.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 9 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">9</div>
+      <div class="task-body">
+        <div class="task-title">Set Up Admin Dashboard Custom Domain (admin.seirs.co) <span class="task-badge tbadge-medium">Deployment</span></div>
+        <div class="task-why">Right now admin access is at a long Railway URL. admin.seirs.co is professional and easier to bookmark. Done in Vercel + Cloudflare.</div>
+        <ol class="steps">
+          <li data-n="1">In Vercel: go to the admin-dashboard project → <strong>Settings</strong> → <strong>Domains</strong> → add <code>admin.seirs.co</code>.</li>
+          <li data-n="2">Vercel shows a CNAME record to add. Go to <strong>Cloudflare DNS</strong> for seirs.co.</li>
+          <li data-n="3">Add record: Type = <strong>CNAME</strong>, Name = <code>admin</code>, Target = the value Vercel gave you, Proxy = <strong>ON</strong> (orange cloud).</li>
+          <li data-n="4">Wait 1–2 minutes. Vercel provisions SSL automatically.</li>
+          <li data-n="5">Test: open <strong>admin.seirs.co</strong> in your browser — the login page should load over HTTPS.</li>
+          <li data-n="6">Tell me when it's live and I'll add CSP headers to the Next.js admin config for full security hardening.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 10 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">10</div>
+      <div class="task-body">
+        <div class="task-title">Set Up EAS Build Configs for All 3 Mobile Apps <span class="task-badge tbadge-medium">Mobile</span></div>
+        <div class="task-why">Without eas.json, you can't produce production-signed APKs or IPAs for the stores. The development profile also enables faster testing.</div>
+        <ol class="steps">
+          <li data-n="1">Give me your Expo username (from Task 6). I'll create the <code>eas.json</code> files with three profiles:
+            <br>• <strong>development:</strong> debug build for Expo Go / physical device testing
+            <br>• <strong>preview:</strong> internal APK (Android) for team testing without Play Store
+            <br>• <strong>production:</strong> signed APK/IPA for store submission
+          </li>
+          <li data-n="2">For Android signing: I'll configure EAS to manage the keystore automatically (EAS stores it securely).</li>
+          <li data-n="3">To trigger a build: <code>cd apps/customer-app && npx eas build --profile preview --platform android</code>. This runs in the cloud — takes ~10 minutes.</li>
+          <li data-n="4">Download the APK from the EAS build URL and install it on a physical Android device to test.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 11 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">11</div>
+      <div class="task-body">
+        <div class="task-title">Set Up Google Cloud Translation API Key <span class="task-badge tbadge-medium">Optional</span></div>
+        <div class="task-why">Useful for quickly getting translation suggestions when new strings are added to the app. Human review still required before shipping.</div>
+        <ol class="steps">
+          <li data-n="1">console.cloud.google.com → project seirs-app-3a930 → <strong>APIs &amp; Services</strong> → <strong>Library</strong>.</li>
+          <li data-n="2">Search: <strong>"Cloud Translation API"</strong> → click → <strong>Enable</strong>.</li>
+          <li data-n="3"><strong>Credentials</strong> → <strong>+ Create Credentials</strong> → <strong>API key</strong>. Copy the key.</li>
+          <li data-n="4">Click <strong>Edit API key</strong> → API restrictions → restrict to: <strong>Cloud Translation API</strong> only.</li>
+          <li data-n="5">Railway → Variables → add: <code>GOOGLE_TRANSLATION_API_KEY=your_key</code>.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ── GROUP: Backend Security ── -->
+    <div class="task-group-label">🔒 Backend Security — Before Public Launch</div>
+
+    <!-- TASK 12 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">12</div>
+      <div class="task-body">
+        <div class="task-title">Implement Account Lockout After Failed Login Attempts <span class="task-badge tbadge-medium">Security</span></div>
+        <div class="task-why">Currently we throttle at 10 req/min per IP, but a determined attacker rotating IPs could still brute-force a weak password. Account lockout closes that gap — it's user-specific, not IP-specific.</div>
+        <ol class="steps">
+          <li data-n="1">This requires a database schema change. <strong>Tell me when you're ready</strong> and I'll implement it in one go:
+            <br>• Add <code>failedLoginAttempts</code> (int, default 0) and <code>lockedUntil</code> (timestamp, nullable) columns to the User entity
+            <br>• On failed login: increment counter. On 5th failure: set <code>lockedUntil = now + 15 minutes</code>
+            <br>• On login attempt: check <code>lockedUntil</code> first — if in the future, return 423 "Account temporarily locked"
+            <br>• On successful login: reset counter to 0
+          </li>
+          <li data-n="2">No downtime required. TypeORM synchronize will add the columns automatically on next deploy.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 13 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">13</div>
+      <div class="task-body">
+        <div class="task-title">Add CSP Headers to Admin Dashboard (Next.js) <span class="task-badge tbadge-medium">Security</span></div>
+        <div class="task-why">The API has Helmet security headers, but the admin dashboard Next.js app doesn't. CSP prevents XSS attacks if ever a malicious script were injected.</div>
+        <ol class="steps">
+          <li data-n="1"><strong>Tell me when the admin domain is live</strong> (admin.seirs.co) and I'll add Content-Security-Policy headers to <span class="path">apps/admin-dashboard/next.config.js</span> in one edit — no action needed from you.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ── GROUP: Mobile Completions ── -->
+    <div class="task-group-label">📱 Mobile App Completions</div>
+
+    <!-- TASK 14 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">14</div>
+      <div class="task-body">
+        <div class="task-title">Complete Customer App i18n (Yoruba, Igbo, Hausa ~50% done) <span class="task-badge tbadge-medium">i18n</span></div>
+        <div class="task-why">The customer-app locale files for yo/ig/ha are only about half-written from the original batch. Missing strings will fall back to English which looks broken for local-language users.</div>
+        <ol class="steps">
+          <li data-n="1">No action needed from you — I can complete this in one session. <strong>Tell me when to start</strong> and I'll fill in all missing translations in <span class="path">apps/customer-app/i18n/locales/yo.json</span>, <code>ig.json</code>, and <code>ha.json</code> to match the English source file.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 15 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">15</div>
+      <div class="task-body">
+        <div class="task-title">Implement Google Maps in All Apps <span class="task-badge tbadge-medium">Feature</span></div>
+        <div class="task-why">Maps was listed as a pending item from the original audit. Currently a placeholder. Once you provide the API key (Task 5), this is a full implementation.</div>
+        <ol class="steps">
+          <li data-n="1">Provide the Google Maps API key (Task 5 above).</li>
+          <li data-n="2">Tell me and I'll build:
+            <br>• <strong>Customer app:</strong> Address autocomplete when creating deliveries, delivery tracking map
+            <br>• <strong>Driver app:</strong> Live route map, turn-by-turn directions
+            <br>• <strong>Business app:</strong> Partner store locator, delivery area heatmap
+            <br>• <strong>Admin dashboard:</strong> Ops map with live driver positions, partner store markers
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 16 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">16</div>
+      <div class="task-body">
+        <div class="task-title">Wire Upstash Redis for Caching &amp; Rate Limits <span class="task-badge tbadge-medium">Infrastructure</span></div>
+        <div class="task-why">ioredis is installed but Redis isn't provisioned. Without it, exchange rate lookups hit the external API on every request, and location data can't be cached efficiently.</div>
+        <ol class="steps">
+          <li data-n="1">Go to <strong>upstash.com</strong> → sign up free → <strong>Create Database</strong> → select region: <strong>eu-west-1</strong> (closest to Nigeria via London).</li>
+          <li data-n="2">Copy the <strong>REDIS_URL</strong> shown (format: <code>rediss://default:xxx@xxx.upstash.io:6379</code>).</li>
+          <li data-n="3">Railway → Variables → add: <code>REDIS_URL=your_redis_url</code>.</li>
+          <li data-n="4">Tell me it's set up and I'll wire it into the backend: exchange rate caching, OTP rate limiting, and driver location cache.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ── GROUP: Pre-Launch Audit ── -->
+    <div class="task-group-label">🔍 Pre-Launch — Quality &amp; Compliance</div>
+
+    <!-- TASK 17 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">17</div>
+      <div class="task-body">
+        <div class="task-title">Full Navigation Audit — Every Screen in Every App <span class="task-badge tbadge-medium">QA</span></div>
+        <div class="task-why">End-to-end functional test. Tap every button, check every screen, verify no dead links, broken layouts, or missing data states.</div>
+        <ol class="steps">
+          <li data-n="1">Run all 3 apps in Expo Go on a physical Android device (best real-world test).</li>
+          <li data-n="2">Create test accounts: 1 customer, 1 driver, 1 business sender, 1 partner store, 1 admin.</li>
+          <li data-n="3">For each app, go through every screen in order. Note anything that:
+            <br>• Crashes or throws an error
+            <br>• Shows a blank screen or incorrect data
+            <br>• Has a button that does nothing
+            <br>• Looks wrong on mobile screen sizes
+          </li>
+          <li data-n="4">Share the list with me — I'll fix each issue.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 18 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">18</div>
+      <div class="task-body">
+        <div class="task-title">Test Full Payment Flow (Sandbox → Production) <span class="task-badge tbadge-medium">Payments</span></div>
+        <div class="task-why">Payment bugs in production are catastrophic. Everything must be verified in sandbox before switching to live keys.</div>
+        <ol class="steps">
+          <li data-n="1">In Flutterwave dashboard → switch to <strong>Test mode</strong>. Confirm the backend is using the test keys (already in .env).</li>
+          <li data-n="2">In the customer app: create an order → go through checkout → use Flutterwave's test card: <code>5531 8866 5214 2950</code>, expiry <code>09/32</code>, CVV <code>564</code>, PIN <code>3310</code>.</li>
+          <li data-n="3">Verify: wallet balance updates, transaction appears in history, delivery order is created.</li>
+          <li data-n="4">Test a wallet top-up from the business app.</li>
+          <li data-n="5">When all tests pass: go to Flutterwave → switch to <strong>Live mode</strong> → copy live secret and public keys → update Railway Variables with live keys.</li>
+          <li data-n="6"><span class="warn">Do not do step 5 until steps 1–4 all pass cleanly.</span></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 19 -->
+    <div class="task-card medium">
+      <div class="task-number num-medium">19</div>
+      <div class="task-body">
+        <div class="task-title">Update Privacy Policy &amp; Terms URLs in App <span class="task-badge tbadge-medium">Legal</span></div>
+        <div class="task-why">The registration screens in all apps have links to Privacy Policy and Terms. Once the website is live, these need to point to the real URLs.</div>
+        <ol class="steps">
+          <li data-n="1">Once seirs.co is live: the correct URLs are <code>https://seirs.co/privacy-policy</code> and <code>https://seirs.co/terms-of-service</code>.</li>
+          <li data-n="2">Tell me when the website is live — I'll search for every hardcoded legal URL in all apps and update them in one pass.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ── GROUP: Store Submission ── -->
+    <div class="task-group-label">🏪 When Ready for App Stores</div>
+
+    <!-- TASK 20 -->
+    <div class="task-card low">
+      <div class="task-number num-low">20</div>
+      <div class="task-body">
+        <div class="task-title">Register Google Play Developer Account ($25) <span class="task-badge tbadge-medium">Distribution</span></div>
+        <div class="task-why">One-time fee. No recurring cost. Required to publish to the Play Store.</div>
+        <ol class="steps">
+          <li data-n="1">Go to <strong>play.google.com/console</strong> → click <strong>Get started</strong>.</li>
+          <li data-n="2">Sign in with a Google account you control (preferably a business account, not personal).</li>
+          <li data-n="3">Accept the Developer Distribution Agreement.</li>
+          <li data-n="4">Pay the $25 registration fee via card.</li>
+          <li data-n="5">Fill in developer name: <strong>Seirs Logistics Ltd</strong>, email: your business email, website: <strong>https://seirs.co</strong>.</li>
+          <li data-n="6">Account is usually activated within 48 hours.</li>
+          <li data-n="7">Once active: tell me and I'll prepare the store listing (app description, screenshots, content rating questionnaire answers).</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- TASK 21 -->
+    <div class="task-card low">
+      <div class="task-number num-low">21</div>
+      <div class="task-body">
+        <div class="task-title">Enroll in Apple Developer Program ($99/year) <span class="task-badge tbadge-medium">Distribution</span></div>
+        <div class="task-why">Required for App Store distribution and TestFlight internal testing. Do this when you're ready to target iOS users.</div>
+        <ol class="steps">
+          <li data-n="1">Go to <strong>developer.apple.com/programs/enroll</strong>.</li>
+          <li data-n="2">Sign in with your Apple ID (or create one). You'll need a valid Apple ID with two-factor authentication enabled.</li>
+          <li data-n="3">Select enrollment type: <strong>Company/Organization</strong> (not Individual — this gives more credibility for store listings).</li>
+          <li data-n="4">You'll need a D-U-N-S number for your company. Get one free at <strong>dnb.com/duns-number</strong> (takes 5–10 business days if you don't have one).</li>
+          <li data-n="5">Pay $99 via card. Enrollment review takes 2–5 business days.</li>
+          <li data-n="6">Once enrolled: tell me and I'll configure Apple-specific settings in the app configs.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ══ WHAT I CAN DO IMMEDIATELY ══ -->
+    <div class="section-header" style="margin-top:48px;">
+      <div class="section-icon icon-green">⚡</div>
+      <div>
+        <div class="section-title">Tasks I Can Do Right Now (No Input Needed)</div>
+        <div class="section-sub">Just say "go" for any of these — I'll implement immediately</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>What I'll do</th>
+            <th>Files affected</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="svc-name">Account lockout (Task 12)</td>
+            <td>Add failedLoginAttempts + lockedUntil columns, update auth.service.ts login logic</td>
+            <td><span class="mono">user.entity.ts</span> <span class="mono">auth.service.ts</span></td>
+          </tr>
+          <tr>
+            <td class="svc-name">Admin CSP headers (Task 13)</td>
+            <td>Add Content-Security-Policy to next.config.js in admin-dashboard</td>
+            <td><span class="mono">next.config.js</span></td>
+          </tr>
+          <tr>
+            <td class="svc-name">Customer-app i18n (Task 14)</td>
+            <td>Fill all missing yo/ig/ha translation strings to match the English source</td>
+            <td><span class="mono">yo.json</span> <span class="mono">ig.json</span> <span class="mono">ha.json</span></td>
+          </tr>
+          <tr>
+            <td class="svc-name">ExchangeRate-API wiring</td>
+            <td>Wire the FX rate into PricingEngine with 6-hour Redis cache after you provide the key</td>
+            <td><span class="mono">pricing.service.ts</span></td>
+          </tr>
+          <tr>
+            <td class="svc-name">EAS build configs (Task 10)</td>
+            <td>Create eas.json for all 3 apps once you give me Expo username</td>
+            <td><span class="mono">eas.json</span> × 3 apps</td>
+          </tr>
+          <tr>
+            <td class="svc-name">Update privacy/ToS links (Task 19)</td>
+            <td>Replace all hardcoded legal URLs across all apps once seirs.co is live</td>
+            <td>Multiple screens</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ══ FOOTER ══ -->
+  <div class="doc-footer">
+    <p>Seirs Logistics Ltd &nbsp;·&nbsp; Services &amp; Action Plan &nbsp;·&nbsp; Generated 30 April 2026</p>
+    <p style="margin-top:6px;">Costs are estimates based on published pricing as of April 2026 and will vary with actual usage patterns.</p>
+  </div>
+
+</div><!-- /content -->
+</body>
+</html>

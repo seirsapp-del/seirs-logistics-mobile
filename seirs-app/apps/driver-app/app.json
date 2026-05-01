@@ -2,6 +2,7 @@
   "expo": {
     "name": "Seirs Driver",
     "slug": "seirs-driver",
+    "owner": "seye-xiv",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -12,14 +13,14 @@
       "supportsTablet": false,
       "bundleIdentifier": "co.seirs.driver",
       "config": {
-        "googleMapsApiKey": "AIzaSyD4sOfs9SBTWE36xzak3aTwsbt-a0mgcSc"
+        "googleMapsApiKey": "AIzaSyDEeXCs8LeFarQl4FBSq8e-Da8opA5XW74"
       }
     },
     "android": {
       "package": "co.seirs.driver",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyAvMkPsFLms7sJY8rd_44mf-ibQaYGEJPs"
+          "apiKey": "AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM"
         }
       },
       "adaptiveIcon": {

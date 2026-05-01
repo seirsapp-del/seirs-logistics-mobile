@@ -1,12 +1,15 @@
 import {
-  Controller, Get, Post, Patch, Param, Body,
-  UseGuards, Query,
+  Controller, Get, Post, Patch, Delete, Param, Body,
+  UseGuards, Query, Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { FraudFlagStatus } from '../fraud/fraud-flag.entity';
+import { ContentType, ContentStatus } from './cms-item.entity';
+import { TicketStatus, TicketPriority } from './support-ticket.entity';
 
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller('admin')
@@ -167,5 +170,135 @@ export class AdminController {
     @CurrentUser() admin: any,
   ) {
     return this.adminService.resolveFraudFlag(id, admin.id, status);
+  }
+
+  // ── Admin role management ─────────────────────────────────────────────────
+
+  // PATCH /api/v1/admin/admins/:id/role  { adminRole }
+  @Patch('admins/:id/role')
+  updateAdminRole(
+    @Param('id') id: string,
+    @Body('adminRole') adminRole: string,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    return this.adminService.updateAdminRole(id, adminRole, admin, req.ip);
+  }
+
+  // POST /api/v1/admin/admins/:id/totp/setup
+  @Post('admins/:id/totp/setup')
+  setupTOTP(@Param('id') id: string) {
+    return this.adminService.setupTOTP(id);
+  }
+
+  // POST /api/v1/admin/admins/:id/totp/confirm
+  @Post('admins/:id/totp/confirm')
+  confirmTOTP(@Param('id') id: string, @Body('code') code: string) {
+    return this.adminService.confirmTOTP(id, code);
+  }
+
+  // PATCH /api/v1/admin/users/:id/suspend
+  @Patch('users/:id/suspend')
+  suspendUser(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
+    return this.adminService.suspendUser(id, admin, req.ip);
+  }
+
+  // PATCH /api/v1/admin/drivers/:id/reject  { reason? }
+  @Patch('drivers/:id/reject')
+  rejectDriver(
+    @Param('id') id: string,
+    @Body('reason') reason?: string,
+  ) {
+    return this.adminService.updateDriverStatus(id, 'rejected', reason);
+  }
+
+  // ── CMS ───────────────────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/cms?type=banner&status=published
+  @Get('cms')
+  getCmsItems(@Query() q: { type?: ContentType; status?: ContentStatus }) {
+    return this.adminService.getCmsItems(q.type, q.status);
+  }
+
+  // POST /api/v1/admin/cms
+  @Post('cms')
+  createCmsItem(
+    @Body() body: { type: ContentType; title: string; body?: string; imageUrl?: string },
+    @CurrentUser() admin: any,
+  ) {
+    return this.adminService.createCmsItem(body, admin.id);
+  }
+
+  // PATCH /api/v1/admin/cms/:id
+  @Patch('cms/:id')
+  updateCmsItem(@Param('id') id: string, @Body() body: any) {
+    return this.adminService.updateCmsItem(id, body);
+  }
+
+  // PATCH /api/v1/admin/cms/:id/approve
+  @Patch('cms/:id/approve')
+  approveCmsItem(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
+    return this.adminService.approveCmsItem(id, admin, req.ip);
+  }
+
+  // PATCH /api/v1/admin/cms/:id/publish
+  @Patch('cms/:id/publish')
+  publishCmsItem(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
+    return this.adminService.publishCmsItem(id, admin, req.ip);
+  }
+
+  // DELETE /api/v1/admin/cms/:id
+  @Delete('cms/:id')
+  deleteCmsItem(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
+    return this.adminService.deleteCmsItem(id, admin, req.ip);
+  }
+
+  // ── Support Tickets ───────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/tickets?page=1&status=open&priority=urgent
+  @Get('tickets')
+  getTickets(@Query() q: { page?: number; status?: TicketStatus; priority?: TicketPriority }) {
+    return this.adminService.getTickets(q.page ?? 1, q.status, q.priority);
+  }
+
+  // GET /api/v1/admin/tickets/:id
+  @Get('tickets/:id')
+  getTicket(@Param('id') id: string) {
+    return this.adminService.getTicket(id);
+  }
+
+  // PATCH /api/v1/admin/tickets/:id/assign  { agentId }
+  @Patch('tickets/:id/assign')
+  assignTicket(@Param('id') id: string, @Body('agentId') agentId: string) {
+    return this.adminService.assignTicket(id, agentId);
+  }
+
+  // PATCH /api/v1/admin/tickets/:id  { status?, resolution? }
+  @Patch('tickets/:id')
+  updateTicket(
+    @Param('id') id: string,
+    @Body() body: { status?: TicketStatus; resolution?: string },
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    return this.adminService.updateTicket(id, body, admin, req.ip);
+  }
+
+  // POST /api/v1/admin/tickets/:id/reply  { message }
+  @Post('tickets/:id/reply')
+  replyToTicket(
+    @Param('id') id: string,
+    @Body('message') message: string,
+    @CurrentUser() admin: any,
+  ) {
+    return this.adminService.replyToTicket(id, message, admin);
+  }
+
+  // ── Audit Log ─────────────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/audit-log?page=1&adminId=...&action=...
+  @Get('audit-log')
+  getAuditLog(@Query() q: { page?: number; adminId?: string; action?: string }) {
+    return this.adminService.getAuditLog(q.page ?? 1, q.adminId, q.action);
   }
 }

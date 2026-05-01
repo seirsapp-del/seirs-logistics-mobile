@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #F5F5F0;
+    color: #1F2937;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-sky text-white font-semibold px-6 py-3 rounded-btn transition-all duration-200 hover:opacity-90 hover:shadow-lg hover:-translate-y-0.5;
+  }
+
+  .btn-navy {
+    @apply inline-flex items-center justify-center gap-2 bg-navy text-white font-semibold px-6 py-3 rounded-btn transition-all duration-200 hover:bg-navy-dark hover:shadow-lg hover:-translate-y-0.5;
+  }
+
+  .btn-outline-white {
+    @apply inline-flex items-center justify-center gap-2 border-2 border-white text-white font-semibold px-6 py-3 rounded-btn transition-all duration-200 hover:bg-white hover:text-navy;
+  }
+
+  .btn-outline-navy {
+    @apply inline-flex items-center justify-center gap-2 border-2 border-navy text-navy font-semibold px-6 py-3 rounded-btn transition-all duration-200 hover:bg-navy hover:text-white;
+  }
+
+  .card {
+    @apply bg-white rounded-card p-6 shadow-sm border border-gray-100;
+  }
+
+  .section-label {
+    @apply text-sm font-semibold tracking-widest uppercase text-sky;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl font-extrabold text-navy leading-tight;
+  }
+
+  .section-sub {
+    @apply text-lg text-text-muted max-w-2xl mx-auto;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5F5F0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3A7BD5;
+  border-radius: 3px;
+}
+
+/* Hero geometric animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes floatReverse {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(20px) rotate(-5deg); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: floatReverse 8s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}

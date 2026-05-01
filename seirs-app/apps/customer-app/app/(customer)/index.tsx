@@ -1,19 +1,28 @@
+import { useRef, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
+  TextInput, Animated, PanResponder, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
-  Colors, Spacing, Radius, FontSize, FontWeight, Shadows, ActionColors,
+  Colors, Spacing, Radius, FontSize, FontWeight, Shadows,
 } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { NotificationBell } from '@/components/NotificationBell';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { MOCK_TRIPS, MOCK_USER } from '@/constants/mockData';
+import {
+  AlignLeft, MapPin, Package, Car, Clock, Search,
+  Wallet, Bell, TrendingUp, ChevronRight, Plus,
+  ArrowRight, Newspaper, Truck,
+} from 'lucide-react-native';
+
+const { width: W } = Dimensions.get('window');
+const SLIDE_TRACK  = W - Spacing.md * 2 - 32; // track width minus knob
+const SLIDE_THRESH = SLIDE_TRACK * 0.55;
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -22,92 +31,184 @@ function getGreeting() {
   return 'Good evening';
 }
 
-const QUICK_ACTIONS = [
-  { id: 'request', icon: 'car',          label: 'Request',  route: '/(customer)/request'  },
-  { id: 'send',    icon: 'paper-plane',  label: 'Send',     route: '/(customer)/send'     },
-  { id: 'track',   icon: 'location',     label: 'Track',    route: '/(customer)/track'    },
-  { id: 'history', icon: 'time',         label: 'History',  route: '/(customer)/history'  },
-] as const;
-
-const FEATURES = [
-  { icon: 'flash',            label: 'Fast & Reliable' },
-  { icon: 'shield-checkmark', label: 'Safe & Secure'   },
-  { icon: 'pricetag',         label: 'Best Prices'     },
-  { icon: 'star',             label: 'Rated 4.9 ⭐'    },
-] as const;
+type TripTab = 'in_progress' | 'delivered' | 'featured';
 
 function statusVariant(s: string): any {
   return s === 'completed' ? 'success' : s === 'in_progress' ? 'info' : s === 'cancelled' ? 'error' : 'default';
 }
 
 export default function CustomerHomeScreen() {
-  const router      = useRouter();
-  const cs          = useColorScheme();
-  const theme       = Colors[cs ?? 'light'];
-  const isDark      = cs === 'dark';
-  const { user }    = useAuth();
+  const router  = useRouter();
+  const cs      = useColorScheme();
+  const theme   = Colors[cs ?? 'light'];
+  const isDark  = cs === 'dark';
+  const { user } = useAuth();
 
   const firstName  = user?.name?.split(' ')[0] ?? MOCK_USER.name.split(' ')[0];
   const balance    = MOCK_USER.walletBalance;
-  const recents    = MOCK_TRIPS.slice(0, 3);
-  const activeTrip = MOCK_TRIPS.find(t => t.status === 'in_progress');
+
+  const [activeTab,      setActiveTab]      = useState<TripTab>('in_progress');
+  const [drawerVisible,  setDrawerVisible]  = useState(false);
+  const [slideMode,      setSlideMode]      = useState<'send' | 'ride'>('send');
+  const slideX = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, g) => {
+        const clamped = Math.max(0, Math.min(g.dx, SLIDE_TRACK - 48));
+        slideX.setValue(clamped);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dx > SLIDE_THRESH) {
+          Animated.spring(slideX, { toValue: SLIDE_TRACK - 48, useNativeDriver: false }).start();
+          setSlideMode('ride');
+        } else {
+          Animated.spring(slideX, { toValue: 0, useNativeDriver: false }).start();
+          setSlideMode('send');
+        }
+      },
+    }),
+  ).current;
+
+  const handleSlideAction = () => {
+    if (slideMode === 'send') {
+      router.push('/(customer)/send' as any);
+    } else {
+      router.push('/(customer)/request' as any);
+    }
+  };
+
+  const TRIPS = MOCK_TRIPS;
+  const tabTrips = activeTab === 'in_progress'
+    ? TRIPS.filter(t => t.status === 'in_progress')
+    : activeTab === 'delivered'
+    ? TRIPS.filter(t => t.status === 'completed')
+    : TRIPS.slice(0, 2);
+
+  const activeTrip = TRIPS.find(t => t.status === 'in_progress');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <View style={[styles.header, { backgroundColor: theme.background }]}>
-          <View>
-            <Text style={[styles.greeting, { color: theme.textSecond }]}>{getGreeting()},</Text>
-            <Text style={[styles.name, { color: theme.text }]}>{firstName} 👋</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <NotificationBell />
-            <Pressable onPress={() => router.push('/(customer)/profile')}>
-              <Avatar name={user?.name ?? MOCK_USER.name} size={40} />
-            </Pressable>
-          </View>
+        {/* ── Top bar ─────────────────────────────────────────────────────── */}
+        <View style={styles.topBar}>
+          <Pressable
+            style={[styles.menuBtn, { backgroundColor: theme.surface }, Shadows.xs]}
+            onPress={() => setDrawerVisible(true)}
+          >
+            <AlignLeft size={20} color={theme.text} strokeWidth={2} />
+          </Pressable>
+
+          <Text style={[styles.greeting, { color: theme.text }]}>
+            {getGreeting()}, {firstName}
+          </Text>
+
+          <Pressable onPress={() => router.push('/(customer)/profile' as any)}>
+            <Avatar name={user?.name ?? MOCK_USER.name} size={40} />
+          </Pressable>
         </View>
 
-        {/* ── Active Trip Banner ───────────────────────────────────────────── */}
+        {/* ── Search bar ──────────────────────────────────────────────────── */}
+        <Pressable
+          style={[styles.searchBar, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+          onPress={() => router.push('/(customer)/send' as any)}
+        >
+          <MapPin size={18} color={theme.accent} strokeWidth={1.75} />
+          <Text style={[styles.searchPlaceholder, { color: theme.textThird }]}>
+            Where are you sending to?
+          </Text>
+          <Search size={16} color={theme.textThird} strokeWidth={1.75} />
+        </Pressable>
+
+        {/* ── Active delivery banner ───────────────────────────────────────── */}
         {activeTrip && (
           <Pressable
-            style={[styles.activeBanner, { backgroundColor: isDark ? '#1A0C00' : '#EFF6FF', borderColor: theme.primary }]}
-            onPress={() => router.push({ pathname: '/(customer)/trip-progress', params: { id: activeTrip.id } })}
+            style={[styles.activeBanner, { backgroundColor: isDark ? '#1C2128' : '#EBF5FF', borderColor: theme.accent }]}
+            onPress={() => router.push({ pathname: '/(customer)/trip/[id]', params: { id: activeTrip.id } } as any)}
           >
-            <View style={[styles.activeDot, { backgroundColor: '#22C55E' }]} />
+            <View style={[styles.activeDot, { backgroundColor: theme.success }]} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.activeBannerTitle, { color: theme.text }]}>Trip in progress</Text>
+              <Text style={[styles.activeBannerTitle, { color: theme.text }]}>Delivery in progress</Text>
               <Text style={[styles.activeBannerSub, { color: theme.textSecond }]} numberOfLines={1}>
                 To {activeTrip.dropoffAddress}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.primary} />
+            <ChevronRight size={18} color={theme.accent} strokeWidth={2} />
           </Pressable>
         )}
 
-        {/* ── Wallet Balance Card ──────────────────────────────────────────── */}
+        {/* ── Widgets row ─────────────────────────────────────────────────── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.widgetsRow}
+        >
+          {/* Customer Stories — always visible */}
+          <Pressable style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+            <Newspaper size={20} color={theme.accent} strokeWidth={1.75} />
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Stories</Text>
+          </Pressable>
+
+          {/* Wallet Balance */}
+          <Pressable
+            style={[styles.widget, styles.widgetWide, { backgroundColor: theme.primary }]}
+            onPress={() => router.push('/(customer)/wallet' as any)}
+          >
+            <View style={styles.widgetRow}>
+              <Wallet size={16} color="rgba(255,255,255,0.8)" strokeWidth={1.75} />
+              <Text style={styles.widgetLabelWhite}>Wallet</Text>
+            </View>
+            <Text style={styles.widgetAmount}>
+              ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 0 })}
+            </Text>
+          </Pressable>
+
+          {/* Notifications */}
+          <Pressable
+            style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+            onPress={() => router.push('/notifications' as any)}
+          >
+            <Bell size={20} color={theme.accent} strokeWidth={1.75} />
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Alerts</Text>
+          </Pressable>
+
+          {/* Suggestions */}
+          <Pressable style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+            <TrendingUp size={20} color={theme.accent} strokeWidth={1.75} />
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Suggestions</Text>
+          </Pressable>
+        </ScrollView>
+
+        {/* ── Wallet card ─────────────────────────────────────────────────── */}
         <View style={styles.cardWrap}>
           <LinearGradient
-            colors={isDark ? ['#FF6B00', '#000000'] : ['#3A86FF', '#1D6AE5']}
+            colors={isDark ? ['#1C2128', '#0D1117'] : ['#0F2B4C', '#1A3A63']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={[styles.walletCard, isDark ? Shadows.orange : Shadows.blue]}
+            style={[styles.walletCard, Shadows.navy]}
           >
             <View style={styles.walletTop}>
               <Text style={styles.walletLabel}>Wallet Balance</Text>
-              <Pressable style={styles.walletTopUpBtn} onPress={() => router.push('/(customer)/wallet')}>
-                <Ionicons name="add" size={18} color="#fff" />
+              <Pressable
+                style={styles.walletTopUpBtn}
+                onPress={() => router.push('/(customer)/wallet' as any)}
+              >
+                <Plus size={16} color="#fff" strokeWidth={2.5} />
               </Pressable>
             </View>
             <Text style={styles.walletAmount}>
               ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </Text>
-            <Text style={styles.walletSub}>+4.2% this week</Text>
+            <Text style={styles.walletSub}>Available balance</Text>
             <View style={styles.walletActions}>
               {(['Top Up', 'Send', 'History'] as const).map((lbl) => (
-                <Pressable key={lbl} style={styles.walletActionBtn} onPress={() => router.push('/(customer)/wallet')}>
+                <Pressable
+                  key={lbl}
+                  style={styles.walletActionBtn}
+                  onPress={() => router.push('/(customer)/wallet' as any)}
+                >
                   <Text style={styles.walletActionText}>{lbl}</Text>
                 </Pressable>
               ))}
@@ -115,61 +216,67 @@ export default function CustomerHomeScreen() {
           </LinearGradient>
         </View>
 
-        {/* ── Quick Actions ────────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <View style={styles.actionsRow}>
-            {QUICK_ACTIONS.map((a) => {
-              const ac  = ActionColors[a.id];
-              const bg  = isDark ? ac.dark.bg  : ac.bg;
-              const col = isDark ? ac.dark.icon : ac.icon;
-              return (
-                <Pressable
-                  key={a.id}
-                  style={styles.actionItem}
-                  onPress={() => router.push(a.route as any)}
-                >
-                  <View style={[styles.actionIcon, { backgroundColor: bg }]}>
-                    <Ionicons name={a.icon as any} size={24} color={col} />
-                  </View>
-                  <Text style={[styles.actionLabel, { color: theme.textSecond }]}>{a.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ── Recent Activity ──────────────────────────────────────────────── */}
+        {/* ── Recent Trips (3 tabs) ────────────────────────────────────────── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Trips</Text>
-            <Pressable onPress={() => router.push('/(customer)/history')}>
-              <Text style={[styles.seeAll, { color: theme.primary }]}>See all</Text>
+            <Pressable onPress={() => router.push('/(customer)/history' as any)}>
+              <Text style={[styles.seeAll, { color: theme.accent }]}>See all</Text>
             </Pressable>
           </View>
 
-          {recents.length === 0 ? (
+          {/* Tab bar */}
+          <View style={[styles.tabBar, { backgroundColor: theme.surfaceSecond }]}>
+            {([
+              { key: 'in_progress', label: 'In Progress' },
+              { key: 'delivered',   label: 'Delivered'   },
+              { key: 'featured',    label: 'Features'    },
+            ] as { key: TripTab; label: string }[]).map(tab => (
+              <Pressable
+                key={tab.key}
+                style={[
+                  styles.tabItem,
+                  activeTab === tab.key && { backgroundColor: theme.surface, ...Shadows.xs },
+                ]}
+                onPress={() => setActiveTab(tab.key)}
+              >
+                <Text style={[
+                  styles.tabLabel,
+                  { color: activeTab === tab.key ? theme.text : theme.textSecond },
+                  activeTab === tab.key && { fontWeight: FontWeight.semibold },
+                ]}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Trip list */}
+          {tabTrips.length === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-              <Ionicons name="car-outline" size={44} color={theme.textThird} />
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips yet</Text>
+              <Package size={40} color={theme.textThird} strokeWidth={1.5} />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                {activeTab === 'in_progress' ? 'No active deliveries' : 'No deliveries yet'}
+              </Text>
               <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
-                Your trip history will appear here
+                {activeTab === 'in_progress' ? 'Book a delivery to get started' : 'Your delivery history appears here'}
               </Text>
               <Pressable
                 style={[styles.emptyBtn, { backgroundColor: theme.primary }]}
-                onPress={() => router.push('/(customer)/request')}
+                onPress={() => router.push('/(customer)/send' as any)}
               >
-                <Text style={styles.emptyBtnText}>Request a ride</Text>
+                <Text style={styles.emptyBtnText}>Send a Package</Text>
               </Pressable>
             </View>
           ) : (
-            recents.map((t) => (
+            tabTrips.map(t => (
               <Pressable
                 key={t.id}
                 style={[styles.tripRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
-                onPress={() => router.push({ pathname: '/(customer)/trip/[id]', params: { id: t.id } })}
+                onPress={() => router.push({ pathname: '/(customer)/trip/[id]', params: { id: t.id } } as any)}
               >
-                <View style={[styles.tripIconWrap, { backgroundColor: isDark ? '#111' : '#F1F5F9' }]}>
-                  <Ionicons name="car-outline" size={20} color={theme.primary} />
+                <View style={[styles.tripIconWrap, { backgroundColor: theme.surfaceSecond }]}>
+                  <Truck size={20} color={theme.accent} strokeWidth={1.75} />
                 </View>
                 <View style={styles.tripInfo}>
                   <Text style={[styles.tripDest, { color: theme.text }]} numberOfLines={1}>
@@ -177,7 +284,7 @@ export default function CustomerHomeScreen() {
                   </Text>
                   <Text style={[styles.tripMeta, { color: theme.textSecond }]}>
                     {new Date(t.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
-                    {t.distance ? ` · ${t.distance}` : ''}
+                    {(t as any).distance ? ` · ${(t as any).distance}` : ''}
                   </Text>
                 </View>
                 <View style={styles.tripRight}>
@@ -191,70 +298,176 @@ export default function CustomerHomeScreen() {
           )}
         </View>
 
-        {/* ── Book CTA ─────────────────────────────────────────────────────── */}
-        <View style={styles.ctaWrap}>
-          <Pressable
-            style={[styles.ctaBtn, { backgroundColor: theme.primary }, isDark ? Shadows.orange : Shadows.blue]}
-            onPress={() => router.push('/(customer)/request')}
+      </ScrollView>
+
+      {/* ── Sliding action button (fixed bottom) ────────────────────────── */}
+      <View style={[styles.slideWrap, { backgroundColor: theme.surface }, Shadows.lg]}>
+        <View style={[styles.slideTrack, { backgroundColor: theme.surfaceSecond }]}>
+          {/* Background labels */}
+          <View style={styles.slideLabels}>
+            <View style={styles.slideLabelLeft}>
+              <Package size={16} color={slideMode === 'send' ? '#FFFFFF' : theme.textSecond} strokeWidth={2} />
+              <Text style={[styles.slideLabelText, { color: slideMode === 'send' ? '#FFFFFF' : theme.textSecond }]}>
+                Send a Package
+              </Text>
+            </View>
+            <View style={styles.slideLabelRight}>
+              <Car size={16} color={slideMode === 'ride' ? '#FFFFFF' : theme.textSecond} strokeWidth={2} />
+              <Text style={[styles.slideLabelText, { color: slideMode === 'ride' ? '#FFFFFF' : theme.textSecond }]}>
+                Request a Ride
+              </Text>
+            </View>
+          </View>
+
+          {/* Active fill */}
+          <Animated.View
+            style={[
+              styles.slideFill,
+              {
+                backgroundColor: theme.primary,
+                left: slideMode === 'send' ? 0 : undefined,
+                right: slideMode === 'ride' ? 0 : undefined,
+                width: slideX.interpolate({
+                  inputRange: [0, SLIDE_TRACK - 48],
+                  outputRange: ['50%', '100%'],
+                  extrapolate: 'clamp',
+                }),
+              },
+            ]}
+          />
+
+          {/* Draggable knob */}
+          <Animated.View
+            {...panResponder.panHandlers}
+            style={[styles.knob, { backgroundColor: '#FFFFFF', transform: [{ translateX: slideX }] }, Shadows.md]}
           >
-            <Ionicons name="car" size={20} color="#fff" />
-            <Text style={styles.ctaBtnText}>Request a Ride</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
-          </Pressable>
+            <ArrowRight size={18} color={theme.primary} strokeWidth={2.5} />
+          </Animated.View>
         </View>
 
-        {/* ── Feature Chips ────────────────────────────────────────────────── */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-          {FEATURES.map((f) => (
-            <View key={f.label} style={[styles.chip, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Ionicons name={f.icon as any} size={14} color={theme.primary} />
-              <Text style={[styles.chipText, { color: theme.textSecond }]}>{f.label}</Text>
-            </View>
-          ))}
-        </ScrollView>
+        <Pressable style={styles.slideGoBtn} onPress={handleSlideAction}>
+          <Text style={[styles.slideGoText, { color: theme.accent }]}>
+            {slideMode === 'send' ? 'Go' : 'Go'}
+          </Text>
+        </Pressable>
+      </View>
 
-      </ScrollView>
+      {/* ── Hamburger Drawer (simple overlay) ────────────────────────────── */}
+      {drawerVisible && (
+        <Pressable
+          style={StyleSheet.absoluteFillObject}
+          onPress={() => setDrawerVisible(false)}
+        >
+          <View style={[styles.drawerOverlay]}>
+            <Pressable
+              style={[styles.drawer, { backgroundColor: theme.surface }]}
+              onPress={() => {}}
+            >
+              {/* Profile summary */}
+              <View style={[styles.drawerProfile, { borderBottomColor: theme.border }]}>
+                <Avatar name={user?.name ?? MOCK_USER.name} size={52} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.drawerName, { color: theme.text }]}>{user?.name ?? MOCK_USER.name}</Text>
+                  <Text style={[styles.drawerEmail, { color: theme.textSecond }]}>{user?.email ?? ''}</Text>
+                </View>
+              </View>
+
+              {/* Menu items */}
+              {[
+                { label: 'Settings',        route: '/(customer)/profile'                },
+                { label: 'Notifications',   route: '/notifications'                     },
+                { label: 'Language',        route: '/(customer)/language'               },
+                { label: 'Help / FAQ',      route: '/(customer)/help'                   },
+                { label: 'Privacy Policy',  route: '/(customer)/privacy'                },
+                { label: 'Business Account',route: '/(customer)/business'               },
+                { label: 'Contact Support', route: '/(customer)/help'                   },
+              ].map(item => (
+                <Pressable
+                  key={item.label}
+                  style={[styles.drawerItem, { borderBottomColor: theme.border }]}
+                  onPress={() => { setDrawerVisible(false); router.push(item.route as any); }}
+                >
+                  <Text style={[styles.drawerItemText, { color: theme.text }]}>{item.label}</Text>
+                  <ChevronRight size={16} color={theme.textThird} strokeWidth={2} />
+                </Pressable>
+              ))}
+
+              {/* Light/Dark toggle placeholder */}
+              <View style={[styles.drawerItem, { borderBottomColor: theme.border }]}>
+                <Text style={[styles.drawerItemText, { color: theme.text }]}>
+                  {isDark ? 'Light Mode' : 'Dark Mode'}
+                </Text>
+              </View>
+
+              {/* Sign Out */}
+              <Pressable
+                style={styles.drawerSignOut}
+                onPress={() => { setDrawerVisible(false); }}
+              >
+                <Text style={[styles.drawerSignOutText, { color: theme.error }]}>Sign Out</Text>
+              </Pressable>
+            </Pressable>
+          </View>
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
+  topBar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.md,
   },
-  greeting: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  name:     { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginTop: 2 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  menuBtn:  { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  greeting: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, flex: 1, textAlign: 'center', marginHorizontal: Spacing.sm },
+
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    marginHorizontal: Spacing.md, marginBottom: Spacing.md,
+    padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5,
+  },
+  searchPlaceholder: { flex: 1, fontSize: FontSize.base },
 
   activeBanner: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
     marginHorizontal: Spacing.md, marginBottom: Spacing.md,
     padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5,
   },
-  activeDot: { width: 10, height: 10, borderRadius: 5 },
-  activeBannerTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  activeBannerSub:   { fontSize: FontSize.xs },
+  activeDot:        { width: 10, height: 10, borderRadius: 5 },
+  activeBannerTitle:{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  activeBannerSub:  { fontSize: FontSize.xs },
+
+  widgetsRow: { paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingBottom: Spacing.sm, marginBottom: Spacing.md },
+  widget: {
+    width: 72, height: 72, borderRadius: Radius.lg, borderWidth: 1,
+    justifyContent: 'center', alignItems: 'center', gap: 6,
+  },
+  widgetWide: { width: 120, height: 72 },
+  widgetRow:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  widgetLabel:      { fontSize: 10, fontWeight: FontWeight.semibold },
+  widgetLabelWhite: { fontSize: 10, fontWeight: FontWeight.semibold, color: 'rgba(255,255,255,0.8)' },
+  widgetAmount:     { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: '#FFFFFF', marginTop: 2 },
 
   cardWrap:       { marginHorizontal: Spacing.md, marginBottom: Spacing.lg },
   walletCard:     { borderRadius: Radius.xl, padding: Spacing.lg },
   walletTop:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs },
-  walletLabel:    { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  walletLabel:    { color: 'rgba(255,255,255,0.7)', fontSize: FontSize.sm, fontWeight: FontWeight.medium },
   walletTopUpBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   walletAmount:   { color: '#fff', fontSize: FontSize['3xl'], fontWeight: FontWeight.bold, letterSpacing: -0.5, marginBottom: 4 },
-  walletSub:      { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.xs, fontWeight: FontWeight.medium, marginBottom: Spacing.md },
+  walletSub:      { color: 'rgba(255,255,255,0.6)', fontSize: FontSize.xs, marginBottom: Spacing.md },
   walletActions:  { flexDirection: 'row', gap: Spacing.sm },
-  walletActionBtn:{ flex: 1, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: Radius.md, paddingVertical: 10, alignItems: 'center' },
+  walletActionBtn:{ flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: Radius.md, paddingVertical: 10, alignItems: 'center' },
   walletActionText:{ color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
 
   section:       { paddingHorizontal: Spacing.md, marginBottom: Spacing.lg },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
   sectionTitle:  { fontSize: FontSize.md, fontWeight: FontWeight.bold },
   seeAll:        { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  actionsRow:    { flexDirection: 'row', justifyContent: 'space-between' },
-  actionItem:    { alignItems: 'center', gap: Spacing.xs, flex: 1 },
-  actionIcon:    { width: 56, height: 56, borderRadius: Radius.lg, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
-  actionLabel:   { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+
+  tabBar:   { flexDirection: 'row', borderRadius: Radius.lg, padding: 4, marginBottom: Spacing.md },
+  tabItem:  { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: Radius.md },
+  tabLabel: { fontSize: FontSize.xs },
 
   tripRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, marginBottom: Spacing.sm },
   tripIconWrap: { width: 44, height: 44, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
@@ -268,13 +481,55 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, marginTop: Spacing.xs },
   emptyDesc:  { fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
   emptyBtn:   { marginTop: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: 12, borderRadius: Radius.full },
-  emptyBtnText:{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  emptyBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 
-  ctaWrap:    { marginHorizontal: Spacing.md, marginBottom: Spacing.lg },
-  ctaBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, height: 56, borderRadius: Radius.xl },
-  ctaBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold, flex: 1, textAlign: 'center' },
+  // Sliding button
+  slideWrap: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
+    paddingBottom: 28,
+    borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl,
+  },
+  slideTrack: {
+    flex: 1, height: 56, borderRadius: Radius.full, overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center', position: 'relative',
+  },
+  slideLabels: {
+    position: 'absolute', left: 0, right: 0,
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md, zIndex: 1,
+  },
+  slideLabelLeft:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  slideLabelRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  slideLabelText:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  slideFill: { position: 'absolute', top: 0, bottom: 0, borderRadius: Radius.full, zIndex: 0 },
+  knob: {
+    position: 'absolute', width: 48, height: 48, borderRadius: 24, top: 4,
+    justifyContent: 'center', alignItems: 'center', zIndex: 10,
+  },
+  slideGoBtn: { paddingHorizontal: Spacing.md, height: 56, justifyContent: 'center' },
+  slideGoText: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
 
-  chipsRow:  { paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingBottom: Spacing.sm },
-  chip:      { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full, borderWidth: 1 },
-  chipText:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  // Drawer
+  drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', flexDirection: 'row' },
+  drawer: {
+    width: W * 0.78, height: '100%',
+    paddingTop: 60, paddingBottom: Spacing.xl,
+  },
+  drawerProfile: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+    paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg,
+    borderBottomWidth: 1, marginBottom: Spacing.sm,
+  },
+  drawerName:  { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  drawerEmail: { fontSize: FontSize.xs, marginTop: 2 },
+  drawerItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  drawerItemText: { fontSize: FontSize.base },
+  drawerSignOut: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, marginTop: Spacing.sm },
+  drawerSignOutText: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 });

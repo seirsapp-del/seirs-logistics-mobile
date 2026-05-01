@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -20,6 +21,23 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // Security headers — applied before all routes
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc:  ["'self'"],
+        scriptSrc:   ["'self'"],
+        styleSrc:    ["'self'", "'unsafe-inline'"],
+        imgSrc:      ["'self'", 'data:', 'https:'],
+        connectSrc:  ["'self'"],
+        frameSrc:    ["'none'"],
+        objectSrc:   ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }));
+
   app.setGlobalPrefix('api/v1');
 
   // In production, uploads go to Cloudflare R2 — local static serving is dev-only
@@ -29,6 +47,9 @@ async function bootstrap() {
 
   // Serve admin dashboard at /admin
   app.useStaticAssets(join(process.cwd(), 'public'), { prefix: '/admin' });
+
+  // Legal pages accessible at /legal/privacy and /legal/terms
+  app.useStaticAssets(join(process.cwd(), 'public', 'legal'), { prefix: '/legal' });
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -72,10 +72,23 @@ export const authApi = {
   register: (body: {
     name: string; email: string; phone: string; password: string;
     role: 'customer' | 'driver'; vehicleType?: string;
-  }) => request<{ token: string; user: any }>('POST', '/auth/register', body, false),
+    ageConfirmed?: boolean; termsAcceptedAt?: string;
+  }) => request<{ message: string; requiresOtp: boolean }>('POST', '/auth/register', body, false),
+
+  verifyOtp: (email: string, otp: string) =>
+    request<{ token: string; user: any }>('POST', '/auth/verify-otp', { email, otp }, false),
+
+  resendOtp: (email: string) =>
+    request<{ message: string }>('POST', '/auth/resend-otp', { email }, false),
 
   login: (email: string, password: string) =>
     request<{ token: string; user: any }>('POST', '/auth/login', { email, password }, false),
+
+  googleLogin: () =>
+    request<{ token: string; user: any }>('POST', '/auth/google', {}, false),
+
+  appleLogin: () =>
+    request<{ token: string; user: any }>('POST', '/auth/apple', {}, false),
 
   me: () => request<{ user: any; driver?: any }>('GET', '/auth/me'),
 

@@ -1,30 +1,20 @@
+import { useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { MOCK_USER, MOCK_TRANSACTIONS } from '@/constants/mockData';
+import { paymentsApi } from '@/services/api';
+import {
+  CreditCard, ArrowDownCircle, ArrowUpCircle, Receipt,
+  Plus, ArrowUp, Clock,
+} from 'lucide-react-native';
 
 type Tab = 'all' | 'credit' | 'debit';
-
-const TX_ICONS: Record<string, string> = {
-  credit: 'arrow-down-circle',
-  debit:  'arrow-up-circle',
-};
-const TX_COLORS: Record<string, string> = {
-  credit: '#22C55E',
-  debit:  '#EF4444',
-};
-const STATUS_COLORS: Record<string, string> = {
-  success: '#22C55E',
-  pending: '#FFBE0B',
-  failed:  '#EF4444',
-};
 
 export default function WalletScreen() {
   const router  = useRouter();
@@ -32,67 +22,115 @@ export default function WalletScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [activeTab, setTab] = useState<Tab>('all');
+  const [activeTab,    setTab]        = useState<Tab>('all');
+  const [withdrawing,  setWithdrawing] = useState(false);
+
+  const balance  = MOCK_USER.walletBalance;
+  const escrow   = Math.round(balance * 0.15); // amount currently in escrow (active deliveries)
+  const available = balance - escrow;
 
   const filtered = MOCK_TRANSACTIONS.filter(tx =>
-    activeTab === 'all' ? true : tx.type === activeTab
+    activeTab === 'all' ? true : tx.type === activeTab,
   );
+
+  const handleWithdraw = () => {
+    Alert.prompt(
+      'Withdraw Funds',
+      'Enter amount to withdraw (₦). Funds will be sent to your registered bank account.',
+      async (input) => {
+        const amount = parseFloat(input ?? '');
+        if (!amount || amount <= 0) { Alert.alert('Invalid amount'); return; }
+        if (amount > available) { Alert.alert('Insufficient balance', `Available: ₦${available.toLocaleString()}`); return; }
+        setWithdrawing(true);
+        try {
+          await paymentsApi.withdraw(amount);
+          Alert.alert('Withdrawal initiated', `₦${amount.toLocaleString()} will be sent to your bank account within 24 hours.`);
+        } catch (e: any) {
+          Alert.alert('Withdrawal failed', e.message ?? 'Please try again.');
+        } finally {
+          setWithdrawing(false);
+        }
+      },
+      'plain-text',
+    );
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl * 2 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xxl }}>
 
         {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>My Wallet</Text>
           <Pressable
             style={[styles.iconBtn, { backgroundColor: theme.surfaceSecond }]}
-            onPress={() => router.push('/(customer)/payment-methods')}
+            onPress={() => router.push('/(customer)/payment-methods' as any)}
           >
-            <Ionicons name="card-outline" size={20} color={theme.text} />
+            <CreditCard size={20} color={theme.text} strokeWidth={1.75} />
           </Pressable>
         </View>
 
         {/* Balance card */}
         <View style={styles.cardWrap}>
           <LinearGradient
-            colors={isDark ? [theme.walletCard, theme.walletCardEnd] : ['#3A86FF', '#1D6AE5']}
+            colors={isDark ? ['#1C2128', '#0D1117'] : ['#0F2B4C', '#1A3A63']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.balanceCard, isDark ? Shadows.orange : Shadows.blue]}
+            style={[styles.balanceCard, Shadows.navy]}
           >
-            <View style={styles.cardTopRow}>
-              <Text style={styles.balanceLabel}>Wallet Balance</Text>
-              <View style={styles.tierBadge}>
-                <Ionicons name="star" size={12} color="#FFBE0B" />
-                <Text style={styles.tierText}>{MOCK_USER.tier}</Text>
+            <Text style={styles.balanceLabel}>Wallet Balance</Text>
+            <Text style={styles.balanceAmount}>
+              ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+            </Text>
+
+            {/* Escrow breakdown */}
+            <View style={styles.escrowRow}>
+              <View style={styles.escrowItem}>
+                <Text style={styles.escrowLabel}>Available</Text>
+                <Text style={styles.escrowValue}>₦{available.toLocaleString()}</Text>
+              </View>
+              <View style={[styles.escrowDivider]} />
+              <View style={styles.escrowItem}>
+                <View style={styles.escrowTitleRow}>
+                  <Clock size={11} color="rgba(255,255,255,0.6)" strokeWidth={2} />
+                  <Text style={styles.escrowLabel}>Pending (escrow)</Text>
+                </View>
+                <Text style={styles.escrowValue}>₦{escrow.toLocaleString()}</Text>
               </View>
             </View>
-            <Text style={styles.balanceAmount}>
-              ₦{MOCK_USER.walletBalance.toLocaleString()}.00
-            </Text>
-            <Text style={styles.balanceSub}>{MOCK_USER.points.toLocaleString()} reward points</Text>
 
             {/* Actions */}
             <View style={styles.cardActions}>
               {[
-                { icon: 'add-circle-outline', label: 'Top Up',   onPress: () => router.push('/(customer)/add-payment') },
-                { icon: 'arrow-up-outline',    label: 'Withdraw', onPress: () => {} },
-                { icon: 'card-outline',        label: 'Cards',    onPress: () => router.push('/(customer)/payment-methods') },
-              ].map(a => (
-                <Pressable key={a.label} style={styles.cardActionBtn} onPress={a.onPress}>
+                {
+                  Icon: Plus,
+                  label: 'Top Up',
+                  onPress: () => router.push('/(customer)/add-payment' as any),
+                },
+                {
+                  Icon: ArrowUp,
+                  label: 'Withdraw',
+                  onPress: handleWithdraw,
+                },
+                {
+                  Icon: CreditCard,
+                  label: 'Cards',
+                  onPress: () => router.push('/(customer)/payment-methods' as any),
+                },
+              ].map(({ Icon, label, onPress }) => (
+                <Pressable key={label} style={styles.cardActionBtn} onPress={onPress}>
                   <View style={styles.cardActionIcon}>
-                    <Ionicons name={a.icon as any} size={20} color="#fff" />
+                    <Icon size={20} color="#fff" strokeWidth={2} />
                   </View>
-                  <Text style={styles.cardActionLabel}>{a.label}</Text>
+                  <Text style={styles.cardActionLabel}>{label}</Text>
                 </Pressable>
               ))}
             </View>
           </LinearGradient>
         </View>
 
-        {/* Quick stats */}
+        {/* Stats */}
         <View style={[styles.statsRow, { backgroundColor: theme.surface }, Shadows.sm]}>
           {[
             { label: 'Total Spent',  value: `₦${MOCK_TRANSACTIONS.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0).toLocaleString()}` },
@@ -108,12 +146,9 @@ export default function WalletScreen() {
 
         {/* Transactions */}
         <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Transactions</Text>
-          </View>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Transactions</Text>
 
-          {/* Tabs */}
-          <View style={[styles.tabRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+          <View style={[styles.tabRow, { backgroundColor: theme.surfaceSecond }]}>
             {(['all', 'credit', 'debit'] as Tab[]).map(tab => (
               <Pressable
                 key={tab}
@@ -129,7 +164,7 @@ export default function WalletScreen() {
 
           {filtered.length === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: theme.surface }]}>
-              <Ionicons name="receipt-outline" size={40} color={theme.textThird} />
+              <Receipt size={40} color={theme.textThird} strokeWidth={1.5} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>No transactions</Text>
             </View>
           ) : (
@@ -137,20 +172,26 @@ export default function WalletScreen() {
               <Pressable
                 key={tx.id}
                 style={[styles.txRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
-                onPress={() => router.push({ pathname: '/(customer)/transaction/[id]', params: { id: tx.id } })}
+                onPress={() => router.push({ pathname: '/(customer)/transaction/[id]', params: { id: tx.id } } as any)}
               >
-                <View style={[styles.txIcon, { backgroundColor: TX_COLORS[tx.type] + '15' }]}>
-                  <Ionicons name={TX_ICONS[tx.type] as any} size={20} color={TX_COLORS[tx.type]} />
+                <View style={[styles.txIcon, { backgroundColor: (tx.type === 'credit' ? theme.success : theme.error) + '18' }]}>
+                  {tx.type === 'credit'
+                    ? <ArrowDownCircle size={20} color={theme.success} strokeWidth={1.75} />
+                    : <ArrowUpCircle   size={20} color={theme.error}   strokeWidth={1.75} />
+                  }
                 </View>
                 <View style={styles.txInfo}>
                   <Text style={[styles.txLabel, { color: theme.text }]}>{tx.label}</Text>
-                  <Text style={[styles.txMeta, { color: theme.textSecond }]}>{tx.date} · {tx.method}</Text>
+                  <Text style={[styles.txMeta,  { color: theme.textSecond }]}>{tx.date} · {tx.method}</Text>
                 </View>
                 <View style={styles.txRight}>
-                  <Text style={[styles.txAmount, { color: TX_COLORS[tx.type] }]}>
+                  <Text style={[styles.txAmount, { color: tx.type === 'credit' ? theme.success : theme.error }]}>
                     {tx.type === 'credit' ? '+' : '−'}₦{tx.amount.toLocaleString()}
                   </Text>
-                  <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[tx.status] ?? '#A1A1AA' }]} />
+                  <View style={[
+                    styles.statusDot,
+                    { backgroundColor: tx.status === 'success' ? theme.success : tx.status === 'pending' ? theme.warning : theme.error },
+                  ]} />
                 </View>
               </Pressable>
             ))
@@ -169,15 +210,19 @@ const styles = StyleSheet.create({
 
   cardWrap:      { marginHorizontal: Spacing.md, marginBottom: Spacing.md },
   balanceCard:   { borderRadius: Radius.xl, padding: Spacing.lg },
-  cardTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs },
-  balanceLabel:  { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.sm },
-  tierBadge:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.full },
-  tierText:      { color: '#FFBE0B', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-  balanceAmount: { color: '#fff', fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: -0.5, marginBottom: 4 },
-  balanceSub:    { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.xs, marginBottom: Spacing.lg },
-  cardActions:   { flexDirection: 'row' },
-  cardActionBtn: { flex: 1, alignItems: 'center', gap: 6 },
-  cardActionIcon:{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center' },
+  balanceLabel:  { color: 'rgba(255,255,255,0.7)', fontSize: FontSize.sm, marginBottom: Spacing.xs },
+  balanceAmount: { color: '#fff', fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: -0.5, marginBottom: Spacing.md },
+
+  escrowRow:     { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.lg },
+  escrowItem:    { flex: 1, gap: 4 },
+  escrowTitleRow:{ flexDirection: 'row', alignItems: 'center', gap: 4 },
+  escrowDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: Spacing.md },
+  escrowLabel:   { color: 'rgba(255,255,255,0.6)', fontSize: FontSize.xs },
+  escrowValue:   { color: '#FFFFFF', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+
+  cardActions:    { flexDirection: 'row' },
+  cardActionBtn:  { flex: 1, alignItems: 'center', gap: 6 },
+  cardActionIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center' },
   cardActionLabel:{ color: 'rgba(255,255,255,0.9)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
 
   statsRow:  { marginHorizontal: Spacing.md, borderRadius: Radius.xl, flexDirection: 'row', marginBottom: Spacing.lg },
@@ -185,23 +230,22 @@ const styles = StyleSheet.create({
   statValue: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
   statLabel: { fontSize: FontSize.xs, marginTop: 2 },
 
-  section:     { paddingHorizontal: Spacing.md },
-  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
-  sectionTitle:{ fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  section:      { paddingHorizontal: Spacing.md },
+  sectionTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
 
-  tabRow:  { flexDirection: 'row', borderRadius: Radius.full, borderWidth: 1, padding: 3, marginBottom: Spacing.md },
+  tabRow:  { flexDirection: 'row', borderRadius: Radius.full, padding: 3, marginBottom: Spacing.md },
   tab:     { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: Radius.full },
   tabText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
 
   emptyCard:  { alignItems: 'center', gap: Spacing.sm, padding: Spacing.xl, borderRadius: Radius.xl },
   emptyTitle: { fontSize: FontSize.base, fontWeight: FontWeight.medium },
 
-  txRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, marginBottom: Spacing.sm },
-  txIcon:  { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  txInfo:  { flex: 1 },
-  txLabel: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, marginBottom: 2 },
-  txMeta:  { fontSize: FontSize.xs },
-  txRight: { alignItems: 'flex-end', gap: 4 },
-  txAmount:{ fontSize: FontSize.base, fontWeight: FontWeight.bold },
-  statusDot:{ width: 7, height: 7, borderRadius: 4 },
+  txRow:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, marginBottom: Spacing.sm },
+  txIcon:    { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  txInfo:    { flex: 1 },
+  txLabel:   { fontSize: FontSize.base, fontWeight: FontWeight.semibold, marginBottom: 2 },
+  txMeta:    { fontSize: FontSize.xs },
+  txRight:   { alignItems: 'flex-end', gap: 4 },
+  txAmount:  { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
 });

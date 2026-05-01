@@ -65,7 +65,7 @@ export default function DriverDetailPage() {
         {/* Profile card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-start gap-6 mb-4">
-            <div className="w-16 h-16 rounded-full bg-[#0D1B2A] flex items-center justify-center text-2xl shrink-0">
+            <div className="w-16 h-16 rounded-full bg-[#0F2B4C] flex items-center justify-center text-2xl shrink-0">
               {VEHICLE_ICONS[driver.vehicleType] ?? '🚗'}
             </div>
             <div className="flex-1 min-w-0">

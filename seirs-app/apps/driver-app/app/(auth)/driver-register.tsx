@@ -3,66 +3,107 @@ import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ArrowLeft, User, Mail, Phone, Truck, Bike, Car, Van,
+  CheckSquare, Square, AlertCircle,
+} from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 
-type VehicleType = 'bicycle' | 'motorcycle' | 'tricycle' | 'car' | 'van';
+type VehicleType = 'bicycle' | 'motorcycle' | 'tricycle' | 'car' | 'van' | 'truck_small' | 'truck_large';
 
-const VEHICLES: { id: VehicleType; label: string; icon: string; desc: string }[] = [
-  { id: 'bicycle',    label: 'Bicycle',     icon: '🚲', desc: 'Short distances' },
-  { id: 'motorcycle', label: 'Motorcycle',  icon: '🏍️', desc: 'Fast urban' },
-  { id: 'tricycle',   label: 'Tricycle',    icon: '🛺', desc: 'Medium loads' },
-  { id: 'car',        label: 'Car',         icon: '🚗', desc: 'Standard packages' },
-  { id: 'van',        label: 'Van / Truck', icon: '🚐', desc: 'Large items' },
+const VEHICLES: { id: VehicleType; label: string; desc: string; Icon: any }[] = [
+  { id: 'bicycle',     label: 'Bicycle',      desc: 'Up to 5 kg',      Icon: Bike  },
+  { id: 'motorcycle',  label: 'Motorcycle',   desc: 'Up to 20 kg',     Icon: Bike  },
+  { id: 'tricycle',    label: 'Tricycle/Keke',desc: 'Up to 100 kg',    Icon: Truck },
+  { id: 'car',         label: 'Car',          desc: 'Up to 200 kg',    Icon: Car   },
+  { id: 'van',         label: 'Van',          desc: 'Up to 800 kg',    Icon: Van   },
+  { id: 'truck_small', label: 'Truck (Small)',desc: 'Up to 3,000 kg',  Icon: Truck },
+  { id: 'truck_large', label: 'Truck (Large)',desc: '3,000 kg+',       Icon: Truck },
 ];
+
+const NIGERIAN_PHONE_RE = /^(080|081|070|090|091)\d{7}$/;
+const PASSWORD_RE       = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\d\W]).{8,}$/;
 
 export default function DriverRegisterScreen() {
   const router      = useRouter();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
   const isDark      = colorScheme === 'dark';
-  const { login }   = useAuth();
 
-  const [firstName,  setFirstName]  = useState('');
-  const [middleName, setMiddleName] = useState('');
-  const [lastName,   setLastName]   = useState('');
-  const [email,      setEmail]      = useState('');
-  const [phone,      setPhone]      = useState('');
-  const [password,   setPassword]   = useState('');
-  const [vehicle,    setVehicle]    = useState<VehicleType | null>(null);
-  const [loading,    setLoading]    = useState(false);
-  const [error,      setError]      = useState('');
+  const [firstName,    setFirstName]    = useState('');
+  const [middleName,   setMiddleName]   = useState('');
+  const [lastName,     setLastName]     = useState('');
+  const [email,        setEmail]        = useState('');
+  const [phone,        setPhone]        = useState('');
+  const [password,     setPassword]     = useState('');
+  const [confirmPass,  setConfirmPass]  = useState('');
+  const [vehicle,      setVehicle]      = useState<VehicleType | null>(null);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [termsConfirmed, setTermsConfirmed] = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState('');
 
   const handleRegister = async () => {
-    if (!firstName.trim() || !lastName.trim() || !email || !phone || !password || !vehicle) {
+    if (!firstName.trim() || !lastName.trim() || !email || !phone || !password || !confirmPass || !vehicle) {
       setError('Please fill in all required fields and select a vehicle type.');
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+    if (!NIGERIAN_PHONE_RE.test(phone)) {
+      setError('Enter a valid Nigerian mobile number (e.g. 08012345678).');
       return;
     }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[\d\W]/.test(password)) {
-      setError('Password must include uppercase, lowercase, and a number or symbol.');
+    if (!PASSWORD_RE.test(password)) {
+      setError('Password must be 8+ chars with uppercase, lowercase, and a number or symbol.');
       return;
     }
+    if (password !== confirmPass) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (!ageConfirmed) {
+      setError('You must confirm you are 18 years or older.');
+      return;
+    }
+    if (!termsConfirmed) {
+      setError('You must accept the Terms of Service and Privacy Policy.');
+      return;
+    }
+
     const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(' ');
     setError('');
     setLoading(true);
     try {
-      const res = await authApi.register({ name: fullName, email, phone, password, role: 'driver', vehicleType: vehicle! });
-      await login({ ...res.user, token: res.token });
+      await authApi.register({
+        name: fullName,
+        email,
+        phone: `+234${phone.replace(/^0/, '')}`,
+        password,
+        role: 'driver',
+        vehicleType: vehicle!,
+        ageConfirmed: true,
+        termsAcceptedAt: new Date().toISOString(),
+      });
+      router.replace({ pathname: '/(auth)/verify-otp' as any, params: { email } });
     } catch (e: any) {
       setError(e.message ?? 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  const Checkbox = ({ value, onToggle, label }: { value: boolean; onToggle: () => void; label: string }) => (
+    <Pressable style={styles.checkRow} onPress={onToggle}>
+      {value
+        ? <CheckSquare size={20} color={theme.primary} strokeWidth={1.5} />
+        : <Square size={20} color={theme.textThird} strokeWidth={1.5} />
+      }
+      <Text style={[styles.checkLabel, { color: theme.textSecond }]}>{label}</Text>
+    </Pressable>
+  );
 
   return (
     <KeyboardAvoidingView
@@ -75,34 +116,25 @@ export default function DriverRegisterScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Back button */}
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
-            <Ionicons name="arrow-back" size={20} color={theme.text} />
+            <ArrowLeft size={20} color={theme.text} />
           </View>
         </Pressable>
 
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <Ionicons name="cube" size={24} color={theme.primary} />
-            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
+            <Truck size={24} color={theme.primary} strokeWidth={1.5} />
+            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS DRIVER</Text>
           </View>
-          <View style={[styles.driverBadge, { backgroundColor: theme.primary + '18' }]}>
-            <Ionicons name="navigate-outline" size={13} color={theme.primary} />
-            <Text style={[styles.driverBadgeText, { color: theme.primary }]}>Driver Account</Text>
-          </View>
-          <Text style={[styles.title, { color: theme.text }]}>Join as a driver</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            Earn money delivering packages on your schedule
-          </Text>
+          <Text style={[styles.title, { color: theme.text }]}>Create driver account</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecond }]}>Start delivering with Seirs today</Text>
         </View>
 
-        {/* Form card */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
           {error ? (
             <View style={[styles.errorBox, { backgroundColor: '#EF444418' }]}>
-              <Ionicons name="alert-circle" size={16} color={theme.error} />
+              <AlertCircle size={16} color={theme.error} strokeWidth={1.5} />
               <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
             </View>
           ) : null}
@@ -110,14 +142,13 @@ export default function DriverRegisterScreen() {
           {/* Name row */}
           <View style={styles.nameRow}>
             <View style={[styles.field, { flex: 1 }]}>
-              <Text style={[styles.label, { color: theme.textSecond }]}>First name</Text>
+              <Text style={[styles.label, { color: theme.textSecond }]}>First name *</Text>
               <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                <Ionicons name="person-outline" size={16} color={theme.textThird} style={styles.inputIcon} />
+                <User size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
-                  placeholder="Emeka"
+                  placeholder="First"
                   placeholderTextColor={theme.textThird}
-                  autoComplete="given-name"
                   autoCapitalize="words"
                   value={firstName}
                   onChangeText={setFirstName}
@@ -125,13 +156,12 @@ export default function DriverRegisterScreen() {
               </View>
             </View>
             <View style={[styles.field, { flex: 1 }]}>
-              <Text style={[styles.label, { color: theme.textSecond }]}>Last name</Text>
+              <Text style={[styles.label, { color: theme.textSecond }]}>Last name *</Text>
               <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                 <TextInput
-                  style={[styles.input, { color: theme.text, paddingLeft: Spacing.md }]}
-                  placeholder="Adeyemi"
+                  style={[styles.input, { color: theme.text, paddingLeft: Spacing.sm }]}
+                  placeholder="Last"
                   placeholderTextColor={theme.textThird}
-                  autoComplete="family-name"
                   autoCapitalize="words"
                   value={lastName}
                   onChangeText={setLastName}
@@ -142,13 +172,12 @@ export default function DriverRegisterScreen() {
 
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>
-              Middle name <Text style={{ fontWeight: FontWeight.regular }}>(optional)</Text>
+              Middle name <Text style={[styles.optLabel, { color: theme.textThird }]}>(optional)</Text>
             </Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-              <Ionicons name="person-outline" size={16} color={theme.textThird} style={styles.inputIcon} />
               <TextInput
-                style={[styles.input, { color: theme.text }]}
-                placeholder="Chukwu"
+                style={[styles.input, { color: theme.text, paddingLeft: Spacing.sm }]}
+                placeholder="Middle name"
                 placeholderTextColor={theme.textThird}
                 autoCapitalize="words"
                 value={middleName}
@@ -158,9 +187,9 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Email address</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Email address *</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-              <Ionicons name="mail-outline" size={16} color={theme.textThird} style={styles.inputIcon} />
+              <Mail size={16} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
                 placeholder="you@example.com"
@@ -174,26 +203,30 @@ export default function DriverRegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Phone number</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Phone number *</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-              <Ionicons name="call-outline" size={16} color={theme.textThird} style={styles.inputIcon} />
+              <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
+                <Phone size={14} color={theme.textThird} strokeWidth={1.5} />
+                <Text style={[styles.prefix, { color: theme.textSecond }]}>+234</Text>
+              </View>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="+234 800 000 0000"
+                placeholder="08012345678"
                 placeholderTextColor={theme.textThird}
                 keyboardType="phone-pad"
+                maxLength={11}
                 value={phone}
                 onChangeText={setPhone}
               />
             </View>
+            <Text style={[styles.hint, { color: theme.textThird }]}>Nigerian numbers only: 080x / 081x / 070x / 090x / 091x</Text>
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Password</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Password *</Text>
             <PasswordInput
-              placeholder="Min. 8 characters"
+              placeholder="Min 8 chars, upper + lower + number/symbol"
               placeholderTextColor={theme.textThird}
-              autoComplete="new-password"
               backgroundColor={theme.surfaceSecond}
               borderColor={theme.border}
               value={password}
@@ -201,69 +234,73 @@ export default function DriverRegisterScreen() {
             />
           </View>
 
-          {/* Vehicle selector */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Vehicle type</Text>
-            <View style={styles.vehicleGrid}>
-              {VEHICLES.map((v) => {
-                const selected = vehicle === v.id;
-                return (
-                  <Pressable
-                    key={v.id}
-                    style={[
-                      styles.vehicleCard,
-                      {
-                        backgroundColor: selected ? theme.primary + '15' : theme.surfaceSecond,
-                        borderColor: selected ? theme.primary : theme.border,
-                      },
-                    ]}
-                    onPress={() => setVehicle(v.id)}
-                  >
-                    <Text style={styles.vehicleEmoji}>{v.icon}</Text>
-                    <Text style={[styles.vehicleLabel, { color: selected ? theme.primary : theme.text }]}>
-                      {v.label}
-                    </Text>
-                    <Text style={[styles.vehicleDesc, { color: theme.textSecond }]}>{v.desc}</Text>
-                    {selected && (
-                      <View style={[styles.vehicleCheck, { backgroundColor: theme.primary }]}>
-                        <Ionicons name="checkmark" size={10} color="#fff" />
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm password *</Text>
+            <PasswordInput
+              placeholder="Re-enter password"
+              placeholderTextColor={theme.textThird}
+              backgroundColor={theme.surfaceSecond}
+              borderColor={theme.border}
+              value={confirmPass}
+              onChangeText={setConfirmPass}
+            />
           </View>
-
-          {/* KYC note */}
-          <View style={[styles.kycNote, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-            <Ionicons name="document-text-outline" size={16} color={theme.textSecond} />
-            <Text style={[styles.kycNoteText, { color: theme.textSecond }]}>
-              After registration, you'll need to upload your ID and vehicle documents for verification.
-            </Text>
-          </View>
-
-          <Pressable
-            style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <View style={styles.submitRow}>
-                <Text style={styles.submitText}>Start Earning</Text>
-                <Ionicons name="arrow-forward" size={20} color="#fff" />
-              </View>
-            )}
-          </Pressable>
         </View>
 
-        {/* Footer */}
+        {/* Vehicle selector */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Vehicle type *</Text>
+        </View>
+        <View style={styles.vehicleGrid}>
+          {VEHICLES.map(v => {
+            const selected = vehicle === v.id;
+            return (
+              <Pressable
+                key={v.id}
+                style={[
+                  styles.vehicleCard,
+                  {
+                    backgroundColor: selected ? theme.primary + '15' : theme.surface,
+                    borderColor: selected ? theme.primary : theme.border,
+                  },
+                  Shadows.xs,
+                ]}
+                onPress={() => setVehicle(v.id)}
+              >
+                <v.Icon size={22} color={selected ? theme.primary : theme.textThird} strokeWidth={1.5} />
+                <Text style={[styles.vehicleLabel, { color: selected ? theme.primary : theme.text }]}>{v.label}</Text>
+                <Text style={[styles.vehicleDesc,  { color: theme.textThird }]}>{v.desc}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Checkboxes */}
+        <View style={[styles.checkCard, { backgroundColor: theme.surface }, Shadows.xs]}>
+          <Checkbox
+            value={ageConfirmed}
+            onToggle={() => setAgeConfirmed(v => !v)}
+            label="I confirm I am 18 years of age or older"
+          />
+          <Checkbox
+            value={termsConfirmed}
+            onToggle={() => setTermsConfirmed(v => !v)}
+            label="I agree to the Terms of Service, Driver Code of Conduct, and Privacy Policy"
+          />
+        </View>
+
+        <Pressable
+          style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          {loading ? <ActivityIndicator color="#fff" /> : (
+            <Text style={styles.submitText}>Create Driver Account</Text>
+          )}
+        </Pressable>
+
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>
-            Already have an account?
-          </Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>Already have an account?</Text>
           <Pressable onPress={() => router.push('/(auth)/login')}>
             <Text style={[styles.footerLink, { color: theme.primary }]}> Sign In</Text>
           </Pressable>
@@ -274,37 +311,39 @@ export default function DriverRegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:  { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.xl, paddingBottom: Spacing.xl },
-  backBtn:    { marginBottom: Spacing.lg },
-  backCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  header:     { marginBottom: Spacing.xl },
-  brandRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.md },
-  brand:      { fontSize: FontSize.sm, fontWeight: FontWeight.black, letterSpacing: 3 },
-  driverBadge:    { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: Spacing.md, paddingVertical: 5, borderRadius: Radius.full, marginBottom: Spacing.sm },
-  driverBadgeText:{ fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 1 },
-  title:      { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold, marginBottom: Spacing.xs },
-  subtitle:   { fontSize: FontSize.base, lineHeight: 22 },
-  card:       { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },
-  errorBox:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
-  errorText:  { fontSize: FontSize.sm, fontWeight: FontWeight.medium, flex: 1 },
-  nameRow:    { flexDirection: 'row', gap: Spacing.sm },
-  field:      { marginBottom: Spacing.md, gap: Spacing.xs },
-  label:      { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  inputWrap:  { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },
-  inputIcon:  { marginRight: Spacing.sm },
-  input:      { flex: 1, fontSize: FontSize.base, height: '100%' },
-  vehicleGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  vehicleCard:  { width: '47%', padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5, alignItems: 'center', gap: 4, position: 'relative' },
-  vehicleEmoji: { fontSize: 28, marginBottom: 2 },
-  vehicleLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  vehicleDesc:  { fontSize: FontSize.xs },
-  vehicleCheck: { position: 'absolute', top: 8, right: 8, width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
-  kycNote:     { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, marginBottom: Spacing.lg },
-  kycNoteText: { flex: 1, fontSize: FontSize.sm, lineHeight: 20 },
-  submitBtn:   { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },
-  submitRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  submitText:  { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold },
-  footer:     { flexDirection: 'row', justifyContent: 'center' },
-  footerText: { fontSize: FontSize.base },
-  footerLink: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  container:     { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.xl, paddingBottom: Spacing.xl },
+  backBtn:       { marginBottom: Spacing.lg },
+  backCircle:    { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  header:        { marginBottom: Spacing.lg },
+  brandRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.md },
+  brand:         { fontSize: FontSize.sm, fontWeight: FontWeight.black as any, letterSpacing: 3 },
+  title:         { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold as any, marginBottom: Spacing.xs },
+  subtitle:      { fontSize: FontSize.base },
+  card:          { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.md },
+  errorBox:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
+  errorText:     { fontSize: FontSize.sm, fontWeight: FontWeight.medium as any, flex: 1 },
+  nameRow:       { flexDirection: 'row', gap: Spacing.sm },
+  field:         { marginBottom: Spacing.md, gap: Spacing.xs },
+  label:         { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+  optLabel:      { fontWeight: '400' as any },
+  inputWrap:     { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },
+  inputIcon:     { marginRight: Spacing.sm },
+  input:         { flex: 1, fontSize: FontSize.base, height: '100%' },
+  prefixWrap:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: Spacing.sm, marginRight: Spacing.sm, borderRightWidth: 1 },
+  prefix:        { fontSize: FontSize.sm, fontWeight: FontWeight.medium as any },
+  hint:          { fontSize: FontSize.xs, marginTop: 2 },
+  sectionHeader: { marginBottom: Spacing.sm },
+  sectionTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  vehicleGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
+  vehicleCard:   { width: '47%', padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5, alignItems: 'center', gap: 6 },
+  vehicleLabel:  { fontSize: FontSize.sm, fontWeight: FontWeight.bold as any, textAlign: 'center' },
+  vehicleDesc:   { fontSize: FontSize.xs, textAlign: 'center' },
+  checkCard:     { borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.md, gap: Spacing.md },
+  checkRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+  checkLabel:    { flex: 1, fontSize: FontSize.sm, lineHeight: 20 },
+  submitBtn:     { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.lg },
+  submitText:    { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
+  footer:        { flexDirection: 'row', justifyContent: 'center' },
+  footerText:    { fontSize: FontSize.base },
+  footerLink:    { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
 });

@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Seirs Logistics Platform — Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary:   #3A86FF;
+    --accent:    #FF6B00;
+    --dark:      #0D1B2A;
+    --mid:       #334155;
+    --light:     #F8FAFC;
+    --border:    #E2E8F0;
+    --success:   #22C55E;
+    --radius:    8px;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--dark);
+    background: #fff;
+    padding: 0;
+  }
+
+  /* ── Cover Page ── */
+  .cover {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--dark) 0%, #1A3550 60%, #0D2640 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 40px;
+    page-break-after: always;
+  }
+  .cover-logo {
+    font-size: 64px;
+    font-weight: 800;
+    letter-spacing: 8px;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .cover-sub {
+    font-size: 15px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 48px;
+  }
+  .cover-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 16px;
+    line-height: 1.2;
+  }
+  .cover-desc {
+    font-size: 15px;
+    color: rgba(255,255,255,0.6);
+    max-width: 480px;
+    line-height: 1.8;
+    margin-bottom: 56px;
+  }
+  .cover-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 56px;
+  }
+  .pill {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.8);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .cover-meta {
+    font-size: 12px;
+    color: rgba(255,255,255,0.3);
+  }
+  .cover-divider {
+    width: 60px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin: 0 auto 32px;
+  }
+
+  /* ── Content ── */
+  .content {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 40px;
+  }
+
+  /* ── Section Headers ── */
+  .section {
+    margin-bottom: 48px;
+    page-break-inside: avoid;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+  }
+  .section-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .icon-blue   { background: #EFF6FF; }
+  .icon-orange { background: #FFF7ED; }
+  .icon-green  { background: #F0FDF4; }
+  .icon-purple { background: #FAF5FF; }
+  .icon-red    { background: #FEF2F2; }
+
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--dark);
+  }
+  .section-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-left: auto;
+  }
+  .badge-blue   { background: #DBEAFE; color: var(--primary); }
+  .badge-orange { background: #FFEDD5; color: var(--accent); }
+  .badge-green  { background: #DCFCE7; color: #16A34A; }
+
+  /* ── Overview Cards ── */
+  .overview-tree {
+    background: var(--dark);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 2;
+    color: rgba(255,255,255,0.85);
+  }
+  .tree-root  { color: #60A5FA; font-weight: 600; }
+  .tree-dir   { color: #34D399; }
+  .tree-arrow { color: rgba(255,255,255,0.4); }
+  .tree-desc  { color: rgba(255,255,255,0.5); }
+
+  .stack-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .stack-chip {
+    background: var(--light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mid);
+  }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 24px;
+    font-size: 12px;
+  }
+  thead tr {
+    background: var(--dark);
+    color: #fff;
+  }
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  thead th:first-child { border-radius: 6px 0 0 0; }
+  thead th:last-child  { border-radius: 0 6px 0 0; }
+
+  tbody tr:nth-child(even) { background: #F8FAFC; }
+  tbody tr:hover { background: #EFF6FF; }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  td:first-child { font-weight: 600; color: var(--dark); }
+  td .route {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--primary);
+    background: #EFF6FF;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin: 1px 0;
+    line-height: 1.6;
+  }
+
+  /* ── Subsection ── */
+  .subsection {
+    margin-bottom: 32px;
+  }
+  .subsection-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--mid);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .subsection-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .screen-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--primary);
+    background: #DBEAFE;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 6px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  /* ── Improvements ── */
+  .improvements-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .improvement-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    background: #fff;
+  }
+  .improvement-card h4 {
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .improvement-card ul {
+    list-style: none;
+    padding: 0;
+  }
+  .improvement-card li {
+    font-size: 11.5px;
+    color: var(--mid);
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    line-height: 1.5;
+  }
+  .improvement-card li:last-child { border-bottom: none; }
+  .improvement-card li::before {
+    content: '→';
+    color: var(--primary);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .improvement-card li strong {
+    color: var(--dark);
+    display: block;
+    font-weight: 600;
+  }
+
+  /* ── Live Links ── */
+  .links-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .link-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .link-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--success);
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.2);
+  }
+  .link-card div { overflow: hidden; }
+  .link-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mid);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .link-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Page break helpers ── */
+  .page-break { page-break-before: always; }
+
+  /* ── Print ── */
+  @media print {
+    body { font-size: 12px; }
+    .cover { min-height: auto; padding: 80px 40px; }
+    .improvements-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ COVER -->
+<div class="cover">
+  <div class="cover-logo">SEIRS</div>
+  <div class="cover-sub">Logistics Platform</div>
+  <div class="cover-divider"></div>
+  <div class="cover-title">Full Architecture Document</div>
+  <div class="cover-desc">
+    A complete overview of the Seirs logistics platform — customer app,
+    driver app, admin dashboard, backend API, screens, flows, and
+    suggested improvements.
+  </div>
+  <div class="cover-pills">
+    <span class="pill">React Native · Expo SDK 54</span>
+    <span class="pill">Next.js 15</span>
+    <span class="pill">NestJS</span>
+    <span class="pill">PostgreSQL · Redis</span>
+    <span class="pill">Cloudflare R2</span>
+    <span class="pill">Flutterwave</span>
+    <span class="pill">Firebase FCM</span>
+    <span class="pill">Railway · Vercel · EAS</span>
+  </div>
+  <div class="cover-meta">Generated April 2026 &nbsp;·&nbsp; github.com/seirsapp-del/seirs-logistics-mobile</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ CONTENT -->
+<div class="content">
+
+  <!-- ── Platform Overview ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-blue">🏗</div>
+      <div class="section-title">Platform Overview</div>
+    </div>
+
+    <div class="overview-tree">
+      <div class="tree-root">github.com/seirsapp-del/seirs-logistics-mobile</div>
+      <div>│</div>
+      <div>├── <span class="tree-dir">apps/customer-app</span> &nbsp;<span class="tree-arrow">→</span> <span class="tree-desc">Expo React Native (Android APK, EAS Build)</span></div>
+      <div>├── <span class="tree-dir">apps/driver-app</span> &nbsp;&nbsp;&nbsp;<span class="tree-arrow">→</span> <span class="tree-desc">Expo React Native (Android APK, EAS Build)</span></div>
+      <div>├── <span class="tree-dir">apps/admin-dashboard</span> <span class="tree-arrow">→</span> <span class="tree-desc">Next.js 15 (Vercel)</span></div>
+      <div>├── <span class="tree-dir">shared/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-arrow">→</span> <span class="tree-desc">@seirs/shared (theme, components, API, models)</span></div>
+      <div>└── <span class="tree-dir">seirs-backend/</span> &nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-arrow">→</span> <span class="tree-desc">NestJS REST + WebSocket (Railway + Docker)</span></div>
+    </div>
+
+    <div class="stack-row">
+      <span class="stack-chip">React Native 0.81</span>
+      <span class="stack-chip">Expo SDK 54</span>
+      <span class="stack-chip">Next.js 15</span>
+      <span class="stack-chip">NestJS</span>
+      <span class="stack-chip">TypeScript</span>
+      <span class="stack-chip">PostgreSQL</span>
+      <span class="stack-chip">Redis</span>
+      <span class="stack-chip">Cloudflare R2</span>
+      <span class="stack-chip">Flutterwave</span>
+      <span class="stack-chip">Firebase FCM</span>
+      <span class="stack-chip">Docker</span>
+      <span class="stack-chip">Railway</span>
+      <span class="stack-chip">Vercel</span>
+      <span class="stack-chip">EAS Build</span>
+    </div>
+  </div>
+
+  <!-- ── Live Deployments ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-green">🟢</div>
+      <div class="section-title">Live Deployments</div>
+      <span class="section-badge badge-green">ALL LIVE</span>
+    </div>
+    <div class="links-grid">
+      <div class="link-card">
+        <div class="link-dot"></div>
+        <div>
+          <div class="link-label">Backend API (Railway)</div>
+          <div class="link-url">seirs-logistics-mobile-production.up.railway.app/api/v1</div>
+        </div>
+      </div>
+      <div class="link-card">
+        <div class="link-dot"></div>
+        <div>
+          <div class="link-label">Admin Dashboard (Vercel)</div>
+          <div class="link-url">seirs-logistics-mobile.vercel.app</div>
+        </div>
+      </div>
+      <div class="link-card">
+        <div class="link-dot"></div>
+        <div>
+          <div class="link-label">Customer APK (EAS)</div>
+          <div class="link-url">expo.dev/artifacts/eas/vY7Rr25EaMG7yNtaYFMVFp.apk</div>
+        </div>
+      </div>
+      <div class="link-card">
+        <div class="link-dot"></div>
+        <div>
+          <div class="link-label">Driver APK (EAS)</div>
+          <div class="link-url">expo.dev/artifacts/eas/fykA2pto2reoLuwZTaEWwR.apk</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Login Credentials ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon icon-orange">🔐</div>
+      <div class="section-title">Login Credentials</div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Role</th><th>Email</th><th>Password</th><th>App</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Admin</td><td>admin@seirs.co</td><td>Ibadan80#</td><td>Admin Dashboard</td></tr>
+        <tr><td>Customer</td><td>oyadeyio762@gmail.com</td><td>Ibadan80#</td><td>Customer APK</td></tr>
+        <tr><td>Customer</td><td>seirs.app@gmail.com</td><td>Ibadan80#</td><td>Customer APK</td></tr>
+        <tr><td>Driver</td><td>oyadeyio761@gmail.com</td><td>Ibadan80#</td><td>Driver APK</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Backend API ── -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-icon icon-blue">⚙️</div>
+      <div class="section-title">Backend API — seirs-backend/ (Live on Railway)</div>
+      <span class="section-badge badge-blue">11 MODULES</span>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Module</th><th>Routes</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Auth</td>
+          <td><span class="route">POST /register</span> <span class="route">POST /login</span> <span class="route">POST /forgot-password</span> <span class="route">POST /reset-password</span></td>
+          <td>JWT auth, bcrypt passwords</td>
+        </tr>
+        <tr>
+          <td>Users</td>
+          <td><span class="route">GET /users/me</span> <span class="route">PATCH /users/me</span></td>
+          <td>Profile management</td>
+        </tr>
+        <tr>
+          <td>Drivers</td>
+          <td><span class="route">GET /drivers/me</span> <span class="route">PATCH /drivers/online</span> <span class="route">PATCH /drivers/location</span></td>
+          <td>Driver state & GPS tracking</td>
+        </tr>
+        <tr>
+          <td>Deliveries</td>
+          <td><span class="route">POST /quote</span> <span class="route">POST /</span> <span class="route">GET /</span> <span class="route">GET /track/:code</span> <span class="route">PATCH /:id/status</span> <span class="route">POST /:id/rate</span></td>
+          <td>Full delivery lifecycle</td>
+        </tr>
+        <tr>
+          <td>Payments</td>
+          <td><span class="route">POST /initiate</span> <span class="route">POST /verify/:ref</span> <span class="route">POST /withdraw</span> <span class="route">GET /wallet</span> <span class="route">GET /history</span></td>
+          <td>Flutterwave payments + wallet</td>
+        </tr>
+        <tr>
+          <td>Notifications</td>
+          <td><span class="route">GET /</span> <span class="route">GET /unread-count</span> <span class="route">PATCH /:id/read</span> <span class="route">PATCH /read-all</span></td>
+          <td>Push (Firebase FCM) + in-app</td>
+        </tr>
+        <tr>
+          <td>Admin</td>
+          <td><span class="route">GET /stats</span> <span class="route">GET /users</span> <span class="route">GET /drivers</span> <span class="route">GET /deliveries</span> <span class="route">GET /analytics</span> <span class="route">GET /fraud</span></td>
+          <td>Dashboard data & controls</td>
+        </tr>
+        <tr>
+          <td>Tracking</td>
+          <td>WebSocket Gateway</td>
+          <td>Real-time driver location broadcast</td>
+        </tr>
+        <tr>
+          <td>Matching</td>
+          <td>Internal service</td>
+          <td>Auto-assign nearest driver to delivery</td>
+        </tr>
+        <tr>
+          <td>Fraud</td>
+          <td>Internal service</td>
+          <td>Flag suspicious accounts & activity</td>
+        </tr>
+        <tr>
+          <td>Bulk / Routing / Scheduler / Upload</td>
+          <td><span class="route">POST /bulk/orders</span> <span class="route">POST /routing/optimize</span> <span class="route">POST /upload</span></td>
+          <td>B2B orders, route optimisation, R2 uploads, cron jobs</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══════════════════════════════════════════ CUSTOMER APP -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-icon icon-blue">📦</div>
+      <div class="section-title">Customer App</div>
+      <span class="section-badge badge-blue">42 SCREENS</span>
+    </div>
+
+    <!-- Auth -->
+    <div class="subsection">
+      <div class="subsection-title">Auth Flow <span class="screen-count">6 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Onboarding</td><td>3 slides — brand intro, how it works, CTA button</td><td>First impression; explains the value proposition to new users</td></tr>
+          <tr><td>Login</td><td>Email + password fields, forgot password link, social login CTA</td><td>Returning user entry point</td></tr>
+          <tr><td>Register</td><td>Name, email, phone, password form</td><td>New customer account creation</td></tr>
+          <tr><td>Driver Register</td><td>Same as register + vehicle type selector</td><td>Role selection at signup; allows driver onboarding from customer app</td></tr>
+          <tr><td>Forgot Password</td><td>Email input → triggers reset email</td><td>Account recovery without contacting support</td></tr>
+          <tr><td>Reset Password</td><td>New password + confirm, token-gated</td><td>Completes the forgot-password recovery flow</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Home & Core -->
+    <div class="subsection">
+      <div class="subsection-title">Home & Core (Tab Bar) <span class="screen-count">4 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Home</td><td>Greeting, quick-send button, recent trips list, promo banner, notification bell</td><td>Central hub — primary entry to sending a package; surfaces key actions immediately</td></tr>
+          <tr><td>History</td><td>Paginated delivery list with status badges, tap to view receipt</td><td>Order tracking and re-ordering; source of truth for past deliveries</td></tr>
+          <tr><td>Wallet</td><td>Balance in ₦, fund wallet button, paginated transaction history</td><td>Financial hub; customers top up and track spend in one place</td></tr>
+          <tr><td>Profile</td><td>Avatar, name, contact details, edit profile, settings links</td><td>Account management entry point</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Booking Flow -->
+    <div class="subsection">
+      <div class="subsection-title">Send / Booking Flow <span class="screen-count">7 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Send</td><td>Pickup address, dropoff address, package description, get-quote button</td><td>Top of the booking funnel; collects the minimum info for a quote</td></tr>
+          <tr><td>Request</td><td>Map view with pickup/dropoff pins, address search, confirm button</td><td>Visual location confirmation before pricing</td></tr>
+          <tr><td>Vehicle Select</td><td>Bike / Car / Van cards with price and ETA per option</td><td>Lets user trade off speed vs. cost based on package size</td></tr>
+          <tr><td>Multi-Stop</td><td>Add up to 5 delivery stops with addresses and recipient names</td><td>Supports business users doing multiple drops in one trip</td></tr>
+          <tr><td>Fare Breakdown</td><td>Itemised view: base fare, distance charge, insurance, platform fee</td><td>Pricing transparency builds trust before payment commitment</td></tr>
+          <tr><td>Confirm Ride</td><td>Delivery summary card, payment method selector, "Book Now" button</td><td>Final confirmation step — last chance to review before charging</td></tr>
+          <tr><td>Schedule</td><td>Date/time picker for future delivery slots</td><td>Lets users plan ahead for non-urgent or recurring shipments</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Active Delivery -->
+    <div class="subsection">
+      <div class="subsection-title">Active Delivery & Tracking <span class="screen-count">4 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Trip Progress</td><td>Live map, animated driver pin, ETA, status step bar (Assigned → Picked Up → In Transit → Delivered)</td><td>Real-time visibility reduces "where is my package?" support tickets</td></tr>
+          <tr><td>Track</td><td>Tracking code input → status steps + driver info card + live location indicator</td><td>Allows tracking without being logged in; shareable with recipient</td></tr>
+          <tr><td>Call</td><td>Driver avatar, name, phone number, call button, open-chat button</td><td>Direct contact with driver mid-delivery without leaving the app</td></tr>
+          <tr><td>SOS</td><td>Emergency contacts list, quick-dial: police, ambulance, Seirs support</td><td>Safety net for customers feeling unsafe during high-value deliveries</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Post-Delivery -->
+    <div class="subsection">
+      <div class="subsection-title">Post-Delivery <span class="screen-count">5 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Rate /[driverId]</td><td>1–5 star rating, written comment, optional tip</td><td>Quality feedback loop; ratings drive driver-to-delivery matching priority</td></tr>
+          <tr><td>Receipt /[id]</td><td>Full delivery summary: cost breakdown, route, driver details, timestamp, download button</td><td>Proof of delivery for expense reports and dispute resolution</td></tr>
+          <tr><td>Trip /[id]</td><td>Same as receipt with route map replay</td><td>Detailed order history view with visual route confirmation</td></tr>
+          <tr><td>Share Trip</td><td>Pre-filled message with tracking link, share via WhatsApp/SMS/copy</td><td>Customer shares live ETA with the recipient without manual copy-paste</td></tr>
+          <tr><td>Report</td><td>Category selector (late, damaged, wrong item, etc.), description text, photo upload</td><td>Formalised dispute channel — feeds admin fraud module</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Payments -->
+    <div class="subsection">
+      <div class="subsection-title">Payments <span class="screen-count">4 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Payment /[deliveryId]</td><td>Flutterwave hosted payment page embedded in WebView</td><td>Secure card charge — PCI compliance handled by Flutterwave</td></tr>
+          <tr><td>Payment Methods</td><td>List of saved cards with card type icons, add/remove actions</td><td>Manage payment instruments for one-tap future checkouts</td></tr>
+          <tr><td>Add Payment</td><td>Card number, expiry, CVV form with Luhn validation</td><td>Add a new card to the saved payment methods</td></tr>
+          <tr><td>Transaction /[id]</td><td>Full single-transaction detail: amount, date, reference, status</td><td>Proof for bank disputes and personal expense tracking</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Wallet & Rewards -->
+    <div class="subsection">
+      <div class="subsection-title">Wallet & Rewards <span class="screen-count">4 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Promo</td><td>Promo code input field + apply button, active code display</td><td>Discount redemption at point of booking</td></tr>
+          <tr><td>Promotions</td><td>List of active offers with terms, expiry dates, and minimum order</td><td>Awareness of available deals to drive repeat bookings</td></tr>
+          <tr><td>Rewards</td><td>Points balance, tier badge (Bronze/Silver/Gold), redemption options list</td><td>Loyalty programme — encourages repeat use over competitors</td></tr>
+          <tr><td>Referral</td><td>Unique referral code, share button, referred-friends count, bonus earned</td><td>Viral growth channel — incentivised word-of-mouth acquisition</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Messaging -->
+    <div class="subsection">
+      <div class="subsection-title">Messaging <span class="screen-count">2 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Messages / Index</td><td>List of all chat threads grouped by delivery, unread badge counts</td><td>Single inbox for all driver conversations across deliveries</td></tr>
+          <tr><td>Messages / [chatId]</td><td>Full chat thread with driver, text + photo support, timestamp</td><td>In-app messaging avoids sharing personal phone numbers</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Settings -->
+    <div class="subsection">
+      <div class="subsection-title">Settings & Support <span class="screen-count">8 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Notifications</td><td>Chronological list of all notifications, unread highlight, mark-all-read button</td><td>Notification inbox — users catch up on missed alerts</td></tr>
+          <tr><td>Notification Settings</td><td>Toggle per category: delivery updates, promotions, payments — push/email/SMS</td><td>User controls alert fatigue; reduces opt-out from push entirely</td></tr>
+          <tr><td>Language</td><td>Language selector list (English default, Yoruba/Igbo/Hausa ready)</td><td>Localisation readiness for Nigeria's multilingual user base</td></tr>
+          <tr><td>Help</td><td>Searchable FAQ accordion grouped by topic</td><td>Self-service support — reduces inbound support volume</td></tr>
+          <tr><td>Privacy</td><td>Full privacy policy text with section anchors</td><td>Legal compliance (NDPR, GDPR for international users)</td></tr>
+          <tr><td>Business</td><td>Business account benefits, API access info, contact sales CTA</td><td>B2B conversion — upsells high-volume shippers to the partner programme</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ DRIVER APP -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-icon icon-orange">🛵</div>
+      <div class="section-title">Driver App</div>
+      <span class="section-badge badge-orange">29 SCREENS</span>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Auth Flow <span class="screen-count">6 screens</span></div>
+      <p style="font-size:12px;color:var(--mid);margin-bottom:12px;">Same structure as Customer App: Onboarding · Login · Register · Driver Register · Forgot Password · Reset Password</p>
+    </div>
+
+    <!-- Home & Core -->
+    <div class="subsection">
+      <div class="subsection-title">Home & Core (Tab Bar) <span class="screen-count">5 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Home</td><td>Online/offline toggle (large, prominent), earnings today, pending job cards, map preview, notification bell</td><td>Mission control — driver starts and stops availability here; pending jobs visible at a glance</td></tr>
+          <tr><td>Active</td><td>Current delivery map with route, pickup/dropoff addresses, status action buttons (Picked Up → Delivered), proof-of-delivery photo upload</td><td>The screen drivers live on during a job — all info and actions in one place</td></tr>
+          <tr><td>Earnings</td><td>Today / week / month earnings toggle, earnings chart, payout balance, withdraw button</td><td>Financial motivation and payout management; drivers track income in real time</td></tr>
+          <tr><td>History</td><td>Completed deliveries list with earning per trip, date, customer rating received</td><td>Track record — drivers review performance and resolve disputes</td></tr>
+          <tr><td>Profile</td><td>Avatar, name, vehicle info, aggregate rating, KYC status badge, edit links</td><td>Driver account management; KYC status is prominent to prompt completion</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Job Management -->
+    <div class="subsection">
+      <div class="subsection-title">Job Management <span class="screen-count">3 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Job /[id]</td><td>Job offer: pickup/dropoff addresses, package description, distance, offered fare, Accept / Decline buttons with countdown timer</td><td>Driver reviews before committing; timer ensures platform SLA on assignment speed</td></tr>
+          <tr><td>Delivery /[id]</td><td>Full active delivery detail: addresses, customer name/phone, package notes, navigation deep-link to Google Maps/Waze</td><td>Reference screen during delivery — all info without calling dispatch</td></tr>
+          <tr><td>Schedule</td><td>Calendar of upcoming pre-booked jobs with time slots, pickup addresses, fares</td><td>Lets drivers plan their day around guaranteed future income</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- KYC & Vehicle -->
+    <div class="subsection">
+      <div class="subsection-title">KYC & Vehicle <span class="screen-count">2 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>KYC</td><td>Upload slots: national ID (front/back), driver's licence, vehicle photo; submission status per document</td><td>Required gating before receiving live jobs — protects customers and platform from unverified drivers</td></tr>
+          <tr><td>Vehicle</td><td>Vehicle type selector, plate number, colour, model, editable fields</td><td>Keeps fleet data accurate for matching (bike jobs won't go to car drivers)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Payments -->
+    <div class="subsection">
+      <div class="subsection-title">Payments <span class="screen-count">3 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Withdrawal</td><td>Amount input, bank account selector, withdraw button, balance display</td><td>Cash out earnings to personal bank account on demand</td></tr>
+          <tr><td>Add Bank</td><td>Bank name dropdown (Nigerian banks), account number, auto-resolved account name</td><td>Link bank account once; used for all future payouts</td></tr>
+          <tr><td>Transaction /[id]</td><td>Single earning detail: trip reference, amount, date, payout status</td><td>Proof for personal record-keeping and dispute resolution</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Messaging -->
+    <div class="subsection">
+      <div class="subsection-title">Messaging & Communication <span class="screen-count">3 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Call</td><td>Customer avatar, name, call button, open-chat button</td><td>Reach customer without leaving the app or sharing personal numbers</td></tr>
+          <tr><td>Messages / Index</td><td>All active and past chat threads</td><td>In-app comms history across all deliveries</td></tr>
+          <tr><td>Messages / [chatId]</td><td>Full thread with customer, coordinate pickup details, photo support</td><td>Avoid delays from missed calls — async text communication</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Settings -->
+    <div class="subsection">
+      <div class="subsection-title">Settings & Support <span class="screen-count">6 screens</span></div>
+      <table>
+        <thead><tr><th>Screen</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Notifications</td><td>In-app notification inbox: job assignments, payment confirmations, system alerts</td><td>Review all critical alerts — job offers that expired show here for awareness</td></tr>
+          <tr><td>Notification Settings</td><td>Toggle per category: new jobs, payments, promos</td><td>Driver controls which alerts wake them up — reduces disabling push entirely</td></tr>
+          <tr><td>Ratings</td><td>Aggregate star rating, all individual customer reviews with comments and trip reference</td><td>Self-awareness and improvement; low-rated drivers are prompted to improve</td></tr>
+          <tr><td>Help</td><td>Driver-specific FAQ: how earnings work, how matching works, dispute process</td><td>Reduces driver support calls; answers the most common questions upfront</td></tr>
+          <tr><td>Privacy</td><td>Privacy policy text</td><td>Legal compliance — NDPR</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ ADMIN DASHBOARD -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-icon icon-purple">🖥</div>
+      <div class="section-title">Admin Dashboard (Next.js 15 · Vercel)</div>
+      <span class="section-badge badge-blue">10 PAGES</span>
+    </div>
+    <table>
+      <thead><tr><th>Page</th><th>What's on it</th><th>Why it exists</th></tr></thead>
+      <tbody>
+        <tr><td>Login</td><td>Email + password form — admin role check on server; redirects non-admins</td><td>Gated access — only users with role=admin can enter</td></tr>
+        <tr><td>Dashboard /</td><td>4 KPI cards (deliveries, revenue, active drivers, users), revenue chart, deliveries-by-status pie, recent activity feed</td><td>At-a-glance platform health for operations team each morning</td></tr>
+        <tr><td>Deliveries</td><td>Paginated table with status filter tabs, tracking code, customer, route preview, price, Cancel action</td><td>Ops team handles stuck or disputed deliveries in real time</td></tr>
+        <tr><td>Drivers</td><td>Table with status filter (All/Pending/Approved/Suspended), vehicle icon, rating stars, Approve/Suspend actions</td><td>Driver onboarding moderation — new applications land here as Pending</td></tr>
+        <tr><td>Drivers /[id]</td><td>Full driver profile: KYC documents, delivery history, ratings breakdown, lifetime earnings, account actions</td><td>Deep-dive before approve/suspend decision; also handles disputes</td></tr>
+        <tr><td>Users</td><td>All customers with search, email, phone, role badge, account status, last-active date</td><td>Customer management — locate users for support queries</td></tr>
+        <tr><td>Users /[id]</td><td>Full user profile: order history, wallet balance, contact details, reported issues, suspend button</td><td>Support investigation screen — full customer context in one view</td></tr>
+        <tr><td>Analytics</td><td>Revenue chart (daily/weekly/monthly toggle), deliveries-by-status pie, top 10 drivers by earnings table, heatmap data</td><td>Business intelligence — informs pricing, marketing, and hiring decisions</td></tr>
+        <tr><td>Pricing</td><td>Editable fields: base fare (₦), per-km rate, per-kg rate, platform fee %, minimum fare; Save button</td><td>Dynamic pricing control — ops team adjusts without a code deploy</td></tr>
+        <tr><td>Fraud</td><td>Flagged accounts list with flag reason, severity, timestamp, Dismiss / Take Action buttons</td><td>Risk & compliance — automated flags from the fraud module queue here for human review</td></tr>
+        <tr><td>Admins</td><td>List of admin accounts, name/email/role, Create New Admin form</td><td>Team access management — add/remove ops staff without a developer</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══════════════════════════════════════════ IMPROVEMENTS -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-icon icon-green">💡</div>
+      <div class="section-title">Suggested Improvements (Industry Standard)</div>
+    </div>
+    <div class="improvements-grid">
+      <div class="improvement-card">
+        <h4>📦 Customer App</h4>
+        <ul>
+          <li><div><strong>Live map on Home screen</strong>Show a live map with nearby drivers like Uber/Bolt; reduces friction to first booking</div></li>
+          <li><div><strong>Scheduled delivery reminders</strong>Push notification 30 min before scheduled pickup time</div></li>
+          <li><div><strong>Real-time ETA countdown</strong>Live ticking counter instead of static "20 mins away" on trip progress</div></li>
+          <li><div><strong>Package insurance upsell</strong>Optional insurance add-on during booking (DHL/GIG standard)</div></li>
+          <li><div><strong>Multiple recipients</strong>Single booking, different people receiving at each stop</div></li>
+          <li><div><strong>Order status deep links</strong>Shareable live tracking URL so recipient can watch in browser without the app</div></li>
+        </ul>
+      </div>
+      <div class="improvement-card">
+        <h4>🛵 Driver App</h4>
+        <ul>
+          <li><div><strong>Earnings goal tracker</strong>"₦2,000 away from daily goal" — gamified motivation for more trips</div></li>
+          <li><div><strong>Surge / demand heatmap</strong>Show high-demand zones on mini map so drivers position themselves better</div></li>
+          <li><div><strong>Offline mode job queue</strong>Cache accepted jobs locally so poor-signal areas don't break mid-delivery</div></li>
+          <li><div><strong>One-tap navigation</strong>Deep-link into Google Maps / Waze with pre-filled destination; no manual copy</div></li>
+          <li><div><strong>Weekly earnings summary</strong>Monday morning push: "Here's your last 7 days" — builds platform loyalty</div></li>
+        </ul>
+      </div>
+      <div class="improvement-card">
+        <h4>🖥 Admin Dashboard</h4>
+        <ul>
+          <li><div><strong>Real-time ops map</strong>All active drivers and in-progress deliveries on a live map for ops visibility</div></li>
+          <li><div><strong>Bulk reassign</strong>Select multiple stuck deliveries and reassign to available drivers at once</div></li>
+          <li><div><strong>Automated payout approvals</strong>Auto-approve withdrawals below a threshold (e.g. &lt; ₦50,000)</div></li>
+          <li><div><strong>Driver supply vs. demand chart</strong>By hour and zone — predicts and prevents driver shortfalls before they happen</div></li>
+          <li><div><strong>Customer churn alerts</strong>Flag customers inactive for 30+ days for automated re-engagement campaigns</div></li>
+        </ul>
+      </div>
+      <div class="improvement-card">
+        <h4>⚙️ Backend</h4>
+        <ul>
+          <li><div><strong>Per-user rate limiting</strong>Currently global throttle; per-user limits prevent individual API abuse</div></li>
+          <li><div><strong>Cancellation grace window</strong>2-minute window after booking before cancellation fee applies</div></li>
+          <li><div><strong>Webhook retry queue</strong>Exponential back-off retries if Flutterwave webhook fails to deliver</div></li>
+          <li><div><strong>Driver location history</strong>Store last N GPS points per trip for route replay and dispute resolution</div></li>
+          <li><div><strong>Delivery SLA alerts</strong>Alert ops when a delivery is in "assigned" state for more than 10 minutes with no pickup</div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+</body>
+</html>

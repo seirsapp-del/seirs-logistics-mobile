@@ -1,409 +1,505 @@
+import { useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
-  ScrollView, ActivityIndicator, Switch, Alert,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
+  TextInput, ActivityIndicator, Image, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { deliveriesApi } from '@/services/api';
-import AddressPicker from '@/components/AddressPicker';
+import { deliveriesApi, uploadApi } from '@/services/api';
+import {
+  ArrowLeft, ArrowRight, Package, MapPin, Truck,
+  Calendar, CreditCard, Camera, X, CheckCircle, Zap, Bike, Car,
+} from 'lucide-react-native';
 
-type PackageSize = 'small' | 'medium' | 'large';
-type Urgency     = 'economy' | 'standard' | 'instant';
+// ─── Data ─────────────────────────────────────────────────────────────────────
 
-const SIZES: { key: PackageSize; label: string; desc: string; icon: string }[] = [
-  { key: 'small',  label: 'Small',  desc: 'Docs, phones, small items', icon: 'document-outline' },
-  { key: 'medium', label: 'Medium', desc: 'Bags, small boxes',         icon: 'bag-handle-outline' },
-  { key: 'large',  label: 'Large',  desc: 'Large boxes, appliances',   icon: 'cube-outline' },
-];
+const PACKAGE_CATEGORIES = [
+  { id: 'documents',    label: 'Documents / Envelope'                       },
+  { id: 'small_parcel', label: 'Small Parcel (electronics, clothing)'        },
+  { id: 'food',         label: 'Food / Perishables'                          },
+  { id: 'fragile',      label: 'Fragile Items'                               },
+  { id: 'agricultural', label: 'Agricultural Produce (crops, yam, maize)'   },
+  { id: 'building',     label: 'Building Materials (wood, roofing, pipes)'   },
+  { id: 'furniture',    label: 'Furniture / Large Items'                     },
+  { id: 'moving',       label: 'Moving / Relocation'                         },
+  { id: 'market_goods', label: 'Market Goods (bulk market purchases)'        },
+  { id: 'heavy',        label: 'Heavy / Industrial'                          },
+] as const;
+type CategoryId = typeof PACKAGE_CATEGORIES[number]['id'];
 
-const URGENCIES: { key: Urgency; label: string; eta: string; icon: string; color: string }[] = [
-  { key: 'economy',  label: 'Economy',  eta: '2–3 days',  icon: 'leaf-outline',     color: '#22C55E' },
-  { key: 'standard', label: 'Standard', eta: 'Next day',  icon: 'navigate-outline', color: '#3A86FF' },
-  { key: 'instant',  label: 'Instant',  eta: '1–3 hours', icon: 'flash',            color: '#FF6B00' },
-];
+const VEHICLES = [
+  { id: 'bicycle',    label: 'Bicycle / Hand',         maxKg: 5,    base: 500,   perKm: 50,   note: 'Community only, <3km' },
+  { id: 'motorcycle', label: 'Motorcycle (Okada)',      maxKg: 20,   base: 800,   perKm: 150,  note: 'Standard parcels, food' },
+  { id: 'keke',       label: 'Tricycle (Keke)',         maxKg: 100,  base: 1200,  perKm: 200,  note: 'Medium packages, fragile' },
+  { id: 'car',        label: 'Car (Sedan)',             maxKg: 200,  base: 2000,  perKm: 300,  note: 'Personal items, medium parcels' },
+  { id: 'van',        label: 'Van / Pickup',            maxKg: 800,  base: 5000,  perKm: 500,  note: 'Large goods, business deliveries' },
+  { id: 'truck_sm',   label: 'Truck (Small)',           maxKg: 3000, base: 15000, perKm: 1000, note: 'Bulk cargo, building materials' },
+  { id: 'truck_lg',   label: 'Truck (Large / Moving)',  maxKg: 9999, base: 40000, perKm: 2000, note: 'Full relocation, industrial' },
+] as const;
+type VehicleId = typeof VEHICLES[number]['id'];
 
-const PAYMENT_METHODS: { key: string; label: string; icon: string }[] = [
-  { key: 'card',             label: 'Card',             icon: 'card-outline' },
-  { key: 'bank_transfer',    label: 'Bank Transfer',    icon: 'business-outline' },
-  { key: 'mobile_money',     label: 'Mobile Money',     icon: 'phone-portrait-outline' },
-  { key: 'cash_on_delivery', label: 'Cash on Delivery', icon: 'cash-outline' },
-  { key: 'wallet',           label: 'Wallet',           icon: 'wallet-outline' },
-];
+const PAYMENT_METHODS = [
+  { id: 'card',          label: 'Debit Card (Flutterwave)' },
+  { id: 'bank_transfer', label: 'Bank Transfer'            },
+  { id: 'wallet',        label: 'Seirs Wallet'             },
+] as const;
+type PaymentId = typeof PAYMENT_METHODS[number]['id'];
 
-const STEP_LABELS = ['Locations', 'Package', 'Choose Plan', 'Confirm'];
+const STEPS = ['Package', 'Address', 'Vehicle', 'Schedule', 'Fare', 'Confirm'] as const;
+
+function autoRecommend(cat: CategoryId, kg: number): VehicleId {
+  if (cat === 'documents') return 'bicycle';
+  if ((cat === 'food' || cat === 'small_parcel') && kg <= 20) return 'motorcycle';
+  if ((cat === 'fragile' || cat === 'market_goods') && kg <= 100) return 'keke';
+  if (cat === 'agricultural' || cat === 'building') return 'truck_sm';
+  if (cat === 'furniture'   || cat === 'moving' || cat === 'heavy') return 'truck_lg';
+  if (kg <= 5)    return 'bicycle';
+  if (kg <= 20)   return 'motorcycle';
+  if (kg <= 100)  return 'keke';
+  if (kg <= 200)  return 'car';
+  if (kg <= 800)  return 'van';
+  return 'truck_sm';
+}
+
+function calcFare(vid: VehicleId, distKm: number, kg: number) {
+  const v       = VEHICLES.find(x => x.id === vid)!;
+  const base    = v.base;
+  const dist    = distKm * v.perKm;
+  const weight  = kg > 5 ? Math.floor(kg / 5) * 50 : 0;
+  const subtotal= base + dist + weight;
+  const service = Math.round(subtotal * 0.30);
+  const total   = subtotal + service;
+  return { base, dist, weight, service, total };
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SendScreen() {
-  const router      = useRouter();
-  const colorScheme = useColorScheme();
-  const theme       = Colors[colorScheme ?? 'light'];
+  const router = useRouter();
+  const cs     = useColorScheme();
+  const theme  = Colors[cs ?? 'light'];
+  const isDark = cs === 'dark';
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step,        setStep]        = useState(0);
+  const [photos,      setPhotos]      = useState<string[]>([]);
+  const [description, setDescription] = useState('');
+  const [category,    setCategory]    = useState<CategoryId | null>(null);
+  const [weightKg,    setWeightKg]    = useState('');
+  const [pickup,      setPickup]      = useState('');
+  const [dropoff,     setDropoff]     = useState('');
+  const [vehicleId,   setVehicleId]   = useState<VehicleId>('motorcycle');
+  const [scheduleNow, setScheduleNow] = useState(true);
+  const [paymentId,   setPaymentId]   = useState<PaymentId>('wallet');
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState('');
 
-  const [pickupAddress,  setPickupAddress]  = useState('');
-  const [pickupLat,      setPickupLat]      = useState(0);
-  const [pickupLng,      setPickupLng]      = useState(0);
-  const [dropoffAddress, setDropoffAddress] = useState('');
-  const [dropoffLat,     setDropoffLat]     = useState(0);
-  const [dropoffLng,     setDropoffLng]     = useState(0);
+  const kg   = parseFloat(weightKg) || 0;
+  const dist = 7; // placeholder; real app uses Google Distance Matrix
+  const fare = calcFare(vehicleId, dist, kg);
 
-  const [description,   setDescription]   = useState('');
-  const [size,          setSize]          = useState<PackageSize>('small');
-  const [isFragile,     setIsFragile]     = useState(false);
-
-  const [quotes,    setQuotes]    = useState<any>(null);
-  const [urgency,   setUrgency]   = useState<Urgency>('standard');
-  const [quoting,   setQuoting]   = useState(false);
-
-  const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery');
-  const [confirming,    setConfirming]    = useState(false);
-
-  const fetchQuote = async () => {
-    setQuoting(true);
-    try {
-      const data = await deliveriesApi.quote({ pickupLat, pickupLng, dropoffLat, dropoffLng, packageSize: size, isFragile });
-      setQuotes(data);
-      setStep(3);
-    } catch (e: any) {
-      Alert.alert('Quote Failed', e.message ?? 'Unable to get price. Check your inputs.');
-    } finally {
-      setQuoting(false);
+  const addPhoto = async () => {
+    if (photos.length >= 5) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== 'granted') {
+      Alert.alert('Permission needed', 'Allow photo access to upload package photos.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+    if (!result.canceled && result.assets[0]) {
+      setPhotos(p => [...p, result.assets[0].uri]);
     }
   };
 
-  const confirmOrder = async () => {
-    setConfirming(true);
+  const next = () => {
+    if (step === 0 && photos.length === 0) { setError('Please upload at least one photo.'); return; }
+    if (step === 0 && !category)           { setError('Please select a package category.'); return; }
+    if (step === 1 && !pickup.trim())      { setError('Please enter a pickup address.'); return; }
+    if (step === 1 && !dropoff.trim())     { setError('Please enter a dropoff address.'); return; }
+    setError('');
+    if (step === 1 && category) setVehicleId(autoRecommend(category, kg));
+    setStep(s => s + 1);
+  };
+
+  const handleBook = async () => {
+    setLoading(true);
+    setError('');
     try {
-      const delivery = await deliveriesApi.create({
-        pickupAddress, pickupLat, pickupLng,
-        dropoffAddress, dropoffLat, dropoffLng,
-        packageDescription: description, packageSize: size,
-        isFragile, urgency, paymentMethod,
-      });
-      if (paymentMethod === 'cash_on_delivery' || paymentMethod === 'wallet') {
-        Alert.alert('Order Placed!', `Tracking code: ${delivery.trackingCode}`, [
-          { text: 'Track It', onPress: () => router.replace('/(customer)/track') },
-          { text: 'Done',     onPress: () => router.replace('/(customer)') },
-        ]);
-      } else {
-        router.push(`/(customer)/payment/${delivery.id}`);
+      const urls: string[] = [];
+      for (const uri of photos) {
+        const { url } = await uploadApi.file(uri);
+        urls.push(url);
       }
+      await deliveriesApi.create({
+        pickupAddress:   pickup,
+        dropoffAddress:  dropoff,
+        packageCategory: category,
+        description,
+        weightKg:        kg,
+        vehicleType:     vehicleId,
+        paymentMethod:   paymentId,
+        packagePhotos:   urls,
+        scheduledNow:    scheduleNow,
+      });
+      router.replace('/(customer)/history' as any);
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Failed to place order.');
+      setError(e.message ?? 'Booking failed. Please try again.');
     } finally {
-      setConfirming(false);
+      setLoading(false);
     }
   };
 
-  const selectedQuote = quotes?.[urgency];
-  const step1Valid    = !!(pickupAddress && dropoffAddress && pickupLat && dropoffLat);
+  const highlight = (active: boolean) => ({
+    borderColor:     active ? theme.accent : theme.border,
+    backgroundColor: active ? (isDark ? '#1A2E44' : '#EBF5FF') : theme.surface,
+  });
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+
       {/* Header */}
-      <View style={[styles.headerBar, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        <Pressable
-          onPress={() => step > 1 ? setStep((step - 1) as any) : router.back()}
-          style={[styles.backCircle, { backgroundColor: theme.surface }]}
-        >
-          <Ionicons name="arrow-back" size={20} color={theme.text} />
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <Pressable onPress={() => (step === 0 ? router.back() : setStep(s => s - 1))}>
+          <ArrowLeft size={22} color={theme.text} strokeWidth={2} />
         </Pressable>
-        <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>{STEP_LABELS[step - 1]}</Text>
-          <Text style={[styles.stepIndicator, { color: theme.textSecond }]}>Step {step} of 4</Text>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Send a Package</Text>
+          <Text style={[styles.headerStep, { color: theme.textSecond }]}>
+            Step {step + 1} / {STEPS.length} — {STEPS[step]}
+          </Text>
         </View>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 22 }} />
       </View>
 
       {/* Progress bar */}
       <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
-        <View style={[styles.progressFill, { backgroundColor: theme.primary, width: `${(step / 4) * 100}%` }]} />
+        <View style={[styles.progressFill, { backgroundColor: theme.accent, width: `${((step + 1) / STEPS.length) * 100}%` }]} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-
-        {/* ── STEP 1: Locations ─────────────────────────────────────────── */}
-        {step === 1 && (
-          <>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Pickup location</Text>
-            <AddressPicker
-              label="Pickup Address"
-              dotColor={theme.success}
-              value={pickupAddress}
-              onSelect={(p) => { setPickupAddress(p.address); setPickupLat(p.lat); setPickupLng(p.lng); }}
-            />
-            <View style={{ height: Spacing.lg }} />
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Drop-off location</Text>
-            <AddressPicker
-              label="Drop-off Address"
-              dotColor={theme.error}
-              value={dropoffAddress}
-              onSelect={(p) => { setDropoffAddress(p.address); setDropoffLat(p.lat); setDropoffLng(p.lng); }}
-            />
-            <Pressable
-              style={[styles.btn, { backgroundColor: step1Valid ? theme.primary : theme.border, marginTop: Spacing.xl }]}
-              onPress={() => setStep(2)}
-              disabled={!step1Valid}
-            >
-              <Text style={styles.btnText}>Next: Package Details</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
-            </Pressable>
-          </>
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        {!!error && (
+          <View style={[styles.errorBox, { backgroundColor: '#EF444415' }]}>
+            <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
+          </View>
         )}
 
-        {/* ── STEP 2: Package ───────────────────────────────────────────── */}
-        {step === 2 && (
-          <>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>What are you sending?</Text>
-            <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-              <Ionicons name="cube-outline" size={18} color={theme.textThird} style={{ marginRight: Spacing.sm }} />
-              <TextInput
-                style={[styles.textInput, { color: theme.text }]}
-                placeholder="e.g. Documents, birthday cake, laptop"
-                placeholderTextColor={theme.textThird}
-                value={description}
-                onChangeText={setDescription}
-              />
-            </View>
-
-            <Text style={[styles.sectionTitle, { color: theme.text, marginTop: Spacing.lg }]}>Package size</Text>
-            <View style={styles.optionList}>
-              {SIZES.map((s) => {
-                const selected = size === s.key;
-                return (
+        {/* STEP 0 — Package */}
+        {step === 0 && (
+          <View style={styles.stepGap}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>
+              Package photos <Text style={{ color: theme.error }}>*</Text>
+              <Text style={{ color: theme.textThird }}> (min 1, max 5)</Text>
+            </Text>
+            <View style={styles.photosRow}>
+              {photos.map((uri, i) => (
+                <View key={i} style={styles.photoWrap}>
+                  <Image source={{ uri }} style={styles.photo} />
                   <Pressable
-                    key={s.key}
-                    style={[
-                      styles.optionRow,
-                      { backgroundColor: theme.surface, borderColor: selected ? theme.primary : theme.border },
-                      Shadows.sm,
-                    ]}
-                    onPress={() => setSize(s.key)}
+                    style={[styles.photoRemove, { backgroundColor: theme.error }]}
+                    onPress={() => setPhotos(p => p.filter((_, j) => j !== i))}
                   >
-                    <View style={[styles.optionIconWrap, { backgroundColor: selected ? theme.primary + '18' : theme.surfaceSecond }]}>
-                      <Ionicons name={s.icon as any} size={22} color={selected ? theme.primary : theme.textSecond} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.optionLabel, { color: theme.text }]}>{s.label}</Text>
-                      <Text style={[styles.optionDesc, { color: theme.textSecond }]}>{s.desc}</Text>
-                    </View>
-                    {selected && <Ionicons name="checkmark-circle" size={22} color={theme.primary} />}
+                    <X size={12} color="#fff" strokeWidth={3} />
                   </Pressable>
-                );
-              })}
-            </View>
-
-            <View style={[styles.fragileRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-              <View style={[styles.optionIconWrap, { backgroundColor: '#FFF7E0' }]}>
-                <Ionicons name="warning-outline" size={22} color="#F59E0B" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.optionLabel, { color: theme.text }]}>Fragile Item</Text>
-                <Text style={[styles.optionDesc, { color: theme.textSecond }]}>Adds ₦150 handling fee</Text>
-              </View>
-              <Switch
-                value={isFragile}
-                onValueChange={setIsFragile}
-                trackColor={{ false: theme.border, true: theme.primary }}
-                thumbColor="#fff"
-              />
-            </View>
-
-            <Pressable
-              style={[styles.btn, { backgroundColor: description ? theme.primary : theme.border, marginTop: Spacing.lg }]}
-              onPress={fetchQuote}
-              disabled={!description || quoting}
-            >
-              {quoting ? <ActivityIndicator color="#fff" /> : (
-                <>
-                  <Text style={styles.btnText}>Get Price Quote</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
-                </>
+                </View>
+              ))}
+              {photos.length < 5 && (
+                <Pressable
+                  style={[styles.photoAdd, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}
+                  onPress={addPhoto}
+                >
+                  <Camera size={24} color={theme.accent} strokeWidth={1.75} />
+                  <Text style={[styles.photoAddText, { color: theme.textSecond }]}>Add</Text>
+                </Pressable>
               )}
-            </Pressable>
-          </>
-        )}
-
-        {/* ── STEP 3: Quotes ────────────────────────────────────────────── */}
-        {step === 3 && quotes && (
-          <>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Choose delivery speed</Text>
-            <View style={styles.optionList}>
-              {URGENCIES.map((u) => {
-                const q        = quotes[u.key];
-                const selected = urgency === u.key;
-                return (
-                  <Pressable
-                    key={u.key}
-                    style={[
-                      styles.optionRow,
-                      { backgroundColor: theme.surface, borderColor: selected ? u.color : theme.border },
-                      Shadows.sm,
-                    ]}
-                    onPress={() => setUrgency(u.key)}
-                  >
-                    <View style={[styles.optionIconWrap, { backgroundColor: u.color + '18' }]}>
-                      <Ionicons name={u.icon as any} size={22} color={u.color} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.optionLabel, { color: theme.text }]}>{u.label}</Text>
-                      <Text style={[styles.optionDesc, { color: theme.textSecond }]}>ETA: {u.eta}</Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', gap: 3 }}>
-                      <Text style={[styles.price, { color: u.color }]}>₦{q?.price?.toLocaleString()}</Text>
-                      {selected && <Ionicons name="checkmark-circle" size={16} color={u.color} />}
-                    </View>
-                  </Pressable>
-                );
-              })}
             </View>
 
-            {selectedQuote && (
-              <View style={[styles.breakdownCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-                <Text style={[styles.breakdownTitle, { color: theme.text }]}>Price Breakdown</Text>
-                {[
-                  ['Base fare',   `₦${selectedQuote.breakdown?.base}`],
-                  ['Distance',    `₦${selectedQuote.breakdown?.distance}`],
-                  ['Size fee',    `₦${selectedQuote.breakdown?.sizeFee}`],
-                  ['Urgency fee', `₦${selectedQuote.breakdown?.urgencyFee}`],
-                  ['Fragile fee', `₦${selectedQuote.breakdown?.fragileFee}`],
-                ].map(([k, v]) => (
-                  <View key={k} style={styles.breakdownRow}>
-                    <Text style={[styles.breakdownKey, { color: theme.textSecond }]}>{k}</Text>
-                    <Text style={[styles.breakdownVal, { color: theme.text }]}>{v}</Text>
-                  </View>
-                ))}
-                <View style={[styles.breakdownDivider, { backgroundColor: theme.border }]} />
-                <View style={styles.breakdownRow}>
-                  <Text style={[styles.breakdownKey, { color: theme.text, fontWeight: FontWeight.bold }]}>Total</Text>
-                  <Text style={[styles.breakdownVal, { color: theme.primary, fontWeight: FontWeight.bold }]}>
-                    ₦{selectedQuote.price?.toLocaleString()}
+            <Text style={[styles.label, { color: theme.textSecond }]}>Description</Text>
+            <TextInput
+              style={[styles.textarea, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
+              placeholder="Describe the package contents..."
+              placeholderTextColor={theme.textThird}
+              multiline
+              numberOfLines={3}
+              value={description}
+              onChangeText={setDescription}
+            />
+
+            <Text style={[styles.label, { color: theme.textSecond }]}>
+              Category <Text style={{ color: theme.error }}>*</Text>
+            </Text>
+            <View style={styles.categoryGrid}>
+              {PACKAGE_CATEGORIES.map(cat => (
+                <Pressable
+                  key={cat.id}
+                  style={[styles.categoryChip, highlight(category === cat.id)]}
+                  onPress={() => setCategory(cat.id)}
+                >
+                  <Text style={[styles.categoryText, { color: category === cat.id ? theme.accent : theme.text }]}>
+                    {cat.label}
                   </Text>
-                </View>
-              </View>
-            )}
-
-            <Pressable
-              style={[styles.btn, { backgroundColor: theme.primary, marginTop: Spacing.lg }]}
-              onPress={() => setStep(4)}
-            >
-              <Text style={styles.btnText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
-            </Pressable>
-          </>
-        )}
-
-        {/* ── STEP 4: Confirm ───────────────────────────────────────────── */}
-        {step === 4 && (
-          <>
-            <View style={[styles.summaryCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-              <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: Spacing.md }]}>Order Summary</Text>
-              {[
-                ['From',    pickupAddress],
-                ['To',      dropoffAddress],
-                ['Package', description],
-                ['Size',    size],
-                ['Speed',   URGENCIES.find(u => u.key === urgency)?.label ?? urgency],
-                ['Fragile', isFragile ? 'Yes (+₦150)' : 'No'],
-                ['Total',   `₦${selectedQuote?.price?.toLocaleString() ?? '—'}`],
-              ].map(([k, v]) => (
-                <View key={k} style={styles.summaryRow}>
-                  <Text style={[styles.summaryKey, { color: theme.textSecond }]}>{k}</Text>
-                  <Text style={[styles.summaryVal, {
-                    color: k === 'Total' ? theme.primary : theme.text,
-                    fontWeight: k === 'Total' ? FontWeight.bold : FontWeight.regular,
-                  }]}>{v}</Text>
-                </View>
+                </Pressable>
               ))}
             </View>
 
-            <Text style={[styles.sectionTitle, { color: theme.text, marginTop: Spacing.lg }]}>Payment method</Text>
-            <View style={styles.optionList}>
-              {PAYMENT_METHODS.map((m) => {
-                const selected = paymentMethod === m.key;
-                return (
-                  <Pressable
-                    key={m.key}
-                    style={[
-                      styles.optionRow,
-                      { backgroundColor: theme.surface, borderColor: selected ? theme.primary : theme.border },
-                      Shadows.sm,
-                    ]}
-                    onPress={() => setPaymentMethod(m.key)}
-                  >
-                    <View style={[styles.optionIconWrap, { backgroundColor: selected ? theme.primary + '18' : theme.surfaceSecond }]}>
-                      <Ionicons name={m.icon as any} size={20} color={selected ? theme.primary : theme.textSecond} />
-                    </View>
-                    <Text style={[styles.optionLabel, { color: theme.text, flex: 1 }]}>{m.label}</Text>
-                    {selected && <Ionicons name="checkmark-circle" size={22} color={theme.primary} />}
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <Pressable
-              style={[styles.btn, { backgroundColor: confirming ? theme.border : theme.primary, marginTop: Spacing.lg }]}
-              onPress={confirmOrder}
-              disabled={confirming}
-            >
-              {confirming
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.btnText}>Place Order</Text>}
-            </Pressable>
-          </>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Weight (kg) — optional</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
+              placeholder="e.g. 5"
+              placeholderTextColor={theme.textThird}
+              keyboardType="decimal-pad"
+              value={weightKg}
+              onChangeText={setWeightKg}
+            />
+          </View>
         )}
 
-        <View style={{ height: Spacing.xl }} />
+        {/* STEP 1 — Address */}
+        {step === 1 && (
+          <View style={styles.stepGap}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>Pickup address</Text>
+            <View style={[styles.inputRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <MapPin size={16} color={theme.accent} strokeWidth={1.75} style={styles.inputIcon as any} />
+              <TextInput
+                style={[styles.inputFlex, { color: theme.text }]}
+                placeholder="Search pickup location..."
+                placeholderTextColor={theme.textThird}
+                value={pickup}
+                onChangeText={setPickup}
+              />
+            </View>
+
+            <Text style={[styles.label, { color: theme.textSecond }]}>Dropoff address</Text>
+            <View style={[styles.inputRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <MapPin size={16} color={theme.error} strokeWidth={1.75} style={styles.inputIcon as any} />
+              <TextInput
+                style={[styles.inputFlex, { color: theme.text }]}
+                placeholder="Search dropoff location..."
+                placeholderTextColor={theme.textThird}
+                value={dropoff}
+                onChangeText={setDropoff}
+              />
+            </View>
+
+            <View style={[styles.mapBox, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <MapPin size={30} color={theme.textThird} strokeWidth={1.5} />
+              <Text style={[styles.mapBoxText, { color: theme.textThird }]}>Map preview</Text>
+            </View>
+          </View>
+        )}
+
+        {/* STEP 2 — Vehicle */}
+        {step === 2 && (
+          <View style={styles.stepGap}>
+            <Text style={[styles.hintText, { color: theme.textSecond }]}>
+              We highlighted the recommended vehicle for your package.
+            </Text>
+            {VEHICLES.map(v => {
+              const f        = calcFare(v.id, dist, kg);
+              const active   = vehicleId === v.id;
+              const rec      = v.id === (category ? autoRecommend(category, kg) : 'motorcycle');
+              return (
+                <Pressable
+                  key={v.id}
+                  style={[styles.vehicleCard, highlight(active), Shadows.xs]}
+                  onPress={() => setVehicleId(v.id)}
+                >
+                  <Truck size={26} color={active ? theme.accent : theme.textSecond} strokeWidth={1.5} />
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.vehicleNameRow}>
+                      <Text style={[styles.vehicleName, { color: theme.text }]}>{v.label}</Text>
+                      {rec && (
+                        <View style={[styles.recBadge, { backgroundColor: theme.accent }]}>
+                          <Text style={styles.recText}>Recommended</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.vehicleNote, { color: theme.textSecond }]}>
+                      {v.note} · max {v.maxKg >= 9999 ? '3000+' : v.maxKg}kg
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.vehicleFare, { color: theme.text }]}>₦{f.total.toLocaleString()}</Text>
+                    <Text style={[styles.vehicleEta, { color: theme.textSecond }]}>~20 min</Text>
+                  </View>
+                  {active && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
+        {/* STEP 3 — Schedule */}
+        {step === 3 && (
+          <View style={styles.stepGap}>
+            {[
+              { now: true,  icon: Zap,      title: 'Send Now',            desc: 'Driver assigned immediately'  },
+              { now: false, icon: Calendar, title: 'Schedule for Later',  desc: 'Pick a future date and time' },
+            ].map(opt => {
+              const OptIcon = opt.icon;
+              return (
+                <Pressable
+                  key={String(opt.now)}
+                  style={[styles.scheduleOpt, highlight(scheduleNow === opt.now)]}
+                  onPress={() => setScheduleNow(opt.now)}
+                >
+                  <OptIcon size={22} color={scheduleNow === opt.now ? theme.accent : theme.textSecond} strokeWidth={1.75} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.scheduleTitle, { color: theme.text }]}>{opt.title}</Text>
+                    <Text style={[styles.scheduleDesc, { color: theme.textSecond }]}>{opt.desc}</Text>
+                  </View>
+                  {scheduleNow === opt.now && <CheckCircle size={20} color={theme.accent} strokeWidth={2} />}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
+        {/* STEP 4 — Fare */}
+        {step === 4 && (
+          <View style={styles.stepGap}>
+            <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+              <Text style={[styles.fareTitle, { color: theme.text }]}>Fare Breakdown</Text>
+              {([
+                ['Base fare',         fare.base   ],
+                ['Distance charge',   fare.dist   ],
+                ['Weight surcharge',  fare.weight ],
+                ['Service fee (30%)', fare.service],
+              ] as [string, number][]).map(([lbl, amt]) => (
+                <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
+                  <Text style={[styles.fareAmt,   { color: theme.text }]}>₦{amt.toLocaleString()}</Text>
+                </View>
+              ))}
+              <View style={styles.fareTotalRow}>
+                <Text style={[styles.fareTotalLabel, { color: theme.text }]}>Total</Text>
+                <Text style={[styles.fareTotalAmt,   { color: theme.accent }]}>₦{fare.total.toLocaleString()}</Text>
+              </View>
+            </View>
+
+            <Text style={[styles.label, { color: theme.textSecond }]}>Payment method</Text>
+            {PAYMENT_METHODS.map(pm => (
+              <Pressable
+                key={pm.id}
+                style={[styles.payOption, highlight(paymentId === pm.id)]}
+                onPress={() => setPaymentId(pm.id)}
+              >
+                <CreditCard size={18} color={paymentId === pm.id ? theme.accent : theme.textSecond} strokeWidth={1.75} />
+                <Text style={[styles.payLabel, { color: theme.text }]}>{pm.label}</Text>
+                {paymentId === pm.id && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* STEP 5 — Confirm */}
+        {step === 5 && (
+          <View style={styles.stepGap}>
+            <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+              <Text style={[styles.fareTitle, { color: theme.text }]}>Order Summary</Text>
+              {([
+                ['Pickup',   pickup  || '—'],
+                ['Dropoff',  dropoff || '—'],
+                ['Category', PACKAGE_CATEGORIES.find(c => c.id === category)?.label ?? '—'],
+                ['Vehicle',  VEHICLES.find(v => v.id === vehicleId)?.label ?? '—'],
+                ['Payment',  PAYMENT_METHODS.find(p => p.id === paymentId)?.label ?? '—'],
+                ['Total',    `₦${fare.total.toLocaleString()}`],
+              ] as [string, string][]).map(([lbl, val]) => (
+                <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
+                  <Text style={[styles.fareAmt,   { color: theme.text }]} numberOfLines={1}>{val}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
       </ScrollView>
+
+      {/* CTA */}
+      <View style={[styles.footer, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
+        <Pressable
+          style={[styles.cta, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+          onPress={step < 5 ? next : handleBook}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <View style={styles.ctaInner}>
+              <Text style={styles.ctaText}>{step === 5 ? 'Book Delivery' : 'Continue'}</Text>
+              <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
+            </View>
+          )}
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1,
-  },
-  backCircle:    { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  headerCenter:  { alignItems: 'center' },
-  headerTitle:   { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
-  stepIndicator: { fontSize: FontSize.xs, marginTop: 2 },
-
+  header:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 1 },
+  headerTitle:   { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  headerStep:    { fontSize: FontSize.xs, marginTop: 2 },
   progressTrack: { height: 3 },
   progressFill:  { height: 3 },
+  body:          { padding: Spacing.md, paddingBottom: 100 },
+  stepGap:       { gap: Spacing.md },
+  errorBox:      { padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
+  errorText:     { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  label:         { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  hintText:      { fontSize: FontSize.sm, lineHeight: 20 },
 
-  scrollContent: { padding: Spacing.md },
+  photosRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  photoWrap: { width: 72, height: 72, borderRadius: Radius.md, position: 'relative' },
+  photo:     { width: '100%', height: '100%', borderRadius: Radius.md },
+  photoRemove: { position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  photoAdd:    { width: 72, height: 72, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', gap: 4 },
+  photoAddText:{ fontSize: FontSize.xs },
 
-  sectionTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
+  textarea: { borderRadius: Radius.lg, borderWidth: 1.5, padding: Spacing.md, fontSize: FontSize.base, minHeight: 80, textAlignVertical: 'top' },
+  input:    { height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md, fontSize: FontSize.base },
+  inputRow: { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },
+  inputIcon:{ marginRight: Spacing.sm },
+  inputFlex:{ flex: 1, fontSize: FontSize.base, height: '100%' },
 
-  inputWrap: { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md, marginBottom: Spacing.lg },
-  textInput: { flex: 1, fontSize: FontSize.base },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  categoryChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full, borderWidth: 1.5 },
+  categoryText: { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
 
-  optionList:    { gap: Spacing.sm, marginBottom: Spacing.md },
-  optionRow:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5 },
-  optionIconWrap:{ width: 48, height: 48, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
-  optionLabel:   { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  optionDesc:    { fontSize: FontSize.xs, marginTop: 2 },
+  mapBox:     { height: 160, borderRadius: Radius.xl, borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', gap: Spacing.sm },
+  mapBoxText: { fontSize: FontSize.sm },
 
-  fragileRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5 },
+  vehicleCard:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5 },
+  vehicleNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: 2 },
+  vehicleName:    { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  vehicleNote:    { fontSize: FontSize.xs },
+  vehicleFare:    { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  vehicleEta:     { fontSize: FontSize.xs, marginTop: 2 },
+  recBadge:       { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.full },
+  recText:        { color: '#fff', fontSize: 10, fontWeight: FontWeight.bold },
 
-  price: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  scheduleOpt:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.lg, borderRadius: Radius.xl, borderWidth: 1.5 },
+  scheduleTitle: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  scheduleDesc:  { fontSize: FontSize.sm, marginTop: 2 },
 
-  breakdownCard:    { borderRadius: Radius.xl, padding: Spacing.md, borderWidth: 1, gap: Spacing.xs },
-  breakdownTitle:   { fontSize: FontSize.sm, fontWeight: FontWeight.bold, marginBottom: Spacing.xs },
-  breakdownRow:     { flexDirection: 'row', justifyContent: 'space-between' },
-  breakdownKey:     { fontSize: FontSize.sm },
-  breakdownVal:     { fontSize: FontSize.sm },
-  breakdownDivider: { height: 1, marginVertical: Spacing.xs },
+  fareCard:      { borderRadius: Radius.xl, padding: Spacing.lg, borderWidth: 1 },
+  fareTitle:     { fontSize: FontSize.md, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
+  fareRow:       { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  fareLabel:     { fontSize: FontSize.sm },
+  fareAmt:       { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, maxWidth: '55%', textAlign: 'right' },
+  fareTotalRow:  { flexDirection: 'row', justifyContent: 'space-between', paddingTop: Spacing.md },
+  fareTotalLabel:{ fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  fareTotalAmt:  { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
 
-  summaryCard: { borderRadius: Radius.xl, padding: Spacing.lg },
-  summaryRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
-  summaryKey:  { fontSize: FontSize.sm },
-  summaryVal:  { fontSize: FontSize.sm, maxWidth: '60%', textAlign: 'right' },
+  payOption: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5 },
+  payLabel:  { flex: 1, fontSize: FontSize.base },
 
-  btn:     { flexDirection: 'row', height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', gap: Spacing.sm },
-  btnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  summaryCard: { borderRadius: Radius.xl, padding: Spacing.lg, borderWidth: 1 },
+
+  footer:   { padding: Spacing.md, paddingBottom: 32, borderTopWidth: 1 },
+  cta:      { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },
+  ctaInner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  ctaText:  { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold },
 });

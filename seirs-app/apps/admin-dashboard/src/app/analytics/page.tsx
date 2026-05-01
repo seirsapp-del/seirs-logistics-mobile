@@ -51,7 +51,7 @@ export default function AnalyticsPage() {
     <div className="min-h-screen">
       <main className="p-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-[#0D1B2A]">Analytics</h1>
+          <h1 className="text-2xl font-bold text-[#0F2B4C]">Analytics</h1>
           <div className="flex gap-2">
             {[7, 14, 30, 90].map(d => (
               <button
@@ -59,8 +59,8 @@ export default function AnalyticsPage() {
                 onClick={() => setDays(d)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                   days === d
-                    ? 'bg-[#F4600C] text-white border-[#F4600C]'
-                    : 'bg-white text-[#0D1B2A]/50 border-[#EDE4D9] hover:border-[#0D1B2A]/20'
+                    ? 'bg-[#3A7BD5] text-white border-[#3A7BD5]'
+                    : 'bg-white text-[#0F2B4C]/50 border-[#E5E7EB] hover:border-[#0F2B4C]/20'
                 }`}
               >
                 {d}d
@@ -70,57 +70,57 @@ export default function AnalyticsPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-[#0D1B2A]/30">Loading analytics…</div>
+          <div className="text-center py-20 text-[#0F2B4C]/30">Loading analytics…</div>
         ) : (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] p-6">
-                <p className="text-xs font-semibold text-[#0D1B2A]/40 uppercase tracking-wide">Total Revenue</p>
-                <p className="text-3xl font-black text-[#0D1B2A] mt-1">{fmt(totalRevenue)}</p>
-                <p className="text-xs text-[#0D1B2A]/30 mt-1">last {days} days</p>
+              <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
+                <p className="text-xs font-semibold text-[#0F2B4C]/40 uppercase tracking-wide">Total Revenue</p>
+                <p className="text-3xl font-black text-[#0F2B4C] mt-1">{fmt(totalRevenue)}</p>
+                <p className="text-xs text-[#0F2B4C]/30 mt-1">last {days} days</p>
               </div>
-              <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] p-6">
-                <p className="text-xs font-semibold text-[#0D1B2A]/40 uppercase tracking-wide">Deliveries Completed</p>
-                <p className="text-3xl font-black text-[#0D1B2A] mt-1">{totalDeliveries.toLocaleString()}</p>
-                <p className="text-xs text-[#0D1B2A]/30 mt-1">last {days} days</p>
+              <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
+                <p className="text-xs font-semibold text-[#0F2B4C]/40 uppercase tracking-wide">Deliveries Completed</p>
+                <p className="text-3xl font-black text-[#0F2B4C] mt-1">{totalDeliveries.toLocaleString()}</p>
+                <p className="text-xs text-[#0F2B4C]/30 mt-1">last {days} days</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] p-6">
-              <h2 className="text-sm font-semibold text-[#0D1B2A]/60 mb-4">Daily Revenue (₦)</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
+              <h2 className="text-sm font-semibold text-[#0F2B4C]/60 mb-4">Daily Revenue (₦)</h2>
               {revenue.length > 0 ? (
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={revenue} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#EDE4D9" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis
                       dataKey="day"
                       tickFormatter={(v) => new Date(v).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })}
-                      tick={{ fontSize: 11, fill: '#0D1B2A', opacity: 0.4 }}
+                      tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }}
                     />
-                    <YAxis tickFormatter={(v) => fmt(v)} tick={{ fontSize: 11, fill: '#0D1B2A', opacity: 0.4 }} width={60} />
+                    <YAxis tickFormatter={(v) => fmt(v)} tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }} width={60} />
                     <Tooltip
                       formatter={(v: any) => [fmt(Number(v)), 'Revenue']}
                       labelFormatter={(l) => new Date(l).toLocaleDateString('en-NG', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      contentStyle={{ borderRadius: 8, border: '1px solid #EDE4D9', boxShadow: 'none' }}
+                      contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', boxShadow: 'none' }}
                     />
                     <Line
                       type="monotone"
                       dataKey="revenue"
-                      stroke="#F4600C"
+                      stroke="#3A7BD5"
                       strokeWidth={2}
                       dot={false}
-                      activeDot={{ r: 4, fill: '#F4600C' }}
+                      activeDot={{ r: 4, fill: '#3A7BD5' }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-60 flex items-center justify-center text-[#0D1B2A]/30 text-sm">No data yet</div>
+                <div className="h-60 flex items-center justify-center text-[#0F2B4C]/30 text-sm">No data yet</div>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] p-6">
-                <h2 className="text-sm font-semibold text-[#0D1B2A]/60 mb-4">Deliveries by Status</h2>
+              <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
+                <h2 className="text-sm font-semibold text-[#0F2B4C]/60 mb-4">Deliveries by Status</h2>
                 {byStatus.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
@@ -142,31 +142,31 @@ export default function AnalyticsPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-56 flex items-center justify-center text-[#0D1B2A]/30 text-sm">No data yet</div>
+                  <div className="h-56 flex items-center justify-center text-[#0F2B4C]/30 text-sm">No data yet</div>
                 )}
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-[#EDE4D9] p-6">
-                <h2 className="text-sm font-semibold text-[#0D1B2A]/60 mb-4">Top Drivers</h2>
+              <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
+                <h2 className="text-sm font-semibold text-[#0F2B4C]/60 mb-4">Top Drivers</h2>
                 <div className="space-y-2">
                   {topDrivers.slice(0, 8).map((d: any, i: number) => (
                     <div key={d.id} className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-[#0D1B2A]/30 w-4">{i + 1}</span>
+                      <span className="text-xs font-bold text-[#0F2B4C]/30 w-4">{i + 1}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#0D1B2A] truncate">{d.user?.name}</p>
-                        <p className="text-xs text-[#0D1B2A]/40 capitalize">{d.vehicleType}</p>
+                        <p className="text-sm font-medium text-[#0F2B4C] truncate">{d.user?.name}</p>
+                        <p className="text-xs text-[#0F2B4C]/40 capitalize">{d.vehicleType}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-[#0D1B2A]">{d.totalDeliveries}</p>
+                        <p className="text-sm font-semibold text-[#0F2B4C]">{d.totalDeliveries}</p>
                         <div className="flex items-center justify-end gap-0.5">
                           <Star size={10} fill="#FFBE0B" color="#FFBE0B" />
-                          <span className="text-xs text-[#0D1B2A]/50">{Number(d.rating).toFixed(1)}</span>
+                          <span className="text-xs text-[#0F2B4C]/50">{Number(d.rating).toFixed(1)}</span>
                         </div>
                       </div>
                     </div>
                   ))}
                   {topDrivers.length === 0 && (
-                    <p className="text-sm text-[#0D1B2A]/30 text-center py-8">No drivers yet</p>
+                    <p className="text-sm text-[#0F2B4C]/30 text-center py-8">No drivers yet</p>
                   )}
                 </div>
               </div>

@@ -1,17 +1,9 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-  StatusBar,
+  View, Text, TextInput, Pressable, StyleSheet,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowLeft, Mail, ArrowRight, Truck, AlertCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -39,7 +31,12 @@ export default function LoginScreen() {
       const res = await authApi.login(email, password);
       await login({ ...res.user, token: res.token });
     } catch (e: any) {
-      setError(e.message ?? 'Login failed. Please try again.');
+      const msg: string = e.message ?? '';
+      if (msg.toLowerCase().includes('verify your email')) {
+        router.push({ pathname: '/(auth)/verify-otp' as any, params: { email } });
+        return;
+      }
+      setError(msg || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -56,30 +53,25 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Back button */}
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
-            <Ionicons name="arrow-back" size={20} color={theme.text} />
+            <ArrowLeft size={20} color={theme.text} />
           </View>
         </Pressable>
 
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <Ionicons name="cube" size={24} color={theme.primary} />
-            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
+            <Truck size={24} color={theme.primary} strokeWidth={1.5} />
+            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS DRIVER</Text>
           </View>
           <Text style={[styles.title, { color: theme.text }]}>Welcome back</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            Sign in to continue
-          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecond }]}>Sign in to continue</Text>
         </View>
 
-        {/* Form card */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
           {error ? (
             <View style={[styles.errorBox, { backgroundColor: '#EF444418' }]}>
-              <Ionicons name="alert-circle" size={16} color={theme.error} />
+              <AlertCircle size={16} color={theme.error} strokeWidth={1.5} />
               <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
             </View>
           ) : null}
@@ -87,7 +79,7 @@ export default function LoginScreen() {
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Email address</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-              <Ionicons name="mail-outline" size={18} color={theme.textThird} style={styles.inputIcon} />
+              <Mail size={18} color={theme.textThird} strokeWidth={1.5} style={styles.inputIcon as any} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
                 placeholder="you@example.com"
@@ -114,10 +106,7 @@ export default function LoginScreen() {
             />
           </View>
 
-          <Pressable
-            style={styles.forgotRow}
-            onPress={() => router.push('/(auth)/forgot-password' as any)}
-          >
+          <Pressable style={styles.forgotRow} onPress={() => router.push('/(auth)/forgot-password' as any)}>
             <Text style={[styles.forgotText, { color: theme.primary }]}>Forgot password?</Text>
           </Pressable>
 
@@ -126,30 +115,17 @@ export default function LoginScreen() {
             onPress={handleLogin}
             disabled={loading}
           >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : (
-                <View style={styles.submitRow}>
-                  <Text style={styles.submitText}>Sign In</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#fff" />
-                </View>
-              )
-            }
+            {loading ? <ActivityIndicator color="#fff" /> : (
+              <View style={styles.submitRow}>
+                <Text style={styles.submitText}>Sign In</Text>
+                <ArrowRight size={20} color="#fff" />
+              </View>
+            )}
           </Pressable>
         </View>
 
-        {/* Divider */}
-        <View style={styles.dividerRow}>
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <Text style={[styles.dividerText, { color: theme.textThird }]}>or</Text>
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        </View>
-
-        {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>
-            Don't have an account?
-          </Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>Don't have an account?</Text>
           <Pressable onPress={() => router.push('/(auth)/register')}>
             <Text style={[styles.footerLink, { color: theme.primary }]}> Sign Up</Text>
           </Pressable>
@@ -160,133 +136,28 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xl,
-  },
-  backBtn: {
-    marginBottom: Spacing.lg,
-  },
-  backCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    marginBottom: Spacing.xl,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
-  brand: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.black,
-    letterSpacing: 3,
-  },
-  title: {
-    fontSize: FontSize['2xl'],
-    fontWeight: FontWeight.bold,
-    marginBottom: Spacing.xs,
-  },
-  subtitle: {
-    fontSize: FontSize.base,
-  },
-  card: {
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-    marginBottom: Spacing.md,
-  },
-  errorText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
-    flex: 1,
-  },
-  field: {
-    marginBottom: Spacing.md,
-    gap: Spacing.xs,
-  },
-  label: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-  },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 52,
-    borderRadius: Radius.lg,
-    borderWidth: 1.5,
-    paddingHorizontal: Spacing.md,
-  },
-  inputIcon: {
-    marginRight: Spacing.sm,
-  },
-  input: {
-    flex: 1,
-    fontSize: FontSize.base,
-    height: '100%',
-  },
-  forgotRow: {
-    alignItems: 'flex-end',
-    marginBottom: Spacing.lg,
-    marginTop: -Spacing.xs,
-  },
-  forgotText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-  },
-  submitBtn: {
-    height: 56,
-    borderRadius: Radius.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  submitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  submitText: {
-    color: '#fff',
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    fontSize: FontSize.sm,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  footerText: {
-    fontSize: FontSize.base,
-  },
-  footerLink: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.bold,
-  },
+  container:  { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.xl, paddingBottom: Spacing.xl },
+  backBtn:    { marginBottom: Spacing.lg },
+  backCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  header:     { marginBottom: Spacing.xl },
+  brandRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.md },
+  brand:      { fontSize: FontSize.sm, fontWeight: FontWeight.black as any, letterSpacing: 3 },
+  title:      { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold as any, marginBottom: Spacing.xs },
+  subtitle:   { fontSize: FontSize.base },
+  card:       { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },
+  errorBox:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
+  errorText:  { fontSize: FontSize.sm, fontWeight: FontWeight.medium as any, flex: 1 },
+  field:      { marginBottom: Spacing.md, gap: Spacing.xs },
+  label:      { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+  inputWrap:  { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },
+  inputIcon:  { marginRight: Spacing.sm },
+  input:      { flex: 1, fontSize: FontSize.base, height: '100%' },
+  forgotRow:  { alignItems: 'flex-end', marginBottom: Spacing.lg, marginTop: -Spacing.xs },
+  forgotText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+  submitBtn:  { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },
+  submitRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  submitText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
+  footer:     { flexDirection: 'row', justifyContent: 'center' },
+  footerText: { fontSize: FontSize.base },
+  footerLink: { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
 });

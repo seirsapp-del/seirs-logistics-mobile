@@ -18,6 +18,7 @@ export default function AuthLayout() {
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
       <Stack.Screen name="driver-register" />
+      <Stack.Screen name="verify-otp" />
     </Stack>
   );
 }

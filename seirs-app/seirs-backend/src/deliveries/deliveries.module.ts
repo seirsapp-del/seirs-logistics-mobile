@@ -14,6 +14,7 @@ import { FallbackModule } from '../fallback/fallback.module';
 import { FallbackService } from '../fallback/fallback.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MailService } from '../mail/mail.service';
+import { FxModule } from '../fx/fx.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { MailService } from '../mail/mail.service';
     TrackingModule,
     forwardRef(() => PaymentsModule),
     FallbackModule,
+    FxModule,
   ],
   controllers: [DeliveriesController],
   providers: [DeliveriesService, PricingService],

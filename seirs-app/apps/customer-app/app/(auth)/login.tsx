@@ -1,47 +1,62 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-  StatusBar,
+  View, Text, TextInput, Pressable, StyleSheet,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+import {
+  ArrowLeft, Mail, ArrowRight, Chrome, Apple as AppleIcon, Truck,
+} from 'lucide-react-native';
 
 export default function LoginScreen() {
   const router      = useRouter();
-  const colorScheme = useColorScheme();
-  const theme       = Colors[colorScheme ?? 'light'];
-  const isDark      = colorScheme === 'dark';
+  const cs          = useColorScheme();
+  const theme       = Colors[cs ?? 'light'];
+  const isDark      = cs === 'dark';
   const { login }   = useAuth();
 
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState('');
+  const [email,      setEmail]      = useState('');
+  const [password,   setPassword]   = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState('');
 
   const handleLogin = async () => {
-    if (!email || !password) { setError('Please fill in all fields.'); return; }
+    if (!email.trim() || !password) { setError('Please fill in all fields.'); return; }
     setError('');
     setLoading(true);
     try {
-      const res = await authApi.login(email, password);
-      await login({ ...res.user, token: res.token });
+      const res = await authApi.login(email.trim().toLowerCase(), password);
+      await login({ ...res.user, token: res.token, rememberMe });
     } catch (e: any) {
       setError(e.message ?? 'Login failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setError('');
+    try {
+      const res = await authApi.googleLogin();
+      await login({ ...res.user, token: res.token, rememberMe });
+    } catch (e: any) {
+      setError(e.message ?? 'Google sign-in failed.');
+    }
+  };
+
+  const handleApple = async () => {
+    setError('');
+    try {
+      const res = await authApi.appleLogin();
+      await login({ ...res.user, token: res.token, rememberMe });
+    } catch (e: any) {
+      setError(e.message ?? 'Apple sign-in failed.');
     }
   };
 
@@ -56,41 +71,38 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Back button */}
+        {/* Back */}
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
-            <Ionicons name="arrow-back" size={20} color={theme.text} />
+          <View style={[styles.backCircle, { backgroundColor: theme.surface }, Shadows.xs]}>
+            <ArrowLeft size={20} color={theme.text} strokeWidth={2} />
           </View>
         </Pressable>
 
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <Ionicons name="cube" size={24} color={theme.primary} />
+            <Truck size={22} color={theme.primary} strokeWidth={2} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
           </View>
           <Text style={[styles.title, { color: theme.text }]}>Welcome back</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            Sign in to continue
-          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecond }]}>Sign in to continue</Text>
         </View>
 
         {/* Form card */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-          {error ? (
-            <View style={[styles.errorBox, { backgroundColor: '#EF444418' }]}>
-              <Ionicons name="alert-circle" size={16} color={theme.error} />
+          {!!error && (
+            <View style={[styles.errorBox, { backgroundColor: '#EF444415' }]}>
               <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
             </View>
-          ) : null}
+          )}
 
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>Email address</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-              <Ionicons name="mail-outline" size={18} color={theme.textThird} style={styles.inputIcon} />
+              <Mail size={17} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="you@example.com"
+                placeholder="you@gmail.com"
                 placeholderTextColor={theme.textThird}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -114,44 +126,77 @@ export default function LoginScreen() {
             />
           </View>
 
-          <Pressable
-            style={styles.forgotRow}
-            onPress={() => router.push('/(auth)/forgot-password' as any)}
-          >
-            <Text style={[styles.forgotText, { color: theme.primary }]}>Forgot password?</Text>
-          </Pressable>
+          {/* Remember Me + Forgot Password */}
+          <View style={styles.rememberRow}>
+            <Pressable style={styles.rememberLeft} onPress={() => setRememberMe(v => !v)}>
+              <View style={[
+                styles.checkbox,
+                {
+                  borderColor:     rememberMe ? theme.accent : theme.border,
+                  backgroundColor: rememberMe ? theme.accent : 'transparent',
+                },
+              ]}>
+                {rememberMe && (
+                  <Text style={styles.checkmark}>✓</Text>
+                )}
+              </View>
+              <Text style={[styles.rememberText, { color: theme.textSecond }]}>Remember me</Text>
+            </Pressable>
+
+            <Pressable onPress={() => router.push('/(auth)/forgot-password' as any)}>
+              <Text style={[styles.forgotText, { color: theme.accent }]}>Forgot password?</Text>
+            </Pressable>
+          </View>
 
           <Pressable
             style={[styles.submitBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
             onPress={handleLogin}
             disabled={loading}
           >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : (
-                <View style={styles.submitRow}>
-                  <Text style={styles.submitText}>Sign In</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#fff" />
-                </View>
-              )
-            }
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <View style={styles.submitRow}>
+                <Text style={styles.submitText}>Sign In</Text>
+                <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
+              </View>
+            )}
           </Pressable>
         </View>
 
         {/* Divider */}
         <View style={styles.dividerRow}>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <Text style={[styles.dividerText, { color: theme.textThird }]}>or</Text>
+          <Text style={[styles.dividerText, { color: theme.textThird }]}>or continue with</Text>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        </View>
+
+        {/* Social buttons */}
+        <View style={styles.socialRow}>
+          <Pressable
+            style={[styles.socialBtn, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+            onPress={handleGoogle}
+          >
+            <Chrome size={20} color="#4285F4" strokeWidth={1.75} />
+            <Text style={[styles.socialText, { color: theme.text }]}>Google</Text>
+          </Pressable>
+
+          {Platform.OS === 'ios' && (
+            <Pressable
+              style={[styles.socialBtn, { backgroundColor: isDark ? '#FFFFFF' : '#000000', borderColor: 'transparent' }, Shadows.xs]}
+              onPress={handleApple}
+            >
+              <AppleIcon size={20} color={isDark ? '#000000' : '#FFFFFF'} strokeWidth={1.75} />
+              <Text style={[styles.socialText, { color: isDark ? '#000000' : '#FFFFFF' }]}>Apple</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>
-            Don't have an account?
-          </Text>
-          <Pressable onPress={() => router.push('/(auth)/register')}>
-            <Text style={[styles.footerLink, { color: theme.primary }]}> Sign Up</Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>Don't have an account?</Text>
+          <Pressable onPress={() => router.push('/(auth)/register' as any)}>
+            <Text style={[styles.footerLink, { color: theme.accent }]}> Sign Up</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -166,127 +211,58 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.xl,
   },
-  backBtn: {
-    marginBottom: Spacing.lg,
-  },
-  backCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    marginBottom: Spacing.xl,
-  },
-  brandRow: {
+  backBtn:    { marginBottom: Spacing.lg },
+  backCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  header:     { marginBottom: Spacing.xl },
+  brandRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.md },
+  brand:      { fontSize: FontSize.sm, fontWeight: FontWeight.black, letterSpacing: 3 },
+  title:      { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold, marginBottom: Spacing.xs },
+  subtitle:   { fontSize: FontSize.base },
+  card:       { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },
+  errorBox:   { padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
+  errorText:  { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: '#EF4444' },
+  field:      { marginBottom: Spacing.md, gap: Spacing.xs },
+  label:      { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  inputWrap:  { flexDirection: 'row', alignItems: 'center', height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md },
+  inputIcon:  { marginRight: Spacing.sm } as any,
+  input:      { flex: 1, fontSize: FontSize.base, height: '100%' },
+
+  rememberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
-  brand: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.black,
-    letterSpacing: 3,
-  },
-  title: {
-    fontSize: FontSize['2xl'],
-    fontWeight: FontWeight.bold,
-    marginBottom: Spacing.xs,
-  },
-  subtitle: {
-    fontSize: FontSize.base,
-  },
-  card: {
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-    marginBottom: Spacing.md,
-  },
-  errorText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
-    flex: 1,
-  },
-  field: {
-    marginBottom: Spacing.md,
-    gap: Spacing.xs,
-  },
-  label: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-  },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 52,
-    borderRadius: Radius.lg,
-    borderWidth: 1.5,
-    paddingHorizontal: Spacing.md,
-  },
-  inputIcon: {
-    marginRight: Spacing.sm,
-  },
-  input: {
-    flex: 1,
-    fontSize: FontSize.base,
-    height: '100%',
-  },
-  forgotRow: {
-    alignItems: 'flex-end',
+    justifyContent: 'space-between',
     marginBottom: Spacing.lg,
     marginTop: -Spacing.xs,
   },
-  forgotText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-  },
-  submitBtn: {
-    height: 56,
-    borderRadius: Radius.xl,
+  rememberLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: Radius.xs,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  submitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
+  checkmark:    { color: '#FFFFFF', fontSize: 12, fontWeight: FontWeight.bold, lineHeight: 14 },
+  rememberText: { fontSize: FontSize.sm },
+  forgotText:   { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+
+  submitBtn: { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },
+  submitRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  submitText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+
+  dividerRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.lg },
+  divider:     { flex: 1, height: 1 },
+  dividerText: { fontSize: FontSize.xs, whiteSpace: 'nowrap' } as any,
+
+  socialRow: { flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.xl },
+  socialBtn: {
+    flex: 1, height: 52, borderRadius: Radius.lg, borderWidth: 1.5,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
   },
-  submitText: {
-    color: '#fff',
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    fontSize: FontSize.sm,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  footerText: {
-    fontSize: FontSize.base,
-  },
-  footerLink: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.bold,
-  },
+  socialText: { fontSize: FontSize.base, fontWeight: FontWeight.medium },
+
+  footer:     { flexDirection: 'row', justifyContent: 'center' },
+  footerText: { fontSize: FontSize.base },
+  footerLink: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
 });

@@ -93,6 +93,24 @@ export class MailService {
     this.logger.log(`Email sent: "${subject}" → ${to}`);
   }
 
+  // ── Email verification OTP ──────────────────────────────────────────────────
+
+  async sendEmailVerification(to: string, name: string, otp: string) {
+    const html = baseTemplate(`
+      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Verify your email</h2>
+      <p>Hi ${name},</p>
+      <p>Use the code below to verify your Seirs account. It expires in <strong>15 minutes</strong>.</p>
+      <div style="margin:24px 0;text-align:center">
+        <div style="display:inline-block;background:#F3F4F6;border-radius:12px;
+                    padding:20px 36px;letter-spacing:12px;font-size:36px;
+                    font-weight:bold;color:${BRAND_NAVY}">${otp}</div>
+      </div>
+      <p style="font-size:13px;color:#9CA3AF">If you didn't create a Seirs account, you can safely ignore this email.</p>
+    `);
+
+    await this.send(to, 'Your Seirs verification code', html);
+  }
+
   // ── Password reset ──────────────────────────────────────────────────────────
 
   async sendPasswordReset(to: string, name: string, token: string) {

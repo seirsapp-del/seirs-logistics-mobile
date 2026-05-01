@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "Seirs Business",
+    "slug": "seirs-business",
+    "owner": "seye-xiv",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "seirsbusiness",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "co.seirs.business",
+      "config": {
+        "googleMapsApiKey": "AIzaSyDEeXCs8LeFarQl4FBSq8e-Da8opA5XW74"
+      }
+    },
+    "android": {
+      "package": "co.seirs.business",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM"
+        }
+      },
+      "adaptiveIcon": {
+        "backgroundColor": "#0F2B4C",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      ["expo-splash-screen", {
+        "image": "./assets/images/splash-icon.png",
+        "imageWidth": 200,
+        "resizeMode": "contain",
+        "backgroundColor": "#0F2B4C",
+        "dark": { "backgroundColor": "#0F2B4C" }
+      }],
+      ["expo-camera", {
+        "cameraPermission": "Seirs Business needs camera access to scan QR codes on packages."
+      }],
+      ["expo-image-picker", {
+        "photosPermission": "Seirs Business needs access to your photos for document uploads."
+      }]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7c2abbf0-953d-4766-9280-621fda9219af"
+      }
+    },
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": {
+      "url": "https://u.expo.dev/7c2abbf0-953d-4766-9280-621fda9219af"
+    }
+  }
+}
