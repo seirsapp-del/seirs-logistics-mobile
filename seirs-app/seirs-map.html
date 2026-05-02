@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SEIRS — Subway Map</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy:    #0F2B4C;
+    --blue:    #3A7BD5;
+    --bg:      #F5F5F0;
+    --panel:   #FFFFFF;
+    --border:  #E5E7EB;
+    --text:    #111827;
+    --mid:     #6B7280;
+    --light:   #F9FAFB;
+    --built:   #16A34A;
+    --partial: #D97706;
+    --planned: #6B7280;
+    --broken:  #DC2626;
+    --customer: #3A7BD5;
+    --driver:   #F59E0B;
+    --business: #10B981;
+    --admin:    #8B5CF6;
+    --website:  #6B7280;
+    --backend:  #0F2B4C;
+  }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  /* ── Top bar ── */
+  header {
+    height: 52px;
+    background: var(--navy);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    gap: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    position: relative;
+    z-index: 100;
+  }
+  .logo { font-size: 17px; font-weight: 800; letter-spacing: 4px; color: var(--blue); }
+  .sub  { font-size: 10.5px; color: rgba(255,255,255,0.45); letter-spacing: 1px; text-transform: uppercase; }
+  .stats { display: flex; gap: 12px; margin-left: 20px; }
+  .stat { display: flex; align-items: center; gap: 5px; font-size: 11px; color: rgba(255,255,255,0.7); }
+  .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .actions { display: flex; gap: 6px; margin-left: auto; }
+  .btn {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 7px 13px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover { background: rgba(255,255,255,0.22); }
+  .btn-primary { background: var(--blue); border-color: var(--blue); }
+  .btn-primary:hover { background: #2D72CC; }
+  .btn-active { background: #DC2626; border-color: #DC2626; }
+  .btn-active:hover { background: #B91C1C; }
+
+  /* ── App filter chips ── */
+  .filters {
+    display: flex;
+    gap: 6px;
+    padding: 8px 18px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    overflow-x: auto;
+  }
+  .chip {
+    padding: 5px 12px;
+    border-radius: 14px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: var(--light);
+    border: 1.5px solid transparent;
+    color: var(--mid);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .chip:hover { background: #F3F4F6; }
+  .chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .chip-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .filters-spacer { flex: 1; }
+  .help-text {
+    font-size: 11px;
+    color: var(--mid);
+    margin-left: 14px;
+  }
+  .help-text strong { color: var(--text); }
+
+  /* ── Main layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    height: calc(100vh - 92px);
+  }
+
+  /* ── Canvas ── */
+  #canvas-wrap {
+    background: var(--bg);
+    background-image:
+      linear-gradient(rgba(15,43,76,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15,43,76,0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+  }
+  #canvas-wrap.panning { cursor: grabbing; }
+  #canvas-wrap.connect-mode { cursor: crosshair; }
+
+  #canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+
+  /* ── Subway lines (connections) ── */
+  .conn-path {
+    fill: none;
+    stroke-width: 5;
+    stroke-linecap: round;
+    cursor: pointer;
+    transition: stroke-width 0.15s;
+  }
+  .conn-path:hover { stroke-width: 7; }
+  .conn-path.selected { stroke-width: 8; }
+  .conn-path.dashed { stroke-dasharray: 4 6; stroke-width: 2.5; opacity: 0.55; }
+  .conn-path.dashed:hover { opacity: 1; stroke-width: 3.5; }
+
+  .conn-label {
+    background: rgba(255,255,255,0.95);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--mid);
+    pointer-events: auto;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .conn-label:hover { color: var(--text); border-color: var(--navy); }
+
+  /* ── Screen card (node) ── */
+  .node {
+    position: absolute;
+    width: 160px;
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.1s, box-shadow 0.15s, border-color 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .node:hover {
+    box-shadow: 0 4px 14px rgba(15,43,76,0.15);
+    transform: translateY(-1px);
+    z-index: 5;
+  }
+  .node.dragging { cursor: grabbing; box-shadow: 0 8px 24px rgba(15,43,76,0.25); z-index: 50; }
+  .node.selected { border-color: var(--navy); box-shadow: 0 4px 14px rgba(15,43,76,0.25); z-index: 5; }
+  .node.connect-source { border-color: var(--blue); border-style: dashed; }
+  .node.has-comment::after {
+    content: '';
+    position: absolute;
+    top: -4px; right: -4px;
+    width: 12px; height: 12px;
+    background: #FACC15;
+    border: 2px solid #fff;
+    border-radius: 50%;
+  }
+
+  .node-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+  .node-num {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9.5px;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .node-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--navy);
+    flex: 1;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .node-status {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .node-status.built   { background: var(--built); }
+  .node-status.partial { background: var(--partial); }
+  .node-status.planned { background: var(--planned); }
+  .node-status.broken  { background: var(--broken); }
+
+  /* mini wireframe */
+  .wireframe {
+    width: 100%; height: 90px;
+    background: #FAFAF7;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  .wf-bar {
+    position: absolute;
+    background: #D1D5DB;
+    border-radius: 1px;
+  }
+  .wf-pill { background: #9CA3AF; border-radius: 999px; }
+  .wf-tab { position: absolute; bottom: 0; left: 0; right: 0; height: 14px; background: #fff; border-top: 1px solid #E5E7EB; display: flex; align-items: center; justify-content: space-around; }
+  .wf-tab span { width: 5px; height: 5px; border-radius: 50%; background: #9CA3AF; }
+  .wf-tab span.active { background: var(--blue); }
+  .wf-fab { position: absolute; bottom: 18px; right: 8px; width: 16px; height: 16px; border-radius: 50%; background: var(--blue); }
+  .wf-back { position: absolute; top: 4px; left: 4px; width: 9px; height: 9px; border-left: 2px solid #6B7280; border-bottom: 2px solid #6B7280; transform: rotate(45deg); }
+  .wf-bell { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; background: #9CA3AF; clip-path: polygon(20% 0, 80% 0, 100% 80%, 0 80%); }
+  .wf-menu { position: absolute; top: 4px; left: 4px; width: 10px; height: 8px; background: linear-gradient(to bottom, #6B7280 0, #6B7280 2px, transparent 2px, transparent 3px, #6B7280 3px, #6B7280 5px, transparent 5px, transparent 6px, #6B7280 6px, #6B7280 8px); }
+  .wf-map-grid {
+    position: absolute; inset: 12px 6px 16px 6px;
+    background:
+      linear-gradient(45deg, #DBEAFE 25%, transparent 25%),
+      linear-gradient(-45deg, #DBEAFE 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #DBEAFE 75%),
+      linear-gradient(-45deg, transparent 75%, #DBEAFE 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    background-color: #EFF6FF;
+    border-radius: 3px;
+  }
+  .wf-pin { position: absolute; top: 38%; left: 45%; width: 6px; height: 6px; background: #DC2626; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+  .wf-bubble-l, .wf-bubble-r { position: absolute; height: 6px; border-radius: 6px; }
+  .wf-bubble-l { background: #E5E7EB; left: 6px; }
+  .wf-bubble-r { background: var(--blue); right: 6px; }
+  .wf-input { position: absolute; bottom: 4px; left: 6px; right: 6px; height: 10px; background: #fff; border: 1px solid #E5E7EB; border-radius: 5px; }
+  .wf-card { position: absolute; background: #fff; border: 1px solid #E5E7EB; border-radius: 3px; }
+  .wf-text { position: absolute; height: 4px; background: #D1D5DB; border-radius: 1px; }
+  .wf-btn { position: absolute; left: 6px; right: 6px; height: 10px; background: var(--navy); border-radius: 4px; }
+
+  .node-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 9.5px;
+    color: var(--mid);
+  }
+  .node-app-tag {
+    padding: 1px 5px;
+    border-radius: 7px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── Side panel ── */
+  .side {
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .side-empty {
+    padding: 32px 18px;
+    text-align: center;
+    color: var(--mid);
+    font-size: 12.5px;
+    line-height: 1.7;
+  }
+  .side-empty strong { color: var(--text); display: block; margin-bottom: 4px; font-size: 13px; }
+  .side-content { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .side-content.show { display: flex; }
+  .side-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    background: #FAFAF7;
+  }
+  .side-h-app { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--mid); font-weight: 700; margin-bottom: 4px; }
+  .side-h-title { font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
+  .side-h-id { font-size: 10.5px; color: var(--mid); font-family: 'JetBrains Mono', monospace; }
+
+  .side-body { flex: 1; overflow-y: auto; padding: 14px 18px; }
+  .field { margin-bottom: 14px; }
+  .field-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--mid);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+  .field-val {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+    word-break: break-word;
+  }
+  .field-val code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: #F3F4F6; padding: 1px 5px; border-radius: 3px; }
+
+  .status-row { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  .status-btn {
+    padding: 4px 9px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 10.5px;
+    font-weight: 600;
+    background: #fff;
+    cursor: pointer;
+    color: var(--mid);
+  }
+  .status-btn.active { color: #fff; border-color: transparent; }
+  .status-btn.active.built   { background: var(--built); }
+  .status-btn.active.partial { background: var(--partial); }
+  .status-btn.active.planned { background: var(--planned); }
+  .status-btn.active.broken  { background: var(--broken); }
+
+  textarea.comment {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--text);
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    background: #FFFBEB;
+  }
+  textarea.comment:focus { border-color: var(--blue); background: #fff; }
+
+  .conn-list { margin-top: 4px; }
+  .conn-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: var(--light);
+    border-radius: 5px;
+    margin-bottom: 4px;
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+  .conn-row:hover { background: #F3F4F6; }
+  .conn-row .arrow { color: var(--blue); font-weight: 700; }
+  .conn-row .label { color: var(--mid); flex: 1; font-size: 10.5px; font-style: italic; }
+  .conn-row .x {
+    color: var(--mid);
+    cursor: pointer;
+    padding: 0 4px;
+    font-weight: 700;
+  }
+  .conn-row .x:hover { color: var(--broken); }
+
+  /* connection edit modal */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(15,43,76,0.6);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 10px;
+    padding: 22px;
+    width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal h3 { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 12px; }
+  .modal .row { font-size: 12px; color: var(--mid); margin-bottom: 12px; }
+  .modal .row b { color: var(--text); }
+  .modal input, .modal textarea {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 11px;
+    font-family: inherit;
+    font-size: 13px;
+    margin-bottom: 12px;
+    outline: none;
+  }
+  .modal input:focus, .modal textarea:focus { border-color: var(--blue); }
+  .modal textarea { min-height: 70px; resize: vertical; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal .btn { color: var(--text); background: var(--light); border: 1px solid var(--border); padding: 8px 14px; }
+  .modal .btn:hover { background: #F3F4F6; }
+  .modal .btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .modal .btn-danger  { background: var(--broken); color: #fff; border-color: var(--broken); }
+  .modal .btn-danger:hover { background: #B91C1C; }
+
+  /* connect-mode banner */
+  .banner {
+    position: absolute;
+    top: 12px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--broken);
+    color: #fff;
+    padding: 7px 16px;
+    border-radius: 18px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(220,38,38,0.4);
+    z-index: 50;
+    display: none;
+  }
+  .banner.show { display: flex; align-items: center; gap: 8px; }
+  .banner button {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .zoom-controls {
+    position: absolute;
+    bottom: 18px; right: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 50;
+  }
+  .zoom-btn {
+    width: 36px; height: 36px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+  .zoom-btn:hover { background: var(--light); }
+
+  .toast {
+    position: fixed;
+    bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--navy);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    z-index: 300;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .toast.show { opacity: 1; }
+
+  input[type="file"] { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">SEIRS</div>
+    <div class="sub">Subway Map</div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="actions">
+    <button class="btn"          onclick="openAddScreen()">＋ Add Screen</button>
+    <button id="connect-btn" class="btn">＋ Connect</button>
+    <button class="btn" onclick="document.getElementById('upload').click()">⇪ Load</button>
+    <button class="btn"          onclick="exportData()">⇩ Export</button>
+    <button class="btn btn-primary" onclick="autoLayout()">⇄ Auto-Layout</button>
+    <button class="btn btn-primary" onclick="fitView()">▢ Fit</button>
+  </div>
+  <input type="file" id="upload" accept=".json" onchange="loadFile(event)" />
+</header>
+
+<div class="filters" id="filters"></div>
+
+<div class="layout">
+
+  <div id="canvas-wrap">
+    <div id="canvas">
+      <svg id="conn-svg" style="position:absolute;top:0;left:0;width:6000px;height:5000px;pointer-events:none;overflow:visible;">
+        <defs>
+          <marker id="arrow-blue"   viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" fill="#3A7BD5" />
+          </marker>
+          <marker id="arrow-gray"   viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" fill="#9CA3AF" />
+          </marker>
+        </defs>
+      </svg>
+      <div id="conn-labels" style="position:absolute;top:0;left:0;pointer-events:none;"></div>
+      <div id="nodes" style="position:absolute;top:0;left:0;"></div>
+    </div>
+    <div class="banner" id="banner">
+      <span id="banner-text">Connect Mode — click a source screen, then a target.</span>
+      <button onclick="exitConnectMode()">Cancel (Esc)</button>
+    </div>
+    <div class="zoom-controls">
+      <button class="zoom-btn" onclick="zoomBy(1.2)">＋</button>
+      <button class="zoom-btn" onclick="zoomBy(0.83)">−</button>
+      <button class="zoom-btn" onclick="resetView()" title="Reset view">⟲</button>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="side-empty" id="side-empty">
+      <strong>Click a screen card</strong>
+      to view details, change status, leave a comment for Claude.<br><br>
+      Click <strong>＋ Connect</strong> to draw a new flow line.<br>
+      Click any subway line to edit or delete it.<br>
+      Drag screens to rearrange. Scroll to zoom.<br>
+      Click <strong>⇩ Export</strong> when ready to share with Claude.
+    </div>
+    <div class="side-content" id="side-content">
+      <div class="side-header">
+        <div class="side-h-app" id="s-app"></div>
+        <div class="side-h-title" id="s-title"></div>
+        <div class="side-h-id" id="s-id"></div>
+      </div>
+      <div class="side-body">
+
+        <div class="field">
+          <div class="field-label">Status</div>
+          <div class="status-row" id="s-status"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">File path</div>
+          <div class="field-val"><code id="s-file"></code></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Spec note</div>
+          <div class="field-val" id="s-notes"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Your comment <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--mid)">— what to change / add / break (Claude reads this)</span></div>
+          <textarea class="comment" id="s-comment" placeholder="e.g. Add a tip-the-driver button below the rating. Move the photo upload to step 1." oninput="onCommentChange()"></textarea>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Connections</div>
+          <div class="conn-list" id="s-connections"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3 id="modal-title">Edit Connection</h3>
+    <div class="row" id="modal-from-to"></div>
+    <label style="font-size:11px;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Label (what triggers this flow)</label>
+    <input type="text" id="modal-label" placeholder="e.g. tap Sign In, slide button, after delivery" />
+    <label style="font-size:11px;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Notes for Claude</label>
+    <textarea id="modal-comment" placeholder="e.g. Should also clear the previous booking state. Add a confirmation if cart has items."></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="modal-delete" onclick="deleteConnection()">Delete</button>
+      <button class="btn"             onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveConnection()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Screen modal ─────────────────────────────────────────────────── -->
+<div class="modal-bg" id="add-modal-bg" onclick="if(event.target===this)closeAddScreen()">
+  <div class="modal" style="width:440px">
+    <h3>Add new screen</h3>
+    <div class="row">Created where you're looking on the canvas. You can drag it anywhere after.</div>
+
+    <label style="font-size:11px;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Screen name *</label>
+    <input type="text" id="add-label" placeholder="e.g. Tip Driver, Refer a Friend, Order Refund" />
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label style="font-size:11px;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">App *</label>
+        <select id="add-app" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:9px 11px;font-family:inherit;font-size:13px;margin-bottom:12px;outline:none;background:#fff;">
+          <option value="customer">Customer App</option>
+          <option value="driver">Driver App</option>
+          <option value="business">Business App</option>
+          <option value="admin">Admin Dashboard</option>
+          <option value="backend">Backend</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Layout type</label>
+        <select id="add-wf" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:9px 11px;font-family:inherit;font-size:13px;margin-bottom:12px;outline:none;background:#fff;">
+          <option value="auth">Auth (form + button)</option>
+          <option value="home">Home (header + grid + tabs)</option>
+          <option value="list" selected>List (rows)</option>
+          <option value="flow">Flow step (form + Next btn)</option>
+          <option value="map">Map (with pin)</option>
+          <option value="detail">Detail (image + content)</option>
+          <option value="chat">Chat (bubbles + input)</option>
+          <option value="settings">Settings (back + list)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label style="font-size:11px;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Status</label>
+        <select id="add-status" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:9px 11px;font-family:inherit;font-size:13px;margin-bottom:12px;outline:none;background:#fff;">
+          <option value="planned" selected>Planned</option>
+          <option value="partial">Partial</option>
+          <option value="built">Built</option>
+          <option value="broken">Broken</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">ID (auto)</label>
+        <input type="text" id="add-id" placeholder="auto-generated from name" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
+      </div>
+    </div>
+
+    <label style="font-size:11px;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">File path (optional)</label>
+    <input type="text" id="add-file" placeholder="e.g. app/(customer)/tip.tsx" />
+
+    <label style="font-size:11px;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Notes for Claude (what should this screen do?)</label>
+    <textarea id="add-notes" placeholder="e.g. After delivery is rated, show a tip-the-driver screen with preset amounts (₦200, ₦500, ₦1000) and a custom field. Submit creates a wallet debit and credits the driver."></textarea>
+
+    <div class="modal-actions">
+      <button class="btn"             onclick="closeAddScreen()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewScreen()">Add screen</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  CONFIG                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+const APPS = {
+  customer: { name: 'Customer App',    color: '#3A7BD5', y: 120 },
+  driver:   { name: 'Driver App',      color: '#F59E0B', y: 1100 },
+  business: { name: 'Business App',    color: '#10B981', y: 2000 },
+  admin:    { name: 'Admin Dashboard', color: '#8B5CF6', y: 2900 },
+  backend:  { name: 'Backend',         color: '#0F2B4C', y: 3800 },
+};
+const STATUS = ['built','partial','planned','broken'];
+const STATUS_COLOR = { built:'#16A34A', partial:'#D97706', planned:'#6B7280', broken:'#DC2626' };
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  DEFAULT DATA — current SEIRS reality                                    ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+// Layout: each app has horizontal swim lane. Within lane, x positions group
+// screens by flow (auth → tabs → booking → post → settings).
+const DEFAULT_NODES = [
+  // ── CUSTOMER APP ───────────────────────────────────────────────────────────
+  // Auth flow — col 1
+  { id:'cust.onboarding',    app:'customer', label:'Onboarding',         file:'app/(auth)/onboarding.tsx',         status:'built',   wf:'auth',     col:0, row:0, notes:'6 auto-advancing slides per spec §1.1' },
+  { id:'cust.login',         app:'customer', label:'Login',              file:'app/(auth)/login.tsx',              status:'built',   wf:'auth',     col:1, row:0 },
+  { id:'cust.register',      app:'customer', label:'Register',           file:'app/(auth)/register.tsx',           status:'built',   wf:'auth',     col:1, row:1 },
+  { id:'cust.verifyOtp',     app:'customer', label:'Verify OTP',         file:'app/(auth)/verify-otp.tsx',         status:'built',   wf:'auth',     col:2, row:1 },
+  { id:'cust.forgot',        app:'customer', label:'Forgot Password',    file:'app/(auth)/forgot-password.tsx',    status:'built',   wf:'auth',     col:1, row:2 },
+  { id:'cust.reset',         app:'customer', label:'Reset Password',     file:'app/reset-password.tsx',            status:'built',   wf:'auth',     col:2, row:2 },
+  // Home + tabs — col 3-4
+  { id:'cust.home',          app:'customer', label:'Home',               file:'app/(customer)/index.tsx',          status:'built',   wf:'home',     col:3, row:0, notes:'Sliding Send/Ride button + drawer' },
+  { id:'cust.history',       app:'customer', label:'History',            file:'app/(customer)/history.tsx',        status:'built',   wf:'list',     col:3, row:1 },
+  { id:'cust.wallet',        app:'customer', label:'Wallet',             file:'app/(customer)/wallet.tsx',         status:'partial', wf:'list',     col:3, row:2, notes:'Withdraw button calls API; e2e not verified' },
+  { id:'cust.profile',       app:'customer', label:'Profile',            file:'app/(customer)/profile.tsx',        status:'built',   wf:'settings', col:3, row:3 },
+  { id:'cust.notifs',        app:'customer', label:'Notifications',      file:'app/notifications.tsx',             status:'built',   wf:'list',     col:3, row:4 },
+  // Booking flow — col 5-7
+  { id:'cust.send',          app:'customer', label:'Send Package',       file:'app/(customer)/send.tsx',           status:'built',   wf:'flow',     col:5, row:0 },
+  { id:'cust.request',       app:'customer', label:'Request (map)',      file:'app/(customer)/request.tsx',        status:'built',   wf:'map',      col:5, row:1, notes:'Google Maps wired (key in app.json). Static address markers + polyline.' },
+  { id:'cust.vehicle',       app:'customer', label:'Vehicle Select',     file:'app/(customer)/vehicle-select.tsx', status:'built',   wf:'flow',     col:6, row:0 },
+  { id:'cust.multiStop',     app:'customer', label:'Multi-Stop',         file:'app/(customer)/multi-stop.tsx',     status:'built',   wf:'flow',     col:6, row:2 },
+  { id:'cust.fare',          app:'customer', label:'Fare Breakdown',     file:'app/(customer)/fare-breakdown.tsx', status:'built',   wf:'flow',     col:7, row:0 },
+  { id:'cust.confirm',       app:'customer', label:'Confirm Ride',       file:'app/(customer)/confirm-ride.tsx',   status:'built',   wf:'flow',     col:8, row:0 },
+  { id:'cust.schedule',      app:'customer', label:'Schedule',           file:'app/(customer)/schedule.tsx',       status:'built',   wf:'flow',     col:8, row:1 },
+  // Active / post-delivery — col 9-11
+  { id:'cust.payment',       app:'customer', label:'Payment WebView',    file:'app/(customer)/payment/[deliveryId].tsx', status:'built',   wf:'flow', col:9,  row:0 },
+  { id:'cust.tripProgress',  app:'customer', label:'Trip Progress',      file:'app/(customer)/trip-progress.tsx',  status:'partial', wf:'map',      col:10, row:0, notes:'Map renders. WebSocket live driver pin still needs wiring to be fully animated.' },
+  { id:'cust.track',         app:'customer', label:'Track by Code',      file:'app/(customer)/track.tsx',          status:'built',   wf:'flow',     col:10, row:1 },
+  { id:'cust.sos',           app:'customer', label:'SOS',                file:'app/(customer)/sos.tsx',            status:'built',   wf:'flow',     col:10, row:2 },
+  { id:'cust.rate',          app:'customer', label:'Rate Driver',        file:'app/(customer)/rate/[driverId].tsx',status:'built',   wf:'flow',     col:11, row:0 },
+  { id:'cust.receipt',       app:'customer', label:'Receipt',            file:'app/(customer)/receipt/[id].tsx',   status:'built',   wf:'detail',   col:12, row:0 },
+  { id:'cust.trip',          app:'customer', label:'Trip Detail',        file:'app/(customer)/trip/[id].tsx',      status:'built',   wf:'detail',   col:12, row:1 },
+  { id:'cust.shareTrip',     app:'customer', label:'Share Trip',         file:'app/(customer)/share-trip.tsx',     status:'built',   wf:'flow',     col:12, row:2 },
+  { id:'cust.report',        app:'customer', label:'Report Issue',       file:'app/(customer)/report.tsx',         status:'built',   wf:'flow',     col:12, row:3 },
+  // Wallet/payment cluster — col 4
+  { id:'cust.payMethods',    app:'customer', label:'Payment Methods',    file:'app/(customer)/payment-methods.tsx', status:'built', wf:'list',     col:4, row:2 },
+  { id:'cust.addPayment',    app:'customer', label:'Add Payment',        file:'app/(customer)/add-payment.tsx',     status:'built', wf:'flow',     col:4, row:3 },
+  { id:'cust.transaction',   app:'customer', label:'Transaction Detail', file:'app/(customer)/transaction/[id].tsx',status:'built',  wf:'detail',  col:4, row:4 },
+  // Rewards cluster — col 4-5
+  { id:'cust.promo',         app:'customer', label:'Promo Code',         file:'app/(customer)/promo.tsx',          status:'built',   wf:'flow',     col:4,  row:5 },
+  { id:'cust.promotions',    app:'customer', label:'Promotions List',    file:'app/(customer)/promotions.tsx',     status:'built',   wf:'list',     col:5,  row:5 },
+  { id:'cust.rewards',       app:'customer', label:'Rewards / Tier',     file:'app/(customer)/rewards.tsx',        status:'built',   wf:'detail',   col:6,  row:5 },
+  { id:'cust.referral',      app:'customer', label:'Referral',           file:'app/(customer)/referral.tsx',       status:'partial', wf:'detail',   col:7,  row:5, notes:'No deep-link wiring yet' },
+  // Chat — col 8-9
+  { id:'cust.msgsIdx',       app:'customer', label:'Messages Inbox',     file:'app/(customer)/messages/index.tsx', status:'built',   wf:'list',     col:8,  row:5 },
+  { id:'cust.msgsChat',      app:'customer', label:'Chat Thread',        file:'app/(customer)/messages/[chatId].tsx', status:'built',wf:'chat',     col:9,  row:5 },
+  // Settings — col 10-12 row 4-5
+  { id:'cust.notifSet',      app:'customer', label:'Notification Prefs', file:'app/(customer)/notification-settings.tsx', status:'built', wf:'settings', col:10, row:4 },
+  { id:'cust.lang',          app:'customer', label:'Language',           file:'app/(customer)/language.tsx',       status:'built',   wf:'settings', col:11, row:4 },
+  { id:'cust.help',          app:'customer', label:'Help / FAQ',         file:'app/(customer)/help.tsx',           status:'built',   wf:'settings', col:11, row:5 },
+  { id:'cust.privacy',       app:'customer', label:'Privacy Policy',     file:'app/(customer)/privacy.tsx',        status:'built',   wf:'detail',   col:12, row:4 },
+  { id:'cust.business',      app:'customer', label:'Business Upsell',    file:'app/(customer)/business.tsx',       status:'built',   wf:'detail',   col:12, row:5 },
+
+  // ── DRIVER APP ─────────────────────────────────────────────────────────────
+  { id:'drv.onboarding',     app:'driver', label:'Onboarding',         file:'app/(auth)/onboarding.tsx',          status:'built',   wf:'auth', col:0, row:0 },
+  { id:'drv.login',          app:'driver', label:'Login',              file:'app/(auth)/login.tsx',               status:'built',   wf:'auth', col:1, row:0 },
+  { id:'drv.register',       app:'driver', label:'Register',           file:'app/(auth)/register.tsx',            status:'built',   wf:'auth', col:1, row:1 },
+  { id:'drv.verifyOtp',      app:'driver', label:'Verify OTP',         file:'app/(auth)/verify-otp.tsx',          status:'built',   wf:'auth', col:2, row:1 },
+  { id:'drv.forgot',         app:'driver', label:'Forgot Password',    file:'app/(auth)/forgot-password.tsx',     status:'built',   wf:'auth', col:1, row:2 },
+  { id:'drv.kyc',            app:'driver', label:'KYC Documents',      file:'app/(driver)/kyc.tsx',               status:'partial', wf:'flow', col:2, row:2, notes:'Missing 3 of 5 spec-required docs' },
+  { id:'drv.home',           app:'driver', label:'Home (Mission)',     file:'app/(driver)/index.tsx',             status:'partial',   wf:'home', col:3, row:0, notes:'Drawer + hamburger + demand mini-map present. Demand zones are synthetic placeholders — needs real backend GET /drivers/demand-zones endpoint.' },
+  { id:'drv.active',         app:'driver', label:'Active Delivery',    file:'app/(driver)/active.tsx',            status:'built',   wf:'map',  col:5, row:0, notes:'Live MapView with pickup/dropoff/driver pins, traffic layer, polyline. GPS broadcasts every 5s.' },
+  { id:'drv.earnings',       app:'driver', label:'Earnings',           file:'app/(driver)/earnings.tsx',          status:'built',   wf:'home', col:3, row:1 },
+  { id:'drv.history',        app:'driver', label:'Trip History',       file:'app/(driver)/history.tsx',           status:'built',   wf:'list', col:3, row:2 },
+  { id:'drv.profile',        app:'driver', label:'Profile',            file:'app/(driver)/profile.tsx',           status:'built',   wf:'settings', col:3, row:3 },
+  { id:'drv.notifs',         app:'driver', label:'Notifications',      file:'app/(driver)/notifications.tsx',     status:'built',   wf:'list', col:3, row:4 },
+  { id:'drv.job',            app:'driver', label:'Job Offer',          file:'app/(driver)/job/[id].tsx',          status:'built',   wf:'flow', col:4, row:0 },
+  { id:'drv.delivery',       app:'driver', label:'Delivery Detail',    file:'app/(driver)/delivery/[id].tsx',     status:'built',   wf:'detail', col:6, row:0 },
+  { id:'drv.vehicle',        app:'driver', label:'Vehicle Info',       file:'app/(driver)/vehicle.tsx',           status:'built',   wf:'settings', col:4, row:3 },
+  { id:'drv.withdrawal',     app:'driver', label:'Withdrawal',         file:'app/(driver)/withdrawal.tsx',        status:'partial', wf:'flow', col:5, row:1, notes:'Backend route exists; not e2e verified' },
+  { id:'drv.addBank',        app:'driver', label:'Add Bank',           file:'app/(driver)/add-bank.tsx',          status:'built',   wf:'flow', col:6, row:1 },
+  { id:'drv.transaction',    app:'driver', label:'Transaction Detail', file:'app/(driver)/transaction/[id].tsx',  status:'built',   wf:'detail', col:7, row:1 },
+  { id:'drv.ratings',        app:'driver', label:'Ratings',            file:'app/(driver)/ratings.tsx',           status:'built',   wf:'list', col:5, row:3 },
+  { id:'drv.schedule',       app:'driver', label:'Schedule',           file:'app/(driver)/schedule.tsx',          status:'built',   wf:'list', col:6, row:3 },
+  { id:'drv.msgsIdx',        app:'driver', label:'Messages Inbox',     file:'app/(driver)/messages/index.tsx',    status:'built',   wf:'list', col:8, row:0 },
+  { id:'drv.msgsChat',       app:'driver', label:'Chat Thread',        file:'app/(driver)/messages/[chatId].tsx', status:'built',   wf:'chat', col:9, row:0 },
+  { id:'drv.notifSet',       app:'driver', label:'Notification Prefs', file:'app/(driver)/notification-settings.tsx', status:'built', wf:'settings', col:7, row:3 },
+  { id:'drv.lang',           app:'driver', label:'Language',           file:'app/(driver)/language.tsx',          status:'built',   wf:'settings', col:8, row:3 },
+  { id:'drv.help',           app:'driver', label:'Help',               file:'app/(driver)/help.tsx',              status:'built',   wf:'settings', col:9, row:3 },
+  { id:'drv.privacy',        app:'driver', label:'Privacy Policy',     file:'app/(driver)/privacy.tsx',           status:'built',   wf:'detail', col:10, row:3 },
+
+  // ── BUSINESS APP ───────────────────────────────────────────────────────────
+  { id:'biz.onboarding',     app:'business', label:'Onboarding',       file:'app/(auth)/onboarding.tsx',          status:'built', wf:'auth', col:0, row:0 },
+  { id:'biz.login',          app:'business', label:'Login',            file:'app/(auth)/login.tsx',               status:'built', wf:'auth', col:1, row:0 },
+  { id:'biz.register',       app:'business', label:'Register',         file:'app/(auth)/register.tsx',            status:'built', wf:'auth', col:1, row:1 },
+  { id:'biz.verifyOtp',      app:'business', label:'Verify OTP',       file:'app/(auth)/verify-otp.tsx',          status:'built', wf:'auth', col:2, row:1 },
+  { id:'biz.bizHome',        app:'business', label:'Business Home',    file:'app/(business)/index.tsx',           status:'built', wf:'home', col:3, row:0, notes:'Sender side' },
+  { id:'biz.partHome',       app:'business', label:'Partner Home',     file:'app/(partner)/index.tsx',            status:'built', wf:'home', col:3, row:2, notes:'Partner side' },
+  { id:'biz.deliveries',     app:'business', label:'Deliveries List',  file:'app/(business)/deliveries.tsx',      status:'built', wf:'list', col:4, row:0 },
+  { id:'biz.newDelivery',    app:'business', label:'New Delivery',     file:'app/(business)/new-delivery.tsx',    status:'built', wf:'flow', col:5, row:0 },
+  { id:'biz.csvUpload',      app:'business', label:'CSV Bulk Upload',  file:'app/(business)/csv-upload.tsx',      status:'built', wf:'flow', col:5, row:1 },
+  { id:'biz.wallet',         app:'business', label:'Business Wallet',  file:'app/(business)/wallet.tsx',          status:'built', wf:'list', col:4, row:1 },
+  { id:'biz.team',           app:'business', label:'Team Members',     file:'app/(business)/team.tsx',            status:'built', wf:'settings', col:6, row:0 },
+  { id:'biz.lang',           app:'business', label:'Language',         file:'app/(business)/language.tsx',        status:'built', wf:'settings', col:7, row:0 },
+  { id:'biz.partEarnings',   app:'business', label:'Partner Earnings', file:'app/(partner)/earnings.tsx',         status:'built', wf:'list', col:4, row:2 },
+  { id:'biz.partInventory',  app:'business', label:'Partner Inventory',file:'app/(partner)/inventory.tsx',        status:'built', wf:'list', col:5, row:2 },
+  { id:'biz.partScan',       app:'business', label:'Partner Scan QR',  file:'app/(partner)/scan.tsx',             status:'built', wf:'flow', col:6, row:2 },
+  { id:'biz.partSettings',   app:'business', label:'Partner Settings', file:'app/(partner)/settings.tsx',         status:'built', wf:'settings', col:6, row:3 },
+  { id:'biz.partLang',       app:'business', label:'Partner Language', file:'app/(partner)/language.tsx',         status:'built', wf:'settings', col:7, row:3 },
+
+  // ── ADMIN DASHBOARD ────────────────────────────────────────────────────────
+  { id:'adm.login',          app:'admin', label:'Admin Login',         file:'src/app/login/page.tsx',             status:'built', wf:'auth', col:0, row:0 },
+  { id:'adm.dashboard',      app:'admin', label:'Dashboard',           file:'src/app/page.tsx',                   status:'built', wf:'home', col:1, row:0, notes:'4 KPI cards, charts' },
+  { id:'adm.opsMap',         app:'admin', label:'Real-Time Ops Map',   file:'src/app/ops-map/page.tsx',           status:'partial', wf:'map', col:2, row:0, notes:'Live Google Maps with traffic, driver pins (online=green, offline=gray), delivery polylines, heatmap toggle. Polls every 10s. Needs NEXT_PUBLIC_GOOGLE_MAPS_KEY in Vercel env vars.' },
+  { id:'adm.deliveries',     app:'admin', label:'Deliveries',          file:'src/app/deliveries/page.tsx',        status:'built', wf:'list', col:2, row:1 },
+  { id:'adm.drivers',        app:'admin', label:'Drivers List',        file:'src/app/drivers/page.tsx',           status:'built', wf:'list', col:2, row:2 },
+  { id:'adm.driverDetail',   app:'admin', label:'Driver Detail',       file:'src/app/drivers/[id]/page.tsx',      status:'built', wf:'detail', col:3, row:2 },
+  { id:'adm.users',          app:'admin', label:'Users List',          file:'src/app/users/page.tsx',             status:'built', wf:'list', col:2, row:3 },
+  { id:'adm.userDetail',     app:'admin', label:'User Detail',         file:'src/app/users/[id]/page.tsx',        status:'built', wf:'detail', col:3, row:3 },
+  { id:'adm.partners',       app:'admin', label:'Partner Accounts',    file:'src/app/partners/page.tsx',          status:'built', wf:'list', col:2, row:4 },
+  { id:'adm.partRedir',      app:'admin', label:'Partner Redirects',   file:'src/app/partner-redirects/page.tsx', status:'built', wf:'list', col:3, row:4 },
+  { id:'adm.specialists',    app:'admin', label:'Specialist Partners', file:'src/app/specialists/page.tsx',       status:'built', wf:'list', col:4, row:4 },
+  { id:'adm.wallet',         app:'admin', label:'Wallet & Payouts',    file:'src/app/wallet/page.tsx',            status:'built', wf:'list', col:4, row:0 },
+  { id:'adm.pricing',        app:'admin', label:'Pricing Engine',      file:'src/app/pricing/page.tsx',           status:'partial', wf:'detail', col:4, row:1, notes:'No vehicle multipliers, surge, or fuel auto-adjust' },
+  { id:'adm.referrals',      app:'admin', label:'Referrals',           file:'src/app/referrals/page.tsx',         status:'built', wf:'list', col:5, row:0 },
+  { id:'adm.insurance',      app:'admin', label:'Insurance Partners',  file:'src/app/insurance/page.tsx',         status:'built', wf:'list', col:5, row:1 },
+  { id:'adm.fraud',          app:'admin', label:'Fraud Queue',         file:'src/app/fraud/page.tsx',             status:'built', wf:'list', col:6, row:0 },
+  { id:'adm.duplicates',     app:'admin', label:'Duplicate Accounts',  file:'src/app/duplicates/page.tsx',        status:'built', wf:'list', col:6, row:1 },
+  { id:'adm.kyc',            app:'admin', label:'KYC Queue',           file:'src/app/kyc/page.tsx',               status:'built', wf:'list', col:6, row:2 },
+  { id:'adm.tickets',        app:'admin', label:'Ticketing',           file:'src/app/tickets/page.tsx',           status:'built', wf:'list', col:7, row:0 },
+  { id:'adm.suggestions',    app:'admin', label:'User Suggestions',    file:'src/app/suggestions/page.tsx',       status:'built', wf:'list', col:7, row:1 },
+  { id:'adm.cms',            app:'admin', label:'CMS',                 file:'src/app/cms/page.tsx',               status:'built', wf:'list', col:8, row:0 },
+  { id:'adm.promotions',     app:'admin', label:'Promotions',          file:'src/app/promotions/page.tsx',        status:'built', wf:'list', col:8, row:1 },
+  { id:'adm.analytics',      app:'admin', label:'Analytics',           file:'src/app/analytics/page.tsx',         status:'partial', wf:'home', col:9, row:0, notes:'Missing 7 of 9 spec-required charts' },
+  { id:'adm.reports',        app:'admin', label:'Reports',             file:'src/app/reports/page.tsx',           status:'built', wf:'list', col:9, row:1 },
+  { id:'adm.audit',          app:'admin', label:'Audit Log',           file:'src/app/audit-log/page.tsx',         status:'built', wf:'list', col:10, row:0 },
+  { id:'adm.admins',         app:'admin', label:'Staff Management',    file:'src/app/admins/page.tsx',            status:'built', wf:'settings', col:10, row:1 },
+  { id:'adm.settings',       app:'admin', label:'System Settings',     file:'src/app/settings/page.tsx',          status:'built', wf:'settings', col:10, row:2 },
+
+  // ── BACKEND ────────────────────────────────────────────────────────────────
+  { id:'be.auth',            app:'backend', label:'Auth Module',         file:'seirs-backend/src/auth',         status:'built',   wf:'detail', col:0, row:0, notes:'JWT + Google + Apple + OTP' },
+  { id:'be.deliveries',      app:'backend', label:'Deliveries Module',   file:'seirs-backend/src/deliveries',   status:'built',   wf:'detail', col:1, row:0 },
+  { id:'be.payments',        app:'backend', label:'Payments Module',     file:'seirs-backend/src/payments',     status:'partial', wf:'detail', col:2, row:0, notes:'Flutterwave webhook secret falls back to empty string' },
+  { id:'be.tracking',        app:'backend', label:'Tracking WS',         file:'seirs-backend/src/tracking',     status:'partial', wf:'detail', col:3, row:0, notes:'In-memory client maps — lost on restart' },
+  { id:'be.matching',        app:'backend', label:'Matching Service',    file:'seirs-backend/src/matching',     status:'partial', wf:'detail', col:4, row:0, notes:'Hardcoded 15km radius. Now uses RoutingService.estimateEta which calls Google Directions when GOOGLE_MAPS_API_KEY is set.' },
+  { id:'be.admin',           app:'backend', label:'Admin Module',        file:'seirs-backend/src/admin',        status:'partial', wf:'detail', col:5, row:0, notes:'Pricing config in-memory — lost on restart' },
+  { id:'be.business',        app:'backend', label:'Business Module',    file:'seirs-backend/src/business',     status:'built',   wf:'detail', col:6, row:0 },
+  { id:'be.notifications',   app:'backend', label:'FCM Notifications',  file:'seirs-backend/src/notifications', status:'built',   wf:'detail', col:7, row:0 },
+  { id:'be.mail',            app:'backend', label:'Mail Service',       file:'seirs-backend/src/mail',         status:'broken',  wf:'detail', col:8, row:0, notes:'Likely a stub; OTP/reset emails may not actually send' },
+  { id:'be.fx',              app:'backend', label:'FX Exchange Rate',   file:'seirs-backend/src/fx',           status:'partial', wf:'detail', col:9, row:0, notes:'In-memory, no persistence' },
+];
+
+const DEFAULT_CONNS = [
+  // Customer auth
+  { id:'c0',  from:'cust.onboarding', to:'cust.login',    label:'Have account' },
+  { id:'c1',  from:'cust.onboarding', to:'cust.register', label:'New user' },
+  { id:'c2',  from:'cust.register',   to:'cust.verifyOtp', label:'Submit' },
+  { id:'c3',  from:'cust.verifyOtp',  to:'cust.home',      label:'Verified' },
+  { id:'c4',  from:'cust.login',      to:'cust.home',      label:'Auth ok' },
+  { id:'c5',  from:'cust.login',      to:'cust.forgot',    label:'Forgot' },
+  { id:'c6',  from:'cust.forgot',     to:'cust.reset',     label:'Email link' },
+  // Customer booking
+  { id:'c7',  from:'cust.home',         to:'cust.send',         label:'Slide → Send' },
+  { id:'c8',  from:'cust.home',         to:'cust.request',      label:'Slide → Ride' },
+  { id:'c9',  from:'cust.send',         to:'cust.vehicle',      label:'Next' },
+  { id:'c10', from:'cust.vehicle',      to:'cust.fare',         label:'Select' },
+  { id:'c11', from:'cust.fare',         to:'cust.confirm',      label:'Continue' },
+  { id:'c12', from:'cust.confirm',      to:'cust.payment',      label:'Pay' },
+  { id:'c13', from:'cust.payment',      to:'cust.tripProgress', label:'Paid' },
+  { id:'c14', from:'cust.tripProgress', to:'cust.rate',         label:'Delivered' },
+  { id:'c15', from:'cust.rate',         to:'cust.receipt',      label:'Submit' },
+  // Drawer / tabs
+  { id:'c16', from:'cust.home',    to:'cust.profile',    label:'Drawer' },
+  { id:'c17', from:'cust.home',    to:'cust.history',    label:'Tab' },
+  { id:'c18', from:'cust.home',    to:'cust.wallet',     label:'Tab' },
+  { id:'c19', from:'cust.home',    to:'cust.notifs',     label:'Bell' },
+  { id:'c20', from:'cust.history', to:'cust.trip',       label:'Tap trip' },
+  { id:'c21', from:'cust.wallet',  to:'cust.payMethods', label:'Cards' },
+  { id:'c22', from:'cust.profile', to:'cust.referral',   label:'Refer' },
+
+  // Driver
+  { id:'d0', from:'drv.onboarding', to:'drv.login',     label:'Have account' },
+  { id:'d1', from:'drv.login',      to:'drv.home',       label:'Auth ok' },
+  { id:'d2', from:'drv.home',       to:'drv.kyc',        label:'KYC required' },
+  { id:'d3', from:'drv.home',       to:'drv.job',        label:'Job offer' },
+  { id:'d4', from:'drv.job',        to:'drv.active',     label:'Accept' },
+  { id:'d5', from:'drv.active',     to:'drv.delivery',   label:'Detail' },
+  { id:'d6', from:'drv.home',       to:'drv.earnings',   label:'Tab' },
+  { id:'d7', from:'drv.earnings',   to:'drv.withdrawal', label:'Withdraw' },
+  { id:'d8', from:'drv.withdrawal', to:'drv.addBank',    label:'New bank' },
+
+  // Business
+  { id:'b0', from:'biz.onboarding', to:'biz.login',       label:'Have account' },
+  { id:'b1', from:'biz.login',      to:'biz.bizHome',     label:'Sender' },
+  { id:'b2', from:'biz.login',      to:'biz.partHome',    label:'Partner' },
+  { id:'b3', from:'biz.bizHome',    to:'biz.deliveries',  label:'View' },
+  { id:'b4', from:'biz.bizHome',    to:'biz.newDelivery', label:'New' },
+  { id:'b5', from:'biz.bizHome',    to:'biz.csvUpload',   label:'Bulk' },
+  { id:'b6', from:'biz.bizHome',    to:'biz.wallet',      label:'Wallet' },
+  { id:'b7', from:'biz.partHome',   to:'biz.partScan',    label:'Scan' },
+  { id:'b8', from:'biz.partHome',   to:'biz.partInventory', label:'View' },
+
+  // Admin
+  { id:'a0', from:'adm.login',     to:'adm.dashboard',    label:'Auth + RBAC' },
+  { id:'a1', from:'adm.dashboard', to:'adm.opsMap',       label:'Live ops' },
+  { id:'a2', from:'adm.dashboard', to:'adm.deliveries',   label:'Nav' },
+  { id:'a3', from:'adm.dashboard', to:'adm.drivers',      label:'Nav' },
+  { id:'a4', from:'adm.drivers',   to:'adm.driverDetail', label:'Tap' },
+  { id:'a5', from:'adm.dashboard', to:'adm.tickets',      label:'Nav' },
+
+  // Cross-app API (dashed)
+  { id:'x0', from:'cust.home',         to:'be.deliveries',    label:'GET',           dashed:true },
+  { id:'x1', from:'cust.payment',      to:'be.payments',      label:'POST',          dashed:true },
+  { id:'x2', from:'cust.tripProgress', to:'be.tracking',      label:'WebSocket',     dashed:true },
+  { id:'x3', from:'drv.home',          to:'be.tracking',      label:'WS location',   dashed:true },
+  { id:'x4', from:'drv.job',           to:'be.matching',      label:'Matched by',    dashed:true },
+  { id:'x5', from:'biz.csvUpload',     to:'be.business',      label:'POST CSV',      dashed:true },
+  { id:'x6', from:'adm.dashboard',     to:'be.admin',         label:'GET stats',     dashed:true },
+  { id:'x7', from:'adm.opsMap',        to:'be.tracking',      label:'WS subscribe',  dashed:true },
+];
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  STATE                                                                   ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+const STORE_KEY = 'seirs_subway_v1';
+let nodes = [];
+let conns = [];
+let activeApp     = 'all';
+let selectedId    = null;
+let connectMode   = false;
+let connectSource = null;
+let editingConn   = null;
+
+// pan/zoom
+let scale = 0.7;
+let panX  = 60;
+let panY  = 60;
+
+// drag
+let dragNode = null;
+let dragOffsetX = 0, dragOffsetY = 0;
+let panOrigin = null;
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  DATA HYDRATION                                                          ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+function loadData() {
+  const saved = localStorage.getItem(STORE_KEY);
+  if (saved) {
+    try {
+      const d = JSON.parse(saved);
+      nodes = d.nodes || cloneDefault(DEFAULT_NODES);
+      conns = d.conns || cloneDefault(DEFAULT_CONNS);
+    } catch { resetData(); }
+  } else {
+    resetData();
+  }
+  // ensure xy positions exist (auto-layout for fresh nodes)
+  nodes.forEach(n => {
+    if (typeof n.x !== 'number' || typeof n.y !== 'number') {
+      const a = APPS[n.app];
+      n.x = 60 + (n.col ?? 0) * 200;
+      n.y = (a?.y ?? 100) + (n.row ?? 0) * 160;
+    }
+  });
+}
+function cloneDefault(arr) { return JSON.parse(JSON.stringify(arr)); }
+function saveData() {
+  localStorage.setItem(STORE_KEY, JSON.stringify({ nodes, conns, savedAt: new Date().toISOString() }));
+}
+function resetData() {
+  nodes = cloneDefault(DEFAULT_NODES);
+  conns = cloneDefault(DEFAULT_CONNS);
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  RENDER                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+function render() {
+  renderFilters();
+  renderStats();
+  renderCanvas();
+  applyTransform();
+  renderSide();
+}
+
+function renderFilters() {
+  const f = document.getElementById('filters');
+  f.innerHTML = '';
+  const all = [['all', 'All apps', '#0F2B4C']];
+  Object.entries(APPS).forEach(([k, v]) => all.push([k, v.name, v.color]));
+  all.forEach(([k, label, color]) => {
+    const c = document.createElement('div');
+    c.className = 'chip' + (k === activeApp ? ' active' : '');
+    c.innerHTML = `<span class="chip-dot" style="background:${color}"></span>${label}`;
+    c.onclick = () => { activeApp = k; render(); };
+    f.appendChild(c);
+  });
+  const spacer = document.createElement('div');
+  spacer.className = 'filters-spacer';
+  f.appendChild(spacer);
+  const help = document.createElement('div');
+  help.className = 'help-text';
+  help.innerHTML = '<strong>Tip:</strong> click ＋ Connect, then click a source screen, then a target.';
+  f.appendChild(help);
+}
+
+function renderStats() {
+  const c = { built:0, partial:0, planned:0, broken:0 };
+  nodes.forEach(n => { if (c[n.status] !== undefined) c[n.status]++; });
+  const wrap = document.getElementById('stats');
+  wrap.innerHTML = '';
+  STATUS.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'stat';
+    el.innerHTML = `<span class="stat-dot" style="background:${STATUS_COLOR[s]}"></span>${c[s]} ${s}`;
+    wrap.appendChild(el);
+  });
+}
+
+function renderCanvas() {
+  const visibleNodes = nodes.filter(n => activeApp === 'all' || n.app === activeApp);
+  const visibleIds   = new Set(visibleNodes.map(n => n.id));
+  const visibleConns = conns.filter(c => visibleIds.has(c.from) && visibleIds.has(c.to));
+
+  // numbering: per-app, by x position
+  const numberMap = new Map();
+  Object.keys(APPS).forEach(app => {
+    const appNodes = visibleNodes.filter(n => n.app === app).sort((a,b) => a.x - b.x || a.y - b.y);
+    appNodes.forEach((n, i) => numberMap.set(n.id, i + 1));
+  });
+
+  // ── Nodes ─────────────────────────────────────────────────────────────────
+  const nodesEl = document.getElementById('nodes');
+  nodesEl.innerHTML = '';
+  visibleNodes.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'node' + (selectedId === n.id ? ' selected' : '') + (connectSource === n.id ? ' connect-source' : '') + (n.comment ? ' has-comment' : '');
+    el.style.left = n.x + 'px';
+    el.style.top  = n.y + 'px';
+    el.dataset.id = n.id;
+    const num   = numberMap.get(n.id) || '?';
+    const color = APPS[n.app].color;
+
+    el.innerHTML = `
+      <div class="node-header">
+        <div class="node-num" style="background:${color}">${num}</div>
+        <div class="node-title" title="${escapeHtml(n.label)}">${escapeHtml(n.label)}</div>
+        <div class="node-status ${n.status}" title="${n.status}"></div>
+      </div>
+      <div class="wireframe">${wireframe(n.wf)}</div>
+      <div class="node-meta">
+        <span class="node-app-tag" style="background:${color}">${n.app}</span>
+        <span>${n.id}</span>
+      </div>
+    `;
+
+    el.addEventListener('mousedown', (ev) => onNodeMouseDown(ev, n));
+    el.addEventListener('click',     (ev) => { ev.stopPropagation(); onNodeClick(n); });
+
+    nodesEl.appendChild(el);
+  });
+
+  // ── Connections (SVG) ─────────────────────────────────────────────────────
+  const svg     = document.getElementById('conn-svg');
+  const labels  = document.getElementById('conn-labels');
+  // clear paths but keep <defs>
+  Array.from(svg.querySelectorAll('path.conn-path')).forEach(el => el.remove());
+  labels.innerHTML = '';
+
+  visibleConns.forEach(c => {
+    const a = nodes.find(x => x.id === c.from);
+    const b = nodes.find(x => x.id === c.to);
+    if (!a || !b) return;
+    const ax = a.x + 80, ay = a.y + 60;
+    const bx = b.x + 80, by = b.y + 60;
+    const midX = (ax + bx) / 2, midY = (ay + by) / 2;
+    const dx = (bx - ax) * 0.5;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M ${ax} ${ay} C ${ax + dx} ${ay}, ${bx - dx} ${by}, ${bx} ${by}`);
+    path.setAttribute('class', 'conn-path' + (c.dashed ? ' dashed' : ''));
+    path.setAttribute('stroke', c.dashed ? '#9CA3AF' : APPS[a.app].color);
+    path.setAttribute('marker-end', c.dashed ? 'url(#arrow-gray)' : 'url(#arrow-blue)');
+    path.dataset.id = c.id;
+    path.addEventListener('click', (ev) => { ev.stopPropagation(); openConnEdit(c); });
+    svg.appendChild(path);
+
+    if (c.label) {
+      const lbl = document.createElement('div');
+      lbl.className = 'conn-label';
+      lbl.style.position = 'absolute';
+      lbl.style.left = (midX - 30) + 'px';
+      lbl.style.top  = (midY - 9)  + 'px';
+      lbl.style.maxWidth = '110px';
+      lbl.style.overflow = 'hidden';
+      lbl.style.textOverflow = 'ellipsis';
+      lbl.textContent = c.label;
+      lbl.title = c.comment ? `${c.label}\n\n📝 ${c.comment}` : c.label;
+      lbl.style.pointerEvents = 'auto';
+      lbl.onclick = (ev) => { ev.stopPropagation(); openConnEdit(c); };
+      labels.appendChild(lbl);
+    }
+  });
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  WIREFRAME TEMPLATES                                                     ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+function wireframe(type) {
+  const t = type || 'detail';
+  switch (t) {
+    case 'auth':
+      return `
+        <div class="wf-bar" style="top:18px;left:50%;transform:translateX(-50%);width:30px;height:30px;background:#9CA3AF;border-radius:8px;"></div>
+        <div class="wf-bar" style="top:54px;left:8px;right:8px;height:8px;"></div>
+        <div class="wf-bar" style="top:66px;left:8px;right:8px;height:8px;"></div>
+        <div class="wf-btn" style="bottom:6px;"></div>
+      `;
+    case 'home':
+      return `
+        <span class="wf-menu"></span>
+        <div class="wf-bar wf-pill" style="top:6px;left:18px;width:42px;height:6px;"></div>
+        <span class="wf-bell"></span>
+        <div class="wf-card" style="top:18px;left:6px;width:30px;height:24px;"></div>
+        <div class="wf-card" style="top:18px;left:40px;width:30px;height:24px;"></div>
+        <div class="wf-card" style="top:18px;left:74px;width:30px;height:24px;"></div>
+        <div class="wf-card" style="top:18px;left:108px;width:30px;height:24px;"></div>
+        <div class="wf-bar" style="top:48px;left:6px;right:6px;height:6px;"></div>
+        <div class="wf-bar" style="top:58px;left:6px;width:80px;height:6px;"></div>
+        <div class="wf-tab"><span class="active"></span><span></span><span></span><span></span><span></span></div>
+      `;
+    case 'list':
+      return `
+        <span class="wf-menu"></span>
+        <div class="wf-bar wf-pill" style="top:6px;left:18px;width:42px;height:6px;"></div>
+        <div class="wf-card" style="top:18px;left:6px;right:6px;height:14px;"></div>
+        <div class="wf-card" style="top:36px;left:6px;right:6px;height:14px;"></div>
+        <div class="wf-card" style="top:54px;left:6px;right:6px;height:14px;"></div>
+        <div class="wf-tab"><span></span><span class="active"></span><span></span><span></span><span></span></div>
+      `;
+    case 'flow':
+      return `
+        <span class="wf-back"></span>
+        <div class="wf-bar wf-pill" style="top:6px;left:50%;transform:translateX(-50%);width:46px;height:6px;"></div>
+        <div class="wf-bar" style="top:22px;left:8px;right:8px;height:6px;"></div>
+        <div class="wf-card" style="top:34px;left:8px;right:8px;height:36px;"></div>
+        <div class="wf-btn" style="bottom:6px;"></div>
+      `;
+    case 'map':
+      return `
+        <span class="wf-back"></span>
+        <div class="wf-map-grid"></div>
+        <div class="wf-pin"></div>
+        <div class="wf-card" style="bottom:18px;left:6px;right:6px;height:18px;"></div>
+        <div class="wf-fab"></div>
+      `;
+    case 'detail':
+      return `
+        <span class="wf-back"></span>
+        <div class="wf-bar wf-pill" style="top:6px;left:50%;transform:translateX(-50%);width:46px;height:6px;"></div>
+        <div class="wf-card" style="top:20px;left:8px;right:8px;height:30px;background:#E5E7EB;"></div>
+        <div class="wf-bar" style="top:54px;left:8px;width:50px;height:6px;"></div>
+        <div class="wf-bar" style="top:64px;left:8px;width:80px;height:5px;"></div>
+        <div class="wf-bar" style="top:72px;left:8px;width:60px;height:5px;"></div>
+      `;
+    case 'chat':
+      return `
+        <span class="wf-back"></span>
+        <div class="wf-bar wf-pill" style="top:6px;left:50%;transform:translateX(-50%);width:46px;height:6px;"></div>
+        <div class="wf-bubble-l" style="top:22px;width:60px;"></div>
+        <div class="wf-bubble-r" style="top:34px;width:50px;"></div>
+        <div class="wf-bubble-l" style="top:46px;width:70px;"></div>
+        <div class="wf-bubble-r" style="top:58px;width:40px;"></div>
+        <div class="wf-input"></div>
+      `;
+    case 'settings':
+      return `
+        <span class="wf-back"></span>
+        <div class="wf-bar wf-pill" style="top:6px;left:50%;transform:translateX(-50%);width:46px;height:6px;"></div>
+        <div class="wf-bar" style="top:22px;left:8px;width:36px;height:5px;"></div>
+        <div class="wf-bar" style="top:32px;left:8px;right:8px;height:8px;"></div>
+        <div class="wf-bar" style="top:44px;left:8px;right:8px;height:8px;"></div>
+        <div class="wf-bar" style="top:56px;left:8px;right:8px;height:8px;"></div>
+        <div class="wf-bar" style="top:68px;left:8px;right:8px;height:8px;"></div>
+      `;
+  }
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  INTERACTION                                                             ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+function onNodeClick(n) {
+  if (connectMode) {
+    if (!connectSource) {
+      connectSource = n.id;
+      document.getElementById('banner-text').textContent = `Source: ${n.label} — now click the target screen.`;
+      render();
+    } else if (connectSource !== n.id) {
+      const newConn = {
+        id:    'u' + Date.now(),
+        from:  connectSource,
+        to:    n.id,
+        label: '',
+      };
+      conns.push(newConn);
+      saveData();
+      exitConnectMode();
+      openConnEdit(newConn);
+      toast('Connection added — describe what triggers it.');
+    }
+    return;
+  }
+  selectedId = n.id;
+  render();
+}
+
+function onNodeMouseDown(ev, n) {
+  if (connectMode) return;
+  if (ev.button !== 0) return;
+  ev.stopPropagation();
+  dragNode = n;
+  dragOffsetX = ev.clientX / scale - n.x;
+  dragOffsetY = ev.clientY / scale - n.y;
+  document.querySelectorAll('.node').forEach(el => {
+    if (el.dataset.id === n.id) el.classList.add('dragging');
+  });
+}
+
+function onCanvasMouseDown(ev) {
+  if (ev.target.closest('.node, .conn-label, .conn-path')) return;
+  panOrigin = { x: ev.clientX - panX, y: ev.clientY - panY };
+  document.getElementById('canvas-wrap').classList.add('panning');
+  if (selectedId) { selectedId = null; render(); }
+}
+
+window.addEventListener('mousemove', (ev) => {
+  if (dragNode) {
+    dragNode.x = Math.max(0, ev.clientX / scale - dragOffsetX);
+    dragNode.y = Math.max(0, ev.clientY / scale - dragOffsetY);
+    // re-render only that node + connections (cheap full re-render is fine)
+    renderCanvas();
+  } else if (panOrigin) {
+    panX = ev.clientX - panOrigin.x;
+    panY = ev.clientY - panOrigin.y;
+    applyTransform();
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  if (dragNode) {
+    document.querySelectorAll('.node').forEach(el => el.classList.remove('dragging'));
+    saveData();
+    dragNode = null;
+  }
+  if (panOrigin) {
+    panOrigin = null;
+    document.getElementById('canvas-wrap').classList.remove('panning');
+  }
+});
+
+document.getElementById('canvas-wrap').addEventListener('mousedown', onCanvasMouseDown);
+
+document.getElementById('canvas-wrap').addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  const factor = ev.deltaY < 0 ? 1.1 : 0.9;
+  zoomAt(ev.clientX, ev.clientY, factor);
+}, { passive: false });
+
+function zoomAt(cx, cy, factor) {
+  const newScale = Math.max(0.2, Math.min(2.5, scale * factor));
+  const real = factor * (newScale / (scale * factor)); // for clarity; just newScale/scale
+  const ratio = newScale / scale;
+  panX = cx - (cx - panX) * ratio;
+  panY = cy - (cy - panY) * ratio;
+  scale = newScale;
+  applyTransform();
+}
+
+function zoomBy(factor) {
+  const w = document.getElementById('canvas-wrap');
+  const r = w.getBoundingClientRect();
+  zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor);
+}
+
+function applyTransform() {
+  document.getElementById('canvas').style.transform =
+    `translate(${panX}px, ${panY}px) scale(${scale})`;
+}
+
+function fitView() {
+  const visibleNodes = nodes.filter(n => activeApp === 'all' || n.app === activeApp);
+  if (!visibleNodes.length) return;
+  const minX = Math.min(...visibleNodes.map(n => n.x)) - 40;
+  const minY = Math.min(...visibleNodes.map(n => n.y)) - 40;
+  const maxX = Math.max(...visibleNodes.map(n => n.x + 160)) + 40;
+  const maxY = Math.max(...visibleNodes.map(n => n.y + 160)) + 40;
+  const w = document.getElementById('canvas-wrap').clientWidth;
+  const h = document.getElementById('canvas-wrap').clientHeight;
+  scale = Math.min(w / (maxX - minX), h / (maxY - minY), 1);
+  panX = (w - (maxX - minX) * scale) / 2 - minX * scale;
+  panY = (h - (maxY - minY) * scale) / 2 - minY * scale;
+  applyTransform();
+}
+function resetView() { scale = 0.7; panX = 60; panY = 60; applyTransform(); }
+
+function autoLayout() {
+  // re-position based on col/row metadata in nodes
+  nodes.forEach(n => {
+    const a = APPS[n.app];
+    n.x = 60 + (n.col ?? 0) * 200;
+    n.y = (a?.y ?? 100) + (n.row ?? 0) * 160;
+  });
+  saveData();
+  render();
+  fitView();
+  toast('Auto-layout reapplied.');
+}
+
+// ── Connect mode ─────────────────────────────────────────────────────────────
+document.getElementById('connect-btn').addEventListener('click', () => {
+  if (connectMode) exitConnectMode();
+  else enterConnectMode();
+});
+function enterConnectMode() {
+  connectMode = true;
+  connectSource = null;
+  document.getElementById('connect-btn').classList.add('btn-active');
+  document.getElementById('connect-btn').textContent = '× Cancel';
+  document.getElementById('canvas-wrap').classList.add('connect-mode');
+  document.getElementById('banner').classList.add('show');
+  document.getElementById('banner-text').textContent = 'Connect Mode — click a source screen, then a target.';
+}
+function exitConnectMode() {
+  connectMode = false;
+  connectSource = null;
+  document.getElementById('connect-btn').classList.remove('btn-active');
+  document.getElementById('connect-btn').innerHTML = '＋ Connect';
+  document.getElementById('canvas-wrap').classList.remove('connect-mode');
+  document.getElementById('banner').classList.remove('show');
+  render();
+}
+window.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') {
+    if (connectMode) exitConnectMode();
+    if (document.getElementById('modal-bg').classList.contains('show')) closeModal();
+  }
+});
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  SIDE PANEL                                                              ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+function renderSide() {
+  const empty = document.getElementById('side-empty');
+  const cont  = document.getElementById('side-content');
+  if (!selectedId) {
+    empty.style.display = 'block';
+    cont.classList.remove('show');
+    return;
+  }
+  const n = nodes.find(x => x.id === selectedId);
+  if (!n) { selectedId = null; renderSide(); return; }
+  empty.style.display = 'none';
+  cont.classList.add('show');
+
+  document.getElementById('s-app').innerHTML =
+    `<span class="chip-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${APPS[n.app].color};margin-right:5px;vertical-align:middle"></span>${APPS[n.app].name}`;
+  document.getElementById('s-title').textContent = n.label;
+  document.getElementById('s-id').textContent    = n.id;
+  document.getElementById('s-file').textContent  = n.file || '—';
+  document.getElementById('s-notes').textContent = n.notes || 'No spec note.';
+
+  // status buttons
+  const sr = document.getElementById('s-status');
+  sr.innerHTML = '';
+  STATUS.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'status-btn ' + s + (n.status === s ? ' active' : '');
+    b.textContent = s;
+    b.onclick = () => { n.status = s; saveData(); render(); };
+    sr.appendChild(b);
+  });
+
+  document.getElementById('s-comment').value = n.comment || '';
+
+  // connections
+  const cl = document.getElementById('s-connections');
+  cl.innerHTML = '';
+  const out = conns.filter(c => c.from === n.id);
+  const inn = conns.filter(c => c.to === n.id);
+  if (!out.length && !inn.length) {
+    cl.innerHTML = '<div style="font-size:11px;color:var(--mid);font-style:italic">No connections.</div>';
+  }
+  out.forEach(c => addConnRow(cl, c, '→', nodes.find(n => n.id === c.to)?.label));
+  inn.forEach(c => addConnRow(cl, c, '←', nodes.find(n => n.id === c.from)?.label));
+}
+function addConnRow(parent, c, arrow, otherLabel) {
+  const r = document.createElement('div');
+  r.className = 'conn-row';
+  r.innerHTML = `<span class="arrow">${arrow}</span><span style="font-weight:600">${escapeHtml(otherLabel ?? '?')}</span><span class="label">${escapeHtml(c.label || 'no label')}</span><span class="x" title="Edit">⋯</span>`;
+  r.onclick = () => openConnEdit(c);
+  parent.appendChild(r);
+}
+
+function onCommentChange() {
+  const n = nodes.find(x => x.id === selectedId);
+  if (!n) return;
+  n.comment = document.getElementById('s-comment').value;
+  saveData();
+  // re-paint just the dot indicator
+  const card = document.querySelector(`.node[data-id="${n.id}"]`);
+  if (card) card.classList.toggle('has-comment', !!n.comment);
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  CONNECTION MODAL                                                        ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+function openConnEdit(c) {
+  editingConn = c;
+  const a = nodes.find(n => n.id === c.from);
+  const b = nodes.find(n => n.id === c.to);
+  document.getElementById('modal-from-to').innerHTML =
+    `<b>${escapeHtml(a?.label ?? '?')}</b> → <b>${escapeHtml(b?.label ?? '?')}</b>`;
+  document.getElementById('modal-label').value   = c.label   || '';
+  document.getElementById('modal-comment').value = c.comment || '';
+  document.getElementById('modal-bg').classList.add('show');
+  setTimeout(() => document.getElementById('modal-label').focus(), 50);
+}
+function closeModal() {
+  document.getElementById('modal-bg').classList.remove('show');
+  editingConn = null;
+}
+function saveConnection() {
+  if (!editingConn) return;
+  editingConn.label   = document.getElementById('modal-label').value.trim();
+  editingConn.comment = document.getElementById('modal-comment').value.trim();
+  saveData();
+  closeModal();
+  render();
+  toast('Saved.');
+}
+function deleteConnection() {
+  if (!editingConn) return;
+  if (!confirm('Delete this connection?')) return;
+  conns = conns.filter(c => c !== editingConn);
+  saveData();
+  closeModal();
+  render();
+  toast('Deleted.');
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  ADD SCREEN MODAL                                                        ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+function openAddScreen() {
+  // Pre-fill app from active filter if one is selected
+  const appSel = document.getElementById('add-app');
+  if (activeApp !== 'all') appSel.value = activeApp;
+  document.getElementById('add-label').value  = '';
+  document.getElementById('add-id').value     = '';
+  document.getElementById('add-file').value   = '';
+  document.getElementById('add-notes').value  = '';
+  document.getElementById('add-status').value = 'planned';
+  document.getElementById('add-wf').value     = 'list';
+  document.getElementById('add-modal-bg').classList.add('show');
+  setTimeout(() => document.getElementById('add-label').focus(), 50);
+}
+function closeAddScreen() {
+  document.getElementById('add-modal-bg').classList.remove('show');
+}
+function slugify(s) {
+  return String(s ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 30);
+}
+const APP_PREFIX = { customer:'cust', driver:'drv', business:'biz', admin:'adm', backend:'be' };
+function uniqueId(base) {
+  let id = base, n = 1;
+  while (nodes.some(x => x.id === id)) {
+    id = base + '-' + n++;
+  }
+  return id;
+}
+// Auto-fill the ID field as the user types the label
+function wireAddScreenAutoId() {
+  const lbl  = document.getElementById('add-label');
+  const app  = document.getElementById('add-app');
+  const idEl = document.getElementById('add-id');
+  if (!lbl || !app || !idEl) return;
+  let userTouchedId = false;
+  idEl.addEventListener('input', () => { userTouchedId = true; });
+  function autoFillId() {
+    if (userTouchedId && idEl.value) return;
+    const slug = slugify(lbl.value);
+    if (!slug) { idEl.value = ''; return; }
+    const prefix = APP_PREFIX[app.value] || 'x';
+    idEl.value = `${prefix}.${slug.replace(/-/g, '')}`;
+  }
+  lbl.addEventListener('input', autoFillId);
+  app.addEventListener('change', autoFillId);
+}
+
+function saveNewScreen() {
+  const label = document.getElementById('add-label').value.trim();
+  if (!label) { document.getElementById('add-label').focus(); toast('Screen name is required.'); return; }
+  const app    = document.getElementById('add-app').value;
+  const wf     = document.getElementById('add-wf').value;
+  const status = document.getElementById('add-status').value;
+  const file   = document.getElementById('add-file').value.trim();
+  const notes  = document.getElementById('add-notes').value.trim();
+  let id       = document.getElementById('add-id').value.trim();
+
+  if (!id) {
+    const prefix = APP_PREFIX[app] || 'x';
+    id = uniqueId(`${prefix}.${slugify(label).replace(/-/g, '')}`);
+  } else if (nodes.some(n => n.id === id)) {
+    if (!confirm(`ID "${id}" already exists. Auto-suffix it?`)) return;
+    id = uniqueId(id);
+  }
+
+  // Position at the visible center of the canvas
+  const wrap = document.getElementById('canvas-wrap');
+  const r = wrap.getBoundingClientRect();
+  const cx = (r.width  / 2 - panX) / scale - 80;
+  const cy = (r.height / 2 - panY) / scale - 60;
+
+  const node = { id, app, label, file, status, wf, notes, x: cx, y: cy };
+  nodes.push(node);
+  saveData();
+  selectedId = id;
+  closeAddScreen();
+  render();
+  toast(`Added "${label}".`);
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  EXPORT / IMPORT                                                         ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+function exportData() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    summary: {
+      total:    nodes.length,
+      built:    nodes.filter(n => n.status === 'built').length,
+      partial:  nodes.filter(n => n.status === 'partial').length,
+      planned:  nodes.filter(n => n.status === 'planned').length,
+      broken:   nodes.filter(n => n.status === 'broken').length,
+      withComments: nodes.filter(n => n.comment).length + conns.filter(c => c.comment).length,
+    },
+    screens:        nodes,
+    connections:    conns,
+    screenComments: nodes.filter(n => n.comment).map(n => ({ id:n.id, label:n.label, app:n.app, status:n.status, comment:n.comment })),
+    flowComments:   conns.filter(c => c.comment).map(c => {
+      const a = nodes.find(n => n.id === c.from);
+      const b = nodes.find(n => n.id === c.to);
+      return { from: a?.label ?? c.from, to: b?.label ?? c.to, label: c.label, comment: c.comment };
+    }),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `seirs-map-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`Exported. ${payload.summary.withComments} comment${payload.summary.withComments !== 1 ? 's' : ''} for Claude.`);
+}
+function loadFile(ev) {
+  const f = ev.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = (e) => {
+    try {
+      const d = JSON.parse(e.target.result);
+      if (d.screens && d.connections) {
+        nodes = d.screens;
+        conns = d.connections;
+        saveData();
+        render();
+        toast('Loaded.');
+      }
+    } catch (err) { toast('Invalid JSON file.'); }
+  };
+  r.readAsText(f);
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  UTIL                                                                    ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+loadData();
+render();
+applyTransform();
+wireAddScreenAutoId();
+</script>
+</body>
+</html>

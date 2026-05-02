@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi, driversApi, uploadApi } from '@/services/api';
@@ -35,8 +36,10 @@ export default function ActiveDeliveryScreen() {
   const [updating,   setUpdating]   = useState(false);
   const [proofUri,   setProofUri]   = useState<string | null>(null);
   const [proofReady, setProofReady] = useState(false);
+  const [myPos,      setMyPos]      = useState<{ lat: number; lng: number } | null>(null);
 
   const locationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mapRef           = useRef<MapView>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -54,9 +57,15 @@ export default function ActiveDeliveryScreen() {
   const startBroadcast = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return;
+    // Get an immediate fix so the map can centre right away
+    try {
+      const first = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setMyPos({ lat: first.coords.latitude, lng: first.coords.longitude });
+    } catch { /* keep null */ }
     locationInterval.current = setInterval(async () => {
       try {
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setMyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         await driversApi.updateLocation(pos.coords.latitude, pos.coords.longitude);
       } catch { /* skip */ }
     }, 5000);
@@ -201,6 +210,64 @@ export default function ActiveDeliveryScreen() {
             </View>
           </LinearGradient>
         </View>
+
+        {/* Live map — pickup pin (green), dropoff pin (red), driver pin (blue) */}
+        {delivery.pickupLat && delivery.dropoffLat && (
+          <View style={[styles.card, { backgroundColor: theme.surface, padding: 0, overflow: 'hidden' }, Shadows.sm]}>
+            <MapView
+              ref={mapRef}
+              provider={PROVIDER_GOOGLE}
+              style={{ width: '100%', height: 220 }}
+              showsTraffic
+              showsUserLocation={false}
+              initialRegion={{
+                latitude:  Number(delivery.pickupLat),
+                longitude: Number(delivery.pickupLng),
+                latitudeDelta:  0.05,
+                longitudeDelta: 0.05,
+              }}
+              onMapReady={() => {
+                const coords = [
+                  { latitude: Number(delivery.pickupLat),  longitude: Number(delivery.pickupLng) },
+                  { latitude: Number(delivery.dropoffLat), longitude: Number(delivery.dropoffLng) },
+                  ...(myPos ? [{ latitude: myPos.lat, longitude: myPos.lng }] : []),
+                ];
+                mapRef.current?.fitToCoordinates(coords, {
+                  edgePadding: { top: 60, right: 50, bottom: 60, left: 50 },
+                  animated: true,
+                });
+              }}
+            >
+              <Marker
+                coordinate={{ latitude: Number(delivery.pickupLat), longitude: Number(delivery.pickupLng) }}
+                title="Pickup"
+                description={delivery.pickupAddress}
+                pinColor="#22C55E"
+              />
+              <Marker
+                coordinate={{ latitude: Number(delivery.dropoffLat), longitude: Number(delivery.dropoffLng) }}
+                title="Dropoff"
+                description={delivery.dropoffAddress}
+                pinColor="#EF4444"
+              />
+              {myPos && (
+                <Marker
+                  coordinate={{ latitude: myPos.lat, longitude: myPos.lng }}
+                  title="You"
+                  pinColor="#3A7BD5"
+                />
+              )}
+              <Polyline
+                coordinates={[
+                  { latitude: Number(delivery.pickupLat),  longitude: Number(delivery.pickupLng) },
+                  { latitude: Number(delivery.dropoffLat), longitude: Number(delivery.dropoffLng) },
+                ]}
+                strokeColor="#3A7BD5"
+                strokeWidth={4}
+              />
+            </MapView>
+          </View>
+        )}
 
         {/* Route card */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>

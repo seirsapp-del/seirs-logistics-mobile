@@ -480,6 +480,44 @@ export class AdminService {
 
   // ── Audit Log ─────────────────────────────────────────────────────────────
 
+  // ── Real-Time Ops Map ─────────────────────────────────────────────────────
+
+  async getOpsMapDrivers() {
+    const drivers = await this.driversRepo
+      .createQueryBuilder('d')
+      .leftJoinAndSelect('d.user', 'u')
+      .where('d.lastLat IS NOT NULL AND d.lastLng IS NOT NULL')
+      .getMany();
+    return drivers.map(d => ({
+      id:        d.id,
+      name:      d.user?.name ?? 'Driver',
+      lat:       Number(d.lastLat),
+      lng:       Number(d.lastLng),
+      isOnline:  !!d.isOnline,
+      lastSeen:  d.locationUpdatedAt?.toISOString(),
+    }));
+  }
+
+  async getOpsMapDeliveries() {
+    const active = await this.deliveriesRepo.find({
+      where: [
+        { status: DeliveryStatus.ASSIGNED },
+        { status: DeliveryStatus.PICKED_UP },
+        { status: DeliveryStatus.IN_TRANSIT },
+      ],
+      take: 200,
+    });
+    return active.map(dv => ({
+      id:           dv.id,
+      trackingCode: dv.trackingCode,
+      pickupLat:    Number(dv.pickupLat),
+      pickupLng:    Number(dv.pickupLng),
+      dropoffLat:   Number(dv.dropoffLat),
+      dropoffLng:   Number(dv.dropoffLng),
+      status:       dv.status,
+    }));
+  }
+
   async getAuditLog(page: number, adminId?: string, action?: string) {
     const limit = 50;
     const qb = this.auditRepo.createQueryBuilder('a')

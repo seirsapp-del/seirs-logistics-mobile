@@ -119,4 +119,9 @@ export const adminApi = {
     list: (page = 1, adminId?: string, action?: string) =>
       req<any>(`/admin/audit-log?page=${page}${adminId ? `&adminId=${adminId}` : ''}${action ? `&action=${encodeURIComponent(action)}` : ''}`),
   },
+
+  opsMap: {
+    onlineDrivers:    () => req<Array<{ id: string; name: string; lat: number; lng: number; isOnline: boolean; lastSeen?: string }>>('/admin/ops-map/drivers'),
+    activeDeliveries: () => req<Array<{ id: string; trackingCode: string; pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number; status: string }>>('/admin/ops-map/deliveries'),
+  },
 };

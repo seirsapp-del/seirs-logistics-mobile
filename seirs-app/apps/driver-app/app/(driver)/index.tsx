@@ -9,6 +9,7 @@ import {
   ChevronRight, Target, Wifi, WifiOff, Package,
   Navigation, Clock, AlignLeft,
 } from 'lucide-react-native';
+import MapView, { PROVIDER_GOOGLE, Circle, Marker } from 'react-native-maps';
 import { Drawer } from '@/components/Drawer';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
@@ -227,14 +228,51 @@ export default function DriverHomeScreen() {
             <Text style={[styles.widgetSub, { color: theme.textThird }]}>{tripCount} trips</Text>
           </Pressable>
 
-          {/* Heatmap */}
-          <Pressable style={[styles.widgetCard, styles.heatmapWidget, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => {}}>
+          {/* Demand heatmap mini-map */}
+          <Pressable style={[styles.widgetCard, styles.heatmapWidget, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/active' as any)}>
             <View style={styles.widgetIcon}>
               <MapPin size={18} color="#EF4444" strokeWidth={1.75} />
             </View>
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Demand Map</Text>
-            <View style={[styles.heatmapBox, { backgroundColor: theme.surfaceSecond }]}>
-              <Text style={[styles.heatmapPlaceholder, { color: theme.textThird }]}>Live heatmap</Text>
+            <View style={[styles.heatmapBox, { backgroundColor: theme.surfaceSecond, overflow: 'hidden' }]}>
+              {driverData?.lastLat && driverData?.lastLng ? (
+                <MapView
+                  provider={PROVIDER_GOOGLE}
+                  style={{ width: '100%', height: '100%' }}
+                  pointerEvents="none"
+                  liteMode={true}
+                  initialRegion={{
+                    latitude:  Number(driverData.lastLat),
+                    longitude: Number(driverData.lastLng),
+                    latitudeDelta:  0.04,
+                    longitudeDelta: 0.04,
+                  }}
+                >
+                  {/* Driver marker */}
+                  <Marker
+                    coordinate={{ latitude: Number(driverData.lastLat), longitude: Number(driverData.lastLng) }}
+                    pinColor="#3A7BD5"
+                  />
+                  {/* Demand zones — coloured circles. TODO: feed from
+                      backend GET /api/v1/drivers/demand-zones (not built yet).
+                      For now, render synthetic zones around the driver as a
+                      visual placeholder so the UI doesn't look broken. */}
+                  <Circle
+                    center={{ latitude: Number(driverData.lastLat) + 0.012, longitude: Number(driverData.lastLng) - 0.008 }}
+                    radius={600} fillColor="rgba(239,68,68,0.35)" strokeWidth={0}
+                  />
+                  <Circle
+                    center={{ latitude: Number(driverData.lastLat) - 0.008, longitude: Number(driverData.lastLng) + 0.014 }}
+                    radius={500} fillColor="rgba(245,158,11,0.30)" strokeWidth={0}
+                  />
+                  <Circle
+                    center={{ latitude: Number(driverData.lastLat) + 0.005, longitude: Number(driverData.lastLng) + 0.005 }}
+                    radius={400} fillColor="rgba(22,163,74,0.25)" strokeWidth={0}
+                  />
+                </MapView>
+              ) : (
+                <Text style={[styles.heatmapPlaceholder, { color: theme.textThird }]}>Go online to see demand</Text>
+              )}
             </View>
           </Pressable>
         </ScrollView>

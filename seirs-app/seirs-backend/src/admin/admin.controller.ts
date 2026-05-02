@@ -301,4 +301,22 @@ export class AdminController {
   getAuditLog(@Query() q: { page?: number; adminId?: string; action?: string }) {
     return this.adminService.getAuditLog(q.page ?? 1, q.adminId, q.action);
   }
+
+  // ── Real-Time Ops Map ─────────────────────────────────────────────────────
+  // Polled every 10s by the admin dashboard ops-map page.
+
+  // GET /api/v1/admin/ops-map/drivers
+  // Returns all drivers with last-known GPS, regardless of online state
+  // (online drivers are styled green, offline gray).
+  @Get('ops-map/drivers')
+  getOpsMapDrivers() {
+    return this.adminService.getOpsMapDrivers();
+  }
+
+  // GET /api/v1/admin/ops-map/deliveries
+  // Returns all deliveries currently in `assigned`, `picked_up`, or `in_transit`.
+  @Get('ops-map/deliveries')
+  getOpsMapDeliveries() {
+    return this.adminService.getOpsMapDeliveries();
+  }
 }
