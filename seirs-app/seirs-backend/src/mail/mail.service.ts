@@ -2,8 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
-const BRAND_ORANGE = '#F4600C';
-const BRAND_NAVY   = '#0D1B2A';
+// Brand colors per Master Spec V7 §G1 (Navy + Sky Blue, no orange).
+const BRAND_BLUE = '#3A7BD5';
+const BRAND_NAVY = '#0F2B4C';
 
 function baseTemplate(content: string): string {
   return `
@@ -18,7 +19,7 @@ function baseTemplate(content: string): string {
             <tr>
               <td style="background:${BRAND_NAVY};padding:24px 32px">
                 <span style="font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:-0.5px">
-                  <span style="color:${BRAND_ORANGE}">Seirs</span> Logistics
+                  <span style="color:${BRAND_BLUE}">Seirs</span> Logistics
                 </span>
               </td>
             </tr>
@@ -48,7 +49,7 @@ function baseTemplate(content: string): string {
 function primaryButton(href: string, label: string): string {
   return `
     <a href="${href}"
-       style="display:inline-block;background:${BRAND_ORANGE};color:#ffffff;
+       style="display:inline-block;background:${BRAND_BLUE};color:#ffffff;
               padding:14px 28px;border-radius:8px;text-decoration:none;
               font-weight:bold;font-size:15px;margin:20px 0">
       ${label}
@@ -68,6 +69,26 @@ export class MailService {
   private transporter: nodemailer.Transporter | null = null;
 
   constructor(private readonly cfg: ConfigService) {
+    // ── Resend (preferred) ───────────────────────────────────────────────────
+    // If RESEND_API_KEY is set, route everything through Resend's SMTP.
+    // No domain verification needed if you keep the default
+    // `Seirs <onboarding@resend.dev>` from-address — that works out of the box
+    // for development. To send from your own domain (e.g. noreply@seirs.co),
+    // verify it at resend.com/domains and set MAIL_FROM in Railway.
+    const resendKey = cfg.get<string>('RESEND_API_KEY');
+
+    if (resendKey) {
+      this.transporter = nodemailer.createTransport({
+        host:   'smtp.resend.com',
+        port:   465,
+        secure: true,
+        auth:   { user: 'resend', pass: resendKey },
+      });
+      this.logger.log('Mail transport: Resend SMTP');
+      return;
+    }
+
+    // ── Generic SMTP fallback ────────────────────────────────────────────────
     const host = cfg.get<string>('MAIL_HOST');
     const user = cfg.get<string>('MAIL_USER');
     const pass = cfg.get<string>('MAIL_PASS');
@@ -80,17 +101,32 @@ export class MailService {
         secure: port === 465,
         auth: { user, pass },
       });
+      this.logger.log(`Mail transport: SMTP (${host}:${port})`);
+      return;
     }
+
+    this.logger.error(
+      'No mail credentials configured — set RESEND_API_KEY (or MAIL_HOST/MAIL_USER/MAIL_PASS). ' +
+      'OTP and password-reset emails will NOT be delivered.',
+    );
   }
 
   private async send(to: string, subject: string, html: string) {
-    const from = this.cfg.get<string>('MAIL_FROM', 'Seirs App <noreply@seirs.co>');
+    // Default from-address uses Resend's onboarding domain so it works
+    // out of the box without any DNS verification. Override with MAIL_FROM
+    // once you've verified seirs.co at resend.com/domains.
+    const from = this.cfg.get<string>('MAIL_FROM', 'Seirs Logistics <onboarding@resend.dev>');
     if (!this.transporter) {
-      this.logger.warn(`[MAIL-DEV] Would send "${subject}" to ${to}`);
+      this.logger.warn(`[MAIL-NOOP] Would send "${subject}" to ${to} — no transport configured`);
       return;
     }
-    await this.transporter.sendMail({ from, to, subject, html });
-    this.logger.log(`Email sent: "${subject}" → ${to}`);
+    try {
+      const info = await this.transporter.sendMail({ from, to, subject, html });
+      this.logger.log(`Email sent: "${subject}" → ${to} (id=${info.messageId})`);
+    } catch (err) {
+      this.logger.error(`Email send failed: "${subject}" → ${to}: ${(err as Error).message}`);
+      throw err;
+    }
   }
 
   // ── Email verification OTP ──────────────────────────────────────────────────
@@ -142,7 +178,7 @@ export class MailService {
       <ul style="padding-left:20px;color:#374151">
         <li>Send packages with real-time tracking</li>
         <li>Choose economy, standard, or instant delivery</li>
-        <li>Pay by card, wallet, or cash on delivery</li>
+        <li>Pay by card, bank transfer, or Seirs wallet</li>
       </ul>
       <p style="font-size:13px;color:#6B7280">Download the Seirs app to get started.</p>
     `);
@@ -212,7 +248,7 @@ export class MailService {
       <p>Hi ${name},</p>
       <p>Unfortunately, your delivery <strong>${trackingCode}</strong> could not be completed.</p>
       <p>Our team is looking into this. If you paid by card or wallet, a refund will be processed within 3-5 business days.</p>
-      <p>Please contact <a href="mailto:support@seirs.co" style="color:${BRAND_ORANGE}">support@seirs.co</a> if you need help.</p>
+      <p>Please contact <a href="mailto:support@seirs.co" style="color:${BRAND_BLUE}">support@seirs.co</a> if you need help.</p>
     `);
 
     await this.send(to, `Delivery failed — ${trackingCode}`, html);
@@ -246,7 +282,7 @@ export class MailService {
       <p>We reviewed your driver application and unfortunately we couldn't approve it at this time.</p>
       ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
       <p>You can re-apply with updated documents by opening the Seirs app and going to <strong>Profile → KYC Verification</strong>.</p>
-      <p>If you think this is a mistake, contact <a href="mailto:support@seirs.co" style="color:${BRAND_ORANGE}">support@seirs.co</a>.</p>
+      <p>If you think this is a mistake, contact <a href="mailto:support@seirs.co" style="color:${BRAND_BLUE}">support@seirs.co</a>.</p>
     `);
 
     await this.send(to, 'Update on your Seirs driver application', html);

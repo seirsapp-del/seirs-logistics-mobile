@@ -829,7 +829,7 @@ const DEFAULT_NODES = [
   { id:'be.admin',           app:'backend', label:'Admin Module',        file:'seirs-backend/src/admin',        status:'partial', wf:'detail', col:5, row:0, notes:'Pricing config in-memory — lost on restart' },
   { id:'be.business',        app:'backend', label:'Business Module',    file:'seirs-backend/src/business',     status:'built',   wf:'detail', col:6, row:0 },
   { id:'be.notifications',   app:'backend', label:'FCM Notifications',  file:'seirs-backend/src/notifications', status:'built',   wf:'detail', col:7, row:0 },
-  { id:'be.mail',            app:'backend', label:'Mail Service',       file:'seirs-backend/src/mail',         status:'broken',  wf:'detail', col:8, row:0, notes:'Likely a stub; OTP/reset emails may not actually send' },
+  { id:'be.mail',            app:'backend', label:'Mail Service',       file:'seirs-backend/src/mail',         status:'built',  wf:'detail', col:8, row:0, notes:'Resend SMTP wired (auto-detects RESEND_API_KEY env var). 9 transactional templates: OTP, reset, welcome, delivery assigned/picked-up/delivered/failed, driver approved/rejected. Default from-address uses onboarding@resend.dev (no domain verification needed). Set MAIL_FROM to override once seirs.co is verified.' },
   { id:'be.fx',              app:'backend', label:'FX Exchange Rate',   file:'seirs-backend/src/fx',           status:'partial', wf:'detail', col:9, row:0, notes:'In-memory, no persistence' },
 ];
 
