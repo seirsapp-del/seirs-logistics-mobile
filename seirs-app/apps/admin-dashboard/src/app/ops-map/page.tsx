@@ -6,8 +6,11 @@ import { adminApi } from '@/lib/api';
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? '';
 
 // ── Lazy Google Maps loader ──────────────────────────────────────────────────
-let _mapsPromise: Promise<typeof google> | null = null;
-function loadGoogleMaps(key: string): Promise<typeof google> {
+// We use `any` for Google Maps types to avoid pulling in @types/google.maps
+// (~200KB) just for this one page. The runtime always accesses google via
+// `(window as any).google` so the lack of types doesn't affect behaviour.
+let _mapsPromise: Promise<any> | null = null;
+function loadGoogleMaps(key: string): Promise<any> {
   if (typeof window === 'undefined') return Promise.reject(new Error('SSR'));
   if ((window as any).google?.maps) return Promise.resolve((window as any).google);
   if (_mapsPromise) return _mapsPromise;
@@ -31,11 +34,11 @@ interface DeliveryPin { id: string; trackingCode: string; pickupLat: number; pic
 const DEFAULT_CENTER = { lat: 6.5244, lng: 3.3792 };
 
 export default function OpsMapPage() {
-  const mapEl    = useRef<HTMLDivElement>(null);
-  const mapRef   = useRef<google.maps.Map | null>(null);
-  const markersRef   = useRef<globalThis.Map<string, google.maps.Marker>>(new globalThis.Map());
-  const polylinesRef = useRef<google.maps.Polyline[]>([]);
-  const heatmapRef   = useRef<google.maps.visualization.HeatmapLayer | null>(null);
+  const mapEl        = useRef<HTMLDivElement>(null);
+  const mapRef       = useRef<any>(null);                                       // google.maps.Map
+  const markersRef   = useRef<globalThis.Map<string, any>>(new globalThis.Map()); // id → google.maps.Marker
+  const polylinesRef = useRef<any[]>([]);                                       // google.maps.Polyline[]
+  const heatmapRef   = useRef<any>(null);                                       // google.maps.visualization.HeatmapLayer
 
   const [drivers,    setDrivers]    = useState<DriverPin[]>([]);
   const [deliveries, setDeliveries] = useState<DeliveryPin[]>([]);
