@@ -13,13 +13,5 @@
     "business": "npm run start     --workspace=apps/business-app",
     "backend":  "npm run start:dev --workspace=seirs-backend",
     "website":  "npm run dev       --workspace=apps/seirs-website"
-  },
-  "dependencies": {
-    "react":     "18.3.1",
-    "react-dom": "18.3.1"
-  },
-  "overrides": {
-    "react":     "18.3.1",
-    "react-dom": "18.3.1"
   }
 }
