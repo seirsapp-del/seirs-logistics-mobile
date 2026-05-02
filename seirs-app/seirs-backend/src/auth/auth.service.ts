@@ -24,6 +24,12 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
+import {
+  AccountIdPrefix,
+  generateAccountId,
+  generateOtp,
+  generateUuidAccountId,
+} from '../common/utils/auth-codes';
 
 @Injectable()
 export class AuthService {
@@ -51,17 +57,6 @@ export class AuthService {
       .join(' ');
   }
 
-  private static generateOtp(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  private static generateAccountId(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let id = 'CUST-';
-    for (let i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
-    return id;
-  }
-
   async register(dto: RegisterDto) {
     const email = dto.email.trim().toLowerCase();
 
@@ -86,7 +81,9 @@ export class AuthService {
     }
 
     const hashed    = await bcrypt.hash(dto.password, 12);
-    const accountId = AuthService.generateAccountId();
+    const accountId = generateAccountId(
+      dto.role === UserRole.DRIVER ? AccountIdPrefix.DRIVER : AccountIdPrefix.CUSTOMER,
+    );
 
     const user = this.usersRepo.create({
       name:      AuthService.toTitleCase(dto.name),
@@ -241,7 +238,7 @@ export class AuthService {
     let user = await this.usersRepo.findOne({ where: [{ googleId: payload.sub }, { email }] });
 
     if (!user) {
-      const accountId = AuthService.generateAccountId();
+      const accountId = generateAccountId(AccountIdPrefix.CUSTOMER);
       user = this.usersRepo.create({
         name:          AuthService.toTitleCase(payload.name),
         email,
@@ -286,7 +283,7 @@ export class AuthService {
       }
       const email     = payload.email.toLowerCase();
       const existing  = await this.usersRepo.findOne({ where: { email } });
-      const accountId = AuthService.generateAccountId();
+      const accountId = generateAccountId(AccountIdPrefix.CUSTOMER);
 
       if (existing) {
         await this.usersRepo.update(existing.id, { appleId: payload.sub, emailVerified: true });
@@ -374,7 +371,7 @@ export class AuthService {
   }
 
   private async issueOtp(user: User) {
-    const otp    = AuthService.generateOtp();
+    const otp    = generateOtp();
     const expiry = new Date(Date.now() + 15 * 60 * 1000);
     const hashed = await bcrypt.hash(otp, 8);
 
@@ -402,7 +399,9 @@ export class AuthService {
     }
 
     const hashed    = await bcrypt.hash(data.password, 12);
-    const accountId = 'BIZ-' + uuidv4().replace(/-/g, '').slice(0, 8).toUpperCase();
+    const accountId = generateUuidAccountId(
+      data.accountType === 'partner' ? AccountIdPrefix.PARTNER : AccountIdPrefix.BUSINESS,
+    );
 
     const user = this.usersRepo.create({
       name:          data.name?.trim(),

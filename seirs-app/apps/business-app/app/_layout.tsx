@@ -8,10 +8,13 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
 import { API_BASE } from '@/constants/config';
-import { configureApi } from '@/services/api';
+import { configureApi, configureSessionStorageKey } from '@/services/api';
 import * as Updates from 'expo-updates';
 
 configureApi(API_BASE);
+// Business app stores session under a separate key so it can coexist with
+// customer/driver tokens on a device that has multiple SEIRS apps installed.
+configureSessionStorageKey('seirs_business_user');
 
 function NavigationGuard() {
   const { isAuthenticated, businessRole, isLoading } = useAuth();

@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SEIRS — Live Workflow Editor</title>
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy:    #0F2B4C;
+    --blue:    #3A7BD5;
+    --bg:      #F5F5F0;
+    --panel:   #FFFFFF;
+    --border:  #E5E7EB;
+    --text:    #111827;
+    --mid:     #6B7280;
+    --built:   #16A34A;
+    --partial: #D97706;
+    --planned: #6B7280;
+    --broken:  #DC2626;
+    --auth:    #8B5CF6;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    font-size: 13px;
+  }
+
+  /* ── Top Bar ── */
+  header {
+    height: 52px;
+    background: var(--navy);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    z-index: 10;
+  }
+  .logo { font-size: 18px; font-weight: 800; letter-spacing: 4px; color: var(--blue); }
+  .sub  { font-size: 11px; color: rgba(255,255,255,0.5); letter-spacing: 1px; text-transform: uppercase; }
+  .stats { display: flex; gap: 14px; margin-left: auto; }
+  .stat { display: flex; align-items: center; gap: 5px; font-size: 11px; color: rgba(255,255,255,0.7); }
+  .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .stat-built   .stat-dot { background: var(--built); }
+  .stat-partial .stat-dot { background: var(--partial); }
+  .stat-planned .stat-dot { background: var(--planned); }
+  .stat-broken  .stat-dot { background: var(--broken); }
+  .actions { display: flex; gap: 6px; margin-left: 12px; }
+  .btn {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn:hover { background: rgba(255,255,255,0.22); }
+  .btn-primary { background: var(--blue); border-color: var(--blue); }
+  .btn-primary:hover { background: #2D72CC; }
+
+  /* ── Layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 360px 1fr 280px;
+    height: calc(100vh - 52px);
+  }
+
+  /* ── Editor Pane ── */
+  .editor {
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+  }
+  .editor-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: #FAFAF7;
+  }
+  .tab {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--mid);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .tab.active { color: var(--navy); border-bottom-color: var(--blue); background: #fff; }
+  .editor textarea {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 12px;
+    font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    font-size: 11.5px;
+    line-height: 1.55;
+    resize: none;
+    background: #fff;
+    color: #1F2937;
+  }
+  .editor-hint {
+    padding: 8px 12px;
+    font-size: 10.5px;
+    color: var(--mid);
+    background: #FAFAF7;
+    border-top: 1px solid var(--border);
+    line-height: 1.5;
+  }
+  .err {
+    padding: 8px 12px;
+    background: #FEF2F2;
+    color: var(--broken);
+    font-size: 11px;
+    font-family: monospace;
+    border-top: 1px solid #FECACA;
+    max-height: 80px;
+    overflow: auto;
+    display: none;
+  }
+  .err.show { display: block; }
+
+  /* ── Graph Pane ── */
+  #graph {
+    background: var(--bg);
+    background-image:
+      linear-gradient(rgba(15,43,76,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15,43,76,0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* ── Detail Pane ── */
+  .detail {
+    border-left: 1px solid var(--border);
+    background: var(--panel);
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .detail h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .detail .id {
+    font-family: monospace;
+    font-size: 10.5px;
+    color: var(--mid);
+    margin-bottom: 12px;
+    word-break: break-all;
+  }
+  .detail-row {
+    display: flex;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    border-bottom: 1px solid #F3F4F6;
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-key { color: var(--mid); min-width: 70px; font-weight: 500; }
+  .detail-val { color: var(--text); flex: 1; word-break: break-word; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-built   { background: #DCFCE7; color: var(--built); }
+  .badge-partial { background: #FEF3C7; color: var(--partial); }
+  .badge-planned { background: #F3F4F6; color: var(--planned); }
+  .badge-broken  { background: #FEE2E2; color: var(--broken); }
+  .empty {
+    color: var(--mid);
+    font-size: 12px;
+    text-align: center;
+    padding: 40px 16px;
+    font-style: italic;
+  }
+  .legend {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .legend h4 {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--mid);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--text);
+    padding: 3px 0;
+  }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  input[type="file"] { display: none; }
+
+  /* mini icon */
+  .icon-app {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+
+  .filters {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: #FAFAF7;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chip {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #fff;
+    border: 1px solid var(--border);
+    color: var(--mid);
+    cursor: pointer;
+    user-select: none;
+  }
+  .chip.active {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">SEIRS</div>
+    <div class="sub">Workflow Editor</div>
+  </div>
+  <div class="stats">
+    <div class="stat stat-built">   <span class="stat-dot"></span> <span id="cnt-built">0</span> built</div>
+    <div class="stat stat-partial"> <span class="stat-dot"></span> <span id="cnt-partial">0</span> partial</div>
+    <div class="stat stat-planned"> <span class="stat-dot"></span> <span id="cnt-planned">0</span> planned</div>
+    <div class="stat stat-broken">  <span class="stat-dot"></span> <span id="cnt-broken">0</span> broken</div>
+  </div>
+  <div class="actions">
+    <button class="btn"          onclick="document.getElementById('upload').click()">Load</button>
+    <button class="btn"          onclick="downloadYaml()">Save</button>
+    <button class="btn"          onclick="resetToDefault()">Reset</button>
+    <button class="btn btn-primary" onclick="fitGraph()">Fit View</button>
+  </div>
+  <input type="file" id="upload" accept=".yaml,.yml,.txt" onchange="loadFile(event)" />
+</header>
+
+<div class="layout">
+
+  <div class="editor">
+    <div class="editor-tabs">
+      <div class="tab active">workflow.yaml</div>
+    </div>
+    <textarea id="src" spellcheck="false" oninput="onSourceChange()"></textarea>
+    <div id="error" class="err"></div>
+    <div class="editor-hint">
+      <strong>Quick syntax:</strong><br>
+      <code>screens:</code> list — <code>id, app, label, file, status, type, notes</code><br>
+      <code>flows:</code> list — <code>from, to, label</code><br>
+      Status: <code>built</code> · <code>partial</code> · <code>planned</code> · <code>broken</code><br>
+      Edits auto-save to your browser. Use <strong>Save</strong> to download.
+    </div>
+  </div>
+
+  <div id="graph"></div>
+
+  <div class="detail" id="detail">
+    <div class="filters" id="filters"></div>
+    <div class="empty" id="empty">Click a node to inspect.<br><br>Drag nodes to rearrange.<br>Scroll to zoom.</div>
+    <div id="detail-body" style="display:none;"></div>
+
+    <div class="legend">
+      <h4>Status</h4>
+      <div class="legend-row"><div class="legend-dot" style="background:#16A34A"></div> Built &amp; verified</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#D97706"></div> Partial / not wired</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#6B7280"></div> Planned</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#DC2626"></div> Broken</div>
+      <h4 style="margin-top:14px;">Apps</h4>
+      <div class="legend-row"><div class="legend-dot" style="background:#3A7BD5"></div> Customer App</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#F59E0B"></div> Driver App</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#10B981"></div> Business App</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#8B5CF6"></div> Admin Dashboard</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#6B7280"></div> Website</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#0F2B4C"></div> Backend module</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const APPS = {
+  customer:  { name: 'Customer App',     color: '#3A7BD5' },
+  driver:    { name: 'Driver App',       color: '#F59E0B' },
+  business:  { name: 'Business App',     color: '#10B981' },
+  admin:     { name: 'Admin Dashboard',  color: '#8B5CF6' },
+  website:   { name: 'Website',          color: '#6B7280' },
+  backend:   { name: 'Backend',          color: '#0F2B4C' },
+};
+
+const STATUS_COLOR = {
+  built:   '#16A34A',
+  partial: '#D97706',
+  planned: '#6B7280',
+  broken:  '#DC2626',
+};
+
+// ── Default workflow: pre-populated with current SEIRS reality ───────────────
+const DEFAULT_YAML = `# SEIRS Platform — Workflow Source of Truth
+# Edit screens or flows below; the graph updates live.
+# Save (download) when you're ready to share with Claude.
+
+meta:
+  title: SEIRS Logistics Platform
+  version: V7
+  updated: 2026-05-02
+
+# ── BACKEND MODULES ────────────────────────────────────────────────────────────
+screens:
+  - { id: be.auth,          app: backend, label: 'Auth Module',          file: 'seirs-backend/src/auth',          status: built,   type: api, notes: 'JWT + Google + Apple + OTP. Mail stub may not send OTP emails.' }
+  - { id: be.users,         app: backend, label: 'Users Module',         file: 'seirs-backend/src/users',         status: built,   type: api }
+  - { id: be.drivers,       app: backend, label: 'Drivers Module',       file: 'seirs-backend/src/drivers',       status: built,   type: api }
+  - { id: be.deliveries,    app: backend, label: 'Deliveries Module',    file: 'seirs-backend/src/deliveries',    status: built,   type: api, notes: 'Includes PricingService' }
+  - { id: be.payments,      app: backend, label: 'Payments Module',      file: 'seirs-backend/src/payments',      status: partial, type: api, notes: 'Flutterwave webhook secret falls back to empty string. 3x duplicate PLATFORM_COMMISSION constant.' }
+  - { id: be.notifications, app: backend, label: 'Notifications + FCM',  file: 'seirs-backend/src/notifications', status: built,   type: api }
+  - { id: be.admin,         app: backend, label: 'Admin Module',         file: 'seirs-backend/src/admin',         status: partial, type: api, notes: 'Pricing config stored in-memory — lost on restart' }
+  - { id: be.business,      app: backend, label: 'Business Module',      file: 'seirs-backend/src/business',      status: built,   type: api }
+  - { id: be.partners,      app: backend, label: 'Partners Module',      file: 'seirs-backend/src/partners',      status: built,   type: api }
+  - { id: be.bulk,          app: backend, label: 'Bulk Orders',          file: 'seirs-backend/src/bulk',          status: built,   type: api }
+  - { id: be.routing,       app: backend, label: 'Routing (TSP)',        file: 'seirs-backend/src/routing',       status: built,   type: api }
+  - { id: be.upload,        app: backend, label: 'Upload (R2)',          file: 'seirs-backend/src/upload',        status: built,   type: api }
+  - { id: be.matching,      app: backend, label: 'Matching Service',     file: 'seirs-backend/src/matching',      status: partial, type: service, notes: 'Hardcoded radius 15km, score threshold 0.1' }
+  - { id: be.fallback,      app: backend, label: 'Fallback Service',     file: 'seirs-backend/src/fallback',      status: built,   type: service }
+  - { id: be.fraud,         app: backend, label: 'Fraud Service',        file: 'seirs-backend/src/fraud',         status: built,   type: service }
+  - { id: be.fx,            app: backend, label: 'FX (Exchange Rate)',   file: 'seirs-backend/src/fx',            status: partial, type: service, notes: 'In-memory, no persistence' }
+  - { id: be.scheduler,     app: backend, label: 'Scheduler (cron)',     file: 'seirs-backend/src/scheduler',     status: built,   type: service }
+  - { id: be.tracking,      app: backend, label: 'Tracking WS Gateway',  file: 'seirs-backend/src/tracking',      status: partial, type: ws,      notes: 'In-memory client maps — lost on restart, no Redis adapter' }
+  - { id: be.mail,          app: backend, label: 'Mail Service',         file: 'seirs-backend/src/mail',          status: broken,  type: service, notes: 'Likely a stub; OTP/reset emails may not actually send' }
+
+  # ── CUSTOMER APP ─────────────────────────────────────────────────────────────
+  - { id: cust.onboarding,    app: customer, label: 'Onboarding',          file: 'app/(auth)/onboarding.tsx',         status: built, type: auth, notes: '6 auto-advancing slides per spec §1.1' }
+  - { id: cust.login,         app: customer, label: 'Login',               file: 'app/(auth)/login.tsx',              status: built, type: auth }
+  - { id: cust.register,      app: customer, label: 'Register',            file: 'app/(auth)/register.tsx',           status: built, type: auth }
+  - { id: cust.driverReg,    app: customer, label: 'Driver Register',     file: 'app/(auth)/driver-register.tsx',    status: built, type: auth }
+  - { id: cust.verifyOtp,    app: customer, label: 'Verify OTP',          file: 'app/(auth)/verify-otp.tsx',         status: built, type: auth }
+  - { id: cust.forgot,        app: customer, label: 'Forgot Password',     file: 'app/(auth)/forgot-password.tsx',    status: built, type: auth }
+  - { id: cust.reset,         app: customer, label: 'Reset Password',      file: 'app/reset-password.tsx',            status: built, type: auth }
+  - { id: cust.home,          app: customer, label: 'Home',                file: 'app/(customer)/index.tsx',          status: built, type: tab,  notes: 'Has Drawer, sliding Send/Ride button' }
+  - { id: cust.history,       app: customer, label: 'History',             file: 'app/(customer)/history.tsx',        status: built, type: tab }
+  - { id: cust.wallet,        app: customer, label: 'Wallet',              file: 'app/(customer)/wallet.tsx',         status: partial, type: tab, notes: 'Withdraw button calls API; end-to-end not verified' }
+  - { id: cust.profile,       app: customer, label: 'Profile',             file: 'app/(customer)/profile.tsx',        status: built, type: tab }
+  - { id: cust.send,          app: customer, label: 'Send Package',        file: 'app/(customer)/send.tsx',           status: built, type: flow }
+  - { id: cust.request,       app: customer, label: 'Request (map)',       file: 'app/(customer)/request.tsx',        status: partial, type: flow, notes: 'Map shows but no live driver overlay' }
+  - { id: cust.vehicle,       app: customer, label: 'Vehicle Select',      file: 'app/(customer)/vehicle-select.tsx', status: built, type: flow }
+  - { id: cust.multiStop,    app: customer, label: 'Multi-Stop',           file: 'app/(customer)/multi-stop.tsx',     status: built, type: flow }
+  - { id: cust.fare,          app: customer, label: 'Fare Breakdown',      file: 'app/(customer)/fare-breakdown.tsx', status: built, type: flow }
+  - { id: cust.confirm,       app: customer, label: 'Confirm Ride',        file: 'app/(customer)/confirm-ride.tsx',   status: built, type: flow }
+  - { id: cust.schedule,      app: customer, label: 'Schedule',            file: 'app/(customer)/schedule.tsx',       status: built, type: flow }
+  - { id: cust.tripProgress, app: customer, label: 'Trip Progress',        file: 'app/(customer)/trip-progress.tsx',  status: partial, type: flow, notes: 'Live map needs Google Maps API key' }
+  - { id: cust.track,         app: customer, label: 'Track by Code',       file: 'app/(customer)/track.tsx',          status: built, type: flow }
+  - { id: cust.sos,           app: customer, label: 'SOS',                 file: 'app/(customer)/sos.tsx',            status: built, type: flow }
+  - { id: cust.rate,          app: customer, label: 'Rate Driver',         file: 'app/(customer)/rate/[driverId].tsx',status: built, type: post }
+  - { id: cust.receipt,       app: customer, label: 'Receipt',             file: 'app/(customer)/receipt/[id].tsx',   status: built, type: post }
+  - { id: cust.trip,          app: customer, label: 'Trip Detail',         file: 'app/(customer)/trip/[id].tsx',      status: built, type: post }
+  - { id: cust.shareTrip,    app: customer, label: 'Share Trip',           file: 'app/(customer)/share-trip.tsx',     status: built, type: post }
+  - { id: cust.report,        app: customer, label: 'Report Issue',        file: 'app/(customer)/report.tsx',         status: built, type: post }
+  - { id: cust.payment,       app: customer, label: 'Payment WebView',     file: 'app/(customer)/payment/[deliveryId].tsx', status: built, type: pay }
+  - { id: cust.payMethods,   app: customer, label: 'Payment Methods',      file: 'app/(customer)/payment-methods.tsx', status: built, type: pay }
+  - { id: cust.addPayment,   app: customer, label: 'Add Payment',          file: 'app/(customer)/add-payment.tsx',     status: built, type: pay }
+  - { id: cust.transaction,  app: customer, label: 'Transaction Detail',   file: 'app/(customer)/transaction/[id].tsx',status: built, type: pay }
+  - { id: cust.promo,         app: customer, label: 'Promo Code',          file: 'app/(customer)/promo.tsx',          status: built, type: rewards }
+  - { id: cust.promotions,    app: customer, label: 'Promotions List',     file: 'app/(customer)/promotions.tsx',     status: built, type: rewards }
+  - { id: cust.rewards,       app: customer, label: 'Rewards / Tier',      file: 'app/(customer)/rewards.tsx',        status: built, type: rewards }
+  - { id: cust.referral,      app: customer, label: 'Referral',            file: 'app/(customer)/referral.tsx',       status: partial, type: rewards, notes: 'No deep-link wiring yet' }
+  - { id: cust.msgsIdx,      app: customer, label: 'Messages Inbox',       file: 'app/(customer)/messages/index.tsx', status: built, type: chat }
+  - { id: cust.msgsChat,     app: customer, label: 'Chat Thread',          file: 'app/(customer)/messages/[chatId].tsx', status: built, type: chat }
+  - { id: cust.notifs,        app: customer, label: 'Notifications',       file: 'app/notifications.tsx',             status: built, type: settings }
+  - { id: cust.notifSet,     app: customer, label: 'Notification Prefs',   file: 'app/(customer)/notification-settings.tsx', status: built, type: settings }
+  - { id: cust.lang,          app: customer, label: 'Language',            file: 'app/(customer)/language.tsx',       status: built, type: settings }
+  - { id: cust.help,          app: customer, label: 'Help / FAQ',          file: 'app/(customer)/help.tsx',           status: built, type: settings }
+  - { id: cust.privacy,       app: customer, label: 'Privacy Policy',      file: 'app/(customer)/privacy.tsx',        status: built, type: settings }
+  - { id: cust.business,      app: customer, label: 'Business Upsell',     file: 'app/(customer)/business.tsx',       status: built, type: settings }
+
+  # ── DRIVER APP ───────────────────────────────────────────────────────────────
+  - { id: drv.onboarding,     app: driver, label: 'Onboarding',           file: 'app/(auth)/onboarding.tsx',          status: built, type: auth }
+  - { id: drv.login,          app: driver, label: 'Login',                file: 'app/(auth)/login.tsx',               status: built, type: auth }
+  - { id: drv.register,       app: driver, label: 'Register',             file: 'app/(auth)/register.tsx',            status: built, type: auth }
+  - { id: drv.verifyOtp,     app: driver, label: 'Verify OTP',            file: 'app/(auth)/verify-otp.tsx',          status: built, type: auth }
+  - { id: drv.forgot,         app: driver, label: 'Forgot Password',      file: 'app/(auth)/forgot-password.tsx',     status: built, type: auth }
+  - { id: drv.home,           app: driver, label: 'Home (Mission Ctrl)',  file: 'app/(driver)/index.tsx',             status: built, type: tab, notes: 'Has Drawer + hamburger' }
+  - { id: drv.active,         app: driver, label: 'Active Delivery',      file: 'app/(driver)/active.tsx',            status: built, type: flow }
+  - { id: drv.earnings,       app: driver, label: 'Earnings',             file: 'app/(driver)/earnings.tsx',          status: built, type: tab }
+  - { id: drv.history,        app: driver, label: 'Trip History',         file: 'app/(driver)/history.tsx',           status: built, type: tab }
+  - { id: drv.profile,        app: driver, label: 'Profile',              file: 'app/(driver)/profile.tsx',           status: built, type: tab }
+  - { id: drv.job,            app: driver, label: 'Job Offer',            file: 'app/(driver)/job/[id].tsx',          status: built, type: flow }
+  - { id: drv.delivery,       app: driver, label: 'Delivery Detail',      file: 'app/(driver)/delivery/[id].tsx',     status: built, type: flow }
+  - { id: drv.kyc,            app: driver, label: 'KYC Documents',        file: 'app/(driver)/kyc.tsx',               status: partial, type: settings, notes: 'Missing 3 of 5 spec-required docs (insurance cert, ownership proof, mandatory profile pic)' }
+  - { id: drv.vehicle,        app: driver, label: 'Vehicle Info',         file: 'app/(driver)/vehicle.tsx',           status: built, type: settings }
+  - { id: drv.withdrawal,     app: driver, label: 'Withdrawal',           file: 'app/(driver)/withdrawal.tsx',        status: partial, type: pay, notes: 'Backend route exists; not e2e verified' }
+  - { id: drv.addBank,       app: driver, label: 'Add Bank',              file: 'app/(driver)/add-bank.tsx',          status: built, type: pay }
+  - { id: drv.transaction,    app: driver, label: 'Transaction Detail',   file: 'app/(driver)/transaction/[id].tsx',  status: built, type: pay }
+  - { id: drv.ratings,        app: driver, label: 'Ratings',              file: 'app/(driver)/ratings.tsx',           status: built, type: settings }
+  - { id: drv.schedule,       app: driver, label: 'Schedule',             file: 'app/(driver)/schedule.tsx',          status: built, type: settings }
+  - { id: drv.msgsIdx,       app: driver, label: 'Messages Inbox',        file: 'app/(driver)/messages/index.tsx',    status: built, type: chat }
+  - { id: drv.msgsChat,      app: driver, label: 'Chat Thread',           file: 'app/(driver)/messages/[chatId].tsx', status: built, type: chat }
+  - { id: drv.notifs,         app: driver, label: 'Notifications',        file: 'app/(driver)/notifications.tsx',     status: built, type: settings }
+  - { id: drv.notifSet,      app: driver, label: 'Notification Prefs',    file: 'app/(driver)/notification-settings.tsx', status: built, type: settings }
+  - { id: drv.lang,           app: driver, label: 'Language',             file: 'app/(driver)/language.tsx',          status: built, type: settings }
+  - { id: drv.help,           app: driver, label: 'Help',                 file: 'app/(driver)/help.tsx',              status: built, type: settings }
+  - { id: drv.privacy,        app: driver, label: 'Privacy Policy',       file: 'app/(driver)/privacy.tsx',           status: built, type: settings }
+
+  # ── BUSINESS APP ─────────────────────────────────────────────────────────────
+  - { id: biz.onboarding,     app: business, label: 'Onboarding',         file: 'app/(auth)/onboarding.tsx',          status: built, type: auth }
+  - { id: biz.login,          app: business, label: 'Login',              file: 'app/(auth)/login.tsx',               status: built, type: auth, notes: 'Hardcoded hex colors (debt F-3)' }
+  - { id: biz.register,       app: business, label: 'Register',           file: 'app/(auth)/register.tsx',            status: built, type: auth }
+  - { id: biz.verifyOtp,     app: business, label: 'Verify OTP',          file: 'app/(auth)/verify-otp.tsx',          status: built, type: auth }
+  - { id: biz.bizHome,       app: business, label: 'Business Home',       file: 'app/(business)/index.tsx',           status: built, type: tab, notes: 'Has Drawer (no HamburgerButton helper)' }
+  - { id: biz.deliveries,     app: business, label: 'Deliveries List',    file: 'app/(business)/deliveries.tsx',      status: built, type: tab }
+  - { id: biz.newDelivery,   app: business, label: 'New Delivery',        file: 'app/(business)/new-delivery.tsx',    status: built, type: flow }
+  - { id: biz.csvUpload,     app: business, label: 'CSV Bulk Upload',     file: 'app/(business)/csv-upload.tsx',      status: built, type: flow }
+  - { id: biz.wallet,         app: business, label: 'Business Wallet',    file: 'app/(business)/wallet.tsx',          status: built, type: tab }
+  - { id: biz.team,           app: business, label: 'Team Members',       file: 'app/(business)/team.tsx',            status: built, type: settings }
+  - { id: biz.lang,           app: business, label: 'Language',           file: 'app/(business)/language.tsx',        status: built, type: settings }
+  - { id: biz.partHome,      app: business, label: 'Partner Home',        file: 'app/(partner)/index.tsx',            status: built, type: tab }
+  - { id: biz.partEarnings,  app: business, label: 'Partner Earnings',    file: 'app/(partner)/earnings.tsx',         status: built, type: tab }
+  - { id: biz.partInventory, app: business, label: 'Partner Inventory',   file: 'app/(partner)/inventory.tsx',        status: built, type: tab }
+  - { id: biz.partScan,      app: business, label: 'Partner Scan QR',     file: 'app/(partner)/scan.tsx',             status: built, type: flow }
+  - { id: biz.partSettings,  app: business, label: 'Partner Settings',    file: 'app/(partner)/settings.tsx',         status: built, type: settings }
+  - { id: biz.partLang,      app: business, label: 'Partner Language',    file: 'app/(partner)/language.tsx',         status: built, type: settings }
+
+  # ── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
+  - { id: adm.login,         app: admin, label: 'Admin Login',           file: 'src/app/login/page.tsx',             status: built, type: auth }
+  - { id: adm.dashboard,     app: admin, label: 'Dashboard',             file: 'src/app/page.tsx',                   status: built, type: tab }
+  - { id: adm.deliveries,    app: admin, label: 'Deliveries',            file: 'src/app/deliveries/page.tsx',        status: built, type: tab }
+  - { id: adm.drivers,       app: admin, label: 'Drivers List',          file: 'src/app/drivers/page.tsx',           status: built, type: tab }
+  - { id: adm.driverDetail,  app: admin, label: 'Driver Detail',         file: 'src/app/drivers/[id]/page.tsx',      status: built, type: detail }
+  - { id: adm.users,         app: admin, label: 'Users List',            file: 'src/app/users/page.tsx',             status: built, type: tab }
+  - { id: adm.userDetail,    app: admin, label: 'User Detail',           file: 'src/app/users/[id]/page.tsx',        status: built, type: detail }
+  - { id: adm.analytics,     app: admin, label: 'Analytics',             file: 'src/app/analytics/page.tsx',         status: partial, type: tab, notes: 'Missing 7 of 9 spec-required charts' }
+  - { id: adm.pricing,       app: admin, label: 'Pricing Engine',        file: 'src/app/pricing/page.tsx',           status: partial, type: tab, notes: 'No vehicle multipliers, surge, zone-based, or fuel auto-adjust' }
+  - { id: adm.fraud,         app: admin, label: 'Fraud Queue',           file: 'src/app/fraud/page.tsx',             status: built, type: tab }
+  - { id: adm.audit,         app: admin, label: 'Audit Log',             file: 'src/app/audit-log/page.tsx',         status: built, type: tab }
+  - { id: adm.cms,           app: admin, label: 'CMS',                   file: 'src/app/cms/page.tsx',               status: built, type: tab }
+  - { id: adm.kyc,           app: admin, label: 'KYC Queue',             file: 'src/app/kyc/page.tsx',               status: built, type: tab }
+  - { id: adm.opsMap,        app: admin, label: 'Real-Time Ops Map',     file: 'src/app/ops-map/page.tsx',           status: broken,  type: tab,  notes: 'Placeholder — needs Google Maps API key' }
+  - { id: adm.partners,      app: admin, label: 'Partner Accounts',      file: 'src/app/partners/page.tsx',          status: built, type: tab }
+  - { id: adm.partRedir,    app: admin, label: 'Partner Redirects',      file: 'src/app/partner-redirects/page.tsx', status: built, type: tab }
+  - { id: adm.promotions,    app: admin, label: 'Promotions',            file: 'src/app/promotions/page.tsx',        status: built, type: tab }
+  - { id: adm.referrals,     app: admin, label: 'Referrals',             file: 'src/app/referrals/page.tsx',         status: built, type: tab }
+  - { id: adm.reports,       app: admin, label: 'Reports',               file: 'src/app/reports/page.tsx',           status: built, type: tab }
+  - { id: adm.specialists,   app: admin, label: 'Specialist Partners',   file: 'src/app/specialists/page.tsx',       status: built, type: tab }
+  - { id: adm.suggestions,   app: admin, label: 'User Suggestions',      file: 'src/app/suggestions/page.tsx',       status: built, type: tab }
+  - { id: adm.tickets,       app: admin, label: 'Ticketing',             file: 'src/app/tickets/page.tsx',           status: built, type: tab }
+  - { id: adm.wallet,        app: admin, label: 'Wallet & Payouts',      file: 'src/app/wallet/page.tsx',            status: built, type: tab }
+  - { id: adm.insurance,     app: admin, label: 'Insurance Partners',    file: 'src/app/insurance/page.tsx',         status: built, type: tab }
+  - { id: adm.duplicates,    app: admin, label: 'Duplicate Accounts',    file: 'src/app/duplicates/page.tsx',        status: built, type: tab }
+  - { id: adm.admins,        app: admin, label: 'Staff Management',      file: 'src/app/admins/page.tsx',            status: built, type: tab }
+  - { id: adm.settings,      app: admin, label: 'System Settings',       file: 'src/app/settings/page.tsx',          status: built, type: tab }
+
+  # ── WEBSITE ──────────────────────────────────────────────────────────────────
+  - { id: web.home,          app: website, label: 'Marketing Home',      file: 'src/pages/index.tsx',                status: built, type: page }
+
+# ── FLOWS ────────────────────────────────────────────────────────────────────
+flows:
+  # Customer auth flow
+  - { from: cust.onboarding, to: cust.login,    label: 'Have account' }
+  - { from: cust.onboarding, to: cust.register, label: 'New user' }
+  - { from: cust.register,   to: cust.verifyOtp, label: 'Submit' }
+  - { from: cust.verifyOtp,  to: cust.home,      label: 'Verified' }
+  - { from: cust.login,      to: cust.home,      label: 'Auth ok' }
+  - { from: cust.login,      to: cust.forgot,    label: 'Forgot' }
+  - { from: cust.forgot,     to: cust.reset,     label: 'Email link' }
+
+  # Customer booking flow
+  - { from: cust.home,         to: cust.send,         label: 'Slide → Send' }
+  - { from: cust.home,         to: cust.request,      label: 'Slide → Ride' }
+  - { from: cust.send,         to: cust.vehicle,      label: 'Next' }
+  - { from: cust.vehicle,      to: cust.fare,         label: 'Select' }
+  - { from: cust.fare,         to: cust.confirm,      label: 'Continue' }
+  - { from: cust.confirm,      to: cust.payment,      label: 'Pay' }
+  - { from: cust.payment,      to: cust.tripProgress, label: 'Paid' }
+  - { from: cust.tripProgress, to: cust.rate,         label: 'Delivered' }
+  - { from: cust.rate,         to: cust.receipt,      label: 'Submit' }
+
+  # Customer drawer flow
+  - { from: cust.home,    to: cust.profile,    label: 'Drawer' }
+  - { from: cust.home,    to: cust.history,    label: 'Tab' }
+  - { from: cust.home,    to: cust.wallet,     label: 'Tab' }
+  - { from: cust.home,    to: cust.notifs,     label: 'Bell' }
+  - { from: cust.history, to: cust.trip,       label: 'Tap trip' }
+  - { from: cust.wallet,  to: cust.payMethods, label: 'Cards' }
+  - { from: cust.profile, to: cust.referral,   label: 'Refer' }
+
+  # Driver flow
+  - { from: drv.onboarding, to: drv.login,    label: 'Have account' }
+  - { from: drv.login,      to: drv.home,      label: 'Auth ok' }
+  - { from: drv.home,       to: drv.kyc,       label: 'KYC required' }
+  - { from: drv.home,       to: drv.job,       label: 'Job offer' }
+  - { from: drv.job,        to: drv.active,    label: 'Accept' }
+  - { from: drv.active,     to: drv.delivery,  label: 'Detail' }
+  - { from: drv.home,       to: drv.earnings,  label: 'Tab' }
+  - { from: drv.earnings,   to: drv.withdrawal, label: 'Withdraw' }
+  - { from: drv.withdrawal, to: drv.addBank,   label: 'New bank' }
+
+  # Business flow
+  - { from: biz.onboarding,  to: biz.login,        label: 'Have account' }
+  - { from: biz.login,       to: biz.bizHome,      label: 'Sender' }
+  - { from: biz.login,       to: biz.partHome,     label: 'Partner' }
+  - { from: biz.bizHome,     to: biz.newDelivery,  label: 'New' }
+  - { from: biz.bizHome,     to: biz.csvUpload,    label: 'Bulk' }
+  - { from: biz.bizHome,     to: biz.wallet,       label: 'Wallet' }
+  - { from: biz.partHome,    to: biz.partScan,     label: 'Scan' }
+  - { from: biz.partHome,    to: biz.partInventory, label: 'View' }
+
+  # Admin flow
+  - { from: adm.login,     to: adm.dashboard,   label: 'Auth + RBAC' }
+  - { from: adm.dashboard, to: adm.deliveries,  label: 'Nav' }
+  - { from: adm.dashboard, to: adm.drivers,     label: 'Nav' }
+  - { from: adm.dashboard, to: adm.tickets,     label: 'Nav' }
+  - { from: adm.drivers,   to: adm.driverDetail, label: 'Tap' }
+
+  # API connections (dashed)
+  - { from: cust.home,         to: be.deliveries,    label: 'GET', dashed: true }
+  - { from: cust.payment,      to: be.payments,      label: 'POST', dashed: true }
+  - { from: cust.tripProgress, to: be.tracking,      label: 'WS', dashed: true }
+  - { from: drv.home,          to: be.drivers,       label: 'PATCH location', dashed: true }
+  - { from: drv.home,          to: be.tracking,      label: 'WS', dashed: true }
+  - { from: drv.job,           to: be.matching,      label: 'Triggered by', dashed: true }
+  - { from: biz.csvUpload,     to: be.bulk,          label: 'POST', dashed: true }
+  - { from: biz.newDelivery,   to: be.deliveries,    label: 'POST', dashed: true }
+  - { from: adm.dashboard,     to: be.admin,         label: 'GET stats', dashed: true }
+  - { from: adm.tickets,       to: be.admin,         label: 'CRUD', dashed: true }
+  - { from: adm.opsMap,        to: be.tracking,      label: 'WS subscribe', dashed: true }
+`;
+
+// ── State ────────────────────────────────────────────────────────────────────
+const STORE_KEY = 'seirs_workflow_yaml_v1';
+let network    = null;
+let currentDoc = null;
+let allNodes   = [];
+let allEdges   = [];
+let activeApp  = 'all';
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem(STORE_KEY);
+  document.getElementById('src').value = saved ?? DEFAULT_YAML;
+  buildFilters();
+  render();
+});
+
+function onSourceChange() {
+  const txt = document.getElementById('src').value;
+  localStorage.setItem(STORE_KEY, txt);
+  render();
+}
+
+function buildFilters() {
+  const f = document.getElementById('filters');
+  f.innerHTML = '';
+  const chips = [['all', 'All']];
+  Object.entries(APPS).forEach(([k, v]) => chips.push([k, v.name]));
+  chips.forEach(([k, label]) => {
+    const c = document.createElement('div');
+    c.className = 'chip' + (k === activeApp ? ' active' : '');
+    c.textContent = label;
+    c.onclick = () => { activeApp = k; buildFilters(); render(); };
+    f.appendChild(c);
+  });
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  let doc;
+  try {
+    doc = jsyaml.load(document.getElementById('src').value);
+    document.getElementById('error').classList.remove('show');
+  } catch (e) {
+    const el = document.getElementById('error');
+    el.textContent = 'YAML error: ' + e.message;
+    el.classList.add('show');
+    return;
+  }
+  if (!doc || !Array.isArray(doc.screens)) {
+    return;
+  }
+  currentDoc = doc;
+
+  const counts = { built: 0, partial: 0, planned: 0, broken: 0 };
+  const visible = doc.screens.filter(s => activeApp === 'all' || s.app === activeApp);
+  doc.screens.forEach(s => {
+    if (counts[s.status] !== undefined) counts[s.status]++;
+  });
+  document.getElementById('cnt-built').textContent   = counts.built;
+  document.getElementById('cnt-partial').textContent = counts.partial;
+  document.getElementById('cnt-planned').textContent = counts.planned;
+  document.getElementById('cnt-broken').textContent  = counts.broken;
+
+  const visibleIds = new Set(visible.map(s => s.id));
+  const nodes = visible.map(s => ({
+    id:    s.id,
+    label: s.label || s.id,
+    color: {
+      background: APPS[s.app]?.color ?? '#ccc',
+      border:     STATUS_COLOR[s.status] ?? '#999',
+      highlight:  { background: APPS[s.app]?.color, border: '#fff' },
+    },
+    borderWidth: s.status === 'broken' ? 4 : 2,
+    font:  { color: '#fff', size: 12, face: 'Inter', strokeWidth: 0 },
+    shape: s.type === 'auth'    ? 'box'
+         : s.type === 'tab'     ? 'ellipse'
+         : s.type === 'api'     ? 'database'
+         : s.type === 'service' ? 'diamond'
+         : s.type === 'ws'      ? 'star'
+         : 'box',
+    title: buildTooltip(s),
+    _data: s,
+  }));
+
+  const edgeList = (doc.flows || []).filter(f => visibleIds.has(f.from) && visibleIds.has(f.to));
+  const edges = edgeList.map((f, i) => ({
+    id:    'e' + i,
+    from:  f.from,
+    to:    f.to,
+    label: f.label || '',
+    arrows: 'to',
+    color: { color: f.dashed ? '#9CA3AF' : '#3A7BD5', highlight: '#0F2B4C' },
+    dashes: !!f.dashed,
+    width: 1.5,
+    font:  { size: 10, color: '#6B7280', strokeWidth: 3, strokeColor: '#F5F5F0', align: 'middle' },
+    smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.4 },
+  }));
+
+  allNodes = nodes;
+  allEdges = edges;
+
+  const container = document.getElementById('graph');
+  const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+  const options = {
+    autoResize: true,
+    layout: { improvedLayout: true },
+    physics: {
+      enabled: true,
+      solver: 'forceAtlas2Based',
+      forceAtlas2Based: { gravitationalConstant: -55, springLength: 110, avoidOverlap: 0.6 },
+      stabilization: { iterations: 200, fit: true },
+    },
+    interaction: {
+      hover: true,
+      tooltipDelay: 200,
+      navigationButtons: false,
+      zoomView: true,
+      dragView: true,
+    },
+    nodes: { size: 18, margin: 10 },
+  };
+  if (network) network.destroy();
+  network = new vis.Network(container, data, options);
+
+  network.on('click', (params) => {
+    if (params.nodes.length) {
+      const node = nodes.find(n => n.id === params.nodes[0]);
+      showDetail(node._data);
+    } else {
+      hideDetail();
+    }
+  });
+}
+
+function buildTooltip(s) {
+  const lines = [
+    `<b>${escapeHtml(s.label)}</b>`,
+    `<i style="color:#6B7280">${escapeHtml(s.id)}</i>`,
+    `Status: <b style="color:${STATUS_COLOR[s.status]}">${s.status.toUpperCase()}</b>`,
+  ];
+  if (s.file)  lines.push(`File: <code>${escapeHtml(s.file)}</code>`);
+  if (s.notes) lines.push(`Note: ${escapeHtml(s.notes)}`);
+  const div = document.createElement('div');
+  div.style.cssText = 'background:#0F2B4C;color:#fff;padding:8px 12px;border-radius:6px;font-size:11px;line-height:1.5;max-width:280px;';
+  div.innerHTML = lines.join('<br>');
+  return div;
+}
+
+function showDetail(s) {
+  document.getElementById('empty').style.display = 'none';
+  const body = document.getElementById('detail-body');
+  body.style.display = 'block';
+  const app = APPS[s.app] ?? { name: s.app, color: '#888' };
+  body.innerHTML = `
+    <h3>${escapeHtml(s.label)}</h3>
+    <div class="id">${escapeHtml(s.id)}</div>
+    <div class="detail-row"><div class="detail-key">App</div>     <div class="detail-val"><span class="icon-app" style="background:${app.color}"></span>${app.name}</div></div>
+    <div class="detail-row"><div class="detail-key">Type</div>    <div class="detail-val">${escapeHtml(s.type ?? '—')}</div></div>
+    <div class="detail-row"><div class="detail-key">Status</div>  <div class="detail-val"><span class="badge badge-${s.status}">${s.status}</span></div></div>
+    ${s.file  ? `<div class="detail-row"><div class="detail-key">File</div><div class="detail-val" style="font-family:monospace;font-size:11px">${escapeHtml(s.file)}</div></div>` : ''}
+    ${s.notes ? `<div class="detail-row"><div class="detail-key">Notes</div><div class="detail-val">${escapeHtml(s.notes)}</div></div>` : ''}
+  `;
+}
+
+function hideDetail() {
+  document.getElementById('empty').style.display = 'block';
+  document.getElementById('detail-body').style.display = 'none';
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function fitGraph() { network && network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } }); }
+
+function downloadYaml() {
+  const txt = document.getElementById('src').value;
+  const blob = new Blob([txt], { type: 'text/yaml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'seirs-workflow.yaml';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function loadFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    document.getElementById('src').value = ev.target.result;
+    onSourceChange();
+  };
+  reader.readAsText(file);
+}
+
+function resetToDefault() {
+  if (!confirm('Reset to the default SEIRS workflow? Your current edits will be lost (unless you Save first).')) return;
+  document.getElementById('src').value = DEFAULT_YAML;
+  onSourceChange();
+}
+</script>
+</body>
+</html>

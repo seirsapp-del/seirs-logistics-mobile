@@ -12,6 +12,7 @@ import { MailService } from '../mail/mail.service';
 import { CmsItem, ContentType, ContentStatus } from './cms-item.entity';
 import { SupportTicket, TicketStatus, TicketPriority } from './support-ticket.entity';
 import { AuditLogEntry } from './audit-log.entity';
+import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 @Injectable()
 export class AdminService {
@@ -78,7 +79,7 @@ export class AdminService {
       },
       revenue: {
         total:      Number(revenueResult?.total ?? 0),
-        commission: Number(revenueResult?.total ?? 0) * 0.30,
+        commission: Number(revenueResult?.total ?? 0) * PLATFORM_COMMISSION,
       },
     };
   }
@@ -262,7 +263,7 @@ export class AdminService {
   private pricingConfig = {
     baseFare:      300,
     perKmRate:     80,
-    platformCut:   0.30,
+    platformCut:   PLATFORM_COMMISSION,
     surgeActive:   false,
     surgeMultiplier: 1.0,
   };

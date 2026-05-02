@@ -2,14 +2,18 @@ import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
+import { Colors } from '@/constants/theme';
+import { useTheme } from '@/context/ThemeContext';
 
 function TabIcon({ name, focused }: { name: any; focused: boolean }) {
+  const { isDark } = useTheme();
+  const theme = Colors[isDark ? 'dark' : 'light'];
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center' }}>
       <Icon
         name={name}
         size={22}
-        color={focused ? '#3A7BD5' : '#9CA3AF'}
+        color={focused ? theme.accent : theme.tabIconDefault}
         strokeWidth={focused ? 2 : 1.75}
       />
     </View>
@@ -18,18 +22,21 @@ function TabIcon({ name, focused }: { name: any; focused: boolean }) {
 
 export default function BusinessLayout() {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
+  const theme = Colors[isDark ? 'dark' : 'light'];
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopColor: '#F3F4F6',
+          backgroundColor: theme.navBackground,
+          borderTopColor:  theme.border,
           height: 56 + insets.bottom,
           paddingBottom: insets.bottom,
         },
-        tabBarActiveTintColor:   '#3A7BD5',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor:   theme.accent,
+        tabBarInactiveTintColor: theme.tabIconDefault,
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
       }}
     >
@@ -43,12 +50,12 @@ export default function BusinessLayout() {
       />
       <Tabs.Screen
         name="new-delivery"
-        options={{ title: 'Send', tabBarIcon: ({ focused }) => (
+        options={{ title: 'Send', tabBarIcon: () => (
           <View style={{
-            width: 44, height: 44, borderRadius: 14, backgroundColor: '#0F2B4C',
+            width: 44, height: 44, borderRadius: 14, backgroundColor: theme.primary,
             alignItems: 'center', justifyContent: 'center', marginBottom: 16,
           }}>
-            <Icon name="Plus" size={24} color="#fff" strokeWidth={2} />
+            <Icon name="Plus" size={24} color={theme.textOnPrimary} strokeWidth={2} />
           </View>
         )}}
       />

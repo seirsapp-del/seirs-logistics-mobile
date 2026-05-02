@@ -7,6 +7,18 @@ export function configureApi(baseUrl: string) {
   _apiBase = baseUrl;
 }
 
+/**
+ * Each app stores its session under a different key:
+ *   customer-app  → seirs_user            (default)
+ *   driver-app    → seirs_user
+ *   business-app  → seirs_business_user
+ * Call this once in the app's root _layout.tsx if you need a non-default key.
+ */
+let _storageKey = 'seirs_user';
+export function configureSessionStorageKey(key: string) {
+  _storageKey = key;
+}
+
 // ─── Session expiry handler ───────────────────────────────────────────────────
 export let onSessionExpired: (() => void) | null = null;
 export function setSessionExpiredHandler(fn: () => void) {
@@ -15,7 +27,7 @@ export function setSessionExpiredHandler(fn: () => void) {
 
 // ─── Internals ────────────────────────────────────────────────────────────────
 async function getToken(): Promise<string | null> {
-  const stored = await AsyncStorage.getItem('seirs_user');
+  const stored = await AsyncStorage.getItem(_storageKey);
   if (!stored) return null;
   return JSON.parse(stored).token ?? null;
 }
@@ -39,7 +51,7 @@ async function request<T>(
   const data = await res.json();
 
   if (res.status === 401 && auth) {
-    await AsyncStorage.removeItem('seirs_user');
+    await AsyncStorage.removeItem(_storageKey);
     onSessionExpired?.();
     throw new Error('Session expired. Please sign in again.');
   }
@@ -142,4 +154,89 @@ export const notificationsApi = {
   unreadCount: () => request<{ count: number }>('GET', '/notifications/unread-count'),
   markRead:    (id: string) => request<any>('PATCH', `/notifications/${id}/read`),
   markAllRead: () => request<any>('PATCH', '/notifications/read-all'),
+};
+
+// ─── Business Sender / Partner Auth ──────────────────────────────────────────
+export const businessAuthApi = {
+  login: (email: string, password: string) =>
+    request<{ token: string; user: any }>('POST', '/auth/business-login', { email, password }, false),
+
+  register: (data: {
+    accountType: 'sender' | 'partner';
+    email:    string;
+    password: string;
+    name:     string;
+    phone:    string;
+    companyName?:     string;
+    rcNumber?:        string;
+    businessAddress?: string;
+    storeName?:       string;
+    storeAddress?:    string;
+    capacity?:        number;
+  }) => request<{ requiresOtp: boolean; email: string }>(
+    'POST', '/auth/business-register', data, false,
+  ),
+
+  verifyOtp: (email: string, otp: string) =>
+    request<{ token: string; user: any }>('POST', '/auth/business-verify-otp', { email, otp }, false),
+};
+
+// ─── Business Sender ─────────────────────────────────────────────────────────
+export const businessApi = {
+  dashboard: () => request<any>('GET', '/business/dashboard'),
+
+  deliveries: (page = 1, status?: string, search?: string) => {
+    const params = new URLSearchParams({ page: String(page) });
+    if (status) params.append('status', status);
+    if (search) params.append('search', search);
+    return request<any>('GET', `/business/deliveries?${params.toString()}`);
+  },
+
+  delivery: (id: string) => request<any>('GET', `/business/deliveries/${id}`),
+
+  createDelivery: (data: any) =>
+    request<any>('POST', '/business/deliveries', data),
+
+  uploadCsv: async (uri: string, fileName: string): Promise<any> => {
+    const token = await getToken();
+    const formData = new FormData();
+    formData.append('file', { uri, name: fileName, type: 'text/csv' } as any);
+    const res = await fetch(`${_apiBase}/business/deliveries/csv`, {
+      method:  'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body:    formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message ?? 'Upload failed');
+    return data;
+  },
+
+  wallet:        () => request<any>('GET', '/business/wallet'),
+  fundWallet:    (amount: number) => request<any>('POST', '/business/wallet/fund', { amount }),
+  transactions:  (page = 1) => request<any>('GET', `/business/wallet/transactions?page=${page}`),
+  team:          () => request<any>('GET', '/business/team'),
+  inviteTeamMember: (data: { email: string; name: string; teamRole: string }) =>
+    request<any>('POST', '/business/team/invite', data),
+  removeTeamMember: (memberId: string) =>
+    request<any>('DELETE', `/business/team/${memberId}`),
+  loyalty:       () => request<any>('GET', '/business/loyalty'),
+  specialists:   () => request<any>('GET', '/business/specialists'),
+};
+
+// ─── Partner Store ───────────────────────────────────────────────────────────
+export const partnerApi = {
+  dashboard: () => request<any>('GET', '/partner/dashboard'),
+
+  inventory: (status?: string, page = 1) => {
+    const params = new URLSearchParams({ page: String(page) });
+    if (status) params.append('status', status);
+    return request<any>('GET', `/partner/inventory?${params.toString()}`);
+  },
+
+  scanPackage:    (qrCode: string) => request<any>('POST', '/partner/scan', { qrCode }),
+  markCollected:  (packageId: string) => request<any>('PATCH', `/partner/packages/${packageId}/collect`),
+  earnings:       (period: 'week' | 'month') => request<any>('GET', `/partner/earnings?period=${period}`),
+  payouts:        (page = 1) => request<any>('GET', `/partner/payouts?page=${page}`),
+  getSettings:    () => request<any>('GET', '/partner/settings'),
+  updateSettings: (data: any) => request<any>('PATCH', '/partner/settings', data),
 };

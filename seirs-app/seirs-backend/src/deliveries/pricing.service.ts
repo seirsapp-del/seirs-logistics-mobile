@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PackageSize, UrgencyLevel } from './delivery.entity';
 import { FxService } from '../fx/fx.service';
+import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 interface PriceInput {
   distanceKm:  number;
@@ -26,7 +27,7 @@ export interface PriceResult {
 // Base rates in Nigerian Naira — adjust per country in Phase 5
 const BASE_FARE    = 300;
 const PER_KM_RATE  = 80;
-const PLATFORM_CUT = 0.30; // 30% platform commission per Master Spec V7 §3.4
+const PLATFORM_CUT = PLATFORM_COMMISSION;
 
 const SIZE_MULTIPLIER: Record<PackageSize, number> = {
   [PackageSize.SMALL]:  1.0,
