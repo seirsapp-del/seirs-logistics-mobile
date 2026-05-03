@@ -1,6 +1,8 @@
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Share,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import * as Linking from 'expo-linking';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +10,12 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { MOCK_USER } from '@/constants/mockData';
+import { useAuth } from '@/context/AuthContext';
+
+// Universal/web fallback link — when the receiver doesn't have the app,
+// the page on seirs.app/r/<code> can show download links and forward
+// the code through to the play store / app store via deferred deep linking.
+const WEB_REFERRAL_BASE = 'https://seirs.app/r/';
 
 const REFERRAL_HISTORY = [
   { id: 'r1', name: 'Kemi Adeyemo',  status: 'completed', earned: 1000, date: '2026-04-20' },
@@ -21,12 +28,23 @@ export default function ReferralScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { user } = useAuth();
+
+  // Use the user's accountId (e.g. CUST-A7K2P9) as the referral code so
+  // it doubles as their SEIRS Verified ID per Spec V8.
+  const referralCode = user?.accountId ?? 'JOIN-SEIRS';
+
+  // Deep link: opens the app directly to register screen with code prefilled.
+  // Web URL is the public fallback for receivers without the app installed.
+  const deepLink = Linking.createURL('(auth)/register', { queryParams: { ref: referralCode } });
+  const webLink  = `${WEB_REFERRAL_BASE}${referralCode}`;
 
   const [copied, setCopied] = useState(false);
 
   const totalEarned = REFERRAL_HISTORY.filter(r => r.status === 'completed').reduce((s, r) => s + r.earned, 0);
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(referralCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -34,7 +52,10 @@ export default function ReferralScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Join SEIRS Logistics and get ₦500 off your first ride! Use my code: ${MOCK_USER.referralCode}\n\nDownload: https://seirs.app/download`,
+        message:
+          `Join SEIRS Logistics and get ₦500 off your first ride! Use my code: ${referralCode}\n\n` +
+          `Tap to install and apply automatically: ${webLink}\n` +
+          `Already have the app? ${deepLink}`,
       });
     } catch {}
   };
@@ -74,7 +95,7 @@ export default function ReferralScreen() {
         <View style={[styles.codeCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <Text style={[styles.codeLabel, { color: theme.textSecond }]}>Your Referral Code</Text>
           <View style={[styles.codeRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-            <Text style={[styles.codeText, { color: theme.primary }]}>{MOCK_USER.referralCode}</Text>
+            <Text style={[styles.codeText, { color: theme.primary }]}>{referralCode}</Text>
             <Pressable
               style={[styles.copyBtn, { backgroundColor: copied ? '#22C55E' : theme.primary }]}
               onPress={handleCopy}

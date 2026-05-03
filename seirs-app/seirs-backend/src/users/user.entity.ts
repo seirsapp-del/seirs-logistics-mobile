@@ -82,6 +82,12 @@ export class User {
   @Column({ nullable: true, unique: true })
   accountId: string;
 
+  // Spec V8 §1.13 — captured from deep-link query at registration.
+  // Stored for attribution; reward fulfilment lives in a future referral module.
+  @Index()
+  @Column({ nullable: true })
+  referredByCode: string;
+
   @Column({ nullable: true })
   adminRole: AdminSubRole;
 

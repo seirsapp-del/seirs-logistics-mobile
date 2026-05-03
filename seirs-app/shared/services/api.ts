@@ -85,6 +85,7 @@ export const authApi = {
     name: string; email: string; phone: string; password: string;
     role: 'customer' | 'driver'; vehicleType?: string;
     ageConfirmed?: boolean; termsAcceptedAt?: string;
+    referralCode?: string;
   }) => request<{ message: string; requiresOtp: boolean }>('POST', '/auth/register', body, false),
 
   verifyOtp: (email: string, otp: string) =>

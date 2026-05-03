@@ -1,14 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { MOCK_USER, MOCK_TRANSACTIONS } from '@/constants/mockData';
 import { paymentsApi } from '@/services/api';
+
+interface ApiTx {
+  id:        string;
+  amount:    number;
+  status:    string;
+  type?:     'credit' | 'debit';
+  method?:   string;
+  label?:    string;
+  createdAt: string;
+}
 import {
   CreditCard, ArrowDownCircle, ArrowUpCircle, Receipt,
   Plus, ArrowUp, Clock,
@@ -23,14 +32,46 @@ export default function WalletScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [activeTab,    setTab]        = useState<Tab>('all');
-  const [withdrawing,  setWithdrawing] = useState(false);
+  const [activeTab,    setTab]         = useState<Tab>('all');
+  const [withdrawing,  setWithdrawing]  = useState(false);
+  const [balance,      setBalance]      = useState(0);
+  const [transactions, setTransactions] = useState<ApiTx[]>([]);
+  const [loading,      setLoading]      = useState(false);
 
-  const balance  = MOCK_USER.walletBalance;
-  const escrow   = Math.round(balance * 0.15); // amount currently in escrow (active deliveries)
-  const available = balance - escrow;
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [w, h] = await Promise.all([
+        paymentsApi.wallet().catch(() => null),
+        paymentsApi.history().catch(() => []),
+      ]);
+      if (w) setBalance(w.balanceNaira ?? 0);
+      // Backend returns Payment rows; we infer credit/debit from amount sign or type
+      const txs = (Array.isArray(h) ? h : []).map((t: any): ApiTx => ({
+        id:        t.id,
+        amount:    Math.abs(Number(t.amount ?? t.amountNaira ?? 0)),
+        status:    t.status,
+        type:      t.type ?? (Number(t.amount ?? 0) >= 0 ? 'credit' : 'debit'),
+        method:    t.method ?? 'Wallet',
+        label:     t.label ?? t.description ?? (t.deliveryId ? 'Delivery' : 'Wallet activity'),
+        createdAt: t.createdAt ?? new Date().toISOString(),
+      }));
+      setTransactions(txs);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const filtered = MOCK_TRANSACTIONS.filter(tx =>
+  useEffect(() => { refresh(); }, [refresh]);
+
+  // Escrow approximation: pending tx amounts. Backend will surface this
+  // explicitly once the wallet endpoint is extended; for now we derive it.
+  const escrow    = transactions
+    .filter(t => t.status === 'pending')
+    .reduce((s, t) => s + (t.type === 'credit' ? t.amount : 0), 0);
+  const available = Math.max(0, balance - escrow);
+
+  const filtered = transactions.filter(tx =>
     activeTab === 'all' ? true : tx.type === activeTab,
   );
 
@@ -46,6 +87,7 @@ export default function WalletScreen() {
         try {
           await paymentsApi.withdraw(amount);
           Alert.alert('Withdrawal initiated', `₦${amount.toLocaleString()} will be sent to your bank account within 24 hours.`);
+          refresh();
         } catch (e: any) {
           Alert.alert('Withdrawal failed', e.message ?? 'Please try again.');
         } finally {
@@ -59,7 +101,11 @@ export default function WalletScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xxl }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: Spacing.xxl }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
+      >
 
         {/* Header */}
         <View style={styles.header}>
@@ -137,9 +183,9 @@ export default function WalletScreen() {
         {/* Stats */}
         <View style={[styles.statsRow, { backgroundColor: theme.surface }, Shadows.sm]}>
           {[
-            { label: 'Total Spent',  value: `₦${MOCK_TRANSACTIONS.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0).toLocaleString()}` },
-            { label: 'Total Earned', value: `₦${MOCK_TRANSACTIONS.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0).toLocaleString()}` },
-            { label: 'Transactions', value: `${MOCK_TRANSACTIONS.length}` },
+            { label: 'Total Spent',  value: `₦${transactions.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0).toLocaleString()}` },
+            { label: 'Total Earned', value: `₦${transactions.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0).toLocaleString()}` },
+            { label: 'Transactions', value: `${transactions.length}` },
           ].map((stat, i) => (
             <View key={stat.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
               <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
@@ -186,7 +232,9 @@ export default function WalletScreen() {
                 </View>
                 <View style={styles.txInfo}>
                   <Text style={[styles.txLabel, { color: theme.text }]}>{tx.label}</Text>
-                  <Text style={[styles.txMeta,  { color: theme.textSecond }]}>{tx.date} · {tx.method}</Text>
+                  <Text style={[styles.txMeta,  { color: theme.textSecond }]}>
+                    {new Date(tx.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })} · {tx.method}
+                  </Text>
                 </View>
                 <View style={styles.txRight}>
                   <Text style={[styles.txAmount, { color: tx.type === 'credit' ? theme.success : theme.error }]}>

@@ -86,13 +86,14 @@ export class AuthService {
     );
 
     const user = this.usersRepo.create({
-      name:      AuthService.toTitleCase(dto.name),
+      name:           AuthService.toTitleCase(dto.name),
       email,
-      phone:     dto.phone.trim(),
-      password:  hashed,
-      role:      dto.role,
+      phone:          dto.phone.trim(),
+      password:       hashed,
+      role:           dto.role,
       accountId,
-      emailVerified: false,
+      emailVerified:  false,
+      referredByCode: dto.referralCode?.trim().toUpperCase() || null,
     });
     await this.usersRepo.save(user);
 

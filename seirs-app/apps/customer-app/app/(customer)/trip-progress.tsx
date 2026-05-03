@@ -6,11 +6,13 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { io, Socket } from 'socket.io-client';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { MOCK_TRIPS, MOCK_DRIVERS } from '@/constants/mockData';
+import { SOCKET_URL } from '@/constants/config';
 
 const STATUS_STEPS = [
   { key: 'assigned',   label: 'Rider assigned',  icon: 'navigate-outline' },
@@ -33,6 +35,10 @@ export default function TripProgressScreen() {
   const [eta,         setEta]         = useState(driver.eta);
   const pulse = useRef(new Animated.Value(1)).current;
 
+  // Live driver position from WS — falls back to static placeholder if no events yet
+  const [driverPos, setDriverPos] = useState({ latitude: 6.5270, longitude: 3.3810 });
+  const socketRef = useRef<Socket | null>(null);
+
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -48,6 +54,42 @@ export default function TripProgressScreen() {
     const etaTimer = setInterval(() => setEta(e => Math.max(0, e - 1)), 60000);
     return () => { timers.forEach(clearTimeout); clearInterval(etaTimer); };
   }, []);
+
+  // Subscribe to delivery room and update driver pin on live GPS pings.
+  // Backend emits 'driver:location' (WsEvents.DRIVER_LOCATION) when the
+  // assigned driver sends a position update via DRIVER_UPDATE_LOC.
+  useEffect(() => {
+    const deliveryId = trip.id;
+    if (!deliveryId) return;
+
+    const socket = io(`${SOCKET_URL}/tracking`, {
+      transports: ['websocket'],
+      reconnection: true,
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      socket.emit('join:delivery', { deliveryId });
+    });
+
+    socket.on('driver:location', (data: { driverId: string; lat: number; lng: number }) => {
+      if (data?.lat != null && data?.lng != null) {
+        setDriverPos({ latitude: Number(data.lat), longitude: Number(data.lng) });
+      }
+    });
+
+    socket.on('delivery:status', (data: { status: string }) => {
+      const idx = STATUS_STEPS.findIndex(s => s.key === data.status);
+      if (idx >= 0) setCurrentStep(idx);
+      if (data.status === 'delivered') setEta(0);
+    });
+
+    return () => {
+      socket.emit('leave:delivery', { deliveryId });
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [trip.id]);
 
   const handleRate = () => {
     router.push({ pathname: '/(customer)/rate/[driverId]', params: { driverId: driver.id } });
@@ -67,7 +109,7 @@ export default function TripProgressScreen() {
       >
         <Marker coordinate={{ latitude: 6.5290, longitude: 3.3800 }} pinColor="#22C55E" />
         <Marker coordinate={{ latitude: 6.5180, longitude: 3.3890 }} pinColor="#EF4444" />
-        <Marker coordinate={{ latitude: 6.5270, longitude: 3.3810 }}>
+        <Marker coordinate={driverPos}>
           <View style={styles.driverMarker}>
             <Ionicons name="car" size={16} color="#fff" />
           </View>

@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { authApi } from '@/services/api';
@@ -41,6 +41,10 @@ export default function RegisterScreen() {
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
 
+  // Captured from deep-link query (e.g. seirscustomer://(auth)/register?ref=CUST-XXXXX)
+  const { ref: refParam } = useLocalSearchParams<{ ref?: string }>();
+  const referralCode = (refParam ?? '').toString().trim().toUpperCase() || null;
+
   const [firstName,      setFirstName]      = useState('');
   const [middleName,     setMiddleName]      = useState('');
   const [lastName,       setLastName]        = useState('');
@@ -71,6 +75,7 @@ export default function RegisterScreen() {
         role:            'customer',
         ageConfirmed:    true,
         termsAcceptedAt: new Date().toISOString(),
+        ...(referralCode ? { referralCode } : {}),
       });
 
       // Navigate to OTP screen with email param

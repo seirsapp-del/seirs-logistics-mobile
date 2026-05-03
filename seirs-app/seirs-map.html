@@ -704,7 +704,7 @@ const DEFAULT_NODES = [
   // Home + tabs — col 3-4
   { id:'cust.home',          app:'customer', label:'Home',               file:'app/(customer)/index.tsx',          status:'built',   wf:'home',     col:3, row:0, notes:'Sliding Send/Ride button + drawer' },
   { id:'cust.history',       app:'customer', label:'History',            file:'app/(customer)/history.tsx',        status:'built',   wf:'list',     col:3, row:1 },
-  { id:'cust.wallet',        app:'customer', label:'Wallet',             file:'app/(customer)/wallet.tsx',         status:'partial', wf:'list',     col:3, row:2, notes:'Withdraw button calls API; e2e not verified' },
+  { id:'cust.wallet',        app:'customer', label:'Wallet',             file:'app/(customer)/wallet.tsx',         status:'built',   wf:'list',     col:3, row:2, notes:'Wired end-to-end: balance from paymentsApi.wallet, history from paymentsApi.history, withdraw posts to /payments/withdraw, pull-to-refresh, escrow derived from pending tx. MOCK_USER + MOCK_TRANSACTIONS removed.' },
   { id:'cust.profile',       app:'customer', label:'Profile',            file:'app/(customer)/profile.tsx',        status:'built',   wf:'settings', col:3, row:3 },
   { id:'cust.notifs',        app:'customer', label:'Notifications',      file:'app/notifications.tsx',             status:'built',   wf:'list',     col:3, row:4 },
   // Booking flow — col 5-7
@@ -717,7 +717,7 @@ const DEFAULT_NODES = [
   { id:'cust.schedule',      app:'customer', label:'Schedule',           file:'app/(customer)/schedule.tsx',       status:'built',   wf:'flow',     col:8, row:1 },
   // Active / post-delivery — col 9-11
   { id:'cust.payment',       app:'customer', label:'Payment WebView',    file:'app/(customer)/payment/[deliveryId].tsx', status:'built',   wf:'flow', col:9,  row:0 },
-  { id:'cust.tripProgress',  app:'customer', label:'Trip Progress',      file:'app/(customer)/trip-progress.tsx',  status:'partial', wf:'map',      col:10, row:0, notes:'Map renders. WebSocket live driver pin still needs wiring to be fully animated.' },
+  { id:'cust.tripProgress',  app:'customer', label:'Trip Progress',      file:'app/(customer)/trip-progress.tsx',  status:'built',   wf:'map',      col:10, row:0, notes:'Live driver pin via socket.io — joins delivery room and updates marker on driver:location pings. delivery:status events update progress steps. Falls back to placeholder coords if no events received yet.' },
   { id:'cust.track',         app:'customer', label:'Track by Code',      file:'app/(customer)/track.tsx',          status:'built',   wf:'flow',     col:10, row:1 },
   { id:'cust.sos',           app:'customer', label:'SOS',                file:'app/(customer)/sos.tsx',            status:'built',   wf:'flow',     col:10, row:2 },
   { id:'cust.rate',          app:'customer', label:'Rate Driver',        file:'app/(customer)/rate/[driverId].tsx',status:'built',   wf:'flow',     col:11, row:0 },
@@ -733,7 +733,7 @@ const DEFAULT_NODES = [
   { id:'cust.promo',         app:'customer', label:'Promo Code',         file:'app/(customer)/promo.tsx',          status:'built',   wf:'flow',     col:4,  row:5 },
   { id:'cust.promotions',    app:'customer', label:'Promotions List',    file:'app/(customer)/promotions.tsx',     status:'built',   wf:'list',     col:5,  row:5 },
   { id:'cust.rewards',       app:'customer', label:'Rewards / Tier',     file:'app/(customer)/rewards.tsx',        status:'built',   wf:'detail',   col:6,  row:5 },
-  { id:'cust.referral',      app:'customer', label:'Referral',           file:'app/(customer)/referral.tsx',       status:'partial', wf:'detail',   col:7,  row:5, notes:'No deep-link wiring yet' },
+  { id:'cust.referral',      app:'customer', label:'Referral',           file:'app/(customer)/referral.tsx',       status:'built',   wf:'detail',   col:7,  row:5, notes:'Deep links wired: share text now includes seirscustomer://(auth)/register?ref=<code> + https://seirs.app/r/<code> web fallback. Receiver register screen reads ?ref via useLocalSearchParams and forwards to backend. User entity gained referredByCode column.' },
   // Chat — col 8-9
   { id:'cust.msgsIdx',       app:'customer', label:'Messages Inbox',     file:'app/(customer)/messages/index.tsx', status:'built',   wf:'list',     col:8,  row:5 },
   { id:'cust.msgsChat',      app:'customer', label:'Chat Thread',        file:'app/(customer)/messages/[chatId].tsx', status:'built',wf:'chat',     col:9,  row:5 },
