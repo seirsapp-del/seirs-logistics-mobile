@@ -12,7 +12,10 @@ import { MailService } from '../mail/mail.service';
 import { CmsItem, ContentType, ContentStatus } from './cms-item.entity';
 import { SupportTicket, TicketStatus, TicketPriority } from './support-ticket.entity';
 import { AuditLogEntry } from './audit-log.entity';
+import { PricingConfig } from './pricing-config.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
+
+const PRICING_SINGLETON_ID = 'singleton';
 
 @Injectable()
 export class AdminService {
@@ -24,6 +27,7 @@ export class AdminService {
     @InjectRepository(CmsItem)        private cmsRepo:        Repository<CmsItem>,
     @InjectRepository(SupportTicket)  private ticketsRepo:    Repository<SupportTicket>,
     @InjectRepository(AuditLogEntry)  private auditRepo:      Repository<AuditLogEntry>,
+    @InjectRepository(PricingConfig)  private pricingRepo:    Repository<PricingConfig>,
     private readonly fraudService: FraudService,
     private readonly mailService:  MailService,
   ) {}
@@ -258,21 +262,41 @@ export class AdminService {
     return { message: 'Delivery cancelled.' };
   }
 
-  // ── Pricing config (stored in memory for now, DB table in Phase 5) ────────
+  // ── Pricing config (Postgres-backed singleton row) ────────────────────────
 
-  private pricingConfig = {
-    baseFare:      300,
-    perKmRate:     80,
-    platformCut:   PLATFORM_COMMISSION,
-    surgeActive:   false,
-    surgeMultiplier: 1.0,
-  };
+  async getPricingConfig() {
+    let row = await this.pricingRepo.findOne({ where: { id: PRICING_SINGLETON_ID } });
+    if (!row) {
+      // First call after deploy — seed defaults
+      row = this.pricingRepo.create({
+        id:              PRICING_SINGLETON_ID,
+        baseFare:        300,
+        perKmRate:       80,
+        platformCut:     PLATFORM_COMMISSION,
+        surgeActive:     false,
+        surgeMultiplier: 1.0,
+      });
+      await this.pricingRepo.save(row);
+    }
+    return {
+      baseFare:        Number(row.baseFare),
+      perKmRate:       Number(row.perKmRate),
+      platformCut:     Number(row.platformCut),
+      surgeActive:     row.surgeActive,
+      surgeMultiplier: Number(row.surgeMultiplier),
+    };
+  }
 
-  getPricingConfig() { return this.pricingConfig; }
-
-  updatePricingConfig(data: Partial<typeof this.pricingConfig>) {
-    this.pricingConfig = { ...this.pricingConfig, ...data };
-    return this.pricingConfig;
+  async updatePricingConfig(data: Partial<{
+    baseFare:        number;
+    perKmRate:       number;
+    platformCut:     number;
+    surgeActive:     boolean;
+    surgeMultiplier: number;
+  }>) {
+    await this.getPricingConfig(); // ensures singleton row exists
+    await this.pricingRepo.update({ id: PRICING_SINGLETON_ID }, data);
+    return this.getPricingConfig();
   }
 
   // ── Analytics ─────────────────────────────────────────────────────────────

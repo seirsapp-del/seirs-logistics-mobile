@@ -11,10 +11,11 @@ import { FraudFlag } from '../fraud/fraud-flag.entity';
 import { CmsItem } from './cms-item.entity';
 import { SupportTicket } from './support-ticket.entity';
 import { AuditLogEntry } from './audit-log.entity';
+import { PricingConfig } from './pricing-config.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Driver, Delivery, FraudFlag, CmsItem, SupportTicket, AuditLogEntry]),
+    TypeOrmModule.forFeature([User, Driver, Delivery, FraudFlag, CmsItem, SupportTicket, AuditLogEntry, PricingConfig]),
     FraudModule,
     MailModule,
   ],

@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { RedisIoAdapter } from './tracking/redis-io.adapter';
 
 async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -78,6 +79,12 @@ async function bootstrap() {
     allowedHeaders:  ['Content-Type', 'Authorization'],
     credentials:     true,
   });
+
+  // Wire socket.io Redis adapter (multi-instance pub/sub).
+  // Falls back to in-process mode if Redis unavailable.
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port, '0.0.0.0');

@@ -53,10 +53,11 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   private readonly logger = new Logger(TrackingGateway.name);
 
-  // socket.id → { userId, role }
-  private authedClients = new Map<string, { userId: string; role: string }>();
-
-  // socket.id → driverId (for cleanup)
+  // Per-instance session caches. Sockets die with their host process, so these
+  // intentionally don't persist across restarts. Cross-instance broadcasting
+  // is handled by RedisIoAdapter (see main.ts). Driver GPS positions live in
+  // Redis with TTL and survive restarts independently of these maps.
+  private authedClients   = new Map<string, { userId: string; role: string }>();
   private connectedDrivers = new Map<string, string>();
 
   constructor(
