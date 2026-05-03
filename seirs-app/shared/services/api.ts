@@ -141,10 +141,16 @@ export const paymentsApi = {
 
 // ─── Drivers ─────────────────────────────────────────────────────────────────
 export const driversApi = {
-  me:           () => request<any>('GET', '/drivers/me'),
-  toggleOnline: (isOnline: boolean) => request<any>('PATCH', '/drivers/online', { isOnline }),
+  me:             () => request<any>('GET', '/drivers/me'),
+  toggleOnline:   (isOnline: boolean) => request<any>('PATCH', '/drivers/online', { isOnline }),
   updateLocation: (lat: number, lng: number) => request<any>('PATCH', '/drivers/location', { lat, lng }),
-  myDeliveries: () => request<any[]>('GET', '/deliveries/driver'),
+  myDeliveries:   () => request<any[]>('GET', '/deliveries/driver'),
+  updateKycDoc:   (docId: string, url: string) =>
+    request<{ docId: string; saved: boolean }>('PATCH', '/drivers/me/kyc', { docId, url }),
+  demandZones:    () =>
+    request<{ zones: Array<{ latitude: number; longitude: number; radiusM: number; intensity: number; orderCount: number }> }>(
+      'GET', '/drivers/demand-zones',
+    ),
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────

@@ -67,12 +67,37 @@ export class Driver {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   walletBalance: number; // in local currency (kobo/pesewas stored as decimal)
 
-  // KYC documents
+  // KYC documents — Spec V8 §2.1 requires 7 mandatory + 1 optional
+  // Legacy fields kept for backwards compatibility with older client builds.
   @Column({ nullable: true })
   idDocumentUrl: string;
 
   @Column({ nullable: true })
   vehicleDocumentUrl: string;
+
+  @Column({ nullable: true })
+  nationalIdFrontUrl: string;
+
+  @Column({ nullable: true })
+  nationalIdBackUrl: string;
+
+  @Column({ nullable: true })
+  driversLicenseUrl: string;
+
+  @Column({ nullable: true })
+  vehiclePhotoUrl: string;
+
+  @Column({ nullable: true })
+  ownershipProofUrl: string;
+
+  @Column({ nullable: true })
+  insuranceCertUrl: string;
+
+  @Column({ nullable: true })
+  selfieUrl: string;
+
+  @Column({ nullable: true })
+  guarantorUrl: string;
 
   @OneToMany(() => Delivery, (d) => d.driver)
   deliveries: Delivery[];

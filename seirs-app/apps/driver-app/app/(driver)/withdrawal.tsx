@@ -4,11 +4,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { MOCK_DRIVER, MOCK_DRIVER_BANK_ACCOUNTS } from '@/constants/driverMockData';
+import { MOCK_DRIVER_BANK_ACCOUNTS } from '@/constants/driverMockData';
+import { paymentsApi } from '@/services/api';
 
 const QUICK_AMOUNTS = [2000, 5000, 10000, 20000, 50000];
 
@@ -22,9 +23,16 @@ export default function WithdrawalScreen() {
   const [selectedBank,   setSelectedBank]   = useState(MOCK_DRIVER_BANK_ACCOUNTS[0].id);
   const [submitting,     setSubmitting]     = useState(false);
   const [done,           setDone]           = useState(false);
+  const [balance,        setBalance]        = useState(0);
+
+  // Pull live wallet balance on mount; falls back to 0 if endpoint errors
+  useEffect(() => {
+    paymentsApi.wallet()
+      .then(w => setBalance(w?.balanceNaira ?? 0))
+      .catch(() => setBalance(0));
+  }, []);
 
   const numericAmount = parseInt(amount.replace(/,/g, ''), 10) || 0;
-  const balance       = MOCK_DRIVER.balance;
   const canWithdraw   = numericAmount >= 1000 && numericAmount <= balance;
   const bank          = MOCK_DRIVER_BANK_ACCOUNTS.find(b => b.id === selectedBank)!;
 
@@ -42,9 +50,17 @@ export default function WithdrawalScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Withdraw',
-          onPress: () => {
+          onPress: async () => {
             setSubmitting(true);
-            setTimeout(() => { setSubmitting(false); setDone(true); }, 1500);
+            try {
+              await paymentsApi.withdraw(numericAmount);
+              setDone(true);
+            } catch (err: any) {
+              const msg = err?.message ?? 'Withdrawal failed. Please try again.';
+              Alert.alert('Withdrawal failed', msg);
+            } finally {
+              setSubmitting(false);
+            }
           },
         },
       ],

@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { uploadApi } from '@/services/api';
+import { uploadApi, driversApi } from '@/services/api';
 
 type DocStatus = 'not_uploaded' | 'uploaded' | 'verified' | 'rejected';
 
@@ -99,6 +99,8 @@ export default function KycScreen() {
     setUploading(docId);
     try {
       const uploaded = await uploadApi.uploadFile(uri, 'kyc');
+      // Persist URL against driver record so admin KYC review sees it
+      await driversApi.updateKycDoc(docId, uploaded.url);
       setDocs(prev => prev.map(d =>
         d.id === docId ? { ...d, status: 'uploaded' as DocStatus, url: uploaded.url } : d,
       ));

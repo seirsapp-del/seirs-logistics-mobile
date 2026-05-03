@@ -42,4 +42,23 @@ export class DriversController {
     }
     return { ok: true };
   }
+
+  // PATCH /api/v1/drivers/me/kyc  { docId, url }
+  // Driver app calls this after each successful upload to R2 so the URL is
+  // bound to the driver record. docId must match Spec V8 §2.1 names.
+  @Patch('me/kyc')
+  updateKyc(
+    @CurrentUser() user: User,
+    @Body() body: { docId: string; url: string },
+  ) {
+    return this.driversService.updateKycDoc(user.id, body.docId, body.url);
+  }
+
+  // GET /api/v1/drivers/demand-zones
+  // Returns up to 20 demand-density zones in a ~25km radius around the
+  // driver's last known position. Intensity scaled 0.0-1.0 from order count.
+  @Get('demand-zones')
+  demandZones(@CurrentUser() user: User) {
+    return this.driversService.getDemandZones(user.id);
+  }
 }

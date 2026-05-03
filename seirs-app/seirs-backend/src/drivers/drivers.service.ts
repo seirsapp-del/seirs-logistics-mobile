@@ -1,13 +1,27 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Driver } from './driver.entity';
+import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { FraudService } from '../fraud/fraud.service';
+
+// Spec V8 §2.1 — recognised KYC document IDs
+const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
+  national_id_front: 'nationalIdFrontUrl',
+  national_id_back:  'nationalIdBackUrl',
+  drivers_license:   'driversLicenseUrl',
+  vehicle_photo:     'vehiclePhotoUrl',
+  ownership_proof:   'ownershipProofUrl',
+  insurance_cert:    'insuranceCertUrl',
+  selfie:            'selfieUrl',
+  guarantor:         'guarantorUrl',
+};
 
 @Injectable()
 export class DriversService {
   constructor(
-    @InjectRepository(Driver) private repo: Repository<Driver>,
+    @InjectRepository(Driver)   private repo:           Repository<Driver>,
+    @InjectRepository(Delivery) private deliveriesRepo: Repository<Delivery>,
     private fraudService: FraudService,
   ) {}
 
@@ -87,5 +101,73 @@ export class DriversService {
         'ASC',
       )
       .getMany();
+  }
+
+  // Spec V8 §2.1 — record uploaded KYC document URL against the right column.
+  async updateKycDoc(userId: string, docId: string, url: string) {
+    const field = KYC_DOC_FIELD_MAP[docId];
+    if (!field) throw new BadRequestException(`Unknown KYC document id: ${docId}`);
+    if (!url || typeof url !== 'string') throw new BadRequestException('Document URL required.');
+
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    await this.repo.update(driver.id, { [field]: url } as Partial<Driver>);
+    return { docId, saved: true };
+  }
+
+  // Spec V8 §2.10 / §2.18 — derive demand zones from recent pickup density
+  // around the driver's current position. Buckets ~1km grid cells over the
+  // last 7 days of completed/active orders. Intensity = order count.
+  async getDemandZones(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver?.lastLat || !driver?.lastLng) {
+      return { zones: [] };
+    }
+
+    const lat = Number(driver.lastLat);
+    const lng = Number(driver.lastLng);
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    // Round to ~1km grid (0.01 deg ≈ 1.1km in Nigeria latitudes)
+    const rows = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .select('ROUND(d.pickupLat::numeric, 2)', 'lat')
+      .addSelect('ROUND(d.pickupLng::numeric, 2)', 'lng')
+      .addSelect('COUNT(d.id)', 'count')
+      .where('d.createdAt >= :since', { since })
+      .andWhere('d.status IN (:...statuses)', {
+        statuses: [DeliveryStatus.DELIVERED, DeliveryStatus.IN_TRANSIT, DeliveryStatus.PICKED_UP, DeliveryStatus.ASSIGNED],
+      })
+      .andWhere(
+        '(6371 * acos(LEAST(1, GREATEST(-1, ' +
+          'cos(radians(:lat)) * cos(radians(d.pickupLat)) * ' +
+          'cos(radians(d.pickupLng) - radians(:lng)) + ' +
+          'sin(radians(:lat)) * sin(radians(d.pickupLat))' +
+        ')))) < :radius',
+        { lat, lng, radius: 25 },
+      )
+      .groupBy('ROUND(d.pickupLat::numeric, 2)')
+      .addGroupBy('ROUND(d.pickupLng::numeric, 2)')
+      .orderBy('COUNT(d.id)', 'DESC')
+      .limit(20)
+      .getRawMany();
+
+    if (!rows.length) return { zones: [] };
+
+    const maxCount = Math.max(...rows.map(r => Number(r.count)));
+    return {
+      zones: rows.map(r => {
+        const count = Number(r.count);
+        const intensity = count / maxCount; // 0.0 - 1.0
+        return {
+          latitude:  Number(r.lat),
+          longitude: Number(r.lng),
+          radiusM:   400 + intensity * 600,        // 400-1000m
+          intensity,
+          orderCount: count,
+        };
+      }),
+    };
   }
 }

@@ -44,6 +44,7 @@ export default function DriverHomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [driverData, setDriverData] = useState<any>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [demandZones, setDemandZones] = useState<Array<{ latitude: number; longitude: number; radiusM: number; intensity: number; orderCount: number }>>([]);
 
   const locationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketRef        = useRef<Socket | null>(null);
@@ -52,6 +53,15 @@ export default function DriverHomeScreen() {
   useEffect(() => {
     driversApi.me().then(setDriverData).catch(() => {});
   }, []);
+
+  // Fetch real demand zones whenever the driver's known location changes.
+  // Falls back to empty array if backend has no clustered data yet.
+  useEffect(() => {
+    if (!driverData?.lastLat || !driverData?.lastLng) return;
+    driversApi.demandZones()
+      .then(res => setDemandZones(res?.zones ?? []))
+      .catch(() => setDemandZones([]));
+  }, [driverData?.lastLat, driverData?.lastLng]);
 
   const fetchDeliveries = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -253,22 +263,24 @@ export default function DriverHomeScreen() {
                     coordinate={{ latitude: Number(driverData.lastLat), longitude: Number(driverData.lastLng) }}
                     pinColor="#3A7BD5"
                   />
-                  {/* Demand zones — coloured circles. TODO: feed from
-                      backend GET /api/v1/drivers/demand-zones (not built yet).
-                      For now, render synthetic zones around the driver as a
-                      visual placeholder so the UI doesn't look broken. */}
-                  <Circle
-                    center={{ latitude: Number(driverData.lastLat) + 0.012, longitude: Number(driverData.lastLng) - 0.008 }}
-                    radius={600} fillColor="rgba(239,68,68,0.35)" strokeWidth={0}
-                  />
-                  <Circle
-                    center={{ latitude: Number(driverData.lastLat) - 0.008, longitude: Number(driverData.lastLng) + 0.014 }}
-                    radius={500} fillColor="rgba(245,158,11,0.30)" strokeWidth={0}
-                  />
-                  <Circle
-                    center={{ latitude: Number(driverData.lastLat) + 0.005, longitude: Number(driverData.lastLng) + 0.005 }}
-                    radius={400} fillColor="rgba(22,163,74,0.25)" strokeWidth={0}
-                  />
+                  {/* Demand zones from backend GET /drivers/demand-zones —
+                      colour ramps with intensity (red = hottest). */}
+                  {demandZones.map((z, i) => {
+                    const fill = z.intensity > 0.66
+                      ? 'rgba(239,68,68,0.35)'   // hot — red
+                      : z.intensity > 0.33
+                      ? 'rgba(245,158,11,0.30)'  // warm — orange
+                      : 'rgba(22,163,74,0.25)';  // cool — green
+                    return (
+                      <Circle
+                        key={i}
+                        center={{ latitude: z.latitude, longitude: z.longitude }}
+                        radius={z.radiusM}
+                        fillColor={fill}
+                        strokeWidth={0}
+                      />
+                    );
+                  })}
                 </MapView>
               ) : (
                 <Text style={[styles.heatmapPlaceholder, { color: theme.textThird }]}>Go online to see demand</Text>
