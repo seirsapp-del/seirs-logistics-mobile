@@ -1,8 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Driver, VehicleType } from '../drivers/driver.entity';
 import { Delivery, PackageSize, UrgencyLevel } from '../deliveries/delivery.entity';
 import { DriversService } from '../drivers/drivers.service';
 import { PricingService } from '../deliveries/pricing.service';
+
+// Spec V8 §3.9 — this default will move into the Fee Catalogue once that
+// module ships, so admins can adjust it live without a redeploy. For now,
+// override via MATCHING_RADIUS_KM env var in Railway.
+const DEFAULT_MATCHING_RADIUS_KM = 15;
 
 // ─── Vehicle suitability matrix ──────────────────────────────────────────────
 // Which vehicles can carry which package sizes (1 = yes, 0 = no)
@@ -57,14 +63,21 @@ export interface ScoredDriver {
 @Injectable()
 export class MatchingService {
   private readonly logger = new Logger(MatchingService.name);
+  private readonly radiusKm: number;
 
-  constructor(private driversService: DriversService) {}
+  constructor(
+    private driversService: DriversService,
+    cfg: ConfigService,
+  ) {
+    const raw = Number(cfg.get<string>('MATCHING_RADIUS_KM'));
+    this.radiusKm = Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_MATCHING_RADIUS_KM;
+  }
 
   async findBestDriver(delivery: Delivery): Promise<ScoredDriver | null> {
     const nearbyDrivers = await this.driversService.findNearby(
       delivery.pickupLat,
       delivery.pickupLng,
-      15, // 15km search radius
+      this.radiusKm,
     );
 
     if (!nearbyDrivers.length) {
@@ -91,8 +104,8 @@ export class MatchingService {
       driver.lastLat ?? 0, driver.lastLng ?? 0,
     );
 
-    // Distance score: 0 km = 1.0, 15 km = 0.0 (linear decay)
-    const distanceScore = Math.max(0, 1 - distanceKm / 15);
+    // Distance score: linear decay from 1.0 at 0km to 0.0 at the radius bound
+    const distanceScore = Math.max(0, 1 - distanceKm / this.radiusKm);
 
     // Vehicle suitability
     const vehicleScore = VEHICLE_SUITABILITY[driver.vehicleType]?.[delivery.packageSize] ?? 0;
@@ -130,7 +143,7 @@ export class MatchingService {
     const nearbyDrivers = await this.driversService.findNearby(
       delivery.pickupLat,
       delivery.pickupLng,
-      15,
+      this.radiusKm,
     );
 
     return nearbyDrivers
