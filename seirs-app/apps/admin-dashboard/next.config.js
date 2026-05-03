@@ -10,11 +10,11 @@ const nextConfig = {
 
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
-      `connect-src 'self' ${apiHost} wss:`,
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      `connect-src 'self' ${apiHost} wss: https://maps.googleapis.com https://maps.gstatic.com`,
       "img-src 'self' data: blob: https:",
-      "font-src 'self'",
+      "font-src 'self' https://fonts.gstatic.com",
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",
