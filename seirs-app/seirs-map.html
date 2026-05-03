@@ -794,7 +794,7 @@ const DEFAULT_NODES = [
   // ── ADMIN DASHBOARD ────────────────────────────────────────────────────────
   { id:'adm.login',          app:'admin', label:'Admin Login',         file:'src/app/login/page.tsx',             status:'built', wf:'auth', col:0, row:0 },
   { id:'adm.dashboard',      app:'admin', label:'Dashboard',           file:'src/app/page.tsx',                   status:'built', wf:'home', col:1, row:0, notes:'4 KPI cards, charts' },
-  { id:'adm.opsMap',         app:'admin', label:'Real-Time Ops Map',   file:'src/app/ops-map/page.tsx',           status:'partial', wf:'map', col:2, row:0, notes:'Live Google Maps with traffic, driver pins (online=green, offline=gray), delivery polylines, heatmap toggle. Polls every 10s. Needs NEXT_PUBLIC_GOOGLE_MAPS_KEY in Vercel env vars.' },
+  { id:'adm.opsMap',         app:'admin', label:'Real-Time Ops Map',   file:'src/app/ops-map/page.tsx',           status:'built',   wf:'map', col:2, row:0, notes:'Live Google Maps with traffic, driver pins (online=green, offline=gray), delivery polylines, heatmap toggle. Polls every 10s. Verified live 2026-05-03 — NEXT_PUBLIC_GOOGLE_MAPS_KEY set in Vercel, CSP whitelisted maps.googleapis.com / gstatic / fonts (commit cb852c4).' },
   { id:'adm.deliveries',     app:'admin', label:'Deliveries',          file:'src/app/deliveries/page.tsx',        status:'built', wf:'list', col:2, row:1 },
   { id:'adm.drivers',        app:'admin', label:'Drivers List',        file:'src/app/drivers/page.tsx',           status:'built', wf:'list', col:2, row:2 },
   { id:'adm.driverDetail',   app:'admin', label:'Driver Detail',       file:'src/app/drivers/[id]/page.tsx',      status:'built', wf:'detail', col:3, row:2 },
