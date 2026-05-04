@@ -35,11 +35,11 @@ export const ROLE_COLORS: Record<AdminRoleType, string> = {
 
 const PERMISSIONS: Record<AdminRoleType, string[]> = {
   super_admin:       ['*'],
-  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','pricing','fees','disputes','health','last-order-compliance','notify'],
+  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs'],
   support_agent:     ['tickets','users','suggestions','deliveries','disputes'],
-  finance_officer:   ['overview','wallet','pricing','fees','referrals','insurance','analytics','reports'],
-  driver_compliance: ['drivers','kyc','duplicates','fraud','users','audit-log'],
-  media_content:     ['cms','promotions'],
+  finance_officer:   ['overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage'],
+  driver_compliance: ['drivers','kyc','duplicates','fraud','users','audit-log','interstate','last-order-compliance'],
+  media_content:     ['cms','promotions','email-templates','dev-docs'],
   analyst:           ['overview','analytics','reports'],
   partner_manager:   ['partners','partner-redirects','specialists','deliveries','overview'],
 };
@@ -112,13 +112,23 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: '/kyc',                    label: 'Driver KYC Queue',    icon: 'ClipboardCheck', permission: 'kyc'                     },
       { href: '/disputes',               label: 'Liability Disputes',  icon: 'ShieldCheck',    permission: 'disputes'                },
       { href: '/last-order-compliance',  label: 'Last-Order Compliance',icon: 'MoonStar',      permission: 'last-order-compliance'   },
+      { href: '/interstate',             label: 'Interstate Trips',     icon: 'Truck',         permission: 'interstate'              },
     ],
   },
   {
     title: 'OPS',
     items: [
-      { href: '/health',  label: 'System Health',     icon: 'Activity', permission: 'health' },
-      { href: '/notify',  label: 'Push Composer',     icon: 'Send',     permission: 'notify' },
+      { href: '/health',           label: 'System Health',     icon: 'Activity', permission: 'health'           },
+      { href: '/notify',           label: 'Push Composer',     icon: 'Send',     permission: 'notify'           },
+      { href: '/email-templates',  label: 'Email Templates',   icon: 'Mail',     permission: 'email-templates'  },
+    ],
+  },
+  {
+    title: 'DEVELOPER PLATFORM',
+    items: [
+      { href: '/dev-accounts',  label: 'Developer Accounts', icon: 'Code2',    permission: 'dev-accounts' },
+      { href: '/dev-usage',     label: 'Platform Stats',     icon: 'BarChart3',permission: 'dev-usage'    },
+      { href: '/dev-docs',      label: 'Developer Docs',     icon: 'BookOpen', permission: 'dev-docs'     },
     ],
   },
   {

@@ -107,6 +107,12 @@ export const adminApi = {
     handoffChain: (deliveryId: string) => req<any[]>(`/identity/handoff/${deliveryId}/chain`),
   },
 
+  // Spec V8 Tier 3 — Developer Platform admin oversight
+  devPlatform: {
+    listAccounts: () => req<any[]>('/dev-platform/keys'), // simplistic: each key = an account in this view
+    listAllUsage: () => req<any>('/dev-platform/usage'),
+  },
+
   analytics: {
     revenue:              (days = 30) => req<any>(`/admin/analytics/revenue?days=${days}`),
     deliveriesByStatus:   ()          => req<any>('/admin/analytics/deliveries-by-status'),
