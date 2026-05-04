@@ -35,9 +35,9 @@ export const ROLE_COLORS: Record<AdminRoleType, string> = {
 
 const PERMISSIONS: Record<AdminRoleType, string[]> = {
   super_admin:       ['*'],
-  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','pricing'],
+  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','pricing','fees'],
   support_agent:     ['tickets','users','suggestions','deliveries'],
-  finance_officer:   ['overview','wallet','pricing','referrals','insurance','analytics','reports'],
+  finance_officer:   ['overview','wallet','pricing','fees','referrals','insurance','analytics','reports'],
   driver_compliance: ['drivers','kyc','duplicates','fraud','users','audit-log'],
   media_content:     ['cms','promotions'],
   analyst:           ['overview','analytics','reports'],
@@ -97,10 +97,11 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'FINANCE',
     items: [
-      { href: '/wallet',    label: 'Wallet & Payouts',   icon: 'Wallet',  permission: 'wallet'    },
-      { href: '/pricing',   label: 'Pricing Engine',     icon: 'Tag',     permission: 'pricing'   },
-      { href: '/referrals', label: 'Referrals',          icon: 'Share2',  permission: 'referrals' },
-      { href: '/insurance', label: 'Insurance Partners', icon: 'Shield',  permission: 'insurance' },
+      { href: '/wallet',    label: 'Wallet & Payouts',   icon: 'Wallet',     permission: 'wallet'    },
+      { href: '/pricing',   label: 'Pricing Engine',     icon: 'Tag',        permission: 'pricing'   },
+      { href: '/fees',      label: 'Fee Catalogue',      icon: 'DollarSign', permission: 'fees'      },
+      { href: '/referrals', label: 'Referrals',          icon: 'Share2',     permission: 'referrals' },
+      { href: '/insurance', label: 'Insurance Partners', icon: 'Shield',     permission: 'insurance' },
     ],
   },
   {

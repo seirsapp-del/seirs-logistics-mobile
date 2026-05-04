@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { clearSession, getUser } from '@/lib/auth';
 import {
   LayoutDashboard, Map, Package, Truck, Users, Store, ArrowRightLeft, Briefcase,
-  Wallet, Tag, Share2, Shield, ShieldAlert, Copy, ClipboardCheck,
+  Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, Copy, ClipboardCheck,
   Ticket, Lightbulb, FileText, Percent, BarChart2, FileBarChart,
   UserCog, ScrollText, Settings, LogOut, ChevronLeft, ChevronRight,
 } from 'lucide-react';
@@ -13,7 +13,7 @@ import type { AdminRoleType } from '@/lib/rbac';
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   LayoutDashboard, Map, Package, Truck, Users, Store, ArrowRightLeft, Briefcase,
-  Wallet, Tag, Share2, Shield, ShieldAlert, Copy, ClipboardCheck,
+  Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, Copy, ClipboardCheck,
   Ticket, Lightbulb, FileText, Percent, BarChart2, FileBarChart,
   UserCog, ScrollText, Settings,
 };

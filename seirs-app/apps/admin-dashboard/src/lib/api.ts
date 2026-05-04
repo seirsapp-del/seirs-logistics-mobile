@@ -78,6 +78,16 @@ export const adminApi = {
     update: (data: any)  => req<any>('/admin/pricing', { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
+  // Spec V8 §3.9 — Fee Catalogue (single source of truth for all fees)
+  fees: {
+    list:    ()                                  => req<any[]>('/admin/fees'),
+    grouped: ()                                  => req<Record<string, any[]>>('/admin/fees?grouped=true'),
+    get:     (key: string)                       => req<any>(`/admin/fees/${key}`),
+    history: (key: string, limit = 50)           => req<any[]>(`/admin/fees/${key}/history?limit=${limit}`),
+    update:  (key: string, body: { value?: number; active?: boolean; currentNote?: string }) =>
+      req<any>(`/admin/fees/${key}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  },
+
   analytics: {
     revenue:              (days = 30) => req<any>(`/admin/analytics/revenue?days=${days}`),
     deliveriesByStatus:   ()          => req<any>('/admin/analytics/deliveries-by-status'),
