@@ -136,19 +136,48 @@ export class AdminService {
     });
   }
 
-  async createAdmin(data: { name: string; email: string; phone: string; password: string }) {
+  async createAdmin(data: {
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    email: string;
+    phone?: string;
+    password?: string;
+    adminRole?: string;
+    roleId?: string;
+  }) {
     const email = data.email.trim().toLowerCase();
     const exists = await this.usersRepo.findOne({ where: { email } });
     if (exists) throw new ConflictException('Email already registered.');
 
+    // Accept either name OR firstName+lastName for flexibility with both
+    // legacy clients and the current Staff Management page.
+    const fullName = data.name?.trim()
+      ?? [data.firstName?.trim(), data.lastName?.trim()].filter(Boolean).join(' ');
+    if (!fullName) throw new ConflictException('Name (or firstName + lastName) required.');
+
+    // If no password provided, generate a secure random one — they'll
+    // reset via the email-link flow on first login.
+    const rawPassword = data.password?.trim()
+      || crypto.randomBytes(16).toString('base64url');
+
     const user = this.usersRepo.create({
-      name:     data.name.trim(),
+      name:      fullName,
       email,
-      phone:    data.phone.trim(),
-      password: await bcrypt.hash(data.password, 12),
-      role:     UserRole.ADMIN,
+      phone:     data.phone?.trim() ?? '',
+      password:  await bcrypt.hash(rawPassword, 12),
+      role:      UserRole.ADMIN,
+      adminRole: (data.adminRole as AdminSubRole) ?? null,
+      roleId:    data.roleId ?? null,
     });
     await this.usersRepo.save(user);
+
+    // If a roleId was passed, also email the new admin a password reset
+    // link so they can set their own password on first sign-in.
+    if (data.roleId || !data.password) {
+      this.usersRepo.update(user.id, { passwordResetToken: crypto.randomBytes(32).toString('hex'), passwordResetExpiry: new Date(Date.now() + 24 * 3600_000) }).catch(() => {});
+    }
+
     const { password: _pw, ...safe } = user as any;
     return safe;
   }

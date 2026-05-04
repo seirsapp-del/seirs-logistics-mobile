@@ -39,10 +39,35 @@ interface AdminMember {
   email: string;
   adminRole?: AdminRoleType;
   role?: AdminRoleType;
+  // Spec V8 dynamic role assignment
+  roleId?: string | null;
   isActive: boolean;
   lastLoginAt?: string | null;
   createdAt: string;
 }
+
+// Spec V8 — dynamic role from /admin/roles
+interface DynamicRole {
+  id:           string;
+  slug:         string;
+  name:         string;
+  description:  string | null;
+  permissions:  string[];
+  isSystemRole: boolean;
+  badgeColor:   string;
+}
+
+const COLOR_BG: Record<string, string> = {
+  gray:   'bg-gray-100 text-gray-700',
+  red:    'bg-red-100 text-red-700',
+  blue:   'bg-blue-100 text-blue-700',
+  green:  'bg-green-100 text-green-700',
+  yellow: 'bg-yellow-100 text-yellow-700',
+  purple: 'bg-purple-100 text-purple-700',
+  pink:   'bg-pink-100 text-pink-700',
+  cyan:   'bg-cyan-100 text-cyan-700',
+  orange: 'bg-orange-100 text-orange-700',
+};
 
 // ─── RBAC helpers (permissions defined inline to match backend) ───────────────
 
@@ -273,21 +298,22 @@ interface CreateDrawerProps {
   onClose: () => void;
   onCreated: (member: AdminMember) => void;
   addToast: (type: Toast['type'], message: string) => void;
+  roles: DynamicRole[];
 }
 
 type CreateForm = {
   firstName: string;
   lastName: string;
   email: string;
-  adminRole: AdminRoleType | '';
+  roleId: string; // dynamic role id
 };
 
-function CreateDrawer({ onClose, onCreated, addToast }: CreateDrawerProps) {
+function CreateDrawer({ onClose, onCreated, addToast, roles }: CreateDrawerProps) {
   const [form, setForm] = useState<CreateForm>({
     firstName: '',
     lastName: '',
     email: '',
-    adminRole: '',
+    roleId: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof CreateForm, string>>>({});
   const [saving, setSaving] = useState(false);
@@ -301,7 +327,7 @@ function CreateDrawer({ onClose, onCreated, addToast }: CreateDrawerProps) {
     if (!form.lastName.trim())  e.lastName  = 'Required';
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       e.email = 'Valid email required';
-    if (!form.adminRole) e.adminRole = 'Select a role';
+    if (!form.roleId) e.roleId = 'Select a role';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -311,11 +337,15 @@ function CreateDrawer({ onClose, onCreated, addToast }: CreateDrawerProps) {
     if (!validate()) return;
     setSaving(true);
     try {
+      const role = roles.find(r => r.id === form.roleId);
       const result = await adminApi.admins.create({
         firstName: form.firstName.trim(),
         lastName:  form.lastName.trim(),
         email:     form.email.trim().toLowerCase(),
-        adminRole: form.adminRole,
+        // Pass legacy adminRole only for system roles whose slug matches the enum.
+        // Custom roles get roleId only — the user record stores both consistently.
+        ...(role?.isSystemRole ? { adminRole: role.slug } : {}),
+        roleId: form.roleId,
       });
       addToast('success', `Invitation email sent to ${form.email.trim().toLowerCase()}`);
       const newMember: AdminMember = {
@@ -323,7 +353,8 @@ function CreateDrawer({ onClose, onCreated, addToast }: CreateDrawerProps) {
         firstName:   form.firstName.trim(),
         lastName:    form.lastName.trim(),
         email:       form.email.trim().toLowerCase(),
-        adminRole:   form.adminRole as AdminRoleType,
+        adminRole:   role?.isSystemRole ? (role.slug as AdminRoleType) : undefined,
+        roleId:      form.roleId,
         isActive:    true,
         lastLoginAt: null,
         createdAt:   new Date().toISOString(),
@@ -409,43 +440,58 @@ function CreateDrawer({ onClose, onCreated, addToast }: CreateDrawerProps) {
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
 
-            {/* Role selection */}
+            {/* Role selection — dynamic from /admin/roles */}
             <div>
               <label className="block text-xs font-semibold text-[#0F2B4C]/60 mb-1.5 uppercase tracking-wide">
                 Role
               </label>
-              {errors.adminRole && <p className="text-red-500 text-xs mb-2">{errors.adminRole}</p>}
-              <div className="space-y-2">
-                {ALL_ROLES.map((r) => (
-                  <label
-                    key={r}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                      form.adminRole === r
-                        ? 'border-[#3A7BD5] bg-blue-50'
-                        : 'border-[#E5E7EB] hover:border-[#0F2B4C]/20 bg-white'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="adminRole"
-                      value={r}
-                      checked={form.adminRole === r}
-                      onChange={() => set('adminRole', r)}
-                      className="mt-0.5 accent-[#3A7BD5] shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_COLORS[r]}`}>
-                        {ROLE_LABELS[r]}
-                      </span>
-                      <p className="text-xs text-[#0F2B4C]/50 mt-1">{ROLE_DESCRIPTIONS[r]}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
+              {errors.roleId && <p className="text-red-500 text-xs mb-2">{errors.roleId}</p>}
+              {roles.length === 0 ? (
+                <p className="text-xs text-[#0F2B4C]/50">Loading roles…</p>
+              ) : (
+                <div className="space-y-2">
+                  {roles.map((r) => (
+                    <label
+                      key={r.id}
+                      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                        form.roleId === r.id
+                          ? 'border-[#3A7BD5] bg-blue-50'
+                          : 'border-[#E5E7EB] hover:border-[#0F2B4C]/20 bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="roleId"
+                        value={r.id}
+                        checked={form.roleId === r.id}
+                        onChange={() => set('roleId', r.id)}
+                        className="mt-0.5 accent-[#3A7BD5] shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${COLOR_BG[r.badgeColor] ?? COLOR_BG.gray}`}>
+                            {r.name}
+                          </span>
+                          {!r.isSystemRole && (
+                            <span className="text-[10px] uppercase tracking-wide text-[#3A7BD5] font-bold">custom</span>
+                          )}
+                        </div>
+                        {r.description && (
+                          <p className="text-xs text-[#0F2B4C]/50 mt-1">{r.description}</p>
+                        )}
+                        <p className="text-[10px] text-[#0F2B4C]/40 mt-1">
+                          {r.permissions.includes('*') ? 'All pages' : `${r.permissions.length} permission${r.permissions.length === 1 ? '' : 's'}`}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Permissions preview */}
-            {form.adminRole && <PermissionsPreview role={form.adminRole} />}
+            <p className="text-xs text-[#0F2B4C]/40">
+              Need a different permission set? <a href="/roles" className="text-[#3A7BD5] underline">Create a custom role</a> first.
+            </p>
           </div>
 
           {/* Footer */}
@@ -482,23 +528,39 @@ interface EditDrawerProps {
   onClose: () => void;
   onUpdated: (member: AdminMember) => void;
   addToast: (type: Toast['type'], message: string) => void;
+  roles: DynamicRole[];
 }
 
-function EditDrawer({ member, onClose, onUpdated, addToast }: EditDrawerProps) {
+function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerProps) {
   const currentRole = (getRole(member) ?? AdminRole.SUPPORT_AGENT) as AdminRoleType;
-  const [selectedRole, setSelectedRole] = useState<AdminRoleType>(currentRole);
-  const [savingRole, setSavingRole]     = useState(false);
-  const [resetting, setResetting]       = useState(false);
-  const [confirm, setConfirm]           = useState<'deactivate' | 'reactivate' | null>(null);
-  const [actioning, setActioning]       = useState(false);
+  // Pre-select the dynamic role that matches the user's current assignment
+  // (either by roleId, or by matching the legacy adminRole slug).
+  const initialRoleId =
+    member.roleId
+    || roles.find(r => r.slug === currentRole)?.id
+    || roles[0]?.id
+    || '';
+  const [selectedRoleId, setSelectedRoleId] = useState<string>(initialRoleId);
+  const [savingRole, setSavingRole]         = useState(false);
+  const [resetting, setResetting]           = useState(false);
+  const [confirm, setConfirm]               = useState<'deactivate' | 'reactivate' | null>(null);
+  const [actioning, setActioning]           = useState(false);
+
+  const selectedRoleObj = roles.find(r => r.id === selectedRoleId);
+  const noChange = selectedRoleId === initialRoleId;
 
   const handleRoleSave = async () => {
-    if (selectedRole === currentRole) { onClose(); return; }
+    if (noChange || !selectedRoleObj) { onClose(); return; }
     setSavingRole(true);
     try {
-      await adminApi.admins.updateRole(member.id, selectedRole);
-      addToast('success', `Role updated to ${ROLE_LABELS[selectedRole]}`);
-      onUpdated({ ...member, adminRole: selectedRole, role: selectedRole });
+      await adminApi.roles.assign(selectedRoleObj.id, member.id);
+      addToast('success', `Role updated to ${selectedRoleObj.name}`);
+      onUpdated({
+        ...member,
+        adminRole: selectedRoleObj.isSystemRole ? (selectedRoleObj.slug as AdminRoleType) : undefined,
+        role:      selectedRoleObj.isSystemRole ? (selectedRoleObj.slug as AdminRoleType) : undefined,
+        roleId:    selectedRoleObj.id,
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update role';
       addToast('error', msg);
@@ -598,42 +660,53 @@ function EditDrawer({ member, onClose, onUpdated, addToast }: EditDrawerProps) {
               </span>
             </div>
 
-            {/* Role change */}
+            {/* Role change — dynamic from /admin/roles */}
             <div>
               <h3 className="text-xs font-semibold text-[#0F2B4C]/40 uppercase tracking-wide mb-3">
                 Change Role
               </h3>
-              <div className="space-y-2">
-                {ALL_ROLES.map((r) => (
-                  <label
-                    key={r}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                      selectedRole === r
-                        ? 'border-[#3A7BD5] bg-blue-50'
-                        : 'border-[#E5E7EB] hover:border-[#0F2B4C]/20 bg-white'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="editRole"
-                      value={r}
-                      checked={selectedRole === r}
-                      onChange={() => setSelectedRole(r)}
-                      className="mt-0.5 accent-[#3A7BD5] shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_COLORS[r]}`}>
-                        {ROLE_LABELS[r]}
-                      </span>
-                      <p className="text-xs text-[#0F2B4C]/50 mt-1">{ROLE_DESCRIPTIONS[r]}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
+              {roles.length === 0 ? (
+                <p className="text-xs text-[#0F2B4C]/50">Loading roles…</p>
+              ) : (
+                <div className="space-y-2">
+                  {roles.map((r) => (
+                    <label
+                      key={r.id}
+                      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                        selectedRoleId === r.id
+                          ? 'border-[#3A7BD5] bg-blue-50'
+                          : 'border-[#E5E7EB] hover:border-[#0F2B4C]/20 bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="editRole"
+                        value={r.id}
+                        checked={selectedRoleId === r.id}
+                        onChange={() => setSelectedRoleId(r.id)}
+                        className="mt-0.5 accent-[#3A7BD5] shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${COLOR_BG[r.badgeColor] ?? COLOR_BG.gray}`}>
+                            {r.name}
+                          </span>
+                          {!r.isSystemRole && (
+                            <span className="text-[10px] uppercase tracking-wide text-[#3A7BD5] font-bold">custom</span>
+                          )}
+                        </div>
+                        {r.description && (
+                          <p className="text-xs text-[#0F2B4C]/50 mt-1">{r.description}</p>
+                        )}
+                        <p className="text-[10px] text-[#0F2B4C]/40 mt-1">
+                          {r.permissions.includes('*') ? 'All pages' : `${r.permissions.length} permission${r.permissions.length === 1 ? '' : 's'}`}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
-
-            {/* Permissions preview — updates live as role changes */}
-            <PermissionsPreview role={selectedRole} />
 
             {/* Account actions */}
             <div className="border-t border-[#E5E7EB] pt-5 space-y-3">
@@ -684,7 +757,7 @@ function EditDrawer({ member, onClose, onUpdated, addToast }: EditDrawerProps) {
             </button>
             <button
               onClick={handleRoleSave}
-              disabled={savingRole || selectedRole === currentRole}
+              disabled={savingRole || noChange}
               className="flex items-center gap-1.5 bg-[#0F2B4C] hover:bg-[#1E3A5F] disabled:opacity-40 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
             >
               {savingRole ? (
@@ -739,6 +812,7 @@ function SkeletonRow() {
 
 export default function StaffManagementPage() {
   const [members, setMembers]         = useState<AdminMember[]>([]);
+  const [roles,   setRoles]           = useState<DynamicRole[]>([]);
   const [loading, setLoading]         = useState(true);
   const [fetchError, setFetchError]   = useState<string | null>(null);
 
@@ -767,13 +841,17 @@ export default function StaffManagementPage() {
   const dismissToast = (id: number) =>
     setToasts((prev) => prev.filter((t) => t.id !== id));
 
-  // Fetch
+  // Fetch — admins + dynamic roles in parallel
   const load = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
     try {
-      const data = await adminApi.admins.list();
+      const [data, rolesList] = await Promise.all([
+        adminApi.admins.list(),
+        adminApi.roles.list().catch(() => []),
+      ]);
       setMembers(Array.isArray(data) ? data : []);
+      setRoles(Array.isArray(rolesList) ? rolesList : []);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load staff';
       setFetchError(msg);
@@ -916,8 +994,10 @@ export default function StaffManagementPage() {
               className="px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm bg-white text-[#0F2B4C] focus:outline-none focus:ring-2 focus:ring-[#3A7BD5] min-w-40"
             >
               <option value="">All Roles</option>
-              {ALL_ROLES.map((r) => (
-                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+              {/* Spec V8 — dynamic roles from /admin/roles. Filter by role slug
+                  (system roles use enum-style slugs; custom roles use derived). */}
+              {roles.map((r) => (
+                <option key={r.id} value={r.slug}>{r.name}</option>
               ))}
             </select>
 
@@ -985,9 +1065,17 @@ export default function StaffManagementPage() {
                   : paginated.map((m) => {
                       const role      = getRole(m);
                       const initials  = getInitials(m);
+                      // Spec V8 — prefer dynamic role lookup by roleId, fall
+                      // back to legacy hardcoded label/color for older users.
+                      const dynamicRole = m.roleId
+                        ? roles.find(r => r.id === m.roleId)
+                        : roles.find(r => role && r.slug === role);
                       const avatarBg  = role ? (AVATAR_BG[role] ?? 'bg-[#3A7BD5]') : 'bg-[#3A7BD5]';
-                      const roleColor = role ? (ROLE_COLORS[role] ?? '') : '';
-                      const roleLabel = role ? (ROLE_LABELS[role] ?? role) : '—';
+                      const roleColor = dynamicRole
+                        ? (COLOR_BG[dynamicRole.badgeColor] ?? COLOR_BG.gray)
+                        : role ? (ROLE_COLORS[role] ?? '') : '';
+                      const roleLabel = dynamicRole?.name
+                        ?? (role ? (ROLE_LABELS[role] ?? role) : '—');
 
                       return (
                         <tr key={m.id} className="hover:bg-[#F8F9FB] transition-colors group">
@@ -1135,6 +1223,7 @@ export default function StaffManagementPage() {
           onClose={() => setShowCreate(false)}
           onCreated={handleCreated}
           addToast={addToast}
+          roles={roles}
         />
       )}
 
@@ -1144,6 +1233,7 @@ export default function StaffManagementPage() {
           onClose={() => setEditMember(null)}
           onUpdated={handleUpdated}
           addToast={addToast}
+          roles={roles}
         />
       )}
 

@@ -44,7 +44,16 @@ export class AdminController {
 
   // POST /api/v1/admin/admins
   @Post('admins')
-  createAdmin(@Body() body: { name: string; email: string; phone: string; password: string }) {
+  createAdmin(@Body() body: {
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    email: string;
+    phone?: string;
+    password?: string;
+    adminRole?: string;
+    roleId?: string;
+  }) {
     return this.adminService.createAdmin(body);
   }
 
