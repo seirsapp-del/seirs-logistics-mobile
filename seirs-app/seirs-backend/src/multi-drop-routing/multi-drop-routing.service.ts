@@ -18,7 +18,7 @@ export interface Stop {
   label?: string;
 }
 
-interface OptimizedRoute {
+export interface OptimizedRoute {
   ordered:        Stop[];
   totalDistanceKm: number;
   legCount:       number;

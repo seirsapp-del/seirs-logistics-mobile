@@ -7,7 +7,7 @@ const POOL_TIME_CAP_PCT  = 20;   // Spec V8 §1 — insertion can add at most +2
 const CORRIDOR_RADIUS_KM = 1;    // Pickup/dropoff must lie within 1km of route
 const MAX_ACTIVE_LEGS    = 4;    // Sliding capacity bound
 
-interface FitCheckInput {
+export interface FitCheckInput {
   driverId:         string;
   newPickupLat:     number;
   newPickupLng:     number;
@@ -16,7 +16,7 @@ interface FitCheckInput {
   newLegEtaMinutes: number;
 }
 
-interface FitCheckResult {
+export interface FitCheckResult {
   fits:        boolean;
   reason?:     string;
   poolGroupId?: string;
