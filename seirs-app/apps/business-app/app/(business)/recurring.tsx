@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView,
+  View, Text, Pressable, StyleSheet, ScrollView, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -91,7 +91,13 @@ export default function RecurringScreen() {
           ))
         )}
 
-        <Pressable style={styles.addBtn}>
+        <Pressable
+          style={styles.addBtn}
+          onPress={() => Alert.alert(
+            'Coming soon',
+            'Recurring template creation will go live with the next backend batch (RecurringTemplate entity + scheduler). For now you can plan templates by creating individual scheduled deliveries via the New Delivery flow.',
+          )}
+        >
           <Icon name="Plus" size={16} color="#3A7BD5" />
           <Text style={styles.addBtnText}>Create new template</Text>
         </Pressable>

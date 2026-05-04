@@ -108,11 +108,17 @@ export default function EmailTemplatesPage() {
             </div>
 
             <div className="flex gap-2">
-              <button className="flex items-center gap-2 bg-[#0F2B4C] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#3A7BD5]">
+              <button
+                onClick={() => alert('Backend EmailTemplate persistence ships in a follow-up commit. UI is ready — your draft above is not yet saved server-side.')}
+                className="flex items-center gap-2 bg-[#0F2B4C] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#3A7BD5]"
+              >
                 <Save size={14} />
                 Save draft
               </button>
-              <button className="flex items-center gap-2 border border-[#E5E7EB] text-[#0F2B4C] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50">
+              <button
+                onClick={() => alert('Live preview will render the HTML body with sample variable values once the EmailTemplate persistence layer ships. UI is ready.')}
+                className="flex items-center gap-2 border border-[#E5E7EB] text-[#0F2B4C] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50"
+              >
                 <Eye size={14} />
                 Preview
               </button>

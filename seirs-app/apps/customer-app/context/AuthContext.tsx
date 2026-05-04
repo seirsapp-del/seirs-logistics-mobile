@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { setSessionExpiredHandler } from '@/services/api';
+import { setSessionExpiredHandler, usersApi } from '@/services/api';
 
 export type UserRole = 'customer' | 'driver' | null;
 
@@ -11,6 +11,8 @@ interface AuthUser {
   email: string;
   phone: string;
   role: UserRole;
+  accountId?: string;
+  profilePhoto?: string;
   token: string;
 }
 
@@ -21,6 +23,10 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (user: AuthUser) => Promise<void>;
   logout: () => Promise<void>;
+  // Re-fetch the current user profile from the API. Call this after edit-
+  // profile / change-password / any flow that mutates user fields so the
+  // in-memory copy stays in sync without forcing a logout.
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,8 +34,9 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   isLoading: true,
   isAuthenticated: false,
-  login: async () => {},
-  logout: async () => {},
+  login:   async () => {},
+  logout:  async () => {},
+  refresh: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -61,6 +68,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const refresh = async () => {
+    if (!user?.token) return;
+    try {
+      const fresh = await usersApi.me();
+      const merged: AuthUser = {
+        ...user,
+        name:         fresh.name         ?? user.name,
+        phone:        fresh.phone        ?? user.phone,
+        email:        fresh.email        ?? user.email,
+        accountId:    fresh.accountId    ?? user.accountId,
+        profilePhoto: fresh.profilePhoto ?? user.profilePhoto,
+      };
+      await AsyncStorage.setItem('seirs_user', JSON.stringify(merged));
+      setUser(merged);
+    } catch {
+      /* non-fatal — caller already showed success toast */
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -70,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         login,
         logout,
+        refresh,
       }}
     >
       {children}
