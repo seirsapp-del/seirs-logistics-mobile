@@ -543,8 +543,17 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
   const [selectedRoleId, setSelectedRoleId] = useState<string>(initialRoleId);
   const [savingRole, setSavingRole]         = useState(false);
   const [resetting, setResetting]           = useState(false);
-  const [confirm, setConfirm]               = useState<'deactivate' | 'reactivate' | null>(null);
+  const [confirm, setConfirm]               = useState<'offboard' | 'reactivate' | null>(null);
   const [actioning, setActioning]           = useState(false);
+  // Offboarding wizard state
+  const [footprint, setFootprint]           = useState<{
+    ready: boolean;
+    blockers: Array<{ type: string; count: number; action: string }>;
+    auditEntries: number;
+  } | null>(null);
+  const [loadingFootprint, setLoadingFootprint] = useState(false);
+  const [forceOffboard, setForceOffboard]   = useState(false);
+  const [offboardReason, setOffboardReason] = useState('');
 
   const selectedRoleObj = roles.find(r => r.id === selectedRoleId);
   const noChange = selectedRoleId === initialRoleId;
@@ -582,17 +591,44 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
     }
   };
 
-  const handleDeactivate = async () => {
-    setConfirm(null);
+  // Spec V8 — open offboarding wizard. Loads footprint to show what
+  // the admin owns + needs reassigning before deactivation.
+  const handleOpenOffboard = async () => {
+    setConfirm('offboard');
+    setLoadingFootprint(true);
+    setFootprint(null);
+    setForceOffboard(false);
+    setOffboardReason('');
+    try {
+      const fp = await adminApi.admins.footprint(member.id);
+      setFootprint(fp);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load footprint';
+      addToast('error', msg);
+      setConfirm(null);
+    } finally {
+      setLoadingFootprint(false);
+    }
+  };
+
+  const handleConfirmOffboard = async () => {
     setActioning(true);
     try {
-      await adminApi.admins.deactivate(member.id);
-      addToast('success', `${getFullName(member)}'s account has been deactivated`);
+      await adminApi.admins.offboard(member.id, {
+        reason: offboardReason.trim() || undefined,
+        force:  forceOffboard,
+      });
+      addToast('success', `${getFullName(member)} has been offboarded`);
       onUpdated({ ...member, isActive: false });
+      setConfirm(null);
       onClose();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to deactivate account';
-      addToast('error', msg);
+    } catch (err: any) {
+      // Backend returns blocker list on 409 — re-render the wizard with it
+      if (err?.message?.includes?.('reassign')) {
+        addToast('error', err.message);
+      } else {
+        addToast('error', err?.message ?? 'Failed to offboard');
+      }
     } finally {
       setActioning(false);
     }
@@ -727,12 +763,12 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
 
               {member.isActive ? (
                 <button
-                  onClick={() => setConfirm('deactivate')}
+                  onClick={handleOpenOffboard}
                   disabled={actioning}
                   className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border border-red-200 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 transition-colors text-left"
                 >
                   <UserX size={15} className="shrink-0" />
-                  Deactivate Account
+                  Offboard Account
                 </button>
               ) : (
                 <button
@@ -770,14 +806,129 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
         </div>
       </div>
 
-      {confirm === 'deactivate' && (
-        <ConfirmDialog
-          message={`Deactivate ${getFullName(member)}'s account? They will lose all dashboard access immediately.`}
-          onConfirm={handleDeactivate}
-          onCancel={() => setConfirm(null)}
-          confirmLabel="Deactivate"
-          danger
-        />
+      {confirm === 'offboard' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-[#E5E7EB]">
+              <div className="flex items-start gap-3">
+                <AlertTriangle size={20} className="text-red-500 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-base font-bold text-[#0F2B4C]">Offboard {getFullName(member)}</h3>
+                  <p className="text-xs text-[#0F2B4C]/50 mt-0.5">
+                    Pre-flight check — what they own that may need handover
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {loadingFootprint && (
+                <div className="text-center py-8 text-[#0F2B4C]/40">
+                  <RefreshCw size={18} className="animate-spin mx-auto mb-2" />
+                  Loading footprint…
+                </div>
+              )}
+
+              {footprint && footprint.ready && (
+                <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm text-emerald-800">
+                  <CheckCircle size={16} className="shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Clean — nothing to reassign</p>
+                    <p className="text-xs mt-1">No open tickets, draft CMS items, active API keys, or pending fraud reviews.</p>
+                  </div>
+                </div>
+              )}
+
+              {footprint && !footprint.ready && (
+                <>
+                  <p className="text-sm text-[#0F2B4C]">
+                    {footprint.blockers.length} item{footprint.blockers.length === 1 ? '' : 's'} need attention before offboarding:
+                  </p>
+                  {footprint.blockers.map((b, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50">
+                      <span className="text-xs font-bold uppercase tracking-wide bg-amber-100 text-amber-800 px-2 py-1 rounded shrink-0">
+                        {b.count}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-[#0F2B4C] capitalize">
+                          {b.type.replace(/_/g, ' ')}
+                        </p>
+                        <p className="text-xs text-[#0F2B4C]/70 mt-1 leading-snug">{b.action}</p>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {footprint && footprint.auditEntries > 0 && (
+                <p className="text-xs text-[#0F2B4C]/40">
+                  Note: {footprint.auditEntries.toLocaleString()} audit log entries will be retained for legal hold (does not block offboarding).
+                </p>
+              )}
+
+              {/* Reason */}
+              <div>
+                <label className="block text-xs font-bold text-[#0F2B4C]/60 mb-1.5 uppercase tracking-wide">
+                  Reason (optional, for audit log)
+                </label>
+                <input
+                  type="text"
+                  value={offboardReason}
+                  onChange={(e) => setOffboardReason(e.target.value)}
+                  placeholder="e.g. Resigned 2026-05-04, transferred to ops team"
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
+                />
+              </div>
+
+              {/* Force toggle — only relevant when blockers exist */}
+              {footprint && !footprint.ready && (
+                <label className="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={forceOffboard}
+                    onChange={(e) => setForceOffboard(e.target.checked)}
+                    className="mt-0.5 accent-red-600 shrink-0"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-red-800">Force offboard anyway</p>
+                    <p className="text-xs text-red-700/80 mt-1 leading-snug">
+                      Acknowledge that the items above will be orphaned. Tickets become unassigned, draft CMS items lose their owner, and active API keys keep working until you revoke them manually from /dev-accounts.
+                    </p>
+                  </div>
+                </label>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[#E5E7EB] flex items-center justify-end gap-3">
+              <button
+                onClick={() => setConfirm(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-[#0F2B4C]/60 hover:bg-[#F5F5F0]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmOffboard}
+                disabled={
+                  actioning
+                  || !footprint
+                  || (footprint && !footprint.ready && !forceOffboard)
+                }
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {actioning
+                  ? 'Offboarding…'
+                  : footprint?.ready
+                    ? 'Offboard'
+                    : forceOffboard
+                      ? 'Force offboard'
+                      : 'Resolve blockers first'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {confirm === 'reactivate' && (
         <ConfirmDialog

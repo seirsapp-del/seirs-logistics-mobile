@@ -1,17 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator,
   KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, AlertTriangle, Trash2, Download } from 'lucide-react-native';
+import { ArrowLeft, AlertTriangle, Trash2, Download, AlertCircle, CheckCircle } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { usersApi } from '@/services/api';
+import { usersApi, driversApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+
+interface Readiness {
+  ready:    boolean;
+  blockers: Array<{ type: string; count: number; action: string }>;
+}
 
 const CONFIRM_PHRASE = 'delete my account';
 
@@ -29,6 +34,16 @@ export default function DeleteAccountScreen() {
   const [confirmText, setConfirmText] = useState('');
   const [loading,     setLoading]     = useState(false);
   const [exporting,   setExporting]   = useState(false);
+
+  // Spec V8 — pre-deletion readiness. Blocks deletion until active
+  // deliveries are completed and wallet balance is withdrawn.
+  const [readiness,   setReadiness]   = useState<Readiness | null>(null);
+
+  useEffect(() => {
+    driversApi.deletionReadiness()
+      .then((r) => setReadiness({ ready: r.ready, blockers: r.blockers ?? [] }))
+      .catch(() => setReadiness({ ready: true, blockers: [] }));
+  }, []);
 
   // Spec V8 NDPR Article 24 — surfaced before delete so drivers can
   // take their earnings + trip history with them.
@@ -51,7 +66,8 @@ export default function DeleteAccountScreen() {
 
   const canSubmit =
     password.length > 0 &&
-    confirmText.trim().toLowerCase() === CONFIRM_PHRASE;
+    confirmText.trim().toLowerCase() === CONFIRM_PHRASE &&
+    !!readiness?.ready;
 
   const handleSubmit = () => {
     Alert.alert(
@@ -103,10 +119,46 @@ export default function DeleteAccountScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.warnTitle}>Permanent after 30 days</Text>
               <Text style={styles.warnSub}>
-                Soft-deleted now; sign in within 30 days to cancel. Make sure you&apos;ve withdrawn any wallet balance first.
+                Soft-deleted now; sign in within 30 days to cancel.
               </Text>
             </View>
           </View>
+
+          {/* Spec V8 — pre-flight readiness panel. Blocks deletion until
+              active deliveries are 0 and wallet balance is withdrawn. */}
+          {readiness === null ? (
+            <View style={[styles.readyBanner, { backgroundColor: '#F3F4F6' }]}>
+              <ActivityIndicator color={theme.primary} />
+              <Text style={[styles.readyTitle, { color: theme.textSecond }]}>Checking your account…</Text>
+            </View>
+          ) : readiness.ready ? (
+            <View style={[styles.readyBanner, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}>
+              <CheckCircle size={20} color="#16A34A" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.readyTitle, { color: '#15803D' }]}>Ready to delete</Text>
+                <Text style={[styles.readySub,   { color: '#166534' }]}>No active deliveries, wallet is empty.</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.blockBanner, { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' }]}>
+              <AlertCircle size={20} color="#D97706" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.readyTitle, { color: '#92400E' }]}>
+                  {readiness.blockers.length} thing{readiness.blockers.length === 1 ? '' : 's'} to do first
+                </Text>
+                {readiness.blockers.map((b, i) => (
+                  <View key={i} style={{ marginTop: 8 }}>
+                    <Text style={[styles.blockerLabel, { color: '#92400E' }]}>
+                      {b.type === 'active_deliveries' ? `${b.count} active deliver${b.count === 1 ? 'y' : 'ies'}` :
+                       b.type === 'wallet_balance'    ? `Wallet balance: ₦${b.count.toLocaleString()}` :
+                       `${b.type}: ${b.count}`}
+                    </Text>
+                    <Text style={[styles.blockerAction, { color: '#92400E' }]}>{b.action}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           <Text style={[styles.what, { color: theme.text }]}>What gets deleted</Text>
           {[
@@ -203,6 +255,13 @@ const styles = StyleSheet.create({
   warnBanner:{ flexDirection: 'row', gap: 12, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, alignItems: 'flex-start', backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' },
   warnTitle: { color: '#991B1B', fontSize: FontSize.base, fontWeight: FontWeight.bold, marginBottom: 4 },
   warnSub:   { color: '#991B1B', fontSize: FontSize.sm, lineHeight: 19 },
+
+  readyBanner: { flexDirection: 'row', gap: 12, padding: Spacing.md, borderRadius: Radius.lg, alignItems: 'center' },
+  readyTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  readySub:    { fontSize: FontSize.xs, marginTop: 2 },
+  blockBanner: { flexDirection: 'row', gap: 12, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, alignItems: 'flex-start' },
+  blockerLabel:{ fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  blockerAction:{ fontSize: FontSize.xs, marginTop: 2, lineHeight: 17 },
   what:      { fontSize: FontSize.base, fontWeight: FontWeight.bold, marginTop: Spacing.sm },
   bullet:    { fontSize: FontSize.sm, lineHeight: 21, paddingLeft: Spacing.xs },
   fieldLabel:{ fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 0.5 },

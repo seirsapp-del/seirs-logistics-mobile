@@ -231,6 +231,9 @@ export default function PartnerSettingsScreen() {
             : <Text style={styles.saveBtnText}>Save Changes</Text>
           }
         </Pressable>
+
+        {/* Spec V8 — partner store closing flow with readiness checks */}
+        <ClosingSection storeId={user?.partnerStoreId ?? ''} />
       </ScrollView>
     </View>
   );
@@ -285,4 +288,99 @@ const styles = StyleSheet.create({
   saveBtn:       { backgroundColor: '#0F2B4C', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText:   { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+  // ClosingSection styles
+  closingSection: { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#FCA5A5', marginTop: 24 },
+  closingTitle:   { fontSize: 14, fontWeight: '800', color: '#991B1B', marginBottom: 4 },
+  closingSub:     { fontSize: 12, color: '#7F1D1D', lineHeight: 17, marginBottom: 12 },
+  blockerCard:    { flexDirection: 'row', gap: 10, padding: 10, borderRadius: 10, backgroundColor: '#FEF3C7', marginBottom: 8, alignItems: 'flex-start' },
+  blockerCount:   { fontSize: 11, fontWeight: '800', color: '#92400E', backgroundColor: '#FCD34D', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  blockerText:    { flex: 1, fontSize: 12, color: '#92400E', lineHeight: 17 },
+  closeBtn:       { backgroundColor: '#DC2626', borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 12 },
+  closeBtnDisabled: { backgroundColor: '#F3F4F6' },
+  closeBtnText:   { color: '#fff', fontWeight: '700', fontSize: 14 },
+  closeBtnTextDisabled: { color: '#9CA3AF' },
+  readyTip:       { fontSize: 12, color: '#16A34A', marginBottom: 8, fontWeight: '600' },
 });
+
+// ── Closing flow ──────────────────────────────────────────────────────────
+// Spec V8 — partner can't shut down their store while there are packages
+// in custody. Loads readiness from backend, shows blockers, and gates
+// the destructive action behind a confirm dialog only when ready.
+function ClosingSection({ storeId }: { storeId: string }) {
+  const [readiness, setReadiness] = useState<{
+    ready: boolean;
+    blockers: Array<{ type: string; count: number; action: string }>;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!storeId) return;
+    setLoading(true);
+    partnerApi.storeDeletionReadiness(storeId)
+      .then(r => setReadiness({ ready: r.ready, blockers: r.blockers ?? [] }))
+      .catch(() => setReadiness({ ready: false, blockers: [] }))
+      .finally(() => setLoading(false));
+  }, [storeId]);
+
+  const handleClose = () => {
+    if (!readiness?.ready) return;
+    Alert.alert(
+      'Close partner store?',
+      'This pauses incoming bookings, removes you from the customer map, and starts the offboarding workflow. Final wallet payout follows the next regular cycle.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text:    'Close store',
+          style:   'destructive',
+          onPress: async () => {
+            try {
+              await partnerApi.storeSetStatus(storeId, 'paused');
+              Alert.alert('Store paused', 'Bookings are off. Contact ops to complete offboarding when ready.');
+            } catch (e: any) {
+              Alert.alert('Could not close', e?.message ?? 'Try again.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  if (!storeId) return null;
+
+  return (
+    <View style={styles.closingSection}>
+      <Text style={styles.closingTitle}>Close This Store</Text>
+      <Text style={styles.closingSub}>
+        Permanently shut down this partner store. You cannot close while packages are still in your custody.
+      </Text>
+
+      {loading && <ActivityIndicator color="#DC2626" />}
+
+      {readiness && readiness.ready && (
+        <Text style={styles.readyTip}>✓ Store is empty — safe to close</Text>
+      )}
+
+      {readiness && !readiness.ready && readiness.blockers.length > 0 && (
+        <>
+          {readiness.blockers.map((b, i) => (
+            <View key={i} style={styles.blockerCard}>
+              <Text style={styles.blockerCount}>{b.count}</Text>
+              <Text style={styles.blockerText}>{b.action}</Text>
+            </View>
+          ))}
+        </>
+      )}
+
+      <Pressable
+        style={[styles.closeBtn, !readiness?.ready && styles.closeBtnDisabled]}
+        disabled={!readiness?.ready}
+        onPress={handleClose}
+      >
+        <Text style={[styles.closeBtnText, !readiness?.ready && styles.closeBtnTextDisabled]}>
+          {readiness?.ready ? 'Close store' : 'Resolve blockers first'}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
