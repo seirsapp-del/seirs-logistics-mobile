@@ -4,6 +4,7 @@ export {
   setSessionExpiredHandler,
   uploadApi,
   authApi,
+  usersApi,
   deliveriesApi,
   paymentsApi,
   driversApi,

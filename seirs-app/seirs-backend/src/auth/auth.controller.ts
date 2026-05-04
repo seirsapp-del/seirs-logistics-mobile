@@ -76,6 +76,18 @@ export class AuthController {
     return this.authService.resetPassword(token, newPassword);
   }
 
+  // POST /api/v1/auth/change-password
+  // Logged-in password change — requires current password as proof.
+  // Different from forgot/reset which goes through email link.
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  changePassword(
+    @CurrentUser() user: User,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ) {
+    return this.authService.changePassword(user.id, body.currentPassword, body.newPassword);
+  }
+
   // ── Business / Partner Auth ────────────────────────────────────────────────
 
   @Post('business-register')

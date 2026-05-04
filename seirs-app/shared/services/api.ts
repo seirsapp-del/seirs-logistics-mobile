@@ -94,6 +94,12 @@ export const authApi = {
   resendOtp: (email: string) =>
     request<{ message: string }>('POST', '/auth/resend-otp', { email }, false),
 
+  // Spec V8 — logged-in password change (requires current password)
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ message: string }>(
+      'POST', '/auth/change-password', { currentPassword, newPassword },
+    ),
+
   login: (email: string, password: string) =>
     request<{ token: string; user: any }>('POST', '/auth/login', { email, password }, false),
 
@@ -113,6 +119,16 @@ export const authApi = {
 };
 
 // ─── Deliveries ───────────────────────────────────────────────────────────────
+// ─── Users (profile + account management) ──────────────────────────────────
+export const usersApi = {
+  me: () => request<any>('GET', '/users/me'),
+  updateProfile: (data: { name?: string; phone?: string; profilePhoto?: string }) =>
+    request<any>('PATCH', '/users/me', data),
+  // NDPR right to erasure — soft-delete + 30-day grace
+  deleteAccount: (password: string) =>
+    request<{ message: string }>('DELETE', '/users/me', { password }),
+};
+
 export const deliveriesApi = {
   quote: (body: object) => request<any>('POST', '/deliveries/quote', body),
   create: (body: object) => request<any>('POST', '/deliveries', body),

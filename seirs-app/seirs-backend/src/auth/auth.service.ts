@@ -350,6 +350,34 @@ export class AuthService {
     return { message: 'If that email exists, a reset link has been sent.' };
   }
 
+  // Spec V8 — logged-in password change. Requires current password as
+  // proof so a stolen session token alone can't lock the user out.
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.usersRepo
+      .createQueryBuilder('u')
+      .addSelect('u.password')
+      .where('u.id = :id', { id: userId })
+      .getOne();
+    if (!user) throw new NotFoundException('Account not found');
+
+    const ok = await bcrypt.compare(currentPassword, user.password);
+    if (!ok) throw new BadRequestException('Current password did not match.');
+
+    if (!AuthService.PASSWORD_REGEX.test(newPassword)) {
+      throw new BadRequestException(
+        'New password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number or symbol.',
+      );
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('New password must be different from current password.');
+    }
+
+    await this.usersRepo.update(userId, {
+      password: await bcrypt.hash(newPassword, 12),
+    });
+    return { message: 'Password changed.' };
+  }
+
   async resetPassword(token: string, newPassword: string) {
     const user = await this.usersRepo
       .createQueryBuilder('u')
