@@ -720,7 +720,7 @@ const DEFAULT_NODES = [
   { id:'cust.tripProgress',  app:'customer', label:'Trip Progress',      file:'app/(customer)/trip-progress.tsx',  status:'built',   wf:'map',      col:10, row:0, notes:'Live driver pin via socket.io — joins delivery room and updates marker on driver:location pings. delivery:status events update progress steps. Falls back to placeholder coords if no events received yet.' },
   { id:'cust.track',         app:'customer', label:'Track by Code',      file:'app/(customer)/track.tsx',          status:'built',   wf:'flow',     col:10, row:1 },
   { id:'cust.sos',           app:'customer', label:'SOS',                file:'app/(customer)/sos.tsx',            status:'built',   wf:'flow',     col:10, row:2 },
-  { id:'cust.rate',          app:'customer', label:'Rate Driver',        file:'app/(customer)/rate/[driverId].tsx',status:'built',   wf:'flow',     col:11, row:0 },
+  { id:'cust.rate',          app:'customer', label:'Rate Driver',        file:'app/(customer)/rate/[driverId].tsx',status:'built',   wf:'flow',     col:11, row:0, notes:'Star rating + comment + tip selector inline (preset amounts ₦200/500/1000 + custom). Following Uber/Lyft pattern — separate tip screen would add friction. Tip routes to driver wallet via paymentsApi.tip when wired.' },
   { id:'cust.receipt',       app:'customer', label:'Receipt',            file:'app/(customer)/receipt/[id].tsx',   status:'built',   wf:'detail',   col:12, row:0 },
   { id:'cust.trip',          app:'customer', label:'Trip Detail',        file:'app/(customer)/trip/[id].tsx',      status:'built',   wf:'detail',   col:12, row:1 },
   { id:'cust.shareTrip',     app:'customer', label:'Share Trip',         file:'app/(customer)/share-trip.tsx',     status:'built',   wf:'flow',     col:12, row:2 },
@@ -878,7 +878,6 @@ const DEFAULT_NODES = [
   { id:'cust.changePassword',app:'customer', label:'Change Password',    file:'app/(customer)/change-password.tsx', status:'planned', wf:'flow',     col:14, row:1, notes:'Logged-in password change — current password required, no email link round-trip. Different from forgot-password flow.' },
   { id:'cust.deleteAccount', app:'customer', label:'Delete Account',     file:'app/(customer)/delete-account.tsx',  status:'planned', wf:'flow',     col:14, row:2, notes:'NDPR right-to-erasure — required for Nigerian apps handling personal data. Soft-delete + grace period + escrow refund.' },
   { id:'cust.addresses',     app:'customer', label:'Saved Addresses',    file:'app/(customer)/addresses.tsx',       status:'planned', wf:'list',     col:14, row:3, notes:'Address book — Send/Request flows currently re-type every booking. Add/edit/delete + label (Home, Work, etc.).' },
-  { id:'cust.tipDriver',     app:'customer', label:'Tip Driver',         file:'app/(customer)/tip/[driverId].tsx',  status:'planned', wf:'flow',     col:14, row:4, notes:'Standalone tip flow after rating — preset amounts + custom + thank-you message. Goes to driver wallet via paymentsApi.tip.' },
 
   // Driver
   { id:'drv.editProfile',    app:'driver', label:'Edit Profile',       file:'app/(driver)/edit-profile.tsx',      status:'planned', wf:'flow',     col:13, row:0, notes:'Standalone edit form — profile.tsx is view-only.' },
@@ -890,7 +889,7 @@ const DEFAULT_NODES = [
   // Business / Partner
   { id:'biz.editProfile',    app:'business', label:'Edit Business',      file:'app/(business)/edit-profile.tsx',    status:'planned', wf:'flow',     col:10, row:0, notes:'Edit business name, address, RC number, logo.' },
   { id:'biz.recurring',      app:'business', label:'Recurring Deliveries',file:'app/(business)/recurring.tsx',     status:'planned', wf:'list',     col:10, row:1, notes:'Spec batch 4 §4.2 — manage scheduled / recurring delivery templates (daily / weekly / monthly).' },
-  { id:'biz.apiKeys',        app:'business', label:'API & Webhooks',     file:'app/(business)/api-keys.tsx',        status:'planned', wf:'settings', col:10, row:2, notes:'Generate API keys + webhook URLs for B2B senders integrating SEIRS into their own e-commerce backend.' },
+  { id:'biz.apiKeys',        app:'business', label:'Dev Console: API Keys',file:'app/(business)/api-keys.tsx',      status:'planned', wf:'settings', col:10, row:2, notes:'SEIRS Developer Platform — generate live + test API keys, copy HMAC signing secret, set IP allowlists. Foundation for the Tier 3 platform play (Flutterwave-for-logistics).' },
   { id:'biz.partHours',      app:'business', label:'Store Hours',       file:'app/(partner)/hours.tsx',            status:'planned', wf:'settings', col:10, row:3, notes:'Partner store opening hours management — surfaces in customer app filter and ops dispatch logic.' },
 
   // Admin
@@ -898,6 +897,21 @@ const DEFAULT_NODES = [
   { id:'adm.emailTemplates', app:'admin', label:'Email Templates',     file:'src/app/email-templates/page.tsx',   status:'planned', wf:'list',     col:12, row:1, notes:'Editor for transactional emails (OTP, welcome, driver approved, etc.) — currently hardcoded in mail service. Variable interpolation preview.' },
   { id:'adm.healthDash',     app:'admin', label:'System Health',       file:'src/app/health/page.tsx',            status:'planned', wf:'home',     col:12, row:2, notes:'Live ops view — Railway uptime, error rate, queue depth, Redis latency, Postgres connection count, Flutterwave success rate.' },
   { id:'adm.notifyComposer', app:'admin', label:'Push Composer',       file:'src/app/notify/page.tsx',            status:'planned', wf:'flow',     col:12, row:3, notes:'One-off push notification composer for ops broadcasts (e.g. "service paused in Lekki due to flooding"). Audience targeting + send-now / schedule.' },
+
+  // ── DEVELOPER PLATFORM (Tier 3 strategic — "Flutterwave for logistics") ──
+  // Business-side dev console additions
+  { id:'biz.webhookLog',     app:'business', label:'Webhook Delivery Log',file:'app/(business)/webhook-log.tsx',   status:'planned', wf:'list',     col:11, row:0, notes:'Per-event webhook delivery log — payload preview, response code, retry attempts, signed-hash header. Critical debugging tool for integrators.' },
+  { id:'biz.apiUsage',       app:'business', label:'Dev Usage Dashboard',file:'app/(business)/api-usage.tsx',      status:'planned', wf:'home',     col:11, row:1, notes:'Per-key call volume, error rate, p95 latency, monthly bill estimate. Same pattern as Stripe / Flutterwave dashboards.' },
+
+  // Backend platform additions
+  { id:'be.publicApi',       app:'backend', label:'Public API (/v1/*)',  file:'seirs-backend/src/public-api',       status:'planned', wf:'detail',   col:16, row:0, notes:'HMAC-signed public API surface — POST /v1/orders, GET /v1/orders/:id, POST /v1/orders/:id/cancel, POST /v1/quote, POST /v1/webhooks. Separate auth path from internal JWT routes. Per-key rate limiting + IP allowlist.' },
+  { id:'be.webhooks',        app:'backend', label:'Webhook Dispatcher', file:'seirs-backend/src/webhooks',         status:'planned', wf:'detail',   col:17, row:0, notes:'Outbound webhook delivery service — event queue, signed payloads (HMAC SHA256 in X-SEIRS-Signature), exponential backoff retry, persistent log for biz.webhookLog UI.' },
+  { id:'be.sandbox',         app:'backend', label:'Sandbox Environment',file:'seirs-backend/src/sandbox',          status:'planned', wf:'detail',   col:18, row:0, notes:'Test-key routing — mock drivers, mock Flutterwave responses, no real money. Lets devs build/test without affecting production data. Industry-standard pattern (Stripe, Paystack, Flutterwave all do this).' },
+
+  // Admin oversight of dev platform
+  { id:'adm.devAccounts',    app:'admin', label:'Developer Accounts',  file:'src/app/dev-accounts/page.tsx',      status:'planned', wf:'list',     col:13, row:0, notes:'List of all integrator businesses — suspend, override rate limits, view their key inventory, billing.' },
+  { id:'adm.devUsage',       app:'admin', label:'Platform API Stats',  file:'src/app/dev-usage/page.tsx',         status:'planned', wf:'home',     col:13, row:1, notes:'Aggregate API stats across all dev accounts — top consumers, error spikes, abuse detection (rate limit violations, 4xx flood patterns).' },
+  { id:'adm.devDocs',        app:'admin', label:'Developer Docs Site', file:'docs.seirs.app',                     status:'planned', wf:'detail',   col:13, row:2, notes:'NEW separate Vercel project — public docs.seirs.app built with Mintlify or Nextra. Endpoints reference, SDKs, sample code, changelog, sandbox mode guide. Not really an admin page — placed here as architectural placeholder until "web" lane added.' },
 ];
 
 const DEFAULT_CONNS = [
