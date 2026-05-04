@@ -25,6 +25,10 @@ import { FxModule } from './fx/fx.module';
 import { FeesModule } from './fees/fees.module';
 import { IdentityModule } from './identity/identity.module';
 import { PartnerStoreModule } from './partner-store/partner-store.module';
+import { PoolingModule } from './pooling/pooling.module';
+import { MultiDropRoutingModule } from './multi-drop-routing/multi-drop-routing.module';
+import { OfflineSyncModule } from './offline-sync/offline-sync.module';
+import { DevPlatformModule } from './developer-platform/dev-platform.module';
 
 @Module({
   imports: [
@@ -85,6 +89,10 @@ import { PartnerStoreModule } from './partner-store/partner-store.module';
     FeesModule,
     IdentityModule,
     PartnerStoreModule,
+    PoolingModule,
+    MultiDropRoutingModule,
+    OfflineSyncModule,
+    DevPlatformModule,
   ],
 })
 export class AppModule {}
