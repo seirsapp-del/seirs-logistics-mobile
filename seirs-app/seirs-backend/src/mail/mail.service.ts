@@ -287,4 +287,23 @@ export class MailService {
 
     await this.send(to, 'Update on your Seirs driver application', html);
   }
+
+  // ── Handoff OTP (Spec V8 §1.17 — recipient verification at pickup) ──────────
+
+  async sendHandoffOtp(to: string, name: string, otp: string, deliveryRef: string) {
+    const html = baseTemplate(`
+      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Pickup verification code</h2>
+      <p>Hi ${name},</p>
+      <p>Show this code to the partner staff (or driver) when collecting your delivery. It expires in <strong>10 minutes</strong>.</p>
+      <div style="margin:24px 0;text-align:center">
+        <div style="display:inline-block;background:#F3F4F6;border-radius:12px;
+                    padding:20px 36px;letter-spacing:12px;font-size:36px;
+                    font-weight:bold;color:${BRAND_NAVY}">${otp}</div>
+      </div>
+      <p style="font-size:13px;color:#9CA3AF">Delivery reference: ${deliveryRef}</p>
+      <p style="font-size:13px;color:#9CA3AF">Never share this code over the phone with anyone claiming to be Seirs support — we will never ask for it.</p>
+    `);
+
+    await this.send(to, 'Your Seirs pickup verification code', html);
+  }
 }

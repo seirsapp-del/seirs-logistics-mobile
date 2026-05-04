@@ -77,6 +77,9 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'current_fuel_price',          name: 'Current Fuel Price (₦/L)',
     description: 'Admin-overridable Nigerian petrol price used by the auto-adjust pricing engine. Update when NNPCL changes the pump rate.',
     category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 770 },
+  { key: 'high_value_threshold_ngn',    name: 'High-Value Package Threshold',
+    description: 'Order value at which extra recipient verification kicks in (Spec V8 §1.17 — physical ID photo required at handoff).',
+    category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 50000 },
 
   // ── Developer Platform tiers ───────────────────────────────────────────
   { key: 'dev_growth_tier_monthly',     name: 'Dev Platform — Growth Tier',

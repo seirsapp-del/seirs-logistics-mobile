@@ -23,6 +23,7 @@ import { UploadModule } from './upload/upload.module';
 import { BusinessModule } from './business/business.module';
 import { FxModule } from './fx/fx.module';
 import { FeesModule } from './fees/fees.module';
+import { IdentityModule } from './identity/identity.module';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { FeesModule } from './fees/fees.module';
     BusinessModule,
     FxModule,
     FeesModule,
+    IdentityModule,
   ],
 })
 export class AppModule {}
