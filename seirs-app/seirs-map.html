@@ -866,6 +866,38 @@ const DEFAULT_NODES = [
   { id:'be.pooling',         app:'backend', label:'Corridor Pool Engine',file:'seirs-backend/src/pooling',           status:'planned', wf:'detail', col:13, row:0, notes:'Spec V8 §1 — corridor matching, +20% time cap insertion, 4-leg sliding capacity, mixed passenger+package' },
   { id:'be.routing',         app:'backend', label:'Multi-Drop Routing', file:'seirs-backend/src/routing',             status:'planned', wf:'detail', col:14, row:0, notes:'Spec V8 §2 — TSP-style multi-drop optimisation, recalc per drop + traffic shifts >15%' },
   { id:'be.offline',         app:'backend', label:'Offline GPS Sync',   file:'seirs-backend/src/tracking',           status:'planned', wf:'detail', col:15, row:0, notes:'Spec V8 §2 — receive batched GPS pings on reconnect, reconstruct route, 5/10min check-in escalation' },
+
+  // ── MAP DRIFT FIX — screens that exist on disk but were missing from map ──
+  { id:'cust.driverRegister',app:'customer', label:'Become a Driver',    file:'app/(auth)/driver-register.tsx',     status:'built',   wf:'auth',     col:2,  row:3, notes:'Customer-app upsell flow that lets a customer convert their account into a driver account — full registration form with vehicle picker.' },
+  { id:'drv.driverRegister', app:'driver', label:'Driver Registration',file:'app/(auth)/driver-register.tsx',     status:'built',   wf:'auth',     col:2,  row:0, notes:'Real driver signup — full vehicle-class picker (bicycle through truck-large), Nigerian phone validation, password rules, terms.' },
+  { id:'drv.reset',          app:'driver', label:'Reset Password',     file:'app/reset-password.tsx',             status:'built',   wf:'auth',     col:2,  row:3, notes:'Deep-link target seirsmobile://reset-password?token=xxx — accepts new password + confirm, calls authApi.resetPassword.' },
+
+  // ── MAP DRIFT FIX — spec-implied screens not yet built (planned) ──
+  // Customer
+  { id:'cust.editProfile',   app:'customer', label:'Edit Profile',       file:'app/(customer)/edit-profile.tsx',    status:'planned', wf:'flow',     col:14, row:0, notes:'Standalone edit form for name/phone/photo — currently profile.tsx is view-only. Form validation + photo re-upload to R2.' },
+  { id:'cust.changePassword',app:'customer', label:'Change Password',    file:'app/(customer)/change-password.tsx', status:'planned', wf:'flow',     col:14, row:1, notes:'Logged-in password change — current password required, no email link round-trip. Different from forgot-password flow.' },
+  { id:'cust.deleteAccount', app:'customer', label:'Delete Account',     file:'app/(customer)/delete-account.tsx',  status:'planned', wf:'flow',     col:14, row:2, notes:'NDPR right-to-erasure — required for Nigerian apps handling personal data. Soft-delete + grace period + escrow refund.' },
+  { id:'cust.addresses',     app:'customer', label:'Saved Addresses',    file:'app/(customer)/addresses.tsx',       status:'planned', wf:'list',     col:14, row:3, notes:'Address book — Send/Request flows currently re-type every booking. Add/edit/delete + label (Home, Work, etc.).' },
+  { id:'cust.tipDriver',     app:'customer', label:'Tip Driver',         file:'app/(customer)/tip/[driverId].tsx',  status:'planned', wf:'flow',     col:14, row:4, notes:'Standalone tip flow after rating — preset amounts + custom + thank-you message. Goes to driver wallet via paymentsApi.tip.' },
+
+  // Driver
+  { id:'drv.editProfile',    app:'driver', label:'Edit Profile',       file:'app/(driver)/edit-profile.tsx',      status:'planned', wf:'flow',     col:13, row:0, notes:'Standalone edit form — profile.tsx is view-only.' },
+  { id:'drv.changePassword', app:'driver', label:'Change Password',    file:'app/(driver)/change-password.tsx',   status:'planned', wf:'flow',     col:13, row:1, notes:'Logged-in password change — separate from forgot flow.' },
+  { id:'drv.deleteAccount',  app:'driver', label:'Delete Account',     file:'app/(driver)/delete-account.tsx',    status:'planned', wf:'flow',     col:13, row:2, notes:'NDPR right-to-erasure for drivers. Must reconcile pending wallet balance + active deliveries before deletion.' },
+  { id:'drv.taxDocs',        app:'driver', label:'Tax Documents',      file:'app/(driver)/tax-docs.tsx',          status:'planned', wf:'list',     col:13, row:3, notes:'Annual earnings statement (PDF) — drivers need this for FIRS tax filing. Per-year download + commission breakdown.' },
+  { id:'drv.seirsId',        app:'driver', label:'My SEIRS ID',        file:'app/(driver)/seirs-id.tsx',          status:'planned', wf:'detail',   col:13, row:4, notes:'Display QR + 6-char alphanumeric for driver SEIRS Verified ID — Spec V8 §1.17 backup-ID flow needs this surface.' },
+
+  // Business / Partner
+  { id:'biz.editProfile',    app:'business', label:'Edit Business',      file:'app/(business)/edit-profile.tsx',    status:'planned', wf:'flow',     col:10, row:0, notes:'Edit business name, address, RC number, logo.' },
+  { id:'biz.recurring',      app:'business', label:'Recurring Deliveries',file:'app/(business)/recurring.tsx',     status:'planned', wf:'list',     col:10, row:1, notes:'Spec batch 4 §4.2 — manage scheduled / recurring delivery templates (daily / weekly / monthly).' },
+  { id:'biz.apiKeys',        app:'business', label:'API & Webhooks',     file:'app/(business)/api-keys.tsx',        status:'planned', wf:'settings', col:10, row:2, notes:'Generate API keys + webhook URLs for B2B senders integrating SEIRS into their own e-commerce backend.' },
+  { id:'biz.partHours',      app:'business', label:'Store Hours',       file:'app/(partner)/hours.tsx',            status:'planned', wf:'settings', col:10, row:3, notes:'Partner store opening hours management — surfaces in customer app filter and ops dispatch logic.' },
+
+  // Admin
+  { id:'adm.forgot',         app:'admin', label:'Forgot Password',     file:'src/app/forgot-password/page.tsx',   status:'planned', wf:'auth',     col:12, row:0, notes:'CRITICAL GAP — admin has no password reset path today. If a Super Admin forgets their password there is no recovery. Email-link flow + audit log entry.' },
+  { id:'adm.emailTemplates', app:'admin', label:'Email Templates',     file:'src/app/email-templates/page.tsx',   status:'planned', wf:'list',     col:12, row:1, notes:'Editor for transactional emails (OTP, welcome, driver approved, etc.) — currently hardcoded in mail service. Variable interpolation preview.' },
+  { id:'adm.healthDash',     app:'admin', label:'System Health',       file:'src/app/health/page.tsx',            status:'planned', wf:'home',     col:12, row:2, notes:'Live ops view — Railway uptime, error rate, queue depth, Redis latency, Postgres connection count, Flutterwave success rate.' },
+  { id:'adm.notifyComposer', app:'admin', label:'Push Composer',       file:'src/app/notify/page.tsx',            status:'planned', wf:'flow',     col:12, row:3, notes:'One-off push notification composer for ops broadcasts (e.g. "service paused in Lekki due to flooding"). Audience targeting + send-now / schedule.' },
 ];
 
 const DEFAULT_CONNS = [
