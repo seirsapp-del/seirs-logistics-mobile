@@ -58,8 +58,32 @@ export function canAccess(role: AdminRoleType | undefined, page: string): boolea
   return perms.includes('*') || perms.includes(page);
 }
 
+// Spec V8 — server-driven permission check. Call this when the user
+// object exposes `permissions` + `roleSlug` from the dynamic role
+// system. Falls back to the hardcoded enum check for legacy sessions.
+export function canAccessFromUser(
+  user: { adminRole?: AdminRoleType; role?: string; permissions?: string[]; roleSlug?: string | null } | null,
+  page: string,
+): boolean {
+  if (!user) return false;
+  if (user.role === 'admin' && !user.adminRole && !user.roleSlug) return true;
+  if (Array.isArray(user.permissions) && user.roleSlug) {
+    return user.permissions.includes('*') || user.permissions.includes(page);
+  }
+  return canAccess(user.adminRole, page);
+}
+
 export function isSuperAdmin(role: AdminRoleType | undefined): boolean {
   return role === AdminRole.SUPER_ADMIN || isLegacyAdmin(role);
+}
+
+// Same idea — checks the server-provided role slug first, falls back to enum.
+export function isSuperAdminFromUser(
+  user: { adminRole?: AdminRoleType; role?: string; roleSlug?: string | null } | null,
+): boolean {
+  if (!user) return false;
+  if (user.roleSlug === 'super_admin') return true;
+  return isSuperAdmin(user.adminRole);
 }
 
 export interface NavSection {
@@ -155,9 +179,10 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'SETTINGS',
     items: [
-      { href: '/admins',    label: 'Staff Management', icon: 'UserCog',    permission: 'super_admin_only' },
-      { href: '/audit-log', label: 'Audit Log',        icon: 'ScrollText', permission: 'audit-log'        },
-      { href: '/settings',  label: 'System Settings',  icon: 'Settings',   permission: 'super_admin_only' },
+      { href: '/admins',    label: 'Staff Management', icon: 'UserCog',     permission: 'super_admin_only' },
+      { href: '/roles',     label: 'Role Management',  icon: 'ShieldCheck', permission: 'roles'            },
+      { href: '/audit-log', label: 'Audit Log',        icon: 'ScrollText',  permission: 'audit-log'        },
+      { href: '/settings',  label: 'System Settings',  icon: 'Settings',    permission: 'super_admin_only' },
     ],
   },
 ];

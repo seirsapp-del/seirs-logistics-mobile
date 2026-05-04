@@ -9,7 +9,7 @@ import {
   UserCog, ScrollText, Settings, LogOut, ChevronLeft, ChevronRight,
   Activity, Send, MoonStar, Mail, Code2, BookOpen,
 } from 'lucide-react';
-import { canAccess, isSuperAdmin, ROLE_COLORS, ROLE_LABELS, NAV_SECTIONS } from '@/lib/rbac';
+import { canAccess, canAccessFromUser, isSuperAdmin, isSuperAdminFromUser, ROLE_COLORS, ROLE_LABELS, NAV_SECTIONS } from '@/lib/rbac';
 import type { AdminRoleType } from '@/lib/rbac';
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -46,8 +46,8 @@ export default function AdminNav() {
   const logout = () => { clearSession(); router.replace('/login'); };
 
   const isVisible = (permission: string) => {
-    if (permission === 'super_admin_only') return isSuperAdmin(role);
-    return canAccess(role, permission);
+    if (permission === 'super_admin_only') return isSuperAdminFromUser(user);
+    return canAccessFromUser(user, permission);
   };
 
   const w = collapsed ? 'w-[60px]' : 'w-[240px]';

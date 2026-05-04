@@ -10,7 +10,13 @@ export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export function getUser(): { id: string; name: string; email: string; role: string; adminRole?: AdminRoleType } | null {
+export function getUser(): {
+  id: string; name: string; email: string; role: string;
+  adminRole?: AdminRoleType;
+  // Spec V8 dynamic roles
+  roleId?: string | null; roleSlug?: string | null; roleName?: string | null;
+  permissions?: string[];
+} | null {
   if (typeof window === 'undefined') return null;
   const raw = localStorage.getItem(USER_KEY);
   return raw ? JSON.parse(raw) : null;
@@ -18,6 +24,16 @@ export function getUser(): { id: string; name: string; email: string; role: stri
 
 export function getAdminRole(): AdminRoleType | undefined {
   return getUser()?.adminRole;
+}
+
+// Spec V8 — server-provided permissions take precedence over the
+// hardcoded enum-based map. Returns null if the session predates
+// dynamic roles (legacy admins) so callers can fall back.
+export function getServerPermissions(): string[] | null {
+  const u = getUser();
+  return u?.permissions && Array.isArray(u.permissions) && u.roleSlug
+    ? u.permissions
+    : null;
 }
 
 export function saveSession(token: string, user: any) {

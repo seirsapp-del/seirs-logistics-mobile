@@ -113,6 +113,21 @@ export const adminApi = {
     listAllUsage: () => req<any>('/dev-platform/usage'),
   },
 
+  // Spec V8 — dynamic role management
+  roles: {
+    list:      ()                        => req<any[]>('/admin/roles'),
+    catalogue: ()                        => req<Array<{ section: string; items: Array<{ slug: string; label: string }> }>>('/admin/roles/catalogue'),
+    get:       (id: string)              => req<any>(`/admin/roles/${id}`),
+    create:    (body: { name: string; description?: string; permissions: string[]; badgeColor?: string }) =>
+      req<any>('/admin/roles', { method: 'POST', body: JSON.stringify(body) }),
+    update:    (id: string, body: any) =>
+      req<any>(`/admin/roles/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    deleteOne: (id: string)              =>
+      req<any>(`/admin/roles/${id}`, { method: 'DELETE' }),
+    assign:    (roleId: string, userId: string) =>
+      req<any>(`/admin/roles/${roleId}/assign/${userId}`, { method: 'POST' }),
+  },
+
   analytics: {
     revenue:              (days = 30) => req<any>(`/admin/analytics/revenue?days=${days}`),
     deliveriesByStatus:   ()          => req<any>('/admin/analytics/deliveries-by-status'),
