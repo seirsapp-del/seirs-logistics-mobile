@@ -138,6 +138,22 @@ export default function PartnerDashboard() {
                 <Icon name="ChevronRight" size={18} color="#9CA3AF" />
               </Pressable>
 
+              {/* Spec V8 §4.9-§4.11 — manage tiles */}
+              <View style={styles.manageRow}>
+                <Pressable style={styles.manageTile} onPress={() => router.push('/(partner)/capacity' as any)}>
+                  <Icon name="Gauge" size={20} color="#3A7BD5" />
+                  <Text style={styles.manageLabel}>Capacity</Text>
+                </Pressable>
+                <Pressable style={styles.manageTile} onPress={() => router.push('/(partner)/storage' as any)}>
+                  <Icon name="Clock" size={20} color="#D97706" />
+                  <Text style={styles.manageLabel}>Storage Fees</Text>
+                </Pressable>
+                <Pressable style={styles.manageTile} onPress={() => router.push('/(partner)/billing' as any)}>
+                  <Icon name="TrendingUp" size={20} color="#16A34A" />
+                  <Text style={styles.manageLabel}>Sponsored</Text>
+                </Pressable>
+              </View>
+
               {/* Recent packages */}
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Recent Packages</Text>
@@ -248,6 +264,12 @@ const styles = StyleSheet.create({
   },
   scanLabel:     { fontSize: 15, fontWeight: '700', color: '#0F2B4C', marginBottom: 2 },
   scanSub:       { fontSize: 12, color: '#6B7280' },
+  manageRow:     { flexDirection: 'row', gap: 10, marginVertical: 12 },
+  manageTile:    {
+    flex: 1, backgroundColor: '#fff', borderRadius: 12, paddingVertical: 14,
+    alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#F3F4F6',
+  },
+  manageLabel:   { fontSize: 12, fontWeight: '600', color: '#0F2B4C' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle:  { fontSize: 16, fontWeight: '700', color: '#0F2B4C' },
   viewAll:       { color: '#3A7BD5', fontSize: 13, fontWeight: '600' },

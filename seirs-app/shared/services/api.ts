@@ -268,6 +268,17 @@ export const partnerApi = {
     request<any[]>('GET', `/partner-store/store/${storeId}/dropoffs?onlyActive=${onlyActive}`),
   storeCapacity: (storeId: string) =>
     request<any>('GET', `/partner-store/store/${storeId}/capacity`),
+  storeSetStatus: (storeId: string, status: 'active' | 'paused') =>
+    request<{ storeId: string; status: string }>(
+      'PATCH', `/partner-store/store/${storeId}/status`, { status },
+    ),
+  storeOverstays: (storeId: string) =>
+    request<Array<{
+      id: string; dropCode: string; recipientName: string; recipientPhone: string;
+      weightKg: number; status: string; arrivedAt: string | null;
+      hoursInStore: number; storageFeesAccruedNgn: number;
+      tier: 'free' | 'tier_1' | 'tier_2' | 'return_eligible';
+    }>>('GET', `/partner-store/store/${storeId}/overstays`),
 };
 
 // ─── Customer-side store drop-off (Spec V8 §3 async flow) ──────────────────
@@ -309,6 +320,16 @@ export const dropoffApi = {
 
   myDropoffs: () =>
     request<any[]>('GET', '/partner-store/my-dropoffs'),
+};
+
+// ─── Fees (Spec V8 §3.9 — public read of Fee Catalogue) ────────────────────
+export const feesApi = {
+  list: () => request<Array<{
+    key: string; name: string; description: string; category: string;
+    unit: string; value: number | string; active: boolean;
+  }>>('GET', '/fees', undefined, false),
+  get: (key: string) =>
+    request<{ key: string; value: number }>('GET', `/fees/${encodeURIComponent(key)}`, undefined, false),
 };
 
 // ─── Identity (Spec V8 §1.17 — handoff verification) ────────────────────────

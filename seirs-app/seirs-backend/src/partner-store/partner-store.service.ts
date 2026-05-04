@@ -298,6 +298,63 @@ export class PartnerStoreService {
     );
   }
 
+  // ── Partner store status (accept-incoming toggle) ──────────────────────
+
+  // Lets a partner pause incoming bookings without going fully offline.
+  // The customer-facing capacity browser filters out paused stores.
+  async setStoreStatus(storeId: string, status: 'active' | 'paused', staffUserId: string) {
+    const staff = await this.usersRepo.findOne({ where: { id: staffUserId } });
+    if (!staff || staff.partnerStoreId !== storeId) {
+      throw new ForbiddenException('You are not registered as staff for this store');
+    }
+    if (!['active', 'paused'].includes(status)) {
+      throw new BadRequestException('status must be "active" or "paused"');
+    }
+    await this.storeRepo.update(storeId, { status });
+    return { storeId, status };
+  }
+
+  // ── Storage overstay listing ───────────────────────────────────────────
+
+  // Lists packages currently in this store that have crossed the 24hr free
+  // window, with hours-overdue and accrued fees computed live. Powers
+  // biz.partStorage. Sorted oldest-arrival first so the most urgent
+  // are at the top.
+  async listOverstays(partnerStoreId: string) {
+    const all = await this.dropoffRepo.find({
+      where: [
+        { pickupStoreId:  partnerStoreId, status: In(IN_STORE_STATUSES) },
+        { dropoffStoreId: partnerStoreId, status: In(IN_STORE_STATUSES) },
+      ],
+    });
+    const now = Date.now();
+    return all
+      .map(d => {
+        const arrivedAt = d.arrivedAtDropoffStoreAt ?? d.receivedAtStoreAt;
+        const hoursInStore = arrivedAt
+          ? (now - new Date(arrivedAt).getTime()) / 3600_000
+          : 0;
+        return {
+          id:                    d.id,
+          dropCode:              d.dropCode,
+          recipientName:         d.recipientName,
+          recipientPhone:        d.recipientPhone,
+          weightKg:              Number(d.weightKg),
+          status:                d.status,
+          arrivedAt:             arrivedAt?.toISOString() ?? null,
+          hoursInStore:          Math.round(hoursInStore * 10) / 10,
+          storageFeesAccruedNgn: Number(d.storageFeesAccruedNgn),
+          tier:
+            hoursInStore < 24 ? 'free' :
+            hoursInStore < 48 ? 'tier_1' :          // 24-48hr
+            hoursInStore < 72 ? 'tier_2' :          // 48-72hr
+                                'return_eligible',  // ≥72hr
+        };
+      })
+      .filter(d => d.hoursInStore >= 24) // only overstays
+      .sort((a, b) => b.hoursInStore - a.hoursInStore);
+  }
+
   // ── Storage fee accrual ────────────────────────────────────────────────
 
   // Daily cron — at 00:05 every day, walk every active in-store dropoff

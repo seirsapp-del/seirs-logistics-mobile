@@ -20,7 +20,7 @@ interface ApiTx {
 }
 import {
   CreditCard, ArrowDownCircle, ArrowUpCircle, Receipt,
-  Plus, ArrowUp, Clock,
+  Plus, ArrowUp, Clock, QrCode,
 } from 'lucide-react-native';
 import { HamburgerButton } from '@/components/HamburgerButton';
 
@@ -167,6 +167,11 @@ export default function WalletScreen() {
                   Icon: CreditCard,
                   label: 'Cards',
                   onPress: () => router.push('/(customer)/payment-methods' as any),
+                },
+                {
+                  Icon: QrCode,
+                  label: 'My ID',
+                  onPress: () => router.push('/(customer)/recipient-id' as any),
                 },
               ].map(({ Icon, label, onPress }) => (
                 <Pressable key={label} style={styles.cardActionBtn} onPress={onPress}>

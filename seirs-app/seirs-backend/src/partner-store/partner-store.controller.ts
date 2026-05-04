@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Get, Param, Post, Query, UseGuards,
+  Body, Controller, Get, Param, Patch, Post, Query, UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -112,5 +112,21 @@ export class PartnerStoreController {
   @Get('store/:storeId/capacity')
   capacity(@Param('storeId') storeId: string) {
     return this.svc.getCapacity(storeId);
+  }
+
+  // PATCH /api/v1/partner-store/store/:storeId/status  { status: 'active' | 'paused' }
+  @Patch('store/:storeId/status')
+  setStatus(
+    @Param('storeId') storeId: string,
+    @CurrentUser() staff: any,
+    @Body() body: { status: 'active' | 'paused' },
+  ) {
+    return this.svc.setStoreStatus(storeId, body.status, staff.id);
+  }
+
+  // GET /api/v1/partner-store/store/:storeId/overstays
+  @Get('store/:storeId/overstays')
+  overstays(@Param('storeId') storeId: string) {
+    return this.svc.listOverstays(storeId);
   }
 }
