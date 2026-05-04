@@ -342,7 +342,10 @@ export class AuthService {
       passwordResetExpiry: expiry,
     });
 
-    await this.mailService.sendPasswordReset(user.email, user.name, token);
+    // Admins receive a web URL (admin dashboard); everyone else gets the
+    // seirsmobile:// deep link that opens the app's reset screen.
+    const audience = user.role === UserRole.ADMIN ? 'admin' : 'mobile';
+    await this.mailService.sendPasswordReset(user.email, user.name, token, audience);
 
     return { message: 'If that email exists, a reset link has been sent.' };
   }

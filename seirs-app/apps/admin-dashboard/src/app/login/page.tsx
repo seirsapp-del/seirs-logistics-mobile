@@ -1,6 +1,7 @@
 'use client';
 import { useState, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import { saveSession } from '@/lib/auth';
 import { Shield, Lock, Mail, AlertCircle, Eye, EyeOff } from 'lucide-react';
@@ -139,6 +140,15 @@ function LoginForm() {
                 >
                   {loading ? 'Signing in…' : 'Sign in'}
                 </button>
+
+                <div className="text-center">
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-gray-500 hover:text-[#3A7BD5] transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
               </form>
             </>
           ) : (

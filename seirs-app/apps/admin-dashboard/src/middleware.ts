@@ -82,9 +82,11 @@ export function middleware(request: NextRequest) {
   const token        = request.cookies.get('seirs_admin_token')?.value;
   const { pathname } = request.nextUrl;
   const isLoginPage  = pathname === '/login';
+  // Spec V8 §3 — admin password recovery is reachable without a session
+  const isPublicAuthPage = pathname === '/forgot-password' || pathname === '/reset-password';
 
-  // Unauthenticated — send to login
-  if (!token && !isLoginPage) {
+  // Unauthenticated — send to login (unless already on a public auth page)
+  if (!token && !isLoginPage && !isPublicAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('from', pathname);

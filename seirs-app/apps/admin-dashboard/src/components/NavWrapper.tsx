@@ -10,10 +10,12 @@ export default function NavWrapper({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const router   = useRouter();
   const isLogin  = pathname === '/login';
+  const isPublicAuth = pathname === '/forgot-password' || pathname === '/reset-password';
+  const isChromeless = isLogin || isPublicAuth;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (isLogin) return;
+    if (isChromeless) return;
     const handleActivity = () => touchActivity();
     window.addEventListener('mousemove',  handleActivity);
     window.addEventListener('keydown',    handleActivity);
@@ -29,9 +31,9 @@ export default function NavWrapper({ children }: { children: React.ReactNode }) 
       window.removeEventListener('click',      handleActivity);
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isLogin, router]);
+  }, [isChromeless, router]);
 
-  if (isLogin) return <>{children}</>;
+  if (isChromeless) return <>{children}</>;
 
   return (
     <div className="flex h-screen overflow-hidden">

@@ -33,6 +33,19 @@ export const adminApi = {
       { method: 'POST', body: JSON.stringify({ tempToken, code }) },
     ),
 
+  // Spec V8 — admin password recovery (uses the same shared /auth endpoints
+  // as customer/driver; backend branches the email link by user role).
+  forgotPassword: (email: string) =>
+    req<{ message: string }>(
+      '/auth/forgot-password',
+      { method: 'POST', body: JSON.stringify({ email }) },
+    ),
+  resetPassword: (token: string, newPassword: string) =>
+    req<{ message: string }>(
+      '/auth/reset-password',
+      { method: 'POST', body: JSON.stringify({ token, newPassword }) },
+    ),
+
   stats: () => req<any>('/admin/stats'),
 
   users:      (page = 1, role?: string, search?: string) =>

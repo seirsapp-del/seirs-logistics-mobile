@@ -149,9 +149,10 @@ export class MailService {
 
   // ── Password reset ──────────────────────────────────────────────────────────
 
-  async sendPasswordReset(to: string, name: string, token: string) {
-    const base     = this.cfg.get<string>('DEEP_LINK_BASE', 'seirsmobile:/');
-    const resetUrl = `${base}/reset-password?token=${token}`;
+  async sendPasswordReset(to: string, name: string, token: string, audience: 'mobile' | 'admin' = 'mobile') {
+    const resetUrl = audience === 'admin'
+      ? `${this.cfg.get<string>('ADMIN_WEB_URL', 'https://seirs-admin.vercel.app')}/reset-password?token=${token}`
+      : `${this.cfg.get<string>('DEEP_LINK_BASE', 'seirsmobile:/')}/reset-password?token=${token}`;
 
     const html = baseTemplate(`
       <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Reset your password</h2>
