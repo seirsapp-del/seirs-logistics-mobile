@@ -95,7 +95,35 @@ export default function PartnerDashboard() {
                 </Pressable>
               </View>
 
-              {/* Quick scan */}
+              {/* Quick actions */}
+              <Pressable
+                style={[styles.scanBtn, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}
+                onPress={() => router.push('/(partner)/receive-dropoff' as any)}
+              >
+                <View style={styles.scanIcon}>
+                  <Icon name="PackagePlus" size={24} color="#D97706" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.scanLabel}>Receive Drop-off</Text>
+                  <Text style={styles.scanSub}>Sender walking in to drop a package at your store</Text>
+                </View>
+                <Icon name="ChevronRight" size={18} color="#9CA3AF" />
+              </Pressable>
+
+              <Pressable
+                style={[styles.scanBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
+                onPress={() => router.push('/(partner)/release-pickup' as any)}
+              >
+                <View style={styles.scanIcon}>
+                  <Icon name="PackageCheck" size={24} color="#16A34A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.scanLabel}>Release to Recipient</Text>
+                  <Text style={styles.scanSub}>Hand a package to recipient with ID + OTP verification</Text>
+                </View>
+                <Icon name="ChevronRight" size={18} color="#9CA3AF" />
+              </Pressable>
+
               <Pressable
                 style={styles.scanBtn}
                 onPress={() => router.push('/(partner)/scan' as any)}
@@ -103,9 +131,9 @@ export default function PartnerDashboard() {
                 <View style={styles.scanIcon}>
                   <Icon name="ScanLine" size={24} color="#3A7BD5" />
                 </View>
-                <View>
-                  <Text style={styles.scanLabel}>Scan Package QR</Text>
-                  <Text style={styles.scanSub}>Mark a package as collected by customer</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.scanLabel}>Quick Scan (legacy)</Text>
+                  <Text style={styles.scanSub}>Mark a BusinessPackage as collected (older flow)</Text>
                 </View>
                 <Icon name="ChevronRight" size={18} color="#9CA3AF" />
               </Pressable>

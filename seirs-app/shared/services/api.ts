@@ -246,4 +246,40 @@ export const partnerApi = {
   payouts:        (page = 1) => request<any>('GET', `/partner/payouts?page=${page}`),
   getSettings:    () => request<any>('GET', '/partner/settings'),
   updateSettings: (data: any) => request<any>('PATCH', '/partner/settings', data),
+
+  // Spec V8 §3 — partner-store async drop-off flow (separate from the
+  // BusinessPackage inventory above which is for partner-as-pickup-point).
+  storeDropoffByCode: (code: string) =>
+    request<any>('GET', `/partner-store/dropoff/${encodeURIComponent(code)}`),
+  storeReceive: (body: { code: string; weightKg: number; receivedPhotoUrl: string; senderOtp: string }) =>
+    request<any>('POST', '/partner-store/receive', body),
+  storeRelease: (body: {
+    code: string;
+    method: 'physical_id' | 'seirs_id';
+    collectedPhotoUrl: string;
+    idType?: string;
+    idNumber?: string;
+    otp?: string;
+    idPhotoUrl?: string;
+    seirsCode?: string;
+    typedName?: string;
+  }) => request<any>('POST', '/partner-store/release', body),
+  storeListAtStore: (storeId: string, onlyActive = true) =>
+    request<any[]>('GET', `/partner-store/store/${storeId}/dropoffs?onlyActive=${onlyActive}`),
+  storeCapacity: (storeId: string) =>
+    request<any>('GET', `/partner-store/store/${storeId}/capacity`),
+};
+
+// ─── Identity (Spec V8 §1.17 — handoff verification) ────────────────────────
+export const identityApi = {
+  lookupBySeirsId: (code: string) =>
+    request<{ seirsId: string; name: string; profilePhoto: string | null; verified: boolean }>(
+      'GET', `/identity/lookup/${encodeURIComponent(code)}`,
+    ),
+  issueHandoffOtp: (deliveryId: string, recipientUserId: string) =>
+    request<{ sent: boolean; expiresInMinutes: number }>(
+      'POST', `/identity/handoff/${deliveryId}/issue-otp`, { recipientUserId },
+    ),
+  handoffChain: (deliveryId: string) =>
+    request<any[]>('GET', `/identity/handoff/${deliveryId}/chain`),
 };

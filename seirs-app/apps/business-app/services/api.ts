@@ -18,6 +18,7 @@ export {
   notificationsApi,
   businessApi,
   partnerApi,
+  identityApi,
 } from '@seirs/shared/services/api';
 
 import { businessAuthApi, authApi as sharedAuthApi } from '@seirs/shared/services/api';
