@@ -29,6 +29,7 @@ import { PoolingModule } from './pooling/pooling.module';
 import { MultiDropRoutingModule } from './multi-drop-routing/multi-drop-routing.module';
 import { OfflineSyncModule } from './offline-sync/offline-sync.module';
 import { DevPlatformModule } from './developer-platform/dev-platform.module';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -93,6 +94,7 @@ import { DevPlatformModule } from './developer-platform/dev-platform.module';
     MultiDropRoutingModule,
     OfflineSyncModule,
     DevPlatformModule,
+    RolesModule,
   ],
 })
 export class AppModule {}

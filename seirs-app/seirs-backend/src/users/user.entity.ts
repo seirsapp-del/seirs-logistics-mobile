@@ -88,8 +88,17 @@ export class User {
   @Column({ nullable: true })
   referredByCode: string;
 
+  // Legacy enum-based admin sub-role. Kept for backwards compat with
+  // older sessions / clients; new role assignments populate roleId
+  // (Spec V8 dynamic roles) and that takes precedence.
   @Column({ nullable: true })
   adminRole: AdminSubRole;
+
+  // Spec V8 — dynamic role assignment. FK into roles table. When set,
+  // overrides the adminRole enum for permission resolution.
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  roleId: string;
 
   @Column({ nullable: true })
   businessRole: string; // 'sender' | 'partner'

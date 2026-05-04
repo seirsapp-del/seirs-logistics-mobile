@@ -582,9 +582,29 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
-  private buildAuthResponse(user: User) {
+  private async buildAuthResponse(user: User) {
     const payload = { sub: user.id, email: user.email, role: user.role, adminRole: user.adminRole };
     const token   = this.jwtService.sign(payload);
+
+    // Spec V8 — resolve dynamic role permissions if assigned. The
+    // admin client uses this to render the sidebar + gate page access
+    // without hardcoding the permission map.
+    let roleSlug:    string | null = null;
+    let roleName:    string | null = null;
+    let permissions: string[]      = [];
+    if (user.roleId) {
+      const role = await this.usersRepo.manager
+        .createQueryBuilder()
+        .select(['r.slug AS slug', 'r.name AS name', 'r.permissions AS permissions'])
+        .from('roles', 'r')
+        .where('r.id = :id', { id: user.roleId })
+        .getRawOne();
+      if (role) {
+        roleSlug    = role.slug;
+        roleName    = role.name;
+        permissions = Array.isArray(role.permissions) ? role.permissions : [];
+      }
+    }
 
     return {
       token,
@@ -596,6 +616,10 @@ export class AuthService {
         phone:        user.phone,
         role:         user.role,
         adminRole:    user.adminRole,
+        roleId:       user.roleId ?? null,
+        roleSlug,
+        roleName,
+        permissions,
         businessRole: user.businessRole ?? null,
         businessAccountId: user.businessAccountId ?? null,
         partnerStoreId:    user.partnerStoreId ?? null,
