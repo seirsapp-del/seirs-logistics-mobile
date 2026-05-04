@@ -46,12 +46,13 @@ export default function AnalyticsPage() {
       adminApi.analytics.driverHours(days, 8).catch(() => []),
       adminApi.analytics.referralFunnel().catch(() => null),
     ]).then(([rev, status, drivers, veh, cat, hrs, ref]) => {
-      setRevenue(rev);
-      setByStatus(status);
-      setTopDrivers(drivers);
-      setByVehicle(veh ?? []);
-      setByCategory(cat ?? []);
-      setDriverHrs(hrs ?? []);
+      // Backend wraps revenue in { data: [...] }; other endpoints return raw arrays
+      setRevenue(Array.isArray(rev) ? rev : (rev?.data ?? []));
+      setByStatus(Array.isArray(status) ? status : []);
+      setTopDrivers(Array.isArray(drivers) ? drivers : []);
+      setByVehicle(Array.isArray(veh) ? veh : []);
+      setByCategory(Array.isArray(cat) ? cat : []);
+      setDriverHrs(Array.isArray(hrs) ? hrs : []);
       setReferral(ref);
     }).finally(() => setLoading(false));
   }, [days]);
