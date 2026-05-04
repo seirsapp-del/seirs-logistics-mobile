@@ -101,6 +101,12 @@ export const adminApi = {
       req<any>(`/admin/fees/${key}`, { method: 'PATCH', body: JSON.stringify(body) }),
   },
 
+  // Spec V8 §3.10 — chain of custody for disputes view (reuses public
+  // identity endpoint; admin can read any delivery's handoff chain).
+  identity: {
+    handoffChain: (deliveryId: string) => req<any[]>(`/identity/handoff/${deliveryId}/chain`),
+  },
+
   analytics: {
     revenue:              (days = 30) => req<any>(`/admin/analytics/revenue?days=${days}`),
     deliveriesByStatus:   ()          => req<any>('/admin/analytics/deliveries-by-status'),

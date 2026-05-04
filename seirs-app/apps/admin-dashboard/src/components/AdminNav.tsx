@@ -4,18 +4,20 @@ import { useEffect, useState } from 'react';
 import { clearSession, getUser } from '@/lib/auth';
 import {
   LayoutDashboard, Map, Package, Truck, Users, Store, ArrowRightLeft, Briefcase,
-  Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, Copy, ClipboardCheck,
+  Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, ShieldCheck, Copy, ClipboardCheck,
   Ticket, Lightbulb, FileText, Percent, BarChart2, FileBarChart,
   UserCog, ScrollText, Settings, LogOut, ChevronLeft, ChevronRight,
+  Activity, Send, MoonStar,
 } from 'lucide-react';
 import { canAccess, isSuperAdmin, ROLE_COLORS, ROLE_LABELS, NAV_SECTIONS } from '@/lib/rbac';
 import type { AdminRoleType } from '@/lib/rbac';
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   LayoutDashboard, Map, Package, Truck, Users, Store, ArrowRightLeft, Briefcase,
-  Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, Copy, ClipboardCheck,
+  Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, ShieldCheck, Copy, ClipboardCheck,
   Ticket, Lightbulb, FileText, Percent, BarChart2, FileBarChart,
   UserCog, ScrollText, Settings,
+  Activity, Send, MoonStar,
 };
 
 export default function AdminNav() {

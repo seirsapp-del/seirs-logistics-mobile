@@ -35,8 +35,8 @@ export const ROLE_COLORS: Record<AdminRoleType, string> = {
 
 const PERMISSIONS: Record<AdminRoleType, string[]> = {
   super_admin:       ['*'],
-  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','pricing','fees'],
-  support_agent:     ['tickets','users','suggestions','deliveries'],
+  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','pricing','fees','disputes','health','last-order-compliance','notify'],
+  support_agent:     ['tickets','users','suggestions','deliveries','disputes'],
   finance_officer:   ['overview','wallet','pricing','fees','referrals','insurance','analytics','reports'],
   driver_compliance: ['drivers','kyc','duplicates','fraud','users','audit-log'],
   media_content:     ['cms','promotions'],
@@ -107,9 +107,18 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'COMPLIANCE',
     items: [
-      { href: '/fraud',      label: 'Fraud & Risk',        icon: 'ShieldAlert',    permission: 'fraud',      badge: 'fraud'   },
-      { href: '/duplicates', label: 'Duplicate Accounts',  icon: 'Copy',           permission: 'duplicates'  },
-      { href: '/kyc',        label: 'Driver KYC Queue',    icon: 'ClipboardCheck', permission: 'kyc'         },
+      { href: '/fraud',                  label: 'Fraud & Risk',        icon: 'ShieldAlert',    permission: 'fraud',                  badge: 'fraud' },
+      { href: '/duplicates',             label: 'Duplicate Accounts',  icon: 'Copy',           permission: 'duplicates'              },
+      { href: '/kyc',                    label: 'Driver KYC Queue',    icon: 'ClipboardCheck', permission: 'kyc'                     },
+      { href: '/disputes',               label: 'Liability Disputes',  icon: 'ShieldCheck',    permission: 'disputes'                },
+      { href: '/last-order-compliance',  label: 'Last-Order Compliance',icon: 'MoonStar',      permission: 'last-order-compliance'   },
+    ],
+  },
+  {
+    title: 'OPS',
+    items: [
+      { href: '/health',  label: 'System Health',     icon: 'Activity', permission: 'health' },
+      { href: '/notify',  label: 'Push Composer',     icon: 'Send',     permission: 'notify' },
     ],
   },
   {
