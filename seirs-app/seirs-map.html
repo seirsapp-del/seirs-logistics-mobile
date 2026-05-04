@@ -835,7 +835,7 @@ const DEFAULT_NODES = [
   // ── SPEC V8 — PLANNED FEATURES (3 scenarios, identity, fee catalogue) ─────
   // Customer additions (1.15 - 1.17)
   { id:'cust.poolPrefs',     app:'customer', label:'Pool Preferences',   file:'app/(customer)/pool-preferences.tsx', status:'planned', wf:'settings', col:13, row:0, notes:'Spec V8 §1.15 — opt-in/out of corridor pooling, max +20% time tolerance preference' },
-  { id:'cust.dropAtStore',   app:'customer', label:'Drop at Store',      file:'app/(customer)/drop-at-store.tsx',    status:'planned', wf:'flow',     col:13, row:1, notes:'Spec V8 §1.16 — async drop-off flow, partner store picker with capacity buckets, pre-pay + auto-refund if not received in window' },
+  { id:'cust.dropAtStore',   app:'customer', label:'Drop at Store',      file:'app/(customer)/drop-at-store.tsx',    status:'built',   wf:'flow',     col:13, row:1, notes:'Spec V8 §1.16/§3 LIVE — 4-step async flow: pickup-store picker (capacity buckets Plenty/Limited/Full from real backend, geo-sorted via expo-location), destination mode (door delivery vs store-to-store), package + recipient details, review. Receipt screen shows printable QR + 6-char alphanumeric backup with copy/share actions. CTA added to Send Package screen as alternative to driver pickup. New deps: react-native-qrcode-svg, react-native-svg, expo-clipboard.' },
   { id:'cust.recipientId',   app:'customer', label:'Recipient ID',       file:'app/(customer)/recipient-id.tsx',     status:'planned', wf:'flow',     col:13, row:2, notes:'Spec V8 §1.17 — physical ID+OTP primary OR SEIRS Verified ID + typed-name signature backup' },
 
   // Driver additions (2.11 - 2.18)

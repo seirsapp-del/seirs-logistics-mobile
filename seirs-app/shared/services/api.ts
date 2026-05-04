@@ -270,6 +270,47 @@ export const partnerApi = {
     request<any>('GET', `/partner-store/store/${storeId}/capacity`),
 };
 
+// ─── Customer-side store drop-off (Spec V8 §3 async flow) ──────────────────
+export const dropoffApi = {
+  // Browse partner stores near a location, with capacity bucket exposed
+  // (Plenty / Limited / Full) so the customer doesn't see ops numbers.
+  listCapacityNearby: (lat?: number, lng?: number, radiusKm = 10) => {
+    const params = new URLSearchParams();
+    if (lat != null)  params.append('lat',      String(lat));
+    if (lng != null)  params.append('lng',      String(lng));
+    if (radiusKm)     params.append('radiusKm', String(radiusKm));
+    return request<Array<{
+      id: string; storeName: string; storeAddress: string;
+      currentLoad: number; maxCapacity: number; percent: number;
+      bucket: 'plenty' | 'limited' | 'full'; full: boolean;
+    }>>('GET', `/partner-store/capacity/nearby?${params.toString()}`);
+  },
+
+  // Schedule a drop-off — returns the printed dropCode + 6-char backup
+  // the customer brings to the store.
+  schedule: (body: {
+    pickupStoreId:    string;
+    mode:             'store_to_door' | 'store_to_store';
+    dropoffStoreId?:  string;
+    recipientAddress?: string;
+    recipientUserId?: string;
+    recipientName:    string;
+    recipientPhone:   string;
+    weightKg:         number;
+    packageDescription?: string;
+    declaredValueNgn?: number;
+  }) => request<{
+    id: string; dropCode: string; backupCode: string;
+    pickupStoreId: string; status: string; mode: string;
+  }>('POST', '/partner-store/dropoff', body),
+
+  byCode: (code: string) =>
+    request<any>('GET', `/partner-store/dropoff/${encodeURIComponent(code)}`),
+
+  myDropoffs: () =>
+    request<any[]>('GET', '/partner-store/my-dropoffs'),
+};
+
 // ─── Identity (Spec V8 §1.17 — handoff verification) ────────────────────────
 export const identityApi = {
   lookupBySeirsId: (code: string) =>

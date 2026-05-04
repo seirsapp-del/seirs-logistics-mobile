@@ -189,6 +189,34 @@ export default function SendScreen() {
         {/* STEP 0 — Package */}
         {step === 0 && (
           <View style={styles.stepGap}>
+            {/* Spec V8 §3 — drop-at-store alternative entry point */}
+            <Pressable
+              onPress={() => router.push('/(customer)/drop-at-store' as any)}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+                padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5,
+                borderColor: theme.accent + '40', backgroundColor: theme.accent + '10',
+                marginBottom: Spacing.sm,
+              }}
+            >
+              <View style={{
+                width: 40, height: 40, borderRadius: 12,
+                backgroundColor: theme.surface,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Truck size={18} color={theme.accent} strokeWidth={2} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: theme.text }}>
+                  Drop at a store instead
+                </Text>
+                <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, marginTop: 2 }}>
+                  No driver pickup needed — walk in, drop, done. Cheapest option for non-urgent packages.
+                </Text>
+              </View>
+              <ArrowRight size={16} color={theme.accent} />
+            </Pressable>
+
             <Text style={[styles.label, { color: theme.textSecond }]}>
               Package photos <Text style={{ color: theme.error }}>*</Text>
               <Text style={{ color: theme.textThird }}> (min 1, max 5)</Text>
