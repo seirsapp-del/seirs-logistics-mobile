@@ -24,14 +24,23 @@ export class UsersController {
     return this.usersService.updateProfile(user.id, body);
   }
 
-  // DELETE /api/v1/users/me  { password }
+  // DELETE /api/v1/users/me  { password, reason? }
   // NDPR right to erasure — soft-delete with 30-day grace; reactivated
-  // automatically if user logs in within window.
+  // automatically if user logs in within window. Daily archive cron
+  // hard-deletes after the grace expires.
   @Delete('me')
   deleteAccount(
     @CurrentUser() user: User,
-    @Body() body: { password: string },
+    @Body() body: { password: string; reason?: string },
   ) {
-    return this.usersService.deleteAccount(user.id, body.password);
+    return this.usersService.deleteAccount(user.id, body.password, body.reason);
+  }
+
+  // GET /api/v1/users/me/export
+  // NDPR Article 24 — right to data portability. Returns a JSON
+  // bundle of profile + deliveries + payments + handoff records etc.
+  @Get('me/export')
+  exportData(@CurrentUser() user: User) {
+    return this.usersService.exportUserData(user.id);
   }
 }

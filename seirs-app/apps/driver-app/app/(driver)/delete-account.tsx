@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, AlertTriangle, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, AlertTriangle, Trash2, Download } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -27,6 +28,26 @@ export default function DeleteAccountScreen() {
   const [password,    setPassword]    = useState('');
   const [confirmText, setConfirmText] = useState('');
   const [loading,     setLoading]     = useState(false);
+  const [exporting,   setExporting]   = useState(false);
+
+  // Spec V8 NDPR Article 24 — surfaced before delete so drivers can
+  // take their earnings + trip history with them.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const data = await usersApi.exportData();
+      const json = JSON.stringify(data, null, 2);
+      await Clipboard.setStringAsync(json);
+      Alert.alert(
+        'Copied to clipboard',
+        `Your data export (${(json.length / 1024).toFixed(1)} KB) has been copied. Paste into a notes app or email it to yourself, then save the file somewhere safe.`,
+      );
+    } catch (e: any) {
+      Alert.alert('Export failed', e?.message ?? 'Try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const canSubmit =
     password.length > 0 &&
@@ -105,6 +126,26 @@ export default function DeleteAccountScreen() {
           ].map(t => (
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
           ))}
+
+          <Pressable
+            onPress={handleExport}
+            disabled={exporting}
+            style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: Spacing.md, borderRadius: Radius.lg,
+              borderWidth: 1.5, borderColor: theme.primary,
+              backgroundColor: theme.primary + '08', marginTop: Spacing.md,
+            }}
+          >
+            {exporting
+              ? <ActivityIndicator color={theme.primary} />
+              : <>
+                  <Download size={16} color={theme.primary} />
+                  <Text style={{ color: theme.primary, fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>
+                    Download my data first (recommended)
+                  </Text>
+                </>}
+          </Pressable>
 
           <View style={{ marginTop: Spacing.lg, gap: 6 }}>
             <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>CONFIRM YOUR PASSWORD</Text>

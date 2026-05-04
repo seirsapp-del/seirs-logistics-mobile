@@ -125,8 +125,10 @@ export const usersApi = {
   updateProfile: (data: { name?: string; phone?: string; profilePhoto?: string }) =>
     request<any>('PATCH', '/users/me', data),
   // NDPR right to erasure — soft-delete + 30-day grace
-  deleteAccount: (password: string) =>
-    request<{ message: string }>('DELETE', '/users/me', { password }),
+  deleteAccount: (password: string, reason?: string) =>
+    request<{ message: string }>('DELETE', '/users/me', { password, reason }),
+  // NDPR Article 24 — right to data portability. Returns a JSON dump.
+  exportData: () => request<any>('GET', '/users/me/export'),
 };
 
 export const deliveriesApi = {

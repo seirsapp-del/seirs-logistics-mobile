@@ -66,6 +66,16 @@ export class User {
   @Column({ default: false })
   emailVerified: boolean;
 
+  // Spec V8 NDPR — soft-delete bookkeeping. Set when user calls
+  // DELETE /users/me; cleared if they sign in within 30 days. The
+  // daily archive cron uses this + isActive=false to decide who to
+  // hard-delete and migrate to archived_users.
+  @Column({ nullable: true })
+  deactivatedAt: Date;
+
+  @Column({ nullable: true })
+  deactivationReason: string;
+
   @Column({ nullable: true, select: false })
   emailVerificationOtp: string;
 
