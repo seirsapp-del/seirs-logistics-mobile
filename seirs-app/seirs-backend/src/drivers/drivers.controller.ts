@@ -61,4 +61,14 @@ export class DriversController {
   demandZones(@CurrentUser() user: User) {
     return this.driversService.getDemandZones(user.id);
   }
+
+  // GET /api/v1/drivers/me/deletion-readiness
+  // Spec V8 — pre-flight blockers for self-delete (active deliveries +
+  // wallet balance must clear first). Used by the driver app's delete-
+  // account screen to disable the delete button until the user resolves
+  // each blocker.
+  @Get('me/deletion-readiness')
+  deletionReadiness(@CurrentUser() user: User) {
+    return this.driversService.getDeletionReadiness(user.id);
+  }
 }

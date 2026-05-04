@@ -129,4 +129,13 @@ export class PartnerStoreController {
   overstays(@Param('storeId') storeId: string) {
     return this.svc.listOverstays(storeId);
   }
+
+  // GET /api/v1/partner-store/store/:storeId/deletion-readiness
+  // Spec V8 — pre-flight blockers before closing a partner store.
+  // Returns blockers list (in-store packages, scheduled drop-offs)
+  // so the partner-app UI can guide the operator through cleanup.
+  @Get('store/:storeId/deletion-readiness')
+  deletionReadiness(@Param('storeId') storeId: string) {
+    return this.svc.getDeletionReadiness(storeId);
+  }
 }

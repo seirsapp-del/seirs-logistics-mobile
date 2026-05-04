@@ -103,6 +103,52 @@ export class DriversService {
       .getMany();
   }
 
+  // Spec V8 — driver pre-deletion readiness check. Drivers with active
+  // deliveries or non-zero wallet balance can't be deleted; the UI
+  // surfaces the blockers so the driver knows what to do (complete or
+  // hand-off the deliveries; withdraw the balance) before retrying.
+  async getDeletionReadiness(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) {
+      return { isDriver: false, ready: true, blockers: [] };
+    }
+
+    const blockers: Array<{ type: string; count: number; action: string }> = [];
+
+    // Active deliveries — anything not yet delivered or cancelled
+    const activeCount = await this.deliveriesRepo.count({
+      where: [
+        { driver: { id: driver.id }, status: DeliveryStatus.ASSIGNED },
+        { driver: { id: driver.id }, status: DeliveryStatus.PICKED_UP },
+        { driver: { id: driver.id }, status: DeliveryStatus.IN_TRANSIT },
+      ],
+    });
+    if (activeCount > 0) {
+      blockers.push({
+        type:   'active_deliveries',
+        count:  activeCount,
+        action: 'Complete or contact ops to reassign these deliveries first.',
+      });
+    }
+
+    // Non-zero wallet balance
+    const balance = Number(driver.walletBalance ?? 0);
+    if (balance > 0) {
+      blockers.push({
+        type:   'wallet_balance',
+        count:  Math.round(balance),
+        action: `Withdraw your ₦${Math.round(balance).toLocaleString()} wallet balance before deleting.`,
+      });
+    }
+
+    return {
+      isDriver: true,
+      ready:    blockers.length === 0,
+      blockers,
+      driverId: driver.id,
+    };
+  }
+
   // Spec V8 §2.1 — record uploaded KYC document URL against the right column.
   async updateKycDoc(userId: string, docId: string, url: string) {
     const field = KYC_DOC_FIELD_MAP[docId];

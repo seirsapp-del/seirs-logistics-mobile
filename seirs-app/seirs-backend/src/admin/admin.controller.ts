@@ -42,6 +42,27 @@ export class AdminController {
     return this.adminService.getAdmins();
   }
 
+  // GET /api/v1/admin/admins/:id/footprint
+  // Spec V8 — what does this admin own that needs reassigning before
+  // we offboard them? Powers the offboarding wizard.
+  @Get('admins/:id/footprint')
+  getAdminFootprint(@Param('id') id: string) {
+    return this.adminService.getAdminFootprint(id);
+  }
+
+  // POST /api/v1/admin/admins/:id/offboard
+  // Spec V8 — graceful offboarding. Rejects with the blocker list
+  // unless { force: true } is passed. Audit-logged.
+  @Post('admins/:id/offboard')
+  offboard(
+    @Param('id') id: string,
+    @CurrentUser() admin: any,
+    @Body() body: { reason?: string; force?: boolean },
+    @Req() req: Request,
+  ) {
+    return this.adminService.offboardAdmin(id, admin, body ?? {}, req.ip);
+  }
+
   // POST /api/v1/admin/admins
   @Post('admins')
   createAdmin(@Body() body: {

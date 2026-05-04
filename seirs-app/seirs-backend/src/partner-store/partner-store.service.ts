@@ -314,6 +314,46 @@ export class PartnerStoreService {
     return { storeId, status };
   }
 
+  // ── Partner store deletion readiness ───────────────────────────────────
+  // Spec V8 — partner can't shut down their store while there are
+  // packages in custody. Returns a structured blocker list so the UI
+  // can guide them: "Return these N overstays first" / "Release these
+  // M packages awaiting collection".
+  async getDeletionReadiness(partnerStoreId: string) {
+    const blockers: Array<{ type: string; count: number; action: string }> = [];
+
+    const inStore = await this.dropoffRepo.count({
+      where: [
+        { pickupStoreId:  partnerStoreId, status: In(IN_STORE_STATUSES) },
+        { dropoffStoreId: partnerStoreId, status: In(IN_STORE_STATUSES) },
+      ],
+    });
+    if (inStore > 0) {
+      blockers.push({
+        type:   'in_store_packages',
+        count:  inStore,
+        action: `Release the ${inStore} package${inStore === 1 ? '' : 's'} currently in your store before closing — either to recipients (use Release flow) or back to senders (mark return).`,
+      });
+    }
+
+    const pendingDispatch = await this.dropoffRepo.count({
+      where: { pickupStoreId: partnerStoreId, status: DropoffStatus.SCHEDULED },
+    });
+    if (pendingDispatch > 0) {
+      blockers.push({
+        type:   'scheduled_dropoffs',
+        count:  pendingDispatch,
+        action: `${pendingDispatch} sender${pendingDispatch === 1 ? ' has' : 's have'} a drop-off booked but not yet walked in. Cancel via ops or wait for them to arrive.`,
+      });
+    }
+
+    return {
+      ready:    blockers.length === 0,
+      blockers,
+      partnerStoreId,
+    };
+  }
+
   // ── Storage overstay listing ───────────────────────────────────────────
 
   // Lists packages currently in this store that have crossed the 24hr free

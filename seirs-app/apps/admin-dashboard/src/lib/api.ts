@@ -69,6 +69,17 @@ export const adminApi = {
     setupTOTP:     (id: string)                => req<any>(`/admin/admins/${id}/totp/setup`, { method: 'POST' }),
     confirmTOTP:   (id: string, code: string)  =>
       req<any>(`/admin/admins/${id}/totp/confirm`, { method: 'POST', body: JSON.stringify({ code }) }),
+    // Spec V8 — offboarding wizard
+    footprint:     (id: string) => req<{
+      adminUserId: string;
+      ready: boolean;
+      blockers: Array<{ type: string; count: number; action: string }>;
+      auditEntries: number;
+    }>(`/admin/admins/${id}/footprint`),
+    offboard:      (id: string, body: { reason?: string; force?: boolean }) =>
+      req<{ message: string }>(`/admin/admins/${id}/offboard`, {
+        method: 'POST', body: JSON.stringify(body),
+      }),
   },
 
   drivers:       (page = 1, status?: string, search?: string) =>

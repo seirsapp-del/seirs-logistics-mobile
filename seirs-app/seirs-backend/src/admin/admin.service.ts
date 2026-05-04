@@ -501,6 +501,96 @@ export class AdminService {
     return { message: 'User suspended.' };
   }
 
+  // Spec V8 — admin offboarding footprint. Lists what a soon-to-be-
+  // offboarded admin currently owns so the super-admin can reassign
+  // before deactivating. Counts only — full lists live on their
+  // respective pages (tickets, fraud, cms, dev-platform/keys).
+  async getAdminFootprint(adminUserId: string) {
+    const mgr = this.usersRepo.manager;
+
+    const [openTickets, draftCms, apiKeys, openFraudFlags, auditEntries] = await Promise.all([
+      mgr.createQueryBuilder()
+        .from('support_tickets', 't')
+        .where('t."assignedToId" = :uid', { uid: adminUserId })
+        .andWhere('t.status IN (:...s)', { s: ['open', 'in_progress'] })
+        .getCount().catch(() => 0),
+      mgr.createQueryBuilder()
+        .from('cms_items', 'c')
+        .where('c."createdById" = :uid', { uid: adminUserId })
+        .andWhere('c.status = :s', { s: 'draft' })
+        .getCount().catch(() => 0),
+      mgr.createQueryBuilder()
+        .from('api_keys', 'k')
+        .where('k."ownerUserId" = :uid', { uid: adminUserId })
+        .andWhere('k.active = true')
+        .getCount().catch(() => 0),
+      mgr.createQueryBuilder()
+        .from('fraud_flags', 'f')
+        .where('f."resolvedById" = :uid', { uid: adminUserId })
+        .andWhere('f.status = :s', { s: 'open' })
+        .getCount().catch(() => 0),
+      mgr.createQueryBuilder()
+        .from('audit_logs', 'a')
+        .where('a."adminId" = :uid', { uid: adminUserId })
+        .getCount().catch(() => 0),
+    ]);
+
+    const blockers: Array<{ type: string; count: number; action: string }> = [];
+    if (openTickets > 0) blockers.push({
+      type: 'open_tickets', count: openTickets,
+      action: `Reassign ${openTickets} open ticket${openTickets === 1 ? '' : 's'} to another support agent first.`,
+    });
+    if (draftCms > 0) blockers.push({
+      type: 'draft_cms', count: draftCms,
+      action: `${draftCms} draft CMS item${draftCms === 1 ? '' : 's'} will be orphaned. Publish, delete, or transfer ownership.`,
+    });
+    if (apiKeys > 0) blockers.push({
+      type: 'api_keys', count: apiKeys,
+      action: `Revoke ${apiKeys} active API key${apiKeys === 1 ? '' : 's'} they own — apps using them will stop working.`,
+    });
+    if (openFraudFlags > 0) blockers.push({
+      type: 'fraud_flags', count: openFraudFlags,
+      action: `${openFraudFlags} fraud flag${openFraudFlags === 1 ? '' : 's'} pending their review. Reassign to another compliance reviewer.`,
+    });
+
+    return {
+      adminUserId,
+      ready: blockers.length === 0,
+      blockers,
+      auditEntries, // informational — never blocks; audit trail is retained per legal hold
+    };
+  }
+
+  // Offboard execution. Runs the standard suspend, but only after the
+  // footprint check passes (or the caller explicitly forces). Logs who
+  // offboarded whom + the reason for compliance review later.
+  async offboardAdmin(
+    adminUserId: string,
+    requester: any,
+    opts: { reason?: string; force?: boolean },
+    ip?: string,
+  ) {
+    if (!opts.force) {
+      const footprint = await this.getAdminFootprint(adminUserId);
+      if (!footprint.ready) {
+        throw new ConflictException({
+          message: 'Cannot offboard — outstanding work to reassign first.',
+          blockers: footprint.blockers,
+        });
+      }
+    }
+    await this.usersRepo.update(adminUserId, {
+      isActive:           false,
+      deactivatedAt:      new Date(),
+      deactivationReason: opts.reason ?? 'admin_offboarded',
+    });
+    await this.logAudit(requester, 'offboard_admin', `user:${adminUserId}`, {
+      reason: opts.reason,
+      forced: !!opts.force,
+    }, ip);
+    return { message: 'Admin offboarded.' };
+  }
+
   // TOTP setup is handled by the auth module; these are stubs
   async setupTOTP(_id: string) {
     return { message: 'TOTP setup initiated — handled by auth flow.' };

@@ -170,6 +170,16 @@ export const driversApi = {
     request<{ zones: Array<{ latitude: number; longitude: number; radiusM: number; intensity: number; orderCount: number }> }>(
       'GET', '/drivers/demand-zones',
     ),
+  // Spec V8 — pre-deletion readiness. Driver app calls this on the
+  // delete-account screen to surface blockers (active deliveries,
+  // wallet balance) before the user can attempt deletion.
+  deletionReadiness: () =>
+    request<{
+      isDriver: boolean;
+      ready:    boolean;
+      blockers: Array<{ type: string; count: number; action: string }>;
+      driverId?: string;
+    }>('GET', '/drivers/me/deletion-readiness'),
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────
@@ -297,6 +307,13 @@ export const partnerApi = {
       hoursInStore: number; storageFeesAccruedNgn: number;
       tier: 'free' | 'tier_1' | 'tier_2' | 'return_eligible';
     }>>('GET', `/partner-store/store/${storeId}/overstays`),
+  // Spec V8 — partner store closing readiness check
+  storeDeletionReadiness: (storeId: string) =>
+    request<{
+      ready:    boolean;
+      blockers: Array<{ type: string; count: number; action: string }>;
+      partnerStoreId: string;
+    }>('GET', `/partner-store/store/${storeId}/deletion-readiness`),
 };
 
 // ─── Customer-side store drop-off (Spec V8 §3 async flow) ──────────────────

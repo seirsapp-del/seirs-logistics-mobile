@@ -45,6 +45,41 @@ export class UsersService {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) throw new BadRequestException('Password did not match — account not deleted.');
 
+    // Spec V8 — driver-specific pre-flight check via raw queries (so we
+    // don't pull DriversService into UsersModule and create a cycle).
+    // Drivers can't delete with active deliveries or non-zero wallet.
+    if (user.role === 'driver') {
+      const mgr = this.repo.manager;
+      const driverRow = await mgr
+        .createQueryBuilder()
+        .select(['d.id AS id', 'd."walletBalance" AS balance'])
+        .from('drivers', 'd')
+        .where('d."userId" = :uid', { uid: userId })
+        .getRawOne();
+      if (driverRow) {
+        const activeCount = await mgr
+          .createQueryBuilder()
+          .from('deliveries', 'd')
+          .where('d."driverId" = :did', { did: driverRow.id })
+          .andWhere('d.status IN (:...statuses)', {
+            statuses: ['assigned', 'picked_up', 'in_transit'],
+          })
+          .getCount()
+          .catch(() => 0);
+        if (activeCount > 0) {
+          throw new BadRequestException(
+            `You have ${activeCount} active deliver${activeCount === 1 ? 'y' : 'ies'}. Complete them or contact ops to reassign before deleting.`,
+          );
+        }
+        const balance = Number(driverRow.balance ?? 0);
+        if (balance > 0) {
+          throw new BadRequestException(
+            `Withdraw your ₦${Math.round(balance).toLocaleString()} wallet balance before deleting your account.`,
+          );
+        }
+      }
+    }
+
     await this.repo.update(userId, {
       isActive:           false,
       deactivatedAt:      new Date(),
