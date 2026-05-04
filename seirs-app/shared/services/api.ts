@@ -358,6 +358,21 @@ export const identityApi = {
     request<{ sent: boolean; expiresInMinutes: number }>(
       'POST', `/identity/handoff/${deliveryId}/issue-otp`, { recipientUserId },
     ),
+  verifyHandoff: (deliveryId: string, payload: {
+    stage:        string;
+    method:       'physical_id' | 'seirs_id';
+    fromUserId?:  string;
+    idType?:      string;
+    idNumber?:    string;
+    otp?:         string;
+    idPhotoUrl?:  string;
+    seirsCode?:   string;
+    typedName?:   string;
+    proofPhotoUrl?: string;
+  }) =>
+    request<{ recordId: string; recipientUserId: string }>(
+      'POST', `/identity/handoff/${deliveryId}/verify`, payload,
+    ),
   handoffChain: (deliveryId: string) =>
     request<any[]>('GET', `/identity/handoff/${deliveryId}/chain`),
 };
