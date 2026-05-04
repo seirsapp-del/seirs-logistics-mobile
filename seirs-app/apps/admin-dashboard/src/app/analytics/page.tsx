@@ -4,7 +4,7 @@ import { adminApi } from '@/lib/api';
 import { Star } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, BarChart, Bar,
 } from 'recharts';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -28,6 +28,10 @@ export default function AnalyticsPage() {
   const [revenue,    setRevenue]    = useState<any[]>([]);
   const [byStatus,   setByStatus]   = useState<any[]>([]);
   const [topDrivers, setTopDrivers] = useState<any[]>([]);
+  const [byVehicle,  setByVehicle]  = useState<any[]>([]);
+  const [byCategory, setByCategory] = useState<any[]>([]);
+  const [driverHrs,  setDriverHrs]  = useState<any[]>([]);
+  const [referral,   setReferral]   = useState<{ referredSignups: number; firstDeliveryDone: number; conversionPercent: number } | null>(null);
   const [loading,    setLoading]    = useState(true);
   const [days,       setDays]       = useState(30);
 
@@ -37,10 +41,18 @@ export default function AnalyticsPage() {
       adminApi.analytics.revenue(days),
       adminApi.analytics.deliveriesByStatus(),
       adminApi.analytics.topDrivers(10),
-    ]).then(([rev, status, drivers]) => {
+      adminApi.analytics.deliveriesByVehicle().catch(() => []),
+      adminApi.analytics.deliveriesByCategory().catch(() => []),
+      adminApi.analytics.driverHours(days, 8).catch(() => []),
+      adminApi.analytics.referralFunnel().catch(() => null),
+    ]).then(([rev, status, drivers, veh, cat, hrs, ref]) => {
       setRevenue(rev);
       setByStatus(status);
       setTopDrivers(drivers);
+      setByVehicle(veh ?? []);
+      setByCategory(cat ?? []);
+      setDriverHrs(hrs ?? []);
+      setReferral(ref);
     }).finally(() => setLoading(false));
   }, [days]);
 
@@ -169,6 +181,98 @@ export default function AnalyticsPage() {
                     <p className="text-sm text-[#0F2B4C]/30 text-center py-8">No drivers yet</p>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Spec V8 — vehicle + category breakdown */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
+                <h2 className="text-sm font-semibold text-[#0F2B4C]/60 mb-4">Deliveries by Vehicle</h2>
+                {byVehicle.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={byVehicle} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis dataKey="vehicleType" tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }} />
+                      <YAxis tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }} />
+                      <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', boxShadow: 'none' }} />
+                      <Bar dataKey="count" fill="#3A7BD5" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-56 flex items-center justify-center text-[#0F2B4C]/30 text-sm">No data yet</div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
+                <h2 className="text-sm font-semibold text-[#0F2B4C]/60 mb-4">Deliveries by Category</h2>
+                {byCategory.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={byCategory}
+                        dataKey="count"
+                        nameKey="category"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={false}
+                      >
+                        {byCategory.map((entry, i) => (
+                          <Cell key={entry.category} fill={['#10B981', '#3B82F6', '#F59E0B'][i % 3]} />
+                        ))}
+                      </Pie>
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-56 flex items-center justify-center text-[#0F2B4C]/30 text-sm">No data yet</div>
+                )}
+              </div>
+            </div>
+
+            {/* Driver active-hours + referral funnel */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
+                <h2 className="text-sm font-semibold text-[#0F2B4C]/60 mb-4">Driver Active Hours (last {days}d)</h2>
+                {driverHrs.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={driverHrs} layout="vertical" margin={{ top: 4, right: 16, left: 60, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }} />
+                      <YAxis type="category" dataKey="driverName" tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }} width={80} />
+                      <Tooltip
+                        formatter={(v: any) => [`${v} hrs`, 'Active Time']}
+                        contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', boxShadow: 'none' }}
+                      />
+                      <Bar dataKey="hours" fill="#10B981" radius={[0, 6, 6, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-56 flex items-center justify-center text-[#0F2B4C]/30 text-sm">No data yet</div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
+                <h2 className="text-sm font-semibold text-[#0F2B4C]/60 mb-4">Referral Funnel</h2>
+                {referral ? (
+                  <div className="flex flex-col gap-4 py-4">
+                    <div>
+                      <p className="text-xs font-semibold text-[#0F2B4C]/40 uppercase tracking-wide">Referred Signups</p>
+                      <p className="text-3xl font-black text-[#0F2B4C] mt-1">{referral.referredSignups.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-[#0F2B4C]/40 uppercase tracking-wide">Completed First Delivery</p>
+                      <p className="text-3xl font-black text-[#10B981] mt-1">{referral.firstDeliveryDone.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-[#0F2B4C]/40 uppercase tracking-wide">Conversion</p>
+                      <p className="text-3xl font-black text-[#3A7BD5] mt-1">{referral.conversionPercent}%</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-56 flex items-center justify-center text-[#0F2B4C]/30 text-sm">No data yet</div>
+                )}
               </div>
             </div>
           </div>

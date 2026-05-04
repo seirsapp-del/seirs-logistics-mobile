@@ -79,10 +79,15 @@ export const adminApi = {
   },
 
   analytics: {
-    revenue:            (days = 30) => req<any>(`/admin/analytics/revenue?days=${days}`),
-    deliveriesByStatus: ()          => req<any>('/admin/analytics/deliveries-by-status'),
-    topDrivers:         (limit = 10) => req<any>(`/admin/analytics/top-drivers?limit=${limit}`),
-    heatmap:            ()          => req<any>('/admin/analytics/heatmap'),
+    revenue:              (days = 30) => req<any>(`/admin/analytics/revenue?days=${days}`),
+    deliveriesByStatus:   ()          => req<any>('/admin/analytics/deliveries-by-status'),
+    topDrivers:           (limit = 10) => req<any>(`/admin/analytics/top-drivers?limit=${limit}`),
+    heatmap:              ()          => req<any>('/admin/analytics/heatmap'),
+    deliveriesByVehicle:  ()          => req<any>('/admin/analytics/deliveries-by-vehicle'),
+    deliveriesByCategory: ()          => req<any>('/admin/analytics/deliveries-by-category'),
+    driverHours:          (days = 30, limit = 10) =>
+      req<any>(`/admin/analytics/driver-hours?days=${days}&limit=${limit}`),
+    referralFunnel:       ()          => req<any>('/admin/analytics/referral-funnel'),
   },
 
   fraud: {

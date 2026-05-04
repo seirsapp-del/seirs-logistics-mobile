@@ -154,6 +154,33 @@ export class AdminController {
     return this.adminService.getDeliveryHeatmap();
   }
 
+  // GET /api/v1/admin/analytics/deliveries-by-vehicle
+  @Get('analytics/deliveries-by-vehicle')
+  getDeliveriesByVehicle() {
+    return this.adminService.getDeliveriesByVehicle();
+  }
+
+  // GET /api/v1/admin/analytics/deliveries-by-category
+  @Get('analytics/deliveries-by-category')
+  getDeliveriesByCategory() {
+    return this.adminService.getDeliveriesByCategory();
+  }
+
+  // GET /api/v1/admin/analytics/driver-hours?days=30&limit=10
+  @Get('analytics/driver-hours')
+  getDriverHours(@Query('days') days?: number, @Query('limit') limit?: number) {
+    return this.adminService.getDriverHours(
+      days  ? Number(days)  : 30,
+      limit ? Number(limit) : 10,
+    );
+  }
+
+  // GET /api/v1/admin/analytics/referral-funnel
+  @Get('analytics/referral-funnel')
+  getReferralFunnel() {
+    return this.adminService.getReferralFunnel();
+  }
+
   // ── Fraud ─────────────────────────────────────────────────────────────────
 
   // GET /api/v1/admin/fraud?status=open&page=1

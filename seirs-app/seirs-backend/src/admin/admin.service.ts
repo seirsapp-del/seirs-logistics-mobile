@@ -267,35 +267,46 @@ export class AdminService {
   async getPricingConfig() {
     let row = await this.pricingRepo.findOne({ where: { id: PRICING_SINGLETON_ID } });
     if (!row) {
-      // First call after deploy — seed defaults
       row = this.pricingRepo.create({
-        id:              PRICING_SINGLETON_ID,
-        baseFare:        300,
-        perKmRate:       80,
-        platformCut:     PLATFORM_COMMISSION,
-        surgeActive:     false,
-        surgeMultiplier: 1.0,
+        id:                PRICING_SINGLETON_ID,
+        baseFare:          300,
+        perKmRate:         80,
+        platformCut:       PLATFORM_COMMISSION,
+        surgeActive:       false,
+        surgeMultiplier:   1.0,
+        vehicles:          null as any,
+        zones:             null as any,
+        fuelAdjustPercent: 0,
+        fxAdjustPercent:   0,
       });
       await this.pricingRepo.save(row);
     }
     return {
-      baseFare:        Number(row.baseFare),
-      perKmRate:       Number(row.perKmRate),
-      platformCut:     Number(row.platformCut),
-      surgeActive:     row.surgeActive,
-      surgeMultiplier: Number(row.surgeMultiplier),
+      baseFare:          Number(row.baseFare),
+      perKmRate:         Number(row.perKmRate),
+      platformCut:       Number(row.platformCut),
+      surgeActive:       row.surgeActive,
+      surgeMultiplier:   Number(row.surgeMultiplier),
+      vehicles:          row.vehicles ?? [],
+      zones:             row.zones ?? [],
+      fuelAdjustPercent: Number(row.fuelAdjustPercent),
+      fxAdjustPercent:   Number(row.fxAdjustPercent),
     };
   }
 
   async updatePricingConfig(data: Partial<{
-    baseFare:        number;
-    perKmRate:       number;
-    platformCut:     number;
-    surgeActive:     boolean;
-    surgeMultiplier: number;
+    baseFare:          number;
+    perKmRate:         number;
+    platformCut:       number;
+    surgeActive:       boolean;
+    surgeMultiplier:   number;
+    vehicles:          Array<{ vehicleType: string; baseFare: number; perKmRate: number; perMinRate: number }>;
+    zones:             Array<{ name: string; surchargePercent: number }>;
+    fuelAdjustPercent: number;
+    fxAdjustPercent:   number;
   }>) {
     await this.getPricingConfig(); // ensures singleton row exists
-    await this.pricingRepo.update({ id: PRICING_SINGLETON_ID }, data);
+    await this.pricingRepo.update({ id: PRICING_SINGLETON_ID }, data as any);
     return this.getPricingConfig();
   }
 
@@ -342,6 +353,84 @@ export class AdminService {
       .addOrderBy('d.rating', 'DESC')
       .take(limit)
       .getMany();
+  }
+
+  // Spec V8 — deliveries grouped by driver's vehicle type (motorcycle vs van etc.)
+  async getDeliveriesByVehicle() {
+    const rows = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .leftJoin('d.driver', 'driver')
+      .select('driver.vehicleType', 'vehicleType')
+      .addSelect('COUNT(d.id)', 'count')
+      .where('d.status = :status', { status: DeliveryStatus.DELIVERED })
+      .groupBy('driver.vehicleType')
+      .getRawMany();
+    return rows
+      .filter(r => r.vehicleType)
+      .map(r => ({ vehicleType: r.vehicleType as string, count: Number(r.count) }));
+  }
+
+  // Spec V8 — deliveries grouped by package category (using urgency as proxy
+  // until per-category field ships in the multi-drop e-commerce module)
+  async getDeliveriesByCategory() {
+    const rows = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .select('d.urgency',  'category')
+      .addSelect('COUNT(d.id)', 'count')
+      .groupBy('d.urgency')
+      .getRawMany();
+    return rows.map(r => ({ category: r.category as string, count: Number(r.count) }));
+  }
+
+  // Spec V8 §2.4 — total hours each top driver has been on active jobs
+  // (assignedAt → deliveredAt) over the last 30 days.
+  async getDriverHours(days = 30, limit = 10) {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .leftJoin('d.driver', 'driver')
+      .leftJoin('driver.user', 'user')
+      .select('driver.id', 'driverId')
+      .addSelect('user.name', 'driverName')
+      .addSelect(
+        'SUM(EXTRACT(EPOCH FROM (d.deliveredAt - d.assignedAt))) / 3600',
+        'hours',
+      )
+      .where('d.status = :status', { status: DeliveryStatus.DELIVERED })
+      .andWhere('d.assignedAt IS NOT NULL AND d.deliveredAt IS NOT NULL')
+      .andWhere('d.createdAt >= :since', { since })
+      .groupBy('driver.id')
+      .addGroupBy('user.name')
+      .orderBy('hours', 'DESC')
+      .limit(limit)
+      .getRawMany();
+    return rows
+      .filter(r => r.driverId)
+      .map(r => ({
+        driverId:   r.driverId as string,
+        driverName: (r.driverName as string) ?? 'Driver',
+        hours:      Math.round(Number(r.hours) * 10) / 10,
+      }));
+  }
+
+  // Spec V8 §1.13 — funnel of referred users → completed first delivery
+  async getReferralFunnel() {
+    const referred = await this.usersRepo
+      .createQueryBuilder('u')
+      .where('u.referredByCode IS NOT NULL')
+      .getCount();
+
+    const activated = await this.usersRepo
+      .createQueryBuilder('u')
+      .innerJoin('u.deliveries', 'd', 'd.status = :status', { status: DeliveryStatus.DELIVERED })
+      .where('u.referredByCode IS NOT NULL')
+      .getCount();
+
+    return {
+      referredSignups:    referred,
+      firstDeliveryDone:  activated,
+      conversionPercent:  referred > 0 ? Math.round((activated / referred) * 1000) / 10 : 0,
+    };
   }
 
   async getDeliveryHeatmap() {
