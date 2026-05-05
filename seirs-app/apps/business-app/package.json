@@ -11,13 +11,13 @@
     "update":  "eas update --channel preview"
   },
   "dependencies": {
+    "@expo/config-plugins":                  "~54.0.0",
     "@expo/vector-icons":                    "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs":         "^7.4.0",
     "@react-navigation/native":              "^7.1.8",
     "@seirs/shared":                         "*",
     "expo":                                  "~54.0.34",
-    "expo-barcode-scanner":                  "~13.0.1",
     "expo-camera":                           "~17.0.10",
     "expo-constants":                        "~18.0.13",
     "expo-document-picker":                  "~14.0.8",
