@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 // Brand colors per Master Spec V7 §G1 (Navy + Sky Blue, no orange).
 const BRAND_BLUE = '#3A7BD5';
@@ -66,36 +67,31 @@ function statusBadge(label: string, color: string): string {
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private transporter: nodemailer.Transporter | null = null;
+  private resend: Resend | null = null;
+  private smtpTransporter: nodemailer.Transporter | null = null;
 
   constructor(private readonly cfg: ConfigService) {
-    // ── Resend (preferred) ───────────────────────────────────────────────────
-    // If RESEND_API_KEY is set, route everything through Resend's SMTP.
-    // No domain verification needed if you keep the default
-    // `Seirs <onboarding@resend.dev>` from-address — that works out of the box
-    // for development. To send from your own domain (e.g. noreply@seirs.co),
-    // verify it at resend.com/domains and set MAIL_FROM in Railway.
+    // ── Resend HTTP API (preferred — works on Railway/Heroku/etc) ────────────
+    // Cloud platforms commonly block outbound SMTP (port 465/587), so we use
+    // Resend's HTTPS API directly. No domain verification needed if you keep
+    // the default `Seirs <onboarding@resend.dev>` from-address. To send from
+    // your own domain, verify it at resend.com/domains and set MAIL_FROM.
     const resendKey = cfg.get<string>('RESEND_API_KEY');
 
     if (resendKey) {
-      this.transporter = nodemailer.createTransport({
-        host:   'smtp.resend.com',
-        port:   465,
-        secure: true,
-        auth:   { user: 'resend', pass: resendKey },
-      });
-      this.logger.log('Mail transport: Resend SMTP');
+      this.resend = new Resend(resendKey);
+      this.logger.log('Mail transport: Resend HTTP API');
       return;
     }
 
-    // ── Generic SMTP fallback ────────────────────────────────────────────────
+    // ── Generic SMTP fallback (only useful on hosts that don't block SMTP) ──
     const host = cfg.get<string>('MAIL_HOST');
     const user = cfg.get<string>('MAIL_USER');
     const pass = cfg.get<string>('MAIL_PASS');
 
     if (host && user && pass) {
       const port = parseInt(cfg.get<string>('MAIL_PORT', '465'), 10);
-      this.transporter = nodemailer.createTransport({
+      this.smtpTransporter = nodemailer.createTransport({
         host,
         port,
         secure: port === 465,
@@ -116,17 +112,34 @@ export class MailService {
     // out of the box without any DNS verification. Override with MAIL_FROM
     // once you've verified seirs.co at resend.com/domains.
     const from = this.cfg.get<string>('MAIL_FROM', 'Seirs Logistics <onboarding@resend.dev>');
-    if (!this.transporter) {
-      this.logger.warn(`[MAIL-NOOP] Would send "${subject}" to ${to} — no transport configured`);
+
+    if (this.resend) {
+      try {
+        const { data, error } = await this.resend.emails.send({ from, to, subject, html });
+        if (error) {
+          this.logger.error(`Email send failed: "${subject}" → ${to}: ${error.message}`);
+          throw new Error(error.message);
+        }
+        this.logger.log(`Email sent: "${subject}" → ${to} (id=${data?.id})`);
+      } catch (err) {
+        this.logger.error(`Email send failed: "${subject}" → ${to}: ${(err as Error).message}`);
+        throw err;
+      }
       return;
     }
-    try {
-      const info = await this.transporter.sendMail({ from, to, subject, html });
-      this.logger.log(`Email sent: "${subject}" → ${to} (id=${info.messageId})`);
-    } catch (err) {
-      this.logger.error(`Email send failed: "${subject}" → ${to}: ${(err as Error).message}`);
-      throw err;
+
+    if (this.smtpTransporter) {
+      try {
+        const info = await this.smtpTransporter.sendMail({ from, to, subject, html });
+        this.logger.log(`Email sent (SMTP): "${subject}" → ${to} (id=${info.messageId})`);
+      } catch (err) {
+        this.logger.error(`Email send failed (SMTP): "${subject}" → ${to}: ${(err as Error).message}`);
+        throw err;
+      }
+      return;
     }
+
+    this.logger.warn(`[MAIL-NOOP] Would send "${subject}" to ${to} — no transport configured`);
   }
 
   // ── Email verification OTP ──────────────────────────────────────────────────
