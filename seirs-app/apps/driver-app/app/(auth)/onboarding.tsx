@@ -1,133 +1,193 @@
+import { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Dimensions,
-  StatusBar,
+  View, Text, StyleSheet, Pressable, Dimensions,
+  StatusBar, Animated, Platform, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import {
+  Truck, Wallet, MapPin, Clock, Shield, Award,
+  ChevronRight, Package,
+} from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 
-const { height } = Dimensions.get('window');
+const { width: W, height: H } = Dimensions.get('window');
 
-const FEATURES = [
-  { icon: 'flash',            text: 'Same-day delivery across Lagos, Abuja & PH' },
-  { icon: 'location',         text: 'Live GPS tracking on every package' },
-  { icon: 'shield-checkmark', text: 'Verified dispatch riders. Insured deliveries.' },
+// Driver-focused slides — different copy from customer onboarding but
+// the same animated cross-fade pattern (gold-standard from customer-app).
+const SLIDES = [
+  {
+    id: 'brand',
+    Icon: Truck,
+    headline: 'Drive with SEIRS.\nEarn on your terms.',
+    sub: 'Join Nigeria\'s smartest delivery platform — verified, insured, fairly paid.',
+    gradientStart: '#0F2B4C',
+    gradientEnd:   '#1A3A63',
+    accentColor:   '#3A7BD5',
+  },
+  {
+    id: 'earnings',
+    Icon: Wallet,
+    headline: 'Daily payouts.\nNo waiting.',
+    sub: 'Earnings credited to your SEIRS wallet after every trip — withdraw anytime.',
+    gradientStart: '#0A1E36',
+    gradientEnd:   '#235A9C',
+    accentColor:   '#58A6FF',
+  },
+  {
+    id: 'flex',
+    Icon: Clock,
+    headline: 'Drive when\nyou want.',
+    sub: 'Go online, take jobs that fit your schedule, go offline when you\'re done.',
+    gradientStart: '#0F2B4C',
+    gradientEnd:   '#1E4A80',
+    accentColor:   '#79B8FF',
+  },
+  {
+    id: 'routes',
+    Icon: MapPin,
+    headline: 'Smart routing.\nMore drops, less fuel.',
+    sub: 'Multi-stop matching and route optimization keep your earnings per litre high.',
+    gradientStart: '#0A1E36',
+    gradientEnd:   '#2D72CC',
+    accentColor:   '#58A6FF',
+  },
+  {
+    id: 'safety',
+    Icon: Shield,
+    headline: 'Verified senders.\nInsured trips.',
+    sub: 'Every customer is identity-verified. Every trip is covered — you\'re never alone.',
+    gradientStart: '#0F2B4C',
+    gradientEnd:   '#1A3A63',
+    accentColor:   '#3A7BD5',
+  },
+  {
+    id: 'rewards',
+    Icon: Award,
+    headline: 'Top drivers earn\nmore. Period.',
+    sub: 'High-rating riders get priority on premium jobs and bonus payouts each week.',
+    gradientStart: '#0A1E36',
+    gradientEnd:   '#235A9C',
+    accentColor:   '#79B8FF',
+  },
 ] as const;
 
+const SLIDE_DURATION = 4500;
+
 export default function OnboardingScreen() {
-  const router      = useRouter();
-  const colorScheme = useColorScheme();
-  const theme       = Colors[colorScheme ?? 'light'];
-  const isDark      = colorScheme === 'dark';
+  const router = useRouter();
+  const cs     = useColorScheme();
+  const theme  = Colors[cs ?? 'light'];
+  const isDark = cs === 'dark';
 
-  const heroBg    = isDark ? '#000000' : '#0B1D3A';
-  const heroStart = isDark ? '#0A0A0A' : '#0B1D3A';
-  const heroMid   = isDark ? '#1A0C00' : '#12306A';
-  const heroEnd   = isDark ? '#0A0A0A' : '#0B1D3A';
+  const [current, setCurrent] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const primaryBtn1 = isDark ? '#FF6B00' : '#3A86FF';
-  const primaryBtn2 = isDark ? '#C2410C' : '#1D6AE5';
+  const goToSlide = (index: number) => {
+    Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+      setCurrent(index);
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    });
+  };
+
+  useEffect(() => {
+    timerRef.current = setTimeout(() => {
+      const next = (current + 1) % SLIDES.length;
+      goToSlide(next);
+    }, SLIDE_DURATION);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [current]);
+
+  const slide = SLIDES[current];
+  const SlideIcon = slide.Icon;
+
+  // Cross-app conversion: someone downloaded the driver app but actually
+  // wants to send a package — link them to the customer app's store page
+  // so they end up in the right product.
+  const handleSendPackage = () => {
+    const url = Platform.OS === 'ios'
+      ? 'https://apps.apple.com/app/seirs-customer'
+      : 'https://play.google.com/store/apps/details?id=co.seirs.customer';
+    Linking.openURL(url).catch(() => {});
+  };
+
+  const sheetBg = isDark ? '#161B22' : '#FFFFFF';
 
   return (
-    <View style={{ flex: 1, backgroundColor: heroBg }}>
+    <View style={{ flex: 1, backgroundColor: slide.gradientStart }}>
       <StatusBar barStyle="light-content" />
 
-      {/* Hero */}
-      <LinearGradient
-        colors={[heroStart, heroMid, heroEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}
-      >
-        {/* Decorative orbs */}
-        <View style={[styles.orb1, { backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : 'rgba(58,134,255,0.15)' }]} />
-        <View style={[styles.orb2, { backgroundColor: isDark ? 'rgba(0,194,255,0.08)' : 'rgba(46,196,182,0.10)' }]} />
-
-        {/* Logo */}
-        <View style={styles.logoBlock}>
-          <View style={[
-            styles.logoIconWrap,
-            {
-              backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : 'rgba(58,134,255,0.15)',
-              borderColor:     isDark ? 'rgba(255,107,0,0.30)' : 'rgba(58,134,255,0.30)',
-            },
-          ]}>
-            <Ionicons name="cube" size={36} color={isDark ? '#FF6B00' : '#3A86FF'} />
-          </View>
-          <Text style={styles.logoText}>SEIRS</Text>
-          <Text style={styles.logoSub}>LOGISTICS</Text>
-        </View>
-
-        {/* Tagline */}
-        <Text style={styles.tagline}>
-          Nigeria's fastest{'\n'}delivery platform.
-        </Text>
-
-        {/* Feature pills */}
-        <View style={styles.pills}>
-          {FEATURES.map((f) => (
-            <View key={f.text} style={styles.pill}>
-              <Ionicons name={f.icon} size={14} color={isDark ? '#FF6B00' : '#3A86FF'} />
-              <Text style={styles.pillText}>{f.text}</Text>
-            </View>
-          ))}
-        </View>
-      </LinearGradient>
-
-      {/* Bottom sheet */}
-      <View
-        style={[
-          styles.sheet,
-          { backgroundColor: isDark ? '#0A0A0A' : '#FFFFFF' },
-        ]}
-      >
-        <Text style={[styles.sheetTitle, { color: theme.text }]}>
-          Fast. Reliable.{'\n'}Smart Delivery.
-        </Text>
-        <Text style={[styles.sheetSub, { color: theme.textSecond }]}>
-          Connect with verified dispatch riders, track packages in real time, and get the best price automatically.
-        </Text>
-
-        <Pressable
-          style={styles.primaryBtn}
-          onPress={() => router.push('/(auth)/register')}
+      {/* ── Slide hero ─────────────────────────────────────────────────── */}
+      <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+        <LinearGradient
+          colors={[slide.gradientStart, slide.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
         >
-          <LinearGradient
-            colors={[primaryBtn1, primaryBtn2]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.primaryBtnGradient}
-          >
-            <Text style={styles.primaryBtnText}>Get Started</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
-          </LinearGradient>
+          <SafeAreaView style={styles.topBar} edges={['top']}>
+            <View style={styles.logoRow}>
+              <Truck size={20} color="#FFFFFF" strokeWidth={2} />
+              <Text style={styles.logoText}>SEIRS</Text>
+              <Text style={styles.logoSub}>DRIVER</Text>
+            </View>
+          </SafeAreaView>
+
+          {/* Slide icon */}
+          <View style={[styles.iconWrap, { borderColor: `${slide.accentColor}40`, backgroundColor: `${slide.accentColor}18` }]}>
+            <SlideIcon size={52} color={slide.accentColor} strokeWidth={1.5} />
+          </View>
+
+          {/* Slide text */}
+          <Text style={styles.headline}>{slide.headline}</Text>
+          <Text style={styles.sub}>{slide.sub}</Text>
+
+          {/* Progress dots */}
+          <View style={styles.dots}>
+            {SLIDES.map((_, i) => (
+              <Pressable key={i} onPress={() => goToSlide(i)}>
+                <View
+                  style={[
+                    styles.dot,
+                    i === current
+                      ? { backgroundColor: '#FFFFFF', width: 24 }
+                      : { backgroundColor: 'rgba(255,255,255,0.35)', width: 8 },
+                  ]}
+                />
+              </Pressable>
+            ))}
+          </View>
+        </LinearGradient>
+      </Animated.View>
+
+      {/* ── Bottom sheet (fixed across all slides) ─────────────────────── */}
+      <View style={[styles.sheet, { backgroundColor: sheetBg }]}>
+        <Pressable
+          style={[styles.primaryBtn, { backgroundColor: '#0F2B4C' }]}
+          onPress={() => router.push('/(auth)/driver-register' as any)}
+        >
+          <Text style={styles.primaryBtnText}>Become a Driver</Text>
+          <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
         </Pressable>
 
         <Pressable
-          style={[styles.secondaryBtn, { borderColor: theme.border, backgroundColor: theme.surface }]}
-          onPress={() => router.push('/(auth)/login')}
+          style={[styles.secondaryBtn, { borderColor: theme.border }]}
+          onPress={() => router.push('/(auth)/login' as any)}
         >
           <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
-            I already have an account
+            I Already Have an Account
           </Text>
         </Pressable>
 
-        <Pressable
-          style={styles.driverLink}
-          onPress={() => router.push('/(auth)/driver-register')}
-        >
-          <Ionicons name="bicycle" size={16} color={theme.primary} />
+        <Pressable style={styles.driverLink} onPress={handleSendPackage}>
+          <Package size={15} color={theme.primary} strokeWidth={2} />
           <Text style={[styles.driverLinkText, { color: theme.primary }]}>
-            Become a dispatch rider
+            I just want to send a package
           </Text>
-          <Ionicons name="arrow-forward" size={14} color={theme.primary} />
+          <ChevronRight size={13} color={theme.primary} strokeWidth={2.5} />
         </Pressable>
       </View>
     </View>
@@ -136,141 +196,114 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   hero: {
-    height: height * 0.52,
-    justifyContent: 'center',
+    flex: 1,
     alignItems: 'center',
-    overflow: 'hidden',
+    justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.xl,
   },
-  orb1: {
+  topBar: {
     position: 'absolute',
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    top: -80,
-    right: -100,
-  },
-  orb2: {
-    position: 'absolute',
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    bottom: -60,
-    left: -80,
-  },
-  logoBlock: {
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.xl,
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
   },
-  logoIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
-    justifyContent: 'center',
+  logoRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.md,
-    borderWidth: 1,
+    gap: Spacing.xs,
   },
   logoText: {
-    fontSize: FontSize['3xl'],
+    fontSize: FontSize.sm,
     fontWeight: FontWeight.black,
     color: '#FFFFFF',
-    letterSpacing: 6,
+    letterSpacing: 4,
   },
   logoSub: {
-    fontSize: FontSize.xs,
+    fontSize: 9,
     fontWeight: FontWeight.medium,
     color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 5,
-    marginTop: 2,
+    letterSpacing: 3,
+    marginTop: 1,
   },
-  tagline: {
-    fontSize: FontSize.xl,
+  iconWrap: {
+    width: 110,
+    height: 110,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+    borderWidth: 1.5,
+  },
+  headline: {
+    fontSize: FontSize['2xl'],
     fontWeight: FontWeight.bold,
     color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 30,
-    marginBottom: Spacing.xl,
-  },
-  pills: {
-    gap: Spacing.sm,
-    width: '100%',
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  pillText: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
-    flex: 1,
-  },
-
-  sheet: {
-    flex: 1,
-    borderTopLeftRadius: Radius.xxl,
-    borderTopRightRadius: Radius.xxl,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xl,
-    marginTop: -Radius.xl,
-  },
-  sheetTitle: {
-    fontSize: FontSize['2xl'],
-    fontWeight: FontWeight.bold,
     lineHeight: 36,
-    marginBottom: Spacing.sm,
-  },
-  sheetSub: {
-    fontSize: FontSize.base,
-    lineHeight: 22,
-    marginBottom: Spacing.xl,
-  },
-
-  primaryBtn: {
-    borderRadius: Radius.xl,
-    overflow: 'hidden',
     marginBottom: Spacing.md,
   },
-  primaryBtnGradient: {
+  sub: {
+    fontSize: FontSize.base,
+    color: 'rgba(255,255,255,0.72)',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.xl,
+    paddingHorizontal: Spacing.md,
+  },
+  dots: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    alignItems: 'center',
+  },
+  dot: {
+    height: 8,
+    borderRadius: Radius.full,
+  },
+  sheet: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xxl,
+    borderTopLeftRadius: Radius.xxl,
+    borderTopRightRadius: Radius.xxl,
+    marginTop: -Radius.xl,
+    gap: Spacing.md,
+  },
+  primaryBtn: {
+    height: 56,
+    borderRadius: Radius.xl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 56,
     gap: Spacing.sm,
   },
   primaryBtnText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
   },
-
   secondaryBtn: {
     height: 56,
     borderRadius: Radius.xl,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
   },
   secondaryBtnText: {
     fontSize: FontSize.base,
     fontWeight: FontWeight.medium,
   },
-
   driverLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
   },
   driverLinkText: {
     fontSize: FontSize.base,
