@@ -166,7 +166,7 @@ export default function TeamScreen() {
             style={styles.input}
             value={invite.name}
             onChangeText={(v) => setInvite((i) => ({ ...i, name: v }))}
-            placeholder="Ada Okonkwo"
+            placeholder="Aisha Adebayo"
             placeholderTextColor="#9CA3AF"
           />
 

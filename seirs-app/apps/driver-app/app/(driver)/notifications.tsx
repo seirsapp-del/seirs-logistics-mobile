@@ -22,7 +22,7 @@ interface Notif {
 const MOCK_NOTIFS: Notif[] = [
   { id: 'n1', type: 'job',     title: 'New Job Available',         body: 'Instant delivery request — Victoria Island to Lekki. ₦1,920 earnings.',                  time: '10:32 AM', read: false },
   { id: 'n2', type: 'payment', title: 'Earnings Credited',         body: '₦1,920 has been credited to your SEIRS wallet for trip SRS-VT12AB34.',                    time: '10:30 AM', read: false },
-  { id: 'n3', type: 'rating',  title: 'New Rating Received',       body: 'Adaeze O. gave you 5 stars! "Very professional and punctual!"',                            time: 'Yesterday', read: true },
+  { id: 'n3', type: 'rating',  title: 'New Rating Received',       body: 'Adebayo A. gave you 5 stars! "Very professional and punctual!"',                            time: 'Yesterday', read: true },
   { id: 'n4', type: 'payment', title: 'Earnings Credited',         body: '₦2,480 has been credited to your SEIRS wallet for trip SRS-YB56CD78.',                    time: 'Yesterday', read: true },
   { id: 'n5', type: 'system',  title: 'Profile Verified',          body: 'Your KYC documents have been approved. You are now eligible for all job types.',          time: '2 days ago', read: true },
   { id: 'n6', type: 'job',     title: 'Job Assigned',              body: 'New delivery assigned: Surulere to Ajah, 18.6 km. Estimated ₦3,840 earnings.',             time: '3 days ago', read: true },

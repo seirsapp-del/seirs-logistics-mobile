@@ -20,7 +20,7 @@ const WEB_REFERRAL_BASE = 'https://seirs.app/r/';
 const REFERRAL_HISTORY = [
   { id: 'r1', name: 'Kemi Adeyemo',  status: 'completed', earned: 1000, date: '2026-04-20' },
   { id: 'r2', name: 'Femi Oladele',  status: 'completed', earned: 1000, date: '2026-04-15' },
-  { id: 'r3', name: 'Ngozi Nwachukwu', status: 'pending', earned: 0, date: '2026-04-28' },
+  { id: 'r3', name: 'Aisha Mohammed', status: 'pending', earned: 0, date: '2026-04-28' },
 ];
 
 export default function ReferralScreen() {

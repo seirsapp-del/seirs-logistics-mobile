@@ -21,8 +21,9 @@ const CSV_HEADERS = ['recipientName', 'recipientPhone', 'address', 'weight', 'no
 
 const TEMPLATE_CSV =
   'recipientName,recipientPhone,address,weight,note\n' +
-  'Ada Okonkwo,08011223344,"15 Adeola Odeku VI Lagos",2,Leave at reception\n' +
-  'Emeka Chukwu,09022334455,"3 Allen Ave Ikeja Lagos",,,\n';
+  'Adebayo Adesola,08011223344,"15 Adeola Odeku VI Lagos",2,Leave at reception\n' +
+  'Aisha Mohammed,09022334455,"3 Allen Ave Ikeja Lagos",,,\n' +
+  'Chinedu Okafor,07033445566,"7 Awolowo Rd Ikoyi Lagos",1,Call on arrival\n';
 
 export default function CsvUploadScreen() {
   const router = useRouter();

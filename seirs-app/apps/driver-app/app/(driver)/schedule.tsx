@@ -53,7 +53,7 @@ const MOCK_PREBOOKED: PreBookedJob[] = [
     id: 'pb1',
     date: 'Today',
     time: '14:00',
-    customer: 'Amaka Obi',
+    customer: 'Aisha Mohammed',
     pickup: '15 Adeola Odeku, Victoria Island',
     dropoff: 'Ikeja City Mall, Airport Road',
     fare: 4800,

@@ -69,13 +69,6 @@ export default function OnboardingScreen() {
 
   return (
     <LinearGradient colors={slide.gradient} style={[styles.container, { paddingTop: insets.top }]}>
-      <Pressable
-        style={[styles.skip, { top: insets.top + 16 }]}
-        onPress={() => router.replace('/(auth)/login')}
-      >
-        <Text style={styles.skipText}>Skip</Text>
-      </Pressable>
-
       <FlatList
         ref={flatRef}
         data={SLIDES}
@@ -126,8 +119,6 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  skip:      { position: 'absolute', right: 24, zIndex: 10 },
-  skipText:  { color: 'rgba(255,255,255,0.6)', fontSize: 14 },
   slide:     { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingTop: 80 },
   iconWrap:  {
     width: 100, height: 100, borderRadius: 28,

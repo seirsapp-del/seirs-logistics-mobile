@@ -405,7 +405,7 @@ function CreateDrawer({ onClose, onCreated, addToast, roles }: CreateDrawerProps
                   type="text"
                   value={form.firstName}
                   onChange={(e) => set('firstName', e.target.value)}
-                  placeholder="Ada"
+                  placeholder="Adebayo"
                   className={inputCls('firstName')}
                 />
                 {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
@@ -418,7 +418,7 @@ function CreateDrawer({ onClose, onCreated, addToast, roles }: CreateDrawerProps
                   type="text"
                   value={form.lastName}
                   onChange={(e) => set('lastName', e.target.value)}
-                  placeholder="Okonkwo"
+                  placeholder="Yusuf"
                   className={inputCls('lastName')}
                 />
                 {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}

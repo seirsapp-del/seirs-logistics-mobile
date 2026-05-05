@@ -10,7 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import {
   Package, MapPin, Truck, Users, ShoppingBag, Store,
-  ChevronRight, SkipForward,
+  ChevronRight,
 } from 'lucide-react-native';
 
 const { width: W, height: H } = Dimensions.get('window');
@@ -123,19 +123,12 @@ export default function OnboardingScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
-          {/* Skip button */}
           <SafeAreaView style={styles.topBar} edges={['top']}>
-            {/* Logo */}
             <View style={styles.logoRow}>
               <Truck size={20} color="#FFFFFF" strokeWidth={2} />
               <Text style={styles.logoText}>SEIRS</Text>
               <Text style={styles.logoSub}>LOGISTICS</Text>
             </View>
-
-            <Pressable style={styles.skipBtn} onPress={() => router.push('/(auth)/login' as any)}>
-              <SkipForward size={14} color="rgba(255,255,255,0.7)" strokeWidth={2} />
-              <Text style={styles.skipText}>Skip</Text>
-            </Pressable>
           </SafeAreaView>
 
           {/* Slide icon */}
@@ -232,20 +225,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     letterSpacing: 3,
     marginTop: 1,
-  },
-  skipBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-    borderRadius: Radius.full,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  skipText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.medium,
   },
   iconWrap: {
     width: 110,

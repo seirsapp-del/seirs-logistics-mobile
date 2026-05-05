@@ -2,12 +2,12 @@
 
 export const MOCK_USER = {
   id: 'u1',
-  name: 'Adaeze Okafor',
-  email: 'adaeze@example.com',
+  name: 'Adebayo Adesola',
+  email: 'adebayo@example.com',
   phone: '+234 802 345 6789',
   avatar: null,
   walletBalance: 47500,
-  referralCode: 'ADAEZE20',
+  referralCode: 'ADEBAYO20',
   points: 1240,
   tier: 'Gold',
 };
@@ -29,7 +29,7 @@ export const MOCK_DRIVERS = [
   },
   {
     id: 'd2',
-    name: 'Emeka Eze',
+    name: 'Musa Ibrahim',
     phone: '+234 805 678 9012',
     rating: 4.7,
     trips: 632,

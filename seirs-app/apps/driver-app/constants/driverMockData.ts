@@ -29,7 +29,7 @@ export const MOCK_DRIVER_JOBS = [
     id:          'job1',
     status:      'assigned',
     urgency:     'instant',
-    customer:    { id: 'c1', name: 'Adaeze Okafor', phone: '+234 802 345 6789', avatar: null },
+    customer:    { id: 'c1', name: 'Adebayo Adesola', phone: '+234 802 345 6789', avatar: null },
     pickupAddress:  'Victoria Island, Lagos',
     dropoffAddress: 'Lekki Phase 1, Lagos',
     pickupLat:   6.4281, pickupLng:   3.4219,
@@ -67,7 +67,7 @@ export const MOCK_DRIVER_DELIVERIES = [
   {
     id:          'del1',
     status:      'delivered',
-    customer:    { id: 'c1', name: 'Adaeze Okafor', phone: '+234 802 345 6789', avatar: null },
+    customer:    { id: 'c1', name: 'Adebayo Adesola', phone: '+234 802 345 6789', avatar: null },
     pickupAddress:  'Victoria Island, Lagos',
     dropoffAddress: 'Lekki Phase 1, Lagos',
     distanceKm:  8.4,
@@ -115,7 +115,7 @@ export const MOCK_DRIVER_DELIVERIES = [
   {
     id:          'del4',
     status:      'delivered',
-    customer:    { id: 'c4', name: 'Ngozi Nwachukwu', phone: '+234 808 012 3456', avatar: null },
+    customer:    { id: 'c4', name: 'Aisha Mohammed', phone: '+234 808 012 3456', avatar: null },
     pickupAddress:  'Gbagada, Lagos',
     dropoffAddress: 'CMS Marina, Lagos',
     distanceKm:  6.3,
@@ -167,7 +167,7 @@ export const MOCK_DRIVER_RATINGS = {
     { stars: 1, count: 5,    pct: 0.004 },
   ],
   recent: [
-    { id: 'rt1', customer: 'Adaeze O.', stars: 5, comment: 'Very professional and punctual!', date: '2026-04-27' },
+    { id: 'rt1', customer: 'Adebayo A.', stars: 5, comment: 'Very professional and punctual!', date: '2026-04-27' },
     { id: 'rt2', customer: 'Kemi A.',   stars: 5, comment: null,                               date: '2026-04-25' },
     { id: 'rt3', customer: 'Ngozi N.', stars: 4, comment: 'Good driver.',                      date: '2026-04-20' },
     { id: 'rt4', customer: 'Tunde A.', stars: 5, comment: 'Excellent service, will use again.', date: '2026-04-18' },
@@ -182,7 +182,7 @@ export const MOCK_DRIVER_BANK_ACCOUNTS = [
 export const MOCK_DRIVER_MESSAGES = [
   {
     id:          'dchat1',
-    customer:    { id: 'c1', name: 'Adaeze Okafor', phone: '+234 802 345 6789', avatar: null },
+    customer:    { id: 'c1', name: 'Adebayo Adesola', phone: '+234 802 345 6789', avatar: null },
     lastMessage: 'Please hurry, I have a meeting.',
     lastTime:    '10:28 AM',
     unread:      1,
