@@ -1,5 +1,4 @@
-import '@/i18n';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -10,6 +9,7 @@ import { Colors } from '@/constants/theme';
 import { API_BASE } from '@/constants/config';
 import { configureApi, configureSessionStorageKey } from '@/services/api';
 import * as Updates from 'expo-updates';
+import { initI18n } from '@/i18n';
 
 configureApi(API_BASE);
 // Business app stores session under a separate key so it can coexist with
@@ -87,6 +87,17 @@ function OTAUpdateChecker() {
 }
 
 export default function RootLayout() {
+  // Wait for i18next to finish loading before rendering anything that calls
+  // useTranslation() — otherwise t() is undefined and crashes the first
+  // screen that uses it ("undefined is not a function").
+  const [i18nReady, setI18nReady] = useState(false);
+
+  useEffect(() => {
+    initI18n().then(() => setI18nReady(true));
+  }, []);
+
+  if (!i18nReady) return null;
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>
