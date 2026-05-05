@@ -86,6 +86,21 @@ function OTAUpdateChecker() {
   return null;
 }
 
+// Renders nothing until AuthContext finishes loading the stored session.
+// Without this gate, expo-router renders the default route for one frame
+// before NavigationGuard's useEffect can redirect — visible as a brief
+// flash of the inside of the app on cold launch.
+function AppContent() {
+  const { isLoading } = useAuth();
+  if (isLoading) return null;
+  return (
+    <>
+      <OTAUpdateChecker />
+      <RootStack />
+    </>
+  );
+}
+
 export default function RootLayout() {
   // Wait for i18next to finish loading before rendering anything that calls
   // useTranslation() — otherwise t() is undefined and crashes the first
@@ -102,8 +117,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <OTAUpdateChecker />
-          <RootStack />
+          <AppContent />
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
