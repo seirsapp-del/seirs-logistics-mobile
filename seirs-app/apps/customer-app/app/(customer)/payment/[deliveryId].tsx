@@ -5,16 +5,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { CreditCard, Wallet, Banknote, Lock, ShieldCheck } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { paymentsApi } from '@/services/api';
 
 type Method = 'card' | 'wallet' | 'cash_on_delivery';
 
-const METHODS: { id: Method; icon: string; label: string; desc: string }[] = [
-  { id: 'card',             icon: '💳', label: 'Card / Bank Transfer', desc: 'Pay securely via Flutterwave' },
-  { id: 'wallet',           icon: '👛', label: 'Seirs Wallet',         desc: 'Use your wallet balance'      },
-  { id: 'cash_on_delivery', icon: '💵', label: 'Cash on Delivery',     desc: 'Pay driver when delivered'   },
+const METHODS: { id: Method; Icon: LucideIcon; label: string; desc: string }[] = [
+  { id: 'card',             Icon: CreditCard, label: 'Card / Bank Transfer', desc: 'Pay securely via Flutterwave' },
+  { id: 'wallet',           Icon: Wallet,     label: 'Seirs Wallet',         desc: 'Use your wallet balance'      },
+  { id: 'cash_on_delivery', Icon: Banknote,   label: 'Cash on Delivery',     desc: 'Pay driver when delivered'   },
 ];
 
 export default function PaymentScreen() {
@@ -114,7 +116,7 @@ export default function PaymentScreen() {
                 ]}
                 onPress={() => setSelectedMethod(m.id)}
               >
-                <Text style={styles.methodIcon}>{m.icon}</Text>
+                <m.Icon size={24} color={selected ? theme.primary : theme.text} strokeWidth={1.5} style={styles.methodIcon} />
                 <View style={styles.methodInfo}>
                   <Text style={[styles.methodLabel, { color: theme.text }]}>{m.label}</Text>
                   <Text style={[styles.methodDesc,  { color: theme.textSecond }]}>{m.desc}</Text>
@@ -134,7 +136,7 @@ export default function PaymentScreen() {
         {selectedMethod === 'card' && (
           <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
-              🔒 You'll be redirected to Flutterwave's secure payment page. Supports card, bank transfer, and USSD. Return to the app after payment to confirm.
+              You'll be redirected to Flutterwave's secure payment page. Supports card, bank transfer, and USSD. Return to the app after payment to confirm.
             </Text>
           </View>
         )}
@@ -142,7 +144,7 @@ export default function PaymentScreen() {
         {selectedMethod === 'cash_on_delivery' && (
           <View style={[styles.noticeBox, { backgroundColor: theme.warning + '18', borderColor: theme.warning }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
-              💵 You will pay the driver in cash when your package is delivered. Please have the exact amount ready.
+              You will pay the driver in cash when your package is delivered. Please have the exact amount ready.
             </Text>
           </View>
         )}
@@ -151,7 +153,10 @@ export default function PaymentScreen() {
 
         {/* Escrow explanation */}
         <View style={[styles.escrowBox, { backgroundColor: theme.surfaceSecond }]}>
-          <Text style={[styles.escrowTitle, { color: theme.text }]}>🔒 Escrow Protection</Text>
+          <View style={styles.escrowTitleRow}>
+            <ShieldCheck size={18} color={theme.text} strokeWidth={1.5} />
+            <Text style={[styles.escrowTitle, { color: theme.text }]}>Escrow Protection</Text>
+          </View>
           <Text style={[styles.escrowDesc, { color: theme.textSecond }]}>
             Your payment is held securely and only released to the driver after delivery is confirmed. If anything goes wrong, you get a full refund.
           </Text>
@@ -199,7 +204,7 @@ const styles = StyleSheet.create({
   section:      { paddingHorizontal: Spacing.xl, marginBottom: Spacing.lg },
   sectionTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
   methodCard:   { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1.5, marginBottom: Spacing.sm, gap: Spacing.md },
-  methodIcon:   { fontSize: 28 },
+  methodIcon:   { marginRight: Spacing.sm },
   methodInfo:   { flex: 1 },
   methodLabel:  { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
   methodDesc:   { fontSize: FontSize.xs, marginTop: 2 },
@@ -208,7 +213,8 @@ const styles = StyleSheet.create({
   noticeText:   { fontSize: FontSize.sm, lineHeight: 20 },
   errorText:    { textAlign: 'center', fontSize: FontSize.sm, marginHorizontal: Spacing.xl, marginBottom: Spacing.md },
   escrowBox:    { marginHorizontal: Spacing.xl, borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.lg },
-  escrowTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.semibold, marginBottom: Spacing.xs },
+  escrowTitle:    { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  escrowTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.xs },
   escrowDesc:   { fontSize: FontSize.sm, lineHeight: 20 },
   footer:       { paddingHorizontal: Spacing.xl },
   payBtn:       { height: 56, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },

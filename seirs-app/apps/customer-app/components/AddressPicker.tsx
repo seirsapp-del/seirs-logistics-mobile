@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { Search, MapPin, Navigation } from 'lucide-react-native';
 import { useState, useRef, useCallback } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -188,7 +189,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
 
           {/* Search input */}
           <View style={[styles.searchRow, { borderBottomColor: theme.border }]}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <Search size={18} color={theme.textSecond} strokeWidth={1.5} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, { color: theme.text }]}
               placeholder="Search address…"
@@ -206,7 +207,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
             style={[styles.myLocationBtn, { borderBottomColor: theme.border }]}
             onPress={useMyLocation}
           >
-            <Text style={styles.myLocationIcon}>📍</Text>
+            <Navigation size={18} color={theme.primary} strokeWidth={1.5} style={styles.myLocationIcon} />
             <Text style={[styles.myLocationText, { color: theme.primary }]}>Use my current location</Text>
           </Pressable>
 
@@ -223,7 +224,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
                   style={styles.predictionRow}
                   onPress={() => selectPrediction(item)}
                 >
-                  <Text style={styles.predictionPin}>📌</Text>
+                  <MapPin size={16} color={theme.textSecond} strokeWidth={1.5} style={styles.predictionPin} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.predictionMain, { color: theme.text }]} numberOfLines={1}>
                       {item.main_text}
@@ -303,15 +304,15 @@ const styles = StyleSheet.create({
   doneBtn:       { width: 60, alignItems: 'flex-end' },
   doneText:      { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
   searchRow:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
-  searchIcon:    { fontSize: 18, marginRight: Spacing.sm },
+  searchIcon:    { marginRight: Spacing.sm },
   searchInput:   { flex: 1, fontSize: FontSize.base, height: 44 },
   myLocationBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderBottomWidth: 1, gap: Spacing.sm },
-  myLocationIcon:{ fontSize: 18 },
+  myLocationIcon:{ marginRight: Spacing.sm },
   myLocationText:{ fontSize: FontSize.base, fontWeight: FontWeight.medium },
   predictionList:{ maxHeight: 240 },
   separator:     { height: 1 },
   predictionRow: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, gap: Spacing.sm },
-  predictionPin: { fontSize: 16 },
+  predictionPin: { marginRight: Spacing.sm },
   predictionMain:{ fontSize: FontSize.base, fontWeight: FontWeight.medium },
   predictionSub: { fontSize: FontSize.xs, marginTop: 2 },
   mapWrap:       { flex: 1, position: 'relative' },

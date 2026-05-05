@@ -5,14 +5,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { Calendar, MapPin, Package, FileText, Briefcase, Box } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
 
 const SIZES = [
-  { key: 'small',  label: 'Small',  icon: '📄' },
-  { key: 'medium', label: 'Medium', icon: '🎒' },
-  { key: 'large',  label: 'Large',  icon: '📦' },
+  { key: 'small',  label: 'Small',  Icon: FileText },
+  { key: 'medium', label: 'Medium', Icon: Briefcase },
+  { key: 'large',  label: 'Large',  Icon: Box },
 ] as const;
 
 type PackageSize = typeof SIZES[number]['key'];
@@ -84,7 +85,10 @@ export default function ScheduleScreen() {
 
         {/* Date & Time */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>🗓️ When to pick up?</Text>
+          <View style={styles.sectionTitleRow}>
+            <Calendar size={18} color={theme.text} strokeWidth={1.5} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>When to pick up?</Text>
+          </View>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Date (YYYY-MM-DD)</Text>
@@ -112,7 +116,10 @@ export default function ScheduleScreen() {
 
         {/* Locations */}
         <View style={[styles.card, { backgroundColor: theme.surface, marginTop: Spacing.md }, Shadows.sm]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>📍 Locations</Text>
+          <View style={styles.sectionTitleRow}>
+            <MapPin size={18} color={theme.text} strokeWidth={1.5} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Locations</Text>
+          </View>
           <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Pickup Address</Text>
           <TextInput
             style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surfaceSecond, marginBottom: Spacing.sm }]}
@@ -170,7 +177,10 @@ export default function ScheduleScreen() {
 
         {/* Package */}
         <View style={[styles.card, { backgroundColor: theme.surface, marginTop: Spacing.md }, Shadows.sm]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>📦 Package</Text>
+          <View style={styles.sectionTitleRow}>
+            <Package size={18} color={theme.text} strokeWidth={1.5} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Package</Text>
+          </View>
           <TextInput
             style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surfaceSecond, marginBottom: Spacing.md }]}
             placeholder="Package description"
@@ -189,7 +199,7 @@ export default function ScheduleScreen() {
                 ]}
                 onPress={() => setSize(s.key)}
               >
-                <Text style={{ fontSize: 20 }}>{s.icon}</Text>
+                <s.Icon size={20} color={size === s.key ? '#fff' : theme.text} strokeWidth={1.5} />
                 <Text style={[styles.sizeBtnLabel, { color: size === s.key ? '#fff' : theme.text }]}>{s.label}</Text>
               </Pressable>
             ))}
@@ -221,7 +231,8 @@ const styles = StyleSheet.create({
   backText: { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
   headerTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
   card: { borderRadius: Radius.lg, padding: Spacing.lg },
-  sectionTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
+  sectionTitle:    { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.md },
   row: { flexDirection: 'row', gap: Spacing.sm },
   fieldLabel: { fontSize: FontSize.xs, fontWeight: FontWeight.medium, marginBottom: 4 },
   input: {
