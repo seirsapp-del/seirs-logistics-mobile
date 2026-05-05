@@ -23,7 +23,8 @@ export default function RegisterScreen() {
   const [step,        setStep]        = useState<1 | 2>(1);
   const [accountType, setAccountType] = useState<AccountType>('sender');
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', password: '', confirmPassword: '',
+    firstName: '', middleName: '', lastName: '',
+    email: '', phone: '', password: '', confirmPassword: '',
     companyName: '', rcNumber: '', businessAddress: '',
     storeName: '', storeAddress: '', capacity: '',
   });
@@ -40,7 +41,7 @@ export default function RegisterScreen() {
   const passError  = form.password.length > 0 ? validatePassword(form.password) : null;
   const passMatch  = form.password === form.confirmPassword;
 
-  const step2Valid = form.name && form.email && phoneValid && passValid && passMatch && termsOk && ageOk
+  const step2Valid = form.firstName && form.lastName && form.email && phoneValid && passValid && passMatch && termsOk && ageOk
     && (accountType === 'sender'
       ? form.companyName && form.businessAddress
       : form.storeName && form.storeAddress);
@@ -49,9 +50,12 @@ export default function RegisterScreen() {
     setError('');
     setLoading(true);
     try {
+      const fullName = [form.firstName.trim(), form.middleName.trim(), form.lastName.trim()]
+        .filter(Boolean)
+        .join(' ');
       await authApi.register({
         accountType,
-        name:  form.name.trim(),
+        name:  fullName,
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim().replace(/\s/g, ''),
         password: form.password,
@@ -149,10 +153,17 @@ export default function RegisterScreen() {
           </View>
         )}
 
-        {/* Personal info */}
-        <Field label="Full Name" value={form.name} onChangeText={(v) => set('name', v)} placeholder="John Okafor" />
+        {/* Personal info — Nigerian users commonly have 3 names; first +
+            optional middle + last keeps the form readable and respects
+            naming conventions instead of forcing a single Full Name field. */}
+        <Field label="First Name" value={form.firstName} onChangeText={(v) => set('firstName', v)}
+          placeholder="Adebayo" />
+        <Field label="Middle Name (optional)" value={form.middleName} onChangeText={(v) => set('middleName', v)}
+          placeholder="Chinedu" />
+        <Field label="Last Name" value={form.lastName} onChangeText={(v) => set('lastName', v)}
+          placeholder="Yusuf" />
         <Field label="Email Address" value={form.email} onChangeText={(v) => set('email', v)}
-          placeholder="john@company.ng" keyboardType="email-address" autoCapitalize="none" />
+          placeholder="adebayo@company.ng" keyboardType="email-address" autoCapitalize="none" />
         <Field label="Phone Number (+234)" value={form.phone} onChangeText={(v) => set('phone', v)}
           placeholder="08012345678" keyboardType="phone-pad" />
 
