@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { authApi } from '@/services/api';
+import { validatePassword, isPasswordValid, PASSWORD_HELP_TEXT } from '@seirs/shared';
 
 type AccountType = 'sender' | 'partner';
 
@@ -35,7 +36,8 @@ export default function RegisterScreen() {
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const phoneValid = /^(080|081|070|090|091)\d{7}$/.test(form.phone.replace(/\s/g, ''));
-  const passValid  = form.password.length >= 12;
+  const passValid  = isPasswordValid(form.password);
+  const passError  = form.password.length > 0 ? validatePassword(form.password) : null;
   const passMatch  = form.password === form.confirmPassword;
 
   const step2Valid = form.name && form.email && phoneValid && passValid && passMatch && termsOk && ageOk
@@ -182,7 +184,7 @@ export default function RegisterScreen() {
             style={[styles.input, { flex: 1 }]}
             value={form.password}
             onChangeText={(v) => set('password', v)}
-            placeholder="Minimum 12 characters"
+            placeholder={PASSWORD_HELP_TEXT}
             placeholderTextColor="#9CA3AF"
             secureTextEntry={!showPass}
           />
@@ -190,8 +192,8 @@ export default function RegisterScreen() {
             <Icon name={showPass ? 'EyeOff' : 'Eye'} size={16} color="#9CA3AF" />
           </Pressable>
         </View>
-        {form.password.length > 0 && !passValid && (
-          <Text style={styles.fieldError}>Minimum 12 characters</Text>
+        {passError && (
+          <Text style={styles.fieldError}>{passError}</Text>
         )}
 
         <Field label="Confirm Password" value={form.confirmPassword} onChangeText={(v) => set('confirmPassword', v)}

@@ -10,6 +10,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+import { validatePassword } from '@seirs/shared';
 
 export default function RegisterScreen() {
   const router      = useRouter();
@@ -32,12 +33,9 @@ export default function RegisterScreen() {
       setError('Please fill in all required fields.');
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[\d\W]/.test(password)) {
-      setError('Password must include uppercase, lowercase, and a number or symbol.');
+    const pwErr = validatePassword(password);
+    if (pwErr) {
+      setError(pwErr);
       return;
     }
     const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(' ');
@@ -100,7 +98,7 @@ export default function RegisterScreen() {
                 <Ionicons name="person-outline" size={16} color={theme.textThird} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
-                  placeholder="Emeka"
+                  placeholder="Adebayo"
                   placeholderTextColor={theme.textThird}
                   autoComplete="given-name"
                   autoCapitalize="words"
@@ -114,7 +112,7 @@ export default function RegisterScreen() {
               <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                 <TextInput
                   style={[styles.input, { color: theme.text, paddingLeft: Spacing.md }]}
-                  placeholder="Okonkwo"
+                  placeholder="Yusuf"
                   placeholderTextColor={theme.textThird}
                   autoComplete="family-name"
                   autoCapitalize="words"
@@ -133,7 +131,7 @@ export default function RegisterScreen() {
               <Ionicons name="person-outline" size={16} color={theme.textThird} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="Chukwu"
+                placeholder="Chinedu"
                 placeholderTextColor={theme.textThird}
                 autoCapitalize="words"
                 value={middleName}

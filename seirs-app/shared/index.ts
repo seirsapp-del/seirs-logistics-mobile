@@ -4,3 +4,4 @@ export * from './models/index';
 export * from './hooks/index';
 export * from './components/index';
 export * from './services/index';
+export * from './utils/index';

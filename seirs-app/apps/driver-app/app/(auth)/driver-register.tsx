@@ -12,6 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+import { validatePassword } from '@seirs/shared';
 
 type VehicleType = 'bicycle' | 'motorcycle' | 'tricycle' | 'car' | 'van' | 'truck_small' | 'truck_large';
 
@@ -26,7 +27,6 @@ const VEHICLES: { id: VehicleType; label: string; desc: string; Icon: any }[] = 
 ];
 
 const NIGERIAN_PHONE_RE = /^(080|081|070|090|091)\d{7}$/;
-const PASSWORD_RE       = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\d\W]).{8,}$/;
 
 export default function DriverRegisterScreen() {
   const router      = useRouter();
@@ -56,8 +56,9 @@ export default function DriverRegisterScreen() {
       setError('Enter a valid Nigerian mobile number (e.g. 08012345678).');
       return;
     }
-    if (!PASSWORD_RE.test(password)) {
-      setError('Password must be 8+ chars with uppercase, lowercase, and a number or symbol.');
+    const pwErr = validatePassword(password);
+    if (pwErr) {
+      setError(pwErr);
       return;
     }
     if (password !== confirmPass) {

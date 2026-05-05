@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+import { validatePassword, PASSWORD_HELP_TEXT } from '@seirs/shared';
 
 // This screen handles the deep link: seirsmobile://reset-password?token=xxx
 
@@ -29,8 +30,9 @@ export default function ResetPasswordScreen() {
       setError('Please fill in both fields.');
       return;
     }
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters.');
+    const pwErr = validatePassword(newPassword);
+    if (pwErr) {
+      setError(pwErr);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -102,7 +104,7 @@ export default function ResetPasswordScreen() {
           <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
           <Text style={[styles.title, { color: theme.text }]}>Set new password</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            Choose a strong password with at least 8 characters.
+            {PASSWORD_HELP_TEXT}
           </Text>
         </View>
 

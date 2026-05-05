@@ -47,7 +47,13 @@ export class AuthService {
     this.googleClient = new OAuth2Client(cfg.get<string>('GOOGLE_CLIENT_ID'));
   }
 
-  private static readonly PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\d\W]).{8,}$/;
+  // Must stay in sync with shared/utils/password.ts (frontend source of truth)
+  // and the @Matches() rule on register.dto.ts. Requires: 8+ chars, uppercase,
+  // lowercase, digit, AND symbol (not OR — Flutterwave-style policy).
+  private static readonly PASSWORD_REGEX =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]).{8,}$/;
+  private static readonly PASSWORD_HELP =
+    'Password must be at least 8 characters with uppercase, lowercase, a number, and a symbol.';
 
   private static toTitleCase(str: string): string {
     return str.trim()
@@ -415,6 +421,10 @@ export class AuthService {
     if (!user) throw new BadRequestException('Invalid or expired reset token.');
     if (!user.passwordResetExpiry || user.passwordResetExpiry < new Date()) {
       throw new BadRequestException('Reset token has expired. Please request a new one.');
+    }
+
+    if (!AuthService.PASSWORD_REGEX.test(newPassword)) {
+      throw new BadRequestException(AuthService.PASSWORD_HELP);
     }
 
     const hashed = await bcrypt.hash(newPassword, 12);

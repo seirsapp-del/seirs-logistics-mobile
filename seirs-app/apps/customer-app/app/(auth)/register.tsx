@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+import { validatePassword } from '@seirs/shared';
 import {
   ArrowLeft, ArrowRight, Truck, User, Mail, Phone, CheckSquare, Square,
 } from 'lucide-react-native';
@@ -25,10 +26,8 @@ function validate(
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Enter a valid email address.';
   const digits = phone.replace(/\s/g, '');
   if (!NIGERIAN_PHONE_RE.test(digits)) return 'Enter a valid Nigerian number (080x / 081x / 070x / 090x / 091x).';
-  if (password.length < 8) return 'Password must be at least 8 characters.';
-  if (!/[A-Z]/.test(password)) return 'Password must include at least one uppercase letter.';
-  if (!/[a-z]/.test(password)) return 'Password must include at least one lowercase letter.';
-  if (!/[\d\W]/.test(password)) return 'Password must include a number or symbol.';
+  const pwErr = validatePassword(password);
+  if (pwErr) return pwErr;
   if (password !== confirmPassword) return 'Passwords do not match.';
   if (!ageConfirmed) return 'You must confirm you are 18 years of age or older.';
   if (!termsAccepted) return 'You must agree to the Terms of Service and Privacy Policy.';
@@ -146,7 +145,7 @@ export default function RegisterScreen() {
                 <User size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
-                  placeholder="Emeka"
+                  placeholder="Adebayo"
                   placeholderTextColor={theme.textThird}
                   autoComplete="given-name"
                   autoCapitalize="words"
@@ -160,7 +159,7 @@ export default function RegisterScreen() {
               <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                 <TextInput
                   style={[styles.input, { color: theme.text, paddingLeft: Spacing.md }]}
-                  placeholder="Okonkwo"
+                  placeholder="Yusuf"
                   placeholderTextColor={theme.textThird}
                   autoComplete="family-name"
                   autoCapitalize="words"
@@ -180,7 +179,7 @@ export default function RegisterScreen() {
               <User size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="Chukwu"
+                placeholder="Chinedu"
                 placeholderTextColor={theme.textThird}
                 autoCapitalize="words"
                 value={middleName}

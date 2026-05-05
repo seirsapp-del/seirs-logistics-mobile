@@ -10,8 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
-
-const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\d\W]).{8,}$/;
+import { validatePassword } from '@seirs/shared';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -25,8 +24,9 @@ export default function ChangePasswordScreen() {
 
   const handleSubmit = async () => {
     if (!current) { Alert.alert('Current password required'); return; }
-    if (!PASSWORD_RE.test(next)) {
-      Alert.alert('Weak password', 'New password needs 8+ chars with mixed case and a number or symbol.');
+    const pwErr = validatePassword(next);
+    if (pwErr) {
+      Alert.alert('Weak password', pwErr);
       return;
     }
     if (next !== confirm) { Alert.alert('Passwords do not match'); return; }

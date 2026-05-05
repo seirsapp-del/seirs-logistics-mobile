@@ -25,8 +25,9 @@ export default function LoginScreen() {
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
 
-  const passwordValid = password.length >= 12;
-  const canSubmit     = email.trim() && passwordValid && !loading;
+  // Login should not enforce password complexity — existing accounts may
+  // pre-date the current policy. Just require non-empty.
+  const canSubmit = email.trim() && password.length > 0 && !loading;
 
   const handleLogin = async () => {
     setError('');
@@ -93,7 +94,7 @@ export default function LoginScreen() {
             style={[styles.input, { flex: 1, color: theme.text }]}
             value={password}
             onChangeText={setPassword}
-            placeholder="Minimum 12 characters"
+            placeholder="Your password"
             placeholderTextColor={theme.textThird}
             secureTextEntry={!showPass}
             autoComplete="password"
@@ -102,10 +103,6 @@ export default function LoginScreen() {
             <Icon name={showPass ? 'EyeOff' : 'Eye'} size={16} color={theme.textThird} />
           </Pressable>
         </View>
-        {password.length > 0 && !passwordValid && (
-          <Text style={[styles.fieldError, { color: theme.error }]}>Minimum 12 characters required</Text>
-        )}
-
         <Pressable
           style={[styles.btn, { backgroundColor: theme.primary }, !canSubmit && styles.btnDisabled]}
           onPress={handleLogin}
