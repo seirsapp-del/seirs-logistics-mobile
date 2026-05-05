@@ -2,7 +2,7 @@ import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
-import { ArrowLeft, Copy, Shield, CheckCircle } from 'lucide-react-native';
+import { ArrowLeft, Copy, Shield, CheckCircle, AlertTriangle } from 'lucide-react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -114,7 +114,10 @@ export default function SeirsIdScreen() {
             'Anyone with your SEIRS ID + your full name could verify a handoff in your name. Treat it like a debit-card PIN — only show it at the moment of pickup.',
           )}
         >
-          <Text style={styles.alertText}>⚠ Keep this code private</Text>
+          <View style={styles.alertRow}>
+            <AlertTriangle size={16} color="#92400E" strokeWidth={1.75} />
+            <Text style={styles.alertText}>Keep this code private</Text>
+          </View>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -149,5 +152,6 @@ const styles = StyleSheet.create({
   howText:  { flex: 1, fontSize: FontSize.sm, lineHeight: 19 },
 
   alert:    { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, alignItems: 'center' },
+  alertRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs },
   alertText:{ color: '#92400E', fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
 });

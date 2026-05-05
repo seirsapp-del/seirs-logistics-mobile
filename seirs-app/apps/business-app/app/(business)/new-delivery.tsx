@@ -8,15 +8,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { businessApi } from '@/services/api';
 import { useBusinessStore } from '@/store/businessStore';
+import { VehicleIcon, type VehicleType } from '@seirs/shared';
 
-const VEHICLES = [
-  { key: 'bicycle',     label: 'Bicycle',    maxKg: 5,    icon: '🚲' },
-  { key: 'motorcycle',  label: 'Motorcycle', maxKg: 20,   icon: '🏍️' },
-  { key: 'tricycle',    label: 'Tricycle',   maxKg: 100,  icon: '🛺' },
-  { key: 'car',         label: 'Car',        maxKg: 200,  icon: '🚗' },
-  { key: 'van',         label: 'Van',        maxKg: 800,  icon: '🚐' },
-  { key: 'truck_small', label: 'Small Truck',maxKg: 3000, icon: '🚛' },
-  { key: 'truck_large', label: 'Large Truck',maxKg: 9999, icon: '🚚' },
+const VEHICLES: { key: VehicleType; label: string; maxKg: number }[] = [
+  { key: 'bicycle',     label: 'Bicycle',     maxKg: 5    },
+  { key: 'motorcycle',  label: 'Motorcycle',  maxKg: 20   },
+  { key: 'tricycle',    label: 'Tricycle',    maxKg: 100  },
+  { key: 'car',         label: 'Car',         maxKg: 200  },
+  { key: 'van',         label: 'Van',         maxKg: 800  },
+  { key: 'truck_small', label: 'Small Truck', maxKg: 3000 },
+  { key: 'truck_large', label: 'Large Truck', maxKg: 9999 },
 ];
 
 const CATEGORIES = [
@@ -178,7 +179,7 @@ export default function NewDeliveryScreen() {
                   style={[styles.vehicleCard, draft.vehicleType === v.key && styles.vehicleCardActive]}
                   onPress={() => setDraft({ vehicleType: v.key })}
                 >
-                  <Text style={styles.vehicleEmoji}>{v.icon}</Text>
+                  <VehicleIcon type={v.key} size={28} color={draft.vehicleType === v.key ? '#3A7BD5' : '#0F2B4C'} />
                   <Text style={[styles.vehicleLabel, draft.vehicleType === v.key && styles.vehicleLabelActive]}>
                     {v.label}
                   </Text>
@@ -348,7 +349,6 @@ const styles = StyleSheet.create({
     padding: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#E5E7EB',
   },
   vehicleCardActive: { borderColor: '#3A7BD5', backgroundColor: '#F0F5FF' },
-  vehicleEmoji:  { fontSize: 22, marginBottom: 6 },
   vehicleLabel:  { fontSize: 11, fontWeight: '600', color: '#374151', textAlign: 'center' },
   vehicleLabelActive: { color: '#0F2B4C' },
   vehicleKg:     { fontSize: 10, color: '#9CA3AF', marginTop: 2 },

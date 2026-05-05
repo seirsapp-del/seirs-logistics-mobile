@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { CheckCircle2 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows, Palette } from '@/constants/theme';
 
@@ -104,7 +105,7 @@ export default function BusinessScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
         <ScrollView contentContainerStyle={{ padding: Spacing.xl }}>
           <View style={styles.successIcon}>
-            <Text style={{ fontSize: 56 }}>🎉</Text>
+            <CheckCircle2 size={56} color={theme.success ?? '#16A34A'} strokeWidth={1.5} />
           </View>
           <Text style={[styles.successTitle, { color: theme.text }]}>Bulk Order Placed!</Text>
           <Text style={[styles.successSub, { color: theme.textSecond }]}>

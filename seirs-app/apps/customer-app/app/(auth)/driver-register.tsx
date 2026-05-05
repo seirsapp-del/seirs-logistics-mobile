@@ -12,14 +12,14 @@ import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword } from '@seirs/shared';
 
-type VehicleType = 'bicycle' | 'motorcycle' | 'tricycle' | 'car' | 'van';
+import { VehicleIcon, type VehicleType } from '@seirs/shared';
 
-const VEHICLES: { id: VehicleType; label: string; icon: string; desc: string }[] = [
-  { id: 'bicycle',    label: 'Bicycle',     icon: '🚲', desc: 'Short distances' },
-  { id: 'motorcycle', label: 'Motorcycle',  icon: '🏍️', desc: 'Fast urban' },
-  { id: 'tricycle',   label: 'Tricycle',    icon: '🛺', desc: 'Medium loads' },
-  { id: 'car',        label: 'Car',         icon: '🚗', desc: 'Standard packages' },
-  { id: 'van',        label: 'Van / Truck', icon: '🚐', desc: 'Large items' },
+const VEHICLES: { id: VehicleType; label: string; desc: string }[] = [
+  { id: 'bicycle',    label: 'Bicycle',     desc: 'Short distances' },
+  { id: 'motorcycle', label: 'Motorcycle',  desc: 'Fast urban' },
+  { id: 'tricycle',   label: 'Tricycle',    desc: 'Medium loads' },
+  { id: 'car',        label: 'Car',         desc: 'Standard packages' },
+  { id: 'van',        label: 'Van / Truck', desc: 'Large items' },
 ];
 
 export default function DriverRegisterScreen() {
@@ -217,7 +217,7 @@ export default function DriverRegisterScreen() {
                     ]}
                     onPress={() => setVehicle(v.id)}
                   >
-                    <Text style={styles.vehicleEmoji}>{v.icon}</Text>
+                    <VehicleIcon type={v.id} size={28} color={selected ? theme.primary : theme.text} />
                     <Text style={[styles.vehicleLabel, { color: selected ? theme.primary : theme.text }]}>
                       {v.label}
                     </Text>
@@ -293,7 +293,6 @@ const styles = StyleSheet.create({
   input:      { flex: 1, fontSize: FontSize.base, height: '100%' },
   vehicleGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   vehicleCard:  { width: '47%', padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5, alignItems: 'center', gap: 4, position: 'relative' },
-  vehicleEmoji: { fontSize: 28, marginBottom: 2 },
   vehicleLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   vehicleDesc:  { fontSize: FontSize.xs },
   vehicleCheck: { position: 'absolute', top: 8, right: 8, width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },

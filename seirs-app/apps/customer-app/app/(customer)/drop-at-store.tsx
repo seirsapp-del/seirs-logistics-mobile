@@ -525,7 +525,7 @@ export default function DropAtStoreScreen() {
                     ) : null}
                     {declaredValue && Number(declaredValue) >= 50000 && (
                       <Text style={[styles.reviewWarn, { color: '#D97706' }]}>
-                        ⚠ High value — recipient ID required at handoff
+                        High value — recipient ID required at handoff
                       </Text>
                     )}
                   </View>

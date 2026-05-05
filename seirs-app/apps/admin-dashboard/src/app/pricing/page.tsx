@@ -4,13 +4,13 @@ import { adminApi } from '@/lib/api';
 import { Save, ChevronDown, ChevronUp, Calculator } from 'lucide-react';
 
 const VEHICLE_TYPES = [
-  { key: 'bicycle',     label: 'Bicycle',       emoji: '🚲' },
-  { key: 'motorcycle',  label: 'Motorcycle',     emoji: '🏍️' },
-  { key: 'tricycle',    label: 'Tricycle',       emoji: '🛺' },
-  { key: 'car',         label: 'Car',            emoji: '🚗' },
-  { key: 'van',         label: 'Van',            emoji: '🚐' },
-  { key: 'truck_small', label: 'Small Truck',    emoji: '🚛' },
-  { key: 'truck_large', label: 'Large Truck',    emoji: '🚚' },
+  { key: 'bicycle',     label: 'Bicycle'     },
+  { key: 'motorcycle',  label: 'Motorcycle'  },
+  { key: 'tricycle',    label: 'Tricycle'    },
+  { key: 'car',         label: 'Car'         },
+  { key: 'van',         label: 'Van'         },
+  { key: 'truck_small', label: 'Small Truck' },
+  { key: 'truck_large', label: 'Large Truck' },
 ] as const;
 
 type VehicleKey = typeof VEHICLE_TYPES[number]['key'];
@@ -201,7 +201,6 @@ export default function PricingPage() {
                       className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-xl">{vt.emoji}</span>
                         <span className="font-medium text-[#0F2B4C] text-sm">{vt.label}</span>
                         {changed && <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Modified</span>}
                       </div>

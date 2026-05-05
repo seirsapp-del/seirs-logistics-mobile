@@ -7,3 +7,5 @@ export { ListItem }             from './ui/ListItem';
 export { BottomSheet }          from './ui/BottomSheet';
 export { Drawer }               from './Drawer';
 export type { DrawerItem, DrawerThemeTokens, DrawerProps } from './Drawer';
+export { VehicleIcon }          from './VehicleIcon';
+export type { VehicleType }     from './VehicleIcon';

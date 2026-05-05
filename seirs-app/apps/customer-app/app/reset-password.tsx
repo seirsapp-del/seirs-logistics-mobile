@@ -9,6 +9,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword, PASSWORD_HELP_TEXT } from '@seirs/shared';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react-native';
 
 // This screen handles the deep link: seirsmobile://reset-password?token=xxx
 
@@ -61,7 +62,7 @@ export default function ResetPasswordScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
           <View style={styles.header}>
-            <Text style={styles.emoji}>⚠️</Text>
+            <AlertTriangle size={56} color={theme.warning} strokeWidth={1.5} style={styles.headerIcon} />
             <Text style={[styles.title, { color: theme.text }]}>Invalid Link</Text>
             <Text style={[styles.subtitle, { color: theme.textSecond }]}>
               This reset link is missing or invalid. Please request a new password reset from the login screen.
@@ -80,8 +81,8 @@ export default function ResetPasswordScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
           <View style={styles.header}>
-            <Text style={styles.emoji}>🎉</Text>
-            <Text style={[styles.title, { color: theme.text }]}>Password Reset!</Text>
+            <CheckCircle2 size={56} color={theme.success ?? '#16A34A'} strokeWidth={1.5} style={styles.headerIcon} />
+            <Text style={[styles.title, { color: theme.text }]}>Password Reset</Text>
             <Text style={[styles.subtitle, { color: theme.textSecond }]}>
               Your password has been updated successfully. You can now sign in with your new password.
             </Text>
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, paddingHorizontal: Spacing.xl, paddingTop: Spacing['3xl'], paddingBottom: Spacing.xl },
   header:    { marginBottom: Spacing.xl },
   brand:     { fontSize: FontSize.sm, fontWeight: FontWeight.black, letterSpacing: 4, marginBottom: Spacing.lg },
-  emoji:     { fontSize: 56, textAlign: 'center', marginBottom: Spacing.lg },
+  headerIcon:{ alignSelf: 'center', marginBottom: Spacing.lg },
   title:     { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
   subtitle:  { fontSize: FontSize.base, lineHeight: 22 },
   form:      { gap: Spacing.xs },

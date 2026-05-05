@@ -1,7 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { Bike, Car, Truck, FileText, Star, MapPin, IdCard } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+
+const VEHICLE_LUCIDE: Record<string, typeof Bike> = {
+  bicycle:    Bike,
+  motorcycle: Bike,
+  tricycle:   Bike,
+  car:        Car,
+  van:        Truck,
+};
 
 const STATUS_COLORS: Record<string, string> = {
   pending:   'bg-yellow-100 text-yellow-800',
@@ -17,10 +26,6 @@ const DELIVERY_STATUS_COLORS: Record<string, string> = {
   in_transit: 'bg-purple-100 text-purple-700',
   cancelled:  'bg-gray-100 text-gray-500',
   failed:     'bg-red-100 text-red-700',
-};
-
-const VEHICLE_ICONS: Record<string, string> = {
-  bicycle: '🚲', motorcycle: '🏍️', tricycle: '🛺', car: '🚗', van: '🚐',
 };
 
 const fmt = (n: number) =>
@@ -65,8 +70,11 @@ export default function DriverDetailPage() {
         {/* Profile card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-start gap-6 mb-4">
-            <div className="w-16 h-16 rounded-full bg-[#0F2B4C] flex items-center justify-center text-2xl shrink-0">
-              {VEHICLE_ICONS[driver.vehicleType] ?? '🚗'}
+            <div className="w-16 h-16 rounded-full bg-[#0F2B4C] flex items-center justify-center shrink-0">
+              {(() => {
+                const Icon = VEHICLE_LUCIDE[driver.vehicleType] ?? Car;
+                return <Icon size={28} color="#fff" strokeWidth={1.75} />;
+              })()}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-1 flex-wrap">
@@ -118,15 +126,15 @@ export default function DriverDetailPage() {
                   🪪 ID Document
                 </a>
               ) : (
-                <span className="text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">🪪 ID — not uploaded</span>
+                <span className="flex items-center gap-2 text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg"><IdCard size={14} /> ID — not uploaded</span>
               )}
               {driver.vehicleDocumentUrl ? (
                 <a href={driver.vehicleDocumentUrl} target="_blank" rel="noreferrer"
                   className="flex items-center gap-2 text-sm text-blue-600 hover:underline bg-blue-50 px-3 py-2 rounded-lg">
-                  📄 Vehicle Document
+                  <FileText size={14} /> Vehicle Document
                 </a>
               ) : (
-                <span className="text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">📄 Vehicle doc — not uploaded</span>
+                <span className="flex items-center gap-2 text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg"><FileText size={14} /> Vehicle doc — not uploaded</span>
               )}
             </div>
           </div>
@@ -137,7 +145,7 @@ export default function DriverDetailPage() {
           {[
             { label: 'Deliveries',    value: deliveryCount },
             { label: 'Total Earned',  value: fmt(totalEarned) },
-            { label: 'Rating',        value: `⭐ ${Number(driver.rating).toFixed(1)}` },
+            { label: 'Rating',        value: <span className="inline-flex items-center justify-center gap-1"><Star size={16} className="fill-amber-400 text-amber-400" /> {Number(driver.rating).toFixed(1)}</span> },
             { label: 'Wallet Balance',value: fmt(Number(driver.walletBalance)) },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
@@ -150,7 +158,7 @@ export default function DriverDetailPage() {
         {/* Last known location */}
         {driver.lastLat && driver.lastLng && (
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6 flex items-center gap-3">
-            <span className="text-xl">📍</span>
+            <MapPin size={20} className="text-gray-700" />
             <div>
               <p className="text-sm font-semibold text-gray-800">Last Known Location</p>
               <p className="text-xs text-gray-500">{Number(driver.lastLat).toFixed(5)}, {Number(driver.lastLng).toFixed(5)}</p>
