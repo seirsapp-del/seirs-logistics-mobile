@@ -3,15 +3,22 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": ["./*"],
-      "@seirs/shared": ["../../shared/index.ts"],
-      "@seirs/shared/*": ["../../shared/*"]
+      "@/*": [
+        "./*"
+      ],
+      "@seirs/shared": [
+        "../../shared/index.ts"
+      ],
+      "@seirs/shared/*": [
+        "../../shared/*"
+      ]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.d.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    ".expo/types/**/*.ts"
   ]
 }
