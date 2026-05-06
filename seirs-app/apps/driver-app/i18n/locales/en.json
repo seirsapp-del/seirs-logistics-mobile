@@ -47,7 +47,7 @@
     "registrationFailed": "Registration failed. Please try again."
   },
   "home": {
-    "missionControl": "Mission Control",
+    "missionControl": "Driver Hub",
     "hi": "Hi, {{name}}",
     "youAreOnline": "You are ONLINE",
     "youAreOffline": "You are OFFLINE",

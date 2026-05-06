@@ -42,7 +42,12 @@ export default function ActiveDeliveryScreen() {
   const mapRef           = useRef<MapView>(null);
 
   useEffect(() => {
-    if (!id) return;
+    // No id means this screen was opened without a target delivery — flip
+    // loading off so the empty-state renders instead of an infinite spinner.
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     deliveriesApi.track(id)
       .then(setDelivery)
       .catch(() => {})

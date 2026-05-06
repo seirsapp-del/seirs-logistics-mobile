@@ -1,6 +1,6 @@
 import {
   View, Text, Pressable, StyleSheet,
-  ScrollView, Switch, RefreshControl, ActivityIndicator,
+  ScrollView, Switch, RefreshControl, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -96,7 +96,7 @@ export default function DriverHomeScreen() {
     setToggling(true);
     try {
       const next = !isOnline;
-      await driversApi.setOnlineStatus(next);
+      await driversApi.toggleOnline(next);
       setIsOnline(next);
       if (next) {
         await startLocationUpdates();
@@ -104,8 +104,14 @@ export default function DriverHomeScreen() {
       } else {
         stopLocationUpdates();
       }
-    } catch {
-      // revert on error
+    } catch (e: any) {
+      // Surface the error so the user knows why nothing happened — silent
+      // catches were hiding a "Driver profile not found" backend response
+      // for accounts that signed up but haven't been provisioned as a driver.
+      Alert.alert(
+        'Could not change status',
+        e?.message ?? 'Something went wrong. Please try again.',
+      );
     } finally {
       setToggling(false);
     }
@@ -143,7 +149,7 @@ export default function DriverHomeScreen() {
               <AlignLeft size={22} color="#fff" strokeWidth={2} />
             </Pressable>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.headerGreet}>Mission Control</Text>
+              <Text style={styles.headerGreet}>Driver Hub</Text>
               <Text style={styles.headerName}>Hi, {firstName}</Text>
             </View>
             <View style={styles.headerActions}>
@@ -242,8 +248,11 @@ export default function DriverHomeScreen() {
             <Text style={[styles.widgetSub, { color: theme.textThird }]}>{tripCount} trips</Text>
           </Pressable>
 
-          {/* Demand heatmap mini-map */}
-          <Pressable style={[styles.widgetCard, styles.heatmapWidget, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/active' as any)}>
+          {/* Demand heatmap mini-map. Used to navigate to /(driver)/active
+              but that screen requires a delivery id — clicking it with no
+              id left the spinner forever. The map below is the whole
+              widget; no destination needed today. */}
+          <View style={[styles.widgetCard, styles.heatmapWidget, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.widgetIcon}>
               <MapPin size={18} color="#EF4444" strokeWidth={1.75} />
             </View>
@@ -290,7 +299,7 @@ export default function DriverHomeScreen() {
                 <Text style={[styles.heatmapPlaceholder, { color: theme.textThird }]}>Go online to see demand</Text>
               )}
             </View>
-          </Pressable>
+          </View>
         </ScrollView>
 
         {/* ── Available jobs ────────────────────────────────────────────── */}

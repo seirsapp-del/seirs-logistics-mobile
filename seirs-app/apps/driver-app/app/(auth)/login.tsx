@@ -126,7 +126,7 @@ export default function LoginScreen() {
 
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecond }]}>Don't have an account?</Text>
-          <Pressable onPress={() => router.push('/(auth)/register')}>
+          <Pressable onPress={() => router.push('/(auth)/driver-register' as any)}>
             <Text style={[styles.footerLink, { color: theme.primary }]}> Sign Up</Text>
           </Pressable>
         </View>
