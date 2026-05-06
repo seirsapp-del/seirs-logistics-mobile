@@ -111,12 +111,16 @@ export default function DriverHomeScreen() {
     }
   };
 
-  const weekEarnings  = driverData?.weekEarnings  ?? 0;
-  const todayEarnings = driverData?.todayEarnings ?? 0;
-  const rating        = driverData?.rating        ?? 4.8;
-  const tripCount     = driverData?.totalTrips    ?? 0;
+  // Backend returns numeric columns (decimal) as strings via TypeORM, and
+  // a brand-new driver may not have any rating/earnings recorded yet —
+  // coerce everything to Number with a sane default so .toFixed/.formatting
+  // calls don't crash on strings or null.
+  const weekEarnings  = Number(driverData?.weekEarnings  ?? 0);
+  const todayEarnings = Number(driverData?.todayEarnings ?? 0);
+  const rating        = Number(driverData?.rating        ?? 4.8);
+  const tripCount     = Number(driverData?.totalTrips    ?? 0);
   const goalPct       = Math.min((weekEarnings / GOAL_TARGET) * 100, 100);
-  const walletBal     = driverData?.balance       ?? 0;
+  const walletBal     = Number(driverData?.balance       ?? 0);
 
   const activeJob = deliveries.find(d => d.status === 'assigned' || d.status === 'picked_up');
   const pendingJobs = deliveries.filter(d => d.status === 'pending').slice(0, 3);
