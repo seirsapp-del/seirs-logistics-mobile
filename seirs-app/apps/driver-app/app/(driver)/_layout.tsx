@@ -48,22 +48,36 @@ export default function DriverLayout() {
         options={{ title: 'Profile', tabBarIcon: ({ color }) => <User size={22} color={color} strokeWidth={1.75} /> }}
       />
 
-      {/* Hidden routes */}
-      <Tabs.Screen name="active"                options={{ href: null }} />
-      <Tabs.Screen name="kyc"                   options={{ href: null }} />
-      <Tabs.Screen name="job/[id]"              options={{ href: null }} />
-      <Tabs.Screen name="delivery/[id]"         options={{ href: null }} />
-      <Tabs.Screen name="messages/[chatId]"     options={{ href: null }} />
-      <Tabs.Screen name="notifications"         options={{ href: null }} />
-      <Tabs.Screen name="ratings"               options={{ href: null }} />
-      <Tabs.Screen name="withdrawal"            options={{ href: null }} />
-      <Tabs.Screen name="add-bank"              options={{ href: null }} />
-      <Tabs.Screen name="transaction/[id]"      options={{ href: null }} />
-      <Tabs.Screen name="vehicle"               options={{ href: null }} />
-      <Tabs.Screen name="schedule"              options={{ href: null }} />
-      <Tabs.Screen name="help"                  options={{ href: null }} />
-      <Tabs.Screen name="notification-settings" options={{ href: null }} />
-      <Tabs.Screen name="privacy"               options={{ href: null }} />
+      {/* Hidden routes — every file in this group must be listed here with
+          href:null OR Expo Router auto-discovers them and renders one tab
+          per route, flooding the tab bar. */}
+      <Tabs.Screen name="active"                options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="kyc"                   options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="job/[id]"              options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="delivery/[id]"         options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="messages/[chatId]"     options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="notifications"         options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="ratings"               options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="withdrawal"            options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="add-bank"              options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="transaction/[id]"      options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="vehicle"               options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="schedule"              options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="help"                  options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="notification-settings" options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="privacy"               options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="change-password"       options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="delete-account"        options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="edit-profile"          options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="interstate"            options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="language"              options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="last-order"            options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="multi-leg"             options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="seirs-id"              options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="signature"             options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="status-broadcast"      options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="tax-docs"              options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="trunk-check"           options={{ href: null, tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
     </Tabs>
   );
 }
