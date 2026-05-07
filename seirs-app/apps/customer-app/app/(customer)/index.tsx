@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
-  TextInput, Animated, PanResponder, Dimensions,
+  TextInput, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,12 +18,10 @@ import { MOCK_TRIPS, MOCK_USER } from '@/constants/mockData';
 import {
   AlignLeft, MapPin, Package, Car, Clock, Search,
   Wallet, Bell, TrendingUp, ChevronRight, Plus,
-  ArrowRight, Newspaper, Truck,
+  Newspaper, Truck,
 } from 'lucide-react-native';
 
 const { width: W } = Dimensions.get('window');
-const SLIDE_TRACK  = W - Spacing.md * 2 - 32; // track width minus knob
-const SLIDE_THRESH = SLIDE_TRACK * 0.55;
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -48,37 +46,10 @@ export default function CustomerHomeScreen() {
   const firstName  = user?.name?.split(' ')[0] ?? MOCK_USER.name.split(' ')[0];
   const balance    = MOCK_USER.walletBalance;
 
-  const [activeTab,      setActiveTab]      = useState<TripTab>('in_progress');
-  const [drawerVisible,  setDrawerVisible]  = useState(false);
-  const [slideMode,      setSlideMode]      = useState<'send' | 'ride'>('send');
-  const slideX = useRef(new Animated.Value(0)).current;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, g) => {
-        const clamped = Math.max(0, Math.min(g.dx, SLIDE_TRACK - 48));
-        slideX.setValue(clamped);
-      },
-      onPanResponderRelease: (_, g) => {
-        if (g.dx > SLIDE_THRESH) {
-          Animated.spring(slideX, { toValue: SLIDE_TRACK - 48, useNativeDriver: false }).start();
-          setSlideMode('ride');
-        } else {
-          Animated.spring(slideX, { toValue: 0, useNativeDriver: false }).start();
-          setSlideMode('send');
-        }
-      },
-    }),
-  ).current;
-
-  const handleSlideAction = () => {
-    if (slideMode === 'send') {
-      router.push('/(customer)/send' as any);
-    } else {
-      router.push('/(customer)/request' as any);
-    }
-  };
+  const [activeTab,     setActiveTab]     = useState<TripTab>('in_progress');
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [sendPressed,   setSendPressed]   = useState(false);
+  const [ridePressed,   setRidePressed]   = useState(false);
 
   const TRIPS = MOCK_TRIPS;
   const tabTrips = activeTab === 'in_progress'
@@ -301,54 +272,53 @@ export default function CustomerHomeScreen() {
 
       </ScrollView>
 
-      {/* ── Sliding action button (fixed bottom) ────────────────────────── */}
-      <View style={[styles.slideWrap, { backgroundColor: theme.surface }, Shadows.lg]}>
-        <View style={[styles.slideTrack, { backgroundColor: theme.surfaceSecond }]}>
-          {/* Background labels */}
-          <View style={styles.slideLabels}>
-            <View style={styles.slideLabelLeft}>
-              <Package size={16} color={slideMode === 'send' ? '#FFFFFF' : theme.textSecond} strokeWidth={2} />
-              <Text style={[styles.slideLabelText, { color: slideMode === 'send' ? '#FFFFFF' : theme.textSecond }]}>
-                Send a Package
-              </Text>
-            </View>
-            <View style={styles.slideLabelRight}>
-              <Car size={16} color={slideMode === 'ride' ? '#FFFFFF' : theme.textSecond} strokeWidth={2} />
-              <Text style={[styles.slideLabelText, { color: slideMode === 'ride' ? '#FFFFFF' : theme.textSecond }]}>
-                Request a Ride
-              </Text>
-            </View>
-          </View>
+      {/* ── Action buttons (fixed bottom) ──────────────────────────────────
+          Two-state design: tinted+bordered when idle (so both options are
+          legible and don't fight each other in dark mode), full-saturated
+          fill with white text when pressed (clear tactile feedback). Same
+          pattern Wise / Revolut / Kuda use for primary actions.
 
-          {/* Active fill */}
-          <Animated.View
-            style={[
-              styles.slideFill,
-              {
-                backgroundColor: theme.primary,
-                left: slideMode === 'send' ? 0 : undefined,
-                right: slideMode === 'ride' ? 0 : undefined,
-                width: slideX.interpolate({
-                  inputRange: [0, SLIDE_TRACK - 48],
-                  outputRange: ['50%', '100%'],
-                  extrapolate: 'clamp',
-                }),
-              },
-            ]}
-          />
+          Uses local state via onPressIn/onPressOut instead of Pressable's
+          function-child syntax, which has a "forEach of null" crash bug
+          on this RN version when style is also a function. */}
+      <View style={[styles.actionWrap, { backgroundColor: theme.surface }, Shadows.lg]}>
+        <Pressable
+          onPress={() => router.push('/(customer)/send' as any)}
+          onPressIn={() => setSendPressed(true)}
+          onPressOut={() => setSendPressed(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Send a package"
+          style={[
+            styles.actionBtn,
+            {
+              backgroundColor: sendPressed ? theme.primary : theme.primary + '20',
+              borderColor:     theme.primary,
+            },
+          ]}
+        >
+          <Package size={18} color={sendPressed ? '#FFFFFF' : theme.primary} strokeWidth={2} />
+          <Text style={[styles.actionBtnText, { color: sendPressed ? '#FFFFFF' : theme.primary }]}>
+            Send a Package
+          </Text>
+        </Pressable>
 
-          {/* Draggable knob */}
-          <Animated.View
-            {...panResponder.panHandlers}
-            style={[styles.knob, { backgroundColor: '#FFFFFF', transform: [{ translateX: slideX }] }, Shadows.md]}
-          >
-            <ArrowRight size={18} color={theme.primary} strokeWidth={2.5} />
-          </Animated.View>
-        </View>
-
-        <Pressable style={styles.slideGoBtn} onPress={handleSlideAction}>
-          <Text style={[styles.slideGoText, { color: theme.accent }]}>
-            {slideMode === 'send' ? 'Go' : 'Go'}
+        <Pressable
+          onPress={() => router.push('/(customer)/request' as any)}
+          onPressIn={() => setRidePressed(true)}
+          onPressOut={() => setRidePressed(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Request a ride"
+          style={[
+            styles.actionBtn,
+            {
+              backgroundColor: ridePressed ? theme.accent : theme.accent + '20',
+              borderColor:     theme.accent,
+            },
+          ]}
+        >
+          <Car size={18} color={ridePressed ? '#FFFFFF' : theme.accent} strokeWidth={2} />
+          <Text style={[styles.actionBtnText, { color: ridePressed ? '#FFFFFF' : theme.accent }]}>
+            Request a Ride
           </Text>
         </Pressable>
       </View>
@@ -428,33 +398,19 @@ const styles = StyleSheet.create({
   emptyBtn:   { marginTop: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: 12, borderRadius: Radius.full },
   emptyBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 
-  // Sliding button
-  slideWrap: {
+  // Bottom action buttons (Send a Package / Request a Ride)
+  actionWrap: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
-    paddingBottom: 28,
+    paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: 28,
     borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl,
   },
-  slideTrack: {
-    flex: 1, height: 56, borderRadius: Radius.full, overflow: 'hidden',
-    flexDirection: 'row', alignItems: 'center', position: 'relative',
+  actionBtn: {
+    flex: 1, height: 56, borderRadius: Radius.full,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: Spacing.sm, borderWidth: 1.5,
   },
-  slideLabels: {
-    position: 'absolute', left: 0, right: 0,
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md, zIndex: 1,
-  },
-  slideLabelLeft:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  slideLabelRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  slideLabelText:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  slideFill: { position: 'absolute', top: 0, bottom: 0, borderRadius: Radius.full, zIndex: 0 },
-  knob: {
-    position: 'absolute', width: 48, height: 48, borderRadius: 24, top: 4,
-    justifyContent: 'center', alignItems: 'center', zIndex: 10,
-  },
-  slideGoBtn: { paddingHorizontal: Spacing.md, height: 56, justifyContent: 'center' },
-  slideGoText: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  actionBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
 
   // Drawer
   drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', flexDirection: 'row' },

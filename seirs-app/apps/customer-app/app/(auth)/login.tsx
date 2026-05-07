@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import {
-  ArrowLeft, Mail, ArrowRight, Chrome, Apple as AppleIcon, Truck,
+  ArrowLeft, Mail, ArrowRight, Globe, Apple as AppleIcon, Truck,
 } from 'lucide-react-native';
 
 export default function LoginScreen() {
@@ -177,7 +177,7 @@ export default function LoginScreen() {
             style={[styles.socialBtn, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
             onPress={handleGoogle}
           >
-            <Chrome size={20} color="#4285F4" strokeWidth={1.75} />
+            <Globe size={20} color="#4285F4" strokeWidth={1.75} />
             <Text style={[styles.socialText, { color: theme.text }]}>Google</Text>
           </Pressable>
 
