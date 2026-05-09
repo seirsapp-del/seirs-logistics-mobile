@@ -41,7 +41,7 @@ export default function EditProfileScreen() {
     if (r.canceled) return;
     setUploading(true);
     try {
-      const uploaded = await uploadApi.uploadFile(r.assets[0].uri, 'profile-photos');
+      const uploaded = await uploadApi.file(r.assets[0].uri);
       setProfilePhoto(uploaded.url);
     } catch (e: any) {
       Alert.alert('Upload failed', e?.message ?? 'Try again.');

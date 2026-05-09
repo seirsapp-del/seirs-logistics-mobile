@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, TextInput, StatusBar,
+  View, Text, Pressable, StyleSheet, ScrollView, TextInput, StatusBar, Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -66,12 +66,16 @@ export default function HelpScreen() {
         {/* Quick contact */}
         <View style={styles.contactRow}>
           {[
-            { icon: 'chatbubble-ellipses-outline', label: 'Live Chat',  sub: 'Avg. 2 min reply', color: '#3A86FF' },
-            { icon: 'call-outline',                label: 'Call Us',    sub: '0700-SEIRS-01',    color: '#22C55E' },
-            { icon: 'mail-outline',                label: 'Email',      sub: 'support@seirs.app', color: '#8B5CF6' },
+            { icon: 'chatbubble-ellipses-outline', label: 'Live Chat',  sub: 'Avg. 2 min reply', color: '#3A86FF',
+              onPress: () => Alert.alert('Coming soon', 'Live chat with our support team is launching shortly.') },
+            { icon: 'call-outline',                label: 'Call Us',    sub: '0700-SEIRS-01',    color: '#22C55E',
+              onPress: () => Linking.openURL('tel:07007347701').catch(() => Alert.alert('Could not open dialer')) },
+            { icon: 'mail-outline',                label: 'Email',      sub: 'support@seirs.app', color: '#8B5CF6',
+              onPress: () => Linking.openURL('mailto:support@seirs.app').catch(() => Alert.alert('Could not open email')) },
           ].map(c => (
             <Pressable
               key={c.label}
+              onPress={c.onPress}
               style={[styles.contactCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
             >
               <View style={[styles.contactIcon, { backgroundColor: c.color + '15' }]}>

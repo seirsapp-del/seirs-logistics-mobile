@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar,
+  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -35,10 +35,10 @@ export default function ProfileScreen() {
     {
       title: 'Account',
       items: [
-        { icon: 'person-outline',    label: 'Edit Profile',      sub: 'Name, phone, photo',      onPress: () => {} },
-        { icon: 'shield-outline',    label: 'Verify Identity',   sub: 'NIN / BVN verification',  onPress: () => {} },
+        { icon: 'person-outline',    label: 'Edit Profile',      sub: 'Name, phone, photo',      onPress: () => router.push('/(customer)/edit-profile') },
+        { icon: 'shield-outline',    label: 'Verify Identity',   sub: 'NIN / BVN verification',  onPress: () => Alert.alert('Coming soon', 'NIN / BVN verification is on our roadmap.') },
         { icon: 'card-outline',      label: 'Payment Methods',   sub: 'Cards & bank accounts',   onPress: () => router.push('/(customer)/payment-methods') },
-        { icon: 'location-outline',  label: 'Saved Addresses',   sub: 'Home, office & more',     onPress: () => {} },
+        { icon: 'location-outline',  label: 'Saved Addresses',   sub: 'Home, office & more',     onPress: () => router.push('/(customer)/addresses') },
       ],
     },
     {
@@ -63,8 +63,8 @@ export default function ProfileScreen() {
       title: 'Support',
       items: [
         { icon: 'help-circle-outline',   label: 'Help Center',      sub: 'FAQs & support',        onPress: () => router.push('/(customer)/help') },
-        { icon: 'chatbubble-outline',    label: 'Live Chat',        sub: 'Talk to an agent',      onPress: () => {} },
-        { icon: 'document-text-outline', label: 'Terms of Service', sub: 'Legal & privacy policy', onPress: () => {} },
+        { icon: 'chatbubble-outline',    label: 'Live Chat',        sub: 'Talk to an agent',      onPress: () => Alert.alert('Coming soon', 'Live chat with our support team is launching shortly.') },
+        { icon: 'document-text-outline', label: 'Terms of Service', sub: 'Legal & privacy policy', onPress: () => Linking.openURL('https://seirs.co/terms').catch(() => Alert.alert('Coming soon', 'Our Terms page goes live with the public launch.')) },
       ],
     },
   ];
@@ -80,7 +80,12 @@ export default function ProfileScreen() {
             <HamburgerButton />
             <Text style={[styles.title, { color: theme.text }]}>Profile</Text>
           </View>
-          <Pressable style={[styles.settingsBtn, { backgroundColor: theme.surfaceSecond }]}>
+          <Pressable
+            style={[styles.settingsBtn, { backgroundColor: theme.surfaceSecond }]}
+            onPress={() => router.push('/(customer)/notification-settings')}
+            accessibilityRole="button"
+            accessibilityLabel="Notification settings"
+          >
             <Ionicons name="settings-outline" size={20} color={theme.text} />
           </Pressable>
         </View>

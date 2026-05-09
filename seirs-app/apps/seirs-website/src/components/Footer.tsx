@@ -39,11 +39,11 @@ export default function Footer() {
             </h4>
             <ul className="space-y-3">
               {[
-                { label: "About Us", href: "/#how-it-works" },
-                { label: "How it Works", href: "/#how-it-works" },
-                { label: "For Business", href: "/#for-business" },
-                { label: "For Drivers", href: "/#for-drivers" },
-                { label: "Partner Stores", href: "/#partner-stores" },
+                { label: "How it Works",   href: "/how-it-works" },
+                { label: "For Business",   href: "/for-business" },
+                { label: "For Drivers",    href: "/for-drivers" },
+                { label: "Partner Stores", href: "/for-partner-stores" },
+                { label: "Contact",        href: "/contact" },
               ].map((link) => (
                 <li key={link.label}>
                   <Link

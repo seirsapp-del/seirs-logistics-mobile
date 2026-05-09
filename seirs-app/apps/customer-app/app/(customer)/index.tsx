@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
-  TextInput, Dimensions,
+  TextInput, Dimensions, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -119,7 +119,10 @@ export default function CustomerHomeScreen() {
           contentContainerStyle={styles.widgetsRow}
         >
           {/* Customer Stories — always visible */}
-          <Pressable style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+          <Pressable
+            style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+            onPress={() => Alert.alert('Coming soon', 'Customer success stories are launching with our public launch.')}
+          >
             <Newspaper size={20} color={theme.accent} strokeWidth={1.75} />
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Stories</Text>
           </Pressable>
@@ -148,7 +151,10 @@ export default function CustomerHomeScreen() {
           </Pressable>
 
           {/* Suggestions */}
-          <Pressable style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+          <Pressable
+            style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+            onPress={() => Alert.alert('Coming soon', 'Personalised suggestions ship after we have enough trip data to learn from.')}
+          >
             <TrendingUp size={20} color={theme.accent} strokeWidth={1.75} />
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Suggestions</Text>
           </Pressable>

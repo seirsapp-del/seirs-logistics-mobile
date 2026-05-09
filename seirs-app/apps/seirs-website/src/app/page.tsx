@@ -288,7 +288,7 @@ export default function HomePage() {
                   <ArrowRight size={18} />
                 </Link>
                 <Link
-                  href="/#for-drivers"
+                  href="/for-drivers"
                   className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-8 py-4 rounded-btn hover:bg-white/10 transition-colors text-base"
                 >
                   Become a Driver

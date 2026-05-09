@@ -1,6 +1,7 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, TextInput, KeyboardAvoidingView, Platform,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, TextInput, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -179,7 +180,13 @@ export default function AddPaymentScreen() {
                   <Text style={[styles.bankRowValue, { color: theme.text }]}>{r.value}</Text>
                 </View>
               ))}
-              <Pressable style={[styles.copyBtn, { borderColor: theme.primary, backgroundColor: isDark ? '#001020' : '#EFF6FF' }]}>
+              <Pressable
+                onPress={async () => {
+                  await Clipboard.setStringAsync('5001234567');
+                  Alert.alert('Copied', 'Account number copied to clipboard.');
+                }}
+                style={[styles.copyBtn, { borderColor: theme.primary, backgroundColor: isDark ? '#001020' : '#EFF6FF' }]}
+              >
                 <Ionicons name="copy-outline" size={16} color={theme.primary} />
                 <Text style={[styles.copyBtnText, { color: theme.primary }]}>Copy Account Number</Text>
               </Pressable>
