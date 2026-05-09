@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
   TextInput, ActivityIndicator, Image, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi, uploadApi } from '@/services/api';
+import AddressPicker, { type PickedAddress } from '@/components/AddressPicker';
+import { LAGOS_COORDS } from '@/constants/mockData';
 import {
   ArrowLeft, ArrowRight, Package, MapPin, Truck,
   Calendar, CreditCard, Camera, X, CheckCircle, Zap, Bike, Car,
@@ -88,8 +91,20 @@ export default function SendScreen() {
   const [description, setDescription] = useState('');
   const [category,    setCategory]    = useState<CategoryId | null>(null);
   const [weightKg,    setWeightKg]    = useState('');
-  const [pickup,      setPickup]      = useState('');
-  const [dropoff,     setDropoff]     = useState('');
+  const [pickup,      setPickup]      = useState<PickedAddress | null>(null);
+  const [dropoff,     setDropoff]     = useState<PickedAddress | null>(null);
+  const stepMapRef = useRef<MapView>(null);
+  useEffect(() => {
+    if (pickup && dropoff && stepMapRef.current) {
+      stepMapRef.current.fitToCoordinates(
+        [
+          { latitude: pickup.lat,  longitude: pickup.lng  },
+          { latitude: dropoff.lat, longitude: dropoff.lng },
+        ],
+        { edgePadding: { top: 30, right: 30, bottom: 30, left: 30 }, animated: true },
+      );
+    }
+  }, [pickup, dropoff]);
   const [vehicleId,   setVehicleId]   = useState<VehicleId>('motorcycle');
   const [scheduleNow, setScheduleNow] = useState(true);
   const [paymentId,   setPaymentId]   = useState<PaymentId>('wallet');
@@ -116,8 +131,8 @@ export default function SendScreen() {
   const next = () => {
     if (step === 0 && photos.length === 0) { setError('Please upload at least one photo.'); return; }
     if (step === 0 && !category)           { setError('Please select a package category.'); return; }
-    if (step === 1 && !pickup.trim())      { setError('Please enter a pickup address.'); return; }
-    if (step === 1 && !dropoff.trim())     { setError('Please enter a dropoff address.'); return; }
+    if (step === 1 && !pickup)  { setError('Please enter a pickup address.'); return; }
+    if (step === 1 && !dropoff) { setError('Please enter a dropoff address.'); return; }
     setError('');
     if (step === 1 && category) setVehicleId(autoRecommend(category, kg));
     setStep(s => s + 1);
@@ -133,8 +148,12 @@ export default function SendScreen() {
         urls.push(url);
       }
       await deliveriesApi.create({
-        pickupAddress:   pickup,
-        dropoffAddress:  dropoff,
+        pickupAddress:   pickup?.address ?? '',
+        dropoffAddress:  dropoff?.address ?? '',
+        pickupLat:       pickup?.lat,
+        pickupLng:       pickup?.lng,
+        dropoffLat:      dropoff?.lat,
+        dropoffLng:      dropoff?.lng,
         packageCategory: category,
         description,
         weightKg:        kg,
@@ -284,36 +303,62 @@ export default function SendScreen() {
           </View>
         )}
 
-        {/* STEP 1 — Address */}
+        {/* STEP 1 — Address: real Google Places autocomplete + map preview
+            instead of plain TextInputs and a placeholder grey box. */}
         {step === 1 && (
           <View style={styles.stepGap}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Pickup address</Text>
-            <View style={[styles.inputRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-              <MapPin size={16} color={theme.accent} strokeWidth={1.75} style={styles.inputIcon as any} />
-              <TextInput
-                style={[styles.inputFlex, { color: theme.text }]}
-                placeholder="Search pickup location..."
-                placeholderTextColor={theme.textThird}
-                value={pickup}
-                onChangeText={setPickup}
-              />
-            </View>
+            <AddressPicker
+              label="Pickup address"
+              dotColor="#22C55E"
+              value={pickup?.address ?? ''}
+              onSelect={setPickup}
+            />
+            <View style={{ height: Spacing.sm }} />
+            <AddressPicker
+              label="Dropoff address"
+              dotColor="#EF4444"
+              value={dropoff?.address ?? ''}
+              onSelect={setDropoff}
+            />
 
-            <Text style={[styles.label, { color: theme.textSecond }]}>Dropoff address</Text>
-            <View style={[styles.inputRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-              <MapPin size={16} color={theme.error} strokeWidth={1.75} style={styles.inputIcon as any} />
-              <TextInput
-                style={[styles.inputFlex, { color: theme.text }]}
-                placeholder="Search dropoff location..."
-                placeholderTextColor={theme.textThird}
-                value={dropoff}
-                onChangeText={setDropoff}
-              />
-            </View>
-
-            <View style={[styles.mapBox, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-              <MapPin size={30} color={theme.textThird} strokeWidth={1.5} />
-              <Text style={[styles.mapBoxText, { color: theme.textThird }]}>Map preview</Text>
+            <View style={[styles.mapBox, { borderColor: theme.border, overflow: 'hidden' }]}>
+              {pickup || dropoff ? (
+                <MapView
+                  ref={stepMapRef}
+                  provider={PROVIDER_GOOGLE}
+                  style={StyleSheet.absoluteFill}
+                  initialRegion={
+                    pickup
+                      ? { latitude: pickup.lat, longitude: pickup.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 }
+                      : LAGOS_COORDS
+                  }
+                  pointerEvents="none"
+                >
+                  {pickup && (
+                    <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor="#22C55E" />
+                  )}
+                  {dropoff && (
+                    <Marker coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }} pinColor="#EF4444" />
+                  )}
+                  {pickup && dropoff && (
+                    <Polyline
+                      coordinates={[
+                        { latitude: pickup.lat,  longitude: pickup.lng  },
+                        { latitude: dropoff.lat, longitude: dropoff.lng },
+                      ]}
+                      strokeColor={theme.primary}
+                      strokeWidth={3}
+                    />
+                  )}
+                </MapView>
+              ) : (
+                <>
+                  <MapPin size={30} color={theme.textThird} strokeWidth={1.5} />
+                  <Text style={[styles.mapBoxText, { color: theme.textThird }]}>
+                    Pick a pickup address to see the map
+                  </Text>
+                </>
+              )}
             </View>
           </View>
         )}
@@ -496,7 +541,7 @@ const styles = StyleSheet.create({
   categoryChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full, borderWidth: 1.5 },
   categoryText: { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
 
-  mapBox:     { height: 160, borderRadius: Radius.xl, borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', gap: Spacing.sm },
+  mapBox:     { height: 200, borderRadius: Radius.xl, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', gap: Spacing.sm },
   mapBoxText: { fontSize: FontSize.sm },
 
   vehicleCard:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5 },

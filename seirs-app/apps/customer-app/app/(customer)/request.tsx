@@ -1,16 +1,16 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar, TextInput,
+  View, Text, Pressable, StyleSheet, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
-import { LAGOS_COORDS, POPULAR_LOCATIONS } from '@/constants/mockData';
+import AddressPicker, { type PickedAddress } from '@/components/AddressPicker';
+import { LAGOS_COORDS } from '@/constants/mockData';
 
 // Nigerian-first ride categories. Trucks/vans live on the Send a
 // Package flow — they're cargo vehicles, not rides. Local names
@@ -30,11 +30,12 @@ export default function RequestDriverScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [pickup,    setPickup]    = useState('');
-  const [dropoff,   setDropoff]   = useState('');
+  // Pickup + dropoff are full PickedAddress objects (address + lat/lng)
+  // so the map can render real markers and the route polyline can be
+  // drawn between actual coordinates instead of hardcoded ones.
+  const [pickup,    setPickup]    = useState<PickedAddress | null>(null);
+  const [dropoff,   setDropoff]   = useState<PickedAddress | null>(null);
   const [vehicle,   setVehicle]   = useState<VehicleId>('car');
-  const [focused,   setFocused]   = useState<'pickup' | 'dropoff' | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(true);
   // Share-a-Ride: per Master Spec V8 corridor-pool scenario — match
   // riders going the same direction, split the fare. Only available
   // for car + danfo (not solo vehicles like okada).
@@ -43,12 +44,35 @@ export default function RequestDriverScreen() {
 
   const mapRef = useRef<MapView>(null);
 
-  const canProceed = pickup.trim().length > 3 && dropoff.trim().length > 3;
+  const canProceed = !!pickup && !!dropoff;
+
+  // Auto-fit the map when both pickup + dropoff are set
+  useEffect(() => {
+    if (pickup && dropoff && mapRef.current) {
+      mapRef.current.fitToCoordinates(
+        [
+          { latitude: pickup.lat,  longitude: pickup.lng  },
+          { latitude: dropoff.lat, longitude: dropoff.lng },
+        ],
+        { edgePadding: { top: 100, right: 60, bottom: 360, left: 60 }, animated: true },
+      );
+    }
+  }, [pickup, dropoff]);
 
   const handleNext = () => {
+    if (!pickup || !dropoff) return;
     router.push({
       pathname: '/(customer)/vehicle-select',
-      params: { pickup, dropoff, preselect: vehicle, shared: sharedRide ? '1' : '0' },
+      params: {
+        pickup:    pickup.address,
+        pickupLat: String(pickup.lat),
+        pickupLng: String(pickup.lng),
+        dropoff:    dropoff.address,
+        dropoffLat: String(dropoff.lat),
+        dropoffLng: String(dropoff.lng),
+        preselect:  vehicle,
+        shared:     sharedRide ? '1' : '0',
+      },
     });
   };
 
@@ -67,16 +91,30 @@ export default function RequestDriverScreen() {
         showsMyLocationButton={false}
       >
         {pickup && (
-          <Marker coordinate={{ latitude: 6.5244 + 0.005, longitude: 3.3792 }} pinColor="#22C55E" />
+          <Marker
+            coordinate={{ latitude: pickup.lat, longitude: pickup.lng }}
+            pinColor="#22C55E"
+            title="Pickup"
+            description={pickup.address}
+          />
         )}
         {dropoff && (
-          <Marker coordinate={{ latitude: 6.5244 - 0.01, longitude: 3.3892 }} pinColor="#EF4444" />
+          <Marker
+            coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }}
+            pinColor="#EF4444"
+            title="Dropoff"
+            description={dropoff.address}
+          />
         )}
         {pickup && dropoff && (
+          // TODO: replace with Google Directions API polyline (draws the
+          // actual road route instead of a straight line). Tracked in
+          // backlog. For now this is a placeholder line so users at least
+          // see direction + distance hint between the two pins.
           <Polyline
             coordinates={[
-              { latitude: 6.5244 + 0.005, longitude: 3.3792 },
-              { latitude: 6.5244 - 0.01,  longitude: 3.3892 },
+              { latitude: pickup.lat,  longitude: pickup.lng  },
+              { latitude: dropoff.lat, longitude: dropoff.lng },
             ]}
             strokeColor={theme.primary}
             strokeWidth={3}
@@ -101,84 +139,28 @@ export default function RequestDriverScreen() {
           <View style={[styles.handle, { backgroundColor: theme.border }]} />
         </View>
 
-        {/* Inputs */}
+        {/* Address pickers — real Google Places autocomplete via the
+            shared AddressPicker component. Tap opens a search modal,
+            picks an address with lat/lng, drops a marker on the map. */}
         <View style={styles.inputsCard}>
-          {/* Pickup */}
-          <Pressable
-            style={[styles.locInput, { backgroundColor: theme.surfaceSecond, borderColor: focused === 'pickup' ? theme.primary : theme.border }]}
-            onPress={() => setFocused('pickup')}
-          >
-            <View style={[styles.locDot, { backgroundColor: '#22C55E' }]} />
-            <TextInput
-              style={[styles.locText, { color: theme.text }]}
-              placeholder="Pickup location"
-              placeholderTextColor={theme.textThird}
-              value={pickup}
-              onChangeText={setPickup}
-              onFocus={() => setFocused('pickup')}
-              onBlur={() => setFocused(null)}
-            />
-            {pickup ? (
-              <Pressable onPress={() => setPickup('')}>
-                <Ionicons name="close-circle" size={18} color={theme.textThird} />
-              </Pressable>
-            ) : null}
-          </Pressable>
-
-          <View style={[styles.connector, { backgroundColor: theme.border }]} />
-
-          {/* Dropoff */}
-          <Pressable
-            style={[styles.locInput, { backgroundColor: theme.surfaceSecond, borderColor: focused === 'dropoff' ? theme.primary : theme.border }]}
-            onPress={() => setFocused('dropoff')}
-          >
-            <View style={[styles.locDot, { backgroundColor: '#EF4444' }]} />
-            <TextInput
-              style={[styles.locText, { color: theme.text }]}
-              placeholder="Where are you going?"
-              placeholderTextColor={theme.textThird}
-              value={dropoff}
-              onChangeText={setDropoff}
-              onFocus={() => setFocused('dropoff')}
-              onBlur={() => setFocused(null)}
-            />
-            {dropoff ? (
-              <Pressable onPress={() => setDropoff('')}>
-                <Ionicons name="close-circle" size={18} color={theme.textThird} />
-              </Pressable>
-            ) : null}
-          </Pressable>
+          <AddressPicker
+            label="Pickup"
+            dotColor="#22C55E"
+            value={pickup?.address ?? ''}
+            onSelect={setPickup}
+          />
+          <View style={{ height: Spacing.sm }} />
+          <AddressPicker
+            label="Dropoff"
+            dotColor="#EF4444"
+            value={dropoff?.address ?? ''}
+            onSelect={setDropoff}
+          />
         </View>
 
-        {/* Popular locations */}
-        {(focused === 'pickup' || focused === 'dropoff') && (
-          <View style={styles.suggestions}>
-            {POPULAR_LOCATIONS.map((loc) => (
-              <Pressable
-                key={loc.id}
-                style={[styles.suggestion, { borderBottomColor: theme.border }]}
-                onPress={() => {
-                  if (focused === 'pickup') setPickup(loc.address);
-                  else setDropoff(loc.address);
-                  setFocused(null);
-                }}
-              >
-                <View style={[styles.locPin, { backgroundColor: theme.surfaceSecond }]}>
-                  <Ionicons name="location-outline" size={14} color={theme.primary} />
-                </View>
-                <View>
-                  <Text style={[styles.suggLabel, { color: theme.text }]}>{loc.label}</Text>
-                  <Text style={[styles.suggSub, { color: theme.textSecond }]}>{loc.address}</Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
-        )}
-
-        {/* Vehicle selector */}
-        {!focused && (
-          <>
-            <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Pick your ride</Text>
+        {/* Vehicle selector — always visible now that the inline-typing
+            in-sheet pattern was replaced by AddressPicker modal. */}
+        <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Pick your ride</Text>
             <View style={styles.vehicleRow}>
               {VEHICLE_OPTIONS.map((v) => (
                 <Pressable
@@ -235,19 +217,17 @@ export default function RequestDriverScreen() {
               </View>
             </Pressable>
 
-            {/* CTA */}
-            <View style={styles.cta}>
-              <Button
-                label={canProceed ? 'Choose Vehicle' : 'Enter locations to continue'}
-                onPress={handleNext}
-                disabled={!canProceed}
-                fullWidth
-                size="lg"
-                rightIcon={canProceed ? <Ionicons name="arrow-forward" size={18} color="#fff" /> : undefined}
-              />
-            </View>
-          </>
-        )}
+        {/* CTA */}
+        <View style={styles.cta}>
+          <Button
+            label={canProceed ? 'Choose Vehicle' : 'Enter locations to continue'}
+            onPress={handleNext}
+            disabled={!canProceed}
+            fullWidth
+            size="lg"
+            rightIcon={canProceed ? <Ionicons name="arrow-forward" size={18} color="#fff" /> : undefined}
+          />
+        </View>
       </View>
     </View>
   );
