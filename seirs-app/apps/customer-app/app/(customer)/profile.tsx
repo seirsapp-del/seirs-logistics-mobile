@@ -93,7 +93,7 @@ export default function ProfileScreen() {
         {/* User card */}
         <View style={[styles.userCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <View style={styles.userCardTop}>
-            <Avatar name={displayName} size={68} />
+            <Avatar name={displayName} uri={user?.profilePhoto} size={68} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.userName, { color: theme.text }]}>{displayName}</Text>
               <Text style={[styles.userEmail, { color: theme.textSecond }]}>{user?.email ?? MOCK_USER.email}</Text>

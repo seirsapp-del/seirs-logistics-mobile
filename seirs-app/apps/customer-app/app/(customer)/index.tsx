@@ -79,7 +79,7 @@ export default function CustomerHomeScreen() {
           </Text>
 
           <Pressable onPress={() => router.push('/(customer)/profile' as any)}>
-            <Avatar name={user?.name ?? MOCK_USER.name} size={40} />
+            <Avatar name={user?.name ?? MOCK_USER.name} uri={user?.profilePhoto} size={40} />
           </Pressable>
         </View>
 

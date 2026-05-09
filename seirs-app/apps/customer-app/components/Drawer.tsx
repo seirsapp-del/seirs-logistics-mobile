@@ -1,3 +1,4 @@
+import { Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Drawer as SharedDrawer, type DrawerItem } from '@seirs/shared/components/Drawer';
@@ -38,13 +39,17 @@ export function Drawer({ visible, onClose }: Props) {
 
   const items: DrawerItem[] = [
     { icon: 'User',       label: t('drawer.profile',       { defaultValue: 'Profile' }),         onPress: () => navigate('/(customer)/profile') },
-    { icon: 'Settings',   label: t('drawer.settings',      { defaultValue: 'Settings' }),        onPress: () => navigate('/(customer)/profile') },
+    { icon: 'Settings',   label: t('drawer.settings',      { defaultValue: 'Settings' }),        onPress: () => navigate('/(customer)/notification-settings') },
     { icon: 'Bell',       label: t('drawer.notifications', { defaultValue: 'Notifications' }),   onPress: () => navigate('/notifications') },
     { icon: 'Globe',      label: t('drawer.language',      { defaultValue: 'Language' }),        onPress: () => navigate('/(customer)/language') },
     { icon: 'HelpCircle', label: t('drawer.help',          { defaultValue: 'Help & FAQ' }),      onPress: () => navigate('/(customer)/help') },
     { icon: 'Lock',       label: t('drawer.privacy',       { defaultValue: 'Privacy Policy' }),  onPress: () => navigate('/(customer)/privacy') },
     { icon: 'Briefcase',  label: t('drawer.business',      { defaultValue: 'Business Account' }), onPress: () => navigate('/(customer)/business') },
-    { icon: 'Phone',      label: t('drawer.contact',       { defaultValue: 'Contact Support' }), onPress: () => navigate('/(customer)/help') },
+    { icon: 'Phone',      label: t('drawer.contact',       { defaultValue: 'Contact Support' }),
+      onPress: () => {
+        onClose();
+        setTimeout(() => Linking.openURL('tel:07007347701').catch(() => router.push('/(customer)/help' as any)), 220);
+      } },
   ];
 
   return (
@@ -54,7 +59,7 @@ export function Drawer({ visible, onClose }: Props) {
       user={{
         name:   user?.name ?? 'Guest',
         email:  user?.email ?? '',
-        avatar: <Avatar name={user?.name ?? 'User'} size={56} />,
+        avatar: <Avatar name={user?.name ?? 'User'} uri={user?.profilePhoto} size={56} />,
       }}
       items={items}
       themeToggle={{

@@ -12,11 +12,17 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { LAGOS_COORDS, POPULAR_LOCATIONS } from '@/constants/mockData';
 
+// Nigerian-first ride categories. Trucks/vans live on the Send a
+// Package flow — they're cargo vehicles, not rides. Local names
+// first (okada, keke), with English in the sub-label for clarity.
 const VEHICLE_OPTIONS = [
-  { id: 'economy', icon: 'car-outline',       label: 'Economy', price: '₦1,800', eta: '4 min' },
-  { id: 'premium', icon: 'car-sport-outline', label: 'Premium', price: '₦3,500', eta: '6 min' },
-  { id: 'truck',   icon: 'bus-outline',        label: 'Truck',   price: '₦7,500', eta: '12 min' },
+  { id: 'okada',    icon: 'bicycle-outline',  label: 'Okada',  sub: 'Motorbike',  price: '₦600',   eta: '2 min',  capacity: '1 rider' },
+  { id: 'keke',     icon: 'car-outline',      label: 'Keke',   sub: 'Tricycle',   price: '₦900',   eta: '3 min',  capacity: '1-3 riders' },
+  { id: 'car',      icon: 'car-sport-outline', label: 'Car',   sub: 'Sedan',      price: '₦1,800', eta: '4 min',  capacity: '1-4 riders' },
+  { id: 'danfo',    icon: 'bus-outline',       label: 'Bus',   sub: 'Group ride', price: '₦3,500', eta: '8 min',  capacity: '5-14 riders' },
 ] as const;
+
+type VehicleId = typeof VEHICLE_OPTIONS[number]['id'];
 
 export default function RequestDriverScreen() {
   const router  = useRouter();
@@ -24,11 +30,16 @@ export default function RequestDriverScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [pickup,   setPickup]   = useState('');
-  const [dropoff,  setDropoff]  = useState('');
-  const [vehicle,  setVehicle]  = useState<'economy' | 'premium' | 'truck'>('economy');
-  const [focused,  setFocused]  = useState<'pickup' | 'dropoff' | null>(null);
+  const [pickup,    setPickup]    = useState('');
+  const [dropoff,   setDropoff]   = useState('');
+  const [vehicle,   setVehicle]   = useState<VehicleId>('car');
+  const [focused,   setFocused]   = useState<'pickup' | 'dropoff' | null>(null);
   const [sheetOpen, setSheetOpen] = useState(true);
+  // Share-a-Ride: per Master Spec V8 corridor-pool scenario — match
+  // riders going the same direction, split the fare. Only available
+  // for car + danfo (not solo vehicles like okada).
+  const [sharedRide, setSharedRide] = useState(false);
+  const allowsSharing = vehicle === 'car' || vehicle === 'danfo';
 
   const mapRef = useRef<MapView>(null);
 
@@ -37,7 +48,7 @@ export default function RequestDriverScreen() {
   const handleNext = () => {
     router.push({
       pathname: '/(customer)/vehicle-select',
-      params: { pickup, dropoff, preselect: vehicle },
+      params: { pickup, dropoff, preselect: vehicle, shared: sharedRide ? '1' : '0' },
     });
   };
 
@@ -167,7 +178,7 @@ export default function RequestDriverScreen() {
         {/* Vehicle selector */}
         {!focused && (
           <>
-            <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Ride type</Text>
+            <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Pick your ride</Text>
             <View style={styles.vehicleRow}>
               {VEHICLE_OPTIONS.map((v) => (
                 <Pressable
@@ -175,16 +186,54 @@ export default function RequestDriverScreen() {
                   style={[
                     styles.vehicleChip,
                     { backgroundColor: theme.surfaceSecond, borderColor: vehicle === v.id ? theme.primary : theme.border },
-                    vehicle === v.id && { backgroundColor: isDark ? '#1A0C00' : '#EFF6FF' },
+                    vehicle === v.id && { backgroundColor: isDark ? '#0A1A2E' : '#EFF6FF' },
                   ]}
-                  onPress={() => setVehicle(v.id)}
+                  onPress={() => {
+                    setVehicle(v.id);
+                    // Sharing only valid for car + danfo — auto-uncheck if user picks okada/keke
+                    if (v.id !== 'car' && v.id !== 'danfo') setSharedRide(false);
+                  }}
                 >
-                  <Ionicons name={v.icon as any} size={18} color={vehicle === v.id ? theme.primary : theme.textSecond} />
+                  <Ionicons name={v.icon as any} size={20} color={vehicle === v.id ? theme.primary : theme.textSecond} />
                   <Text style={[styles.vehicleChipLabel, { color: vehicle === v.id ? theme.primary : theme.text }]}>{v.label}</Text>
+                  <Text style={[styles.vehicleChipSub, { color: theme.textThird }]}>{v.sub}</Text>
                   <Text style={[styles.vehicleChipPrice, { color: theme.textSecond }]}>{v.price}</Text>
                 </Pressable>
               ))}
             </View>
+
+            {/* Share-a-Ride toggle — corridor pooling per Master Spec V8 */}
+            <Pressable
+              onPress={() => allowsSharing && setSharedRide(s => !s)}
+              style={[
+                styles.shareRow,
+                {
+                  backgroundColor: sharedRide ? theme.primary + '15' : theme.surfaceSecond,
+                  borderColor:     sharedRide ? theme.primary : theme.border,
+                  opacity:         allowsSharing ? 1 : 0.5,
+                },
+              ]}
+            >
+              <View style={[styles.shareIcon, { backgroundColor: sharedRide ? theme.primary : theme.surface }]}>
+                <Ionicons name="people-outline" size={18} color={sharedRide ? '#fff' : theme.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.shareTitle, { color: theme.text }]}>
+                  Share this ride
+                </Text>
+                <Text style={[styles.shareSub, { color: theme.textSecond }]}>
+                  {allowsSharing
+                    ? 'Match with riders going your way and split the fare up to 40%'
+                    : 'Available for Car and Bus only'}
+                </Text>
+              </View>
+              <View style={[
+                styles.shareCheck,
+                { borderColor: sharedRide ? theme.primary : theme.border, backgroundColor: sharedRide ? theme.primary : 'transparent' },
+              ]}>
+                {sharedRide ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+              </View>
+            </Pressable>
 
             {/* CTA */}
             <View style={styles.cta}>
@@ -241,9 +290,17 @@ const styles = StyleSheet.create({
 
   sectionLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: Spacing.sm },
   vehicleRow:   { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.lg },
-  vehicleChip:  { flex: 1, alignItems: 'center', gap: 4, padding: Spacing.sm, borderRadius: Radius.lg, borderWidth: 1.5 },
-  vehicleChipLabel: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  vehicleChipPrice: { fontSize: FontSize.xs },
+  vehicleChip:      { flex: 1, alignItems: 'center', gap: 2, padding: Spacing.sm, borderRadius: Radius.lg, borderWidth: 1.5 },
+  vehicleChipLabel: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, marginTop: 4 },
+  vehicleChipSub:   { fontSize: 9, fontWeight: FontWeight.medium },
+  vehicleChipPrice: { fontSize: FontSize.xs, marginTop: 2 },
+
+  // Share-a-Ride row
+  shareRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5, marginTop: Spacing.sm },
+  shareIcon:   { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  shareTitle:  { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  shareSub:    { fontSize: FontSize.xs, marginTop: 2 },
+  shareCheck:  { width: 22, height: 22, borderRadius: 11, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
 
   cta: { paddingTop: Spacing.xs },
 });
