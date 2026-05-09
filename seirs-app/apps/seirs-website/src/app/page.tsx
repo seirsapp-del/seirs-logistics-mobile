@@ -19,6 +19,7 @@ import {
   DollarSign,
   Smartphone,
   ChevronRight,
+  Globe,
 } from "lucide-react";
 
 /* ── Hero geometric illustration ── */
@@ -293,6 +294,17 @@ export default function HomePage() {
                 >
                   Become a Driver
                 </Link>
+              </div>
+
+              {/* Translation cue — browsers (Chrome / Edge / Safari / Firefox)
+                  auto-detect and offer to translate the page to the user's
+                  language. This banner just makes that affordance visible
+                  for users who don't know the browser feature exists. */}
+              <div className="inline-flex items-center gap-2.5 bg-white/5 border border-white/15 rounded-lg px-3 py-2 mb-8">
+                <Globe size={14} className="text-sky flex-shrink-0" strokeWidth={1.75} />
+                <span className="text-white/65 text-xs">
+                  Available in Yoruba, Igbo, Hausa &amp; 100+ more — your browser will translate
+                </span>
               </div>
 
               {/* Stats row */}
