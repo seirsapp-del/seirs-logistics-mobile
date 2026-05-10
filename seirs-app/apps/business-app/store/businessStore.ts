@@ -2,6 +2,11 @@ import { create } from 'zustand';
 
 interface DeliveryStop {
   address:     string;
+  // Latitude/longitude — set when the user picks an address from the
+  // Google Places autocomplete or taps the map. Optional for backwards
+  // compatibility with drafts created before the map redesign.
+  lat?:        number;
+  lng?:        number;
   recipientName:  string;
   recipientPhone: string;
   note?:       string;
@@ -9,6 +14,8 @@ interface DeliveryStop {
 
 interface DraftDelivery {
   pickupAddress:    string;
+  pickupLat?:       number;
+  pickupLng?:       number;
   stops:            DeliveryStop[];
   vehicleType:      string;
   scheduledAt?:     string;

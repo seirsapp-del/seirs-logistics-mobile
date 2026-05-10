@@ -40,6 +40,20 @@ export class DeliveriesController {
     return this.deliveriesService.findActiveByDriverUserId(user.id);
   }
 
+  // GET /api/v1/deliveries/available?lat=&lng=&radiusKm= — pending unassigned
+  // jobs the driver could claim. Sorted by distance when lat/lng given.
+  @Get('available')
+  availableJobs(
+    @Query('lat')      lat?:      string,
+    @Query('lng')      lng?:      string,
+    @Query('radiusKm', new DefaultValuePipe(25),  ParseIntPipe) radiusKm: number = 25,
+    @Query('limit',    new DefaultValuePipe(30),  ParseIntPipe) limit:    number = 30,
+  ) {
+    const numLat = lat != null ? Number(lat) : undefined;
+    const numLng = lng != null ? Number(lng) : undefined;
+    return this.deliveriesService.findAvailable(numLat, numLng, radiusKm, limit);
+  }
+
   // GET /api/v1/deliveries/track/:code — public tracking by code (no login required)
   @Public()
   @Get('track/:code')

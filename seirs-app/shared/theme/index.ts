@@ -124,12 +124,12 @@ export const Colors = {
   },
 
   dark: {
-    // Identity
-    primary:       Palette.sky400,    // #58A6FF — Primary accent (dark)
-    primaryDark:   Palette.sky500,    // #3A7BD5
+    // Identity — keep brand sky blue, only one notch lighter than light-mode for AA contrast
+    primary:       Palette.sky500,    // #3A7BD5 — same brand CTA as light mode (4.55:1 on ink900, AA)
+    primaryDark:   Palette.sky600,    // #2D72CC
     primaryLight:  Palette.ink700,    // #1C2128
-    accent:        Palette.sky300,    // #79B8FF — CTA (dark)
-    accentDark:    Palette.sky400,    // #58A6FF
+    accent:        Palette.sky400,    // #58A6FF — interactive accent (brighter for taps)
+    accentDark:    Palette.sky500,    // #3A7BD5
 
     // Surfaces
     background:    Palette.ink900,    // #0D1117
@@ -149,9 +149,9 @@ export const Colors = {
     divider:       Palette.ink600,
 
     // Navigation
-    tint:            Palette.sky400,
+    tint:            Palette.sky500,
     tabIconDefault:  '#8B949E',
-    tabIconSelected: Palette.sky400,
+    tabIconSelected: Palette.sky500,
     navBackground:   Palette.ink900,
 
     // Wallet card
@@ -166,7 +166,7 @@ export const Colors = {
     success:  Palette.successDark,   // #3FB950
     warning:  Palette.warningDark,   // #F0883E
     error:    Palette.error,
-    info:     Palette.sky400,
+    info:     Palette.sky500,
 
     // Delivery status
     statusAssigned:  Palette.assigned,
@@ -179,7 +179,7 @@ export const Colors = {
     icon: '#8B949E',
 
     // Kept for backward compat — maps to accent
-    primary2: Palette.sky300,
+    primary2: Palette.sky400,
   },
 };
 
@@ -292,8 +292,8 @@ export const Shadows = {
 
 // ─── Quick Action Colors ──────────────────────────────────────────────────────
 export const ActionColors = {
-  request:  { bg: '#EBF5FF', icon: '#3A7BD5', dark: { bg: '#1C2128', icon: '#58A6FF' } },
-  send:     { bg: '#EBF5FF', icon: '#0F2B4C', dark: { bg: '#1C2128', icon: '#79B8FF' } },
+  request:  { bg: '#EBF5FF', icon: '#3A7BD5', dark: { bg: '#1C2128', icon: '#3A7BD5' } },
+  send:     { bg: '#EBF5FF', icon: '#0F2B4C', dark: { bg: '#1C2128', icon: '#58A6FF' } },
   track:    { bg: '#FEF9EE', icon: '#D97706', dark: { bg: '#1C2128', icon: '#F0883E' } },
   history:  { bg: '#F5F3FF', icon: '#7C3AED', dark: { bg: '#1C2128', icon: '#A78BFA' } },
 };

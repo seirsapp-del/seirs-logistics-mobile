@@ -10,6 +10,7 @@ import { API_BASE } from '@/constants/config';
 import { configureApi } from '@/services/api';
 import * as Updates from 'expo-updates';
 import { initI18n } from '@/i18n';
+import { usePushRegistration } from '@seirs/shared/hooks/usePushRegistration';
 
 configureApi(API_BASE);
 
@@ -82,7 +83,10 @@ function OTAUpdateChecker() {
 // before NavigationGuard's useEffect can redirect — visible as a brief
 // flash of the inside of the app on cold launch.
 function AppContent() {
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
+  // Register the device push token once authenticated. No-op until
+  // expo-notifications is installed + a native rebuild ships.
+  usePushRegistration(isAuthenticated);
   if (isLoading) return null;
   return (
     <>

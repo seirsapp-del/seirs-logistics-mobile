@@ -9,8 +9,9 @@
  */
 import {
   View, Text, TextInput, Pressable, FlatList,
-  StyleSheet, ActivityIndicator, Modal,
+  StyleSheet, ActivityIndicator, Modal, Platform, StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Search, MapPin, Navigation } from 'lucide-react-native';
@@ -18,7 +19,10 @@ import { useState, useRef, useCallback } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 
-const MAPS_KEY = 'AIzaSyAvMkPsFLms7sJY8rd_44mf-ibQaYGEJPs';
+// Android Maps key (Places + Directions enabled). Reverse-geocoding falls
+// back to a Places-API "find nearby" call below since the Geocoding API
+// isn't enabled on this Cloud project.
+const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 
 // Nigeria centre as fallback
 const DEFAULT_REGION = { latitude: 6.5244, longitude: 3.3792, latitudeDelta: 0.15, longitudeDelta: 0.15 };
@@ -56,11 +60,11 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
+      // Global autocomplete — Google biases by requesting IP region.
       const url =
         `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
         `?input=${encodeURIComponent(text)}` +
         `&key=${MAPS_KEY}` +
-        `&components=country:ng|country:gb|country:gh|country:ke` +
         `&language=en`;
       const res  = await fetch(url);
       const json = await res.json();
@@ -135,7 +139,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
         `?latlng=${lat},${lng}&key=${MAPS_KEY}`;
       const res  = await fetch(url);
       const json = await res.json();
-      const address = json.results?.[0]?.formatted_address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      const address = json.results?.[0]?.formatted_address ?? 'Current location';
 
       const picked: PickedAddress = { address, lat, lng };
       setPinned({ lat, lng });
@@ -169,9 +173,17 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
         <Text style={[styles.chevron, { color: theme.textSecond }]}>›</Text>
       </Pressable>
 
-      {/* Picker modal */}
-      <Modal visible={open} animationType="slide" presentationStyle="pageSheet">
-        <View style={[styles.modal, { backgroundColor: theme.background }]}>
+      {/* Picker modal — fullScreen so it actually fills the device, not a
+          card sheet. SafeAreaView so the header clears the notch / status bar. */}
+      <Modal
+        visible={open}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+        onRequestClose={() => setOpen(false)}
+      >
+        <SafeAreaView edges={['top', 'bottom']} style={[styles.modal, { backgroundColor: theme.background }]}>
+          {Platform.OS === 'android' && <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />}
           {/* Modal header */}
           <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
             <Pressable onPress={() => setOpen(false)} style={styles.cancelBtn}>
@@ -254,11 +266,14 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
                 )
                   .then(r => r.json())
                   .then(json => {
-                    const address = json.results?.[0]?.formatted_address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                    const address = json.results?.[0]?.formatted_address ?? 'Pinned location';
                     setQuery(address);
                     onSelect({ address, lat, lng });
                   })
-                  .catch(() => {});
+                  .catch(() => {
+                    setQuery('Pinned location');
+                    onSelect({ address: 'Pinned location', lat, lng });
+                  });
               }}
             >
               {pinned && (
@@ -284,7 +299,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
               </Pressable>
             </View>
           )}
-        </View>
+        </SafeAreaView>
       </Modal>
     </>
   );

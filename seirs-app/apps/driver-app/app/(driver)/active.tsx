@@ -13,6 +13,8 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi, driversApi, uploadApi } from '@/services/api';
+import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
+import { Avatar } from '@/components/ui/Avatar';
 
 const STATUS_STEPS: {
   key: string; label: string; icon: string;
@@ -40,6 +42,20 @@ export default function ActiveDeliveryScreen() {
 
   const locationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const mapRef           = useRef<MapView>(null);
+
+  // Real road-following route from Google Directions, with km + ETA.
+  const {
+    coords:       routeCoords,
+    distanceText: routeDistance,
+    durationText: routeDuration,
+  } = useDirectionsPolyline(
+    delivery?.pickupLat  != null
+      ? { latitude: Number(delivery.pickupLat),  longitude: Number(delivery.pickupLng)  }
+      : null,
+    delivery?.dropoffLat != null
+      ? { latitude: Number(delivery.dropoffLat), longitude: Number(delivery.dropoffLng) }
+      : null,
+  );
 
   useEffect(() => {
     // No id means this screen was opened without a target delivery — flip
@@ -262,15 +278,31 @@ export default function ActiveDeliveryScreen() {
                   pinColor="#3A7BD5"
                 />
               )}
-              <Polyline
-                coordinates={[
-                  { latitude: Number(delivery.pickupLat),  longitude: Number(delivery.pickupLng) },
-                  { latitude: Number(delivery.dropoffLat), longitude: Number(delivery.dropoffLng) },
-                ]}
-                strokeColor="#3A7BD5"
-                strokeWidth={4}
-              />
+              {routeCoords.length > 1 && (
+                <Polyline
+                  coordinates={routeCoords}
+                  strokeColor="#3A7BD5"
+                  strokeWidth={4}
+                />
+              )}
             </MapView>
+            {(routeDistance || routeDuration) && (
+              <View style={[styles.mapStatRow, { backgroundColor: theme.surfaceSecond, borderTopColor: theme.border }]}>
+                {routeDistance && (
+                  <View style={styles.mapStatItem}>
+                    <Ionicons name="navigate-outline" size={14} color={theme.textSecond} />
+                    <Text style={[styles.mapStatValue, { color: theme.text }]}>{routeDistance}</Text>
+                  </View>
+                )}
+                {routeDistance && routeDuration && <View style={[styles.mapStatDivider, { backgroundColor: theme.border }]} />}
+                {routeDuration && (
+                  <View style={styles.mapStatItem}>
+                    <Ionicons name="time-outline" size={14} color={theme.textSecond} />
+                    <Text style={[styles.mapStatValue, { color: theme.text }]}>{routeDuration}</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         )}
 
@@ -321,9 +353,7 @@ export default function ActiveDeliveryScreen() {
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Customer</Text>
             <View style={styles.customerRow}>
-              <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-                <Text style={styles.avatarText}>{delivery.customer.name?.[0] ?? '?'}</Text>
-              </View>
+              <Avatar name={delivery.customer.name ?? 'Customer'} uri={delivery.customer.profilePhoto} size={44} />
               <View>
                 <Text style={[styles.customerName, { color: theme.text }]}>{delivery.customer.name}</Text>
                 <Text style={[styles.customerPhone, { color: theme.textSecond }]}>{delivery.customer.phone}</Text>
@@ -477,4 +507,9 @@ const styles = StyleSheet.create({
   empty:        { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl, gap: Spacing.md },
   emptyIconWrap:{ width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center' },
   emptyTitle:   { fontSize: FontSize.lg, fontWeight: FontWeight.semibold },
+
+  mapStatRow:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderTopWidth: 1 },
+  mapStatItem:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  mapStatValue:   { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  mapStatDivider: { width: 1, height: 22, marginHorizontal: Spacing.sm },
 });

@@ -13,29 +13,35 @@ const DEFAULT_MATCHING_RADIUS_KM = 15;
 // ─── Vehicle suitability matrix ──────────────────────────────────────────────
 // Which vehicles can carry which package sizes (1 = yes, 0 = no)
 const VEHICLE_SUITABILITY: Record<VehicleType, Record<PackageSize, number>> = {
-  [VehicleType.BICYCLE]:    { [PackageSize.SMALL]: 1, [PackageSize.MEDIUM]: 0.3, [PackageSize.LARGE]: 0 },
-  [VehicleType.MOTORCYCLE]: { [PackageSize.SMALL]: 1, [PackageSize.MEDIUM]: 0.8, [PackageSize.LARGE]: 0.2 },
-  [VehicleType.TRICYCLE]:   { [PackageSize.SMALL]: 1, [PackageSize.MEDIUM]: 1,   [PackageSize.LARGE]: 0.7 },
-  [VehicleType.CAR]:        { [PackageSize.SMALL]: 1, [PackageSize.MEDIUM]: 1,   [PackageSize.LARGE]: 0.8 },
-  [VehicleType.VAN]:        { [PackageSize.SMALL]: 1, [PackageSize.MEDIUM]: 1,   [PackageSize.LARGE]: 1   },
+  [VehicleType.BICYCLE]:     { [PackageSize.SMALL]: 1, [PackageSize.MEDIUM]: 0.3, [PackageSize.LARGE]: 0   },
+  [VehicleType.MOTORCYCLE]:  { [PackageSize.SMALL]: 1, [PackageSize.MEDIUM]: 0.8, [PackageSize.LARGE]: 0.2 },
+  [VehicleType.TRICYCLE]:    { [PackageSize.SMALL]: 1, [PackageSize.MEDIUM]: 1,   [PackageSize.LARGE]: 0.7 },
+  [VehicleType.CAR]:         { [PackageSize.SMALL]: 1, [PackageSize.MEDIUM]: 1,   [PackageSize.LARGE]: 0.8 },
+  [VehicleType.VAN]:         { [PackageSize.SMALL]: 1, [PackageSize.MEDIUM]: 1,   [PackageSize.LARGE]: 1   },
+  [VehicleType.TRUCK_SMALL]: { [PackageSize.SMALL]: 0.7, [PackageSize.MEDIUM]: 1, [PackageSize.LARGE]: 1   },
+  [VehicleType.TRUCK_LARGE]: { [PackageSize.SMALL]: 0.5, [PackageSize.MEDIUM]: 1, [PackageSize.LARGE]: 1   },
 };
 
 // For fragile items, prefer enclosed vehicles
 const FRAGILE_SUITABILITY: Record<VehicleType, number> = {
-  [VehicleType.BICYCLE]:    0.3,
-  [VehicleType.MOTORCYCLE]: 0.4,
-  [VehicleType.TRICYCLE]:   0.6,
-  [VehicleType.CAR]:        1.0,
-  [VehicleType.VAN]:        1.0,
+  [VehicleType.BICYCLE]:     0.3,
+  [VehicleType.MOTORCYCLE]:  0.4,
+  [VehicleType.TRICYCLE]:    0.6,
+  [VehicleType.CAR]:         1.0,
+  [VehicleType.VAN]:         1.0,
+  [VehicleType.TRUCK_SMALL]: 0.7,
+  [VehicleType.TRUCK_LARGE]: 0.5,
 };
 
 // For instant deliveries, prefer faster vehicles
 const SPEED_SUITABILITY: Record<VehicleType, number> = {
-  [VehicleType.BICYCLE]:    0.5,
-  [VehicleType.MOTORCYCLE]: 1.0,
-  [VehicleType.TRICYCLE]:   0.7,
-  [VehicleType.CAR]:        0.8,
-  [VehicleType.VAN]:        0.6,
+  [VehicleType.BICYCLE]:     0.5,
+  [VehicleType.MOTORCYCLE]:  1.0,
+  [VehicleType.TRICYCLE]:    0.7,
+  [VehicleType.CAR]:         0.8,
+  [VehicleType.VAN]:         0.6,
+  [VehicleType.TRUCK_SMALL]: 0.4,
+  [VehicleType.TRUCK_LARGE]: 0.3,
 };
 
 // Score weights (must sum to 1.0)

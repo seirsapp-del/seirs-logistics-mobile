@@ -23,6 +23,8 @@ import { UploadModule } from './upload/upload.module';
 import { BusinessModule } from './business/business.module';
 import { FxModule } from './fx/fx.module';
 import { FeesModule } from './fees/fees.module';
+import { ChatModule } from './chat/chat.module';
+import { SosModule }  from './sos/sos.module';
 import { IdentityModule } from './identity/identity.module';
 import { PartnerStoreModule } from './partner-store/partner-store.module';
 import { PoolingModule } from './pooling/pooling.module';
@@ -88,6 +90,8 @@ import { RolesModule } from './roles/roles.module';
     BusinessModule,
     FxModule,
     FeesModule,
+    ChatModule,
+    SosModule,
     IdentityModule,
     PartnerStoreModule,
     PoolingModule,

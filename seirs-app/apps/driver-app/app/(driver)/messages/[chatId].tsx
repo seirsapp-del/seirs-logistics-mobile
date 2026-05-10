@@ -1,121 +1,136 @@
+/**
+ * Driver ↔ Customer chat screen.
+ *
+ * Mirrors customer-app's chat screen — both wire to the same backend
+ * `chat:<deliveryId>` Socket.io room so messages exchanged here appear
+ * on the customer side instantly. The URL param `chatId` is treated as
+ * the delivery id (one chat per delivery).
+ */
 import {
   View, Text, Pressable, StyleSheet, FlatList, TextInput,
-  KeyboardAvoidingView, Platform, StatusBar,
+  KeyboardAvoidingView, Platform, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
+import { useAuth } from '@/context/AuthContext';
 import { MOCK_DRIVER_MESSAGES } from '@/constants/driverMockData';
-
-type Message = { id: string; text: string; from: 'me' | 'customer'; time: string };
+import { useChat } from '@seirs/shared/hooks/useChat';
+import { SOCKET_URL } from '@/constants/config';
 
 export default function DriverChatScreen() {
-  const { chatId } = useLocalSearchParams<{ chatId: string }>();
-  const router     = useRouter();
-  const cs         = useColorScheme();
-  const theme      = Colors[cs ?? 'light'];
-  const isDark     = cs === 'dark';
-  const listRef    = useRef<FlatList>(null);
+  const router  = useRouter();
+  const cs      = useColorScheme();
+  const theme   = Colors[cs ?? 'light'];
+  const isDark  = cs === 'dark';
+  const params  = useLocalSearchParams<{ chatId: string }>();
+  const { user } = useAuth();
 
-  const chat = MOCK_DRIVER_MESSAGES.find(c => c.id === chatId);
-  const [messages, setMessages] = useState<Message[]>(chat?.messages as Message[] ?? []);
-  const [input, setInput]       = useState('');
+  const deliveryId = params.chatId ?? null;
+  const conversation = MOCK_DRIVER_MESSAGES.find(m => m.id === params.chatId) ?? MOCK_DRIVER_MESSAGES[0];
+  const customer = conversation.customer;
 
-  const send = () => {
-    const text = input.trim();
-    if (!text) return;
-    const now  = new Date();
-    const time = now.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
-    setMessages(prev => [...prev, { id: `m${Date.now()}`, text, from: 'me', time }]);
+  const { messages, loading, sending, send } = useChat(deliveryId, { socketUrl: SOCKET_URL });
+
+  const [input, setInput] = useState('');
+  const listRef = useRef<FlatList>(null);
+
+  const handleSend = async () => {
+    const body = input.trim();
+    if (!body || sending) return;
     setInput('');
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+    try {
+      await send(body);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch {
+      setInput(body);
+    }
   };
 
-  if (!chat) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: theme.textSecond }}>Chat not found</Text>
-      </SafeAreaView>
-    );
-  }
-
-  const QUICK_REPLIES = [
-    'On my way!',
-    'I\'ve arrived at pickup.',
-    'Package delivered.',
-    'Please be ready outside.',
-  ];
+  const myUserId = user?.id ?? '';
+  const sortedMessages = useMemo(() => messages, [messages]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.navBackground }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }, Shadows.xs]}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <Avatar name={chat.customer.name} size={36} />
+          <Avatar name={customer.name} size={36} />
           <View>
-            <Text style={[styles.headerName, { color: theme.text }]}>{chat.customer.name}</Text>
-            <Text style={[styles.headerSub, { color: theme.textSecond }]}>Trip #{chat.tripId}</Text>
+            <Text style={[styles.headerName, { color: theme.text }]}>{customer.name}</Text>
+            <Text style={[styles.headerSub, { color: '#22C55E' }]}>Online</Text>
           </View>
         </View>
-        {/* Phone calls disabled per spec §2.7 — chat only */}
+        {/* Phone calls disabled per spec §1.12 */}
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
-        {/* Messages */}
-        <FlatList
-          ref={listRef}
-          data={messages}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.messageList}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-          renderItem={({ item }) => {
-            const isMe = item.from === 'me';
-            return (
-              <View style={[styles.bubbleWrap, isMe ? styles.bubbleWrapMe : styles.bubbleWrapThem]}>
-                {!isMe && <Avatar name={chat.customer.name} size={28} />}
-                <View style={[
-                  styles.bubble,
-                  isMe
-                    ? [styles.bubbleMe, { backgroundColor: theme.primary }]
-                    : [styles.bubbleThem, { backgroundColor: theme.surface, borderColor: theme.border }],
-                ]}>
-                  <Text style={[styles.bubbleText, { color: isMe ? '#fff' : theme.text }]}>{item.text}</Text>
-                  <Text style={[styles.bubbleTime, { color: isMe ? 'rgba(255,255,255,0.65)' : theme.textThird }]}>{item.time}</Text>
-                </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={90}
+      >
+        {loading && messages.length === 0 ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator color={theme.primary} />
+          </View>
+        ) : (
+          <FlatList
+            ref={listRef}
+            data={sortedMessages}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.msgList}
+            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+            ListEmptyComponent={
+              <View style={styles.emptyWrap}>
+                <Ionicons name="chatbubbles-outline" size={48} color={theme.textThird} />
+                <Text style={[styles.emptyText, { color: theme.textSecond }]}>
+                  No messages yet — say hi to your customer.
+                </Text>
               </View>
-            );
-          }}
-        />
+            }
+            renderItem={({ item, index }) => {
+              const isMe     = item.senderId === myUserId;
+              const next     = sortedMessages[index + 1];
+              const showTime = !next || next.senderId !== item.senderId;
+              const time     = new Date(item.createdAt).toLocaleTimeString(undefined, {
+                hour: '2-digit', minute: '2-digit',
+              });
+              return (
+                <View style={[styles.bubbleWrap, isMe && styles.bubbleWrapMe]}>
+                  {!isMe && <Avatar name={customer.name} size={28} />}
+                  <View style={styles.bubbleColumn}>
+                    <View style={[
+                      styles.bubble,
+                      isMe
+                        ? [styles.bubbleMe,    { backgroundColor: theme.primary }]
+                        : [styles.bubbleOther, { backgroundColor: isDark ? '#1A1A1A' : '#F1F5F9' }],
+                    ]}>
+                      <Text style={[styles.bubbleText, { color: isMe ? '#fff' : theme.text }]}>
+                        {item.body}
+                      </Text>
+                    </View>
+                    {showTime && (
+                      <Text style={[styles.bubbleTime, { color: theme.textThird, alignSelf: isMe ? 'flex-end' : 'flex-start' }]}>
+                        {time}
+                      </Text>
+                    )}
+                  </View>
+                  {isMe && <View style={{ width: 28 }} />}
+                </View>
+              );
+            }}
+          />
+        )}
 
-        {/* Quick replies */}
-        <FlatList
-          horizontal
-          data={QUICK_REPLIES}
-          keyExtractor={q => q}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.quickList}
-          renderItem={({ item }) => (
-            <Pressable
-              style={[styles.quickChip, { borderColor: theme.primary + '60', backgroundColor: theme.primary + '10' }]}
-              onPress={() => { setInput(item); }}
-            >
-              <Text style={[styles.quickText, { color: theme.primary }]}>{item}</Text>
-            </Pressable>
-          )}
-        />
-
-        {/* Input bar */}
-        <View style={[styles.inputBar, { backgroundColor: theme.navBackground, borderTopColor: theme.border }]}>
+        <View style={[styles.inputBar, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
           <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <TextInput
               style={[styles.input, { color: theme.text }]}
@@ -126,15 +141,18 @@ export default function DriverChatScreen() {
               multiline
               maxLength={500}
               returnKeyType="send"
-              onSubmitEditing={send}
+              onSubmitEditing={handleSend}
+              editable={!sending}
             />
           </View>
           <Pressable
-            style={[styles.sendBtn, { backgroundColor: input.trim() ? theme.primary : theme.surfaceSecond }]}
-            onPress={send}
-            disabled={!input.trim()}
+            style={[styles.sendBtn, { backgroundColor: input.trim() && !sending ? theme.primary : theme.border }]}
+            onPress={handleSend}
+            disabled={!input.trim() || sending}
           >
-            <Ionicons name="send" size={18} color={input.trim() ? '#fff' : theme.textThird} />
+            {sending
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Ionicons name="send" size={18} color="#fff" />}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -143,31 +161,35 @@ export default function DriverChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  header:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1,
+  },
   backBtn:      { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginHorizontal: Spacing.sm },
+  headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   headerName:   { fontSize: FontSize.base, fontWeight: FontWeight.bold },
-  headerSub:    { fontSize: FontSize.xs },
-  callBtn:      { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  headerSub:    { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
 
-  messageList:  { padding: Spacing.md, gap: Spacing.sm, paddingBottom: Spacing.sm },
+  msgList: { padding: Spacing.md, gap: Spacing.sm, flexGrow: 1 },
 
-  bubbleWrap:   { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, maxWidth: '85%' },
-  bubbleWrapMe: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
-  bubbleWrapThem:{ alignSelf: 'flex-start' },
+  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyWrap:   { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60, gap: Spacing.md },
+  emptyText:   { fontSize: FontSize.sm, textAlign: 'center' },
 
-  bubble:       { padding: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: Radius.xl, gap: 3 },
-  bubbleMe:     { borderBottomRightRadius: 4 },
-  bubbleThem:   { borderBottomLeftRadius: 4, borderWidth: 1 },
-  bubbleText:   { fontSize: FontSize.base, lineHeight: 22 },
-  bubbleTime:   { fontSize: 10, alignSelf: 'flex-end' },
+  bubbleWrap:   { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, marginBottom: Spacing.xs },
+  bubbleWrapMe: { flexDirection: 'row-reverse' },
+  bubbleColumn: { flex: 1, gap: 3 },
+  bubble:       { maxWidth: '80%', borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: 10 },
+  bubbleMe:     { borderBottomRightRadius: 4, alignSelf: 'flex-end' },
+  bubbleOther:  { borderBottomLeftRadius: 4, alignSelf: 'flex-start' },
+  bubbleText:   { fontSize: FontSize.base, lineHeight: 20 },
+  bubbleTime:   { fontSize: 10 },
 
-  quickList:    { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, gap: Spacing.sm },
-  quickChip:    { paddingHorizontal: Spacing.md, paddingVertical: 8, borderRadius: Radius.full, borderWidth: 1 },
-  quickText:    { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-
-  inputBar:   { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderTopWidth: 1 },
-  inputWrap:  { flex: 1, borderRadius: Radius.xl, borderWidth: 1, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, maxHeight: 120 },
-  input:      { fontSize: FontSize.base, maxHeight: 100 },
-  sendBtn:    { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  inputBar:  {
+    flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderTopWidth: 1,
+  },
+  inputWrap: { flex: 1, borderRadius: Radius.xl, borderWidth: 1.5, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, maxHeight: 120 },
+  input:     { fontSize: FontSize.base, lineHeight: 20 },
+  sendBtn:   { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
 });

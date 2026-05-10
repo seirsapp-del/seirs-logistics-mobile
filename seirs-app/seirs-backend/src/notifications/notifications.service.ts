@@ -18,6 +18,21 @@ export class NotificationsService {
     private readonly fcm: FcmService,
   ) {}
 
+  /**
+   * Save a push token (FCM or Expo Push Token) against the current user.
+   * Called by mobile apps after the user grants notification permission
+   * on app launch / login. The token may be:
+   *   - A native FCM token (Firebase Messaging)
+   *   - An Expo push token (ExponentPushToken[xxx]) — backend's FcmService
+   *     supports both because we send via Expo's push service in dev and
+   *     FCM directly in production.
+   * Empty/null tokens clear the field (e.g. on logout).
+   */
+  async registerToken(userId: string, token: string | null): Promise<void> {
+    const trimmed = token?.trim() || null;
+    await this.usersRepo.update(userId, { fcmToken: trimmed });
+  }
+
   async create(
     userId: string,
     title: string,

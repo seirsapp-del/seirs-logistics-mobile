@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
@@ -10,6 +11,7 @@ import { API_BASE } from '@/constants/config';
 import { configureApi } from '@/services/api';
 import * as Updates from 'expo-updates';
 import { initI18n } from '@/i18n';
+import { usePushRegistration } from '@seirs/shared/hooks/usePushRegistration';
 
 // Wire the shared API service to this app's backend URL
 configureApi(API_BASE);
@@ -83,7 +85,11 @@ function OTAUpdateChecker() {
 // before NavigationGuard's useEffect can redirect — visible as a brief
 // flash of the inside of the app on cold launch.
 function AppContent() {
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
+  // Register the device push token once the user is authenticated. The
+  // hook silently no-ops until expo-notifications is installed + a
+  // native rebuild ships — see shared/hooks/usePushRegistration.ts.
+  usePushRegistration(isAuthenticated);
   if (isLoading) return null;
   return (
     <>
@@ -103,12 +109,14 @@ export default function RootLayout() {
   if (!i18nReady) return null;
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

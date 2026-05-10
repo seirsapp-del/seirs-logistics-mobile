@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Patch, Param, Query,
+  Body, Controller, Get, Patch, Param, Post, Query,
   UseGuards, ParseIntPipe, DefaultValuePipe,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
@@ -39,5 +39,18 @@ export class NotificationsController {
   @Patch('read-all')
   markAllRead(@CurrentUser() user: User) {
     return this.svc.markAllRead(user.id);
+  }
+
+  // POST /api/v1/notifications/register-token  { token: string | null }
+  // Stores the device's FCM/Expo push token against the current user so
+  // backend NotificationsService can target this device. Pass null to
+  // clear (called on logout).
+  @Post('register-token')
+  async registerToken(
+    @CurrentUser() user: User,
+    @Body() body: { token: string | null },
+  ) {
+    await this.svc.registerToken(user.id, body?.token ?? null);
+    return { ok: true };
   }
 }

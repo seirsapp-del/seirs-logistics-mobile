@@ -13,10 +13,12 @@ export class DriversController {
     private readonly redisService: RedisService,
   ) {}
 
-  // GET /api/v1/drivers/me
+  // GET /api/v1/drivers/me — driver profile + today/week earnings + wallet balance.
+  // The driver home screen renders all three numbers; without enrichment the
+  // home dashboard rendered ₦0 for everything (see ECOSYSTEM_AUDIT_2026-05-10).
   @Get('me')
   getProfile(@CurrentUser() user: User) {
-    return this.driversService.findByUserId(user.id);
+    return this.driversService.findByUserIdWithEarnings(user.id);
   }
 
   // PATCH /api/v1/drivers/online  { isOnline: true/false }

@@ -71,9 +71,6 @@ export default function RewardsScreen() {
                 <Text style={styles.progressText}>{currentTier.name}</Text>
                 <Text style={styles.progressText}>{nextTier.name} in {(nextTier.min - points).toLocaleString()} pts</Text>
               </View>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` as any }]} />
-              </View>
             </View>
           )}
         </LinearGradient>
@@ -189,8 +186,6 @@ const styles = StyleSheet.create({
   progressSection: { gap: 6 },
   progressLabels:  { flexDirection: 'row', justifyContent: 'space-between' },
   progressText:    { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.xs },
-  progressBar:     { height: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 4, overflow: 'hidden' },
-  progressFill:    { height: '100%', backgroundColor: '#fff', borderRadius: 4 },
 
   tiersCard:    { borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden', gap: 0 },
   sectionTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold, padding: Spacing.md, paddingBottom: 0 },

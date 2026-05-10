@@ -66,7 +66,10 @@ export default function DriverHomeScreen() {
   const fetchDeliveries = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const res = await driversApi.getAvailableJobs();
+      // Available jobs near this driver (sorted by distance). Backend
+      // returns pending unassigned deliveries within 25 km of the
+      // driver's last known position.
+      const res = await driversApi.getAvailableJobs(driverData?.lastLat, driverData?.lastLng);
       setDeliveries(res ?? []);
     } catch {
       setDeliveries([]);
@@ -74,9 +77,32 @@ export default function DriverHomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [driverData?.lastLat, driverData?.lastLng]);
 
   useEffect(() => { fetchDeliveries(); }, [fetchDeliveries]);
+
+  // Live job-request feed via Socket.io. Connects only while the driver
+  // is online and joins the per-driver room so the backend can target
+  // them with auto-matched jobs (`job:request` event).
+  useEffect(() => {
+    if (!isOnline || !driverData?.id) return;
+    const socket = io(`${SOCKET_URL}/tracking`, {
+      transports: ['websocket'],
+      reconnection: true,
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      socket.emit('join:driver-pool', { driverId: driverData.id });
+    });
+
+    socket.on('job:request', () => {
+      // A new job was assigned to this driver — refresh the list silently.
+      fetchDeliveries(true);
+    });
+
+    return () => { socket.disconnect(); socketRef.current = null; };
+  }, [isOnline, driverData?.id, fetchDeliveries]);
 
   const startLocationUpdates = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();

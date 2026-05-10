@@ -49,7 +49,7 @@
     "resend": "^4.8.0",
     "rxjs": "^7.8.1",
     "socket.io": "^4.7.2",
-    "typeorm": "^0.3.17",
+    "typeorm": "^0.3.29",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { setSessionExpiredHandler, usersApi } from '@/services/api';
+import { clearPushRegistration } from '@seirs/shared/hooks/usePushRegistration';
 
 export type UserRole = 'customer' | 'driver' | null;
 
@@ -64,6 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    // Best-effort: tell the backend to forget this device's push token
+    // so old sessions on this phone stop receiving the user's pushes.
+    clearPushRegistration();
     await AsyncStorage.removeItem('seirs_user');
     setUser(null);
   };

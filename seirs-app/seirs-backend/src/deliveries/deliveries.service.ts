@@ -149,6 +149,57 @@ export class DeliveriesService {
       .getMany();
   }
 
+  /**
+   * Pending deliveries the driver could still pick up. Used by the driver
+   * home screen to render an "available jobs" feed. Auto-match runs first
+   * so most pending jobs get assigned within seconds; this endpoint exists
+   * for the manual-claim path (auto-match failed, no nearby driver, etc.).
+   *
+   * If `lat`/`lng` are provided, results are sorted by distance ascending
+   * using the Haversine formula. Otherwise newest-first.
+   */
+  findAvailable(lat?: number, lng?: number, radiusKm: number = 25, limit: number = 30) {
+    const q = this.repo
+      .createQueryBuilder('d')
+      .leftJoinAndSelect('d.customer', 'customer')
+      .where('d.status = :status', { status: DeliveryStatus.PENDING })
+      .andWhere('d.driver IS NULL');
+
+    const safeLat = Number(lat);
+    const safeLng = Number(lng);
+    const safeRadius = Math.min(200, Math.max(1, Number(radiusKm)));
+    const safeLimit  = Math.min(100, Math.max(1, Number(limit)));
+
+    const hasOrigin =
+      !isNaN(safeLat) && !isNaN(safeLng) &&
+      safeLat >= -90 && safeLat <= 90 &&
+      safeLng >= -180 && safeLng <= 180;
+
+    if (hasOrigin) {
+      // Haversine distance from driver to pickup, parameters bound to query.
+      q.addSelect(
+        `(6371 * acos(LEAST(1, GREATEST(-1,
+          cos(radians(:lat)) * cos(radians(d.pickupLat)) *
+          cos(radians(d.pickupLng) - radians(:lng)) +
+          sin(radians(:lat)) * sin(radians(d.pickupLat))
+        )))) AS distance_km`,
+      )
+        .setParameters({ lat: safeLat, lng: safeLng })
+        .andWhere(
+          `(6371 * acos(LEAST(1, GREATEST(-1,
+            cos(radians(:lat)) * cos(radians(d.pickupLat)) *
+            cos(radians(d.pickupLng) - radians(:lng)) +
+            sin(radians(:lat)) * sin(radians(d.pickupLat))
+          )))) <= ${safeRadius}`,
+        )
+        .orderBy('distance_km', 'ASC');
+    } else {
+      q.orderBy('d.createdAt', 'DESC');
+    }
+
+    return q.limit(safeLimit).getMany();
+  }
+
   async findByTracking(trackingCode: string) {
     const delivery = await this.repo.findOne({ where: { trackingCode } });
     if (!delivery) throw new NotFoundException('Delivery not found.');

@@ -116,7 +116,7 @@ export default function DriverProfileScreen() {
         <View style={[styles.profileCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <View style={styles.profileTop}>
             <View style={[styles.avatarWrap, { borderColor: tierColor + '50' }]}>
-              <Avatar name={displayName} size={72} />
+              <Avatar name={displayName} uri={user?.profilePhoto} size={72} />
               <View style={[styles.onlineDot, { backgroundColor: driver.isOnline ? '#22C55E' : '#9CA3AF', borderColor: theme.surface }]} />
             </View>
             <View style={{ flex: 1 }}>

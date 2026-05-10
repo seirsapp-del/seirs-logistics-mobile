@@ -31,7 +31,9 @@
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "plugins": [
@@ -48,6 +50,11 @@
       }],
       ["expo-image-picker", {
         "photosPermission": "Seirs Business needs access to your photos for document uploads."
+      }],
+      ["expo-location", {
+        "locationWhenInUsePermission": "Seirs Business needs your location to set pickup and dropoff points on the map.",
+        "isIosBackgroundLocationEnabled": false,
+        "isAndroidBackgroundLocationEnabled": false
       }]
     ],
     "experiments": {

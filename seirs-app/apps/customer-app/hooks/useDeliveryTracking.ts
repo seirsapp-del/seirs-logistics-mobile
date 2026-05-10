@@ -1,6 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { io, Socket } from 'socket.io-client';
 import { SOCKET_URL } from '@/constants/config';
+
+/**
+ * Live delivery-tracking hook.
+ *
+ * Wires the customer app to the backend's TrackingGateway (Socket.io on
+ * the `/tracking` namespace). Receives:
+ *   - driver:location   → driver's GPS pings
+ *   - delivery:status   → status transitions (assigned → picked_up → in_transit → delivered)
+ *   - delivery:assigned → driver profile when auto-match runs
+ *
+ * The previous implementation used a raw WebSocket on a non-existent /ws
+ * endpoint and would silently never receive any updates. (See the
+ * 2026-05-10 ecosystem audit.)
+ */
 
 interface DriverLocation {
   lat: number;
@@ -9,16 +24,18 @@ interface DriverLocation {
 }
 
 interface AssignedDriver {
-  name: string;
-  vehicleType: string;
-  rating: number;
+  id?:          string;
+  name:         string;
+  vehicleType:  string;
+  rating:       number;
+  phone?:       string;
 }
 
 interface TrackingState {
   driverLocation: DriverLocation | null;
   deliveryStatus: string | null;
   assignedDriver: AssignedDriver | null;
-  isConnected: boolean;
+  isConnected:    boolean;
 }
 
 export function useDeliveryTracking(deliveryId: string | null): TrackingState {
@@ -26,72 +43,81 @@ export function useDeliveryTracking(deliveryId: string | null): TrackingState {
     driverLocation: null,
     deliveryStatus: null,
     assignedDriver: null,
-    isConnected: false,
+    isConnected:    false,
   });
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     if (!deliveryId) return;
 
     let cancelled = false;
+    let socket: Socket | null = null;
 
-    const connect = async () => {
+    (async () => {
+      // Pull JWT for authenticated rooms (driver pool / personal notifications).
+      // Listening on a delivery room itself doesn't require auth, but the
+      // backend logs the user when present.
+      const stored = await AsyncStorage.getItem('seirs_user').catch(() => null);
+      const token  = stored ? (JSON.parse(stored).token ?? null) : null;
       if (cancelled) return;
 
-      const stored = await AsyncStorage.getItem('seirs_user').catch(() => null);
-      const token = stored ? (JSON.parse(stored).token ?? null) : null;
+      socket = io(`${SOCKET_URL}/tracking`, {
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionDelay: 2000,
+        ...(token ? { auth: { token: `Bearer ${token}` } } : {}),
+      });
+      socketRef.current = socket;
 
-      const url = token
-        ? `${SOCKET_URL.replace(/^http/, 'ws')}/ws?token=${token}&deliveryId=${deliveryId}`
-        : `${SOCKET_URL.replace(/^http/, 'ws')}/ws?deliveryId=${deliveryId}`;
+      socket.on('connect', () => {
+        if (cancelled) return;
+        setState(s => ({ ...s, isConnected: true }));
+        socket!.emit('join:delivery', { deliveryId });
+      });
 
-      try {
-        const ws = new WebSocket(url);
-        wsRef.current = ws;
+      socket.on('disconnect', () => {
+        if (cancelled) return;
+        setState(s => ({ ...s, isConnected: false }));
+      });
 
-        ws.onopen = () => {
-          if (!cancelled) setState(s => ({ ...s, isConnected: true }));
-        };
+      socket.on('connect_error', () => {
+        if (cancelled) return;
+        setState(s => ({ ...s, isConnected: false }));
+      });
 
-        ws.onmessage = (event) => {
-          if (cancelled) return;
-          try {
-            const msg = JSON.parse(event.data);
-            setState(s => {
-              const next = { ...s };
-              if (msg.driverLocation) next.driverLocation = msg.driverLocation;
-              if (msg.status)         next.deliveryStatus = msg.status;
-              if (msg.driver)         next.assignedDriver = msg.driver;
-              return next;
-            });
-          } catch { /* ignore malformed frames */ }
-        };
+      // Backend emits: { driverId, lat, lng, timestamp }
+      socket.on('driver:location', (data: { driverId: string; lat: number; lng: number; timestamp: number }) => {
+        if (cancelled) return;
+        setState(s => ({
+          ...s,
+          driverLocation: {
+            lat: Number(data.lat),
+            lng: Number(data.lng),
+            updatedAt: new Date(data.timestamp ?? Date.now()).toISOString(),
+          },
+        }));
+      });
 
-        ws.onerror = () => {
-          if (!cancelled) setState(s => ({ ...s, isConnected: false }));
-        };
+      // Backend emits: { deliveryId, status, timestamp, ...extra }
+      socket.on('delivery:status', (data: { status: string }) => {
+        if (cancelled) return;
+        setState(s => ({ ...s, deliveryStatus: data.status }));
+      });
 
-        ws.onclose = () => {
-          if (!cancelled) {
-            setState(s => ({ ...s, isConnected: false }));
-            reconnectRef.current = setTimeout(connect, 5000);
-          }
-        };
-      } catch {
-        if (!cancelled) {
-          reconnectRef.current = setTimeout(connect, 5000);
-        }
-      }
-    };
-
-    connect();
+      // Backend emits: { deliveryId, driver: { id, name, vehicleType, rating, phone }, timestamp }
+      socket.on('delivery:assigned', (data: { driver: AssignedDriver }) => {
+        if (cancelled || !data?.driver) return;
+        setState(s => ({ ...s, assignedDriver: data.driver }));
+      });
+    })();
 
     return () => {
       cancelled = true;
-      if (reconnectRef.current) clearTimeout(reconnectRef.current);
-      wsRef.current?.close();
-      wsRef.current = null;
+      if (socket) {
+        socket.emit('leave:delivery', { deliveryId });
+        socket.disconnect();
+      }
+      socketRef.current = null;
     };
   }, [deliveryId]);
 

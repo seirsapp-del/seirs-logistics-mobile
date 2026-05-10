@@ -13,6 +13,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { MOCK_TRIPS, MOCK_DRIVERS } from '@/constants/mockData';
 import { SOCKET_URL } from '@/constants/config';
+import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 
 const STATUS_STEPS = [
   { key: 'assigned',   label: 'Rider assigned',  icon: 'navigate-outline' },
@@ -34,10 +35,25 @@ export default function TripProgressScreen() {
   const [currentStep, setCurrentStep] = useState(0);
   const [eta,         setEta]         = useState(driver.eta);
   const pulse = useRef(new Animated.Value(1)).current;
+  const mapRef = useRef<MapView>(null);
 
-  // Live driver position from WS — falls back to static placeholder if no events yet
-  const [driverPos, setDriverPos] = useState({ latitude: 6.5270, longitude: 3.3810 });
+  // Live driver position from WS — defaults to a point near the pickup so
+  // the car icon doesn't sit at (0,0) before the first ping arrives.
+  const [driverPos, setDriverPos] = useState({
+    latitude:  trip.pickupLat  ?? 6.5244,
+    longitude: trip.pickupLng  ?? 3.3792,
+  });
   const socketRef = useRef<Socket | null>(null);
+
+  // Real road-following polyline + km + ETA from Google Directions.
+  const {
+    coords:       routeCoords,
+    distanceText,
+    durationText,
+  } = useDirectionsPolyline(
+    trip.pickupLat  != null ? { latitude: trip.pickupLat,  longitude: trip.pickupLng  } : null,
+    trip.dropoffLat != null ? { latitude: trip.dropoffLat, longitude: trip.dropoffLng } : null,
+  );
 
   useEffect(() => {
     Animated.loop(
@@ -101,30 +117,56 @@ export default function TripProgressScreen() {
 
       {/* ── Map ─────────────────────────────────────────────────────── */}
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         customMapStyle={isDark ? DARK_MAP : []}
-        initialRegion={{ latitude: 6.5244, longitude: 3.3792, latitudeDelta: 0.04, longitudeDelta: 0.04 }}
+        initialRegion={{
+          latitude:  trip.pickupLat  ?? 6.5244,
+          longitude: trip.pickupLng  ?? 3.3792,
+          latitudeDelta:  0.05,
+          longitudeDelta: 0.05,
+        }}
+        onMapReady={() => {
+          if (trip.pickupLat == null || trip.dropoffLat == null) return;
+          mapRef.current?.fitToCoordinates(
+            [
+              { latitude: trip.pickupLat,  longitude: trip.pickupLng  },
+              { latitude: trip.dropoffLat, longitude: trip.dropoffLng },
+            ],
+            { edgePadding: { top: 120, right: 60, bottom: 320, left: 60 }, animated: true },
+          );
+        }}
         showsUserLocation
       >
-        <Marker coordinate={{ latitude: 6.5290, longitude: 3.3800 }} pinColor="#22C55E" />
-        <Marker coordinate={{ latitude: 6.5180, longitude: 3.3890 }} pinColor="#EF4444" />
-        <Marker coordinate={driverPos}>
+        {trip.pickupLat != null && (
+          <Marker
+            coordinate={{ latitude: trip.pickupLat, longitude: trip.pickupLng }}
+            pinColor="#22C55E"
+            title="Pickup"
+            description={trip.pickupAddress}
+          />
+        )}
+        {trip.dropoffLat != null && (
+          <Marker
+            coordinate={{ latitude: trip.dropoffLat, longitude: trip.dropoffLng }}
+            pinColor="#EF4444"
+            title="Dropoff"
+            description={trip.dropoffAddress}
+          />
+        )}
+        <Marker coordinate={driverPos} title={driver.name}>
           <View style={styles.driverMarker}>
             <Ionicons name="car" size={16} color="#fff" />
           </View>
         </Marker>
-        <Polyline
-          coordinates={[
-            { latitude: 6.5290, longitude: 3.3800 },
-            { latitude: 6.5270, longitude: 3.3810 },
-            { latitude: 6.5230, longitude: 3.3840 },
-            { latitude: 6.5180, longitude: 3.3890 },
-          ]}
-          strokeColor={theme.primary}
-          strokeWidth={4}
-          lineDashPattern={[0]}
-        />
+        {routeCoords.length > 1 && (
+          <Polyline
+            coordinates={routeCoords}
+            strokeColor={theme.primary}
+            strokeWidth={4}
+          />
+        )}
       </MapView>
 
       {/* ── Back ──────────────────────────────────────────────────── */}
@@ -175,7 +217,7 @@ export default function TripProgressScreen() {
           {STATUS_STEPS[currentStep]?.label ?? 'Arrived'}
         </Text>
 
-        {/* ETA */}
+        {/* ETA — driver ETA from simulator + real route distance from Directions API */}
         <View style={styles.etaRow}>
           <View style={[styles.etaBadge, { backgroundColor: isDark ? '#1A0C00' : '#EFF6FF' }]}>
             <Ionicons name="time-outline" size={16} color={theme.primary} />
@@ -183,6 +225,14 @@ export default function TripProgressScreen() {
               {eta === 0 ? 'Arrived' : `${eta} min away`}
             </Text>
           </View>
+          {(distanceText || durationText) && (
+            <View style={[styles.etaBadge, { backgroundColor: theme.surfaceSecond, marginLeft: Spacing.sm }]}>
+              <Ionicons name="navigate-outline" size={14} color={theme.textSecond} />
+              <Text style={[styles.etaText, { color: theme.text, fontSize: FontSize.sm }]}>
+                {distanceText}{distanceText && durationText ? ' · ' : ''}{durationText}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Driver info */}
@@ -216,7 +266,7 @@ export default function TripProgressScreen() {
         <View style={styles.bottomRow}>
           <Pressable
             style={[styles.sosBtn, { backgroundColor: '#FEF2F2', borderColor: theme.error }]}
-            onPress={() => router.push('/(customer)/sos')}
+            onPress={() => router.push({ pathname: '/(customer)/sos', params: { deliveryId: trip.id } })}
           >
             <Ionicons name="warning-outline" size={16} color={theme.error} />
             <Text style={[styles.sosBtnText, { color: theme.error }]}>SOS</Text>

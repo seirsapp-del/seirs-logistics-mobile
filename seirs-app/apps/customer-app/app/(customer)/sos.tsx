@@ -5,9 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useRef } from 'react';
 import { Animated, Easing } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as Location from 'expo-location';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { sosApi } from '@/services/api';
 
 const EMERGENCY_CONTACTS = [
   { label: 'Police',       number: '199', icon: 'shield-outline' },
@@ -20,9 +22,14 @@ export default function SOSScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  // Optional ?deliveryId= param when SOS is opened from the trip-progress
+  // screen — lets the backend notify the assigned driver too.
+  const params  = useLocalSearchParams<{ deliveryId?: string }>();
 
   const [activated, setActivated] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const [alertId,   setAlertId]   = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const pulse1 = useRef(new Animated.Value(1)).current;
   const pulse2 = useRef(new Animated.Value(1)).current;
@@ -53,20 +60,58 @@ export default function SOSScreen() {
     return () => clearTimeout(t);
   }, [activated, countdown]);
 
+  const fireSOS = async () => {
+    setSubmitting(true);
+    setActivated(true);
+    setCountdown(5);
+
+    // Try to attach a GPS fix — non-blocking. The alert still posts
+    // without coordinates if permission is denied / no fix yet.
+    let lat: number | undefined;
+    let lng: number | undefined;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      }
+    } catch { /* keep undefined */ }
+
+    try {
+      const created = await sosApi.trigger({
+        deliveryId: params.deliveryId,
+        lat, lng,
+      });
+      setAlertId(created.id);
+    } catch (e: any) {
+      // Surface the failure but stay in activated state — user can retry.
+      Alert.alert('Could not reach SEIRS support',
+        e?.message ?? 'Network error. Try again or call 199 directly.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSOS = () => {
     Alert.alert(
       'Send SOS?',
-      'This will alert your emergency contacts and share your live location with SEIRS support.',
+      'This will alert SEIRS support, share your live location, and notify your driver if you are on a trip.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Send SOS', style: 'destructive', onPress: () => { setActivated(true); setCountdown(5); } },
+        { text: 'Send SOS', style: 'destructive', onPress: fireSOS },
       ]
     );
   };
 
-  const cancelSOS = () => {
+  const cancelSOS = async () => {
+    if (alertId) {
+      // Best-effort — UI already resets even if the cancel API call fails.
+      sosApi.cancel(alertId).catch(() => {});
+    }
     setActivated(false);
     setCountdown(5);
+    setAlertId(null);
   };
 
   return (

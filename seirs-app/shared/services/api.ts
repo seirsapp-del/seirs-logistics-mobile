@@ -25,6 +25,37 @@ export function setSessionExpiredHandler(fn: () => void) {
   onSessionExpired = fn;
 }
 
+// ─── Vehicle taxonomy ─────────────────────────────────────────────────────────
+/**
+ * Canonical vehicle taxonomy (matches backend `VehicleType` enum).
+ * UI screens may use Nigerian aliases (okada/keke/danfo) or the older
+ * truck_sm/truck_lg shortcuts — those get normalised here before the
+ * payload is sent. Anything else passes through unchanged.
+ */
+export type CanonicalVehicleType =
+  | 'bicycle' | 'motorcycle' | 'tricycle' | 'car' | 'van'
+  | 'truck_small' | 'truck_large';
+
+export const VEHICLE_ALIASES: Record<string, CanonicalVehicleType> = {
+  okada:    'motorcycle',
+  keke:     'tricycle',
+  danfo:    'van',           // passenger bus, treated as van for cargo
+  truck_sm: 'truck_small',
+  truck_lg: 'truck_large',
+};
+
+export function normalizeVehicleType(v: string | undefined | null): string | undefined {
+  if (!v) return undefined;
+  return VEHICLE_ALIASES[v] ?? v;
+}
+
+function normalizeBodyVehicle<T extends Record<string, any>>(body: T): T {
+  if (!body) return body;
+  const out: any = { ...body };
+  if (out.vehicleType) out.vehicleType = normalizeVehicleType(out.vehicleType);
+  return out as T;
+}
+
 // ─── Internals ────────────────────────────────────────────────────────────────
 async function getToken(): Promise<string | null> {
   const stored = await AsyncStorage.getItem(_storageKey);
@@ -86,7 +117,12 @@ export const authApi = {
     role: 'customer' | 'driver'; vehicleType?: string;
     ageConfirmed?: boolean; termsAcceptedAt?: string;
     referralCode?: string;
-  }) => request<{ message: string; requiresOtp: boolean }>('POST', '/auth/register', body, false),
+  }) => request<{ message: string; requiresOtp: boolean }>('POST', '/auth/register', {
+    ...body,
+    // Driver registers with okada/keke etc on the UI — normalize before
+    // hitting the backend's @IsEnum(VehicleType) validation.
+    ...(body.vehicleType ? { vehicleType: VEHICLE_ALIASES[body.vehicleType] ?? body.vehicleType } : {}),
+  }, false),
 
   verifyOtp: (email: string, otp: string) =>
     request<{ token: string; user: any }>('POST', '/auth/verify-otp', { email, otp }, false),
@@ -132,8 +168,8 @@ export const usersApi = {
 };
 
 export const deliveriesApi = {
-  quote: (body: object) => request<any>('POST', '/deliveries/quote', body),
-  create: (body: object) => request<any>('POST', '/deliveries', body),
+  quote: (body: object) => request<any>('POST', '/deliveries/quote', normalizeBodyVehicle(body as any)),
+  create: (body: object) => request<any>('POST', '/deliveries', normalizeBodyVehicle(body as any)),
   myDeliveries: (page = 1, limit = 20) =>
     request<{ items: any[]; total: number; pages: number }>('GET', `/deliveries?page=${page}&limit=${limit}`),
   track: (code: string) => request<any>('GET', `/deliveries/track/${code}`, undefined, false),
@@ -164,6 +200,17 @@ export const driversApi = {
   toggleOnline:   (isOnline: boolean) => request<any>('PATCH', '/drivers/online', { isOnline }),
   updateLocation: (lat: number, lng: number) => request<any>('PATCH', '/drivers/location', { lat, lng }),
   myDeliveries:   () => request<any[]>('GET', '/deliveries/driver'),
+  // Pending unassigned jobs the driver can claim. Sorted by distance from
+  // (lat,lng) when supplied, newest-first otherwise. Backend route:
+  // GET /deliveries/available?lat=&lng=&radiusKm=
+  getAvailableJobs: (lat?: number, lng?: number, radiusKm = 25) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.set('lat', String(lat));
+    if (lng != null) params.set('lng', String(lng));
+    if (radiusKm)    params.set('radiusKm', String(radiusKm));
+    const qs = params.toString();
+    return request<any[]>('GET', `/deliveries/available${qs ? `?${qs}` : ''}`);
+  },
   updateKycDoc:   (docId: string, url: string) =>
     request<{ docId: string; saved: boolean }>('PATCH', '/drivers/me/kyc', { docId, url }),
   demandZones:    () =>
@@ -182,6 +229,67 @@ export const driversApi = {
     }>('GET', '/drivers/me/deletion-readiness'),
 };
 
+// ─── SOS / Safety ─────────────────────────────────────────────────────────────
+export interface SosAlertDTO {
+  id:         string;
+  status:     'active' | 'resolved' | 'cancelled';
+  deliveryId: string | null;
+  lat:        number | null;
+  lng:        number | null;
+  note:       string | null;
+  createdAt:  string;
+}
+
+export const sosApi = {
+  // Customer or driver presses SOS. Backend persists + WS-fans to admins
+  // and the other party in the trip.
+  trigger: (body: { deliveryId?: string; lat?: number; lng?: number; note?: string }) =>
+    request<SosAlertDTO>('POST', '/sos/trigger', body),
+
+  // User cancels their own active alert (false alarm).
+  cancel: (id: string) => request<SosAlertDTO>('PATCH', `/sos/${id}/cancel`),
+};
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+export interface ChatMessageDTO {
+  id:        string;
+  body:      string;
+  senderId:  string;
+  createdAt: string;
+  readAt?:   string | null;
+}
+
+export interface ChatConversationDTO {
+  deliveryId:    string;
+  trackingCode:  string;
+  otherParty: {
+    id:    string | null;
+    name:  string;
+    role:  'driver' | 'customer';
+  };
+  lastMessage:   string;
+  lastMessageAt: string;
+  unread:        number;
+}
+
+export const chatApi = {
+  // List most-recent messages for a delivery thread (oldest first).
+  list: (deliveryId: string, limit = 100) =>
+    request<ChatMessageDTO[]>('GET', `/chats/${deliveryId}/messages?limit=${limit}`),
+
+  // Send a new message — backend broadcasts via WS room `chat:<deliveryId>`.
+  send: (deliveryId: string, body: string) =>
+    request<ChatMessageDTO>('POST', `/chats/${deliveryId}/messages`, { body }),
+
+  // Total unread across all of the user's chats — drives the Messages tab badge.
+  unreadCount: () => request<{ count: number }>('GET', '/chats/unread-count'),
+
+  // List the user's conversations (one per delivery they're part of, with
+  // the last message + unread count + the other party's display info).
+  // Drives the Messages tab list on both customer and driver apps.
+  conversations: () => request<ChatConversationDTO[]>('GET', '/chats'),
+};
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 export const notificationsApi = {
   list:        (page = 1) =>
@@ -189,6 +297,10 @@ export const notificationsApi = {
   unreadCount: () => request<{ count: number }>('GET', '/notifications/unread-count'),
   markRead:    (id: string) => request<any>('PATCH', `/notifications/${id}/read`),
   markAllRead: () => request<any>('PATCH', '/notifications/read-all'),
+  // Register the device's push token (FCM or Expo). Pass null to clear
+  // (e.g. on logout). Backend stores it on user.fcmToken.
+  registerToken: (token: string | null) =>
+    request<{ ok: boolean }>('POST', '/notifications/register-token', { token }),
 };
 
 // ─── Business Sender / Partner Auth ──────────────────────────────────────────

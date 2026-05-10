@@ -134,9 +134,6 @@ export default function KycScreen() {
             </View>
             <Text style={[styles.progressPct, { color: theme.primary }]}>{Math.round(progress)}%</Text>
           </View>
-          <View style={[styles.progressTrack, { backgroundColor: theme.surfaceSecond }]}>
-            <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: theme.primary }]} />
-          </View>
           {allSubmitted && (
             <View style={[styles.submittedBanner, { backgroundColor: '#16A34A18' }]}>
               <CheckCircle size={16} color="#16A34A" strokeWidth={1.75} />
@@ -269,8 +266,6 @@ const styles = StyleSheet.create({
   progressTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
   progressSub:   { fontSize: FontSize.sm, marginTop: 2 },
   progressPct:   { fontSize: FontSize.xl, fontWeight: FontWeight.bold as any },
-  progressTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  progressFill:  { height: 8, borderRadius: 4 },
   submittedBanner:{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.sm, borderRadius: Radius.md },
   submittedText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium as any, flex: 1 },
 

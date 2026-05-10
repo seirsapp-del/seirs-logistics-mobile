@@ -1,9 +1,11 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Driver } from './driver.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
+import { Wallet } from '../payments/wallet.entity';
 import { FraudService } from '../fraud/fraud.service';
+import { TrackingGateway } from '../tracking/tracking.gateway';
 
 // Spec V8 §2.1 — recognised KYC document IDs
 const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
@@ -22,11 +24,60 @@ export class DriversService {
   constructor(
     @InjectRepository(Driver)   private repo:           Repository<Driver>,
     @InjectRepository(Delivery) private deliveriesRepo: Repository<Delivery>,
-    private fraudService: FraudService,
+    @InjectRepository(Wallet)   private walletsRepo:    Repository<Wallet>,
+    private fraudService:    FraudService,
+    private trackingGateway: TrackingGateway,
   ) {}
 
   findByUserId(userId: string) {
     return this.repo.findOne({ where: { user: { id: userId } }, relations: ['user'] });
+  }
+
+  /**
+   * Driver profile enriched with the three earnings fields the home
+   * screen reads: today, this-week (Monday-rollover), and wallet
+   * balance in Naira (kobo / 100). Returns the same shape as
+   * findByUserId() plus those three numeric fields.
+   */
+  async findByUserIdWithEarnings(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) return null;
+
+    // Date boundaries — start of today (local server tz) and start of week (Mon).
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const startOfWeek = new Date(startOfToday);
+    const dayIdx = startOfWeek.getDay(); // 0=Sun, 1=Mon ... 6=Sat
+    const offsetToMon = dayIdx === 0 ? 6 : dayIdx - 1;
+    startOfWeek.setDate(startOfWeek.getDate() - offsetToMon);
+
+    // Sum driverEarnings of completed deliveries since each cutoff in parallel.
+    const [todayRow, weekRow, wallet] = await Promise.all([
+      this.deliveriesRepo
+        .createQueryBuilder('d')
+        .select('COALESCE(SUM(d.driverEarnings), 0)', 'sum')
+        .where('d.driverId = :driverId', { driverId: driver.id })
+        .andWhere('d.status = :status', { status: DeliveryStatus.DELIVERED })
+        .andWhere('d.deliveredAt >= :cutoff', { cutoff: startOfToday })
+        .getRawOne<{ sum: string }>(),
+      this.deliveriesRepo
+        .createQueryBuilder('d')
+        .select('COALESCE(SUM(d.driverEarnings), 0)', 'sum')
+        .where('d.driverId = :driverId', { driverId: driver.id })
+        .andWhere('d.status = :status', { status: DeliveryStatus.DELIVERED })
+        .andWhere('d.deliveredAt >= :cutoff', { cutoff: startOfWeek })
+        .getRawOne<{ sum: string }>(),
+      this.walletsRepo.findOne({ where: { user: { id: userId } } }),
+    ]);
+
+    return {
+      ...driver,
+      todayEarnings: Number(todayRow?.sum ?? 0),
+      weekEarnings:  Number(weekRow?.sum  ?? 0),
+      // balanceKobo is bigint in DB → string at runtime; coerce to number then naira.
+      balance:       wallet ? Number(wallet.balanceKobo) / 100 : 0,
+    };
   }
 
   async toggleOnline(userId: string, isOnline: boolean) {
@@ -60,6 +111,22 @@ export class DriversService {
       lastLng:           lng,
       locationUpdatedAt: new Date(),
     });
+
+    // Broadcast to any customers tracking this driver's active delivery.
+    // Without this WS broadcast, the customer's tracking screen never sees
+    // GPS updates because the driver app uses REST (not the WS
+    // driver:update-location event). See ECOSYSTEM_AUDIT_2026-05-10.md
+    // section B2/B3.
+    const activeDelivery = await this.deliveriesRepo.findOne({
+      where: {
+        driver: { id: driver.id },
+        status: In([DeliveryStatus.ASSIGNED, DeliveryStatus.PICKED_UP, DeliveryStatus.IN_TRANSIT]),
+      },
+      select: ['id'],
+    });
+    if (activeDelivery) {
+      this.trackingGateway.broadcastDriverLocation(activeDelivery.id, driver.id, lat, lng);
+    }
   }
 
   // Find available online drivers near a point (Haversine radius query)

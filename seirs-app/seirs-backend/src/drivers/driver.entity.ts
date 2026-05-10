@@ -11,12 +11,22 @@ import {
 import { User } from '../users/user.entity';
 import { Delivery } from '../deliveries/delivery.entity';
 
+// Canonical vehicle taxonomy. Nigerian-language aliases (okada, keke,
+// danfo) live UI-side and are normalized to these values before any API
+// call — see `normalizeVehicleType()` in shared/services/api.ts.
+//   okada  → motorcycle
+//   keke   → tricycle
+//   danfo  → van  (passenger bus, but cargo-class same as van)
+//   truck_sm → truck_small
+//   truck_lg → truck_large
 export enum VehicleType {
-  BICYCLE    = 'bicycle',
-  MOTORCYCLE = 'motorcycle',
-  TRICYCLE   = 'tricycle',
-  CAR        = 'car',
-  VAN        = 'van',
+  BICYCLE     = 'bicycle',
+  MOTORCYCLE  = 'motorcycle',
+  TRICYCLE    = 'tricycle',
+  CAR         = 'car',
+  VAN         = 'van',
+  TRUCK_SMALL = 'truck_small',
+  TRUCK_LARGE = 'truck_large',
 }
 
 export enum DriverStatus {

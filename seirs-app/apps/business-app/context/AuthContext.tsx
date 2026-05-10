@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { clearPushRegistration } from '@seirs/shared/hooks/usePushRegistration';
 
 export type BusinessRole = 'sender' | 'partner' | null;
 
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    clearPushRegistration();
     await AsyncStorage.removeItem(STORAGE_KEY);
     setUser(null);
     router.replace('/(auth)/login' as any);

@@ -57,7 +57,7 @@ export function Drawer({ visible, onClose }: Props) {
       user={{
         name:   user?.name ?? 'Driver',
         email:  user?.email ?? '',
-        avatar: <Avatar name={user?.name ?? 'Driver'} size={56} />,
+        avatar: <Avatar name={user?.name ?? 'Driver'} uri={user?.profilePhoto} size={56} />,
       }}
       items={items}
       themeToggle={{
