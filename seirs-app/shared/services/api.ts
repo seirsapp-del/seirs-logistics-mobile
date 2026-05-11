@@ -229,6 +229,22 @@ export const driversApi = {
     }>('GET', '/drivers/me/deletion-readiness'),
 };
 
+// ─── Offline GPS sync (Spec V8 §2.13) ────────────────────────────────────────
+// Driver app should queue location pings to AsyncStorage when REST fails
+// (network drop) and drain via this batch endpoint on reconnect. Server
+// flags pings older than 90s as wasOffline=true automatically.
+export interface OfflineGpsPing {
+  recordedAt: string;     // ISO timestamp from device clock at capture
+  lat:        number;
+  lng:        number;
+  deliveryId?: string;
+}
+
+export const offlineSyncApi = {
+  uploadGpsBatch: (pings: OfflineGpsPing[]) =>
+    request<{ accepted: number; rejected: number }>('POST', '/offline-sync/gps-batch', { pings }),
+};
+
 // ─── SOS / Safety ─────────────────────────────────────────────────────────────
 export interface SosAlertDTO {
   id:         string;

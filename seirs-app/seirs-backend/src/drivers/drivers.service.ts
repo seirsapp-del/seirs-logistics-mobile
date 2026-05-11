@@ -83,6 +83,24 @@ export class DriversService {
   async toggleOnline(userId: string, isOnline: boolean) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    // Spec V8 §2.12 — driver CANNOT go offline while holding active jobs.
+    // Otherwise customers' packages get abandoned mid-route.
+    if (!isOnline) {
+      const activeCount = await this.deliveriesRepo.count({
+        where: {
+          driver: { id: driver.id },
+          status: In([DeliveryStatus.ASSIGNED, DeliveryStatus.PICKED_UP, DeliveryStatus.IN_TRANSIT]),
+        },
+      });
+      if (activeCount > 0) {
+        throw new BadRequestException(
+          `ACTIVE_JOBS_PRESENT: complete or hand off your ${activeCount} active ` +
+          `${activeCount === 1 ? 'job' : 'jobs'} before going offline.`,
+        );
+      }
+    }
+
     await this.repo.update(driver.id, { isOnline });
     return { isOnline };
   }

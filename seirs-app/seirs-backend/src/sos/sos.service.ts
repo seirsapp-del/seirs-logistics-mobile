@@ -5,6 +5,8 @@ import { SosAlert, SosStatus } from './sos-alert.entity';
 import { Delivery } from '../deliveries/delivery.entity';
 import { User, UserRole } from '../users/user.entity';
 import { TrackingGateway } from '../tracking/tracking.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/notification.entity';
 
 @Injectable()
 export class SosService {
@@ -14,6 +16,7 @@ export class SosService {
     @InjectRepository(SosAlert) private readonly repo:           Repository<SosAlert>,
     @InjectRepository(Delivery) private readonly deliveriesRepo: Repository<Delivery>,
     private readonly trackingGateway: TrackingGateway,
+    private readonly notifications:   NotificationsService,
   ) {}
 
   /**
@@ -78,6 +81,18 @@ export class SosService {
           deliveryId: delivery.id,
           message:    `${user.name} pressed SOS — SEIRS support has been alerted.`,
         });
+
+        // Persistent notification + (when FCM fully wired) push.
+        this.notifications
+          .create(
+            otherUserId,
+            'SOS — SEIRS support alerted',
+            `${user.name} pressed SOS during your active trip. Support is engaging.`,
+            NotificationType.SOS_ALERT,
+            delivery.id,
+            delivery.trackingCode,
+          )
+          .catch(() => {});
       }
     }
 

@@ -5,6 +5,8 @@ import { ChatMessage } from './chat-message.entity';
 import { Delivery } from '../deliveries/delivery.entity';
 import { User } from '../users/user.entity';
 import { TrackingGateway } from '../tracking/tracking.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/notification.entity';
 
 @Injectable()
 export class ChatService {
@@ -12,6 +14,7 @@ export class ChatService {
     @InjectRepository(ChatMessage) private readonly repo:           Repository<ChatMessage>,
     @InjectRepository(Delivery)    private readonly deliveriesRepo: Repository<Delivery>,
     private readonly trackingGateway: TrackingGateway,
+    private readonly notifications:   NotificationsService,
   ) {}
 
   /**
@@ -79,6 +82,27 @@ export class ChatService {
       senderId:  sender.id,
       createdAt: saved.createdAt,
     });
+
+    // Persistent notification for the recipient — surfaces in their
+    // notification bell + (when FCM is fully wired) fires a push so
+    // they see it even if the chat screen isn't open.
+    const recipientId =
+      delivery.customer?.id === sender.id
+        ? delivery.driver?.user?.id
+        : delivery.customer?.id;
+    if (recipientId) {
+      // Fire-and-forget — chat send response shouldn't block on notif persistence.
+      this.notifications
+        .create(
+          recipientId,
+          sender.name ?? 'New message',
+          trimmed.length > 80 ? `${trimmed.slice(0, 77)}…` : trimmed,
+          NotificationType.CHAT_MESSAGE,
+          delivery.id,
+          delivery.trackingCode,
+        )
+        .catch(() => { /* logged inside service */ });
+    }
 
     return saved;
   }

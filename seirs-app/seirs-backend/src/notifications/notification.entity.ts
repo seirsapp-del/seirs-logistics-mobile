@@ -9,6 +9,8 @@ export enum NotificationType {
   STATUS_UPDATE     = 'status_update',
   DELIVERY_COMPLETE = 'delivery_complete',
   PAYMENT_RECEIVED  = 'payment_received',
+  CHAT_MESSAGE      = 'chat_message',
+  SOS_ALERT         = 'sos_alert',
   GENERAL           = 'general',
 }
 

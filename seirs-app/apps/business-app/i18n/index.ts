@@ -28,16 +28,27 @@ async function getStoredLanguage(): Promise<string> {
   catch { return 'en'; }
 }
 
-getStoredLanguage().then((lang) => {
-  i18n
-    .use(initReactI18next)
-    .init({
-      resources:       { en: { translation: en }, yo: { translation: yo }, ig: { translation: ig }, ha: { translation: ha } },
-      lng:             lang,
-      fallbackLng:     'en',
-      interpolation:   { escapeValue: false },
-      compatibilityJSON: 'v4' as any,
-    });
-});
+/**
+ * Async initialiser called by app/_layout.tsx before rendering anything
+ * that uses useTranslation(). Exported as a named function so the layout
+ * can await it; otherwise the first screen that calls t() would see an
+ * undefined `t` for one render and crash.
+ *
+ * Idempotent — safe to call more than once. The previous fire-and-forget
+ * auto-init pattern caused a TypeError when the layout did
+ * `import { initI18n }` because no such export existed.
+ */
+export async function initI18n(): Promise<typeof i18n> {
+  if (i18n.isInitialized) return i18n;
+  const lang = await getStoredLanguage();
+  await i18n.use(initReactI18next).init({
+    resources:       { en: { translation: en }, yo: { translation: yo }, ig: { translation: ig }, ha: { translation: ha } },
+    lng:             lang,
+    fallbackLng:     'en',
+    interpolation:   { escapeValue: false },
+    compatibilityJSON: 'v4' as any,
+  });
+  return i18n;
+}
 
 export default i18n;

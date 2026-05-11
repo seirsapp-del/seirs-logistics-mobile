@@ -32,4 +32,19 @@ config.resolver.extraNodeModules = {
 // node_modules and Metro's hierarchical lookup picks it up for some imports.
 config.resolver.disableHierarchicalLookup = true;
 
+// Tell the file watcher to ignore folders that change a lot but don't
+// belong to the bundle — silences "Error 'ENOENT' reading contents of
+// ...seirs-backend/node_modules..." spam during npm installs and backend
+// builds. The regex is matched against absolute paths (Windows + Unix).
+config.watcher = config.watcher ?? {};
+config.watcher.watchman = config.watcher.watchman ?? {};
+config.resolver.blockList = [
+  /seirs-backend[\\/]node_modules[\\/].*/,
+  /seirs-backend[\\/]dist[\\/].*/,
+  /seirs-backend[\\/]uploads[\\/].*/,
+  /[\\/]\.git[\\/].*/,
+  /[\\/]android[\\/]build[\\/].*/,
+  /[\\/]android[\\/]\.gradle[\\/].*/,
+];
+
 module.exports = config;

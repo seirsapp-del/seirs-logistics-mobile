@@ -45,3 +45,11 @@ This folder holds Lottie JSON files for marketing-page animations.
 This is the first commit setting up Lottie infra. Free animations are
 trivial to add later — no rebuild needed once the Next.js dev/prod
 build is restarted. Drop in JSONs and ship.
+
+## Live preview while sourcing
+
+Visit [`/lottie-preview`](http://localhost:3000/lottie-preview) on your
+running Next.js dev server. It auto-discovers every JSON in this folder
+and renders them with size warnings + ready-to-paste import snippets.
+Useful for trying 5 candidates and picking the best one before wiring
+into a production page. Delete the route once production pages are wired.

@@ -32,4 +32,15 @@ config.resolver.extraNodeModules = {
 // node_modules and Metro's hierarchical lookup picks it up for some imports.
 config.resolver.disableHierarchicalLookup = true;
 
+// Silence "Error 'ENOENT' reading contents of ...seirs-backend/node_modules..."
+// spam during npm installs and backend rebuilds. Folders here aren't bundled.
+config.resolver.blockList = [
+  /seirs-backend[\\/]node_modules[\\/].*/,
+  /seirs-backend[\\/]dist[\\/].*/,
+  /seirs-backend[\\/]uploads[\\/].*/,
+  /[\\/]\.git[\\/].*/,
+  /[\\/]android[\\/]build[\\/].*/,
+  /[\\/]android[\\/]\.gradle[\\/].*/,
+];
+
 module.exports = config;

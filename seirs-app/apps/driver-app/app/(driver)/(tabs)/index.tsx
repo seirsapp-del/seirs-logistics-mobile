@@ -131,12 +131,14 @@ export default function DriverHomeScreen() {
         stopLocationUpdates();
       }
     } catch (e: any) {
-      // Surface the error so the user knows why nothing happened — silent
-      // catches were hiding a "Driver profile not found" backend response
-      // for accounts that signed up but haven't been provisioned as a driver.
+      // Backend codes the message; we strip the leading code prefix so
+      // the user sees a clean sentence, and tailor the title for known cases.
+      const raw = e?.message ?? 'Something went wrong. Please try again.';
+      const isActiveJobs = raw.includes('ACTIVE_JOBS_PRESENT');
+      const friendly = raw.replace(/^[A-Z_]+:\s*/, '');
       Alert.alert(
-        'Could not change status',
-        e?.message ?? 'Something went wrong. Please try again.',
+        isActiveJobs ? 'Finish your active jobs first' : 'Could not change status',
+        friendly,
       );
     } finally {
       setToggling(false);
