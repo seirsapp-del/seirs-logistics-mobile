@@ -19,6 +19,7 @@ import { Icon } from '@/components/Icon';
 import { uploadApi, partnerApi } from '@/services/api';
 import { StatePicker } from '@/components/StatePicker';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
+import { useColors, useTheme } from '@/context/ThemeContext';
 
 interface ApplicationStatus {
   storeId:    string;
@@ -32,6 +33,8 @@ interface ApplicationStatus {
 export default function ApplyPartnerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+  const { isDark } = useTheme();
 
   const [existing, setExisting] = useState<ApplicationStatus | null>(null);
   const [loading,  setLoading]  = useState(true);
@@ -120,26 +123,28 @@ export default function ApplyPartnerScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator color="#3A7BD5" />
+      <View style={[styles.center, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <ActivityIndicator color={colors.accent} />
       </View>
     );
   }
 
-  // Existing application states — different UI for each.
   if (existing && existing.status === 'pending_review') {
     return (
-      <View style={[styles.container, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
+      <View style={[styles.container, {
+        paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24,
+        backgroundColor: colors.background,
+      }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
+          <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <View style={styles.statusCard}>
+        <View style={[styles.statusCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={[styles.statusBadge, { backgroundColor: '#FFFBEB' }]}>
             <Icon name="Clock" size={20} color="#D97706" />
           </View>
-          <Text style={styles.statusTitle}>Application under review</Text>
-          <Text style={styles.statusBody}>
-            SEIRS is reviewing your KYC documents for <Text style={styles.bold}>{existing.storeName}</Text>.
+          <Text style={[styles.statusTitle, { color: colors.text }]}>Application under review</Text>
+          <Text style={[styles.statusBody, { color: colors.textSecond }]}>
+            SEIRS is reviewing your KYC documents for <Text style={[styles.bold, { color: colors.text }]}>{existing.storeName}</Text>.
             Reviews typically complete within 24-48 hours. We&apos;ll send an email when you&apos;re approved.
           </Text>
         </View>
@@ -149,17 +154,20 @@ export default function ApplyPartnerScreen() {
 
   if (existing && existing.status === 'approved') {
     return (
-      <View style={[styles.container, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
+      <View style={[styles.container, {
+        paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24,
+        backgroundColor: colors.background,
+      }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
+          <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <View style={styles.statusCard}>
+        <View style={[styles.statusCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={[styles.statusBadge, { backgroundColor: '#ECFDF5' }]}>
             <Icon name="CheckCircle2" size={20} color="#10B981" />
           </View>
-          <Text style={styles.statusTitle}>You&apos;re approved!</Text>
-          <Text style={styles.statusBody}>
-            <Text style={styles.bold}>{existing.storeName}</Text> can now accept SEIRS drop-offs.
+          <Text style={[styles.statusTitle, { color: colors.text }]}>You&apos;re approved!</Text>
+          <Text style={[styles.statusBody, { color: colors.textSecond }]}>
+            <Text style={[styles.bold, { color: colors.text }]}>{existing.storeName}</Text> can now accept SEIRS drop-offs.
             Use the mode switcher at the top of the app to toggle between sending and partner modes.
           </Text>
         </View>
@@ -169,23 +177,29 @@ export default function ApplyPartnerScreen() {
 
   // Rejected, suspended, or no application yet — show the form.
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={[styles.form, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={[styles.form, {
+          paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24,
+          backgroundColor: colors.background,
+        }]}
         keyboardShouldPersistTaps="handled"
       >
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
+          <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
 
-        <Text style={styles.heading}>Apply to be a Partner Store</Text>
-        <Text style={styles.sub}>
+        <Text style={[styles.heading, { color: colors.text }]}>Apply to be a Partner Store</Text>
+        <Text style={[styles.sub, { color: colors.textSecond }]}>
           Operate a SEIRS collection point. Earn ₦500 per package, weekly payouts.
           We&apos;ll review your KYC docs within 24-48 hours.
         </Text>
 
         {existing?.status === 'rejected' && existing.reviewNote && (
-          <View style={styles.errorBox}>
+          <View style={[styles.errorBox, {
+            backgroundColor: isDark ? '#3F1F1F' : '#FEF2F2',
+            borderColor:     isDark ? '#7F1D1D' : '#FECACA',
+          }]}>
             <Icon name="AlertCircle" size={16} color="#DC2626" />
             <View style={{ flex: 1 }}>
               <Text style={styles.errorTitle}>Previous application rejected</Text>
@@ -194,34 +208,31 @@ export default function ApplyPartnerScreen() {
           </View>
         )}
 
-        <Text style={styles.label}>Store Name</Text>
-        <View style={styles.inputWrap}>
+        <Text style={[styles.label, { color: colors.textSecond }]}>Store Name</Text>
+        <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: colors.text }]}
             value={form.storeName}
             onChangeText={(v) => setForm({ ...form, storeName: v })}
             placeholder="Mama Ngozi Kiosk"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textThird}
           />
         </View>
 
-        {/* Structured address — state picker locks the canonical name so
-            dispatch + zone pricing can filter reliably, then Google Places
-            autocomplete (biased to the state) gives real Nigerian streets
-            instead of a free-text guess. Same pattern as the register form. */}
+        {/* Structured address (state + city + street autocomplete) */}
         <StatePicker
           label="State"
           value={form.state}
           onChange={(s) => setForm({ ...form, state: s })}
         />
-        <Text style={styles.label}>City / LGA</Text>
-        <View style={styles.inputWrap}>
+        <Text style={[styles.label, { color: colors.textSecond }]}>City / LGA</Text>
+        <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: colors.text }]}
             value={form.city}
             onChangeText={(v) => setForm({ ...form, city: v })}
             placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textThird}
           />
         </View>
         <View style={{ marginBottom: 14 }}>
@@ -234,31 +245,31 @@ export default function ApplyPartnerScreen() {
           />
         </View>
 
-        <Text style={styles.label}>Phone Number</Text>
-        <View style={styles.inputWrap}>
+        <Text style={[styles.label, { color: colors.textSecond }]}>Phone Number</Text>
+        <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: colors.text }]}
             value={form.phone}
             onChangeText={(v) => setForm({ ...form, phone: v })}
             placeholder="08012345678"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textThird}
             keyboardType="phone-pad"
           />
         </View>
 
-        <Text style={styles.label}>Max Package Capacity</Text>
-        <View style={styles.inputWrap}>
+        <Text style={[styles.label, { color: colors.textSecond }]}>Max Package Capacity</Text>
+        <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: colors.text }]}
             value={form.maxCapacity}
             onChangeText={(v) => setForm({ ...form, maxCapacity: v })}
             placeholder="50"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textThird}
             keyboardType="numeric"
           />
         </View>
 
-        <Text style={styles.section}>KYC Documents</Text>
+        <Text style={[styles.section, { color: colors.text }]}>KYC Documents</Text>
 
         <PhotoSlot
           label="Storefront photo (required)"
@@ -280,7 +291,11 @@ export default function ApplyPartnerScreen() {
         />
 
         <Pressable
-          style={[styles.btn, (!formValid || submitting) && styles.btnDisabled]}
+          style={[
+            styles.btn,
+            { backgroundColor: colors.primary },
+            (!formValid || submitting) && styles.btnDisabled,
+          ]}
           onPress={handleSubmit}
           disabled={!formValid || submitting}
         >
@@ -289,8 +304,7 @@ export default function ApplyPartnerScreen() {
             : <>
                 <Text style={styles.btnText}>Submit Application</Text>
                 <Icon name="ArrowRight" size={18} color="#fff" />
-              </>
-          }
+              </>}
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -300,66 +314,64 @@ export default function ApplyPartnerScreen() {
 function PhotoSlot({ label, uri, onPick, hint }: {
   label: string; uri: string | null; onPick: () => void; hint: string;
 }) {
+  const colors = useColors();
   return (
     <View style={{ marginBottom: 14 }}>
-      <Text style={styles.label}>{label}</Text>
-      <Pressable style={styles.photoSlot} onPress={onPick}>
+      <Text style={[styles.label, { color: colors.textSecond }]}>{label}</Text>
+      <Pressable style={[styles.photoSlot, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={onPick}>
         {uri ? (
           <Image source={{ uri }} style={styles.photoPreview} />
         ) : (
           <View style={styles.photoEmpty}>
-            <Icon name="Camera" size={28} color="#9CA3AF" />
-            <Text style={styles.photoEmptyText}>Tap to upload</Text>
+            <Icon name="Camera" size={28} color={colors.textThird} />
+            <Text style={[styles.photoEmptyText, { color: colors.textSecond }]}>Tap to upload</Text>
           </View>
         )}
       </Pressable>
-      <Text style={styles.hint}>{hint}</Text>
+      <Text style={[styles.hint, { color: colors.textThird }]}>{hint}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F0', paddingHorizontal: 24 },
-  form:      { backgroundColor: '#F5F5F0', paddingHorizontal: 24 },
-  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F0' },
+  container: { flex: 1, paddingHorizontal: 24 },
+  form:      { paddingHorizontal: 24 },
+  center:    { flex: 1, alignItems: 'center', justifyContent: 'center' },
   backBtn:   { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginLeft: -8 },
-  heading:   { fontSize: 24, fontWeight: '800', color: '#0F2B4C', marginBottom: 8 },
-  sub:       { fontSize: 14, color: '#6B7280', marginBottom: 24, lineHeight: 20 },
-  section:   { fontSize: 16, fontWeight: '700', color: '#0F2B4C', marginTop: 16, marginBottom: 12 },
-  label:     { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
+  heading:   { fontSize: 24, fontWeight: '800', marginBottom: 8 },
+  sub:       { fontSize: 14, marginBottom: 24, lineHeight: 20 },
+  section:   { fontSize: 16, fontWeight: '700', marginTop: 16, marginBottom: 12 },
+  label:     { fontSize: 13, fontWeight: '600', marginBottom: 6 },
   inputWrap: {
-    backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
-    borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 14,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
+    borderWidth: 1, marginBottom: 14,
   },
-  input:     { fontSize: 15, color: '#0F2B4C' },
-  hint:      { fontSize: 11, color: '#9CA3AF', marginTop: 4, marginLeft: 4 },
-  photoSlot: {
-    height: 140, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E5E7EB',
-    borderStyle: 'dashed', overflow: 'hidden',
-  },
+  input:     { fontSize: 15 },
+  hint:      { fontSize: 11, marginTop: 4, marginLeft: 4 },
+  photoSlot: { height: 140, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', overflow: 'hidden' },
   photoEmpty:     { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  photoEmptyText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+  photoEmptyText: { fontSize: 13, fontWeight: '500' },
   photoPreview:   { width: '100%', height: '100%' },
   errorBox: {
-    flexDirection: 'row', gap: 10, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
+    flexDirection: 'row', gap: 10, borderWidth: 1,
     borderRadius: 10, padding: 12, marginBottom: 16,
   },
   errorTitle: { color: '#991B1B', fontSize: 13, fontWeight: '700', marginBottom: 2 },
   errorText:  { color: '#DC2626', fontSize: 12 },
   btn: {
-    backgroundColor: '#0F2B4C', borderRadius: 14, paddingVertical: 16,
+    borderRadius: 14, paddingVertical: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16,
   },
   btnDisabled: { opacity: 0.4 },
   btnText:     { color: '#fff', fontWeight: '700', fontSize: 16 },
   statusCard:  {
-    backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center',
-    borderWidth: 1, borderColor: '#E5E7EB', marginTop: 40,
+    borderRadius: 16, padding: 24, alignItems: 'center',
+    borderWidth: 1, marginTop: 40,
   },
   statusBadge: {
     width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
-  statusTitle: { fontSize: 20, fontWeight: '800', color: '#0F2B4C', marginBottom: 8, textAlign: 'center' },
-  statusBody:  { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22 },
-  bold:        { fontWeight: '700', color: '#0F2B4C' },
+  statusTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+  statusBody:  { fontSize: 14, textAlign: 'center', lineHeight: 22 },
+  bold:        { fontWeight: '700' },
 });

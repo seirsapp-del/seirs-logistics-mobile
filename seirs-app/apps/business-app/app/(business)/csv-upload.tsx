@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { Icon } from '@/components/Icon';
 import { businessApi } from '@/services/api';
+import { useColors } from '@/context/ThemeContext';
 
 // Shape of the backend preview response — mirrors what
 // business.service.uploadCsvDeliveries() returns.
@@ -78,6 +79,7 @@ const TEMPLATE_CSV =
 export default function CsvUploadScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const colors = useColors();
 
   const [file,     setFile]     = useState<{ name: string; uri: string } | null>(null);
   const [preview,  setPreview]  = useState<CsvPreviewResponse | null>(null);
@@ -177,14 +179,18 @@ export default function CsvUploadScreen() {
 
   // ── Render ──────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F0' }}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={[styles.header, {
+        paddingTop: insets.top + 12,
+        backgroundColor: colors.surface,
+        borderBottomColor: colors.border,
+      }]}>
         <Pressable onPress={() => router.back()}>
-          <Icon name="ArrowLeft" size={22} color="#0F2B4C" />
+          <Icon name="ArrowLeft" size={22} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>CSV Bulk Upload</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>CSV Bulk Upload</Text>
         <Pressable onPress={downloadTemplate}>
-          <Icon name="FileText" size={20} color="#3A7BD5" />
+          <Icon name="FileText" size={20} color={colors.accent} />
         </Pressable>
       </View>
 
@@ -207,19 +213,19 @@ export default function CsvUploadScreen() {
         </View>
 
         {/* Upload zone */}
-        <Pressable style={styles.dropzone} onPress={pickFile}>
-          <View style={styles.dropIcon}>
-            <Icon name="Upload" size={28} color={file ? '#16A34A' : '#3A7BD5'} />
+        <Pressable style={[styles.dropzone, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={pickFile}>
+          <View style={[styles.dropIcon, { backgroundColor: colors.primaryLight }]}>
+            <Icon name="Upload" size={28} color={file ? '#16A34A' : colors.accent} />
           </View>
           {file ? (
             <>
-              <Text style={styles.dropTitle}>{file.name}</Text>
-              <Text style={styles.dropSub}>Tap to change file</Text>
+              <Text style={[styles.dropTitle, { color: colors.text }]}>{file.name}</Text>
+              <Text style={[styles.dropSub, { color: colors.textSecond }]}>Tap to change file</Text>
             </>
           ) : (
             <>
-              <Text style={styles.dropTitle}>Select CSV file</Text>
-              <Text style={styles.dropSub}>Tap to browse your device</Text>
+              <Text style={[styles.dropTitle, { color: colors.text }]}>Select CSV file</Text>
+              <Text style={[styles.dropSub, { color: colors.textSecond }]}>Tap to browse your device</Text>
             </>
           )}
         </Pressable>
@@ -231,31 +237,26 @@ export default function CsvUploadScreen() {
           </View>
         )}
 
-        {/* Step: pick → fetch preview button */}
         {file && step === 'pick' && (
-          <Pressable style={styles.primaryBtn} onPress={fetchPreview}>
+          <Pressable style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={fetchPreview}>
             <Icon name="Upload" size={18} color="#fff" />
             <Text style={styles.primaryBtnText}>Upload &amp; Preview</Text>
           </Pressable>
         )}
 
-        {/* Step: preview (server-side response) */}
         {step === 'preview' && !preview && (
-          <View style={styles.spinnerCard}>
-            <ActivityIndicator color="#3A7BD5" />
-            <Text style={styles.spinnerText}>Validating + geocoding + pricing every row…</Text>
+          <View style={[styles.spinnerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <ActivityIndicator color={colors.accent} />
+            <Text style={[styles.spinnerText, { color: colors.textSecond }]}>Validating + geocoding + pricing every row…</Text>
           </View>
         )}
 
-        {preview && (
-          <PreviewView preview={preview} />
-        )}
+        {preview && <PreviewView preview={preview} />}
 
-        {/* Step: creating */}
         {step === 'creating' && (
-          <View style={styles.spinnerCard}>
-            <ActivityIndicator color="#3A7BD5" />
-            <Text style={styles.spinnerText}>
+          <View style={[styles.spinnerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <ActivityIndicator color={colors.accent} />
+            <Text style={[styles.spinnerText, { color: colors.textSecond }]}>
               Creating {progress.done + progress.failed} / {progress.total} bookings…
             </Text>
             {progress.failed > 0 && (
@@ -266,27 +267,29 @@ export default function CsvUploadScreen() {
           </View>
         )}
 
-        {/* Step: done */}
         {step === 'done' && (
-          <View style={styles.doneCard}>
+          <View style={[styles.doneCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Icon name="CheckCircle2" size={32} color="#16A34A" />
-            <Text style={styles.doneTitle}>Done</Text>
-            <Text style={styles.doneSub}>
+            <Text style={[styles.doneTitle, { color: colors.text }]}>Done</Text>
+            <Text style={[styles.doneSub, { color: colors.textSecond }]}>
               Created {progress.done} bookings.
               {progress.failed > 0 ? ` ${progress.failed} failed.` : ''}
             </Text>
-            <Pressable style={styles.primaryBtn} onPress={() => router.replace('/(business)/(tabs)/deliveries' as any)}>
+            <Pressable style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={() => router.replace('/(business)/(tabs)/deliveries' as any)}>
               <Text style={styles.primaryBtnText}>View Deliveries</Text>
             </Pressable>
           </View>
         )}
       </ScrollView>
 
-      {/* Confirm CTA — sticky at bottom when preview is ready */}
       {preview && step === 'preview' && (
-        <View style={[styles.cta, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={[styles.cta, {
+          paddingBottom: insets.bottom + 16,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        }]}>
           <Pressable
-            style={[styles.ctaBtn, !preview.canAfford && styles.ctaBtnDisabled]}
+            style={[styles.ctaBtn, { backgroundColor: colors.primary }, !preview.canAfford && styles.ctaBtnDisabled]}
             onPress={confirmCreate}
           >
             <Icon name="Check" size={18} color="#fff" />
@@ -307,46 +310,45 @@ export default function CsvUploadScreen() {
 
 // ── Preview rendering ────────────────────────────────────────────────────
 function PreviewView({ preview }: { preview: CsvPreviewResponse }) {
+  const colors = useColors();
   const validCount   = preview.bookings.filter(b => b.valid).length;
   const invalidCount = preview.bookings.length - validCount;
 
   return (
     <View style={{ marginTop: 8, gap: 12 }}>
-      {/* Summary card */}
-      <View style={styles.summaryCard}>
+      <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Bookings</Text>
-          <Text style={styles.summaryValue}>{preview.bookings.length}</Text>
+          <Text style={[styles.summaryLabel, { color: colors.text }]}>Bookings</Text>
+          <Text style={[styles.summaryValue, { color: colors.text }]}>{preview.bookings.length}</Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Valid (ready to create)</Text>
+          <Text style={[styles.summaryLabel, { color: colors.text }]}>Valid (ready to create)</Text>
           <Text style={[styles.summaryValue, { color: '#16A34A' }]}>{validCount}</Text>
         </View>
         {invalidCount > 0 && (
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Need fixes</Text>
+            <Text style={[styles.summaryLabel, { color: colors.text }]}>Need fixes</Text>
             <Text style={[styles.summaryValue, { color: '#DC2626' }]}>{invalidCount}</Text>
           </View>
         )}
         {preview.bulkDiscountApplied && (
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Bulk discount</Text>
+            <Text style={[styles.summaryLabel, { color: colors.text }]}>Bulk discount</Text>
             <Text style={[styles.summaryValue, { color: '#16A34A' }]}>−{preview.bulkDiscountPercent}%</Text>
           </View>
         )}
-        <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 8, marginTop: 4 }]}>
-          <Text style={[styles.summaryLabel, { fontWeight: '700' }]}>Total</Text>
-          <Text style={[styles.summaryValue, { fontWeight: '700' }]}>₦{Math.round(preview.grandTotal).toLocaleString()}</Text>
+        <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, marginTop: 4 }]}>
+          <Text style={[styles.summaryLabel, { fontWeight: '700', color: colors.text }]}>Total</Text>
+          <Text style={[styles.summaryValue, { fontWeight: '700', color: colors.text }]}>₦{Math.round(preview.grandTotal).toLocaleString()}</Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Wallet</Text>
+          <Text style={[styles.summaryLabel, { color: colors.text }]}>Wallet</Text>
           <Text style={[styles.summaryValue, { color: preview.canAfford ? '#16A34A' : '#DC2626' }]}>
             ₦{Math.round(preview.walletBalance).toLocaleString()}
           </Text>
         </View>
       </View>
 
-      {/* Per-booking cards */}
       {preview.bookings.map((b, idx) => (
         <BookingCard key={idx} booking={b} index={idx + 1} />
       ))}
@@ -355,14 +357,19 @@ function PreviewView({ preview }: { preview: CsvPreviewResponse }) {
 }
 
 function BookingCard({ booking, index }: { booking: BookingPreview; index: number }) {
+  const colors = useColors();
   const isMulti = booking.rows.length > 1;
   return (
-    <View style={[styles.bookingCard, !booking.valid && styles.bookingCardError]}>
+    <View style={[
+      styles.bookingCard,
+      { backgroundColor: colors.surface, borderColor: colors.border },
+      !booking.valid && { borderColor: '#FECACA', backgroundColor: colors.background },
+    ]}>
       <View style={styles.bookingHeader}>
-        <Text style={styles.bookingTitle}>
+        <Text style={[styles.bookingTitle, { color: colors.text }]}>
           {booking.bookingRef ? `Booking ${booking.bookingRef}` : `Booking ${index}`}
           {' '}
-          <Text style={styles.bookingSub}>
+          <Text style={[styles.bookingSub, { color: colors.textSecond }]}>
             {isMulti ? `${booking.rows.length}-stop` : 'single stop'}
           </Text>
         </Text>
@@ -379,7 +386,6 @@ function BookingCard({ booking, index }: { booking: BookingPreview; index: numbe
         )}
       </View>
 
-      {/* Errors */}
       {booking.errors.length > 0 && (
         <View style={styles.bookingErrors}>
           {booking.errors.map((e, i) => (
@@ -388,14 +394,13 @@ function BookingCard({ booking, index }: { booking: BookingPreview; index: numbe
         </View>
       )}
 
-      {/* Rows */}
       {booking.rows.map((row, i) => (
-        <View key={i} style={styles.rowMeta}>
-          <Text style={styles.rowLine}>
-            <Text style={styles.rowLabel}>Line {row.lineNumber}: </Text>
+        <View key={i} style={[styles.rowMeta, { borderTopColor: colors.border }]}>
+          <Text style={[styles.rowLine, { color: colors.text }]}>
+            <Text style={[styles.rowLabel, { color: colors.textThird }]}>Line {row.lineNumber}: </Text>
             {row.recipientName} → {row.drop.address || '(no address)'}
           </Text>
-          <Text style={styles.rowDetails}>
+          <Text style={[styles.rowDetails, { color: colors.textSecond }]}>
             {row.category} · {row.weightKg} kg · {row.recipientPhone}
           </Text>
           {row.errors.length > 0 && row.errors.map((e, j) => (
@@ -404,11 +409,10 @@ function BookingCard({ booking, index }: { booking: BookingPreview; index: numbe
         </View>
       ))}
 
-      {/* Price preview */}
       {booking.pricePreview && (
-        <View style={styles.bookingFooter}>
-          <Text style={styles.bookingFooterLabel}>This booking:</Text>
-          <Text style={styles.bookingFooterValue}>
+        <View style={[styles.bookingFooter, { borderTopColor: colors.border }]}>
+          <Text style={[styles.bookingFooterLabel, { color: colors.textSecond }]}>This booking:</Text>
+          <Text style={[styles.bookingFooterValue, { color: colors.text }]}>
             ₦{Math.round(booking.pricePreview.customer.total).toLocaleString()}
           </Text>
         </View>
@@ -420,11 +424,13 @@ function BookingCard({ booking, index }: { booking: BookingPreview; index: numbe
 const styles = StyleSheet.create({
   header:       {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingBottom: 12,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1,
   },
-  headerTitle:  { fontSize: 16, fontWeight: '700', color: '#0F2B4C' },
+  headerTitle:  { fontSize: 16, fontWeight: '700' },
 
+  // Info banner intentionally keeps light-blue accent in both modes — it
+  // reads cleanly against either background and the brand sky-blue tint
+  // signals it's informational.
   infoBox:      {
     flexDirection: 'row', gap: 12, alignItems: 'flex-start',
     backgroundColor: '#EBF3FF', borderRadius: 12, padding: 14, marginBottom: 20,
@@ -436,15 +442,14 @@ const styles = StyleSheet.create({
 
   dropzone:     {
     alignItems: 'center', justifyContent: 'center', paddingVertical: 40,
-    backgroundColor: '#fff', borderRadius: 16, borderWidth: 2, borderStyle: 'dashed',
-    borderColor: '#D1D5DB', marginBottom: 16,
+    borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', marginBottom: 16,
   },
   dropIcon:     {
-    width: 64, height: 64, borderRadius: 18, backgroundColor: '#F0F5FF',
+    width: 64, height: 64, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
-  dropTitle:    { fontSize: 15, fontWeight: '700', color: '#0F2B4C', marginBottom: 4 },
-  dropSub:      { fontSize: 13, color: '#6B7280' },
+  dropTitle:    { fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  dropSub:      { fontSize: 13 },
 
   errorBox:     {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -455,41 +460,26 @@ const styles = StyleSheet.create({
 
   primaryBtn:   {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#0F2B4C', borderRadius: 12, paddingVertical: 14, marginTop: 8,
+    borderRadius: 12, paddingVertical: 14, marginTop: 8,
   },
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
-  spinnerCard:  {
-    backgroundColor: '#fff', borderRadius: 12, padding: 24, marginTop: 16,
-    borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', gap: 12,
-  },
-  spinnerText:  { fontSize: 13, color: '#6B7280' },
+  spinnerCard:  { borderRadius: 12, padding: 24, marginTop: 16, borderWidth: 1, alignItems: 'center', gap: 12 },
+  spinnerText:  { fontSize: 13 },
 
-  doneCard:     {
-    backgroundColor: '#fff', borderRadius: 12, padding: 24, marginTop: 16,
-    borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', gap: 6,
-  },
-  doneTitle:    { fontSize: 18, fontWeight: '700', color: '#0F2B4C' },
-  doneSub:      { fontSize: 13, color: '#6B7280', marginBottom: 16 },
+  doneCard:     { borderRadius: 12, padding: 24, marginTop: 16, borderWidth: 1, alignItems: 'center', gap: 6 },
+  doneTitle:    { fontSize: 18, fontWeight: '700' },
+  doneSub:      { fontSize: 13, marginBottom: 16 },
 
-  // Summary
-  summaryCard:  {
-    backgroundColor: '#fff', borderRadius: 12, padding: 14, gap: 6,
-    borderWidth: 1, borderColor: '#E5E7EB',
-  },
+  summaryCard:  { borderRadius: 12, padding: 14, gap: 6, borderWidth: 1 },
   summaryRow:   { flexDirection: 'row', justifyContent: 'space-between' },
-  summaryLabel: { fontSize: 13, color: '#374151' },
-  summaryValue: { fontSize: 13, color: '#0F2B4C', fontVariant: ['tabular-nums'] },
+  summaryLabel: { fontSize: 13 },
+  summaryValue: { fontSize: 13, fontVariant: ['tabular-nums'] },
 
-  // Booking cards
-  bookingCard:  {
-    backgroundColor: '#fff', borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: '#E5E7EB',
-  },
-  bookingCardError: { borderColor: '#FECACA', backgroundColor: '#FFFBFB' },
+  bookingCard:  { borderRadius: 12, padding: 14, borderWidth: 1 },
   bookingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  bookingTitle: { fontSize: 14, fontWeight: '700', color: '#0F2B4C' },
-  bookingSub:   { fontSize: 12, fontWeight: '400', color: '#6B7280' },
+  bookingTitle: { fontSize: 14, fontWeight: '700' },
+  bookingSub:   { fontSize: 12, fontWeight: '400' },
   validPill:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   errorPill:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   pillText:     { fontSize: 11, fontWeight: '700' },
@@ -497,27 +487,25 @@ const styles = StyleSheet.create({
   bookingErrors: { backgroundColor: '#FEF2F2', borderRadius: 8, padding: 8, marginBottom: 8 },
   bookingErrorText: { fontSize: 11, color: '#DC2626', lineHeight: 16 },
 
-  rowMeta: { paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  rowLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '700' },
-  rowLine:  { fontSize: 12, color: '#0F2B4C' },
-  rowDetails: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  rowMeta: { paddingVertical: 6, borderTopWidth: 1 },
+  rowLabel: { fontSize: 11, fontWeight: '700' },
+  rowLine:  { fontSize: 12 },
+  rowDetails: { fontSize: 11, marginTop: 2 },
   rowError: { fontSize: 11, color: '#DC2626', marginTop: 2 },
 
   bookingFooter: {
     flexDirection: 'row', justifyContent: 'space-between',
-    paddingTop: 8, marginTop: 6, borderTopWidth: 1, borderTopColor: '#E5E7EB',
+    paddingTop: 8, marginTop: 6, borderTopWidth: 1,
   },
-  bookingFooterLabel: { fontSize: 12, color: '#6B7280' },
-  bookingFooterValue: { fontSize: 14, fontWeight: '700', color: '#0F2B4C' },
+  bookingFooterLabel: { fontSize: 12 },
+  bookingFooterValue: { fontSize: 14, fontWeight: '700' },
 
-  // CTA
   cta:          {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 12,
-    borderTopWidth: 1, borderTopColor: '#E5E7EB',
+    paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1,
   },
   ctaBtn:       {
-    backgroundColor: '#0F2B4C', borderRadius: 14, paddingVertical: 14,
+    borderRadius: 14, paddingVertical: 14,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   ctaBtnDisabled: { opacity: 0.4 },
