@@ -5,6 +5,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { businessApi } from '@/services/api';
+import { useColors } from '@/context/ThemeContext';
 
 const STATUSES = ['all', 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled'];
 
@@ -22,16 +23,20 @@ const fmt = (n: number) =>
 interface Delivery {
   id:              string;
   trackingNumber?: string;
-  dropoffAddress:  string;
+  trackingCode?:   string;
+  dropoffAddress?: string;
+  pickupAddress?:  string;
   status:          string;
   price:           number;
   vehicleType:     string;
   createdAt:       string;
-  stops?:          number;
+  stops?:          any[];
+  isMultiStop?:    boolean;
 }
 
 export default function DeliveriesScreen() {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,7 +50,7 @@ export default function DeliveriesScreen() {
     try {
       const data = await businessApi.deliveries(p, status !== 'all' ? status : undefined, search || undefined);
       const items = Array.isArray(data) ? data : data?.items ?? [];
-      setDeliveries(reset || p === 1 ? items : (prev) => [...prev, ...items]);
+      setDeliveries((prev) => (reset || p === 1 ? items : [...prev, ...items]));
       setHasMore(data?.hasMore ?? false);
       setPage(p);
     } finally {
@@ -59,87 +64,106 @@ export default function DeliveriesScreen() {
   const onRefresh = () => { setRefreshing(true); load(1, true); };
 
   const renderItem = ({ item }: { item: Delivery }) => {
-    const color = STATUS_COLOR[item.status] ?? '#9CA3AF';
+    const c = STATUS_COLOR[item.status] ?? colors.textThird;
+    const stopCount = item.stops?.length ?? (item.isMultiStop ? 0 : 1);
+    const address = item.dropoffAddress
+      ?? (item.stops?.[item.stops.length - 1] as any)?.address
+      ?? item.pickupAddress
+      ?? '—';
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardTop}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.trackNum}>{item.trackingNumber ?? item.id.slice(0, 8).toUpperCase()}</Text>
-            <Text style={styles.address} numberOfLines={1}>{item.dropoffAddress}</Text>
+            <Text style={[styles.trackNum, { color: colors.text }]}>
+              {item.trackingNumber ?? item.trackingCode ?? item.id.slice(0, 8).toUpperCase()}
+            </Text>
+            <Text style={[styles.address, { color: colors.textSecond }]} numberOfLines={1}>{address}</Text>
           </View>
-          <View style={[styles.badge, { backgroundColor: color + '20' }]}>
-            <Text style={[styles.badgeText, { color }]}>{item.status.replace('_', ' ')}</Text>
+          <View style={[styles.badge, { backgroundColor: c + '20' }]}>
+            <Text style={[styles.badgeText, { color: c }]}>{item.status.replace('_', ' ')}</Text>
           </View>
         </View>
         <View style={styles.cardBottom}>
           <View style={styles.meta}>
-            <Icon name="Truck" size={12} color="#9CA3AF" />
-            <Text style={styles.metaText}>{item.vehicleType?.replace('_', ' ')}</Text>
+            <Icon name="Truck" size={12} color={colors.textThird} />
+            <Text style={[styles.metaText, { color: colors.textThird }]}>{item.vehicleType?.replace('_', ' ')}</Text>
           </View>
-          {(item.stops ?? 0) > 1 && (
+          {stopCount > 1 && (
             <View style={styles.meta}>
-              <Icon name="MapPin" size={12} color="#9CA3AF" />
-              <Text style={styles.metaText}>{item.stops} stops</Text>
+              <Icon name="MapPin" size={12} color={colors.textThird} />
+              <Text style={[styles.metaText, { color: colors.textThird }]}>{stopCount} stops</Text>
             </View>
           )}
           <View style={styles.meta}>
-            <Icon name="Calendar" size={12} color="#9CA3AF" />
-            <Text style={styles.metaText}>
+            <Icon name="Calendar" size={12} color={colors.textThird} />
+            <Text style={[styles.metaText, { color: colors.textThird }]}>
               {new Date(item.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
             </Text>
           </View>
-          <Text style={styles.price}>{fmt(item.price)}</Text>
+          <Text style={[styles.price, { color: colors.text }]}>{fmt(item.price)}</Text>
         </View>
       </View>
     );
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F0' }}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.heading}>Deliveries</Text>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={[styles.header, {
+        paddingTop: insets.top + 12,
+        backgroundColor: colors.surface,
+        borderBottomColor: colors.border,
+      }]}>
+        <Text style={[styles.heading, { color: colors.text }]}>Deliveries</Text>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchWrap}>
-        <Icon name="Search" size={16} color="#9CA3AF" />
+      <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Icon name="Search" size={16} color={colors.textThird} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           value={search}
           onChangeText={setSearch}
           placeholder="Search by tracking number…"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.textThird}
           returnKeyType="search"
         />
         {search.length > 0 && (
           <Pressable onPress={() => setSearch('')}>
-            <Icon name="X" size={16} color="#9CA3AF" />
+            <Icon name="X" size={16} color={colors.textThird} />
           </Pressable>
         )}
       </View>
 
-      {/* Status tabs */}
       <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
         data={STATUSES}
         keyExtractor={(s) => s}
         contentContainerStyle={styles.tabs}
-        renderItem={({ item: s }) => (
-          <Pressable
-            style={[styles.tab, status === s && styles.tabActive]}
-            onPress={() => setStatus(s)}
-          >
-            <Text style={[styles.tabText, status === s && styles.tabTextActive]}>
-              {s === 'all' ? 'All' : s.replace('_', ' ')}
-            </Text>
-          </Pressable>
-        )}
+        renderItem={({ item: s }) => {
+          const active = status === s;
+          return (
+            <Pressable
+              style={[
+                styles.tab,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                active && { backgroundColor: colors.primary, borderColor: colors.primary },
+              ]}
+              onPress={() => setStatus(s)}
+            >
+              <Text style={[
+                styles.tabText,
+                { color: colors.textSecond },
+                active && { color: '#fff' },
+              ]}>
+                {s === 'all' ? 'All' : s.replace('_', ' ')}
+              </Text>
+            </Pressable>
+          );
+        }}
       />
 
       {loading ? (
-        <ActivityIndicator color="#3A7BD5" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={deliveries}
@@ -152,8 +176,8 @@ export default function DeliveriesScreen() {
           onEndReachedThreshold={0.3}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Icon name="Package" size={40} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No deliveries found</Text>
+              <Icon name="Package" size={40} color={colors.textThird} />
+              <Text style={[styles.emptyText, { color: colors.textThird }]}>No deliveries found</Text>
             </View>
           }
         />
@@ -163,36 +187,31 @@ export default function DeliveriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  header:       { paddingHorizontal: 20, paddingBottom: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  heading:      { fontSize: 20, fontWeight: '800', color: '#0F2B4C' },
+  header:       { paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1 },
+  heading:      { fontSize: 20, fontWeight: '800' },
   searchWrap:   {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#fff', margin: 16, borderRadius: 12,
+    margin: 16, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 11,
-    borderWidth: 1, borderColor: '#E5E7EB',
+    borderWidth: 1,
   },
-  searchInput:  { flex: 1, fontSize: 14, color: '#0F2B4C' },
+  searchInput:  { flex: 1, fontSize: 14 },
   tabs:         { paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
   tab:          {
     paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB',
+    borderWidth: 1,
   },
-  tabActive:    { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
-  tabText:      { fontSize: 12, color: '#6B7280', fontWeight: '600', textTransform: 'capitalize' },
-  tabTextActive: { color: '#fff' },
-  card:         {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12,
-    borderWidth: 1, borderColor: '#F3F4F6',
-  },
+  tabText:      { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
+  card:         { borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1 },
   cardTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
-  trackNum:     { fontSize: 13, fontWeight: '700', color: '#0F2B4C', fontFamily: 'monospace' },
-  address:      { fontSize: 12, color: '#6B7280', marginTop: 3 },
+  trackNum:     { fontSize: 13, fontWeight: '700', fontFamily: 'monospace' },
+  address:      { fontSize: 12, marginTop: 3 },
   badge:        { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText:    { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
   cardBottom:   { flexDirection: 'row', alignItems: 'center', gap: 14 },
   meta:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText:     { fontSize: 11, color: '#9CA3AF', textTransform: 'capitalize' },
-  price:        { marginLeft: 'auto', fontSize: 13, fontWeight: '700', color: '#0F2B4C' },
+  metaText:     { fontSize: 11, textTransform: 'capitalize' },
+  price:        { marginLeft: 'auto', fontSize: 13, fontWeight: '700' },
   empty:        { alignItems: 'center', paddingVertical: 60, gap: 12 },
-  emptyText:    { fontSize: 14, color: '#9CA3AF' },
+  emptyText:    { fontSize: 14 },
 });

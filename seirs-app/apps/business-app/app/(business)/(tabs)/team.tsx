@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { businessApi } from '@/services/api';
+import { useColors } from '@/context/ThemeContext';
 
 const TEAM_ROLES = [
   { key: 'manager',    label: 'Manager',    desc: 'Can create deliveries and view all orders' },
@@ -30,6 +31,7 @@ interface TeamMember {
 
 export default function TeamScreen() {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
   const [members,  setMembers]  = useState<TeamMember[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [showAdd,  setShowAdd]  = useState(false);
@@ -75,9 +77,7 @@ export default function TeamScreen() {
             try {
               await businessApi.removeTeamMember(member.id);
               load();
-            } finally {
-              setRemoving(null);
-            }
+            } finally { setRemoving(null); }
           },
         },
       ],
@@ -85,25 +85,28 @@ export default function TeamScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F0' }}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.heading}>Team Members</Text>
-        <Pressable style={styles.addBtn} onPress={() => setShowAdd(true)}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={[styles.header, {
+        paddingTop: insets.top + 12,
+        backgroundColor: colors.surface,
+        borderBottomColor: colors.border,
+      }]}>
+        <Text style={[styles.heading, { color: colors.text }]}>Team Members</Text>
+        <Pressable style={[styles.addBtn, { backgroundColor: colors.primary }]} onPress={() => setShowAdd(true)}>
           <Icon name="UserPlus" size={16} color="#fff" />
           <Text style={styles.addBtnText}>Invite</Text>
         </Pressable>
       </View>
 
-      {/* Roles legend */}
-      <View style={styles.legendCard}>
-        <Text style={styles.legendTitle}>Account Roles</Text>
+      <View style={[styles.legendCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.legendTitle, { color: colors.textSecond }]}>Account Roles</Text>
         <View style={styles.legendGrid}>
           {[{ key: 'owner', label: 'Owner', desc: 'Full access to all features' }, ...TEAM_ROLES].map((r) => (
             <View key={r.key} style={styles.legendRow}>
-              <View style={[styles.roleDot, { backgroundColor: ROLE_COLOR[r.key] ?? '#9CA3AF' }]} />
+              <View style={[styles.roleDot, { backgroundColor: ROLE_COLOR[r.key] ?? colors.textThird }]} />
               <View>
-                <Text style={styles.roleLabel}>{r.label}</Text>
-                <Text style={styles.roleDesc}>{r.desc}</Text>
+                <Text style={[styles.roleLabel, { color: colors.text }]}>{r.label}</Text>
+                <Text style={[styles.roleDesc, { color: colors.textSecond }]}>{r.desc}</Text>
               </View>
             </View>
           ))}
@@ -111,31 +114,34 @@ export default function TeamScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#3A7BD5" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
           {members.length === 0 ? (
             <View style={styles.empty}>
-              <Icon name="Users" size={40} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No team members yet</Text>
-              <Text style={styles.emptySub}>Invite Managers and Dispatchers to collaborate</Text>
+              <Icon name="Users" size={40} color={colors.textThird} />
+              <Text style={[styles.emptyText, { color: colors.text }]}>No team members yet</Text>
+              <Text style={[styles.emptySub, { color: colors.textThird }]}>Invite Managers and Dispatchers to collaborate</Text>
             </View>
           ) : (
             members.map((m) => (
-              <View key={m.id} style={styles.memberCard}>
-                <View style={styles.avatar}>
+              <View
+                key={m.id}
+                style={[styles.memberCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              >
+                <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
                   <Text style={styles.avatarText}>{m.name[0].toUpperCase()}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={styles.memberTop}>
-                    <Text style={styles.memberName}>{m.name}</Text>
-                    <View style={[styles.roleBadge, { backgroundColor: (ROLE_COLOR[m.teamRole] ?? '#9CA3AF') + '18' }]}>
-                      <Text style={[styles.roleBadgeText, { color: ROLE_COLOR[m.teamRole] ?? '#9CA3AF' }]}>
+                    <Text style={[styles.memberName, { color: colors.text }]}>{m.name}</Text>
+                    <View style={[styles.roleBadge, { backgroundColor: (ROLE_COLOR[m.teamRole] ?? colors.textThird) + '18' }]}>
+                      <Text style={[styles.roleBadgeText, { color: ROLE_COLOR[m.teamRole] ?? colors.textThird }]}>
                         {m.teamRole}
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.memberEmail}>{m.email}</Text>
+                  <Text style={[styles.memberEmail, { color: colors.textSecond }]}>{m.email}</Text>
                   {m.status === 'pending' && (
                     <Text style={styles.pendingText}>Invitation pending</Text>
                   )}
@@ -144,8 +150,7 @@ export default function TeamScreen() {
                   <Pressable onPress={() => handleRemove(m)} disabled={removing === m.id}>
                     {removing === m.id
                       ? <ActivityIndicator size="small" color="#DC2626" />
-                      : <Icon name="UserMinus" size={18} color="#DC2626" />
-                    }
+                      : <Icon name="UserMinus" size={18} color="#DC2626" />}
                   </Pressable>
                 )}
               </View>
@@ -154,60 +159,81 @@ export default function TeamScreen() {
         </ScrollView>
       )}
 
-      {/* Invite modal */}
       <Modal visible={showAdd} transparent animationType="slide">
         <Pressable style={styles.overlay} onPress={() => setShowAdd(false)} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Invite Team Member</Text>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + 24, backgroundColor: colors.surface }]}>
+          <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+          <Text style={[styles.sheetTitle, { color: colors.text }]}>Invite Team Member</Text>
 
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>Full Name</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, {
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+              color: colors.text,
+            }]}
             value={invite.name}
             onChangeText={(v) => setInvite((i) => ({ ...i, name: v }))}
             placeholder="Aisha Adebayo"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textThird}
           />
 
-          <Text style={styles.label}>Email Address</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>Email Address</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, {
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+              color: colors.text,
+            }]}
             value={invite.email}
             onChangeText={(v) => setInvite((i) => ({ ...i, email: v }))}
             placeholder="ada@company.ng"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textThird}
             keyboardType="email-address"
             autoCapitalize="none"
           />
 
-          <Text style={styles.label}>Role</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>Role</Text>
           <View style={styles.roleGrid}>
-            {TEAM_ROLES.map((r) => (
-              <Pressable
-                key={r.key}
-                style={[styles.roleCard, invite.teamRole === r.key && styles.roleCardActive]}
-                onPress={() => setInvite((i) => ({ ...i, teamRole: r.key }))}
-              >
-                <Text style={[styles.roleCardLabel, invite.teamRole === r.key && styles.roleCardLabelActive]}>
-                  {r.label}
-                </Text>
-                <Text style={[styles.roleCardDesc, invite.teamRole === r.key && styles.roleCardDescActive]}>
-                  {r.desc}
-                </Text>
-              </Pressable>
-            ))}
+            {TEAM_ROLES.map((r) => {
+              const active = invite.teamRole === r.key;
+              return (
+                <Pressable
+                  key={r.key}
+                  style={[
+                    styles.roleCard,
+                    { backgroundColor: colors.background, borderColor: colors.border },
+                    active && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+                  ]}
+                  onPress={() => setInvite((i) => ({ ...i, teamRole: r.key }))}
+                >
+                  <Text style={[
+                    styles.roleCardLabel,
+                    { color: colors.textSecond },
+                    active && { color: colors.text },
+                  ]}>{r.label}</Text>
+                  <Text style={[
+                    styles.roleCardDesc,
+                    { color: colors.textThird },
+                    active && { color: colors.textSecond },
+                  ]}>{r.desc}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           <Pressable
-            style={[styles.inviteBtn, (!invite.name || !invite.email || inviting) && styles.inviteBtnDisabled]}
+            style={[
+              styles.inviteBtn,
+              { backgroundColor: colors.primary },
+              (!invite.name || !invite.email || inviting) && styles.inviteBtnDisabled,
+            ]}
             onPress={handleInvite}
             disabled={!invite.name || !invite.email || inviting}
           >
             {inviting
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.inviteBtnText}>Send Invitation</Text>
-            }
+              : <Text style={styles.inviteBtnText}>Send Invitation</Text>}
           </Pressable>
         </View>
       </Modal>
@@ -218,64 +244,50 @@ export default function TeamScreen() {
 const styles = StyleSheet.create({
   header:      {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingBottom: 14,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1,
   },
-  heading:     { fontSize: 20, fontWeight: '800', color: '#0F2B4C' },
+  heading:     { fontSize: 20, fontWeight: '800' },
   addBtn:      {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#0F2B4C', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
   },
   addBtnText:  { color: '#fff', fontWeight: '700', fontSize: 13 },
-  legendCard:  { backgroundColor: '#fff', margin: 16, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#F3F4F6' },
-  legendTitle: { fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  legendCard:  { margin: 16, borderRadius: 14, padding: 16, borderWidth: 1 },
+  legendTitle: { fontSize: 12, fontWeight: '700', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   legendGrid:  { gap: 10 },
   legendRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   roleDot:     { width: 8, height: 8, borderRadius: 4, marginTop: 4 },
-  roleLabel:   { fontSize: 13, fontWeight: '700', color: '#0F2B4C' },
-  roleDesc:    { fontSize: 11, color: '#6B7280', marginTop: 1 },
+  roleLabel:   { fontSize: 13, fontWeight: '700' },
+  roleDesc:    { fontSize: 11, marginTop: 1 },
   empty:       { alignItems: 'center', paddingVertical: 60, gap: 10 },
-  emptyText:   { fontSize: 15, fontWeight: '600', color: '#374151' },
-  emptySub:    { fontSize: 13, color: '#9CA3AF', textAlign: 'center' },
+  emptyText:   { fontSize: 15, fontWeight: '600' },
+  emptySub:    { fontSize: 13, textAlign: 'center' },
   memberCard:  {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10,
-    borderWidth: 1, borderColor: '#F3F4F6',
+    borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1,
   },
-  avatar:      {
-    width: 40, height: 40, borderRadius: 12, backgroundColor: '#3A7BD5',
-    alignItems: 'center', justifyContent: 'center',
-  },
+  avatar:      { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   avatarText:  { fontSize: 16, fontWeight: '800', color: '#fff' },
   memberTop:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
-  memberName:  { fontSize: 14, fontWeight: '700', color: '#0F2B4C' },
+  memberName:  { fontSize: 14, fontWeight: '700' },
   roleBadge:   { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   roleBadgeText: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
-  memberEmail: { fontSize: 12, color: '#6B7280' },
+  memberEmail: { fontSize: 12 },
   pendingText: { fontSize: 11, color: '#D97706', marginTop: 2, fontWeight: '600' },
   overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet:       {
-    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingTop: 12,
-  },
-  sheetHandle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  sheetTitle:  { fontSize: 18, fontWeight: '800', color: '#0F2B4C', marginBottom: 20 },
-  label:       { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
+  sheet:       { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingTop: 12 },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  sheetTitle:  { fontSize: 18, fontWeight: '800', marginBottom: 20 },
+  label:       { fontSize: 13, fontWeight: '600', marginBottom: 6 },
   input:       {
-    backgroundColor: '#F5F5F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
-    borderWidth: 1, borderColor: '#E5E7EB', fontSize: 15, color: '#0F2B4C', marginBottom: 14,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
+    borderWidth: 1, fontSize: 15, marginBottom: 14,
   },
   roleGrid:    { gap: 8, marginBottom: 20 },
-  roleCard:    {
-    padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#E5E7EB',
-    backgroundColor: '#F5F5F0',
-  },
-  roleCardActive:    { borderColor: '#0F2B4C', backgroundColor: '#F0F5FF' },
-  roleCardLabel:     { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 2 },
-  roleCardLabelActive: { color: '#0F2B4C' },
-  roleCardDesc:      { fontSize: 12, color: '#9CA3AF' },
-  roleCardDescActive: { color: '#6B7280' },
-  inviteBtn:         { backgroundColor: '#0F2B4C', borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  roleCard:    { padding: 14, borderRadius: 12, borderWidth: 1.5 },
+  roleCardLabel: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  roleCardDesc:  { fontSize: 12 },
+  inviteBtn:    { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   inviteBtnDisabled: { opacity: 0.4 },
-  inviteBtnText:     { color: '#fff', fontWeight: '700', fontSize: 16 },
+  inviteBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });
