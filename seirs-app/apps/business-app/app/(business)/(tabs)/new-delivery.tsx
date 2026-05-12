@@ -38,6 +38,7 @@ import {
 import { useBusinessStore, type DeliveryStop } from '@/store/businessStore';
 import { VehicleIcon, type VehicleType } from '@seirs/shared';
 import { useMultiStopDirections } from '@/components/useMultiStopDirections';
+import { useColors, useTheme } from '@/context/ThemeContext';
 
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 const LAGOS = { latitude: 6.5244, longitude: 3.3792, latitudeDelta: 0.1, longitudeDelta: 0.1 };
@@ -76,6 +77,8 @@ interface Prediction { place_id: string; main_text: string; secondary_text: stri
 export default function NewDeliveryScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
+  const colors  = useColors();
+  const { isDark } = useTheme();
   const {
     draft, setDraft, addStop, removeStop, updateStop, resetDraft, reorderStops,
   } = useBusinessStore();
@@ -531,8 +534,8 @@ export default function NewDeliveryScreen() {
 
   // ── Render ───────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F0' }}>
-      <StatusBar barStyle="dark-content" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFillObject}
@@ -555,12 +558,12 @@ export default function NewDeliveryScreen() {
 
       {/* Floating header */}
       <SafeAreaView edges={['top']} style={styles.topBar}>
-        <Pressable style={styles.backBtn} onPress={back}>
-          <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
+        <Pressable style={[styles.backBtn, { backgroundColor: colors.surface }]} onPress={back}>
+          <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <View style={styles.topTitle}>
-          <Text style={styles.topTitleText}>New Delivery</Text>
-          <Text style={styles.topStep}>Step {step + 1} / 3 — {STEPS[step]}</Text>
+        <View style={[styles.topTitle, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.topTitleText, { color: colors.text }]}>New Delivery</Text>
+          <Text style={[styles.topStep, { color: colors.textSecond }]}>Step {step + 1} / 3 — {STEPS[step]}</Text>
         </View>
       </SafeAreaView>
 
@@ -569,8 +572,8 @@ export default function NewDeliveryScreen() {
         index={1}
         snapPoints={snapPoints}
         topInset={sheetTopInset}
-        backgroundStyle={{ backgroundColor: '#fff' }}
-        handleIndicatorStyle={{ backgroundColor: '#E5E7EB' }}
+        backgroundStyle={{ backgroundColor: colors.surface }}
+        handleIndicatorStyle={{ backgroundColor: colors.border }}
         keyboardBehavior="extend"
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
