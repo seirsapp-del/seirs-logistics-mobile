@@ -7,12 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
-
-// Spec V8 §4.11 — partner store operating hours editor. Hits the
-// existing /partner/settings endpoint (already accepts operatingDays
-// + openTime + closeTime). Shows current schedule, lets staff toggle
-// days and adjust open/close times. Affects customer drop-off picker
-// and ops dispatcher.
+import { useColors } from '@/context/ThemeContext';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -25,6 +20,7 @@ interface Settings {
 export default function PartnerHoursScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const colors = useColors();
 
   const [days,      setDays]      = useState<string[]>(['Mon','Tue','Wed','Thu','Fri','Sat']);
   const [openTime,  setOpenTime]  = useState('08:00');
@@ -64,18 +60,20 @@ export default function PartnerHoursScreen() {
       ]);
     } catch (e: any) {
       Alert.alert('Save failed', e?.message ?? 'Try again.');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F0' }}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={[styles.header, {
+        paddingTop: insets.top + 12,
+        backgroundColor: colors.surface,
+        borderBottomColor: colors.border,
+      }]}>
+        <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.surfaceSecond }]}>
+          <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <Text style={styles.title}>Store Hours</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Store Hours</Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -83,11 +81,11 @@ export default function PartnerHoursScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
           {loading ? (
-            <ActivityIndicator color="#3A7BD5" style={{ marginTop: 32 }} />
+            <ActivityIndicator color={colors.accent} style={{ marginTop: 32 }} />
           ) : (
             <>
-              <View style={styles.card}>
-                <Text style={styles.cardLabel}>OPEN DAYS</Text>
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.cardLabel, { color: colors.textSecond }]}>OPEN DAYS</Text>
                 <View style={styles.daysRow}>
                   {DAYS.map(d => {
                     const on = days.includes(d);
@@ -95,43 +93,47 @@ export default function PartnerHoursScreen() {
                       <Pressable
                         key={d}
                         onPress={() => toggleDay(d)}
-                        style={[styles.dayChip, on && styles.dayChipOn]}
+                        style={[
+                          styles.dayChip,
+                          { borderColor: colors.border },
+                          on && { backgroundColor: colors.accent, borderColor: colors.accent },
+                        ]}
                       >
-                        <Text style={[styles.dayText, on && styles.dayTextOn]}>{d}</Text>
+                        <Text style={[styles.dayText, { color: colors.textSecond }, on && { color: '#fff' }]}>{d}</Text>
                       </Pressable>
                     );
                   })}
                 </View>
               </View>
 
-              <View style={styles.card}>
-                <Text style={styles.cardLabel}>OPENING TIME</Text>
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.cardLabel, { color: colors.textSecond }]}>OPENING TIME</Text>
                 <TextInput
                   value={openTime}
                   onChangeText={setOpenTime}
                   placeholder="08:00"
-                  placeholderTextColor="#9CA3AF"
-                  style={styles.timeInput}
+                  placeholderTextColor={colors.textThird}
+                  style={[styles.timeInput, { borderColor: colors.border, color: colors.text }]}
                   maxLength={5}
                 />
-                <Text style={styles.helper}>24-hour format. Example: 08:00 or 09:30</Text>
+                <Text style={[styles.helper, { color: colors.textThird }]}>24-hour format. Example: 08:00 or 09:30</Text>
               </View>
 
-              <View style={styles.card}>
-                <Text style={styles.cardLabel}>CLOSING TIME</Text>
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.cardLabel, { color: colors.textSecond }]}>CLOSING TIME</Text>
                 <TextInput
                   value={closeTime}
                   onChangeText={setCloseTime}
                   placeholder="18:00"
-                  placeholderTextColor="#9CA3AF"
-                  style={styles.timeInput}
+                  placeholderTextColor={colors.textThird}
+                  style={[styles.timeInput, { borderColor: colors.border, color: colors.text }]}
                   maxLength={5}
                 />
               </View>
 
-              <View style={styles.summary}>
-                <Icon name="Clock" size={14} color="#3A7BD5" />
-                <Text style={styles.summaryText}>
+              <View style={[styles.summary, { backgroundColor: colors.accent + '18' }]}>
+                <Icon name="Clock" size={14} color={colors.accent} />
+                <Text style={[styles.summaryText, { color: colors.text }]}>
                   {days.length === 0
                     ? 'Pick at least one day to receive drop-offs.'
                     : `Open ${days.join(', ')} from ${openTime} to ${closeTime}`}
@@ -141,7 +143,7 @@ export default function PartnerHoursScreen() {
               <Pressable
                 disabled={saving || days.length === 0}
                 onPress={save}
-                style={[styles.primaryBtn, days.length === 0 && { opacity: 0.5 }]}
+                style={[styles.primaryBtn, { backgroundColor: colors.primary }, days.length === 0 && { opacity: 0.5 }]}
               >
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Save hours</Text>}
               </Pressable>
@@ -154,27 +156,25 @@ export default function PartnerHoursScreen() {
 }
 
 const styles = StyleSheet.create({
-  header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  backBtn:   { width: 32, height: 32, borderRadius: 8, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  title:     { fontSize: 18, fontWeight: '700', color: '#0F2B4C' },
+  header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  backBtn:   { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  title:     { fontSize: 18, fontWeight: '700' },
 
   content:   { padding: 16, gap: 12 },
 
-  card:      { backgroundColor: '#fff', borderRadius: 12, padding: 14, gap: 8, borderWidth: 1, borderColor: '#E5E7EB' },
-  cardLabel: { fontSize: 11, fontWeight: '700', color: '#6B7280', letterSpacing: 0.5 },
+  card:      { borderRadius: 12, padding: 14, gap: 8, borderWidth: 1 },
+  cardLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 
   daysRow:   { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  dayChip:   { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5, borderColor: '#E5E7EB' },
-  dayChipOn: { backgroundColor: '#3A7BD5', borderColor: '#3A7BD5' },
-  dayText:   { fontSize: 13, fontWeight: '600', color: '#6B7280' },
-  dayTextOn: { color: '#fff' },
+  dayChip:   { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5 },
+  dayText:   { fontSize: 13, fontWeight: '600' },
 
-  timeInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 22, fontWeight: '700', color: '#0F2B4C', textAlign: 'center', letterSpacing: 4 },
-  helper:    { fontSize: 11, color: '#9CA3AF' },
+  timeInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 22, fontWeight: '700', textAlign: 'center', letterSpacing: 4 },
+  helper:    { fontSize: 11 },
 
-  summary:   { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: '#3A7BD518', borderRadius: 10 },
-  summaryText:{ flex: 1, fontSize: 13, color: '#0F2B4C', fontWeight: '600' },
+  summary:   { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 10 },
+  summaryText:{ flex: 1, fontSize: 13, fontWeight: '600' },
 
-  primaryBtn:{ backgroundColor: '#0F2B4C', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  primaryBtn:{ borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

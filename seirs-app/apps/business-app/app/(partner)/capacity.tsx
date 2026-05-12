@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { useColors } from '@/context/ThemeContext';
 
 // Spec V8 §4.9 — partner staff sees real-time store load + can pause
 // incoming bookings when overwhelmed. Backend enforces capacity preflight,
@@ -47,6 +48,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 export default function PartnerCapacityScreen() {
   const insets   = useSafeAreaInsets();
   const router   = useRouter();
+  const colors   = useColors();
   const { user } = useAuth();
 
   const [capacity,    setCapacity]    = useState<CapacityData | null>(null);
@@ -99,9 +101,9 @@ export default function PartnerCapacityScreen() {
 
   if (!storeId) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
-        <Icon name="Store" size={36} color="#D1D5DB" />
-        <Text style={styles.emptyText}>This account isn&apos;t linked to a partner store.</Text>
+      <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <Icon name="Store" size={36} color={colors.textThird} />
+        <Text style={[styles.emptyText, { color: colors.textSecond }]}>This account isn&apos;t linked to a partner store.</Text>
       </View>
     );
   }
@@ -112,45 +114,43 @@ export default function PartnerCapacityScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#F5F5F0' }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
+        <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.surface }]}>
+          <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <Text style={styles.title}>Store Capacity</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Store Capacity</Text>
         <View style={{ width: 32 }} />
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#3A7BD5" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
       ) : (
         <>
-          {/* Capacity card */}
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.cardTopRow}>
-              <Text style={styles.cardLabel}>CURRENT LOAD</Text>
+              <Text style={[styles.cardLabel, { color: colors.textSecond }]}>CURRENT LOAD</Text>
               <Text style={[styles.bucketChip, { color: bucketColor, borderColor: bucketColor }]}>
                 {bucketLabel}
               </Text>
             </View>
-            <Text style={styles.bigCount}>
-              {capacity?.currentLoad ?? 0}<Text style={styles.bigCountSecond}> / {capacity?.maxCapacity ?? 0}</Text>
+            <Text style={[styles.bigCount, { color: colors.text }]}>
+              {capacity?.currentLoad ?? 0}<Text style={[styles.bigCountSecond, { color: colors.textThird }]}> / {capacity?.maxCapacity ?? 0}</Text>
             </Text>
-            <View style={styles.bar}>
+            <View style={[styles.bar, { backgroundColor: colors.surfaceSecond }]}>
               <View style={[styles.barFill, { width: `${percent}%`, backgroundColor: bucketColor }]} />
             </View>
-            <Text style={styles.percentText}>{percent}% utilised</Text>
+            <Text style={[styles.percentText, { color: colors.textSecond }]}>{percent}% utilised</Text>
           </View>
 
-          {/* Accept-incoming toggle */}
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.toggleRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.toggleTitle}>Accept new drop-offs</Text>
-                <Text style={styles.toggleSub}>
+                <Text style={[styles.toggleTitle, { color: colors.text }]}>Accept new drop-offs</Text>
+                <Text style={[styles.toggleSub, { color: colors.textSecond }]}>
                   When off, customers won&apos;t be able to schedule new drop-offs at this store. In-store packages and driver pickups continue normally.
                 </Text>
               </View>
@@ -158,7 +158,7 @@ export default function PartnerCapacityScreen() {
                 value={storeStatus === 'active'}
                 onValueChange={toggleAcceptIncoming}
                 disabled={toggling}
-                trackColor={{ false: '#E5E7EB', true: '#3A7BD5' }}
+                trackColor={{ false: colors.border, true: colors.accent }}
                 thumbColor="#fff"
               />
             </View>
@@ -170,48 +170,46 @@ export default function PartnerCapacityScreen() {
             )}
           </View>
 
-          {/* Quick actions */}
           <View style={styles.actionRow}>
-            <Pressable style={styles.actionBtn} onPress={() => router.push('/(partner)/storage' as any)}>
+            <Pressable style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(partner)/storage' as any)}>
               <Icon name="Clock" size={18} color="#D97706" />
-              <Text style={styles.actionLabel}>Overstays</Text>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>Overstays</Text>
             </Pressable>
-            <Pressable style={styles.actionBtn} onPress={() => router.push('/(partner)/receive-dropoff' as any)}>
-              <Icon name="PackagePlus" size={18} color="#3A7BD5" />
-              <Text style={styles.actionLabel}>Receive</Text>
+            <Pressable style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(partner)/receive-dropoff' as any)}>
+              <Icon name="PackagePlus" size={18} color={colors.accent} />
+              <Text style={[styles.actionLabel, { color: colors.text }]}>Receive</Text>
             </Pressable>
-            <Pressable style={styles.actionBtn} onPress={() => router.push('/(partner)/release-pickup' as any)}>
+            <Pressable style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/(partner)/release-pickup' as any)}>
               <Icon name="PackageCheck" size={18} color="#16A34A" />
-              <Text style={styles.actionLabel}>Release</Text>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>Release</Text>
             </Pressable>
           </View>
 
-          {/* In-store list */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>In your store ({dropoffs.length})</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>In your store ({dropoffs.length})</Text>
             {dropoffs.length > 0 && (
               <Pressable onPress={onRefresh}>
-                <Icon name="RefreshCw" size={16} color="#6B7280" />
+                <Icon name="RefreshCw" size={16} color={colors.textSecond} />
               </Pressable>
             )}
           </View>
 
           {dropoffs.length === 0 ? (
             <View style={styles.empty}>
-              <Icon name="Package" size={28} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No packages currently in your store.</Text>
+              <Icon name="Package" size={28} color={colors.textThird} />
+              <Text style={[styles.emptyText, { color: colors.textSecond }]}>No packages currently in your store.</Text>
             </View>
           ) : (
             dropoffs.map(d => {
               const meta = STATUS_LABEL[d.status] ?? { label: d.status, color: '#9CA3AF' };
               return (
-                <View key={d.id} style={styles.dropoffRow}>
+                <View key={d.id} style={[styles.dropoffRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={[styles.dropoffIcon, { backgroundColor: meta.color + '18' }]}>
                     <Icon name="Package" size={16} color={meta.color} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.dropoffName}>{d.recipientName}</Text>
-                    <Text style={styles.dropoffMeta}>
+                    <Text style={[styles.dropoffName, { color: colors.text }]}>{d.recipientName}</Text>
+                    <Text style={[styles.dropoffMeta, { color: colors.textSecond }]}>
                       {d.dropCode} · {d.weightKg} kg
                     </Text>
                   </View>
@@ -232,38 +230,38 @@ const styles = StyleSheet.create({
   centered:   { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   content:    { padding: 16, gap: 16 },
   header:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backBtn:    { width: 32, height: 32, borderRadius: 8, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  title:      { fontSize: 18, fontWeight: '700', color: '#0F2B4C' },
+  backBtn:    { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  title:      { fontSize: 18, fontWeight: '700' },
 
-  card:       { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 8, borderWidth: 1, borderColor: '#E5E7EB' },
+  card:       { borderRadius: 16, padding: 16, gap: 8, borderWidth: 1 },
   cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardLabel:  { fontSize: 11, fontWeight: '700', color: '#6B7280', letterSpacing: 0.8 },
+  cardLabel:  { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
   bucketChip: { fontSize: 11, fontWeight: '700', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
-  bigCount:   { fontSize: 36, fontWeight: '800', color: '#0F2B4C' },
-  bigCountSecond: { fontSize: 18, color: '#9CA3AF', fontWeight: '600' },
-  bar:        { height: 10, borderRadius: 5, backgroundColor: '#F3F4F6', overflow: 'hidden' },
+  bigCount:   { fontSize: 36, fontWeight: '800' },
+  bigCountSecond: { fontSize: 18, fontWeight: '600' },
+  bar:        { height: 10, borderRadius: 5, overflow: 'hidden' },
   barFill:    { height: 10, borderRadius: 5 },
-  percentText:{ fontSize: 12, color: '#6B7280' },
+  percentText:{ fontSize: 12 },
 
   toggleRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  toggleTitle: { fontSize: 14, fontWeight: '700', color: '#0F2B4C', marginBottom: 4 },
-  toggleSub:   { fontSize: 12, color: '#6B7280', lineHeight: 17 },
+  toggleTitle: { fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  toggleSub:   { fontSize: 12, lineHeight: 17 },
   pauseBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF9C3', borderColor: '#FDE68A', borderWidth: 1, padding: 10, borderRadius: 8, marginTop: 8 },
   pauseText:   { color: '#92400E', fontSize: 12, fontWeight: '600', flex: 1 },
 
   actionRow:  { flexDirection: 'row', gap: 10 },
-  actionBtn:  { flex: 1, backgroundColor: '#fff', borderRadius: 12, paddingVertical: 14, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#E5E7EB' },
-  actionLabel:{ fontSize: 12, fontWeight: '600', color: '#0F2B4C' },
+  actionBtn:  { flex: 1, borderRadius: 12, paddingVertical: 14, alignItems: 'center', gap: 6, borderWidth: 1 },
+  actionLabel:{ fontSize: 12, fontWeight: '600' },
 
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
-  sectionTitle:  { fontSize: 15, fontWeight: '700', color: '#0F2B4C' },
+  sectionTitle:  { fontSize: 15, fontWeight: '700' },
 
   empty:        { alignItems: 'center', gap: 8, paddingVertical: 32 },
-  emptyText:    { fontSize: 13, color: '#6B7280', textAlign: 'center' },
+  emptyText:    { fontSize: 13, textAlign: 'center' },
 
-  dropoffRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#F3F4F6' },
+  dropoffRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, padding: 14, borderWidth: 1 },
   dropoffIcon:  { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  dropoffName:  { fontSize: 14, fontWeight: '600', color: '#0F2B4C' },
-  dropoffMeta:  { fontSize: 11, color: '#6B7280', marginTop: 2, fontFamily: 'monospace' },
+  dropoffName:  { fontSize: 14, fontWeight: '600' },
+  dropoffMeta:  { fontSize: 11, marginTop: 2, fontFamily: 'monospace' },
   statusBadge:  { fontSize: 10, fontWeight: '700', borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
 });
