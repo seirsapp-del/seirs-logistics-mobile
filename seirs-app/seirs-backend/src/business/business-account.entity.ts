@@ -28,6 +28,18 @@ export class BusinessAccount {
   @Column()
   businessAddress: string;
 
+  // Structured address parts (2026-05-11) — let dispatch index by state
+  // and compute zone surcharges without re-parsing businessAddress.
+  // Nullable so existing rows continue to work.
+  @Column({ nullable: true })
+  state: string;
+
+  @Column({ nullable: true })
+  city: string;
+
+  @Column({ nullable: true })
+  streetAddress: string;
+
   @Column({ default: BusinessAccountStatus.ACTIVE })
   status: BusinessAccountStatus;
 

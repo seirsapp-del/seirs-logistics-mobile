@@ -531,6 +531,11 @@ export class AuthService {
       companyName:     data.companyName ?? data.name,
       rcNumber:        data.rcNumber ?? '',
       businessAddress: data.businessAddress ?? '',
+      // Structured parts (2026-05-11) — sent by the new register UI; older
+      // clients omit them, which is fine because the columns are nullable.
+      state:           data.state ?? null,
+      city:            data.city ?? null,
+      streetAddress:   data.streetAddress ?? null,
       walletBalance:   0,
       loyaltyPoints:   0,
     });

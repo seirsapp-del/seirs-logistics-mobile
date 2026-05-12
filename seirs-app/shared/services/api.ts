@@ -333,6 +333,11 @@ export const businessAuthApi = {
     companyName?:     string;
     rcNumber?:        string;
     businessAddress?: string;
+    // Structured address parts — backend stores both the combined string
+    // (above) and these so dispatch can index by state without re-parsing.
+    state?:           string;
+    city?:            string;
+    streetAddress?:   string;
     storeName?:       string;
     storeAddress?:    string;
     capacity?:        number;

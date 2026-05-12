@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { authApi } from '@/services/api';
 import { validatePassword, isPasswordValid, PASSWORD_HELP_TEXT } from '@seirs/shared';
+import { StatePicker } from '@/components/StatePicker';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -30,7 +31,11 @@ export default function RegisterScreen() {
   const [form, setForm] = useState({
     firstName: '', middleName: '', lastName: '',
     email: '', phone: '', password: '', confirmPassword: '',
-    companyName: '', rcNumber: '', businessAddress: '',
+    companyName: '', rcNumber: '',
+    // Address now broken into 3 structured parts so the dispatch system
+    // can compute zone pricing + filter deliveries by state. On submit
+    // they're joined into one canonical businessAddress string.
+    state: '', city: '', streetAddress: '',
   });
   const [showPass,        setShowPass]        = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
@@ -62,7 +67,9 @@ export default function RegisterScreen() {
     if (!form.phone.trim())                      return 'Please enter your phone number.';
     if (!phoneValid)                             return 'Phone must be a Nigerian number starting with 080, 081, 070, 090, or 091 (11 digits total — e.g. 08012345678).';
     if (!form.companyName.trim())                return 'Please enter your company name.';
-    if (!form.businessAddress.trim())            return 'Please enter your business address.';
+    if (!form.state)                              return 'Please pick your state.';
+    if (!form.city.trim())                        return 'Please enter your city or LGA (e.g. Ikeja, Surulere, Lekki).';
+    if (!form.streetAddress.trim())               return 'Please enter your street address (street name + building number / landmark).';
     if (!passValid)                              return passError ?? 'Password does not meet the requirements above.';
     if (!passMatch)                              return 'Passwords do not match. Please re-type your confirm password.';
     if (!ageOk)                                  return 'Please confirm you are 18 or older.';
@@ -86,6 +93,15 @@ export default function RegisterScreen() {
       const fullName = [form.firstName.trim(), form.middleName.trim(), form.lastName.trim()]
         .filter(Boolean)
         .join(' ');
+      // Combine the 3 structured address parts into the canonical
+      // `businessAddress` field the backend expects. Format:
+      // "<street>, <city/LGA>, <state> State, Nigeria"
+      const businessAddress = [
+        form.streetAddress.trim(),
+        form.city.trim(),
+        `${form.state} State`,
+        'Nigeria',
+      ].filter(Boolean).join(', ');
       await authApi.register({
         accountType:     'sender',
         name:            fullName,
@@ -94,7 +110,12 @@ export default function RegisterScreen() {
         password:        form.password,
         companyName:     form.companyName.trim(),
         rcNumber:        form.rcNumber.trim() || undefined,
-        businessAddress: form.businessAddress.trim(),
+        businessAddress,
+        // Send structured parts too so backend can index by state
+        // without re-parsing the combined string.
+        state:           form.state,
+        city:            form.city.trim(),
+        streetAddress:   form.streetAddress.trim(),
       });
       router.push({
         pathname: '/(auth)/verify-otp',
@@ -162,8 +183,19 @@ export default function RegisterScreen() {
           placeholder="Okafor Trading Ltd" />
         <Field label="RC Number (optional)" value={form.rcNumber} onChangeText={(v) => set('rcNumber', v)}
           placeholder="RC-123456" />
-        <Field label="Business Address" value={form.businessAddress} onChangeText={(v) => set('businessAddress', v)}
-          placeholder="15 Adeola Odeku, Lagos" />
+
+        {/* Structured address — state picker locks the canonical name so
+            dispatch + zone pricing can filter reliably. City/LGA and the
+            street remain free-text since exhaustive LGA lists are noisy. */}
+        <StatePicker
+          label="State"
+          value={form.state}
+          onChange={(s) => set('state', s)}
+        />
+        <Field label="City / LGA" value={form.city} onChangeText={(v) => set('city', v)}
+          placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi" />
+        <Field label="Street Address & Landmark" value={form.streetAddress} onChangeText={(v) => set('streetAddress', v)}
+          placeholder="15 Adeola Odeku Street, opposite Pinnacle Mall" />
 
         {/* Password */}
         <Text style={styles.label}>Password</Text>
