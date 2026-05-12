@@ -4,17 +4,23 @@ import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/Icon';
 import { changeLanguage, LANGUAGES, type LanguageCode } from '@/i18n';
 import i18n from '@/i18n';
+import { useColors } from '@/context/ThemeContext';
 
 export default function LanguageScreen() {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
   const { t }  = useTranslation();
   const current = i18n.language as LanguageCode;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F0' }}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.heading}>{t('language.title')}</Text>
-        <Text style={styles.sub}>{t('language.subtitle')}</Text>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={[styles.header, {
+        paddingTop: insets.top + 12,
+        backgroundColor: colors.surface,
+        borderBottomColor: colors.border,
+      }]}>
+        <Text style={[styles.heading, { color: colors.text }]}>{t('language.title')}</Text>
+        <Text style={[styles.sub, { color: colors.textSecond }]}>{t('language.subtitle')}</Text>
       </View>
       <View style={styles.list}>
         {LANGUAGES.map((lang) => {
@@ -22,11 +28,15 @@ export default function LanguageScreen() {
           return (
             <Pressable
               key={lang.code}
-              style={[styles.item, active && styles.itemActive]}
+              style={[
+                styles.item,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                active && { borderColor: colors.accent, backgroundColor: colors.primaryLight },
+              ]}
               onPress={() => changeLanguage(lang.code)}
             >
-              <Text style={[styles.label, active && styles.labelActive]}>{lang.label}</Text>
-              {active && <Icon name="CheckCircle2" size={20} color="#3A7BD5" />}
+              <Text style={[styles.label, { color: colors.textSecond }, active && { color: colors.text }]}>{lang.label}</Text>
+              {active && <Icon name="CheckCircle2" size={20} color={colors.accent} />}
             </Pressable>
           );
         })}
@@ -36,12 +46,10 @@ export default function LanguageScreen() {
 }
 
 const styles = StyleSheet.create({
-  header:      { paddingHorizontal: 20, paddingBottom: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  heading:     { fontSize: 20, fontWeight: '800', color: '#0F2B4C' },
-  sub:         { fontSize: 13, color: '#6B7280', marginTop: 4 },
-  list:        { padding: 16, gap: 10 },
-  item:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 14, padding: 18, borderWidth: 1.5, borderColor: '#E5E7EB' },
-  itemActive:  { borderColor: '#3A7BD5', backgroundColor: '#EBF3FF' },
-  label:       { fontSize: 15, fontWeight: '600', color: '#374151' },
-  labelActive: { color: '#0F2B4C' },
+  header:  { paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1 },
+  heading: { fontSize: 20, fontWeight: '800' },
+  sub:     { fontSize: 13, marginTop: 4 },
+  list:    { padding: 16, gap: 10 },
+  item:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 14, padding: 18, borderWidth: 1.5 },
+  label:   { fontSize: 15, fontWeight: '600' },
 });
