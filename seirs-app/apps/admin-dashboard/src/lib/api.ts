@@ -90,6 +90,27 @@ export const adminApi = {
     req<any>(`/admin/drivers/${id}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
   suspendDriver: (id: string) => req<any>(`/admin/drivers/${id}/suspend`, { method: 'PATCH' }),
 
+  // Hybrid-account (Spec V8 2026-05-11) — partner store applications
+  partnerApplications: () =>
+    req<Array<{
+      id: string; userId: string; storeName: string; storeAddress: string;
+      phone: string; maxCapacity: number; status: string;
+      storefrontPhotoUrl: string | null; cacRegUrl: string | null;
+      ownerIdUrl: string | null; reviewNote: string | null;
+      reviewedAt: string | null; reviewedBy: string | null;
+      createdAt: string;
+    }>>(`/admin/partner-stores/applications`),
+  approvePartnerStore: (id: string, note?: string) =>
+    req<any>(`/admin/partner-stores/${id}/approve`, {
+      method: 'PATCH',
+      body: JSON.stringify({ note }),
+    }),
+  rejectPartnerStore: (id: string, note: string) =>
+    req<any>(`/admin/partner-stores/${id}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify({ note }),
+    }),
+
   deliveries:     (page = 1, status?: string, search?: string) =>
     req<any>(`/admin/deliveries?page=${page}${status ? `&status=${status}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
   delivery:       (id: string) => req<any>(`/admin/deliveries/${id}`),

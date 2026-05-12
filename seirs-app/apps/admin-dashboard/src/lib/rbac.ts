@@ -114,6 +114,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: '/drivers',           label: 'Drivers',             icon: 'Truck',          permission: 'drivers'           },
       { href: '/users',             label: 'Customers',           icon: 'Users',          permission: 'users'             },
       { href: '/partners',          label: 'Partner Accounts',    icon: 'Store',          permission: 'partners'          },
+      { href: '/partner-applications', label: 'Partner Applications', icon: 'FileText',    permission: 'partners'          },
       { href: '/partner-redirects', label: 'Partner Redirects',   icon: 'ArrowRightLeft', permission: 'partner-redirects' },
       { href: '/specialists',       label: 'Specialist Partners', icon: 'Briefcase',      permission: 'specialists'       },
     ],
