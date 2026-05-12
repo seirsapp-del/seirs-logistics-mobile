@@ -501,29 +501,29 @@ export default function NewDeliveryScreen() {
       (forField === 'stop'   && activeField?.kind === 'stop' && activeField.idx === stopIdx);
     if (!fieldMatches) return null;
     return (
-      <View style={styles.suggBlock}>
+      <View style={[styles.suggBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Pressable style={styles.useLocBtn} onPress={useMyLocation}>
-          <Icon name="MapPin" size={18} color="#3A7BD5" />
-          <Text style={styles.useLocText}>Use my current location</Text>
+          <Icon name="MapPin" size={18} color={colors.accent} />
+          <Text style={[styles.useLocText, { color: colors.accent }]}>Use my current location</Text>
         </Pressable>
         {searching && (
-          <View style={styles.suggRow}>
-            <ActivityIndicator size="small" color="#3A7BD5" />
-            <Text style={[styles.suggSub, { marginLeft: 8 }]}>Searching addresses…</Text>
+          <View style={[styles.suggRow, { borderTopColor: colors.border }]}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <Text style={[styles.suggSub, { color: colors.textSecond, marginLeft: 8 }]}>Searching addresses…</Text>
           </View>
         )}
         {predictions.map(p => (
-          <Pressable key={p.place_id} style={styles.suggRow} onPress={() => selectPrediction(p)}>
-            <View style={styles.suggIcon}><Icon name="MapPin" size={16} color="#6B7280" /></View>
+          <Pressable key={p.place_id} style={[styles.suggRow, { borderTopColor: colors.border }]} onPress={() => selectPrediction(p)}>
+            <View style={[styles.suggIcon, { backgroundColor: colors.surfaceSecond }]}><Icon name="MapPin" size={16} color={colors.textSecond} /></View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.suggMain} numberOfLines={1}>{p.main_text}</Text>
-              {!!p.secondary_text && <Text style={styles.suggSub} numberOfLines={1}>{p.secondary_text}</Text>}
+              <Text style={[styles.suggMain, { color: colors.text }]} numberOfLines={1}>{p.main_text}</Text>
+              {!!p.secondary_text && <Text style={[styles.suggSub, { color: colors.textSecond }]} numberOfLines={1}>{p.secondary_text}</Text>}
             </View>
           </Pressable>
         ))}
         {showNoMatchesHint && (
-          <View style={styles.suggRow}>
-            <Text style={styles.suggSub}>
+          <View style={[styles.suggRow, { borderTopColor: colors.border }]}>
+            <Text style={[styles.suggSub, { color: colors.textSecond }]}>
               No matches for &quot;{activeQueryText}&quot;. Try a more specific name, or tap &quot;Use my current location&quot; above.
             </Text>
           </View>
@@ -596,13 +596,13 @@ export default function NewDeliveryScreen() {
           {/* ─── STEP 0: WHAT ────────────────────────────────────────── */}
           {step === 0 && (
             <View style={{ gap: 14 }}>
-              <Text style={styles.sectionTitle}>What are you sending?</Text>
-              <Text style={styles.sectionHint}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>What are you sending?</Text>
+              <Text style={[styles.sectionHint, { color: colors.textSecond }]}>
                 Pick the closest match — this drives suggested vehicle, dwell time, and any safety rules.
               </Text>
 
               {catalog.length === 0 ? (
-                <ActivityIndicator color="#3A7BD5" />
+                <ActivityIndicator color={colors.accent} />
               ) : (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
@@ -611,11 +611,15 @@ export default function NewDeliveryScreen() {
                       return (
                         <Pressable
                           key={cat.code}
-                          style={[styles.catCard, active && styles.catCardActive]}
+                          style={[
+                            styles.catCard,
+                            { backgroundColor: colors.surfaceSecond, borderColor: colors.border },
+                            active && { backgroundColor: colors.primary, borderColor: colors.primary },
+                          ]}
                           onPress={() => setDraft({ categoryCode: cat.code })}
                         >
-                          <Text style={[styles.catName, active && { color: '#fff' }]}>{cat.name}</Text>
-                          <Text style={[styles.catEx, active && { color: '#DBEAFE' }]} numberOfLines={2}>
+                          <Text style={[styles.catName, { color: colors.text }, active && { color: '#fff' }]}>{cat.name}</Text>
+                          <Text style={[styles.catEx, { color: colors.textSecond }, active && { color: '#DBEAFE' }]} numberOfLines={2}>
                             {cat.examples}
                           </Text>
                         </Pressable>
@@ -625,51 +629,51 @@ export default function NewDeliveryScreen() {
                 </ScrollView>
               )}
 
-              <Text style={styles.label}>Total weight (kg)</Text>
-              <View style={styles.inputBlock}>
+              <Text style={[styles.label, { color: colors.textSecond }]}>Total weight (kg)</Text>
+              <View style={[styles.inputBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <BottomSheetTextInput
-                  style={styles.miniInput}
+                  style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                   value={draft.weightKg != null ? String(draft.weightKg) : ''}
                   onChangeText={(v) => {
                     const n = Number(v.replace(/[^\d.]/g, ''));
                     setDraft({ weightKg: isNaN(n) ? undefined : n });
                   }}
                   placeholder="e.g. 5"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.textThird}
                   keyboardType="decimal-pad"
                 />
               </View>
-              <Text style={styles.fieldHint}>
+              <Text style={[styles.fieldHint, { color: colors.textThird }]}>
                 Required. Drives the suggested vehicle and dwell time per stop.
               </Text>
 
-              <Text style={styles.label}>Quantity (optional)</Text>
-              <View style={styles.inputBlock}>
+              <Text style={[styles.label, { color: colors.textSecond }]}>Quantity (optional)</Text>
+              <View style={[styles.inputBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <BottomSheetTextInput
-                  style={styles.miniInput}
+                  style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                   value={String(draft.quantity)}
                   onChangeText={(v) => {
                     const n = Number(v.replace(/\D/g, ''));
                     setDraft({ quantity: isNaN(n) || n < 1 ? 1 : n });
                   }}
                   placeholder="1"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.textThird}
                   keyboardType="number-pad"
                 />
               </View>
 
-              <Text style={styles.label}>Description (optional)</Text>
-              <View style={styles.inputBlock}>
+              <Text style={[styles.label, { color: colors.textSecond }]}>Description (optional)</Text>
+              <View style={[styles.inputBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <BottomSheetTextInput
-                  style={styles.miniInput}
+                  style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                   value={draft.packageDescription ?? ''}
                   onChangeText={(v) => setDraft({ packageDescription: v })}
                   placeholder="e.g. Adebayo's birthday gift, two boxes"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.textThird}
                 />
               </View>
 
-              <Text style={styles.label}>Vehicle</Text>
+              <Text style={[styles.label, { color: colors.textSecond }]}>Vehicle</Text>
               {selectedCategory?.safetyRules?.warningCopy && (
                 <View style={styles.tipBox}>
                   <Icon name="AlertCircle" size={14} color="#D97706" />
@@ -687,20 +691,22 @@ export default function NewDeliveryScreen() {
                       onPress={() => handlePickVehicle(v)}
                       style={[
                         styles.vehChip,
-                        isActive  && styles.vehChipActive,
-                        suggested && !isActive && styles.vehChipSuggested,
-                        blocked   && styles.vehChipBlocked,
+                        { backgroundColor: colors.surface, borderColor: colors.border },
+                        suggested && !isActive && { backgroundColor: colors.primaryLight, borderColor: colors.accent },
+                        isActive  && { backgroundColor: colors.primary, borderColor: colors.primary },
+                        blocked   && { backgroundColor: colors.surfaceSecond, borderColor: colors.surfaceSecond, opacity: 0.5 },
                       ]}
                     >
                       <VehicleIcon
                         type={v}
                         size={20}
-                        color={isActive ? '#fff' : blocked ? '#9CA3AF' : '#0F2B4C'}
+                        color={isActive ? '#fff' : blocked ? colors.textThird : colors.text}
                       />
                       <Text style={[
                         styles.vehChipText,
-                        isActive  && { color: '#fff' },
-                        blocked   && { color: '#9CA3AF' },
+                        { color: colors.text },
+                        isActive && { color: '#fff' },
+                        blocked  && { color: colors.textThird },
                       ]}>{VEHICLE_LABEL[v]}</Text>
                       {suggested && !isActive && (
                         <View style={styles.suggBadge}><Text style={styles.suggBadgeText}>Suggested</Text></View>
@@ -715,13 +721,12 @@ export default function NewDeliveryScreen() {
           {/* ─── STEP 1: WHERE ──────────────────────────────────────── */}
           {step === 1 && (
             <View style={{ gap: 12 }}>
-              <Text style={styles.sectionTitle}>Pickup &amp; Stops</Text>
-              <Text style={styles.sectionHint}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Pickup &amp; Stops</Text>
+              <Text style={[styles.sectionHint, { color: colors.textSecond }]}>
                 Up to 5 stops per booking. We'll find the shortest route automatically — turn off below if you want a specific order.
               </Text>
 
-              {/* Pickup */}
-              <View style={styles.inputBlock}>
+              <View style={[styles.inputBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.inputRow}>
                   <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
                   <BottomSheetTextInput
@@ -729,18 +734,17 @@ export default function NewDeliveryScreen() {
                     onChangeText={onChangePickup}
                     onFocus={() => { setActiveField({ kind: 'pickup' }); sheetRef.current?.snapToIndex(1); }}
                     placeholder="Pickup address"
-                    placeholderTextColor="#9CA3AF"
-                    style={styles.inputField}
+                    placeholderTextColor={colors.textThird}
+                    style={[styles.inputField, { color: colors.text }]}
                   />
                 </View>
               </View>
               {renderSuggestions('pickup')}
 
-              {/* Stops */}
               {draft.stops.map((stop, i) => (
-                <View key={i} style={styles.stopCard}>
+                <View key={i} style={[styles.stopCard, { backgroundColor: colors.surfaceSecond, borderColor: colors.border }]}>
                   <View style={styles.stopHeader}>
-                    <View style={styles.stopBadge}>
+                    <View style={[styles.stopBadge, { backgroundColor: colors.primary }]}>
                       <Text style={styles.stopBadgeText}>Stop {i + 1}</Text>
                     </View>
                     {draft.stops.length > 1 && (
@@ -750,7 +754,7 @@ export default function NewDeliveryScreen() {
                     )}
                   </View>
 
-                  <View style={styles.inputBlock}>
+                  <View style={[styles.inputBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <View style={styles.inputRow}>
                       <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
                       <BottomSheetTextInput
@@ -758,55 +762,57 @@ export default function NewDeliveryScreen() {
                         onChangeText={(t) => onChangeStop(i, t)}
                         onFocus={() => { setActiveField({ kind: 'stop', idx: i }); sheetRef.current?.snapToIndex(1); }}
                         placeholder="Delivery address"
-                        placeholderTextColor="#9CA3AF"
-                        style={styles.inputField}
+                        placeholderTextColor={colors.textThird}
+                        style={[styles.inputField, { color: colors.text }]}
                       />
                     </View>
                   </View>
 
                   {renderSuggestions('stop', i)}
 
-                  <Text style={styles.miniLabel}>Recipient name</Text>
+                  <Text style={[styles.miniLabel, { color: colors.textSecond }]}>Recipient name</Text>
                   <BottomSheetTextInput
-                    style={styles.miniInput}
+                    style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     value={stop.recipientName}
                     onChangeText={(v) => updateStop(i, { recipientName: v })}
                     placeholder="Full name"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textThird}
                   />
-                  <Text style={styles.miniLabel}>Phone</Text>
+                  <Text style={[styles.miniLabel, { color: colors.textSecond }]}>Phone</Text>
                   <BottomSheetTextInput
-                    style={styles.miniInput}
+                    style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     value={stop.recipientPhone}
                     onChangeText={(v) => updateStop(i, { recipientPhone: v })}
                     placeholder="08012345678"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textThird}
                     keyboardType="phone-pad"
                   />
-                  <Text style={styles.miniLabel}>Note (optional)</Text>
+                  <Text style={[styles.miniLabel, { color: colors.textSecond }]}>Note (optional)</Text>
                   <BottomSheetTextInput
-                    style={styles.miniInput}
+                    style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     value={stop.note ?? ''}
                     onChangeText={(v) => updateStop(i, { note: v })}
                     placeholder="Leave at gate, call before delivery..."
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textThird}
                   />
                 </View>
               ))}
 
               {draft.stops.length < 5 && (
-                <Pressable style={styles.addStopBtn} onPress={() => addStop({ address: '', recipientName: '', recipientPhone: '' })}>
-                  <Icon name="Plus" size={16} color="#3A7BD5" />
-                  <Text style={styles.addStopText}>Add Stop (max 5)</Text>
+                <Pressable
+                  style={[styles.addStopBtn, { borderColor: colors.accent, backgroundColor: colors.primaryLight }]}
+                  onPress={() => addStop({ address: '', recipientName: '', recipientPhone: '' })}
+                >
+                  <Icon name="Plus" size={16} color={colors.accent} />
+                  <Text style={[styles.addStopText, { color: colors.accent }]}>Add Stop (max 5)</Text>
                 </Pressable>
               )}
 
-              {/* Auto-optimize toggle */}
               {draft.stops.length >= 2 && (
-                <View style={styles.optimizeRow}>
+                <View style={[styles.optimizeRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.optimizeTitle}>Auto-optimise route</Text>
-                    <Text style={styles.optimizeSub}>
+                    <Text style={[styles.optimizeTitle, { color: colors.text }]}>Auto-optimise route</Text>
+                    <Text style={[styles.optimizeSub, { color: colors.textSecond }]}>
                       {draft.autoOptimizeRoute
                         ? (wasReordered ? 'Stops have been re-ordered for shortest route.' : 'Will pick shortest route automatically.')
                         : 'Driver visits stops in the order shown above.'}
@@ -815,17 +821,16 @@ export default function NewDeliveryScreen() {
                   <Switch
                     value={draft.autoOptimizeRoute}
                     onValueChange={(v) => setDraft({ autoOptimizeRoute: v, routeWasAutoOptimized: v ? true : false })}
-                    trackColor={{ true: '#3A7BD5' }}
+                    trackColor={{ true: colors.accent }}
                   />
                 </View>
               )}
 
-              {/* Route stat chip */}
               {(distanceText || durationText) && (
-                <View style={styles.routeStat}>
-                  {distanceText && <Text style={styles.routeStatText}>📍 {distanceText}</Text>}
-                  {distanceText && durationText && <Text style={styles.routeStatDivider}>·</Text>}
-                  {durationText && <Text style={styles.routeStatText}>🕐 {durationText} drive</Text>}
+                <View style={[styles.routeStat, { backgroundColor: colors.primaryLight, borderColor: colors.accent + '40' }]}>
+                  {distanceText && <Text style={[styles.routeStatText, { color: colors.text }]}>📍 {distanceText}</Text>}
+                  {distanceText && durationText && <Text style={[styles.routeStatDivider, { color: colors.textThird }]}>·</Text>}
+                  {durationText && <Text style={[styles.routeStatText, { color: colors.text }]}>🕐 {durationText} drive</Text>}
                 </View>
               )}
             </View>
@@ -834,19 +839,27 @@ export default function NewDeliveryScreen() {
           {/* ─── STEP 2: WHEN + SUMMARY ─────────────────────────────── */}
           {step === 2 && (
             <View style={{ gap: 14 }}>
-              <Text style={styles.sectionTitle}>Schedule</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Schedule</Text>
               <View style={styles.scheduleRow}>
                 <Pressable
-                  style={[styles.scheduleChip, scheduleNow && styles.scheduleChipActive]}
+                  style={[
+                    styles.scheduleChip,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    scheduleNow && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ]}
                   onPress={() => setScheduleNow(true)}
                 >
-                  <Text style={[styles.scheduleChipText, scheduleNow && { color: '#fff' }]}>Send Now</Text>
+                  <Text style={[styles.scheduleChipText, { color: colors.text }, scheduleNow && { color: '#fff' }]}>Send Now</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.scheduleChip, !scheduleNow && styles.scheduleChipActive]}
+                  style={[
+                    styles.scheduleChip,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    !scheduleNow && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ]}
                   onPress={() => setScheduleNow(false)}
                 >
-                  <Text style={[styles.scheduleChipText, !scheduleNow && { color: '#fff' }]}>Schedule for Later</Text>
+                  <Text style={[styles.scheduleChipText, { color: colors.text }, !scheduleNow && { color: '#fff' }]}>Schedule for Later</Text>
                 </Pressable>
               </View>
 
@@ -857,20 +870,32 @@ export default function NewDeliveryScreen() {
                     minDate={TODAY_ISO}
                     maxDate={MAX_BOOK_AHEAD}
                     onDayPress={(d: any) => setScheduledDate(d.dateString)}
-                    markedDates={{ [scheduledDate]: { selected: true, selectedColor: '#0F2B4C' } }}
-                    theme={{ todayTextColor: '#3A7BD5', arrowColor: '#0F2B4C' }}
+                    markedDates={{ [scheduledDate]: { selected: true, selectedColor: colors.primary } }}
+                    theme={{
+                      backgroundColor:    colors.surface,
+                      calendarBackground: colors.surface,
+                      dayTextColor:       colors.text,
+                      monthTextColor:     colors.text,
+                      todayTextColor:     colors.accent,
+                      arrowColor:         colors.text,
+                      textSectionTitleColor: colors.textSecond,
+                    }}
                   />
-                  <Text style={styles.label}>Pickup time (5 AM – 9 PM)</Text>
+                  <Text style={[styles.label, { color: colors.textSecond }]}>Pickup time (5 AM – 9 PM)</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {TIME_SLOTS.map(slot => {
                       const active = scheduledHour === slot.hour;
                       return (
                         <Pressable
                           key={slot.hour}
-                          style={[styles.timeChip, active && styles.timeChipActive]}
+                          style={[
+                            styles.timeChip,
+                            { backgroundColor: colors.surface, borderColor: colors.border },
+                            active && { backgroundColor: colors.accent, borderColor: colors.accent },
+                          ]}
                           onPress={() => setScheduledHour(slot.hour)}
                         >
-                          <Text style={[styles.timeChipText, active && { color: '#fff' }]}>{slot.label}</Text>
+                          <Text style={[styles.timeChipText, { color: colors.text }, active && { color: '#fff' }]}>{slot.label}</Text>
                         </Pressable>
                       );
                     })}
@@ -878,9 +903,8 @@ export default function NewDeliveryScreen() {
                 </View>
               )}
 
-              {/* Price breakdown card */}
-              <Text style={styles.sectionTitle}>Price breakdown</Text>
-              {quoteLoading && <ActivityIndicator color="#3A7BD5" />}
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Price breakdown</Text>
+              {quoteLoading && <ActivityIndicator color={colors.accent} />}
               {quoteErr && (
                 <View style={styles.errorBanner}>
                   <Icon name="AlertCircle" size={14} color="#DC2626" />
@@ -889,13 +913,12 @@ export default function NewDeliveryScreen() {
               )}
               {quote && <PriceCard quote={quote} />}
 
-              {/* ETA card */}
               {quote && (
-                <View style={styles.etaCard}>
-                  <Text style={styles.etaTitle}>Estimated time</Text>
-                  <Text style={styles.etaLine}>Drive: {totalDriveMin} min</Text>
-                  <Text style={styles.etaLine}>Stops dwell: {quote.estimatedDwellMinutes} min ({draft.stops.length} stop{draft.stops.length === 1 ? '' : 's'})</Text>
-                  <Text style={styles.etaTotal}>Total: ~{totalDriveMin + quote.estimatedDwellMinutes} min</Text>
+                <View style={[styles.etaCard, { backgroundColor: colors.surfaceSecond, borderColor: colors.border }]}>
+                  <Text style={[styles.etaTitle, { color: colors.text }]}>Estimated time</Text>
+                  <Text style={[styles.etaLine, { color: colors.textSecond }]}>Drive: {totalDriveMin} min</Text>
+                  <Text style={[styles.etaLine, { color: colors.textSecond }]}>Stops dwell: {quote.estimatedDwellMinutes} min ({draft.stops.length} stop{draft.stops.length === 1 ? '' : 's'})</Text>
+                  <Text style={[styles.etaTotal, { color: colors.text }]}>Total: ~{totalDriveMin + quote.estimatedDwellMinutes} min</Text>
                 </View>
               )}
             </View>
@@ -904,15 +927,16 @@ export default function NewDeliveryScreen() {
           {/* ── Step navigation ─────────────────────────────────────── */}
           <View style={styles.navRow}>
             {step > 0 && (
-              <Pressable style={styles.backStepBtn} onPress={back}>
-                <Icon name="ChevronDown" size={16} color="#0F2B4C" />
-                <Text style={styles.backStepText}>Back</Text>
+              <Pressable style={[styles.backStepBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={back}>
+                <Icon name="ChevronDown" size={16} color={colors.text} />
+                <Text style={[styles.backStepText, { color: colors.text }]}>Back</Text>
               </Pressable>
             )}
             {step < 2 ? (
               <Pressable
                 style={[
                   styles.nextBtn,
+                  { backgroundColor: colors.primary },
                   !((step === 0 && canContinue0) || (step === 1 && canContinue1)) && styles.nextBtnDisabled,
                 ]}
                 onPress={next}
@@ -922,7 +946,11 @@ export default function NewDeliveryScreen() {
               </Pressable>
             ) : (
               <Pressable
-                style={[styles.nextBtn, (loading || !quote) && styles.nextBtnDisabled]}
+                style={[
+                  styles.nextBtn,
+                  { backgroundColor: colors.primary },
+                  (loading || !quote) && styles.nextBtnDisabled,
+                ]}
                 onPress={handleSubmit}
                 disabled={loading || !quote}
               >
@@ -966,25 +994,26 @@ function computePerStopDwell(
 
 // ── Price breakdown sub-component ───────────────────────────────────────
 function PriceCard({ quote }: { quote: PriceBreakdown }) {
+  const colors = useColors();
   const c = quote.customer;
   const surchargeTotal = c.categorySurcharge + c.timeSurcharges.night + c.timeSurcharges.peak
                        + c.timeSurcharges.weekend + c.zoneSurcharges.interState
                        + c.zoneSurcharges.longDistance + c.zoneSurcharges.overnight + c.zoneSurcharges.restricted;
   const discountTotal  = c.discounts.bulk + c.discounts.recurring + c.discounts.loyalty + c.discounts.welcome;
   return (
-    <View style={styles.priceCard}>
+    <View style={[styles.priceCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <PriceLine label="Base fare"                           value={c.base} />
       <PriceLine label={`Distance (${quote.km.toFixed(1)} km labour)`} value={c.distanceLabour} />
       <PriceLine label={`Distance (${quote.km.toFixed(1)} km fuel)`}   value={c.distanceFuel} />
       {c.stopBonuses    > 0 && <PriceLine label={`Stops bonus (${quote.stops - 1})`} value={c.stopBonuses} />}
       {surchargeTotal   > 0 && <PriceLine label="Surcharges"           value={surchargeTotal} />}
       {discountTotal    > 0 && <PriceLine label="Discounts"            value={-discountTotal} negative />}
-      <View style={styles.priceDivider} />
+      <View style={[styles.priceDivider, { backgroundColor: colors.border }]} />
       <PriceLine label="Subtotal"                                       value={c.vatBase} />
       <PriceLine label={`VAT 7.5%`}                                     value={c.vat} />
-      <View style={styles.priceDivider} />
+      <View style={[styles.priceDivider, { backgroundColor: colors.border }]} />
       <PriceLine label="Total" value={c.total} bold />
-      <Text style={styles.priceWho}>
+      <Text style={[styles.priceWho, { color: colors.textThird }]}>
         Driver earns ₦{Math.round(quote.driver.total).toLocaleString()}. SEIRS keeps ₦{Math.round(quote.seirsNet).toLocaleString()}.
       </Text>
     </View>
@@ -992,11 +1021,17 @@ function PriceCard({ quote }: { quote: PriceBreakdown }) {
 }
 
 function PriceLine({ label, value, bold, negative }: { label: string; value: number; bold?: boolean; negative?: boolean }) {
+  const colors = useColors();
   const sign = negative ? '−' : '';
   return (
     <View style={styles.priceRow}>
-      <Text style={[styles.priceLabel, bold && { fontWeight: '700' }]}>{label}</Text>
-      <Text style={[styles.priceValue, bold && { fontWeight: '700' }, negative && { color: '#16A34A' }]}>
+      <Text style={[styles.priceLabel, { color: colors.textSecond }, bold && { fontWeight: '700', color: colors.text }]}>{label}</Text>
+      <Text style={[
+        styles.priceValue,
+        { color: colors.text },
+        bold && { fontWeight: '700' },
+        negative && { color: '#16A34A' },
+      ]}>
         {sign}₦{Math.abs(Math.round(value)).toLocaleString()}
       </Text>
     </View>
@@ -1004,105 +1039,92 @@ function PriceLine({ label, value, bold, negative }: { label: string; value: num
 }
 
 // ── Styles ──────────────────────────────────────────────────────────────
+// Structural styles only — every color (text, background, border) is
+// applied inline via the active palette so screens swap between
+// light + dark without rebuilding the StyleSheet.
 const styles = StyleSheet.create({
   topBar: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
-  topTitle: { flex: 1, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#fff', borderRadius: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
-  topTitleText: { fontSize: 14, fontWeight: '700', color: '#0F2B4C' },
-  topStep: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  topTitle: { flex: 1, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  topTitleText: { fontSize: 14, fontWeight: '700' },
+  topStep: { fontSize: 11, marginTop: 2 },
 
   sheetInner: { paddingHorizontal: 18, paddingTop: 4 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#0F2B4C', marginTop: 4 },
-  sectionHint: { fontSize: 12, color: '#6B7280' },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginTop: 6 },
-  miniLabel: { fontSize: 11, fontWeight: '600', color: '#6B7280', marginTop: 8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
-  fieldHint: { fontSize: 11, color: '#9CA3AF', marginTop: -8 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', marginTop: 4 },
+  sectionHint: { fontSize: 12 },
+  label: { fontSize: 13, fontWeight: '600', marginTop: 6 },
+  miniLabel: { fontSize: 11, fontWeight: '600', marginTop: 8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
+  fieldHint: { fontSize: 11, marginTop: -8 },
 
-  inputBlock: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 12, paddingVertical: 4 },
+  inputBlock: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4 },
   inputRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 },
-  inputField: { flex: 1, fontSize: 14, color: '#0F2B4C' },
+  inputField: { flex: 1, fontSize: 14 },
   dot: { width: 10, height: 10, borderRadius: 5 },
 
-  miniInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0F2B4C' },
+  miniInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
 
-  // Suggestions
-  suggBlock: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 14, marginTop: -4 },
+  // Suggestions panel
+  suggBlock: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, marginTop: -4 },
   useLocBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
-  useLocText: { fontSize: 14, fontWeight: '600', color: '#3A7BD5' },
-  suggRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  suggIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
-  suggMain: { fontSize: 14, fontWeight: '500', color: '#0F2B4C' },
-  suggSub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  useLocText: { fontSize: 14, fontWeight: '600' },
+  suggRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderTopWidth: 1 },
+  suggIcon: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  suggMain: { fontSize: 14, fontWeight: '500' },
+  suggSub: { fontSize: 12, marginTop: 2 },
 
-  // Category cards
-  catCard: { width: 140, padding: 12, borderRadius: 12, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB' },
-  catCardActive: { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
-  catName: { fontSize: 13, fontWeight: '700', color: '#0F2B4C' },
-  catEx: { fontSize: 11, color: '#6B7280', marginTop: 4 },
+  catCard: { width: 140, padding: 12, borderRadius: 12, borderWidth: 1 },
+  catName: { fontSize: 13, fontWeight: '700' },
+  catEx: { fontSize: 11, marginTop: 4 },
 
-  // Vehicle chips
-  vehChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 22, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  vehChipActive: { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
-  vehChipSuggested: { borderColor: '#3A7BD5', backgroundColor: '#EFF6FF' },
-  vehChipBlocked: { backgroundColor: '#F9FAFB', borderColor: '#F3F4F6', opacity: 0.5 },
-  vehChipText: { fontSize: 13, fontWeight: '600', color: '#0F2B4C' },
+  vehChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 22, borderWidth: 1 },
+  vehChipText: { fontSize: 13, fontWeight: '600' },
   suggBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: '#3A7BD5' },
   suggBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.4, textTransform: 'uppercase' },
 
-  // Tip / safety banner
+  // Safety banner (amber across both modes — semantic warning color)
   tipBox: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', padding: 10, backgroundColor: '#FFFBEB', borderColor: '#FCD34D', borderWidth: 1, borderRadius: 10 },
   tipText: { flex: 1, fontSize: 12, color: '#92400E' },
 
-  // Stops
-  stopCard: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E5E7EB' },
+  stopCard: { borderRadius: 12, padding: 12, borderWidth: 1 },
   stopHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  stopBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: '#0F2B4C' },
+  stopBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   stopBadgeText: { fontSize: 11, color: '#fff', fontWeight: '700' },
-  addStopBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1.5, borderColor: '#3A7BD5', backgroundColor: '#EFF6FF' },
-  addStopText: { fontSize: 13, fontWeight: '600', color: '#3A7BD5' },
+  addStopBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1.5 },
+  addStopText: { fontSize: 13, fontWeight: '600' },
 
-  // Optimize toggle
-  optimizeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB' },
-  optimizeTitle: { fontSize: 13, fontWeight: '700', color: '#0F2B4C' },
-  optimizeSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  optimizeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: 1 },
+  optimizeTitle: { fontSize: 13, fontWeight: '700' },
+  optimizeSub: { fontSize: 11, marginTop: 2 },
 
-  // Route stat
-  routeStat: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#F0F5FF', borderColor: '#3A7BD540', borderWidth: 1, borderRadius: 10, paddingVertical: 8 },
-  routeStatText: { fontSize: 13, fontWeight: '600', color: '#0F2B4C' },
-  routeStatDivider: { color: '#9CA3AF' },
+  routeStat: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderRadius: 10, paddingVertical: 8 },
+  routeStatText: { fontSize: 13, fontWeight: '600' },
+  routeStatDivider: { },
 
-  // Schedule
   scheduleRow: { flexDirection: 'row', gap: 8 },
-  scheduleChip: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff', alignItems: 'center' },
-  scheduleChipActive: { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
-  scheduleChipText: { fontSize: 13, fontWeight: '700', color: '#0F2B4C' },
-  timeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 18, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  timeChipActive: { backgroundColor: '#3A7BD5', borderColor: '#3A7BD5' },
-  timeChipText: { fontSize: 12, fontWeight: '600', color: '#0F2B4C' },
+  scheduleChip: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
+  scheduleChipText: { fontSize: 13, fontWeight: '700' },
+  timeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 18, borderWidth: 1 },
+  timeChipText: { fontSize: 12, fontWeight: '600' },
 
-  // Price card
-  priceCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', padding: 14 },
+  priceCard: { borderRadius: 12, borderWidth: 1, padding: 14 },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
-  priceLabel: { fontSize: 12, color: '#374151' },
-  priceValue: { fontSize: 13, color: '#0F2B4C', fontVariant: ['tabular-nums'] },
-  priceDivider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 6 },
-  priceWho: { fontSize: 11, color: '#9CA3AF', marginTop: 8, fontStyle: 'italic' },
+  priceLabel: { fontSize: 12 },
+  priceValue: { fontSize: 13, fontVariant: ['tabular-nums'] },
+  priceDivider: { height: 1, marginVertical: 6 },
+  priceWho: { fontSize: 11, marginTop: 8, fontStyle: 'italic' },
 
-  // ETA
-  etaCard: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' },
-  etaTitle: { fontSize: 13, fontWeight: '700', color: '#0F2B4C', marginBottom: 6 },
-  etaLine: { fontSize: 12, color: '#6B7280' },
-  etaTotal: { fontSize: 14, fontWeight: '700', color: '#0F2B4C', marginTop: 6 },
+  etaCard: { borderRadius: 12, padding: 14, borderWidth: 1 },
+  etaTitle: { fontSize: 13, fontWeight: '700', marginBottom: 6 },
+  etaLine: { fontSize: 12 },
+  etaTotal: { fontSize: 14, fontWeight: '700', marginTop: 6 },
 
-  // Errors
   errorBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 10 },
   errorBannerText: { flex: 1, fontSize: 12, color: '#991B1B' },
 
-  // Nav row
   navRow: { flexDirection: 'row', gap: 8, marginTop: 18 },
-  backStepBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  backStepText: { fontSize: 13, fontWeight: '600', color: '#0F2B4C' },
-  nextBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 14, borderRadius: 12, backgroundColor: '#0F2B4C' },
+  backStepBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 12, borderRadius: 12, borderWidth: 1 },
+  backStepText: { fontSize: 13, fontWeight: '600' },
+  nextBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 14, borderRadius: 12 },
   nextBtnDisabled: { opacity: 0.4 },
   nextText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });
