@@ -13,16 +13,23 @@
  * (Partner Store) — under one account.
  */
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Linking,
 } from 'react-native';
+
+// Canonical legal docs live on the marketing site so they stay in sync
+// across web + all 3 mobile apps without bundling text.
+const TERMS_URL   = 'https://seirs.co/terms-of-service';
+const PRIVACY_URL = 'https://seirs.co/privacy-policy';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { authApi } from '@/services/api';
 import { validatePassword, isPasswordValid, PASSWORD_HELP_TEXT } from '@seirs/shared';
 import { StatePicker } from '@/components/StatePicker';
+import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -194,8 +201,19 @@ export default function RegisterScreen() {
         />
         <Field label="City / LGA" value={form.city} onChangeText={(v) => set('city', v)}
           placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi" />
-        <Field label="Street Address & Landmark" value={form.streetAddress} onChangeText={(v) => set('streetAddress', v)}
-          placeholder="15 Adeola Odeku Street, opposite Pinnacle Mall" />
+        {/* Google Places autocomplete biased to the selected state — same
+            engine as the customer-app Send/Request flow, so a user typing
+            "15 adeola" while Lagos is selected sees real Lagos streets,
+            not a free-text guess. */}
+        <View style={{ marginBottom: 14 }}>
+          <StreetAutocomplete
+            label="Street Address & Landmark"
+            value={form.streetAddress}
+            onChangeText={(v) => set('streetAddress', v)}
+            state={form.state}
+            placeholder="Start typing a street or landmark…"
+          />
+        </View>
 
         {/* Password */}
         <Text style={styles.label}>Password</Text>
@@ -242,10 +260,28 @@ export default function RegisterScreen() {
           onToggle={() => setAgeOk((v) => !v)}
           label="I confirm I am 18 years or older"
         />
+        {/* Terms + Privacy: the document names are tappable independently of
+            the checkbox, so a user can read either doc on seirs.co before
+            agreeing. The checkbox itself only toggles when the box (or the
+            non-link text) is tapped — tapping a link won't accidentally
+            consent for them. */}
         <CheckRow
           value={termsOk}
           onToggle={() => setTermsOk((v) => !v)}
-          label="I accept the Terms of Service and Privacy Policy"
+          label={
+            <Text style={styles.checkLabel}>
+              I accept the{' '}
+              <Text
+                style={styles.linkText}
+                onPress={() => Linking.openURL(TERMS_URL)}
+              >Terms of Service</Text>
+              {' '}and{' '}
+              <Text
+                style={styles.linkText}
+                onPress={() => Linking.openURL(PRIVACY_URL)}
+              >Privacy Policy</Text>
+            </Text>
+          }
         />
 
         {/* Button is always tappable — if the form is incomplete, tapping
@@ -287,13 +323,15 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<typ
   );
 }
 
-function CheckRow({ value, onToggle, label }: { value: boolean; onToggle: () => void; label: string }) {
+function CheckRow({ value, onToggle, label }: { value: boolean; onToggle: () => void; label: ReactNode }) {
   return (
     <Pressable style={styles.checkRow} onPress={onToggle}>
       <View style={[styles.checkbox, value && styles.checkboxActive]}>
         {value && <Icon name="Check" size={12} color="#fff" strokeWidth={2.5} />}
       </View>
-      <Text style={styles.checkLabel}>{label}</Text>
+      {typeof label === 'string'
+        ? <Text style={styles.checkLabel}>{label}</Text>
+        : <View style={{ flex: 1 }}>{label}</View>}
     </Pressable>
   );
 }
@@ -324,6 +362,7 @@ const styles = StyleSheet.create({
   },
   checkboxActive: { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
   checkLabel: { flex: 1, fontSize: 13, color: '#374151', lineHeight: 20 },
+  linkText:   { color: '#3A7BD5', fontWeight: '600', textDecorationLine: 'underline' },
   btn:        {
     backgroundColor: '#0F2B4C', borderRadius: 14, paddingVertical: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8,

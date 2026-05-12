@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Icon } from '@/components/Icon';
 import { uploadApi, partnerApi } from '@/services/api';
+import { StatePicker } from '@/components/StatePicker';
+import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 
 interface ApplicationStatus {
   storeId:    string;
@@ -33,8 +35,13 @@ export default function ApplyPartnerScreen() {
 
   const [existing, setExisting] = useState<ApplicationStatus | null>(null);
   const [loading,  setLoading]  = useState(true);
+  // Structured address — mirrors the register form so dispatch + zone
+  // surcharges can index by state without re-parsing free text. On submit
+  // these are joined into the canonical `storeAddress` string the backend
+  // expects (same contract as before).
   const [form, setForm] = useState({
-    storeName: '', storeAddress: '', phone: '', maxCapacity: '50',
+    storeName: '', phone: '', maxCapacity: '50',
+    state: '', city: '', streetAddress: '',
   });
   const [storefrontPhoto, setStorefrontPhoto] = useState<string | null>(null);
   const [cacReg,          setCacReg]          = useState<string | null>(null);
@@ -62,7 +69,9 @@ export default function ApplyPartnerScreen() {
 
   const formValid =
     form.storeName.trim().length > 1 &&
-    form.storeAddress.trim().length > 5 &&
+    !!form.state &&
+    form.city.trim().length > 1 &&
+    form.streetAddress.trim().length > 3 &&
     form.phone.trim().length > 5 &&
     !!storefrontPhoto &&
     !!ownerId;
@@ -80,9 +89,17 @@ export default function ApplyPartnerScreen() {
         uploadApi.file(ownerId!),
         cacReg ? uploadApi.file(cacReg) : Promise.resolve({ url: '' }),
       ]);
+      // Combine structured parts into the canonical storeAddress string
+      // the backend already stores. Same format as business register.
+      const storeAddress = [
+        form.streetAddress.trim(),
+        form.city.trim(),
+        `${form.state} State`,
+        'Nigeria',
+      ].filter(Boolean).join(', ');
       const res = await partnerApi.applyForPartnerStore({
         storeName:          form.storeName.trim(),
-        storeAddress:       form.storeAddress.trim(),
+        storeAddress,
         phone:              form.phone.trim(),
         maxCapacity:        form.maxCapacity ? Number(form.maxCapacity) : 50,
         storefrontPhotoUrl: storefront.url,
@@ -188,14 +205,32 @@ export default function ApplyPartnerScreen() {
           />
         </View>
 
-        <Text style={styles.label}>Store Address</Text>
+        {/* Structured address — state picker locks the canonical name so
+            dispatch + zone pricing can filter reliably, then Google Places
+            autocomplete (biased to the state) gives real Nigerian streets
+            instead of a free-text guess. Same pattern as the register form. */}
+        <StatePicker
+          label="State"
+          value={form.state}
+          onChange={(s) => setForm({ ...form, state: s })}
+        />
+        <Text style={styles.label}>City / LGA</Text>
         <View style={styles.inputWrap}>
           <TextInput
             style={styles.input}
-            value={form.storeAddress}
-            onChangeText={(v) => setForm({ ...form, storeAddress: v })}
-            placeholder="10 Femi Okunnu, Lekki Phase 1"
+            value={form.city}
+            onChangeText={(v) => setForm({ ...form, city: v })}
+            placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi"
             placeholderTextColor="#9CA3AF"
+          />
+        </View>
+        <View style={{ marginBottom: 14 }}>
+          <StreetAutocomplete
+            label="Street Address & Landmark"
+            value={form.streetAddress}
+            onChangeText={(v) => setForm({ ...form, streetAddress: v })}
+            state={form.state}
+            placeholder="Start typing a street or landmark…"
           />
         </View>
 

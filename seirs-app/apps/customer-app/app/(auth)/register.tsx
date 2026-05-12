@@ -1,8 +1,13 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
+  View, Text, TextInput, Pressable, StyleSheet, Linking,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
 } from 'react-native';
+
+// Canonical legal docs live on the marketing site so they stay in sync
+// across web + all 3 mobile apps without bundling text.
+const TERMS_URL   = 'https://seirs.co/terms-of-service';
+const PRIVACY_URL = 'https://seirs.co/privacy-policy';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -92,7 +97,7 @@ export default function RegisterScreen() {
   };
 
   const Checkbox = ({ checked, onToggle, label, sublabel }: {
-    checked: boolean; onToggle: () => void; label: string; sublabel?: string;
+    checked: boolean; onToggle: () => void; label: ReactNode; sublabel?: string;
   }) => (
     <Pressable style={styles.checkRow} onPress={onToggle}>
       {checked
@@ -100,7 +105,9 @@ export default function RegisterScreen() {
         : <Square      size={22} color={theme.border}  strokeWidth={1.75} />
       }
       <View style={styles.checkTextWrap}>
-        <Text style={[styles.checkLabel, { color: theme.text }]}>{label}</Text>
+        {typeof label === 'string'
+          ? <Text style={[styles.checkLabel, { color: theme.text }]}>{label}</Text>
+          : label}
         {sublabel ? <Text style={[styles.checkSub, { color: theme.textSecond }]}>{sublabel}</Text> : null}
       </View>
     </Pressable>
@@ -277,7 +284,20 @@ export default function RegisterScreen() {
             <Checkbox
               checked={termsAccepted}
               onToggle={() => setTermsAccepted(v => !v)}
-              label="I agree to the Terms of Service and Privacy Policy"
+              label={
+                <Text style={[styles.checkLabel, { color: theme.text }]}>
+                  I agree to the{' '}
+                  <Text
+                    style={[styles.linkText, { color: theme.accent }]}
+                    onPress={() => Linking.openURL(TERMS_URL)}
+                  >Terms of Service</Text>
+                  {' '}and{' '}
+                  <Text
+                    style={[styles.linkText, { color: theme.accent }]}
+                    onPress={() => Linking.openURL(PRIVACY_URL)}
+                  >Privacy Policy</Text>
+                </Text>
+              }
               sublabel="Your acceptance will be recorded with a timestamp."
             />
           </View>
@@ -340,6 +360,7 @@ const styles = StyleSheet.create({
   checkTextWrap:{ flex: 1 },
   checkLabel:   { fontSize: FontSize.sm, fontWeight: FontWeight.medium, lineHeight: 20 },
   checkSub:     { fontSize: FontSize.xs, marginTop: 2, lineHeight: 16 },
+  linkText:     { fontWeight: FontWeight.semibold, textDecorationLine: 'underline' },
   submitBtn:    { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.sm },
   submitRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   submitText:   { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold },

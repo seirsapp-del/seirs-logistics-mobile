@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
+  View, Text, TextInput, Pressable, StyleSheet, Linking,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
 } from 'react-native';
+
+// Canonical legal docs live on the marketing site so they stay in sync
+// across web + all 3 mobile apps without bundling text. Driver Code of
+// Conduct is contained within the Terms of Service for now.
+const TERMS_URL   = 'https://seirs.co/terms-of-service';
+const PRIVACY_URL = 'https://seirs.co/privacy-policy';
 import {
   ArrowLeft, User, Mail, Phone, Truck, Bike, Car, Van,
   CheckSquare, Square, AlertCircle,
@@ -100,13 +106,15 @@ export default function DriverRegisterScreen() {
     }
   };
 
-  const Checkbox = ({ value, onToggle, label }: { value: boolean; onToggle: () => void; label: string }) => (
+  const Checkbox = ({ value, onToggle, label }: { value: boolean; onToggle: () => void; label: ReactNode }) => (
     <Pressable style={styles.checkRow} onPress={onToggle}>
       {value
         ? <CheckSquare size={20} color={theme.primary} strokeWidth={1.5} />
         : <Square size={20} color={theme.textThird} strokeWidth={1.5} />
       }
-      <Text style={[styles.checkLabel, { color: theme.textSecond }]}>{label}</Text>
+      {typeof label === 'string'
+        ? <Text style={[styles.checkLabel, { color: theme.textSecond }]}>{label}</Text>
+        : <View style={{ flex: 1 }}>{label}</View>}
     </Pressable>
   );
 
@@ -290,7 +298,20 @@ export default function DriverRegisterScreen() {
           <Checkbox
             value={termsConfirmed}
             onToggle={() => setTermsConfirmed(v => !v)}
-            label="I agree to the Terms of Service, Driver Code of Conduct, and Privacy Policy"
+            label={
+              <Text style={[styles.checkLabel, { color: theme.textSecond }]}>
+                I agree to the{' '}
+                <Text
+                  style={[styles.linkText, { color: theme.primary }]}
+                  onPress={() => Linking.openURL(TERMS_URL)}
+                >Terms of Service</Text>
+                {' '}(including the Driver Code of Conduct) and{' '}
+                <Text
+                  style={[styles.linkText, { color: theme.primary }]}
+                  onPress={() => Linking.openURL(PRIVACY_URL)}
+                >Privacy Policy</Text>
+              </Text>
+            }
           />
         </View>
 
@@ -346,6 +367,7 @@ const styles = StyleSheet.create({
   checkCard:     { borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.md, gap: Spacing.md },
   checkRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
   checkLabel:    { flex: 1, fontSize: FontSize.sm, lineHeight: 20 },
+  linkText:      { fontWeight: FontWeight.semibold, textDecorationLine: 'underline' },
   submitBtn:     { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.lg },
   submitText:    { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
   footer:        { flexDirection: 'row', justifyContent: 'center' },
