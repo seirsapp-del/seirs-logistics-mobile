@@ -200,6 +200,16 @@ export const driversApi = {
   toggleOnline:   (isOnline: boolean) => request<any>('PATCH', '/drivers/online', { isOnline }),
   updateLocation: (lat: number, lng: number) => request<any>('PATCH', '/drivers/location', { lat, lng }),
   myDeliveries:   () => request<any[]>('GET', '/deliveries/driver'),
+  // Fetch a single delivery WITH stops eager-loaded. Returns the full
+  // multi-stop payload the driver app uses to render the trip.
+  getDelivery:    (id: string) =>
+    request<any>('GET', `/business/deliveries/${id}`),
+  // Stop-level transitions — driver taps these as they walk the route.
+  markStopArrived:   (deliveryId: string, stopId: string) =>
+    request<any>('POST', `/business/deliveries/${deliveryId}/stops/${stopId}/arrived`),
+  markStopDelivered: (deliveryId: string, stopId: string, body?: {
+    proofPhotoUrls?: string[]; recipientSignatureUrl?: string;
+  }) => request<any>('POST', `/business/deliveries/${deliveryId}/stops/${stopId}/delivered`, body ?? {}),
   // Pending unassigned jobs the driver can claim. Sorted by distance from
   // (lat,lng) when supplied, newest-first otherwise. Backend route:
   // GET /deliveries/available?lat=&lng=&radiusKm=
@@ -362,8 +372,44 @@ export const businessApi = {
 
   delivery: (id: string) => request<any>('GET', `/business/deliveries/${id}`),
 
-  createDelivery: (data: any) =>
-    request<any>('POST', '/business/deliveries', data),
+  // Multi-stop booking. Backend creates one Delivery + N DeliveryStop
+  // rows in a transaction, snapshots the active rate card, debits the
+  // wallet for the real total. See seirs-backend/business.service
+  // CreateMultiStopDeliveryDto for the full payload shape.
+  createDelivery: (data: {
+    pickupAddress:    string;
+    pickupLat:        number;
+    pickupLng:        number;
+    stops: Array<{
+      address:        string;
+      lat:            number;
+      lng:            number;
+      recipientName:  string;
+      recipientPhone: string;
+      notes?:         string;
+      sequenceOrder?: number;
+    }>;
+    vehicleType:      string;
+    categoryCode:     string;
+    weightKg:         number;
+    packageDescription?: string;
+    km:               number;
+    estimatedDriveMinutes: number;
+    scheduledAt?:     string;
+    optimizedWaypointOrder?: number[];
+    routeWasAutoOptimized?: boolean;
+    isInterState?:    boolean;
+    isLongDistance?:  boolean;
+    isRecurring?:     boolean;
+  }) => request<any>('POST', '/business/deliveries', data),
+
+  // Stop-level transitions (called by driver app when working a multi-
+  // stop booking).
+  markStopArrived: (deliveryId: string, stopId: string) =>
+    request<any>('POST', `/business/deliveries/${deliveryId}/stops/${stopId}/arrived`),
+  markStopDelivered: (deliveryId: string, stopId: string, body?: {
+    proofPhotoUrls?: string[]; recipientSignatureUrl?: string;
+  }) => request<any>('POST', `/business/deliveries/${deliveryId}/stops/${stopId}/delivered`, body ?? {}),
 
   uploadCsv: async (uri: string, fileName: string): Promise<any> => {
     const token = await getToken();
@@ -548,4 +594,145 @@ export const identityApi = {
     ),
   handoffChain: (deliveryId: string) =>
     request<any[]>('GET', `/identity/handoff/${deliveryId}/chain`),
+};
+
+// ─── Pricing & Configuration ──────────────────────────────────────────────────
+// Public reads (rate card + service catalog) cached client-side for 5 min
+// to avoid hammering the backend on every keystroke. Quote endpoint is
+// auth'd and called when key inputs (vehicle, category, weight, stops,
+// time) change so the price preview stays live.
+
+export interface ServiceCategory {
+  id:                 string;
+  code:               string;
+  name:               string;
+  examples:           string;
+  suggestedVehicles:  string[];
+  setupDwellMinutes:  number;
+  surchargePercent:   number;
+  safetyRules: {
+    blockedVehicles?:   string[];
+    warningVehicles?:   string[];
+    weightThresholdKg?: number;
+    warningCopy?:       string;
+  } | null;
+  active:    boolean;
+  sortOrder: number;
+}
+
+export interface RateCard {
+  id:           string;
+  version:      number;
+  isActive:     boolean;
+  fuelPrices: { petrolPerLitreNgn: number; dieselPerLitreNgn: number };
+  vehicleRates: Record<string, {
+    baseFareCustomer:    number;
+    baseFareDriver:      number;
+    labourPerKmCustomer: number;
+    labourPerKmDriver:   number;
+    kmPerLitre:          number;
+    fuelType:            'petrol' | 'diesel' | 'none';
+    maxPayloadKg:        number;
+  }>;
+  stopAndDwell: {
+    perStopBonusCustomer:      number;
+    perStopBonusDriver:        number;
+    perDwellMinuteCustomer:    number;
+    perDwellMinuteDriver:      number;
+    freeDwellThresholdMinutes: number;
+    dwellCapMinutes:           number;
+  };
+  weightTiers:    Array<{ minKg: number; maxKg: number | null; extraMinutes: number; why?: string }>;
+  dwellBuffers:   { baselineMinutes: number; estateMinutes: number; marketMinutes: number; govtMinutes: number };
+  timeSurcharges: any;
+  zoneSurcharges: any;
+  discounts:      any;
+  feeRules:       any;
+  partnerStore:   any;
+  vatRate:        number;
+}
+
+export interface PriceBreakdown {
+  vehicleType:           string;
+  categoryCode:          string;
+  km:                    number;
+  stops:                 number;
+  estimatedDwellMinutes: number;
+  customer: {
+    base:              number;
+    distanceLabour:    number;
+    distanceFuel:      number;
+    stopBonuses:       number;
+    dwellOver:         number;
+    categorySurcharge: number;
+    timeSurcharges:    { night: number; peak: number; weekend: number };
+    zoneSurcharges:    { interState: number; longDistance: number; overnight: number; restricted: number };
+    discounts:         { bulk: number; recurring: number; loyalty: number; welcome: number };
+    vatBase:           number;
+    vat:               number;
+    total:             number;
+  };
+  driver: {
+    base:           number;
+    distanceLabour: number;
+    distanceFuel:   number;
+    stopBonuses:    number;
+    dwellOver:      number;
+    surchargeShare: number;
+    total:          number;
+  };
+  seirsNet:           number;
+  rateCardSnapshotId: string;
+}
+
+// Module-scope 5-min cache so multiple screens (new-delivery, vehicle
+// picker, driver job-detail) don't all hit /config endpoints on every
+// mount. Bust manually with `configApi.invalidateCache()` after admin
+// publishes a new rate card.
+const CONFIG_TTL_MS = 5 * 60 * 1000;
+let _rateCardCache:     { data: RateCard; at: number }                | null = null;
+let _serviceCatCache:   { data: ServiceCategory[]; at: number }       | null = null;
+
+export const configApi = {
+  rateCard: async (force = false): Promise<RateCard> => {
+    if (!force && _rateCardCache && Date.now() - _rateCardCache.at < CONFIG_TTL_MS) {
+      return _rateCardCache.data;
+    }
+    const data = await request<RateCard>('GET', '/config/rate-card');
+    _rateCardCache = { data, at: Date.now() };
+    return data;
+  },
+  serviceCatalog: async (force = false): Promise<ServiceCategory[]> => {
+    if (!force && _serviceCatCache && Date.now() - _serviceCatCache.at < CONFIG_TTL_MS) {
+      return _serviceCatCache.data;
+    }
+    const data = await request<ServiceCategory[]>('GET', '/config/service-catalog');
+    _serviceCatCache = { data, at: Date.now() };
+    return data;
+  },
+  invalidateCache: () => {
+    _rateCardCache = null;
+    _serviceCatCache = null;
+  },
+};
+
+export interface QuoteInput {
+  vehicleType:           string;
+  categoryCode:          string;
+  km:                    number;
+  stopCount:             number;
+  weightKg:              number;
+  estimatedDwellMinutes: number;
+  scheduledAt?:          string;
+  isInterState?:         boolean;
+  isLongDistance?:       boolean;
+  isRecurring?:          boolean;
+  isBulk?:               boolean;
+  loyaltyPointsToRedeem?: number;
+  isWelcome?:            boolean;
+}
+
+export const pricingApi = {
+  /** Live price quote — call when key inputs change in the booking form. */
+  quote: (body: QuoteInput) => request<PriceBreakdown>('POST', '/pricing/quote', body),
 };

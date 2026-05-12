@@ -1,26 +1,74 @@
+/**
+ * Driver · Active Trip — single-stop OR multi-stop view.
+ *
+ * Fetches the real Delivery (with stops eager-loaded) from the backend.
+ * If `isMultiStop`, renders an ordered checklist with per-stop Arrived /
+ * Delivered buttons; otherwise renders a single dropoff card.
+ *
+ * The driver flows top-to-bottom through stops in sequenceOrder. Each
+ * stop has its own status: pending → en_route → arrived → delivered.
+ * When the last stop flips to delivered, the parent Delivery auto-
+ * closes server-side (see business.service.markStopDelivered).
+ */
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator,
+  Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState, useCallback } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { MOCK_DRIVER_DELIVERIES } from '@/constants/driverMockData';
-import { Avatar } from '@/components/ui/Avatar';
+import { driversApi } from '@/services/api';
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  delivered:  { label: 'Delivered',  color: '#22C55E', icon: 'checkmark-circle' },
-  in_transit: { label: 'En Route',   color: '#8B5CF6', icon: 'navigate' },
-  picked_up:  { label: 'Picked Up',  color: '#FF6B00', icon: 'cube-outline' },
-  assigned:   { label: 'Assigned',   color: '#3A86FF', icon: 'navigate-outline' },
-  cancelled:  { label: 'Cancelled',  color: '#6B7280', icon: 'close-circle-outline' },
-};
+interface Stop {
+  id:             string;
+  sequenceOrder:  number;
+  address:        string;
+  lat:            number;
+  lng:            number;
+  recipientName:  string;
+  recipientPhone: string;
+  notes?:         string | null;
+  estimatedDwellMinutes: number;
+  status:         'pending' | 'en_route' | 'arrived' | 'delivered' | 'failed';
+  arrivedAt?:     string | null;
+  deliveredAt?:   string | null;
+}
 
-const PAYMENT_LABELS: Record<string, string> = {
-  wallet: 'Wallet',
-  card:   'Card',
-  cash:   'Cash on Delivery',
+interface DeliveryDetail {
+  id:                string;
+  trackingCode:      string;
+  isMultiStop:       boolean;
+  pickupAddress:     string;
+  pickupLat:         number;
+  pickupLng:         number;
+  dropoffAddress?:   string | null;
+  dropoffLat?:       number | null;
+  dropoffLng?:       number | null;
+  status:            string;
+  vehicleType?:      string;
+  categoryCode?:     string;
+  weightKg?:         number;
+  packageDescription?: string;
+  price:             number;
+  driverEarnings:    number;
+  distanceKm:        number;
+  estimatedDriveMinutes?: number;
+  estimatedDwellMinutes?: number;
+  estimatedTotalMinutes?: number;
+  routeWasAutoOptimized?: boolean;
+  priceBreakdown?:   any;
+  stops:             Stop[];
+}
+
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  pending:   { label: 'Pending',     color: '#D97706' },
+  en_route:  { label: 'En route',    color: '#3A7BD5' },
+  arrived:   { label: 'Arrived',     color: '#7C3AED' },
+  delivered: { label: 'Delivered',   color: '#16A34A' },
+  failed:    { label: 'Failed',      color: '#DC2626' },
 };
 
 export default function DeliveryDetailScreen() {
@@ -30,192 +78,364 @@ export default function DeliveryDetailScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const delivery = MOCK_DRIVER_DELIVERIES.find(d => d.id === id);
+  const [delivery, setDelivery] = useState<DeliveryDetail | null>(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState<string | null>(null);
+  const [acting,   setActing]   = useState<string | null>(null);  // stopId currently transitioning
 
-  if (!delivery) {
+  const load = useCallback(async () => {
+    if (!id) return;
+    try {
+      const d = await driversApi.getDelivery(id);
+      setDelivery(d);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not load trip.');
+    } finally { setLoading(false); }
+  }, [id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openMaps = (lat: number, lng: number, addressFallback: string) => {
+    const dest = lat && lng ? `${lat},${lng}` : encodeURIComponent(addressFallback);
+    Alert.alert('Navigate', 'Open with:', [
+      { text: 'Google Maps', onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}`) },
+      { text: 'Waze',        onPress: () => Linking.openURL(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleArrived = async (stop: Stop) => {
+    if (!delivery || acting) return;
+    setActing(stop.id);
+    try {
+      await driversApi.markStopArrived(delivery.id, stop.id);
+      await load();
+    } catch (e: any) {
+      Alert.alert('Could not mark arrived', e?.message ?? 'Try again.');
+    } finally { setActing(null); }
+  };
+
+  const handleDelivered = async (stop: Stop) => {
+    if (!delivery || acting) return;
+    setActing(stop.id);
+    try {
+      // TODO Phase 5b: tie into proof-of-delivery photo + signature
+      // (existing upload flow in receive-dropoff.tsx). For now we ship
+      // the action without proof — backend accepts null.
+      await driversApi.markStopDelivered(delivery.id, stop.id);
+      await load();
+    } catch (e: any) {
+      Alert.alert('Could not mark delivered', e?.message ?? 'Try again.');
+    } finally { setActing(null); }
+  };
+
+  if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
-        <Ionicons name="alert-circle-outline" size={48} color={theme.textThird} />
-        <Text style={[{ fontSize: FontSize.base, color: theme.textSecond, marginTop: Spacing.md }]}>Trip not found</Text>
+      <SafeAreaView style={[styles.center, { backgroundColor: theme.background }]}>
+        <ActivityIndicator color={theme.accent} />
       </SafeAreaView>
     );
   }
 
-  const sc = STATUS_CONFIG[delivery.status] ?? { label: delivery.status, color: '#A1A1AA', icon: 'ellipse-outline' };
+  if (error || !delivery) {
+    return (
+      <SafeAreaView style={[styles.center, { backgroundColor: theme.background }]}>
+        <Ionicons name="alert-circle-outline" size={48} color={theme.textThird} />
+        <Text style={[styles.errorText, { color: theme.textSecond }]}>{error ?? 'Trip not found'}</Text>
+        <Pressable style={[styles.backLink, { backgroundColor: theme.accent }]} onPress={() => router.back()}>
+          <Text style={styles.backLinkText}>Back</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
 
-  const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const pending  = delivery.stops.filter(s => s.status === 'pending' || s.status === 'en_route').length;
+  const arrived  = delivery.stops.filter(s => s.status === 'arrived').length;
+  const done     = delivery.stops.filter(s => s.status === 'delivered').length;
+
+  const totalEta = delivery.estimatedTotalMinutes
+                ?? ((delivery.estimatedDriveMinutes ?? 0) + (delivery.estimatedDwellMinutes ?? 0));
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Trip Details</Text>
-        <View style={[styles.statusBadge, { backgroundColor: sc.color + '18' }]}>
-          <Ionicons name={sc.icon as any} size={12} color={sc.color} />
-          <Text style={[styles.statusText, { color: sc.color }]}>{sc.label}</Text>
-        </View>
+        <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+          {delivery.isMultiStop ? `${delivery.stops.length}-stop trip` : 'Active trip'}
+        </Text>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Tracking code */}
-        <View style={[styles.trackingRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-          <Ionicons name="qr-code-outline" size={16} color={theme.textThird} />
-          <Text style={[styles.trackingCode, { color: theme.textSecond }]}>{delivery.trackingCode}</Text>
-          <Text style={[styles.trackingDate, { color: theme.textThird }]}>{fmtDate(delivery.date)}</Text>
-        </View>
-
-        {/* Earnings card */}
-        <View style={[styles.earningsCard, {
-          backgroundColor: delivery.driverEarnings > 0 ? (isDark ? '#001800' : '#F0FDF4') : theme.surfaceSecond,
-          borderColor: delivery.driverEarnings > 0 ? '#22C55E30' : theme.border,
-        }]}>
+        {/* Tracking + status summary */}
+        <View style={[styles.trackingCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.earningsLabel, { color: theme.textSecond }]}>Your Earnings</Text>
-            <Text style={[styles.earningsAmount, { color: delivery.driverEarnings > 0 ? '#22C55E' : theme.textThird }]}>
-              {delivery.driverEarnings > 0 ? `+₦${delivery.driverEarnings.toLocaleString()}` : '—'}
+            <Text style={[styles.trackingCode, { color: theme.text }]}>{delivery.trackingCode}</Text>
+            <Text style={[styles.trackingSub, { color: theme.textSecond }]}>
+              {delivery.packageDescription ?? delivery.categoryCode ?? 'Delivery'}
             </Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.fareLabel, { color: theme.textThird }]}>Total fare</Text>
-            <Text style={[styles.fareAmount, { color: theme.textSecond }]}>₦{delivery.price.toLocaleString()}</Text>
+          {delivery.routeWasAutoOptimized && (
+            <View style={styles.optBadge}>
+              <Ionicons name="navigate" size={11} color="#3A7BD5" />
+              <Text style={styles.optBadgeText}>Optimised</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Earnings + ETA + distance */}
+        <View style={[styles.statsRow]}>
+          <View style={[styles.statCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+            <Text style={[styles.statLabel, { color: theme.textSecond }]}>Earning</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>
+              ₦{Math.round(delivery.driverEarnings).toLocaleString()}
+            </Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+            <Text style={[styles.statLabel, { color: theme.textSecond }]}>Distance</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>
+              {Number(delivery.distanceKm ?? 0).toFixed(1)} km
+            </Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+            <Text style={[styles.statLabel, { color: theme.textSecond }]}>ETA</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>
+              ~{totalEta} min
+            </Text>
           </View>
         </View>
 
-        {/* Route card */}
-        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Route</Text>
-          <View style={styles.routeBlock}>
-            <View style={styles.routeRow}>
-              <View style={[styles.routeDot, { backgroundColor: '#22C55E' }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.routeLabel, { color: theme.textThird }]}>Pickup</Text>
-                <Text style={[styles.routeAddr, { color: theme.text }]}>{delivery.pickupAddress}</Text>
-              </View>
-            </View>
-            <View style={[styles.connector, { backgroundColor: theme.border }]} />
-            <View style={styles.routeRow}>
-              <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.routeLabel, { color: theme.textThird }]}>Drop-off</Text>
-                <Text style={[styles.routeAddr, { color: theme.text }]}>{delivery.dropoffAddress}</Text>
-              </View>
-            </View>
+        {delivery.isMultiStop && (
+          <Text style={[styles.progressLine, { color: theme.textSecond }]}>
+            {done}/{delivery.stops.length} delivered · {arrived} arrived · {pending} pending
+          </Text>
+        )}
+
+        {/* Pickup card */}
+        <View style={[styles.locationCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+          <View style={styles.locationHeader}>
+            <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
+            <Text style={[styles.locationLabel, { color: theme.textSecond }]}>Pickup</Text>
           </View>
-          <View style={[styles.metaRow, { borderTopColor: theme.border }]}>
-            <View style={styles.metaPill}>
-              <Ionicons name="navigate-outline" size={14} color={theme.textThird} />
-              <Text style={[styles.metaText, { color: theme.textSecond }]}>{delivery.distanceKm} km</Text>
-            </View>
-            <View style={styles.metaPill}>
-              <Ionicons name="time-outline" size={14} color={theme.textThird} />
-              <Text style={[styles.metaText, { color: theme.textSecond }]}>{delivery.duration}</Text>
-            </View>
-            <View style={styles.metaPill}>
-              <Ionicons name="card-outline" size={14} color={theme.textThird} />
-              <Text style={[styles.metaText, { color: theme.textSecond }]}>{PAYMENT_LABELS[delivery.paymentMethod] ?? delivery.paymentMethod}</Text>
-            </View>
-          </View>
+          <Text style={[styles.locationAddress, { color: theme.text }]}>{delivery.pickupAddress}</Text>
+          <Pressable
+            style={[styles.navBtn, { backgroundColor: theme.accent }]}
+            onPress={() => openMaps(delivery.pickupLat, delivery.pickupLng, delivery.pickupAddress)}
+          >
+            <Ionicons name="navigate" size={14} color="#fff" />
+            <Text style={styles.navBtnText}>Navigate to pickup</Text>
+          </Pressable>
         </View>
 
-        {/* Customer card */}
-        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Customer</Text>
-          <View style={styles.customerRow}>
-            <Avatar name={delivery.customer.name} size={46} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.customerName, { color: theme.text }]}>{delivery.customer.name}</Text>
-              <Text style={[styles.customerPhone, { color: theme.textSecond }]}>{delivery.customer.phone}</Text>
-            </View>
-          </View>
-        </View>
+        {/* Stops list (multi-stop) OR single dropoff */}
+        {delivery.stops.length > 0 ? (
+          delivery.stops.map((stop, idx) => {
+            const meta = STATUS_META[stop.status] ?? STATUS_META.pending;
+            const isCurrent = idx === delivery.stops.findIndex(s => s.status !== 'delivered');
+            return (
+              <View
+                key={stop.id}
+                style={[
+                  styles.stopCard,
+                  { backgroundColor: theme.surfaceSecond, borderColor: isCurrent ? theme.accent : theme.border },
+                  isCurrent && { borderWidth: 2 },
+                ]}
+              >
+                <View style={styles.stopHeader}>
+                  <View style={[styles.stopBadge, { backgroundColor: meta.color }]}>
+                    <Text style={styles.stopBadgeText}>Stop {stop.sequenceOrder}</Text>
+                  </View>
+                  <View style={[styles.statusPill, { backgroundColor: meta.color + '22' }]}>
+                    <Text style={[styles.statusPillText, { color: meta.color }]}>{meta.label}</Text>
+                  </View>
+                </View>
 
-        {/* Rating received */}
-        {delivery.rating && (
-          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Rating Received</Text>
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map(s => (
-                <Ionicons
-                  key={s}
-                  name={s <= delivery.rating! ? 'star' : 'star-outline'}
-                  size={24}
-                  color="#FFBE0B"
-                />
-              ))}
-              <Text style={[styles.ratingNum, { color: theme.text }]}>{delivery.rating}.0</Text>
-            </View>
-            {delivery.ratingComment && (
-              <View style={[styles.commentBubble, { backgroundColor: theme.surfaceSecond }]}>
-                <Ionicons name="chatbubble-ellipses-outline" size={14} color={theme.textThird} />
-                <Text style={[styles.commentText, { color: theme.textSecond }]}>"{delivery.ratingComment}"</Text>
+                <Text style={[styles.stopAddress, { color: theme.text }]}>{stop.address}</Text>
+                <Text style={[styles.stopRecipient, { color: theme.textSecond }]}>
+                  {stop.recipientName} · {stop.recipientPhone}
+                </Text>
+                {stop.notes && (
+                  <Text style={[styles.stopNotes, { color: theme.textThird }]}>
+                    Note: {stop.notes}
+                  </Text>
+                )}
+                <Text style={[styles.stopDwell, { color: theme.textThird }]}>
+                  Expected ~{stop.estimatedDwellMinutes} min handling
+                </Text>
+
+                <View style={styles.stopActions}>
+                  <Pressable
+                    style={[styles.stopActionBtn, { backgroundColor: theme.surfaceThird ?? '#E5E7EB' }]}
+                    onPress={() => openMaps(stop.lat, stop.lng, stop.address)}
+                  >
+                    <Ionicons name="navigate" size={14} color={theme.text} />
+                    <Text style={[styles.stopActionText, { color: theme.text }]}>Navigate</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.stopActionBtn, { backgroundColor: theme.surfaceThird ?? '#E5E7EB' }]}
+                    onPress={() => Linking.openURL(`tel:${stop.recipientPhone}`)}
+                  >
+                    <Ionicons name="call" size={14} color={theme.text} />
+                    <Text style={[styles.stopActionText, { color: theme.text }]}>Call</Text>
+                  </Pressable>
+                </View>
+
+                {/* State machine: pending/en_route → Arrived; arrived → Delivered. */}
+                {stop.status === 'pending' || stop.status === 'en_route' ? (
+                  <Pressable
+                    style={[styles.primaryBtn, { backgroundColor: theme.accent }]}
+                    disabled={acting === stop.id}
+                    onPress={() => handleArrived(stop)}
+                  >
+                    {acting === stop.id
+                      ? <ActivityIndicator color="#fff" />
+                      : <>
+                          <Ionicons name="flag" size={16} color="#fff" />
+                          <Text style={styles.primaryBtnText}>I've arrived</Text>
+                        </>}
+                  </Pressable>
+                ) : stop.status === 'arrived' ? (
+                  <Pressable
+                    style={[styles.primaryBtn, { backgroundColor: '#16A34A' }]}
+                    disabled={acting === stop.id}
+                    onPress={() => handleDelivered(stop)}
+                  >
+                    {acting === stop.id
+                      ? <ActivityIndicator color="#fff" />
+                      : <>
+                          <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                          <Text style={styles.primaryBtnText}>Mark delivered</Text>
+                        </>}
+                  </Pressable>
+                ) : (
+                  <View style={[styles.doneBanner]}>
+                    <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+                    <Text style={[styles.doneText, { color: '#16A34A' }]}>
+                      {stop.deliveredAt ? `Delivered ${new Date(stop.deliveredAt).toLocaleTimeString()}` : 'Delivered'}
+                    </Text>
+                  </View>
+                )}
               </View>
+            );
+          })
+        ) : delivery.dropoffAddress ? (
+          // Legacy single-leg fallback for old bookings created before the
+          // multi-stop refactor — show dropoff as a single card.
+          <View style={[styles.locationCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+            <View style={styles.locationHeader}>
+              <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
+              <Text style={[styles.locationLabel, { color: theme.textSecond }]}>Dropoff</Text>
+            </View>
+            <Text style={[styles.locationAddress, { color: theme.text }]}>{delivery.dropoffAddress}</Text>
+            {delivery.dropoffLat != null && (
+              <Pressable
+                style={[styles.navBtn, { backgroundColor: theme.accent }]}
+                onPress={() => openMaps(delivery.dropoffLat!, delivery.dropoffLng!, delivery.dropoffAddress!)}
+              >
+                <Ionicons name="navigate" size={14} color="#fff" />
+                <Text style={styles.navBtnText}>Navigate to dropoff</Text>
+              </Pressable>
             )}
           </View>
-        )}
+        ) : null}
 
-        {/* No rating for cancelled */}
-        {delivery.status === 'cancelled' && (
-          <View style={[styles.cancelledNote, { backgroundColor: isDark ? '#1A0000' : '#FEF2F2', borderColor: '#FECACA' }]}>
-            <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
-            <Text style={[styles.cancelledText, { color: '#EF4444' }]}>This trip was cancelled. No earnings were credited.</Text>
+        {/* Earnings breakdown (if priceBreakdown snapshot is present) */}
+        {delivery.priceBreakdown?.driver && (
+          <View style={[styles.locationCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+            <Text style={[styles.locationLabel, { color: theme.textSecond, marginBottom: Spacing.sm }]}>
+              Earnings breakdown
+            </Text>
+            <BreakdownLine theme={theme} label="Base fare"        value={delivery.priceBreakdown.driver.base} />
+            <BreakdownLine theme={theme} label="Distance labour"  value={delivery.priceBreakdown.driver.distanceLabour} />
+            <BreakdownLine theme={theme} label="Fuel reimbursement" value={delivery.priceBreakdown.driver.distanceFuel} />
+            {delivery.priceBreakdown.driver.stopBonuses > 0 && (
+              <BreakdownLine theme={theme} label="Stop bonuses" value={delivery.priceBreakdown.driver.stopBonuses} />
+            )}
+            {delivery.priceBreakdown.driver.surchargeShare > 0 && (
+              <BreakdownLine theme={theme} label="Surcharge share" value={delivery.priceBreakdown.driver.surchargeShare} />
+            )}
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            <BreakdownLine theme={theme} label="Total" value={delivery.priceBreakdown.driver.total} bold />
           </View>
         )}
 
-        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+function BreakdownLine({ theme, label, value, bold }: { theme: any; label: string; value: number; bold?: boolean }) {
+  return (
+    <View style={styles.brkRow}>
+      <Text style={[styles.brkLabel, { color: theme.textSecond, fontWeight: bold ? '700' : '400' }]}>{label}</Text>
+      <Text style={[styles.brkValue, { color: theme.text, fontWeight: bold ? '700' : '500' }]}>
+        ₦{Math.round(value).toLocaleString()}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
-  backBtn:     { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  title:       { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.sm, paddingVertical: 5, borderRadius: Radius.full },
-  statusText:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  center:    { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { fontSize: FontSize.base, marginTop: Spacing.md },
+  backLink:  { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.md, marginTop: Spacing.md },
+  backLinkText: { color: '#fff', fontWeight: FontWeight.semibold as any },
 
-  content: { padding: Spacing.md, gap: Spacing.md },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: Spacing.sm },
+  title: { flex: 1, fontSize: FontSize.lg, fontWeight: FontWeight.bold as any },
 
-  trackingRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.sm + 2, paddingHorizontal: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
-  trackingCode: { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  trackingDate: { fontSize: FontSize.xs },
+  content: { padding: Spacing.md, paddingBottom: Spacing.xl, gap: Spacing.md },
 
-  earningsCard:  { flexDirection: 'row', alignItems: 'center', padding: Spacing.md + 4, borderRadius: Radius.xl, borderWidth: 1 },
-  earningsLabel: { fontSize: FontSize.sm, marginBottom: 4 },
-  earningsAmount:{ fontSize: FontSize['2xl'], fontWeight: FontWeight.bold },
-  fareLabel:     { fontSize: FontSize.xs, marginBottom: 4 },
-  fareAmount:    { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  trackingCard: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, gap: Spacing.sm },
+  trackingCode: { fontSize: FontSize.base, fontWeight: FontWeight.bold as any, fontFamily: 'Menlo' },
+  trackingSub:  { fontSize: FontSize.sm, marginTop: 2 },
+  optBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#EFF6FF', borderRadius: 12, borderWidth: 1, borderColor: '#3A7BD580' },
+  optBadgeText: { fontSize: 10, color: '#3A7BD5', fontWeight: FontWeight.bold as any },
 
-  card:      { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.md },
-  cardTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  statsRow: { flexDirection: 'row', gap: Spacing.sm },
+  statCard: { flex: 1, padding: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, alignItems: 'center' },
+  statLabel: { fontSize: FontSize.xs, textTransform: 'uppercase', letterSpacing: 0.4 },
+  statValue: { fontSize: FontSize.base, fontWeight: FontWeight.bold as any, marginTop: 2 },
 
-  routeBlock: { gap: 4 },
-  routeRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
-  routeDot:   { width: 10, height: 10, borderRadius: 5, marginTop: 3 },
-  routeLabel: { fontSize: FontSize.xs, marginBottom: 2 },
-  routeAddr:  { fontSize: FontSize.base, fontWeight: FontWeight.medium },
-  connector:  { width: 1.5, height: 16, marginLeft: 4 },
+  progressLine: { fontSize: FontSize.sm, textAlign: 'center', marginVertical: -Spacing.sm },
 
-  metaRow:  { flexDirection: 'row', gap: Spacing.md, paddingTop: Spacing.sm, borderTopWidth: 1, flexWrap: 'wrap' },
-  metaPill: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: FontSize.sm },
+  locationCard: { padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, gap: Spacing.sm },
+  locationHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  locationLabel: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold as any, textTransform: 'uppercase', letterSpacing: 0.4 },
+  locationAddress: { fontSize: FontSize.base, fontWeight: FontWeight.semibold as any, marginTop: 4 },
+  navBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: Spacing.sm, borderRadius: Radius.md, marginTop: 4 },
+  navBtnText: { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
 
-  customerRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  customerName:  { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  customerPhone: { fontSize: FontSize.sm, marginTop: 2 },
+  // Stop cards
+  stopCard: { padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, gap: 6 },
+  stopHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stopBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  stopBadgeText: { fontSize: FontSize.xs, color: '#fff', fontWeight: FontWeight.bold as any },
+  statusPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
+  statusPillText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
+  stopAddress: { fontSize: FontSize.base, fontWeight: FontWeight.semibold as any, marginTop: 4 },
+  stopRecipient: { fontSize: FontSize.sm },
+  stopNotes: { fontSize: FontSize.sm, fontStyle: 'italic' },
+  stopDwell: { fontSize: FontSize.xs, marginTop: 2 },
+  stopActions: { flexDirection: 'row', gap: 8, marginTop: Spacing.sm },
+  stopActionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: Spacing.sm, borderRadius: Radius.sm },
+  stopActionText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: Spacing.sm + 2, borderRadius: Radius.md, marginTop: Spacing.sm },
+  primaryBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  doneBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: Spacing.sm, marginTop: Spacing.sm, backgroundColor: '#DCFCE7', borderRadius: Radius.md },
+  doneText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold as any },
 
-  starsRow:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingNum:    { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginLeft: 4 },
-  commentBubble:{ flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, padding: Spacing.sm, borderRadius: Radius.md },
-  commentText:  { flex: 1, fontSize: FontSize.sm, lineHeight: 20, fontStyle: 'italic' },
-
-  cancelledNote: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
-  cancelledText: { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  // Breakdown
+  brkRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  brkLabel: { fontSize: FontSize.sm },
+  brkValue: { fontSize: FontSize.sm, fontVariant: ['tabular-nums'] },
+  divider: { height: 1, marginVertical: 6 },
 });

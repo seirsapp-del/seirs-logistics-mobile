@@ -1,17 +1,20 @@
 /**
- * Business · New Delivery — full-map + draggable bottom-sheet redesign.
+ * Business · New Delivery — category-first multi-stop booking flow.
  *
- * Mirrors the customer-app Send a Package pattern (full-screen Google
- * Maps under a draggable @gorhom/bottom-sheet) but supports the
- * business-specific flows it had before:
- *   - Multi-stop deliveries (1-5 dropoffs, each with recipient + phone)
- *   - Recurring schedules (daily / weekly / monthly)
- *   - Same VehicleIcon + categories chips + special instructions
+ * Spec V8 redesign (2026-05-12). Three-step wizard inside a draggable
+ * @gorhom/bottom-sheet over a full-screen Google Map. Connects directly
+ * to the backend pricing system (RateCard + ServiceCategory) so prices,
+ * dwell estimates, and vehicle safety rules update without a redeploy
+ * when the admin tunes the rate card.
  *
  * Steps:
- *   1. Pickup + stops (inline autocomplete in the sheet)
- *   2. Vehicle + category + weight + instructions
- *   3. When (Send Now / Schedule for Later) + recurring + summary
+ *   0. WHAT — category picker, weight (required), quantity, vehicle
+ *      (auto-suggested with safety hard-stops + soft warnings)
+ *   1. WHERE — pickup + 1–5 stops with Google Places autocomplete +
+ *      auto-optimize toggle (default ON, shows reordered visit order)
+ *   2. WHEN — Send Now / Schedule for Later + price breakdown + ETA
+ *
+ * Submit creates one Delivery + N DeliveryStop rows on the backend.
  */
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
@@ -28,38 +31,21 @@ import BottomSheet, {
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
-import { businessApi } from '@/services/api';
-import { useBusinessStore } from '@/store/businessStore';
+import {
+  businessApi, configApi, pricingApi,
+  type ServiceCategory, type RateCard, type PriceBreakdown,
+} from '@/services/api';
+import { useBusinessStore, type DeliveryStop } from '@/store/businessStore';
 import { VehicleIcon, type VehicleType } from '@seirs/shared';
-import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
+import { useMultiStopDirections } from '@/components/useMultiStopDirections';
 
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 const LAGOS = { latitude: 6.5244, longitude: 3.3792, latitudeDelta: 0.1, longitudeDelta: 0.1 };
 
-const VEHICLES: { key: VehicleType; label: string; maxKg: number }[] = [
-  { key: 'bicycle',     label: 'Bicycle',     maxKg: 5    },
-  { key: 'motorcycle',  label: 'Motorcycle',  maxKg: 20   },
-  { key: 'tricycle',    label: 'Tricycle',    maxKg: 100  },
-  { key: 'car',         label: 'Car',         maxKg: 200  },
-  { key: 'van',         label: 'Van',         maxKg: 800  },
-  { key: 'truck_small', label: 'Small Truck', maxKg: 3000 },
-  { key: 'truck_large', label: 'Large Truck', maxKg: 9999 },
-];
+// Visit order: pickup → stop1 → stop2 → ... → stopN.
+const STEPS = ['What & Vehicle', 'Pickup & Stops', 'Schedule & Summary'] as const;
 
-const CATEGORIES = [
-  'Documents', 'Electronics', 'Clothing', 'Food & Beverages', 'Furniture',
-  'Building Materials', 'Farm Produce', 'Medical Supplies', 'Industrial Goods', 'Other',
-];
-
-const RECURRING = [
-  { key: 'daily',   label: 'Daily' },
-  { key: 'weekly',  label: 'Weekly' },
-  { key: 'monthly', label: 'Monthly' },
-];
-
-const STEPS = ['Pickup & Stops', 'Vehicle & Package', 'Schedule'] as const;
-
-// 5 AM – 9 PM (matches customer Send + memory rule).
+// 5 AM – 9 PM scheduling window per Spec V8 operating hours.
 const TIME_SLOTS = Array.from({ length: 17 }, (_, i) => {
   const hour = 5 + i;
   const label = hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
@@ -76,50 +62,94 @@ function buildScheduledFor(isoDate: string, hour: number): Date {
   return new Date(y, m - 1, d, hour, 0, 0, 0);
 }
 
-// "pickup" + "stop-{idx}" — the autocomplete state needs to know which
-// field it's currently driving so taps fill the right address row.
-type ActiveField = { kind: 'pickup' } | { kind: 'stop'; idx: number } | null;
+const VEHICLE_ORDER: VehicleType[] = [
+  'bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large',
+];
+const VEHICLE_LABEL: Record<VehicleType, string> = {
+  bicycle: 'Bicycle', motorcycle: 'Motorcycle', tricycle: 'Tricycle',
+  car: 'Car', van: 'Van', truck_small: 'Small Truck', truck_large: 'Large Truck',
+};
 
+type ActiveField = { kind: 'pickup' } | { kind: 'stop'; idx: number } | null;
 interface Prediction { place_id: string; main_text: string; secondary_text: string }
 
 export default function NewDeliveryScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
-  const { draft, setDraft, addStop, removeStop, updateStop, resetDraft } = useBusinessStore();
+  const {
+    draft, setDraft, addStop, removeStop, updateStop, resetDraft, reorderStops,
+  } = useBusinessStore();
 
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [loading, setLoading] = useState(false);
 
-  // Per-row text inputs. Synced to store on selection so the map and
-  // submission see the chosen address.
+  // ── Backend config (rate card + service catalog) ─────────────────────
+  const [catalog,  setCatalog]  = useState<ServiceCategory[]>([]);
+  const [rateCard, setRateCard] = useState<RateCard | null>(null);
+  const [configErr, setConfigErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([configApi.serviceCatalog(), configApi.rateCard()])
+      .then(([cat, rc]) => { setCatalog(cat); setRateCard(rc); })
+      .catch((e) => setConfigErr(e?.message ?? 'Could not load pricing config'));
+  }, []);
+
+  const selectedCategory: ServiceCategory | undefined =
+    catalog.find(c => c.code === draft.categoryCode);
+
+  // ── Address autocomplete (per-row) ───────────────────────────────────
   const [pickupQuery, setPickupQuery] = useState(draft.pickupAddress);
   const [stopQueries, setStopQueries] = useState<string[]>(draft.stops.map(s => s.address));
-
   const [activeField, setActiveField] = useState<ActiveField>(null);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [searching,   setSearching]   = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Schedule — local state mirrors customer Send.
+  // ── Schedule ─────────────────────────────────────────────────────────
   const [scheduleNow,   setScheduleNow]   = useState(true);
   const [scheduledDate, setScheduledDate] = useState<string>(TODAY_ISO);
   const [scheduledHour, setScheduledHour] = useState<number | null>(null);
 
+  // ── Map + bottom sheet refs ──────────────────────────────────────────
   const mapRef   = useRef<MapView>(null);
   const sheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => [180, '92%'], []);
   const sheetTopInset = insets.top + 88;
 
-  // Real road-following polyline pickup → first stop. Multi-leg routing
-  // (visit all stops in order) needs Google Distance Matrix; for now we
-  // draw the leg between pickup and the *first* stop with a coordinate.
-  const firstStopWithCoords = draft.stops.find(s => s.lat != null && s.lng != null);
-  const { coords: routeCoords, distanceText, durationText } = useDirectionsPolyline(
+  // ── Route polyline + distance + ETA (auto-optimize when toggle ON) ──
+  const stopCoords = draft.stops
+    .filter(s => s.lat != null && s.lng != null)
+    .map(s => ({ latitude: s.lat as number, longitude: s.lng as number }));
+  const directions = useMultiStopDirections(
     draft.pickupLat != null ? { latitude: draft.pickupLat, longitude: draft.pickupLng! } : null,
-    firstStopWithCoords     ? { latitude: firstStopWithCoords.lat!, longitude: firstStopWithCoords.lng! } : null,
+    stopCoords,
+    { optimizeWaypoints: draft.autoOptimizeRoute },
   );
+  const { coords: routeCoords, distanceText, durationText, distanceMeters, durationSeconds, waypointOrder, wasReordered } = directions;
 
-  // Center the map on the user's GPS once.
+  // When Google's auto-optimize returns a NEW order, reorder our local
+  // stops so the UI shows the visit sequence the driver will use.
+  // Persist the order on the store so submit ships it to the backend.
+  useEffect(() => {
+    if (!draft.autoOptimizeRoute || !waypointOrder || !wasReordered) return;
+    if (stopCoords.length !== draft.stops.length) return; // some still being typed
+    // waypointOrder gives original-indices in new visit order
+    const reordered = waypointOrder
+      .map(origIdx => draft.stops[origIdx])
+      .filter(Boolean);
+    if (reordered.length !== draft.stops.length) return;
+    // Only reorder if it actually changed (avoid render loop)
+    const sameOrder = reordered.every((s, i) => s === draft.stops[i]);
+    if (sameOrder) return;
+    reorderStops(reordered as DeliveryStop[]);
+    setStopQueries(reordered.map(s => s.address));
+    setDraft({
+      optimizedWaypointOrder: waypointOrder,
+      routeWasAutoOptimized:  true,
+    });
+  }, [waypointOrder, wasReordered, draft.autoOptimizeRoute, stopCoords.length]);
+
+  // ── Map: center on user's GPS once ───────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -137,12 +167,9 @@ export default function NewDeliveryScreen() {
     return () => { cancelled = true; };
   }, []);
 
-  // Auto-fit when both pickup + at least one stop have coordinates.
+  // Auto-fit map when both pickup + at least one stop have coordinates.
   useEffect(() => {
     if (!mapRef.current || draft.pickupLat == null) return;
-    const stopCoords = draft.stops
-      .filter(s => s.lat != null && s.lng != null)
-      .map(s => ({ latitude: s.lat!, longitude: s.lng! }));
     if (stopCoords.length === 0) {
       mapRef.current.animateToRegion(
         { latitude: draft.pickupLat, longitude: draft.pickupLng!, latitudeDelta: 0.015, longitudeDelta: 0.015 },
@@ -156,14 +183,89 @@ export default function NewDeliveryScreen() {
     );
   }, [draft.pickupLat, draft.pickupLng, draft.stops]);
 
-  // ── Places autocomplete ──────────────────────────────────────────────────
+  // ── Auto-suggest vehicle from category + weight ──────────────────────
+  // Picks the lightest suggested vehicle that can carry the weight.
+  // User can still override afterwards (with safety check).
+  useEffect(() => {
+    if (!selectedCategory || !rateCard || draft.weightKg == null) return;
+    // Don't override if user already explicitly chose a non-default
+    // vehicle (track via hasUserOverriddenVehicleRef).
+    if (hasUserOverriddenVehicleRef.current) return;
+
+    const candidates = selectedCategory.suggestedVehicles
+      .filter((v: string) => {
+        const r = rateCard.vehicleRates[v];
+        return r && draft.weightKg! <= r.maxPayloadKg;
+      });
+    const next = candidates[0] ?? selectedCategory.suggestedVehicles[0];
+    if (next && next !== draft.vehicleType) {
+      setDraft({ vehicleType: next });
+    }
+  }, [selectedCategory, draft.weightKg, rateCard]);
+  // Track whether the user has manually picked a vehicle since the last
+  // category change. Reset on category change.
+  const hasUserOverriddenVehicleRef = useRef(false);
+  useEffect(() => { hasUserOverriddenVehicleRef.current = false; }, [draft.categoryCode]);
+
+  // ── Live price quote ─────────────────────────────────────────────────
+  // Refetch when key inputs change. Debounced 400ms so typing doesn't
+  // spam the backend.
+  const [quote, setQuote] = useState<PriceBreakdown | null>(null);
+  const [quoteErr, setQuoteErr] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const quoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const totalKm = (distanceMeters ?? 0) / 1000;
+  const totalDriveMin = Math.round((durationSeconds ?? 0) / 60);
+
+  useEffect(() => {
+    if (!draft.categoryCode || !draft.vehicleType || !draft.weightKg || stopCoords.length === 0) {
+      setQuote(null); return;
+    }
+    if (quoteTimer.current) clearTimeout(quoteTimer.current);
+    quoteTimer.current = setTimeout(async () => {
+      setQuoteLoading(true);
+      try {
+        // Compute estimated total dwell from rate card formula:
+        // (category setup + weight tier) × stops + cultural buffer × stops
+        const dwellPerStop = computePerStopDwell(rateCard, selectedCategory, draft.weightKg!);
+        const result = await pricingApi.quote({
+          vehicleType:  draft.vehicleType,
+          categoryCode: draft.categoryCode!,
+          km:           totalKm,
+          stopCount:    draft.stops.length,
+          weightKg:     draft.weightKg!,
+          estimatedDwellMinutes: dwellPerStop * draft.stops.length,
+          scheduledAt:  !scheduleNow && scheduledHour != null
+                          ? buildScheduledFor(scheduledDate, scheduledHour).toISOString()
+                          : undefined,
+          isInterState:   false,   // TODO: detect from pickup vs stop states
+          isLongDistance: totalKm > 100,
+          isRecurring:    draft.isRecurring,
+        });
+        setQuote(result);
+        setQuoteErr(null);
+      } catch (e: any) {
+        setQuote(null);
+        setQuoteErr(e?.message ?? 'Could not compute price');
+      } finally { setQuoteLoading(false); }
+    }, 400);
+    return () => { if (quoteTimer.current) clearTimeout(quoteTimer.current); };
+  }, [
+    draft.categoryCode, draft.vehicleType, draft.weightKg, draft.stops.length,
+    totalKm, draft.isRecurring, scheduleNow, scheduledHour, scheduledDate,
+    rateCard, selectedCategory,
+  ]);
+
+  // ── Places autocomplete ──────────────────────────────────────────────
   const fetchPredictions = useCallback(async (text: string) => {
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
       const url =
         `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-        `?input=${encodeURIComponent(text)}&language=en&key=${MAPS_KEY}`;
+        `?input=${encodeURIComponent(text)}` +
+        `&language=en&key=${MAPS_KEY}`;
       const res  = await fetch(url);
       const json = await res.json();
       if (json.status === 'OK') {
@@ -201,17 +303,18 @@ export default function NewDeliveryScreen() {
       if (json.status !== 'OK') return;
       const loc = json.result.geometry.location;
       const address = json.result.formatted_address ?? `${p.main_text}, ${p.secondary_text}`;
-
-      if (activeField?.kind === 'pickup') {
-        setDraft({ pickupAddress: address, pickupLat: loc.lat, pickupLng: loc.lng });
+      if (!activeField) return;
+      if (activeField.kind === 'pickup') {
         setPickupQuery(address);
-      } else if (activeField?.kind === 'stop') {
-        updateStop(activeField.idx, { address, lat: loc.lat, lng: loc.lng });
+        setDraft({ pickupAddress: address, pickupLat: loc.lat, pickupLng: loc.lng });
+      } else {
         setStopQueries(prev => { const next = [...prev]; next[activeField.idx] = address; return next; });
+        updateStop(activeField.idx, { address, lat: loc.lat, lng: loc.lng });
       }
       setPredictions([]);
       setActiveField(null);
       Keyboard.dismiss();
+      sheetRef.current?.snapToIndex(1);
     } finally { setSearching(false); }
   };
 
@@ -220,7 +323,10 @@ export default function NewDeliveryScreen() {
     setSearching(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Allow location to use your current address.');
+        return;
+      }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const { latitude: lat, longitude: lng } = pos.coords;
       let address = 'Current location';
@@ -250,11 +356,67 @@ export default function NewDeliveryScreen() {
     }
   }, [draft.stops.length]);
 
-  // ── Validation + nav ─────────────────────────────────────────────────────
-  const canContinue0 =
+  // ── Vehicle safety check ─────────────────────────────────────────────
+  // Block hard-stops, soft-warn warningVehicles. Returns true if safe to
+  // pick. Called from the vehicle picker tap handler.
+  const handlePickVehicle = (v: VehicleType) => {
+    if (!selectedCategory || !rateCard) {
+      setDraft({ vehicleType: v });
+      hasUserOverriddenVehicleRef.current = true;
+      return;
+    }
+    const r = rateCard.vehicleRates[v];
+    if (r && draft.weightKg && draft.weightKg > r.maxPayloadKg) {
+      Alert.alert(
+        'Weight too high',
+        `${VEHICLE_LABEL[v]} can carry up to ${r.maxPayloadKg} kg. Your shipment is ${draft.weightKg} kg. Pick a larger vehicle.`,
+      );
+      return;
+    }
+    const blocked = selectedCategory.safetyRules?.blockedVehicles ?? [];
+    if (blocked.includes(v)) {
+      Alert.alert(
+        'Not allowed',
+        selectedCategory.safetyRules?.warningCopy
+          ?? `${selectedCategory.name} can't be transported by ${VEHICLE_LABEL[v]}.`,
+      );
+      return;
+    }
+    const warn = selectedCategory.safetyRules?.warningVehicles ?? [];
+    const thresholdKg = selectedCategory.safetyRules?.weightThresholdKg;
+    const triggersWarning = warn.includes(v) &&
+      (thresholdKg == null || (draft.weightKg ?? 0) >= thresholdKg);
+    if (triggersWarning) {
+      Alert.alert(
+        'Heads up',
+        selectedCategory.safetyRules?.warningCopy ??
+          `${selectedCategory.name} on ${VEHICLE_LABEL[v]} isn't ideal. SEIRS isn't liable for damage in this case.`,
+        [
+          { text: 'Pick safer vehicle', style: 'cancel' },
+          {
+            text: 'Continue anyway',
+            style: 'destructive',
+            onPress: () => {
+              setDraft({ vehicleType: v });
+              hasUserOverriddenVehicleRef.current = true;
+            },
+          },
+        ],
+      );
+      return;
+    }
+    setDraft({ vehicleType: v });
+    hasUserOverriddenVehicleRef.current = true;
+  };
+
+  // ── Validation per step ──────────────────────────────────────────────
+  const canContinue0 = !!draft.categoryCode && !!draft.vehicleType && (draft.weightKg ?? 0) > 0;
+  const canContinue1 =
     draft.pickupAddress.trim().length > 5 &&
-    draft.stops.every(s => s.address.trim().length > 5 && s.recipientName && s.recipientPhone);
-  const canContinue1 = !!draft.vehicleType && !!draft.packageCategory;
+    draft.pickupLat != null &&
+    draft.stops.length > 0 &&
+    draft.stops.every(s => s.address.trim().length > 5 && s.lat != null
+      && s.recipientName.trim().length > 0 && s.recipientPhone.trim().length > 0);
   const canContinue2 = scheduleNow || scheduledHour != null;
 
   const next = () => {
@@ -264,63 +426,127 @@ export default function NewDeliveryScreen() {
     sheetRef.current?.snapToIndex(1);
     Keyboard.dismiss();
   };
-
   const back = () => {
     if (step === 0) { router.back(); return; }
     setStep(s => (s - 1) as 0 | 1 | 2);
   };
 
+  // ── Submit ───────────────────────────────────────────────────────────
   const handleSubmit = async () => {
+    if (!canContinue0 || !canContinue1 || !canContinue2) return;
+    if (!quote) {
+      Alert.alert('Pricing not ready', 'Wait a moment for the price to compute, then try again.');
+      return;
+    }
     setLoading(true);
     try {
       const scheduledAt = !scheduleNow && scheduledHour != null
         ? buildScheduledFor(scheduledDate, scheduledHour).toISOString()
-        : draft.scheduledAt;
-      const res = await businessApi.createDelivery({ ...draft, scheduledAt });
+        : undefined;
+
+      const res = await businessApi.createDelivery({
+        pickupAddress: draft.pickupAddress,
+        pickupLat:     draft.pickupLat!,
+        pickupLng:     draft.pickupLng!,
+        stops: draft.stops.map((s, idx) => ({
+          address:        s.address,
+          lat:            s.lat!,
+          lng:            s.lng!,
+          recipientName:  s.recipientName.trim(),
+          recipientPhone: s.recipientPhone.trim(),
+          notes:          s.note?.trim() || undefined,
+          sequenceOrder:  idx + 1,
+        })),
+        vehicleType:           draft.vehicleType,
+        categoryCode:          draft.categoryCode!,
+        weightKg:              draft.weightKg!,
+        packageDescription:    draft.packageDescription?.trim() || selectedCategory?.name,
+        km:                    totalKm,
+        estimatedDriveMinutes: totalDriveMin,
+        scheduledAt,
+        optimizedWaypointOrder: draft.optimizedWaypointOrder ?? undefined,
+        routeWasAutoOptimized:  draft.routeWasAutoOptimized,
+        isInterState:          false,
+        isLongDistance:        totalKm > 100,
+        isRecurring:           draft.isRecurring,
+      });
+
+      const trackingCode = res?.delivery?.trackingCode ?? res?.trackingCode ?? res?.id?.slice(0, 8);
       resetDraft();
       Alert.alert(
         'Delivery Created',
-        `Tracking: ${res.trackingNumber ?? res.id?.slice(0, 8)}`,
-        [{ text: 'OK', onPress: () => router.replace('/(business)/deliveries' as any) }],
+        `Tracking: ${trackingCode}\nWallet balance: ₦${(res?.wallet?.balanceAfter ?? 0).toLocaleString()}`,
+        [{ text: 'OK', onPress: () => router.replace('/(business)/(tabs)/deliveries' as any) }],
       );
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Failed to create delivery.');
+      Alert.alert('Could not create delivery', e?.message ?? 'Please try again.');
     } finally { setLoading(false); }
   };
 
-  const showSuggestions = step === 0 && activeField !== null && predictions.length > 0;
+  // ── Suggestions panel renderer (Map / Uber pattern) ─────────────────
+  const showSuggestions = step === 1 && activeField !== null;
+  const activeQueryText = activeField?.kind === 'pickup'
+    ? pickupQuery
+    : activeField?.kind === 'stop' ? (stopQueries[activeField.idx] ?? '') : '';
+  const showNoMatchesHint = showSuggestions && !searching
+    && activeQueryText.trim().length >= 3 && predictions.length === 0;
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const renderSuggestions = (forField: 'pickup' | 'stop', stopIdx?: number) => {
+    if (!showSuggestions) return null;
+    const fieldMatches =
+      (forField === 'pickup' && activeField?.kind === 'pickup') ||
+      (forField === 'stop'   && activeField?.kind === 'stop' && activeField.idx === stopIdx);
+    if (!fieldMatches) return null;
+    return (
+      <View style={styles.suggBlock}>
+        <Pressable style={styles.useLocBtn} onPress={useMyLocation}>
+          <Icon name="MapPin" size={18} color="#3A7BD5" />
+          <Text style={styles.useLocText}>Use my current location</Text>
+        </Pressable>
+        {searching && (
+          <View style={styles.suggRow}>
+            <ActivityIndicator size="small" color="#3A7BD5" />
+            <Text style={[styles.suggSub, { marginLeft: 8 }]}>Searching addresses…</Text>
+          </View>
+        )}
+        {predictions.map(p => (
+          <Pressable key={p.place_id} style={styles.suggRow} onPress={() => selectPrediction(p)}>
+            <View style={styles.suggIcon}><Icon name="MapPin" size={16} color="#6B7280" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.suggMain} numberOfLines={1}>{p.main_text}</Text>
+              {!!p.secondary_text && <Text style={styles.suggSub} numberOfLines={1}>{p.secondary_text}</Text>}
+            </View>
+          </Pressable>
+        ))}
+        {showNoMatchesHint && (
+          <View style={styles.suggRow}>
+            <Text style={styles.suggSub}>
+              No matches for &quot;{activeQueryText}&quot;. Try a more specific name, or tap &quot;Use my current location&quot; above.
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: '#F5F5F0' }}>
       <StatusBar barStyle="dark-content" />
-
       <MapView
         ref={mapRef}
+        style={StyleSheet.absoluteFillObject}
         provider={PROVIDER_GOOGLE}
-        style={StyleSheet.absoluteFill}
         initialRegion={LAGOS}
         showsUserLocation
-        showsMyLocationButton={false}
       >
         {draft.pickupLat != null && (
-          <Marker
-            coordinate={{ latitude: draft.pickupLat, longitude: draft.pickupLng! }}
-            pinColor="#22C55E"
-            title="Pickup"
-            description={draft.pickupAddress}
-          />
+          <Marker coordinate={{ latitude: draft.pickupLat, longitude: draft.pickupLng! }} pinColor="#22C55E" />
         )}
         {draft.stops.map((s, i) =>
-          s.lat != null ? (
-            <Marker
-              key={i}
-              coordinate={{ latitude: s.lat, longitude: s.lng! }}
-              pinColor="#EF4444"
-              title={`Stop ${i + 1}: ${s.recipientName || 'Recipient'}`}
-              description={s.address}
-            />
-          ) : null,
+          s.lat != null
+            ? <Marker key={i} coordinate={{ latitude: s.lat, longitude: s.lng! }} pinColor="#EF4444" title={`Stop ${i + 1}`} />
+            : null,
         )}
         {routeCoords.length > 1 && (
           <Polyline coordinates={routeCoords} strokeColor="#0F2B4C" strokeWidth={4} />
@@ -354,10 +580,144 @@ export default function NewDeliveryScreen() {
           contentContainerStyle={{ paddingBottom: 32 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* STEP 0 — Pickup + Stops */}
+          {/* Config error banner */}
+          {configErr && (
+            <View style={styles.errorBanner}>
+              <Icon name="AlertCircle" size={16} color="#DC2626" />
+              <Text style={styles.errorBannerText}>
+                Couldn't load pricing config: {configErr}. Pull down to retry.
+              </Text>
+            </View>
+          )}
+
+          {/* ─── STEP 0: WHAT ────────────────────────────────────────── */}
           {step === 0 && (
+            <View style={{ gap: 14 }}>
+              <Text style={styles.sectionTitle}>What are you sending?</Text>
+              <Text style={styles.sectionHint}>
+                Pick the closest match — this drives suggested vehicle, dwell time, and any safety rules.
+              </Text>
+
+              {catalog.length === 0 ? (
+                <ActivityIndicator color="#3A7BD5" />
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+                    {catalog.map(cat => {
+                      const active = draft.categoryCode === cat.code;
+                      return (
+                        <Pressable
+                          key={cat.code}
+                          style={[styles.catCard, active && styles.catCardActive]}
+                          onPress={() => setDraft({ categoryCode: cat.code })}
+                        >
+                          <Text style={[styles.catName, active && { color: '#fff' }]}>{cat.name}</Text>
+                          <Text style={[styles.catEx, active && { color: '#DBEAFE' }]} numberOfLines={2}>
+                            {cat.examples}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
+
+              <Text style={styles.label}>Total weight (kg)</Text>
+              <View style={styles.inputBlock}>
+                <BottomSheetTextInput
+                  style={styles.miniInput}
+                  value={draft.weightKg != null ? String(draft.weightKg) : ''}
+                  onChangeText={(v) => {
+                    const n = Number(v.replace(/[^\d.]/g, ''));
+                    setDraft({ weightKg: isNaN(n) ? undefined : n });
+                  }}
+                  placeholder="e.g. 5"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <Text style={styles.fieldHint}>
+                Required. Drives the suggested vehicle and dwell time per stop.
+              </Text>
+
+              <Text style={styles.label}>Quantity (optional)</Text>
+              <View style={styles.inputBlock}>
+                <BottomSheetTextInput
+                  style={styles.miniInput}
+                  value={String(draft.quantity)}
+                  onChangeText={(v) => {
+                    const n = Number(v.replace(/\D/g, ''));
+                    setDraft({ quantity: isNaN(n) || n < 1 ? 1 : n });
+                  }}
+                  placeholder="1"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="number-pad"
+                />
+              </View>
+
+              <Text style={styles.label}>Description (optional)</Text>
+              <View style={styles.inputBlock}>
+                <BottomSheetTextInput
+                  style={styles.miniInput}
+                  value={draft.packageDescription ?? ''}
+                  onChangeText={(v) => setDraft({ packageDescription: v })}
+                  placeholder="e.g. Adebayo's birthday gift, two boxes"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              <Text style={styles.label}>Vehicle</Text>
+              {selectedCategory?.safetyRules?.warningCopy && (
+                <View style={styles.tipBox}>
+                  <Icon name="AlertCircle" size={14} color="#D97706" />
+                  <Text style={styles.tipText}>{selectedCategory.safetyRules.warningCopy}</Text>
+                </View>
+              )}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {VEHICLE_ORDER.map(v => {
+                  const isActive = draft.vehicleType === v;
+                  const suggested = selectedCategory?.suggestedVehicles?.includes(v);
+                  const blocked = selectedCategory?.safetyRules?.blockedVehicles?.includes(v) ?? false;
+                  return (
+                    <Pressable
+                      key={v}
+                      onPress={() => handlePickVehicle(v)}
+                      style={[
+                        styles.vehChip,
+                        isActive  && styles.vehChipActive,
+                        suggested && !isActive && styles.vehChipSuggested,
+                        blocked   && styles.vehChipBlocked,
+                      ]}
+                    >
+                      <VehicleIcon
+                        type={v}
+                        size={20}
+                        color={isActive ? '#fff' : blocked ? '#9CA3AF' : '#0F2B4C'}
+                      />
+                      <Text style={[
+                        styles.vehChipText,
+                        isActive  && { color: '#fff' },
+                        blocked   && { color: '#9CA3AF' },
+                      ]}>{VEHICLE_LABEL[v]}</Text>
+                      {suggested && !isActive && (
+                        <View style={styles.suggBadge}><Text style={styles.suggBadgeText}>Suggested</Text></View>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* ─── STEP 1: WHERE ──────────────────────────────────────── */}
+          {step === 1 && (
             <View style={{ gap: 12 }}>
-              {/* Pickup row */}
+              <Text style={styles.sectionTitle}>Pickup &amp; Stops</Text>
+              <Text style={styles.sectionHint}>
+                Up to 5 stops per booking. We'll find the shortest route automatically — turn off below if you want a specific order.
+              </Text>
+
+              {/* Pickup */}
               <View style={styles.inputBlock}>
                 <View style={styles.inputRow}>
                   <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
@@ -371,6 +731,7 @@ export default function NewDeliveryScreen() {
                   />
                 </View>
               </View>
+              {renderSuggestions('pickup')}
 
               {/* Stops */}
               {draft.stops.map((stop, i) => (
@@ -399,6 +760,8 @@ export default function NewDeliveryScreen() {
                       />
                     </View>
                   </View>
+
+                  {renderSuggestions('stop', i)}
 
                   <Text style={styles.miniLabel}>Recipient name</Text>
                   <BottomSheetTextInput
@@ -435,147 +798,76 @@ export default function NewDeliveryScreen() {
                 </Pressable>
               )}
 
+              {/* Auto-optimize toggle */}
+              {draft.stops.length >= 2 && (
+                <View style={styles.optimizeRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.optimizeTitle}>Auto-optimise route</Text>
+                    <Text style={styles.optimizeSub}>
+                      {draft.autoOptimizeRoute
+                        ? (wasReordered ? 'Stops have been re-ordered for shortest route.' : 'Will pick shortest route automatically.')
+                        : 'Driver visits stops in the order shown above.'}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={draft.autoOptimizeRoute}
+                    onValueChange={(v) => setDraft({ autoOptimizeRoute: v, routeWasAutoOptimized: v ? true : false })}
+                    trackColor={{ true: '#3A7BD5' }}
+                  />
+                </View>
+              )}
+
+              {/* Route stat chip */}
               {(distanceText || durationText) && (
                 <View style={styles.routeStat}>
                   {distanceText && <Text style={styles.routeStatText}>📍 {distanceText}</Text>}
                   {distanceText && durationText && <Text style={styles.routeStatDivider}>·</Text>}
-                  {durationText && <Text style={styles.routeStatText}>🕐 {durationText}</Text>}
-                </View>
-              )}
-
-              {/* Inline suggestions list. */}
-              {showSuggestions && (
-                <View>
-                  <Pressable style={styles.useLocBtn} onPress={useMyLocation}>
-                    <Icon name="MapPin" size={18} color="#3A7BD5" />
-                    <Text style={styles.useLocText}>Use my current location</Text>
-                  </Pressable>
-                  {predictions.map(p => (
-                    <Pressable key={p.place_id} style={styles.suggRow} onPress={() => selectPrediction(p)}>
-                      <View style={styles.suggIcon}>
-                        <Icon name="MapPin" size={16} color="#6B7280" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.suggMain} numberOfLines={1}>{p.main_text}</Text>
-                        {!!p.secondary_text && <Text style={styles.suggSub} numberOfLines={1}>{p.secondary_text}</Text>}
-                      </View>
-                    </Pressable>
-                  ))}
+                  {durationText && <Text style={styles.routeStatText}>🕐 {durationText} drive</Text>}
                 </View>
               )}
             </View>
           )}
 
-          {/* STEP 1 — Vehicle + Package */}
-          {step === 1 && (
-            <View style={{ gap: 12 }}>
-              <Text style={styles.label}>Package Category</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {CATEGORIES.map(c => (
-                    <Pressable
-                      key={c}
-                      style={[styles.chip, draft.packageCategory === c && styles.chipActive]}
-                      onPress={() => setDraft({ packageCategory: c })}
-                    >
-                      <Text style={[styles.chipText, draft.packageCategory === c && styles.chipTextActive]}>{c}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </ScrollView>
-
-              <Text style={styles.label}>Vehicle Type</Text>
-              <View style={styles.vehicleGrid}>
-                {VEHICLES.map(v => (
-                  <Pressable
-                    key={v.key}
-                    style={[styles.vehicleCard, draft.vehicleType === v.key && styles.vehicleCardActive]}
-                    onPress={() => setDraft({ vehicleType: v.key })}
-                  >
-                    <VehicleIcon type={v.key} size={28} color={draft.vehicleType === v.key ? '#3A7BD5' : '#0F2B4C'} />
-                    <Text style={[styles.vehicleLabel, draft.vehicleType === v.key && styles.vehicleLabelActive]}>{v.label}</Text>
-                    <Text style={styles.vehicleKg}>≤{v.maxKg < 9999 ? `${v.maxKg}kg` : '3t+'}</Text>
-                  </Pressable>
-                ))}
+          {/* ─── STEP 2: WHEN + SUMMARY ─────────────────────────────── */}
+          {step === 2 && (
+            <View style={{ gap: 14 }}>
+              <Text style={styles.sectionTitle}>Schedule</Text>
+              <View style={styles.scheduleRow}>
+                <Pressable
+                  style={[styles.scheduleChip, scheduleNow && styles.scheduleChipActive]}
+                  onPress={() => setScheduleNow(true)}
+                >
+                  <Text style={[styles.scheduleChipText, scheduleNow && { color: '#fff' }]}>Send Now</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.scheduleChip, !scheduleNow && styles.scheduleChipActive]}
+                  onPress={() => setScheduleNow(false)}
+                >
+                  <Text style={[styles.scheduleChipText, !scheduleNow && { color: '#fff' }]}>Schedule for Later</Text>
+                </Pressable>
               </View>
 
-              <Text style={styles.label}>Approx. Weight (kg)</Text>
-              <BottomSheetTextInput
-                style={styles.miniInput}
-                value={draft.packageWeight?.toString() ?? ''}
-                onChangeText={(v) => setDraft({ packageWeight: v ? Number(v) : undefined })}
-                placeholder="e.g. 5"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="numeric"
-              />
-
-              <Text style={styles.label}>Special Instructions (optional)</Text>
-              <BottomSheetTextInput
-                style={[styles.miniInput, { minHeight: 80, textAlignVertical: 'top' }]}
-                value={draft.specialInstructions ?? ''}
-                onChangeText={(v) => setDraft({ specialInstructions: v })}
-                placeholder="Fragile, handle with care..."
-                placeholderTextColor="#9CA3AF"
-                multiline
-              />
-            </View>
-          )}
-
-          {/* STEP 2 — Schedule + Recurring */}
-          {step === 2 && (
-            <View style={{ gap: 12 }}>
-              <Text style={styles.label}>When?</Text>
-              {[
-                { now: true,  title: 'Send Now',           desc: 'Driver assigned immediately'  },
-                { now: false, title: 'Schedule for Later', desc: 'Pick a date and time'         },
-              ].map(opt => (
-                <Pressable
-                  key={String(opt.now)}
-                  style={[styles.scheduleOpt, scheduleNow === opt.now && styles.scheduleOptActive]}
-                  onPress={() => setScheduleNow(opt.now)}
-                >
-                  <Icon name={opt.now ? 'Zap' : 'Calendar'} size={20} color={scheduleNow === opt.now ? '#3A7BD5' : '#6B7280'} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.scheduleTitle}>{opt.title}</Text>
-                    <Text style={styles.scheduleDesc}>{opt.desc}</Text>
-                  </View>
-                </Pressable>
-              ))}
-
               {!scheduleNow && (
-                <View style={styles.scheduleCard}>
+                <View style={{ gap: 10 }}>
                   <RNCalendar
+                    current={scheduledDate}
                     minDate={TODAY_ISO}
                     maxDate={MAX_BOOK_AHEAD}
-                    current={scheduledDate}
-                    onDayPress={(day) => {
-                      setScheduledDate(day.dateString);
-                      if (day.dateString === TODAY_ISO && scheduledHour != null && scheduledHour <= new Date().getHours()) {
-                        setScheduledHour(null);
-                      }
-                    }}
-                    markedDates={{ [scheduledDate]: { selected: true, selectedColor: '#3A7BD5' } }}
-                    theme={{
-                      todayTextColor:        '#3A7BD5',
-                      arrowColor:            '#3A7BD5',
-                      selectedDayTextColor:  '#fff',
-                      textMonthFontWeight:   '600',
-                    }}
-                    style={{ borderRadius: 12, marginBottom: 12 }}
+                    onDayPress={(d: any) => setScheduledDate(d.dateString)}
+                    markedDates={{ [scheduledDate]: { selected: true, selectedColor: '#0F2B4C' } }}
+                    theme={{ todayTextColor: '#3A7BD5', arrowColor: '#0F2B4C' }}
                   />
-                  <Text style={styles.label}>Time (5 AM – 9 PM)</Text>
-                  <View style={styles.chipRow}>
-                    {TIME_SLOTS.map(t => {
-                      const active = scheduledHour === t.hour;
-                      const isPast = scheduledDate === TODAY_ISO && t.hour <= new Date().getHours();
-                      if (isPast) return null;
+                  <Text style={styles.label}>Pickup time (5 AM – 9 PM)</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {TIME_SLOTS.map(slot => {
+                      const active = scheduledHour === slot.hour;
                       return (
                         <Pressable
-                          key={t.hour}
+                          key={slot.hour}
                           style={[styles.timeChip, active && styles.timeChipActive]}
-                          onPress={() => setScheduledHour(t.hour)}
+                          onPress={() => setScheduledHour(slot.hour)}
                         >
-                          <Text style={[styles.timeChipText, active && styles.timeChipTextActive]}>{t.label}</Text>
+                          <Text style={[styles.timeChipText, active && { color: '#fff' }]}>{slot.label}</Text>
                         </Pressable>
                       );
                     })}
@@ -583,160 +875,231 @@ export default function NewDeliveryScreen() {
                 </View>
               )}
 
-              <View style={styles.toggleRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.toggleLabel}>Recurring Delivery</Text>
-                  <Text style={styles.toggleSub}>Auto-schedule this route repeatedly</Text>
-                </View>
-                <Switch
-                  value={draft.isRecurring}
-                  onValueChange={(v) => setDraft({ isRecurring: v, recurringPattern: v ? 'weekly' : null })}
-                  trackColor={{ true: '#3A7BD5' }}
-                  thumbColor="#fff"
-                />
-              </View>
-
-              {draft.isRecurring && (
-                <View style={styles.patternRow}>
-                  {RECURRING.map(r => (
-                    <Pressable
-                      key={r.key}
-                      style={[styles.patternBtn, draft.recurringPattern === r.key && styles.patternBtnActive]}
-                      onPress={() => setDraft({ recurringPattern: r.key as any })}
-                    >
-                      <Text style={[styles.patternText, draft.recurringPattern === r.key && styles.patternTextActive]}>{r.label}</Text>
-                    </Pressable>
-                  ))}
+              {/* Price breakdown card */}
+              <Text style={styles.sectionTitle}>Price breakdown</Text>
+              {quoteLoading && <ActivityIndicator color="#3A7BD5" />}
+              {quoteErr && (
+                <View style={styles.errorBanner}>
+                  <Icon name="AlertCircle" size={14} color="#DC2626" />
+                  <Text style={styles.errorBannerText}>{quoteErr}</Text>
                 </View>
               )}
+              {quote && <PriceCard quote={quote} />}
 
-              {/* Summary */}
-              <View style={styles.summary}>
-                <Text style={styles.summaryTitle}>Order Summary</Text>
-                <SumRow label="Pickup"   value={draft.pickupAddress} />
-                <SumRow label="Stops"    value={`${draft.stops.length} stop${draft.stops.length > 1 ? 's' : ''}`} />
-                <SumRow label="Vehicle"  value={VEHICLES.find(v => v.key === draft.vehicleType)?.label ?? '—'} />
-                <SumRow label="Category" value={draft.packageCategory ?? '—'} />
-                {distanceText && <SumRow label="Distance" value={distanceText} />}
-                {!scheduleNow && scheduledHour != null && (
-                  <SumRow label="When" value={buildScheduledFor(scheduledDate, scheduledHour).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} />
-                )}
-                {scheduleNow && <SumRow label="When" value="Send now" />}
-                {draft.isRecurring && <SumRow label="Recurring" value={draft.recurringPattern ?? ''} />}
-              </View>
+              {/* ETA card */}
+              {quote && (
+                <View style={styles.etaCard}>
+                  <Text style={styles.etaTitle}>Estimated time</Text>
+                  <Text style={styles.etaLine}>Drive: {totalDriveMin} min</Text>
+                  <Text style={styles.etaLine}>Stops dwell: {quote.estimatedDwellMinutes} min ({draft.stops.length} stop{draft.stops.length === 1 ? '' : 's'})</Text>
+                  <Text style={styles.etaTotal}>Total: ~{totalDriveMin + quote.estimatedDwellMinutes} min</Text>
+                </View>
+              )}
             </View>
           )}
 
-          {/* CTA */}
-          <Pressable
-            style={[
-              styles.cta,
-              { marginTop: 20 },
-              loading && { opacity: 0.6 },
-              ((step === 0 && !canContinue0) || (step === 1 && !canContinue1) || (step === 2 && !canContinue2)) && styles.ctaDisabled,
-            ]}
-            disabled={loading || (step === 0 && !canContinue0) || (step === 1 && !canContinue1) || (step === 2 && !canContinue2)}
-            onPress={step < 2 ? next : handleSubmit}
-          >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : (
-                <>
-                  <Text style={styles.ctaText}>{step === 2 ? 'Confirm & Dispatch' : 'Continue'}</Text>
-                  <Icon name={step === 2 ? 'Send' : 'ArrowRight'} size={18} color="#fff" />
-                </>
-              )}
-          </Pressable>
+          {/* ── Step navigation ─────────────────────────────────────── */}
+          <View style={styles.navRow}>
+            {step > 0 && (
+              <Pressable style={styles.backStepBtn} onPress={back}>
+                <Icon name="ChevronDown" size={16} color="#0F2B4C" />
+                <Text style={styles.backStepText}>Back</Text>
+              </Pressable>
+            )}
+            {step < 2 ? (
+              <Pressable
+                style={[
+                  styles.nextBtn,
+                  !((step === 0 && canContinue0) || (step === 1 && canContinue1)) && styles.nextBtnDisabled,
+                ]}
+                onPress={next}
+              >
+                <Text style={styles.nextText}>Continue</Text>
+                <Icon name="ArrowRight" size={16} color="#fff" />
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[styles.nextBtn, (loading || !quote) && styles.nextBtnDisabled]}
+                onPress={handleSubmit}
+                disabled={loading || !quote}
+              >
+                {loading
+                  ? <ActivityIndicator color="#fff" />
+                  : <>
+                      <Text style={styles.nextText}>
+                        Confirm — ₦{quote ? Math.round(quote.customer.total).toLocaleString() : '—'}
+                      </Text>
+                      <Icon name="Check" size={16} color="#fff" />
+                    </>}
+              </Pressable>
+            )}
+          </View>
         </BottomSheetScrollView>
       </BottomSheet>
     </View>
   );
 }
 
-function SumRow({ label, value }: { label: string; value: string }) {
+// ── Helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Mirror of PricingService.computeStopDwellMinutes — used client-side
+ * to compute estimated dwell BEFORE the quote endpoint returns, so the
+ * quote payload includes a sensible value. Server is authoritative.
+ */
+function computePerStopDwell(
+  card: RateCard | null,
+  category: ServiceCategory | undefined,
+  weightKg: number,
+): number {
+  if (!card || !category) return 5;
+  const tier = card.weightTiers.find((t: { minKg: number; maxKg: number | null; extraMinutes: number }) =>
+    weightKg >= t.minKg && (t.maxKg === null || weightKg < t.maxKg)
+  );
+  return category.setupDwellMinutes
+       + (tier?.extraMinutes ?? 0)
+       + card.dwellBuffers.baselineMinutes;
+}
+
+// ── Price breakdown sub-component ───────────────────────────────────────
+function PriceCard({ quote }: { quote: PriceBreakdown }) {
+  const c = quote.customer;
+  const surchargeTotal = c.categorySurcharge + c.timeSurcharges.night + c.timeSurcharges.peak
+                       + c.timeSurcharges.weekend + c.zoneSurcharges.interState
+                       + c.zoneSurcharges.longDistance + c.zoneSurcharges.overnight + c.zoneSurcharges.restricted;
+  const discountTotal  = c.discounts.bulk + c.discounts.recurring + c.discounts.loyalty + c.discounts.welcome;
   return (
-    <View style={styles.sumRow}>
-      <Text style={styles.sumLabel}>{label}</Text>
-      <Text style={styles.sumValue} numberOfLines={2}>{value}</Text>
+    <View style={styles.priceCard}>
+      <PriceLine label="Base fare"                           value={c.base} />
+      <PriceLine label={`Distance (${quote.km.toFixed(1)} km labour)`} value={c.distanceLabour} />
+      <PriceLine label={`Distance (${quote.km.toFixed(1)} km fuel)`}   value={c.distanceFuel} />
+      {c.stopBonuses    > 0 && <PriceLine label={`Stops bonus (${quote.stops - 1})`} value={c.stopBonuses} />}
+      {surchargeTotal   > 0 && <PriceLine label="Surcharges"           value={surchargeTotal} />}
+      {discountTotal    > 0 && <PriceLine label="Discounts"            value={-discountTotal} negative />}
+      <View style={styles.priceDivider} />
+      <PriceLine label="Subtotal"                                       value={c.vatBase} />
+      <PriceLine label={`VAT 7.5%`}                                     value={c.vat} />
+      <View style={styles.priceDivider} />
+      <PriceLine label="Total" value={c.total} bold />
+      <Text style={styles.priceWho}>
+        Driver earns ₦{Math.round(quote.driver.total).toLocaleString()}. SEIRS keeps ₦{Math.round(quote.seirsNet).toLocaleString()}.
+      </Text>
     </View>
   );
 }
 
+function PriceLine({ label, value, bold, negative }: { label: string; value: number; bold?: boolean; negative?: boolean }) {
+  const sign = negative ? '−' : '';
+  return (
+    <View style={styles.priceRow}>
+      <Text style={[styles.priceLabel, bold && { fontWeight: '700' }]}>{label}</Text>
+      <Text style={[styles.priceValue, bold && { fontWeight: '700' }, negative && { color: '#16A34A' }]}>
+        {sign}₦{Math.abs(Math.round(value)).toLocaleString()}
+      </Text>
+    </View>
+  );
+}
+
+// ── Styles ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:    { flex: 1 },
-  topBar:       { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 8, gap: 8, zIndex: 10 },
-  backBtn:      { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
-  topTitle:     { flex: 1, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 22, alignItems: 'center', backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
-  topTitleText: { fontSize: 15, fontWeight: '700', color: '#0F2B4C' },
-  topStep:      { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  topBar: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  topTitle: { flex: 1, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#fff', borderRadius: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  topTitleText: { fontSize: 14, fontWeight: '700', color: '#0F2B4C' },
+  topStep: { fontSize: 11, color: '#6B7280', marginTop: 2 },
 
-  sheetInner:   { paddingHorizontal: 16 },
-  label:        { fontSize: 13, fontWeight: '600', color: '#374151', marginTop: 8, marginBottom: 4 },
-  miniLabel:    { fontSize: 12, color: '#6B7280', marginTop: 8, marginBottom: 4 },
+  sheetInner: { paddingHorizontal: 18, paddingTop: 4 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#0F2B4C', marginTop: 4 },
+  sectionHint: { fontSize: 12, color: '#6B7280' },
+  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginTop: 6 },
+  miniLabel: { fontSize: 11, fontWeight: '600', color: '#6B7280', marginTop: 8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
+  fieldHint: { fontSize: 11, color: '#9CA3AF', marginTop: -8 },
 
-  inputBlock:   { borderWidth: 1.5, borderRadius: 12, paddingVertical: 4, backgroundColor: '#F9FAFB', borderColor: '#E5E7EB' },
-  inputRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, height: 48 },
-  dot:          { width: 10, height: 10, borderRadius: 5 },
-  inputField:   { flex: 1, fontSize: 15, color: '#0F2B4C', paddingVertical: 0 },
-  miniInput:    { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#E5E7EB', fontSize: 14, color: '#0F2B4C' },
+  inputBlock: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 12, paddingVertical: 4 },
+  inputRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 },
+  inputField: { flex: 1, fontSize: 14, color: '#0F2B4C' },
+  dot: { width: 10, height: 10, borderRadius: 5 },
 
-  stopCard:     { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' },
-  stopHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  stopBadge:    { backgroundColor: '#3A7BD5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  stopBadgeText:{ color: '#fff', fontSize: 12, fontWeight: '700' },
-  addStopBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderColor: '#3A7BD5', borderStyle: 'dashed', borderRadius: 12, paddingVertical: 12 },
-  addStopText:  { color: '#3A7BD5', fontWeight: '600', fontSize: 14 },
+  miniInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0F2B4C' },
 
-  routeStat:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#F0F5FF', borderColor: '#3A7BD540', borderWidth: 1, borderRadius: 10, paddingVertical: 8 },
-  routeStatText:    { fontSize: 13, fontWeight: '600', color: '#0F2B4C' },
+  // Suggestions
+  suggBlock: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 14, marginTop: -4 },
+  useLocBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  useLocText: { fontSize: 14, fontWeight: '600', color: '#3A7BD5' },
+  suggRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  suggIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
+  suggMain: { fontSize: 14, fontWeight: '500', color: '#0F2B4C' },
+  suggSub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+
+  // Category cards
+  catCard: { width: 140, padding: 12, borderRadius: 12, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB' },
+  catCardActive: { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
+  catName: { fontSize: 13, fontWeight: '700', color: '#0F2B4C' },
+  catEx: { fontSize: 11, color: '#6B7280', marginTop: 4 },
+
+  // Vehicle chips
+  vehChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 22, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff' },
+  vehChipActive: { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
+  vehChipSuggested: { borderColor: '#3A7BD5', backgroundColor: '#EFF6FF' },
+  vehChipBlocked: { backgroundColor: '#F9FAFB', borderColor: '#F3F4F6', opacity: 0.5 },
+  vehChipText: { fontSize: 13, fontWeight: '600', color: '#0F2B4C' },
+  suggBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: '#3A7BD5' },
+  suggBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.4, textTransform: 'uppercase' },
+
+  // Tip / safety banner
+  tipBox: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', padding: 10, backgroundColor: '#FFFBEB', borderColor: '#FCD34D', borderWidth: 1, borderRadius: 10 },
+  tipText: { flex: 1, fontSize: 12, color: '#92400E' },
+
+  // Stops
+  stopCard: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E5E7EB' },
+  stopHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  stopBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: '#0F2B4C' },
+  stopBadgeText: { fontSize: 11, color: '#fff', fontWeight: '700' },
+  addStopBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1.5, borderColor: '#3A7BD5', backgroundColor: '#EFF6FF' },
+  addStopText: { fontSize: 13, fontWeight: '600', color: '#3A7BD5' },
+
+  // Optimize toggle
+  optimizeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB' },
+  optimizeTitle: { fontSize: 13, fontWeight: '700', color: '#0F2B4C' },
+  optimizeSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+
+  // Route stat
+  routeStat: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#F0F5FF', borderColor: '#3A7BD540', borderWidth: 1, borderRadius: 10, paddingVertical: 8 },
+  routeStatText: { fontSize: 13, fontWeight: '600', color: '#0F2B4C' },
   routeStatDivider: { color: '#9CA3AF' },
 
-  useLocBtn:    { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
-  useLocText:   { fontSize: 14, fontWeight: '600', color: '#3A7BD5' },
-  suggRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  suggIcon:     { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
-  suggMain:     { fontSize: 14, fontWeight: '500', color: '#0F2B4C' },
-  suggSub:      { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  // Schedule
+  scheduleRow: { flexDirection: 'row', gap: 8 },
+  scheduleChip: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff', alignItems: 'center' },
+  scheduleChipActive: { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
+  scheduleChipText: { fontSize: 13, fontWeight: '700', color: '#0F2B4C' },
+  timeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 18, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff' },
+  timeChipActive: { backgroundColor: '#3A7BD5', borderColor: '#3A7BD5' },
+  timeChipText: { fontSize: 12, fontWeight: '600', color: '#0F2B4C' },
 
-  chip:         { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB' },
-  chipActive:   { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
-  chipText:     { fontSize: 13, color: '#374151' },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
+  // Price card
+  priceCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', padding: 14 },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  priceLabel: { fontSize: 12, color: '#374151' },
+  priceValue: { fontSize: 13, color: '#0F2B4C', fontVariant: ['tabular-nums'] },
+  priceDivider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 6 },
+  priceWho: { fontSize: 11, color: '#9CA3AF', marginTop: 8, fontStyle: 'italic' },
 
-  vehicleGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  vehicleCard:  { width: '30%', backgroundColor: '#fff', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#E5E7EB' },
-  vehicleCardActive: { borderColor: '#3A7BD5', backgroundColor: '#F0F5FF' },
-  vehicleLabel: { fontSize: 11, fontWeight: '600', color: '#374151', textAlign: 'center' },
-  vehicleLabelActive: { color: '#0F2B4C' },
-  vehicleKg:    { fontSize: 10, color: '#9CA3AF', marginTop: 2 },
+  // ETA
+  etaCard: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' },
+  etaTitle: { fontSize: 13, fontWeight: '700', color: '#0F2B4C', marginBottom: 6 },
+  etaLine: { fontSize: 12, color: '#6B7280' },
+  etaTotal: { fontSize: 14, fontWeight: '700', color: '#0F2B4C', marginTop: 6 },
 
-  scheduleOpt:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  scheduleOptActive: { borderColor: '#3A7BD5', backgroundColor: '#F0F5FF' },
-  scheduleTitle: { fontSize: 14, fontWeight: '600', color: '#0F2B4C' },
-  scheduleDesc:  { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  scheduleCard:  { padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' },
-  chipRow:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  timeChip:      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  timeChipActive:{ backgroundColor: '#3A7BD5', borderColor: '#3A7BD5' },
-  timeChipText:  { fontSize: 13, fontWeight: '500', color: '#0F2B4C' },
-  timeChipTextActive: { color: '#fff' },
+  // Errors
+  errorBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 10 },
+  errorBannerText: { flex: 1, fontSize: 12, color: '#991B1B' },
 
-  toggleRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  toggleLabel:  { fontSize: 14, fontWeight: '600', color: '#0F2B4C' },
-  toggleSub:    { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  patternRow:   { flexDirection: 'row', gap: 8 },
-  patternBtn:   { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center' },
-  patternBtnActive: { borderColor: '#0F2B4C', backgroundColor: '#0F2B4C' },
-  patternText:  { fontSize: 13, fontWeight: '600', color: '#374151' },
-  patternTextActive: { color: '#fff' },
-
-  summary:      { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' },
-  summaryTitle: { fontSize: 14, fontWeight: '700', color: '#0F2B4C', marginBottom: 10 },
-  sumRow:       { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, gap: 12 },
-  sumLabel:     { fontSize: 13, color: '#6B7280' },
-  sumValue:     { fontSize: 13, fontWeight: '600', color: '#0F2B4C', flex: 1, textAlign: 'right' },
-
-  cta:          { backgroundColor: '#0F2B4C', borderRadius: 12, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  ctaDisabled:  { opacity: 0.4 },
-  ctaText:      { color: '#fff', fontWeight: '700', fontSize: 15 },
+  // Nav row
+  navRow: { flexDirection: 'row', gap: 8, marginTop: 18 },
+  backStepBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff' },
+  backStepText: { fontSize: 13, fontWeight: '600', color: '#0F2B4C' },
+  nextBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 14, borderRadius: 12, backgroundColor: '#0F2B4C' },
+  nextBtnDisabled: { opacity: 0.4 },
+  nextText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

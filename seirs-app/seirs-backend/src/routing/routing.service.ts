@@ -37,6 +37,35 @@ export class RoutingService {
   // ── Public API ────────────────────────────────────────────────────────────
 
   /**
+   * Geocode a free-text address using Google Geocoding API. Returns
+   * { lat, lng, formattedAddress } or null when the API key is missing
+   * or the lookup fails. Used by the CSV bulk upload flow to resolve
+   * pickup + drop-off addresses server-side so businesses don't need
+   * GIS skills to upload deliveries.
+   */
+  async geocodeAddress(address: string): Promise<{ lat: number; lng: number; formattedAddress: string } | null> {
+    if (!this.apiKey || !address?.trim()) return null;
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json` +
+        `?address=${encodeURIComponent(address)}&key=${this.apiKey}`;
+      const res = await fetch(url);
+      const json: any = await res.json();
+      if (json?.status !== 'OK' || !Array.isArray(json.results) || json.results.length === 0) {
+        return null;
+      }
+      const r = json.results[0];
+      return {
+        lat: r.geometry?.location?.lat,
+        lng: r.geometry?.location?.lng,
+        formattedAddress: r.formatted_address ?? address,
+      };
+    } catch (e) {
+      this.logger.warn(`geocodeAddress failed for "${address}": ${(e as Error).message}`);
+      return null;
+    }
+  }
+
+  /**
    * Optimise route across stops using nearest-neighbour TSP, then call
    * Google Directions API to get accurate driving distance + duration
    * for the optimised order. Falls back to haversine + 30 km/h estimate

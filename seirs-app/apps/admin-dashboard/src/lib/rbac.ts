@@ -122,9 +122,10 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'FINANCE',
     items: [
-      { href: '/wallet',    label: 'Wallet & Payouts',   icon: 'Wallet',     permission: 'wallet'    },
-      { href: '/pricing',   label: 'Pricing Engine',     icon: 'Tag',        permission: 'pricing'   },
-      { href: '/fees',      label: 'Fee Catalogue',      icon: 'DollarSign', permission: 'fees'      },
+      { href: '/wallet',          label: 'Wallet & Payouts',  icon: 'Wallet',     permission: 'wallet'    },
+      { href: '/pricing',         label: 'Pricing Engine',    icon: 'Tag',        permission: 'pricing'   },
+      { href: '/service-catalog', label: 'Service Catalog',   icon: 'List',       permission: 'pricing'   },
+      { href: '/fees',            label: 'Fee Catalogue',     icon: 'DollarSign', permission: 'fees'      },
       { href: '/referrals', label: 'Referrals',          icon: 'Share2',     permission: 'referrals' },
       { href: '/insurance', label: 'Insurance Partners', icon: 'Shield',     permission: 'insurance' },
     ],

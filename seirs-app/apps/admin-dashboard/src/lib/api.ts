@@ -211,4 +211,22 @@ export const adminApi = {
     onlineDrivers:    () => req<Array<{ id: string; name: string; lat: number; lng: number; isOnline: boolean; lastSeen?: string }>>('/admin/ops-map/drivers'),
     activeDeliveries: () => req<Array<{ id: string; trackingCode: string; pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number; status: string }>>('/admin/ops-map/deliveries'),
   },
+
+  // Pricing system — admin reads + writes the active RateCard and the
+  // ServiceCategory catalog. /config/* endpoints are public so apps can
+  // fetch on boot; /admin/* endpoints are auth'd for publishing changes.
+  rateCard: {
+    getActive: () => req<any>('/config/rate-card'),
+    history:   () => req<any[]>('/admin/rate-cards'),
+    publish:   (body: any) => req<any>('/admin/rate-card', {
+      method: 'PUT', body: JSON.stringify(body),
+    }),
+  },
+
+  serviceCatalog: {
+    list:   () => req<any[]>('/config/service-catalog'),
+    upsert: (code: string, body: any) => req<any>(`/admin/service-catalog/${code}`, {
+      method: 'PUT', body: JSON.stringify(body),
+    }),
+  },
 };

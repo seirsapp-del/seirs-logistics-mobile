@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1100" />
+  <title>SEIRS Pricing & Service Catalogue — Nigeria Reviewer Edition</title>
+  <style>
+    :root {
+      --navy:#0F2B4C; --sky:#3A7BD5; --cream:#F5F5F0; --surface:#fff;
+      --border:#E5E7EB; --text:#0F2B4C; --muted:#6B7280; --soft:#9CA3AF;
+      --edited:#FEF3C7; --edited-b:#F59E0B; --green:#16A34A; --red:#DC2626;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; padding:0; background:var(--cream); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      line-height:1.55;
+    }
+    header.top {
+      position:sticky; top:0; z-index:10;
+      background:var(--navy); color:#fff;
+      padding:16px 24px;
+      box-shadow:0 2px 8px rgba(0,0,0,0.08);
+    }
+    header.top h1 { margin:0 0 4px; font-size:20px; }
+    header.top p { margin:0; font-size:13px; opacity:0.85; }
+    header.top .actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    header.top button, header.top label {
+      background:var(--sky); color:#fff; border:0; padding:9px 14px;
+      border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;
+    }
+    header.top button.secondary { background:#fff; color:var(--navy); }
+    header.top .badge { background:#fff2; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+    nav.toc {
+      background:var(--surface); border-bottom:1px solid var(--border);
+      padding:10px 24px; display:flex; flex-wrap:wrap; gap:6px 14px;
+      position:sticky; top:108px; z-index:9;
+    }
+    nav.toc a { color:var(--sky); text-decoration:none; font-size:12px; font-weight:600; }
+    nav.toc a:hover { text-decoration:underline; }
+    main { max-width:1100px; margin:0 auto; padding:28px 24px 60px; }
+    section { background:var(--surface); border-radius:12px; padding:22px 26px; margin-bottom:22px; border:1px solid var(--border); }
+    section h2 { color:var(--navy); margin:0 0 6px; font-size:22px; border-bottom:2px solid var(--sky); padding-bottom:8px; display:inline-block; }
+    section h3 { color:var(--navy); margin:22px 0 8px; font-size:16px; }
+    section p { margin:6px 0; color:var(--text); }
+    section .lede { color:var(--muted); font-size:14px; margin-bottom:14px; }
+    table { border-collapse:collapse; width:100%; margin:10px 0; font-size:13px; }
+    th, td { border:1px solid var(--border); padding:8px 10px; vertical-align:top; text-align:left; }
+    th { background:#F9FAFB; color:var(--navy); font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.3px; }
+    td[contenteditable="true"] { background:#FFFEF8; cursor:text; outline:none; }
+    td[contenteditable="true"]:focus { background:#FEF9E7; box-shadow:inset 0 0 0 2px var(--sky); }
+    td[data-edited="true"] { background:var(--edited) !important; box-shadow:inset 3px 0 0 var(--edited-b); }
+    .formula { background:#0F2B4C; color:#E5E7EB; padding:14px 18px; border-radius:8px; font-family:Menlo,Consolas,monospace; font-size:13px; line-height:1.7; white-space:pre-wrap; }
+    .scenario { background:#F9FAFB; border:1px solid var(--border); border-radius:8px; padding:14px 18px; margin:14px 0; }
+    .scenario h4 { margin:0 0 6px; color:var(--navy); font-size:14px; }
+    .scenario .calc { font-family:Menlo,Consolas,monospace; font-size:12px; line-height:1.7; white-space:pre-wrap; color:var(--text); }
+    .pill { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+    .pill.req { background:#FEE2E2; color:var(--red); }
+    .pill.opt { background:#E0E7FF; color:#4338CA; }
+    .pill.new { background:#DCFCE7; color:var(--green); }
+    .why { color:var(--muted); font-size:12px; font-style:italic; }
+    textarea.note { width:100%; min-height:80px; border:1px solid var(--border); border-radius:8px; padding:10px; font-family:inherit; font-size:13px; resize:vertical; background:#FFFEF8; }
+    textarea.note:focus { outline:none; box-shadow:0 0 0 2px var(--sky); }
+    .row-help { font-size:12px; color:var(--muted); }
+    .legend { display:flex; gap:14px; flex-wrap:wrap; margin:10px 0; font-size:12px; color:var(--muted); }
+    .legend span { display:inline-flex; align-items:center; gap:6px; }
+    .swatch { width:14px; height:14px; border-radius:3px; border:1px solid var(--border); }
+    .top-link { display:block; text-align:right; margin-top:14px; font-size:12px; color:var(--sky); }
+    @media (max-width:700px) {
+      nav.toc { top:auto; position:static; }
+      body { font-size:14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="top">
+  <h1>SEIRS Pricing &amp; Service Catalogue — Nigeria Reviewer Edition</h1>
+  <p>Edit any yellow cell. Click <b>Download edits</b> to save your changes as a JSON file — send it back and the team will apply your changes to the live rate card.</p>
+  <div class="actions">
+    <span class="badge">Version 1 · 12 May 2026</span>
+    <button onclick="exportEdits()">⬇ Download my edits (JSON)</button>
+    <label for="loader" class="secondary" style="cursor:pointer;">⬆ Load saved edits</label>
+    <input type="file" id="loader" hidden accept=".json" onchange="handleLoad(event)" />
+    <button class="secondary" onclick="resetAll()">↺ Reset to defaults</button>
+    <span id="editCount" class="badge">0 cells edited</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#how">① How to review</a>
+  <a href="#catalogue">② Service Catalogue</a>
+  <a href="#dwell">③ Dwell Times</a>
+  <a href="#vehicles">④ Vehicle Fleet</a>
+  <a href="#fuel">⑤ Fuel Model</a>
+  <a href="#rates">⑥ Rate Card</a>
+  <a href="#formula">⑦ Pricing Formula</a>
+  <a href="#scenarios">⑧ Worked Scenarios</a>
+  <a href="#surcharges">⑨ Surcharges &amp; Discounts</a>
+  <a href="#fees">⑩ Cancellation / Wait / Return</a>
+  <a href="#driver">⑪ Driver Pay</a>
+  <a href="#partner">⑫ Partner Store</a>
+  <a href="#csv">⑬ CSV Bulk Upload</a>
+  <a href="#admin">⑭ Admin Controls</a>
+  <a href="#notes">⑮ Reviewer Notes</a>
+</nav>
+
+<main>
+
+<!-- ─────────────── ① HOW TO REVIEW ─────────────── -->
+<section id="how">
+  <h2>① How to review this document</h2>
+  <p class="lede">This is the proposed pricing &amp; service spec for SEIRS — every number below will be wired into the backend so admins can later tune it from the dashboard. You're the first Nigerian reviewer. Your job: catch what doesn't match reality on the ground.</p>
+  <ol>
+    <li><b>Read each section in order.</b> Sections are numbered top to bottom — you don't need engineering knowledge.</li>
+    <li><b>Edit any yellow cell.</b> Tap it, type, hit Tab or click away. Edited cells get an orange border so you can see what you changed.</li>
+    <li><b>Add notes</b> in the textareas at the bottom of each section if a number isn't quite right but you're not sure of the exact fix.</li>
+    <li><b>Section ⑮ is for free-form thoughts</b> — fraud risks, scenarios we missed, anything.</li>
+    <li><b>When done, click "⬇ Download my edits"</b> at the top. It saves a JSON file. Send that file to the team and they'll apply it.</li>
+    <li>Your browser auto-saves drafts every 5 seconds — closing the tab won't lose your work. Click <b>"↺ Reset"</b> only if you want to start over.</li>
+  </ol>
+  <div class="legend">
+    <span><span class="swatch" style="background:#FFFEF8;"></span> Editable cell</span>
+    <span><span class="swatch" style="background:var(--edited);"></span> You've edited this</span>
+    <span><span class="pill req">Required</span> Must be set</span>
+    <span><span class="pill opt">Optional</span> Can be empty</span>
+  </div>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ② SERVICE CATALOGUE ─────────────── -->
+<section id="catalogue">
+  <h2>② Service Catalogue — what SEIRS will move</h2>
+  <p class="lede">Every booking starts here. The category drives the suggested vehicle, dwell time, and any surcharges. Edit the list to match what Nigerian businesses + individuals actually ask drivers to move.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Examples</th>
+        <th>Suggested vehicle</th>
+        <th>Setup dwell (min)</th>
+        <th>Surcharge %</th>
+        <th>Safety hard-stop?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td contenteditable="true" data-k="cat.documents.name">Documents</td><td contenteditable="true" data-k="cat.documents.ex">Letters, contracts, invoices, archive boxes</td><td contenteditable="true" data-k="cat.documents.veh">Bicycle / Motorcycle (auto-upgrades with weight)</td><td contenteditable="true" data-k="cat.documents.dwell">3</td><td contenteditable="true" data-k="cat.documents.sur">0</td><td contenteditable="true" data-k="cat.documents.safety">—</td></tr>
+      <tr><td contenteditable="true" data-k="cat.smallparcel.name">Small parcels</td><td contenteditable="true" data-k="cat.smallparcel.ex">Phones, books, cosmetics, shoes</td><td contenteditable="true" data-k="cat.smallparcel.veh">Motorcycle</td><td contenteditable="true" data-k="cat.smallparcel.dwell">4</td><td contenteditable="true" data-k="cat.smallparcel.sur">0</td><td contenteditable="true" data-k="cat.smallparcel.safety">—</td></tr>
+      <tr><td contenteditable="true" data-k="cat.standard.name">Standard parcels</td><td contenteditable="true" data-k="cat.standard.ex">Boxed goods, small appliances</td><td contenteditable="true" data-k="cat.standard.veh">Tricycle / Car</td><td contenteditable="true" data-k="cat.standard.dwell">5</td><td contenteditable="true" data-k="cat.standard.sur">0</td><td contenteditable="true" data-k="cat.standard.safety">—</td></tr>
+      <tr><td contenteditable="true" data-k="cat.fragile.name">Fragile / Electronics</td><td contenteditable="true" data-k="cat.fragile.ex">Glassware, phones, laptops, art</td><td contenteditable="true" data-k="cat.fragile.veh">Car / Van</td><td contenteditable="true" data-k="cat.fragile.dwell">7</td><td contenteditable="true" data-k="cat.fragile.sur">20</td><td contenteditable="true" data-k="cat.fragile.safety">Block motorcycle if &gt;3kg</td></tr>
+      <tr><td contenteditable="true" data-k="cat.foodhot.name">Hot food</td><td contenteditable="true" data-k="cat.foodhot.ex">Restaurant orders, jollof, suya</td><td contenteditable="true" data-k="cat.foodhot.veh">Motorcycle / Car (insulated bag)</td><td contenteditable="true" data-k="cat.foodhot.dwell">4</td><td contenteditable="true" data-k="cat.foodhot.sur">10</td><td contenteditable="true" data-k="cat.foodhot.safety">—</td></tr>
+      <tr><td contenteditable="true" data-k="cat.foodcold.name">Cold / Frozen food</td><td contenteditable="true" data-k="cat.foodcold.ex">Groceries, ice cream, meat</td><td contenteditable="true" data-k="cat.foodcold.veh">Van (cold storage)</td><td contenteditable="true" data-k="cat.foodcold.dwell">6</td><td contenteditable="true" data-k="cat.foodcold.sur">30</td><td contenteditable="true" data-k="cat.foodcold.safety">Block motorcycle</td></tr>
+      <tr><td contenteditable="true" data-k="cat.medical.name">Medical supplies</td><td contenteditable="true" data-k="cat.medical.ex">Lab samples, medication, vaccines</td><td contenteditable="true" data-k="cat.medical.veh">Car / Van</td><td contenteditable="true" data-k="cat.medical.dwell">7</td><td contenteditable="true" data-k="cat.medical.sur">25</td><td contenteditable="true" data-k="cat.medical.safety">Pharmacist signature required</td></tr>
+      <tr><td contenteditable="true" data-k="cat.bulk.name">Bulk goods</td><td contenteditable="true" data-k="cat.bulk.ex">Bags of rice, grains, cement, sand</td><td contenteditable="true" data-k="cat.bulk.veh">Van / Small truck</td><td contenteditable="true" data-k="cat.bulk.dwell">10</td><td contenteditable="true" data-k="cat.bulk.sur">0</td><td contenteditable="true" data-k="cat.bulk.safety">Block bike/motorcycle</td></tr>
+      <tr><td contenteditable="true" data-k="cat.farm.name">Farm produce</td><td contenteditable="true" data-k="cat.farm.ex">Yam, plantain, palm oil, tubers, fish</td><td contenteditable="true" data-k="cat.farm.veh">Tricycle / Van / Truck</td><td contenteditable="true" data-k="cat.farm.dwell">12</td><td contenteditable="true" data-k="cat.farm.sur">0</td><td contenteditable="true" data-k="cat.farm.safety">Block bike/motorcycle if &gt;20kg</td></tr>
+      <tr><td contenteditable="true" data-k="cat.build.name">Building materials</td><td contenteditable="true" data-k="cat.build.ex">Cement bags, blocks, rods, tiles</td><td contenteditable="true" data-k="cat.build.veh">Small / Large truck</td><td contenteditable="true" data-k="cat.build.dwell">15</td><td contenteditable="true" data-k="cat.build.sur">15</td><td contenteditable="true" data-k="cat.build.safety">Truck only</td></tr>
+      <tr><td contenteditable="true" data-k="cat.lumber.name">Lumber / Sawmill</td><td contenteditable="true" data-k="cat.lumber.ex">Planks, beams, raw wood</td><td contenteditable="true" data-k="cat.lumber.veh">Large truck</td><td contenteditable="true" data-k="cat.lumber.dwell">18</td><td contenteditable="true" data-k="cat.lumber.sur">20</td><td contenteditable="true" data-k="cat.lumber.safety">Large truck only</td></tr>
+      <tr><td contenteditable="true" data-k="cat.move1.name">House move — single item</td><td contenteditable="true" data-k="cat.move1.ex">Sofa, fridge, wardrobe, bed</td><td contenteditable="true" data-k="cat.move1.veh">Van / Small truck</td><td contenteditable="true" data-k="cat.move1.dwell">20</td><td contenteditable="true" data-k="cat.move1.sur">25</td><td contenteditable="true" data-k="cat.move1.safety">Van or larger</td></tr>
+      <tr><td contenteditable="true" data-k="cat.movefull.name">House move — full unit</td><td contenteditable="true" data-k="cat.movefull.ex">Studio / 1BR / 2BR / 3BR relocation</td><td contenteditable="true" data-k="cat.movefull.veh">Large truck + crew</td><td contenteditable="true" data-k="cat.movefull.dwell">40-120</td><td contenteditable="true" data-k="cat.movefull.sur">40</td><td contenteditable="true" data-k="cat.movefull.safety">Large truck + admin approval</td></tr>
+      <tr><td contenteditable="true" data-k="cat.animals.name">Live animals</td><td contenteditable="true" data-k="cat.animals.ex">Poultry, goats, sheep, rams</td><td contenteditable="true" data-k="cat.animals.veh">Van / Truck (ventilated)</td><td contenteditable="true" data-k="cat.animals.dwell">15</td><td contenteditable="true" data-k="cat.animals.sur">30</td><td contenteditable="true" data-k="cat.animals.safety">Block bike/motorcycle/car; welfare cert required</td></tr>
+      <tr><td contenteditable="true" data-k="cat.industrial.name">Industrial parts</td><td contenteditable="true" data-k="cat.industrial.ex">Machinery components, generators</td><td contenteditable="true" data-k="cat.industrial.veh">Van / Truck</td><td contenteditable="true" data-k="cat.industrial.dwell">12</td><td contenteditable="true" data-k="cat.industrial.sur">15</td><td contenteditable="true" data-k="cat.industrial.safety">No bike</td></tr>
+      <tr><td contenteditable="true" data-k="cat.other.name">Other / Special</td><td contenteditable="true" data-k="cat.other.ex">Anything not listed — free text</td><td contenteditable="true" data-k="cat.other.veh">Driver picks</td><td contenteditable="true" data-k="cat.other.dwell">5</td><td contenteditable="true" data-k="cat.other.sur">0</td><td contenteditable="true" data-k="cat.other.safety">Routed to admin for pricing approval</td></tr>
+    </tbody>
+  </table>
+  <p class="row-help">Categories we should add? Categories that don't make sense for Nigeria? Tell us:</p>
+  <textarea class="note" data-k="note.catalogue" placeholder="e.g. 'We should add a separate category for fuel/diesel jerry cans — common in Lagos blackouts.'"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ③ DWELL TIMES ─────────────── -->
+<section id="dwell">
+  <h2>③ Dwell Times — how long the driver stays at each stop</h2>
+  <p class="lede">Dwell time = the minutes the driver isn't driving. They're loading, waiting for the recipient, getting a signature. Nigerians don't move at developed-country speed, so we built a +2 min cultural buffer into every stop.</p>
+
+  <h3>Formula</h3>
+  <div class="formula">dwell_per_stop_minutes =
+    setup_time(by category)
+  + weight_tier_load(by kg)
+  + vehicle_factor(by vehicle)
+  + nigeria_cultural_buffer  ← always added</div>
+
+  <h3>Weight tiers (added on top of category setup)</h3>
+  <table>
+    <thead><tr><th>Weight range</th><th>Extra minutes</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td contenteditable="true" data-k="wt.0-5.range">0 – 5 kg</td><td contenteditable="true" data-k="wt.0-5.min">+1</td><td contenteditable="true" data-k="wt.0-5.why">Hand-carry, single trip</td></tr>
+      <tr><td contenteditable="true" data-k="wt.5-20.range">5 – 20 kg</td><td contenteditable="true" data-k="wt.5-20.min">+3</td><td contenteditable="true" data-k="wt.5-20.why">One trip, two-handed or hand-cart</td></tr>
+      <tr><td contenteditable="true" data-k="wt.20-50.range">20 – 50 kg</td><td contenteditable="true" data-k="wt.20-50.min">+6</td><td contenteditable="true" data-k="wt.20-50.why">Multiple trips or two-person carry</td></tr>
+      <tr><td contenteditable="true" data-k="wt.50-200.range">50 – 200 kg</td><td contenteditable="true" data-k="wt.50-200.min">+12</td><td contenteditable="true" data-k="wt.50-200.why">Trolley, multi-person, partial unload</td></tr>
+      <tr><td contenteditable="true" data-k="wt.200-500.range">200 – 500 kg</td><td contenteditable="true" data-k="wt.200-500.min">+20</td><td contenteditable="true" data-k="wt.200-500.why">Crew effort, full truck bed</td></tr>
+      <tr><td contenteditable="true" data-k="wt.500plus.range">500 kg +</td><td contenteditable="true" data-k="wt.500plus.min">+40</td><td contenteditable="true" data-k="wt.500plus.why">Full loading crew, possibly hydraulic lift</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Nigeria cultural buffer</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Minutes added</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Baseline buffer (every stop)</td><td contenteditable="true" data-k="dwell.buf.base">2</td><td>Network for OTP/signature, generator noise, gate security, "wait let me call my brother"</td></tr>
+      <tr><td>Compound / estate stops</td><td contenteditable="true" data-k="dwell.buf.estate">+2</td><td>Security log book, parking instructions, longer walk to door</td></tr>
+      <tr><td>Market / open stall</td><td contenteditable="true" data-k="dwell.buf.market">+3</td><td>Crowds, parking outside, haggling</td></tr>
+      <tr><td>Government building / bank</td><td contenteditable="true" data-k="dwell.buf.govt">+5</td><td>ID check at gate, sign-in, escort to recipient</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Worked examples</h3>
+  <div class="scenario">
+    <h4>One envelope to a house (motorcycle)</h4>
+    <div class="calc">Documents setup       3 min
+Weight (0-5 kg)        +1 min
+Vehicle (motorcycle)   +0
+Cultural buffer        +2 min
+─────────────────────────────────
+Total dwell per stop   6 min</div>
+  </div>
+  <div class="scenario">
+    <h4>20 kg of archive boxes to an office (car)</h4>
+    <div class="calc">Documents setup       3 min
+Weight (5-20 kg)       +3 min
+Vehicle (car)          +0
+Cultural buffer        +2 min
+─────────────────────────────────
+Total dwell per stop   8 min</div>
+  </div>
+  <div class="scenario">
+    <h4>Sofa delivery to a 2nd-floor walk-up (van)</h4>
+    <div class="calc">House-move single setup    20 min
+Weight (50-200 kg)         +12 min
+Vehicle (van, stairs)      +5 min
+Cultural buffer            +2 min
+─────────────────────────────────
+Total dwell per stop       39 min</div>
+  </div>
+
+  <p class="row-help">Reviewer note — is the cultural buffer too generous, not enough, or about right? Lagos vs Abuja vs Port Harcourt differences?</p>
+  <textarea class="note" data-k="note.dwell" placeholder="e.g. 'In Lagos traffic the cultural buffer should be more like 4 min in CBD areas.'"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ④ VEHICLE FLEET ─────────────── -->
+<section id="vehicles">
+  <h2>④ Vehicle Fleet</h2>
+  <p class="lede">The seven vehicle types SEIRS supports. Fuel efficiency feeds directly into the fuel pass-through pricing model (next section).</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Vehicle</th>
+        <th>Nigerian name</th>
+        <th>Fuel type</th>
+        <th>Efficiency (km/L)</th>
+        <th>Max payload (kg)</th>
+        <th>Used for</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td contenteditable="true" data-k="veh.bike.name">Bicycle</td><td contenteditable="true" data-k="veh.bike.local">Cycle</td><td contenteditable="true" data-k="veh.bike.fuel">None</td><td contenteditable="true" data-k="veh.bike.eff">∞</td><td contenteditable="true" data-k="veh.bike.kg">5</td><td contenteditable="true" data-k="veh.bike.use">Documents, very light parcels (gated estates)</td></tr>
+      <tr><td contenteditable="true" data-k="veh.moto.name">Motorcycle</td><td contenteditable="true" data-k="veh.moto.local">Okada</td><td contenteditable="true" data-k="veh.moto.fuel">Petrol</td><td contenteditable="true" data-k="veh.moto.eff">45</td><td contenteditable="true" data-k="veh.moto.kg">20</td><td contenteditable="true" data-k="veh.moto.use">Documents, small parcels, hot food</td></tr>
+      <tr><td contenteditable="true" data-k="veh.tric.name">Tricycle</td><td contenteditable="true" data-k="veh.tric.local">Keke / Maruwa</td><td contenteditable="true" data-k="veh.tric.fuel">Petrol</td><td contenteditable="true" data-k="veh.tric.eff">25</td><td contenteditable="true" data-k="veh.tric.kg">100</td><td contenteditable="true" data-k="veh.tric.use">Standard parcels, farm produce, market goods</td></tr>
+      <tr><td contenteditable="true" data-k="veh.car.name">Car</td><td contenteditable="true" data-k="veh.car.local">Car</td><td contenteditable="true" data-k="veh.car.fuel">Petrol</td><td contenteditable="true" data-k="veh.car.eff">12</td><td contenteditable="true" data-k="veh.car.kg">200</td><td contenteditable="true" data-k="veh.car.use">Fragile, electronics, medical, multi-stop urban</td></tr>
+      <tr><td contenteditable="true" data-k="veh.van.name">Van</td><td contenteditable="true" data-k="veh.van.local">Bus / Danfo (small)</td><td contenteditable="true" data-k="veh.van.fuel">Petrol or Diesel</td><td contenteditable="true" data-k="veh.van.eff">8</td><td contenteditable="true" data-k="veh.van.kg">800</td><td contenteditable="true" data-k="veh.van.use">Cold chain, single-item house moves, bulk goods</td></tr>
+      <tr><td contenteditable="true" data-k="veh.trucks.name">Small truck</td><td contenteditable="true" data-k="veh.trucks.local">Pick-up / Truck (small)</td><td contenteditable="true" data-k="veh.trucks.fuel">Diesel</td><td contenteditable="true" data-k="veh.trucks.eff">5</td><td contenteditable="true" data-k="veh.trucks.kg">3000</td><td contenteditable="true" data-k="veh.trucks.use">Building materials, farm produce, light moves</td></tr>
+      <tr><td contenteditable="true" data-k="veh.truckl.name">Large truck</td><td contenteditable="true" data-k="veh.truckl.local">Trailer (small) / Lorry</td><td contenteditable="true" data-k="veh.truckl.fuel">Diesel</td><td contenteditable="true" data-k="veh.truckl.eff">3</td><td contenteditable="true" data-k="veh.truckl.kg">10000+</td><td contenteditable="true" data-k="veh.truckl.use">Lumber, full house moves, inter-state heavy cargo</td></tr>
+    </tbody>
+  </table>
+  <textarea class="note" data-k="note.vehicles" placeholder="e.g. 'Efficiency numbers are too generous for Lagos traffic — drivers report 30 km/L on okada, not 45.'"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑤ FUEL MODEL ─────────────── -->
+<section id="fuel">
+  <h2>⑤ Fuel Model — pass-through, not absorbed</h2>
+  <p class="lede">Nigerian fuel prices swing weekly. We don't hardcode km rates — we split each rate into <b>labour</b> (admin-set, stable) and <b>fuel</b> (computed from today's pump price ÷ vehicle efficiency). When petrol jumps, admin updates one number and every booking adjusts the same day.</p>
+
+  <h3>Today's pump prices (admin updates these as needed)</h3>
+  <table>
+    <thead><tr><th>Fuel</th><th>Current price (₦/litre)</th><th>Last updated by admin</th></tr></thead>
+    <tbody>
+      <tr><td>Petrol (PMS)</td><td contenteditable="true" data-k="fuel.petrol">950</td><td contenteditable="true" data-k="fuel.petrol.upd">May 2026 — fill in real price</td></tr>
+      <tr><td>Diesel (AGO)</td><td contenteditable="true" data-k="fuel.diesel">1250</td><td contenteditable="true" data-k="fuel.diesel.upd">May 2026 — fill in real price</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Formula</h3>
+  <div class="formula">fuel_cost_per_km = pump_price ÷ vehicle_efficiency
+displayed_km_rate = labour_per_km + fuel_cost_per_km
+
+# Worked: motorcycle on petrol
+# Petrol ₦950/L, motorcycle 45 km/L → fuel cost = ₦21/km
+# Labour (admin sets) = ₦100/km
+# Displayed rate = ₦121/km
+
+# Driver gets the FULL fuel cost back (so they break even on petrol)
+# Plus their labour share (separate, set in driver rate card)</div>
+
+  <h3>Computed km rates at today's prices</h3>
+  <table>
+    <thead>
+      <tr><th>Vehicle</th><th>Labour ₦/km (customer pays)</th><th>Fuel ₦/km (auto)</th><th>Displayed total ₦/km</th><th>Driver labour ₦/km</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Bicycle</td><td contenteditable="true" data-k="rate.bike.labour">50</td><td>0</td><td>50</td><td contenteditable="true" data-k="rate.bike.driverlabour">40</td></tr>
+      <tr><td>Motorcycle</td><td contenteditable="true" data-k="rate.moto.labour">100</td><td>21</td><td>121</td><td contenteditable="true" data-k="rate.moto.driverlabour">80</td></tr>
+      <tr><td>Tricycle</td><td contenteditable="true" data-k="rate.tric.labour">120</td><td>38</td><td>158</td><td contenteditable="true" data-k="rate.tric.driverlabour">90</td></tr>
+      <tr><td>Car</td><td contenteditable="true" data-k="rate.car.labour">140</td><td>79</td><td>219</td><td contenteditable="true" data-k="rate.car.driverlabour">110</td></tr>
+      <tr><td>Van</td><td contenteditable="true" data-k="rate.van.labour">160</td><td>119</td><td>279</td><td contenteditable="true" data-k="rate.van.driverlabour">120</td></tr>
+      <tr><td>Small truck (diesel)</td><td contenteditable="true" data-k="rate.trucks.labour">200</td><td>250</td><td>450</td><td contenteditable="true" data-k="rate.trucks.driverlabour">160</td></tr>
+      <tr><td>Large truck (diesel)</td><td contenteditable="true" data-k="rate.truckl.labour">280</td><td>417</td><td>697</td><td contenteditable="true" data-k="rate.truckl.driverlabour">220</td></tr>
+    </tbody>
+  </table>
+  <p class="row-help">Labour ₦/km is the part the admin tunes for inflation, not fuel. Driver labour ₦/km is what the driver earns per km (in addition to the fuel pass-through). Fuel ₦/km auto-recomputes when admin updates the pump price.</p>
+
+  <textarea class="note" data-k="note.fuel" placeholder="e.g. 'Labour rate for trucks is too low — Lagos drivers refuse trips below ₦400/km labour.'"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑥ RATE CARD ─────────────── -->
+<section id="rates">
+  <h2>⑥ Rate Card — every editable number</h2>
+  <p class="lede">Everything the admin can adjust without touching code. Each row stored in the <code>RateCard</code> table, with a "what is this for?" description so non-engineer admin staff can edit safely.</p>
+
+  <h3>Base fares (connection fee per booking)</h3>
+  <table>
+    <thead><tr><th>Vehicle</th><th>Customer base ₦</th><th>Driver base ₦</th><th>What this covers</th></tr></thead>
+    <tbody>
+      <tr><td>Bicycle</td><td contenteditable="true" data-k="base.bike.cust">200</td><td contenteditable="true" data-k="base.bike.driver">120</td><td>Connection fee, even very short trips need a baseline</td></tr>
+      <tr><td>Motorcycle</td><td contenteditable="true" data-k="base.moto.cust">300</td><td contenteditable="true" data-k="base.moto.driver">200</td><td>Same — covers driver getting to pickup</td></tr>
+      <tr><td>Tricycle</td><td contenteditable="true" data-k="base.tric.cust">400</td><td contenteditable="true" data-k="base.tric.driver">250</td><td>Slightly higher due to vehicle running cost</td></tr>
+      <tr><td>Car</td><td contenteditable="true" data-k="base.car.cust">500</td><td contenteditable="true" data-k="base.car.driver">300</td><td></td></tr>
+      <tr><td>Van</td><td contenteditable="true" data-k="base.van.cust">800</td><td contenteditable="true" data-k="base.van.driver">500</td><td></td></tr>
+      <tr><td>Small truck</td><td contenteditable="true" data-k="base.trucks.cust">1500</td><td contenteditable="true" data-k="base.trucks.driver">1000</td><td></td></tr>
+      <tr><td>Large truck</td><td contenteditable="true" data-k="base.truckl.cust">3000</td><td contenteditable="true" data-k="base.truckl.driver">2000</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Stop &amp; dwell bonuses</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Customer pays ₦</th><th>Driver earns ₦</th><th>What this covers</th></tr></thead>
+    <tbody>
+      <tr><td>Per additional stop (multi-stop)</td><td contenteditable="true" data-k="stop.bonus.cust">300</td><td contenteditable="true" data-k="stop.bonus.driver">200</td><td>Compensates driver for the extra dwell + recipient handling</td></tr>
+      <tr><td>Per dwell minute (after first 5 free min at pickup)</td><td contenteditable="true" data-k="dwell.rate.cust">40</td><td contenteditable="true" data-k="dwell.rate.driver">25</td><td>If the sender keeps the driver waiting</td></tr>
+      <tr><td>Free dwell threshold (minutes)</td><td contenteditable="true" data-k="dwell.free.min">5</td><td>—</td><td>How long is "free" wait at pickup</td></tr>
+      <tr><td>Hard cap on dwell fee (minutes)</td><td contenteditable="true" data-k="dwell.cap.min">30</td><td>—</td><td>After this driver can cancel and keep what they earned</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Tax</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Rate</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>VAT (Nigerian standard)</td><td contenteditable="true" data-k="tax.vat">7.5%</td><td>Applied on gross customer total. Not on driver share.</td></tr>
+    </tbody>
+  </table>
+
+  <textarea class="note" data-k="note.rates" placeholder="e.g. 'Driver per-stop bonus of ₦200 won't motivate okada drivers — they want at least ₦250.'"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑦ PRICING FORMULA ─────────────── -->
+<section id="formula">
+  <h2>⑦ Pricing Formula — universal</h2>
+  <p class="lede">Same formula for every booking — ride, send, multi-stop, recurring, partner-store. Only the line items that apply get populated.</p>
+  <div class="formula">GROSS_PRICE  = BASE_FARE
+             + km × (LABOUR_PER_KM + FUEL_PER_KM)
+             + stops × STOP_BONUS
+             + estimated_dwell_minutes × DWELL_RATE     ← only if &gt; free threshold
+             + CATEGORY_SURCHARGE  %      (fragile, frozen, animals…)
+             + TIME_SURCHARGE      %      (night, peak)
+             + ZONE_SURCHARGE      %      (inter-state, long-distance)
+             − DISCOUNTS                  (loyalty, recurring, bulk)
+             + VAT (7.5%)
+
+DRIVER_EARNS = DRIVER_BASE
+             + km × (DRIVER_LABOUR_PER_KM + FUEL_PER_KM)   ← driver gets fuel back
+             + stops × DRIVER_STOP_BONUS
+             + dwell_min × DRIVER_DWELL_RATE
+             + 100% of TIPS
+             + admin-set share of TIME &amp; ZONE surcharges
+             − fuel never deducted (driver paid it out of pocket, so reimbursed in full)
+
+PARTNER_STORE_EARNS (only for partner-store flows)
+             = ₦500 per package handled
+             + 70% of any overstay storage fees
+
+SEIRS_NET    = GROSS_PRICE − DRIVER_EARNS − PARTNER_CUT − VAT_REMITTED</div>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑧ SCENARIOS ─────────────── -->
+<section id="scenarios">
+  <h2>⑧ Worked Scenarios — every flow the platform handles</h2>
+  <p class="lede">Each scenario shows the full math so reviewers can sanity-check against real Nigerian rates. If a total feels wrong, mark the cell red in your notes and tell us why.</p>
+
+  <div class="scenario">
+    <h4>A — Customer rides okada (motorcycle), 5 km, midday</h4>
+    <div class="calc">Base (motorcycle)               ₦300
+5 km × ₦121 (labour+fuel)      ₦605
+Subtotal                       ₦905
+VAT 7.5%                        +₦68
+─────────────────────────────
+Customer pays               ₦973
+
+Driver: ₦200 + 5×₦80 (labour) + 5×₦21 (fuel) = ₦705
+SEIRS: ₦905 − ₦705 = ₦200</div>
+  </div>
+
+  <div class="scenario">
+    <h4>B — Customer sends 2 kg parcel by okada, 8 km</h4>
+    <div class="calc">Base (motorcycle)               ₦300
+8 km × ₦121                    ₦968
+1 stop × ₦300                  ₦300
+Subtotal                     ₦1,568
+VAT 7.5%                       +₦118
+─────────────────────────────
+Customer pays              ₦1,686
+
+Driver: ₦200 + 8×₦80 + 8×₦21 + 1×₦200 = ₦1,208
+SEIRS: ₦1,568 − ₦1,208 = ₦360</div>
+  </div>
+
+  <div class="scenario">
+    <h4>C — Fragile electronics, car, 12 km</h4>
+    <div class="calc">Base (car)                     ₦500
+12 km × ₦219                  ₦2,628
+1 stop × ₦300                  ₦300
+Fragile +20%                  ₦+686
+Subtotal                     ₦4,114
+VAT 7.5%                       +₦309
+─────────────────────────────
+Customer pays              ₦4,423
+
+Driver: ₦300 + 12×₦110 + 12×₦79 + 1×₦200 + 50% of ₦686 = ₦2,911
+SEIRS: ₦4,114 − ₦2,911 = ₦1,203</div>
+  </div>
+
+  <div class="scenario">
+    <h4>D — Business multi-stop, 3 stops, van, 25 km, standard parcels</h4>
+    <div class="calc">Base (van)                     ₦800
+25 km × ₦279                  ₦6,975
+3 stops × ₦300                 ₦900
+Subtotal                     ₦8,675
+VAT 7.5%                       +₦651
+─────────────────────────────
+Business pays              ₦9,326
+
+Driver: ₦500 + 25×₦120 + 25×₦119 + 3×₦200 = ₦7,075
+SEIRS: ₦8,675 − ₦7,075 = ₦1,600</div>
+  </div>
+
+  <div class="scenario">
+    <h4>E — Same as D but FRAGILE + PEAK HOURS</h4>
+    <div class="calc">Base                           ₦800
+25 km × ₦279                  ₦6,975
+3 stops × ₦300                 ₦900
+Fragile +20%                ₦+1,735
+Peak +15%                   ₦+1,562
+Subtotal                    ₦11,972
+VAT 7.5%                       +₦898
+─────────────────────────────
+Business pays             ₦12,870
+
+Driver: ₦7,075 (D base) + 50% fragile + 35% peak = ₦8,489
+SEIRS: ₦11,972 − ₦8,489 = ₦3,483</div>
+  </div>
+
+  <div class="scenario">
+    <h4>F — Business CSV bulk, 50 packages × 6 km avg</h4>
+    <div class="calc">Per delivery: ₦300 + 6×₦121 + 1×₦300 = ₦1,326
+× 50                        ₦66,300
+Bulk discount −10%          ₦−6,630
+Subtotal                   ₦59,670
+VAT 7.5%                    ₦+4,475
+─────────────────────────────
+Business pays            ₦64,145
+
+Dispatcher splits across ~5-10 drivers.
+Per-delivery driver earning: ~₦905</div>
+  </div>
+
+  <div class="scenario">
+    <h4>G — Recurring weekly delivery (motorcycle, 8 km, 1 stop)</h4>
+    <div class="calc">Per run: ₦300 + 8×₦121 + 1×₦300 = ₦1,568
+Recurring −5%                  ₦−78
+Subtotal                     ₦1,490
+VAT 7.5%                       +₦112
+─────────────────────────────
+Business pays per run     ₦1,602</div>
+  </div>
+
+  <div class="scenario">
+    <h4>H — Partner store drop-off (door-to-store), 5 km motorcycle</h4>
+    <div class="calc">Base (motorcycle)               ₦300
+5 km × ₦121                    ₦605
+Subtotal                       ₦905
+VAT 7.5%                        +₦68
+─────────────────────────────
+Customer pays                  ₦973
+
+Driver:        ₦200 + 5×₦80 + 5×₦21 = ₦705
+Partner store: ₦500 (paid weekly)
+SEIRS: ₦905 − ₦705 − ₦500 = −₦300 LOSS on first leg
+   Recouped via store-to-door second leg OR overstay fees.</div>
+  </div>
+
+  <div class="scenario">
+    <h4>I — Partner store overstay, 5 days</h4>
+    <div class="calc">Day 1-2 (free)                   ₦0
+Day 3 (tier 1)               ₦+200
+Days 4-5 (tier 2)            ₦+1,000
+─────────────────────────────
+Total overstay fees         ₦1,200
+
+Partner store 70%             ₦840
+SEIRS         30%             ₦360</div>
+  </div>
+
+  <div class="scenario">
+    <h4>J — Live goats, large truck, 80 km inter-state</h4>
+    <div class="calc">Base (large truck)            ₦3,000
+80 km × ₦697                 ₦55,760
+1 stop × ₦300                  ₦300
+Animal welfare +30%        ₦+17,718
+Inter-state +20%           ₦+15,355
+Subtotal                   ₦92,133
+VAT 7.5%                    ₦+6,910
+─────────────────────────────
+Customer pays            ₦99,043
+
+Driver: ₦2,000 + 80×₦220 + 80×₦417 + ₦200 + surcharge share = ₦52,160
+SEIRS: ₦92,133 − ₦52,160 = ₦39,973</div>
+  </div>
+
+  <div class="scenario">
+    <h4>K — Lagos → Abuja overnight, small truck</h4>
+    <div class="calc">Base                          ₦1,500
+700 km × ₦450               ₦315,000
+1 stop × ₦300                  ₦300
+Long-distance +30%         ₦+95,040
+Overnight fee               ₦+5,000
+Subtotal                  ₦416,840
+VAT 7.5%                   ₦+31,263
+─────────────────────────────
+Customer pays           ₦448,103
+
+Driver: ₦1,000 + 700×₦160 + 700×₦250 + ₦200 + ₦5,000 + surcharge share = ₦306,000
+SEIRS: ₦416,840 − ₦306,000 = ₦110,840</div>
+  </div>
+
+  <div class="scenario">
+    <h4>L — Cancellation after driver assigned</h4>
+    <div class="calc">Cancellation fee                ₦300
+Driver compensation             ₦200
+SEIRS                           ₦100</div>
+  </div>
+
+  <div class="scenario">
+    <h4>M — Wait fee: sender 10 min late at pickup</h4>
+    <div class="calc">First 5 min                     free
+Next 5 min × ₦40               ₦200
+─────────────────────────────
+Added to booking              ₦+200
+
+Driver: 5 × ₦25 = ₦125
+SEIRS: ₦75</div>
+  </div>
+
+  <div class="scenario">
+    <h4>N — Return trip: recipient unreachable after 3 attempts</h4>
+    <div class="calc">Original delivery        already paid
+Return km (12 km × ₦121) ₦1,452
+Return fee                ₦500
+─────────────────────────────
+Added to sender         ₦+1,952
+
+Driver: 12×₦101 (labour+fuel) + ₦300 = ₦1,512
+SEIRS: ₦440</div>
+  </div>
+
+  <textarea class="note" data-k="note.scenarios" placeholder="Which scenarios feel wrong? Any pricing that would make a Nigerian customer/business walk away?"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑨ SURCHARGES ─────────────── -->
+<section id="surcharges">
+  <h2>⑨ Surcharges &amp; Discounts</h2>
+  <p class="lede">Time of day, zone, category, or volume modifiers stacked on top of the base price. Each editable.</p>
+
+  <h3>Time surcharges</h3>
+  <table>
+    <thead><tr><th>Window</th><th>Customer surcharge %</th><th>Driver share of surcharge %</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td contenteditable="true" data-k="surch.night.window">Night (10 PM – 5 AM)</td><td contenteditable="true" data-k="surch.night.cust">25</td><td contenteditable="true" data-k="surch.night.driver">80</td><td>Safety risk, fewer drivers available</td></tr>
+      <tr><td contenteditable="true" data-k="surch.peak.window">Peak (5–7 PM weekday)</td><td contenteditable="true" data-k="surch.peak.cust">15</td><td contenteditable="true" data-k="surch.peak.driver">60</td><td>Lagos traffic, longer trips</td></tr>
+      <tr><td contenteditable="true" data-k="surch.weekend.window">Weekend &amp; public holidays</td><td contenteditable="true" data-k="surch.weekend.cust">10</td><td contenteditable="true" data-k="surch.weekend.driver">70</td><td>Driver availability</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Zone surcharges</h3>
+  <table>
+    <thead><tr><th>Zone</th><th>Customer surcharge %</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Intra-state (same state)</td><td contenteditable="true" data-k="zone.intra">0</td><td>Default</td></tr>
+      <tr><td>Inter-state (neighbouring)</td><td contenteditable="true" data-k="zone.inter">20</td><td>e.g. Lagos → Ogun</td></tr>
+      <tr><td>Long-distance (&gt;100 km)</td><td contenteditable="true" data-k="zone.long">30</td><td>+₦5,000 overnight fee for &gt;500 km</td></tr>
+      <tr><td>Restricted zones (admin-set)</td><td contenteditable="true" data-k="zone.restricted">+50</td><td>e.g. flood/conflict areas — admin lists per state</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Discounts</h3>
+  <table>
+    <thead><tr><th>Discount</th><th>Off %</th><th>Trigger</th></tr></thead>
+    <tbody>
+      <tr><td>Bulk CSV upload</td><td contenteditable="true" data-k="disc.bulk">10</td><td contenteditable="true" data-k="disc.bulk.trig">25+ packages in one upload</td></tr>
+      <tr><td>Recurring schedule</td><td contenteditable="true" data-k="disc.recurring">5</td><td contenteditable="true" data-k="disc.recurring.trig">Weekly or monthly recurring booking</td></tr>
+      <tr><td>Loyalty redemption</td><td contenteditable="true" data-k="disc.loyalty">100 pts = ₦100</td><td contenteditable="true" data-k="disc.loyalty.trig">1 point earned per ₦100 wallet funding</td></tr>
+      <tr><td>First-booking welcome</td><td contenteditable="true" data-k="disc.welcome">15</td><td contenteditable="true" data-k="disc.welcome.trig">Cap at ₦500 — one per account</td></tr>
+    </tbody>
+  </table>
+
+  <textarea class="note" data-k="note.surcharges" placeholder="Any surcharge we're missing? Weather? Rainy season? Public holidays specific to Nigeria?"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑩ CANCELLATION / WAIT / RETURN ─────────────── -->
+<section id="fees">
+  <h2>⑩ Cancellation / Wait / Return Fees</h2>
+  <p class="lede">Friction events that need a clear rule so neither side feels cheated.</p>
+
+  <h3>Cancellation</h3>
+  <table>
+    <thead><tr><th>Stage</th><th>Customer charged ₦</th><th>Driver receives ₦</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Before driver assigned</td><td contenteditable="true" data-k="cancel.preassign.cust">0</td><td contenteditable="true" data-k="cancel.preassign.driver">0</td><td>Free — no one's been booked</td></tr>
+      <tr><td>After driver assigned, before pickup</td><td contenteditable="true" data-k="cancel.preassign2.cust">300</td><td contenteditable="true" data-k="cancel.preassign2.driver">200</td><td>Driver wasted trip toward pickup</td></tr>
+      <tr><td>After pickup, mid-route</td><td contenteditable="true" data-k="cancel.midroute.cust">Distance to current location + ₦500</td><td contenteditable="true" data-k="cancel.midroute.driver">Distance share + ₦300</td><td>Driver returns or stops where they are</td></tr>
+      <tr><td>Sender no-show at pickup</td><td contenteditable="true" data-k="cancel.noshow.cust">Pickup leg km + ₦300</td><td contenteditable="true" data-k="cancel.noshow.driver">Same as above</td><td>After 10 min waiting + 3 call attempts</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Return trip (recipient unreachable)</h3>
+  <table>
+    <thead><tr><th>Step</th><th>Rule</th></tr></thead>
+    <tbody>
+      <tr><td>Call attempts</td><td contenteditable="true" data-k="return.attempts">3 phone attempts spaced 5 min apart</td></tr>
+      <tr><td>If unreachable — Option 1</td><td contenteditable="true" data-k="return.opt1">Return to sender → bill return km + ₦500 return fee</td></tr>
+      <tr><td>If unreachable — Option 2</td><td contenteditable="true" data-k="return.opt2">Drop at nearest partner store → ₦500 storage fee + recipient picks up</td></tr>
+      <tr><td>Sender chooses option</td><td contenteditable="true" data-k="return.choose">Via push notification at the time of failure</td></tr>
+    </tbody>
+  </table>
+
+  <textarea class="note" data-k="note.fees" placeholder="Any Nigerian-specific cancellation scenarios we're missing? (e.g. NEPA outage at pickup, generator broken, customer 'just gave the package to a neighbour')"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑪ DRIVER PAY ─────────────── -->
+<section id="driver">
+  <h2>⑪ Driver Pay Model</h2>
+  <p class="lede">Per-km labour + per-stop bonus + full fuel reimbursement + 100% of tips + share of surcharges. Drivers should never lose money on fuel volatility.</p>
+
+  <h3>Breakdown shown to driver in-app</h3>
+  <div class="formula">[ Job offer ]
+  Distance:  25 km × ₦239 (labour ₦120 + fuel ₦119) = ₦5,975
+  Stops:     3 × ₦200                              = ₦600
+  Estimated dwell: ~30 min (8 min/stop × 3 + pickup 5 min)
+  Surcharges: peak +35% of base = +₦XXX
+  ─────────────────────────────────────────
+  Your earning: ₦7,500 (estimated, before tips)
+  ETA: ~75 minutes total
+  [Accept] [Decline]</div>
+
+  <h3>Payout schedule</h3>
+  <table>
+    <thead><tr><th>Item</th><th>Frequency</th></tr></thead>
+    <tbody>
+      <tr><td contenteditable="true" data-k="pay.weekly.day">Weekly payout</td><td contenteditable="true" data-k="pay.weekly.when">Every Monday, previous Mon–Sun earnings</td></tr>
+      <tr><td contenteditable="true" data-k="pay.instant.fee">Instant cash-out fee</td><td contenteditable="true" data-k="pay.instant.amount">2% of payout (₦100 minimum)</td></tr>
+      <tr><td contenteditable="true" data-k="pay.tips.when">Tips</td><td contenteditable="true" data-k="pay.tips.value">Included in weekly payout, separately line-itemised</td></tr>
+    </tbody>
+  </table>
+
+  <textarea class="note" data-k="note.driver" placeholder="What payout cadence do okada drivers actually want? Daily? Weekly?"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑫ PARTNER STORE ─────────────── -->
+<section id="partner">
+  <h2>⑫ Partner Store Economics</h2>
+  <p class="lede">Local shops that accept SEIRS drop-offs as a side income. Per-package fee + share of overstay storage.</p>
+
+  <table>
+    <thead><tr><th>Component</th><th>Amount ₦</th><th>Frequency</th></tr></thead>
+    <tbody>
+      <tr><td contenteditable="true" data-k="ps.perpkg.label">Per-package handling fee</td><td contenteditable="true" data-k="ps.perpkg.amt">500</td><td contenteditable="true" data-k="ps.perpkg.freq">Per package processed (inbound + outbound)</td></tr>
+      <tr><td contenteditable="true" data-k="ps.payout.label">Payout</td><td>—</td><td contenteditable="true" data-k="ps.payout.when">Weekly, every Monday</td></tr>
+      <tr><td contenteditable="true" data-k="ps.over1.label">Overstay tier 1 (day 3)</td><td contenteditable="true" data-k="ps.over1.amt">200 / day</td><td>Charged to recipient or sender</td></tr>
+      <tr><td contenteditable="true" data-k="ps.over2.label">Overstay tier 2 (days 4–5)</td><td contenteditable="true" data-k="ps.over2.amt">500 / day</td><td>Higher rate to encourage pickup</td></tr>
+      <tr><td contenteditable="true" data-k="ps.over3.label">Day 6+ — return-trigger</td><td contenteditable="true" data-k="ps.over3.amt">Mandatory return to sender</td><td>Storage fee × 6 days + return km</td></tr>
+      <tr><td contenteditable="true" data-k="ps.split.label">Overstay fee split</td><td contenteditable="true" data-k="ps.split.amt">Partner 70% / SEIRS 30%</td><td>Same on all tiers</td></tr>
+      <tr><td contenteditable="true" data-k="ps.capacity.label">Max packages stored simultaneously</td><td contenteditable="true" data-k="ps.capacity.amt">Set by partner at signup (default 50)</td><td>Partner can adjust; admin can override</td></tr>
+    </tbody>
+  </table>
+
+  <textarea class="note" data-k="note.partner" placeholder="Is ₦500/package enough to make a corner shop interested in being a partner? Higher?"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑬ CSV BULK UPLOAD ─────────────── -->
+<section id="csv">
+  <h2>⑬ CSV Bulk Upload — schema &amp; rules</h2>
+  <p class="lede">For businesses sending many deliveries at once. Backend geocodes addresses on import — no GIS skills needed.</p>
+
+  <h3>Required column layout (header row first)</h3>
+  <table>
+    <thead><tr><th>Column</th><th>Required?</th><th>Type</th><th>Example</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>booking_ref</td><td><span class="pill opt">Opt</span></td><td>text</td><td>ORD-001</td><td>Groups multiple rows into one multi-stop booking. Empty = standalone single-stop.</td></tr>
+      <tr><td>pickup_address</td><td><span class="pill req">Req</span></td><td>text</td><td>15 Adeola Odeku, Lekki, Lagos</td><td>If grouped, must match across rows. Backend geocodes.</td></tr>
+      <tr><td>stop_order</td><td><span class="pill opt">Opt</span></td><td>int</td><td>1</td><td>Order within booking. Empty = auto-optimised.</td></tr>
+      <tr><td>recipient_name</td><td><span class="pill req">Req</span></td><td>text</td><td>Adebayo Yusuf</td><td></td></tr>
+      <tr><td>recipient_phone</td><td><span class="pill req">Req</span></td><td>text</td><td>08012345678</td><td>11-digit Nigerian format</td></tr>
+      <tr><td>dropoff_address</td><td><span class="pill req">Req</span></td><td>text</td><td>7 Marina, Lagos Island</td><td>Backend geocodes</td></tr>
+      <tr><td>category</td><td><span class="pill req">Req</span></td><td>enum</td><td>documents</td><td>One of: documents, small_parcel, standard_parcel, fragile, food_hot, food_cold, medical, bulk_goods, farm_produce, building, lumber, house_move_single, house_move_full, live_animals, industrial, other</td></tr>
+      <tr><td>weight_kg</td><td><span class="pill req">Req</span> <span class="pill new">NEW</span></td><td>number</td><td>5.5</td><td>Decimal accepted. Drives dwell + vehicle safety.</td></tr>
+      <tr><td>quantity</td><td><span class="pill opt">Opt</span></td><td>int</td><td>1</td><td>Default 1. e.g. "3 boxes"</td></tr>
+      <tr><td>vehicle_override</td><td><span class="pill opt">Opt</span></td><td>enum</td><td>van</td><td>Skip auto-suggestion. If unsafe → row flagged.</td></tr>
+      <tr><td>scheduled_at</td><td><span class="pill opt">Opt</span></td><td>ISO datetime</td><td>2026-05-13T14:00</td><td>Empty = ASAP</td></tr>
+      <tr><td>notes</td><td><span class="pill opt">Opt</span></td><td>text</td><td>Call before arrival</td><td>Per-stop instruction</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Example CSV (3 standalone + 1 multi-stop)</h3>
+  <div class="formula">booking_ref,pickup_address,stop_order,recipient_name,recipient_phone,dropoff_address,category,weight_kg,quantity,vehicle_override,scheduled_at,notes
+,15 Adeola Odeku Lekki Lagos,,Adebayo Yusuf,08012345678,7 Marina Lagos Island,documents,2,1,,,
+,15 Adeola Odeku Lekki Lagos,,Chioma Eze,08023456789,5 Allen Avenue Ikeja,fragile,3.5,1,,,Call before arrival
+,15 Adeola Odeku Lekki Lagos,,Musa Ibrahim,08034567890,12 Bode Thomas Surulere,standard_parcel,8,2,,,
+MULTI-A,15 Adeola Odeku Lekki Lagos,1,Tunde Bello,08045678901,18 Awolowo Rd Ikoyi,documents,2,1,,,
+MULTI-A,15 Adeola Odeku Lekki Lagos,2,Adaeze Okeke,08056789012,3 Falomo Bridge Ikoyi,documents,2,1,,,
+MULTI-A,15 Adeola Odeku Lekki Lagos,3,Bashir Aliyu,08067890123,9 Glover Rd Ikoyi,documents,2,1,,,</div>
+
+  <h3>Three ways a business can create one</h3>
+  <ol>
+    <li><b>Download SEIRS template</b> — pre-built CSV with headers + example rows + comments. Open in Excel / Google Sheets, fill, upload. Lowest skill barrier.</li>
+    <li><b>Export from their own system</b> — map their columns to ours once (e.g. "Customer Name" → recipient_name). Mapping saved for future uploads.</li>
+    <li><b>Paste from clipboard</b> — for one-off bulk runs from a spreadsheet. Just paste rows in the upload screen.</li>
+  </ol>
+
+  <h3>Validation + preview flow</h3>
+  <ol>
+    <li>Business uploads file</li>
+    <li>Backend parses + validates each row (weight, category enum, phone format)</li>
+    <li>Backend geocodes each address</li>
+    <li>Backend computes per-row price + total</li>
+    <li>Preview table shown: ✓ valid rows in green, ✗ flagged rows in red with reason</li>
+    <li>Business fixes flagged rows in-app (or re-uploads corrected CSV)</li>
+    <li>Confirms → wallet debits → dispatch starts</li>
+  </ol>
+
+  <p class="row-help">Common error messages business will see:</p>
+  <ul>
+    <li><i>"Row 3: Address not found — please use a landmark or street name."</i></li>
+    <li><i>"Row 5: Weight 50 kg with motorcycle is unsafe. Choose van/truck or remove override."</i></li>
+    <li><i>"Row 8: Category 'pizza' not in catalogue. Try 'food_hot' instead."</i></li>
+    <li><i>"Row 12: Phone '0801234' invalid — Nigerian numbers need 11 digits."</i></li>
+  </ul>
+
+  <textarea class="note" data-k="note.csv" placeholder="Any columns we're missing for Nigerian businesses? cash_on_delivery_amount? delivery_type for store-to-door?"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑭ ADMIN CONTROLS ─────────────── -->
+<section id="admin">
+  <h2>⑭ Admin Controls — how the rate card stays current</h2>
+  <p class="lede">Every number above is admin-editable in the dashboard. No engineers needed for inflation tuning or fuel-price spikes.</p>
+
+  <table>
+    <thead><tr><th>Capability</th><th>Behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>Edit any rate</td><td>Inline form per row. Saving stamps the change with who, when, why.</td></tr>
+      <tr><td>"What is this for?" tooltip</td><td>Every editable field has a description so non-engineer staff understand what they're changing.</td></tr>
+      <tr><td>Inflation shortcut</td><td>"Bump all labour rates by X%" button with confirm + audit log entry.</td></tr>
+      <tr><td>Fuel price update</td><td>One field per fuel type. Updates auto-propagate to all displayed km rates.</td></tr>
+      <tr><td>Versioning</td><td>Each delivery snapshots the active rate card. Future rate changes never alter historical bookings.</td></tr>
+      <tr><td>Deprecation, not deletion</td><td>Rates referenced by past deliveries can't be deleted — only marked inactive.</td></tr>
+      <tr><td>Auto-propagation</td><td>Apps fetch /config/rate-card on boot + every 5 min. Cache busts on admin save.</td></tr>
+      <tr><td>Geo zones</td><td>Admin can list restricted zones per state (flood, conflict, curfew) with their own surcharge %.</td></tr>
+      <tr><td>Category enable/disable</td><td>Admin can pause a category platform-wide (e.g. live animals during a disease outbreak).</td></tr>
+    </tbody>
+  </table>
+
+  <textarea class="note" data-k="note.admin" placeholder="What admin power are we missing? Who at SEIRS should have access to rate-card editing vs viewing?"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+<!-- ─────────────── ⑮ REVIEWER NOTES ─────────────── -->
+<section id="notes">
+  <h2>⑮ Reviewer Free-Form Notes</h2>
+  <p class="lede">Anything not captured above — fraud risks, edge cases, cultural friction points, regulatory issues, competitive pricing observations.</p>
+  <textarea class="note" data-k="note.freeform" style="min-height:280px;" placeholder="Examples:
+• In Lagos most people pay cash on delivery. How do we handle this? Should there be a cash_on_delivery_amount column?
+• Drivers will skip jobs without photos of the package — should this be enforced?
+• Police checkpoints add unpaid time — how do we compensate drivers?
+• What happens when a customer disputes the weight after delivery?
+• Should we have a 'reliability score' visible to businesses so they know which driver is best?"></textarea>
+  <a href="#" class="top-link">↑ back to top</a>
+</section>
+
+</main>
+
+<script>
+// ──────────────────────────────────────────────────────────────────────────
+// Editing tracker + localStorage autosave + JSON export/import
+// ──────────────────────────────────────────────────────────────────────────
+const STORE_KEY = 'seirs-pricing-edits-v1';
+const cells = () => document.querySelectorAll('[data-k]');
+const editsRef = {};       // current state
+const defaultsRef = {};    // initial state (before any edits)
+
+function capture(el) {
+  const k = el.dataset.k;
+  if (el.tagName === 'TEXTAREA') return el.value;
+  return el.innerHTML;
+}
+
+function applyEdits(obj, markEdited = true) {
+  cells().forEach(el => {
+    const k = el.dataset.k;
+    if (obj[k] === undefined) return;
+    if (el.tagName === 'TEXTAREA') el.value = obj[k];
+    else el.innerHTML = obj[k];
+    if (markEdited && obj[k] !== defaultsRef[k]) el.dataset.edited = 'true';
+    else delete el.dataset.edited;
+  });
+  refreshCount();
+}
+
+function refreshCount() {
+  const n = document.querySelectorAll('[data-edited="true"]').length
+          + Array.from(document.querySelectorAll('textarea[data-k]')).filter(t => t.value.trim().length > 0).length;
+  document.getElementById('editCount').textContent =
+    n === 0 ? '0 cells edited' : (n + ' cell' + (n===1?'':'s') + ' edited');
+}
+
+function saveLocal() {
+  const out = {};
+  cells().forEach(el => { out[el.dataset.k] = capture(el); });
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(out)); } catch {}
+}
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    applyEdits(JSON.parse(raw));
+  } catch {}
+}
+
+function exportEdits() {
+  const out = { _meta: { exported: new Date().toISOString(), version: 'v1' } };
+  cells().forEach(el => {
+    const k = el.dataset.k;
+    const v = capture(el);
+    if (v !== defaultsRef[k]) out[k] = v;
+  });
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = 'seirs-pricing-edits-' + stamp + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function handleLoad(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const obj = JSON.parse(reader.result);
+      delete obj._meta;
+      applyEdits(obj);
+      saveLocal();
+    } catch (e) { alert('Could not parse file: ' + e.message); }
+  };
+  reader.readAsText(file);
+}
+
+function resetAll() {
+  if (!confirm('Reset all edits? This cannot be undone.')) return;
+  cells().forEach(el => {
+    const k = el.dataset.k;
+    if (el.tagName === 'TEXTAREA') el.value = '';
+    else el.innerHTML = defaultsRef[k];
+    delete el.dataset.edited;
+  });
+  try { localStorage.removeItem(STORE_KEY); } catch {}
+  refreshCount();
+}
+
+// Capture defaults on page load, then bind change listeners
+window.addEventListener('DOMContentLoaded', () => {
+  cells().forEach(el => { defaultsRef[el.dataset.k] = capture(el); });
+  loadLocal();
+
+  cells().forEach(el => {
+    const onChange = () => {
+      const v = capture(el);
+      if (v !== defaultsRef[el.dataset.k]) el.dataset.edited = 'true';
+      else delete el.dataset.edited;
+      refreshCount();
+    };
+    if (el.tagName === 'TEXTAREA') el.addEventListener('input', onChange);
+    else { el.addEventListener('input', onChange); el.addEventListener('blur', onChange); }
+  });
+
+  // Autosave every 5 sec
+  setInterval(saveLocal, 5000);
+  window.addEventListener('beforeunload', saveLocal);
+});
+</script>
+</body>
+</html>

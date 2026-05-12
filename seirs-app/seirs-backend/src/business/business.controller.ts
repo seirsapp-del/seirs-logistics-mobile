@@ -29,9 +29,32 @@ export class BusinessController {
     return this.svc.getDeliveries(user.id, page, status);
   }
 
+  @Get('business/deliveries/:id')
+  getDeliveryById(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.svc.getDeliveryById(id, user.id);
+  }
+
   @Post('business/deliveries')
   createDelivery(@CurrentUser() user: User, @Body() body: any) {
     return this.svc.createDelivery(user.id, body);
+  }
+
+  // Stop-level driver transitions. The driver app POSTs these as the
+  // driver walks through the multi-stop route. Driver auth/identity is
+  // checked at the matching/dispatch layer — here we accept the request
+  // from any authenticated user and let the service validate ownership.
+  @Post('business/deliveries/:deliveryId/stops/:stopId/arrived')
+  markStopArrived(@Param('deliveryId') deliveryId: string, @Param('stopId') stopId: string) {
+    return this.svc.markStopArrived(deliveryId, stopId);
+  }
+
+  @Post('business/deliveries/:deliveryId/stops/:stopId/delivered')
+  markStopDelivered(
+    @Param('deliveryId') deliveryId: string,
+    @Param('stopId')     stopId: string,
+    @Body() body: { proofPhotoUrls?: string[]; recipientSignatureUrl?: string },
+  ) {
+    return this.svc.markStopDelivered(deliveryId, stopId, body?.proofPhotoUrls, body?.recipientSignatureUrl);
   }
 
   @Post('business/deliveries/csv')

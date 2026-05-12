@@ -10,6 +10,10 @@ import { BusinessWalletTx } from './business-wallet-tx.entity';
 import { PartnerPayout } from './partner-payout.entity';
 import { User } from '../users/user.entity';
 import { MailModule } from '../mail/mail.module';
+import { PricingModule } from '../pricing/pricing.module';
+import { RoutingModule } from '../routing/routing.module';
+import { Delivery } from '../deliveries/delivery.entity';
+import { DeliveryStop } from '../deliveries/delivery-stop.entity';
 
 @Module({
   imports: [
@@ -21,9 +25,13 @@ import { MailModule } from '../mail/mail.module';
       BusinessPackage,
       BusinessWalletTx,
       PartnerPayout,
+      Delivery,
+      DeliveryStop,
     ]),
     MulterModule.register({ limits: { fileSize: 5 * 1024 * 1024 } }),
     MailModule,
+    PricingModule,
+    RoutingModule,
   ],
   controllers: [BusinessController],
   providers:   [BusinessService],

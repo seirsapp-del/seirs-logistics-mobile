@@ -33,6 +33,7 @@ import { MultiDropRoutingModule } from './multi-drop-routing/multi-drop-routing.
 import { OfflineSyncModule } from './offline-sync/offline-sync.module';
 import { DevPlatformModule } from './developer-platform/dev-platform.module';
 import { RolesModule } from './roles/roles.module';
+import { PricingModule } from './pricing/pricing.module';
 
 @Module({
   imports: [
@@ -101,6 +102,7 @@ import { RolesModule } from './roles/roles.module';
     OfflineSyncModule,
     DevPlatformModule,
     RolesModule,
+    PricingModule,
   ],
 })
 export class AppModule {}
