@@ -2,14 +2,16 @@ import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
+import { useColors } from '@/context/ThemeContext';
 
 function TabIcon({ name, focused }: { name: any; focused: boolean }) {
+  const colors = useColors();
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center' }}>
       <Icon
         name={name}
         size={22}
-        color={focused ? '#3A7BD5' : '#9CA3AF'}
+        color={focused ? colors.accent : colors.tabIconDefault}
         strokeWidth={focused ? 2 : 1.75}
       />
     </View>
@@ -18,18 +20,19 @@ function TabIcon({ name, focused }: { name: any; focused: boolean }) {
 
 export default function PartnerLayout() {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopColor: '#F3F4F6',
+          backgroundColor: colors.navBackground,
+          borderTopColor:  colors.border,
           height: 56 + insets.bottom,
           paddingBottom: insets.bottom,
         },
-        tabBarActiveTintColor:   '#3A7BD5',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor:   colors.accent,
+        tabBarInactiveTintColor: colors.tabIconDefault,
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
       }}
     >
@@ -43,12 +46,12 @@ export default function PartnerLayout() {
       />
       <Tabs.Screen
         name="scan"
-        options={{ title: 'Scan', tabBarIcon: ({ focused }) => (
+        options={{ title: 'Scan', tabBarIcon: () => (
           <View style={{
-            width: 44, height: 44, borderRadius: 14, backgroundColor: '#0F2B4C',
+            width: 44, height: 44, borderRadius: 14, backgroundColor: colors.primary,
             alignItems: 'center', justifyContent: 'center', marginBottom: 16,
           }}>
-            <Icon name="ScanLine" size={24} color="#fff" strokeWidth={2} />
+            <Icon name="ScanLine" size={24} color={colors.textOnPrimary} strokeWidth={2} />
           </View>
         )}}
       />
