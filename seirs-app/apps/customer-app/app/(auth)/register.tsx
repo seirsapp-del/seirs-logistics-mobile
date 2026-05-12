@@ -13,7 +13,12 @@ import {
   ArrowLeft, ArrowRight, Truck, User, Mail, Phone, CheckSquare, Square,
 } from 'lucide-react-native';
 
-const NIGERIAN_PHONE_RE = /^(080|081|070|090|091)\d{7}$/;
+// Nigerian mobile numbers are 11 digits total: 0 + 2-digit network code + 8 digits.
+// Earlier regex used \d{7} (10 digits total) which rejected every valid number.
+// Normalise +234 prefix to 0 in callers before testing.
+const NIGERIAN_PHONE_RE = /^0(70|71|80|81|90|91)\d{8}$/;
+export const normalisePhone = (raw: string) =>
+  raw.replace(/[\s-]/g, '').replace(/^\+234/, '0');
 
 function validate(
   firstName: string, lastName: string, email: string, phone: string,
@@ -24,8 +29,8 @@ function validate(
   if (!lastName.trim())  return 'Last name is required.';
   if (!email.trim())     return 'Email address is required.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Enter a valid email address.';
-  const digits = phone.replace(/\s/g, '');
-  if (!NIGERIAN_PHONE_RE.test(digits)) return 'Enter a valid Nigerian number (080x / 081x / 070x / 090x / 091x).';
+  const digits = normalisePhone(phone);
+  if (!NIGERIAN_PHONE_RE.test(digits)) return 'Enter a valid Nigerian number (e.g. 08012345678 — 11 digits starting with 070/071/080/081/090/091; +234 prefix also accepted).';
   const pwErr = validatePassword(password);
   if (pwErr) return pwErr;
   if (password !== confirmPassword) return 'Passwords do not match.';

@@ -32,26 +32,54 @@ export default function RegisterScreen() {
     email: '', phone: '', password: '', confirmPassword: '',
     companyName: '', rcNumber: '', businessAddress: '',
   });
-  const [showPass,  setShowPass]  = useState(false);
-  const [error,     setError]     = useState('');
+  const [showPass,        setShowPass]        = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [error,           setError]           = useState('');
   const [loading,   setLoading]   = useState(false);
   const [termsOk,   setTermsOk]   = useState(false);
   const [ageOk,     setAgeOk]     = useState(false);
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const phoneValid = /^(080|081|070|090|091)\d{7}$/.test(form.phone.replace(/\s/g, ''));
+  // Nigerian mobile numbers are 11 digits total: 0 + 2-digit network code + 8 digits.
+  // Accept the `+234` international prefix too — normalise to 0-prefixed before
+  // testing. (Earlier regex only allowed \d{7} = 10 digits total, rejecting
+  // every valid Nigerian number.)
+  const normalisedPhone = form.phone.replace(/[\s-]/g, '').replace(/^\+234/, '0');
+  const phoneValid = /^0(70|71|80|81|90|91)\d{8}$/.test(normalisedPhone);
   const passValid  = isPasswordValid(form.password);
   const passError  = form.password.length > 0 ? validatePassword(form.password) : null;
   const passMatch  = form.password === form.confirmPassword;
 
-  const formValid =
-    form.firstName && form.lastName && form.email &&
-    phoneValid && passValid && passMatch &&
-    form.companyName && form.businessAddress &&
-    termsOk && ageOk;
+  /** Returns the first human-readable reason the form can't submit,
+   *  or null if everything's fine. Used both to gate the submit and
+   *  to show the user exactly what needs fixing on tap. */
+  const whatIsMissing = (): string | null => {
+    if (!form.firstName.trim())                  return 'Please enter your first name.';
+    if (!form.lastName.trim())                   return 'Please enter your last name.';
+    if (!form.email.trim())                      return 'Please enter your email address.';
+    if (!form.email.includes('@'))               return 'Please enter a valid email address.';
+    if (!form.phone.trim())                      return 'Please enter your phone number.';
+    if (!phoneValid)                             return 'Phone must be a Nigerian number starting with 080, 081, 070, 090, or 091 (11 digits total — e.g. 08012345678).';
+    if (!form.companyName.trim())                return 'Please enter your company name.';
+    if (!form.businessAddress.trim())            return 'Please enter your business address.';
+    if (!passValid)                              return passError ?? 'Password does not meet the requirements above.';
+    if (!passMatch)                              return 'Passwords do not match. Please re-type your confirm password.';
+    if (!ageOk)                                  return 'Please confirm you are 18 or older.';
+    if (!termsOk)                                return 'Please accept the Terms of Service.';
+    return null;
+  };
+
+  const formValid = whatIsMissing() === null;
 
   const handleRegister = async () => {
+    // Always-tappable submit: show the specific missing field instead
+    // of leaving the user staring at a greyed-out button with no clue.
+    const missing = whatIsMissing();
+    if (missing) {
+      setError(missing);
+      return;
+    }
     setError('');
     setLoading(true);
     try {
@@ -80,10 +108,24 @@ export default function RegisterScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      // 'padding' on iOS, 'height' on Android — together they ensure the
+      // ScrollView resizes above the keyboard so focused inputs aren't
+      // hidden. Android also benefits from adjustResize in AndroidManifest
+      // which Expo sets by default.
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+    >
       <ScrollView
-        contentContainerStyle={[styles.form, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={[styles.form, {
+          paddingTop:    insets.top + 16,
+          // Bigger bottom pad so the last field sits well above the soft
+          // keyboard even on shorter phones.
+          paddingBottom: insets.bottom + 120,
+        }]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
@@ -142,8 +184,23 @@ export default function RegisterScreen() {
           <Text style={styles.fieldError}>{passError}</Text>
         )}
 
-        <Field label="Confirm Password" value={form.confirmPassword} onChangeText={(v) => set('confirmPassword', v)}
-          placeholder="Repeat password" secureTextEntry />
+        {/* Confirm Password — mirror of the Password field with its own
+            eye toggle so the user can verify what they typed if the two
+            don't match. Without the toggle they're stuck guessing. */}
+        <Text style={styles.label}>Confirm Password</Text>
+        <View style={styles.inputWrap}>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={form.confirmPassword}
+            onChangeText={(v) => set('confirmPassword', v)}
+            placeholder="Repeat password"
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry={!showConfirmPass}
+          />
+          <Pressable onPress={() => setShowConfirmPass((v) => !v)}>
+            <Icon name={showConfirmPass ? 'EyeOff' : 'Eye'} size={16} color="#9CA3AF" />
+          </Pressable>
+        </View>
         {form.confirmPassword.length > 0 && !passMatch && (
           <Text style={styles.fieldError}>Passwords do not match</Text>
         )}
@@ -159,10 +216,13 @@ export default function RegisterScreen() {
           label="I accept the Terms of Service and Privacy Policy"
         />
 
+        {/* Button is always tappable — if the form is incomplete, tapping
+            shows the user exactly what's missing in the error box above.
+            Better than a greyed-out button they can't diagnose. */}
         <Pressable
-          style={[styles.btn, !formValid && styles.btnDisabled]}
+          style={[styles.btn, loading && styles.btnDisabled]}
           onPress={handleRegister}
-          disabled={!formValid || loading}
+          disabled={loading}
         >
           {loading
             ? <ActivityIndicator color="#fff" />

@@ -26,7 +26,11 @@ const VEHICLES: { id: VehicleType; label: string; desc: string; Icon: any }[] = 
   { id: 'truck_large', label: 'Truck (Large)',desc: '3,000 kg+',       Icon: Truck },
 ];
 
-const NIGERIAN_PHONE_RE = /^(080|081|070|090|091)\d{7}$/;
+// Nigerian mobile numbers are 11 digits total: 0 + 2-digit network code + 8 digits.
+// Earlier regex used \d{7} (10 digits total) which rejected every valid number.
+const NIGERIAN_PHONE_RE = /^0(70|71|80|81|90|91)\d{8}$/;
+const normalisePhone = (raw: string) =>
+  raw.replace(/[\s-]/g, '').replace(/^\+234/, '0');
 
 export default function DriverRegisterScreen() {
   const router      = useRouter();
@@ -52,8 +56,8 @@ export default function DriverRegisterScreen() {
       setError('Please fill in all required fields and select a vehicle type.');
       return;
     }
-    if (!NIGERIAN_PHONE_RE.test(phone)) {
-      setError('Enter a valid Nigerian mobile number (e.g. 08012345678).');
+    if (!NIGERIAN_PHONE_RE.test(normalisePhone(phone))) {
+      setError('Enter a valid Nigerian mobile number (e.g. 08012345678 — 11 digits; +234 prefix also accepted).');
       return;
     }
     const pwErr = validatePassword(password);
