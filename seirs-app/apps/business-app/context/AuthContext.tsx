@@ -20,6 +20,10 @@ export interface AuthUser {
   companyName?: string;
   storeName?:   string;
   profilePhoto?: string;
+  // The PartnerStore row's id, populated server-side when canPartner=true.
+  // Used by partner-mode screens (storage, capacity, settings) that hit
+  // /partner-store/store/:id endpoints. Undefined for pure Sender accounts.
+  partnerStoreId?: string;
   token:        string;
 }
 

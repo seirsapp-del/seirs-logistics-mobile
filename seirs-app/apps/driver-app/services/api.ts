@@ -10,4 +10,13 @@ export {
   driversApi,
   notificationsApi,
   identityApi,
+  chatApi,
+  sosApi,
+  offlineSyncApi,
+  feesApi,
+} from '@seirs/shared/services/api';
+
+export type {
+  ChatMessageDTO,
+  ChatConversationDTO,
 } from '@seirs/shared/services/api';

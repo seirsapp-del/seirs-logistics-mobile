@@ -35,7 +35,10 @@ export function Button({
     if (disabled) return theme.border;
     switch (variant) {
       case 'primary':   return theme.primary;
-      case 'secondary': return theme.secondary ?? '#2EC4B6';
+      // No `secondary` token on the SEIRS palette — falls back to the
+      // brand accent (sky blue). No callers currently use variant="secondary",
+      // but keeping the variant available for future use.
+      case 'secondary': return theme.accent ?? '#2EC4B6';
       case 'danger':    return theme.error;
       case 'outline':
       case 'ghost':     return 'transparent';
@@ -56,7 +59,10 @@ export function Button({
   const getBorder = () => variant === 'outline' ? { borderWidth: 1.5, borderColor: theme.primary } : {};
   const getShadow = () => {
     if (disabled || variant === 'outline' || variant === 'ghost') return {};
-    if (variant === 'primary') return isDark ? Shadows.orange : Shadows.blue;
+    // Primary buttons get a colored drop shadow that picks up the brand
+    // tone. Both modes use the sky-blue shadow since the brand sky-blue
+    // accent reads on dark and light navy reads similarly in dark mode.
+    if (variant === 'primary') return isDark ? Shadows.navy : Shadows.sky;
     return {};
   };
 

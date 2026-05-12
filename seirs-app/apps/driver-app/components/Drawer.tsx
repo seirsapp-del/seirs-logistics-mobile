@@ -80,7 +80,7 @@ export function Drawer({ visible, onClose }: Props) {
         accent:     c.accent,
         isDark,
       }}
-      Icon={Icon}
+      Icon={Icon as any}
     />
   );
 }

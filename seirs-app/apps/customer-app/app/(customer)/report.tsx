@@ -46,7 +46,7 @@ export default function ReportScreen() {
           <Text style={[styles.successDesc, { color: theme.textSecond }]}>
             Our support team will review your report and get back to you within 24 hours.
           </Text>
-          <Button label="Back to Home" onPress={() => router.replace('/(customer)/')} fullWidth />
+          <Button label="Back to Home" onPress={() => router.replace('/(customer)/(tabs)' as any)} fullWidth />
         </View>
       </SafeAreaView>
     );

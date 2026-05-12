@@ -1,5 +1,8 @@
 'use client';
-import { BookOpen, ExternalLink, Github, FileText, Zap } from 'lucide-react';
+// Newer lucide-react dropped the `Github` icon — use `GitBranch` as
+// the closest semantic equivalent. The button still opens the GitHub
+// repo URL; only the icon glyph changed.
+import { BookOpen, ExternalLink, GitBranch as Github, FileText, Zap } from 'lucide-react';
 
 // Spec V8 Tier 3 — link card to the public docs site. The actual
 // docs.seirs.app is a separate Vercel project (Mintlify or Nextra);

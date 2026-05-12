@@ -44,7 +44,7 @@ export default function RateDriverScreen() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      router.replace('/(customer)/');
+      router.replace('/(customer)/(tabs)' as any);
     }, 1200);
   };
 
@@ -61,7 +61,7 @@ export default function RateDriverScreen() {
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
           <Text style={[styles.title, { color: theme.text }]}>Rate Your Trip</Text>
-          <Pressable onPress={() => router.replace('/(customer)/')}>
+          <Pressable onPress={() => router.replace('/(customer)/(tabs)' as any)}>
             <Text style={[styles.skipText, { color: theme.textSecond }]}>Skip</Text>
           </Pressable>
         </View>

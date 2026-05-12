@@ -63,7 +63,7 @@ async function getToken(): Promise<string | null> {
   return JSON.parse(stored).token ?? null;
 }
 
-async function request<T>(
+export async function request<T>(
   method: string,
   path: string,
   body?: object,
@@ -92,22 +92,30 @@ async function request<T>(
 }
 
 // ─── Upload ───────────────────────────────────────────────────────────────────
-export const uploadApi = {
-  file: async (uri: string, mimeType = 'image/jpeg'): Promise<{ url: string }> => {
-    const token = await getToken();
-    const form  = new FormData();
-    const ext   = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
-    form.append('file', { uri, name: `upload.${ext}`, type: mimeType } as any);
+async function _uploadCore(uri: string, mimeType = 'image/jpeg'): Promise<{ url: string }> {
+  const token = await getToken();
+  const form  = new FormData();
+  const ext   = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+  form.append('file', { uri, name: `upload.${ext}`, type: mimeType } as any);
 
-    const res = await fetch(`${_apiBase}/upload`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message ?? 'Upload failed');
-    return data as { url: string };
-  },
+  const res = await fetch(`${_apiBase}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message ?? 'Upload failed');
+  return data as { url: string };
+}
+
+export const uploadApi = {
+  file: _uploadCore,
+  // Backward-compat alias — older driver screens (edit-profile, kyc,
+  // signature, trunk-check) call `uploadApi.uploadFile(uri, prefix?)`.
+  // The `prefix` second arg was for an R2 key-prefix that the backend
+  // no longer expects; safely ignored. New code should call `.file()`.
+  uploadFile: (uri: string, _prefix?: string, mimeType = 'image/jpeg') =>
+    _uploadCore(uri, mimeType),
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────

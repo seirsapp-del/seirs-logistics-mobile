@@ -11,4 +11,20 @@ export {
   notificationsApi,
   dropoffApi,
   identityApi,
+  chatApi,
+  sosApi,
+  offlineSyncApi,
+  feesApi,
+  partnerApi,
+  configApi,
+  pricingApi,
+} from '@seirs/shared/services/api';
+
+export type {
+  ChatMessageDTO,
+  ChatConversationDTO,
+  ServiceCategory,
+  RateCard,
+  PriceBreakdown,
+  QuoteInput,
 } from '@seirs/shared/services/api';

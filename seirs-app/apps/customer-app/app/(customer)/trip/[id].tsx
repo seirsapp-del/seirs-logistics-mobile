@@ -115,7 +115,7 @@ export default function TripDetailsScreen() {
               <View style={[styles.metaDivider, { backgroundColor: theme.border }]} />
               <View style={styles.metaItem}>
                 <Ionicons name="car-outline" size={14} color={theme.textSecond} />
-                <Text style={[styles.metaText, { color: theme.textSecond }]} style={{ textTransform: 'capitalize' }}>{trip.vehicleType}</Text>
+                <Text style={[styles.metaText, { color: theme.textSecond, textTransform: 'capitalize' }]}>{trip.vehicleType}</Text>
               </View>
             </View>
           </Card>

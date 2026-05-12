@@ -5,7 +5,15 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export function NotificationBell() {
+interface NotificationBellProps {
+  /** Bell icon size in pixels. Default 22. */
+  size?:  number;
+  /** Icon stroke color. Default falls back to current theme.text — pass
+   *  '#fff' when rendering on a dark/coloured header. */
+  color?: string;
+}
+
+export function NotificationBell({ size = 22, color }: NotificationBellProps = {}) {
   const router      = useRouter();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
@@ -19,7 +27,7 @@ export function NotificationBell() {
       accessibilityRole="button"
       accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
     >
-      <Bell size={22} color={theme.text} strokeWidth={1.5} />
+      <Bell size={size} color={color ?? theme.text} strokeWidth={1.5} />
       {unreadCount > 0 && (
         <View style={[styles.badge, { backgroundColor: theme.primary }]}>
           <Text style={styles.badgeText}>

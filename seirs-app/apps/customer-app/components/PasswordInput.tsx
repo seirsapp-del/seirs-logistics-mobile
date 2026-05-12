@@ -5,8 +5,12 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Radius, Spacing, FontSize } from '@/constants/theme';
 
 interface Props extends Omit<TextInputProps, 'secureTextEntry'> {
-  borderColor: string;
-  backgroundColor: string;
+  // Optional now — falls back to theme tokens when not supplied. Older
+  // form screens (login, register, etc.) pass these explicitly to match
+  // the surrounding card. Newer screens (change-password, delete-account)
+  // rely on the theme defaults.
+  borderColor?:    string;
+  backgroundColor?: string;
 }
 
 export function PasswordInput({ borderColor, backgroundColor, style, ...props }: Props) {
@@ -14,9 +18,11 @@ export function PasswordInput({ borderColor, backgroundColor, style, ...props }:
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
   const Icon        = show ? EyeOff : Eye;
+  const bg     = backgroundColor ?? theme.surfaceSecond;
+  const border = borderColor     ?? theme.border;
 
   return (
-    <View style={[styles.wrap, { backgroundColor, borderColor }]}>
+    <View style={[styles.wrap, { backgroundColor: bg, borderColor: border }]}>
       <TextInput
         {...props}
         secureTextEntry={!show}

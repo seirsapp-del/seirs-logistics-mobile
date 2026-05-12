@@ -37,9 +37,9 @@ function NavigationGuard() {
 
     if (isAuthenticated) {
       if (businessRole === 'sender' && !inBiz) {
-        router.replace('/(business)');
+        router.replace('/(business)' as any);
       } else if (businessRole === 'partner' && !inPartner) {
-        router.replace('/(partner)');
+        router.replace('/(partner)' as any);
       }
     }
   }, [isAuthenticated, businessRole, isLoading, segments]);

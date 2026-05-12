@@ -22,6 +22,7 @@ export {
   feesApi,
   configApi,
   pricingApi,
+  usersApi,
 } from '@seirs/shared/services/api';
 
 export type {
