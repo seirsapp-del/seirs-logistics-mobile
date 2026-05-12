@@ -2,7 +2,7 @@ import {
   Injectable, NotFoundException, BadRequestException, ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual, DataSource } from 'typeorm';
+import { Repository, MoreThanOrEqual, DataSource, In } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../users/user.entity';
 import { BusinessAccount, BusinessTeamMember } from './business-account.entity';
@@ -247,7 +247,10 @@ export class BusinessService {
       isRecurring:    dto.isRecurring,
     });
 
-    // ── Wallet pre-flight ──────────────────────────────────────────────
+    // ── Wallet pre-flight (cheap check before opening transaction) ────
+    // The real authoritative check happens inside the transaction with a
+    // row lock; this is just to fail fast for the common case so we don't
+    // spin up a transaction for an obvious overdraft.
     const total = breakdown.customer.total;
     if (Number(biz.walletBalance) < total) {
       throw new BadRequestException(
@@ -257,6 +260,28 @@ export class BusinessService {
 
     // ── Transaction: Delivery + Stops + Wallet ─────────────────────────
     return this.dataSource.transaction(async (mgr) => {
+      // CRITICAL: re-read the business account row WITH a pessimistic
+      // write lock so two concurrent bookings can't both pass the
+      // pre-flight check with the same stale balance and end up
+      // over-spending. Postgres SERIALIZABLE-equivalent for this row.
+      const lockedBiz = await mgr.createQueryBuilder(BusinessAccount, 'b')
+        .setLock('pessimistic_write')
+        .where('b.id = :id', { id: biz.id })
+        .getOne();
+      if (!lockedBiz) {
+        throw new NotFoundException('Business account vanished mid-transaction.');
+      }
+      const liveBalance = Number(lockedBiz.walletBalance);
+      if (liveBalance < total) {
+        // Another booking debited the wallet between the pre-flight
+        // check and this point. Fail clearly so the client can retry
+        // after topping up.
+        throw new BadRequestException(
+          `Wallet was debited by another booking while you were submitting. ` +
+          `Current balance: ₦${liveBalance.toFixed(2)} — needed ₦${total.toFixed(2)}.`,
+        );
+      }
+
       const trackingCode = this.generateTrackingNumber();
 
       const delivery = mgr.create(Delivery, {
@@ -304,8 +329,8 @@ export class BusinessService {
       }));
       await mgr.save(stopRows);
 
-      // ── Wallet debit + ledger ────────────────────────────────────────
-      const balBefore = Number(biz.walletBalance);
+      // ── Wallet debit + ledger (uses live row-locked balance) ────────
+      const balBefore = liveBalance;
       const balAfter  = balBefore - total;
       await mgr.update(BusinessAccount, biz.id, { walletBalance: balAfter });
       const tx = mgr.create(BusinessWalletTx, {
@@ -338,6 +363,11 @@ export class BusinessService {
   async markStopArrived(deliveryId: string, stopId: string) {
     const stop = await this.stopsRepo.findOne({ where: { id: stopId, deliveryId } });
     if (!stop) throw new NotFoundException('Stop not found.');
+    // Idempotency: re-marking an already-arrived stop is a no-op so
+    // network retries don't error out. Only fail on terminal states.
+    if (stop.status === DeliveryStopStatus.ARRIVED) {
+      return stop;
+    }
     if (stop.status !== DeliveryStopStatus.PENDING && stop.status !== DeliveryStopStatus.EN_ROUTE) {
       throw new BadRequestException(`Cannot mark arrived from status: ${stop.status}`);
     }
@@ -370,6 +400,12 @@ export class BusinessService {
   ) {
     const stop = await this.stopsRepo.findOne({ where: { id: stopId, deliveryId } });
     if (!stop) throw new NotFoundException('Stop not found.');
+    // Idempotency: re-marking an already-delivered stop is a no-op so
+    // network retries from the driver app don't trigger spurious
+    // double-close events on the parent delivery.
+    if (stop.status === DeliveryStopStatus.DELIVERED) {
+      return stop;
+    }
     if (stop.status !== DeliveryStopStatus.ARRIVED) {
       throw new BadRequestException('Mark Arrived first before Delivered.');
     }
@@ -381,13 +417,18 @@ export class BusinessService {
       recipientSignatureUrl: recipientSignatureUrl ?? null,
     });
 
-    // If all stops delivered, close the parent delivery.
+    // If all stops are delivered/failed, close the parent. Single
+    // count query over the "not-yet-terminal" status set instead of
+    // three separate roundtrips.
     const remaining = await this.stopsRepo.count({
-      where: { deliveryId, status: DeliveryStopStatus.PENDING },
-    }) + await this.stopsRepo.count({
-      where: { deliveryId, status: DeliveryStopStatus.EN_ROUTE },
-    }) + await this.stopsRepo.count({
-      where: { deliveryId, status: DeliveryStopStatus.ARRIVED },
+      where: {
+        deliveryId,
+        status: In([
+          DeliveryStopStatus.PENDING,
+          DeliveryStopStatus.EN_ROUTE,
+          DeliveryStopStatus.ARRIVED,
+        ]),
+      },
     });
     if (remaining === 0) {
       await this.deliveriesRepo.update(deliveryId, {
