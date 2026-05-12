@@ -1,3 +1,17 @@
+/**
+ * Business Registration — single-step Sender signup.
+ *
+ * 2026-05-11 hybrid-account redesign: removed the upfront "Sender vs Partner
+ * Store" picker. Everyone signs up as a Business Sender (instant access,
+ * canSend=true). Operating as a Partner Store is now an *additive* role
+ * applied for via Settings → "Apply to be a Partner Store" — admin reviews
+ * KYC docs, flips canPartner=true, and the user gets a context switcher
+ * at the top of the app to swap between sending and partnering modes.
+ *
+ * This matches real Nigerian SME pattern: a shop owner can simultaneously
+ * ship their own goods (Sender) AND accept SEIRS drop-offs from neighbours
+ * (Partner Store) — under one account.
+ */
 import { useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
@@ -9,24 +23,14 @@ import { Icon } from '@/components/Icon';
 import { authApi } from '@/services/api';
 import { validatePassword, isPasswordValid, PASSWORD_HELP_TEXT } from '@seirs/shared';
 
-type AccountType = 'sender' | 'partner';
-
-const ACCOUNT_TYPES: { key: AccountType; label: string; sub: string; icon: 'Briefcase' | 'Store' }[] = [
-  { key: 'sender',  label: 'Business Sender', sub: 'Bulk deliveries, multi-stop, CSV upload', icon: 'Briefcase' },
-  { key: 'partner', label: 'Partner Store',   sub: 'Collection point, package management, payouts', icon: 'Store' },
-];
-
 export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [step,        setStep]        = useState<1 | 2>(1);
-  const [accountType, setAccountType] = useState<AccountType>('sender');
   const [form, setForm] = useState({
     firstName: '', middleName: '', lastName: '',
     email: '', phone: '', password: '', confirmPassword: '',
     companyName: '', rcNumber: '', businessAddress: '',
-    storeName: '', storeAddress: '', capacity: '',
   });
   const [showPass,  setShowPass]  = useState(false);
   const [error,     setError]     = useState('');
@@ -41,10 +45,11 @@ export default function RegisterScreen() {
   const passError  = form.password.length > 0 ? validatePassword(form.password) : null;
   const passMatch  = form.password === form.confirmPassword;
 
-  const step2Valid = form.firstName && form.lastName && form.email && phoneValid && passValid && passMatch && termsOk && ageOk
-    && (accountType === 'sender'
-      ? form.companyName && form.businessAddress
-      : form.storeName && form.storeAddress);
+  const formValid =
+    form.firstName && form.lastName && form.email &&
+    phoneValid && passValid && passMatch &&
+    form.companyName && form.businessAddress &&
+    termsOk && ageOk;
 
   const handleRegister = async () => {
     setError('');
@@ -54,22 +59,19 @@ export default function RegisterScreen() {
         .filter(Boolean)
         .join(' ');
       await authApi.register({
-        accountType,
-        name:  fullName,
-        email: form.email.trim().toLowerCase(),
-        phone: form.phone.trim().replace(/\s/g, ''),
-        password: form.password,
-        ...(accountType === 'sender' ? {
-          companyName:     form.companyName.trim(),
-          rcNumber:        form.rcNumber.trim() || undefined,
-          businessAddress: form.businessAddress.trim(),
-        } : {
-          storeName:    form.storeName.trim(),
-          storeAddress: form.storeAddress.trim(),
-          capacity:     form.capacity ? Number(form.capacity) : undefined,
-        }),
+        accountType:     'sender',
+        name:            fullName,
+        email:           form.email.trim().toLowerCase(),
+        phone:           form.phone.trim().replace(/\s/g, ''),
+        password:        form.password,
+        companyName:     form.companyName.trim(),
+        rcNumber:        form.rcNumber.trim() || undefined,
+        businessAddress: form.businessAddress.trim(),
       });
-      router.push({ pathname: '/(auth)/verify-otp', params: { email: form.email.trim().toLowerCase() } } as any);
+      router.push({
+        pathname: '/(auth)/verify-otp',
+        params:   { email: form.email.trim().toLowerCase() },
+      } as any);
     } catch (e: any) {
       setError(e.message ?? 'Registration failed. Please try again.');
     } finally {
@@ -77,74 +79,21 @@ export default function RegisterScreen() {
     }
   };
 
-  if (step === 1) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
-        </Pressable>
-
-        <Text style={styles.heading}>Choose Account Type</Text>
-        <Text style={styles.sub}>Select how you'll use Seirs Business</Text>
-
-        <View style={styles.typeGrid}>
-          {ACCOUNT_TYPES.map((t) => (
-            <Pressable
-              key={t.key}
-              style={[styles.typeCard, accountType === t.key && styles.typeCardActive]}
-              onPress={() => setAccountType(t.key)}
-            >
-              <View style={[styles.typeIcon, accountType === t.key && styles.typeIconActive]}>
-                <Icon name={t.icon} size={24} color={accountType === t.key ? '#fff' : '#0F2B4C'} />
-              </View>
-              <Text style={[styles.typeLabel, accountType === t.key && styles.typeLabelActive]}>
-                {t.label}
-              </Text>
-              <Text style={[styles.typeSub, accountType === t.key && styles.typeSubActive]}>
-                {t.sub}
-              </Text>
-              {accountType === t.key && (
-                <View style={styles.check}>
-                  <Icon name="CheckCircle2" size={20} color="#3A7BD5" />
-                </View>
-              )}
-            </Pressable>
-          ))}
-        </View>
-
-        <Pressable style={styles.btn} onPress={() => setStep(2)}>
-          <Text style={styles.btnText}>Continue</Text>
-          <Icon name="ArrowRight" size={18} color="#fff" />
-        </Pressable>
-
-        <View style={styles.signinRow}>
-          <Text style={styles.signinText}>Already have an account? </Text>
-          <Pressable onPress={() => router.replace('/(auth)/login')}>
-            <Text style={styles.signinLink}>Sign In</Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         contentContainerStyle={[styles.form, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <Pressable style={styles.backBtn} onPress={() => setStep(1)}>
+        <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
         </Pressable>
 
-        <View style={styles.typeBadge}>
-          <Icon name={accountType === 'sender' ? 'Briefcase' : 'Store'} size={16} color="#3A7BD5" />
-          <Text style={styles.typeBadgeText}>
-            {accountType === 'sender' ? 'Business Sender' : 'Partner Store'}
-          </Text>
-        </View>
-
-        <Text style={styles.heading}>Your Details</Text>
+        <Text style={styles.heading}>Create Business Account</Text>
+        <Text style={styles.sub}>
+          Sign up as a Business Sender. You can apply to also become a Partner Store
+          from your Settings after signup.
+        </Text>
 
         {error !== '' && (
           <View style={styles.errorBox}>
@@ -167,26 +116,12 @@ export default function RegisterScreen() {
         <Field label="Phone Number (+234)" value={form.phone} onChangeText={(v) => set('phone', v)}
           placeholder="08012345678" keyboardType="phone-pad" />
 
-        {/* Business / Store info */}
-        {accountType === 'sender' ? (
-          <>
-            <Field label="Company Name" value={form.companyName} onChangeText={(v) => set('companyName', v)}
-              placeholder="Okafor Trading Ltd" />
-            <Field label="RC Number (optional)" value={form.rcNumber} onChangeText={(v) => set('rcNumber', v)}
-              placeholder="RC-123456" />
-            <Field label="Business Address" value={form.businessAddress} onChangeText={(v) => set('businessAddress', v)}
-              placeholder="15 Adeola Odeku, Lagos" />
-          </>
-        ) : (
-          <>
-            <Field label="Store Name" value={form.storeName} onChangeText={(v) => set('storeName', v)}
-              placeholder="Mama Ngozi Kiosk" />
-            <Field label="Store Address" value={form.storeAddress} onChangeText={(v) => set('storeAddress', v)}
-              placeholder="10 Femi Okunnu, Lekki" />
-            <Field label="Package Capacity (optional)" value={form.capacity} onChangeText={(v) => set('capacity', v)}
-              placeholder="Max packages e.g. 50" keyboardType="numeric" />
-          </>
-        )}
+        <Field label="Company Name" value={form.companyName} onChangeText={(v) => set('companyName', v)}
+          placeholder="Okafor Trading Ltd" />
+        <Field label="RC Number (optional)" value={form.rcNumber} onChangeText={(v) => set('rcNumber', v)}
+          placeholder="RC-123456" />
+        <Field label="Business Address" value={form.businessAddress} onChangeText={(v) => set('businessAddress', v)}
+          placeholder="15 Adeola Odeku, Lagos" />
 
         {/* Password */}
         <Text style={styles.label}>Password</Text>
@@ -213,7 +148,6 @@ export default function RegisterScreen() {
           <Text style={styles.fieldError}>Passwords do not match</Text>
         )}
 
-        {/* Checkboxes */}
         <CheckRow
           value={ageOk}
           onToggle={() => setAgeOk((v) => !v)}
@@ -226,9 +160,9 @@ export default function RegisterScreen() {
         />
 
         <Pressable
-          style={[styles.btn, !step2Valid && styles.btnDisabled]}
+          style={[styles.btn, !formValid && styles.btnDisabled]}
           onPress={handleRegister}
-          disabled={!step2Valid || loading}
+          disabled={!formValid || loading}
         >
           {loading
             ? <ActivityIndicator color="#fff" />
@@ -238,6 +172,13 @@ export default function RegisterScreen() {
               </>
           }
         </Pressable>
+
+        <View style={styles.signinRow}>
+          <Text style={styles.signinText}>Already have an account? </Text>
+          <Pressable onPress={() => router.push('/(auth)/login' as any)}>
+            <Text style={styles.signinLink}>Sign In</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -266,33 +207,10 @@ function CheckRow({ value, onToggle, label }: { value: boolean; onToggle: () => 
 }
 
 const styles = StyleSheet.create({
-  container:  { flex: 1, backgroundColor: '#F5F5F0', paddingHorizontal: 24 },
   form:       { backgroundColor: '#F5F5F0', paddingHorizontal: 24 },
   backBtn:    { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginLeft: -8 },
-  typeBadge:  {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#3A7BD5/10', borderWidth: 1, borderColor: '#3A7BD5',
-    alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginBottom: 12,
-  },
-  typeBadgeText: { fontSize: 12, color: '#3A7BD5', fontWeight: '600' },
-  heading:    { fontSize: 24, fontWeight: '800', color: '#0F2B4C', marginBottom: 20 },
-  sub:        { fontSize: 14, color: '#6B7280', marginBottom: 32 },
-  typeGrid:   { gap: 14, marginBottom: 32 },
-  typeCard:   {
-    backgroundColor: '#fff', borderRadius: 16, padding: 20,
-    borderWidth: 2, borderColor: '#E5E7EB',
-  },
-  typeCardActive: { borderColor: '#3A7BD5', backgroundColor: '#F0F5FF' },
-  typeIcon:   {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: '#F0F5FF', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-  },
-  typeIconActive: { backgroundColor: '#3A7BD5' },
-  typeLabel:  { fontSize: 16, fontWeight: '700', color: '#0F2B4C', marginBottom: 4 },
-  typeLabelActive: { color: '#0F2B4C' },
-  typeSub:    { fontSize: 13, color: '#6B7280' },
-  typeSubActive: { color: '#3A7BD5' },
-  check:      { position: 'absolute', top: 16, right: 16 },
+  heading:    { fontSize: 24, fontWeight: '800', color: '#0F2B4C', marginBottom: 8 },
+  sub:        { fontSize: 14, color: '#6B7280', marginBottom: 24, lineHeight: 20 },
   errorBox:   {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',

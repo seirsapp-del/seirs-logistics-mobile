@@ -7,6 +7,7 @@ import { Driver } from '../drivers/driver.entity';
 import { Delivery } from '../deliveries/delivery.entity';
 import { FraudModule } from '../fraud/fraud.module';
 import { MailModule } from '../mail/mail.module';
+import { PartnerStoreModule } from '../partner-store/partner-store.module';
 import { FraudFlag } from '../fraud/fraud-flag.entity';
 import { CmsItem } from './cms-item.entity';
 import { SupportTicket } from './support-ticket.entity';
@@ -18,6 +19,7 @@ import { PricingConfig } from './pricing-config.entity';
     TypeOrmModule.forFeature([User, Driver, Delivery, FraudFlag, CmsItem, SupportTicket, AuditLogEntry, PricingConfig]),
     FraudModule,
     MailModule,
+    PartnerStoreModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

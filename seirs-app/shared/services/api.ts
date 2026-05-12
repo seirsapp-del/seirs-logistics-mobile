@@ -428,6 +428,27 @@ export const partnerApi = {
     request<{ storeId: string; status: string }>(
       'PATCH', `/partner-store/store/${storeId}/status`, { status },
     ),
+
+  // Hybrid-account (Spec V8 2026-05-11) — Business Sender users can apply
+  // to additionally operate as a Partner Store. Admin reviews KYC docs.
+  applyForPartnerStore: (body: {
+    storeName:          string;
+    storeAddress:       string;
+    phone:              string;
+    maxCapacity?:       number;
+    storefrontPhotoUrl: string;
+    cacRegUrl?:         string;
+    ownerIdUrl:         string;
+  }) =>
+    request<{ storeId: string; status: string; submittedAt: string; message: string }>(
+      'POST', '/partner-store/apply', body,
+    ),
+
+  myPartnerApplication: () =>
+    request<{
+      storeId: string; storeName: string; status: string;
+      reviewNote: string | null; reviewedAt: string | null; canPartner: boolean;
+    } | null>('GET', '/partner-store/my-application'),
   storeOverstays: (storeId: string) =>
     request<Array<{
       id: string; dropCode: string; recipientName: string; recipientPhone: string;

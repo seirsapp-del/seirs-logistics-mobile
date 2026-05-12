@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
+import { PartnerStoreService } from '../partner-store/partner-store.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -14,7 +15,10 @@ import { TicketStatus, TicketPriority } from './support-ticket.entity';
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService:       AdminService,
+    private readonly partnerStoreService: PartnerStoreService,
+  ) {}
 
   // ── Overview ──────────────────────────────────────────────────────────────
 
@@ -118,6 +122,36 @@ export class AdminController {
   @Patch('drivers/:id/suspend')
   suspendDriver(@Param('id') id: string) {
     return this.adminService.updateDriverStatus(id, 'suspended');
+  }
+
+  // ── Partner Store applications (hybrid-account redesign 2026-05-11) ───────
+
+  // GET /api/v1/admin/partner-stores/applications — pending KYC reviews
+  @Get('partner-stores/applications')
+  listPartnerApplications() {
+    return this.partnerStoreService.adminListPendingApplications();
+  }
+
+  // PATCH /api/v1/admin/partner-stores/:id/approve  { note?: string }
+  // Flips PartnerStore.status → APPROVED and User.capabilities.canPartner → true.
+  @Patch('partner-stores/:id/approve')
+  approvePartnerStore(
+    @Param('id') id: string,
+    @CurrentUser() admin: any,
+    @Body() body: { note?: string },
+  ) {
+    return this.partnerStoreService.adminApproveStore(id, admin.id, body?.note);
+  }
+
+  // PATCH /api/v1/admin/partner-stores/:id/reject  { note: string }
+  // Rejection reason is required so user knows what to fix on re-apply.
+  @Patch('partner-stores/:id/reject')
+  rejectPartnerStore(
+    @Param('id') id: string,
+    @CurrentUser() admin: any,
+    @Body() body: { note: string },
+  ) {
+    return this.partnerStoreService.adminRejectStore(id, admin.id, body?.note);
   }
 
   // ── Deliveries ────────────────────────────────────────────────────────────

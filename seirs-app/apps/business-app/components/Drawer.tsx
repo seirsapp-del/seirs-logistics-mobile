@@ -24,7 +24,12 @@ export function Drawer({ visible, onClose }: Props) {
   const { isDark, toggleTheme } = useTheme();
   const c = Colors[isDark ? 'dark' : 'light'];
 
-  const isPartner = businessRole === 'partner';
+  // Hybrid-account: a user can be Sender-only, Partner-only, or BOTH.
+  // capabilities.canPartner is the new truth source; businessRole is kept
+  // for back-compat. canPartner flips true only after admin approves the
+  // user's partner-store application.
+  const canPartner = !!user?.capabilities?.canPartner;
+  const isPartner  = canPartner || businessRole === 'partner';
 
   const navigate = (path: string) => {
     onClose();
@@ -43,6 +48,14 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'LayoutDashboard', label: t('drawer.businessProfile', { defaultValue: 'Business Profile' }), onPress: () => navigate('/(business)') },
     { icon: 'Users',           label: t('drawer.teamMembers',     { defaultValue: 'Team Members' }),     onPress: () => navigate('/(business)/team') },
     { icon: 'Banknote',        label: t('drawer.billing',         { defaultValue: 'Billing & Invoices' }), onPress: () => navigate('/(business)/wallet') },
+    // Hybrid-account: senders can apply to additionally operate as a Partner
+    // Store. Hidden once approval lands (canPartner === true) — the
+    // context switcher at the top of the app takes over from there.
+    ...(canPartner ? [] : [{
+      icon:    'Store' as const,
+      label:   t('drawer.applyPartner', { defaultValue: 'Apply to be a Partner Store' }),
+      onPress: () => navigate('/(business)/apply-partner'),
+    }]),
     { icon: 'Globe',           label: t('drawer.language',        { defaultValue: 'Language' }),         onPress: () => navigate('/(business)/language') },
     { icon: 'HelpCircle',      label: t('drawer.help',            { defaultValue: 'Help & FAQ' }) },
     { icon: 'Lock',            label: t('drawer.privacy',         { defaultValue: 'Privacy Policy' }) },

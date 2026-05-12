@@ -1,3 +1,8 @@
+// Intl.PluralRules polyfill — Hermes (RN's JS engine) doesn't ship it,
+// so i18next's plural resolver was falling back to v3 format and logging
+// a warning on every screen. Importing this side-effect-only registers
+// `Intl.PluralRules` globally before i18next initialises.
+import 'intl-pluralrules';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';

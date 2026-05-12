@@ -98,20 +98,24 @@ export default function OnboardingScreen() {
         ))}
       </View>
 
-      {/* CTA on last slide */}
+      {/* Both options always visible — new users sign up, returning users sign in.
+          Previously only one button showed per slide (Sign In on slides 0-2,
+          Get Started on slide 3) which hid the sign-up path entirely if the
+          user tapped Sign In before auto-advance reached the last slide. */}
       <View style={[styles.cta, { paddingBottom: insets.bottom + 24 }]}>
-        {idx === SLIDES.length - 1 ? (
-          <Pressable style={styles.btn} onPress={() => router.replace('/(auth)/register')}>
-            <Text style={styles.btnText}>Get Started</Text>
-          </Pressable>
-        ) : (
-          <Pressable
-            style={[styles.btn, styles.btnOutline]}
-            onPress={() => router.replace('/(auth)/login')}
-          >
-            <Text style={[styles.btnText, styles.btnOutlineText]}>Sign In</Text>
-          </Pressable>
-        )}
+        {/* Generic "Sign Up" because Business Sender vs Partner Store
+            is chosen on the registration screen, not here. */}
+        {/* router.push (not replace) so phone back button returns to
+            this onboarding screen instead of exiting the app. */}
+        <Pressable style={styles.btn} onPress={() => router.push('/(auth)/register' as any)}>
+          <Text style={styles.btnText}>Sign Up</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.btn, styles.btnOutline, { marginTop: 12 }]}
+          onPress={() => router.push('/(auth)/login' as any)}
+        >
+          <Text style={[styles.btnText, styles.btnOutlineText]}>Sign In</Text>
+        </Pressable>
       </View>
     </LinearGradient>
   );

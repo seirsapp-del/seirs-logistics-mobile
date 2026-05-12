@@ -110,14 +110,32 @@ export class User {
   @Column({ type: 'uuid', nullable: true })
   roleId: string;
 
+  // LEGACY — single-role business gate. Kept for backwards-compat with
+  // existing accounts. New code should read `capabilities` instead.
+  // 'sender' | 'partner'
   @Column({ nullable: true })
-  businessRole: string; // 'sender' | 'partner'
+  businessRole: string;
 
   @Column({ nullable: true })
   businessAccountId: string;
 
   @Column({ nullable: true })
   partnerStoreId: string;
+
+  /**
+   * Hybrid-account capabilities (Spec V8 hybrid-business model — 2026-05-11).
+   * A single User can be a Business Sender AND a Partner Store at the same
+   * time (real Nigerian SME pattern: a shop owner who both ships their own
+   * goods AND accepts SEIRS drop-offs from neighbours). Replaces the old
+   * `businessRole` single-pick model.
+   *
+   *   canSend    — instant on signup, allows bulk dispatch + wallet
+   *   canPartner — gated behind admin approval (PartnerStore.status must be
+   *                APPROVED before this flips true). Triggered via the
+   *                "Apply to become a Partner Store" Settings flow.
+   */
+  @Column({ type: 'jsonb', default: () => `'{"canSend": false, "canPartner": false}'` })
+  capabilities: { canSend: boolean; canPartner: boolean };
 
   @Column({ default: 0 })
   failedLoginAttempts: number;

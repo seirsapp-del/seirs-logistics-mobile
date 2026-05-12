@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Repository, In, Not } from 'typeorm';
 import { StoreDropoff, DropoffMode, DropoffStatus } from './store-dropoff.entity';
-import { PartnerStore } from '../business/partner-store.entity';
+import { PartnerStore, PartnerStoreStatus } from '../business/partner-store.entity';
 import { User } from '../users/user.entity';
 import { FeesService } from '../fees/fees.service';
 import { IdentityService } from '../identity/identity.service';
@@ -310,7 +310,8 @@ export class PartnerStoreService {
     if (!['active', 'paused'].includes(status)) {
       throw new BadRequestException('status must be "active" or "paused"');
     }
-    await this.storeRepo.update(storeId, { status });
+    // Operational toggle now lives on `acceptingNew` (not approval `status`).
+    await this.storeRepo.update(storeId, { acceptingNew: status === 'active' });
     return { storeId, status };
   }
 
@@ -436,5 +437,164 @@ export class PartnerStoreService {
     if (charged || returned) {
       this.logger.log(`Storage fee accrual: charged=${charged} return-triggered=${returned}`);
     }
+  }
+
+  // ── Hybrid-account: partner store application + admin approval ────────────
+
+  /**
+   * User upgrades from "just a Business Sender" to also operate as a Partner
+   * Store. Creates the PartnerStore in PENDING_REVIEW so it doesn't accept
+   * drop-offs yet. Admin approves → status flips to APPROVED → user.capabilities
+   * .canPartner flips true → in-app context switcher appears.
+   *
+   * Idempotent: if user already has an in-flight or rejected application,
+   * resubmitting updates the docs and resets status to PENDING_REVIEW.
+   */
+  async submitPartnerApplication(
+    userId: string,
+    body: {
+      storeName:          string;
+      storeAddress:       string;
+      phone:              string;
+      maxCapacity?:       number;
+      storefrontPhotoUrl: string;
+      cacRegUrl?:         string;
+      ownerIdUrl:         string;
+    },
+  ) {
+    if (!body.storeName?.trim() || !body.storeAddress?.trim()) {
+      throw new BadRequestException('Store name and address are required.');
+    }
+    if (!body.storefrontPhotoUrl || !body.ownerIdUrl) {
+      throw new BadRequestException('Storefront photo and owner ID are required for KYC.');
+    }
+
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found.');
+
+    // If already approved + canPartner=true, nothing to do.
+    if (user.capabilities?.canPartner) {
+      throw new BadRequestException('You are already an approved Partner Store.');
+    }
+
+    // Re-application path: update existing record + reset status.
+    let store = user.partnerStoreId
+      ? await this.storeRepo.findOne({ where: { id: user.partnerStoreId } })
+      : null;
+
+    if (store) {
+      await this.storeRepo.update(store.id, {
+        storeName:          body.storeName.trim(),
+        storeAddress:       body.storeAddress.trim(),
+        phone:              body.phone?.trim() ?? '',
+        maxCapacity:        body.maxCapacity ?? 50,
+        storefrontPhotoUrl: body.storefrontPhotoUrl,
+        cacRegUrl:          body.cacRegUrl ?? null,
+        ownerIdUrl:         body.ownerIdUrl,
+        status:             PartnerStoreStatus.PENDING_REVIEW,
+        reviewNote:         null,
+        reviewedAt:         null,
+        reviewedBy:         null,
+      } as any);
+      store = await this.storeRepo.findOne({ where: { id: store.id } });
+    } else {
+      store = this.storeRepo.create({
+        userId:             userId,
+        storeName:          body.storeName.trim(),
+        storeAddress:       body.storeAddress.trim(),
+        phone:              body.phone?.trim() ?? '',
+        maxCapacity:        body.maxCapacity ?? 50,
+        storefrontPhotoUrl: body.storefrontPhotoUrl,
+        cacRegUrl:          body.cacRegUrl,
+        ownerIdUrl:         body.ownerIdUrl,
+        status:             PartnerStoreStatus.PENDING_REVIEW,
+      });
+      await this.storeRepo.save(store);
+      await this.usersRepo.update(userId, { partnerStoreId: store.id });
+    }
+
+    this.logger.log(`Partner store application submitted: userId=${userId} storeId=${store!.id}`);
+
+    return {
+      storeId:    store!.id,
+      status:     store!.status,
+      submittedAt: new Date().toISOString(),
+      message:    'Application submitted. SEIRS will review your KYC docs within 24-48 hours.',
+    };
+  }
+
+  /** User polls the status of their pending application. */
+  async getMyApplication(userId: string) {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user?.partnerStoreId) return null;
+    const store = await this.storeRepo.findOne({ where: { id: user.partnerStoreId } });
+    if (!store) return null;
+    return {
+      storeId:     store.id,
+      storeName:   store.storeName,
+      status:      store.status,
+      reviewNote:  store.reviewNote,
+      reviewedAt:  store.reviewedAt,
+      canPartner:  !!user.capabilities?.canPartner,
+    };
+  }
+
+  /**
+   * Admin approves a pending partner store application. Flips:
+   *   1. PartnerStore.status   → APPROVED
+   *   2. User.capabilities.canPartner → true
+   *
+   * Idempotent — calling on an already-approved store is a no-op.
+   */
+  async adminApproveStore(storeId: string, adminUserId: string, note?: string) {
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Partner store not found.');
+
+    await this.storeRepo.update(storeId, {
+      status:     PartnerStoreStatus.APPROVED,
+      reviewNote: note ?? null,
+      reviewedAt: new Date(),
+      reviewedBy: adminUserId,
+    } as any);
+
+    const owner = await this.usersRepo.findOne({ where: { id: store.userId } });
+    if (owner) {
+      await this.usersRepo.update(owner.id, {
+        capabilities: { canSend: owner.capabilities?.canSend ?? true, canPartner: true },
+      });
+    }
+
+    this.logger.log(`Partner store APPROVED: storeId=${storeId} owner=${store.userId} admin=${adminUserId}`);
+    return { storeId, status: PartnerStoreStatus.APPROVED };
+  }
+
+  /**
+   * Admin rejects a pending partner store application. Status flips to
+   * REJECTED; canPartner stays false. User can re-apply with updated docs.
+   */
+  async adminRejectStore(storeId: string, adminUserId: string, note: string) {
+    if (!note?.trim()) {
+      throw new BadRequestException('Rejection reason is required so the user knows what to fix.');
+    }
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Partner store not found.');
+
+    await this.storeRepo.update(storeId, {
+      status:     PartnerStoreStatus.REJECTED,
+      reviewNote: note.trim(),
+      reviewedAt: new Date(),
+      reviewedBy: adminUserId,
+    } as any);
+
+    this.logger.log(`Partner store REJECTED: storeId=${storeId} reason=${note}`);
+    return { storeId, status: PartnerStoreStatus.REJECTED };
+  }
+
+  /** Admin lists all pending partner store applications for review. */
+  async adminListPendingApplications() {
+    return this.storeRepo.find({
+      where: { status: PartnerStoreStatus.PENDING_REVIEW },
+      order: { createdAt: 'ASC' },
+    });
   }
 }

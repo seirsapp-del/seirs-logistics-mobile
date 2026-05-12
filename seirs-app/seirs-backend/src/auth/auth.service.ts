@@ -17,7 +17,7 @@ import * as appleSignin from 'apple-signin-auth';
 import { User, UserRole } from '../users/user.entity';
 import { Driver } from '../drivers/driver.entity';
 import { BusinessAccount, BusinessTeamMember } from '../business/business-account.entity';
-import { PartnerStore } from '../business/partner-store.entity';
+import { PartnerStore, PartnerStoreStatus } from '../business/partner-store.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -63,8 +63,39 @@ export class AuthService {
       .join(' ');
   }
 
+  /**
+   * Canonicalise email so one inbox = one account, regardless of `+` aliases.
+   * 2026-05-11 — closes the abuse loophole where a single user could create
+   * unlimited accounts via `me+a@gmail.com`, `me+b@gmail.com`, etc. (each
+   * delivering to the same inbox so each passes OTP).
+   *
+   * Strips `+suffix` for providers that ignore it: Gmail, iCloud, FastMail.
+   * Yahoo uses `-` as their alias separator; we strip that for yahoo.com too.
+   * Other providers (Outlook, custom domains) get pass-through — `+` may be
+   * a literal valid character in their addressing.
+   */
+  static canonicalEmail(raw: string): string {
+    const trimmed = raw.trim().toLowerCase();
+    const [local, domain] = trimmed.split('@');
+    if (!domain) return trimmed;
+
+    const stripPlus     = ['gmail.com', 'googlemail.com', 'icloud.com', 'me.com', 'mac.com', 'fastmail.com'];
+    const stripDash     = ['yahoo.com', 'yahoo.co.uk', 'ymail.com', 'rocketmail.com'];
+
+    let canonicalLocal = local;
+    if (stripPlus.includes(domain)) canonicalLocal = local.split('+')[0];
+    if (stripDash.includes(domain)) canonicalLocal = local.split('-')[0];
+
+    // Gmail also ignores dots in the local part (j.doe@gmail = jdoe@gmail).
+    if (domain === 'gmail.com' || domain === 'googlemail.com') {
+      canonicalLocal = canonicalLocal.replace(/\./g, '');
+    }
+
+    return `${canonicalLocal}@${domain}`;
+  }
+
   async register(dto: RegisterDto) {
-    const email = dto.email.trim().toLowerCase();
+    const email = AuthService.canonicalEmail(dto.email);
 
     const existing = await this.usersRepo.findOne({ where: { email } });
     if (existing) {
@@ -114,7 +145,7 @@ export class AuthService {
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
-    const email = dto.email.trim().toLowerCase();
+    const email = AuthService.canonicalEmail(dto.email);
 
     const user = await this.usersRepo
       .createQueryBuilder('u')
@@ -151,7 +182,7 @@ export class AuthService {
   }
 
   async resendOtp(email: string) {
-    const normalised = email.trim().toLowerCase();
+    const normalised = AuthService.canonicalEmail(email);
 
     const user = await this.usersRepo
       .createQueryBuilder('u')
@@ -192,7 +223,9 @@ export class AuthService {
       .addSelect('u.password')
       .addSelect('u.failedLoginAttempts')
       .addSelect('u.lockedUntil')
-      .where('LOWER(u.email) = LOWER(:email)', { email: dto.email.trim() })
+      // canonicalEmail strips +aliases for consumer providers so login
+      // works the same whether user typed me+a@gmail.com or me@gmail.com.
+      .where('LOWER(u.email) = LOWER(:email)', { email: AuthService.canonicalEmail(dto.email) })
       .getOne();
 
     if (!user) throw new UnauthorizedException('Invalid email or password.');
@@ -266,7 +299,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid Google token.');
     }
 
-    const email = payload.email.toLowerCase();
+    const email = AuthService.canonicalEmail(payload.email);
 
     let user = await this.usersRepo.findOne({ where: [{ googleId: payload.sub }, { email }] });
 
@@ -314,7 +347,7 @@ export class AuthService {
       if (!payload.email) {
         throw new BadRequestException('Email is required for first-time Apple sign-in.');
       }
-      const email     = payload.email.toLowerCase();
+      const email     = AuthService.canonicalEmail(payload.email);
       const existing  = await this.usersRepo.findOne({ where: { email } });
       const accountId = generateAccountId(AccountIdPrefix.CUSTOMER);
 
@@ -361,7 +394,7 @@ export class AuthService {
   async forgotPassword(email: string) {
     if (!email) throw new BadRequestException('Email is required.');
     const user = await this.usersRepo.findOne({
-      where: { email: ILike(email.trim()) },
+      where: { email: ILike(AuthService.canonicalEmail(email)) },
     });
 
     if (!user) return { message: 'If that email exists, a reset link has been sent.' };
@@ -454,7 +487,7 @@ export class AuthService {
   // ── Business / Partner Auth ────────────────────────────────────────────────
 
   async businessRegister(data: any) {
-    const email = data.email?.trim().toLowerCase();
+    const email = data.email ? AuthService.canonicalEmail(data.email) : null;
     if (!email) throw new BadRequestException('Email is required.');
 
     const existing = await this.usersRepo.findOne({ where: { email } });
@@ -471,38 +504,53 @@ export class AuthService {
       data.accountType === 'partner' ? AccountIdPrefix.PARTNER : AccountIdPrefix.BUSINESS,
     );
 
+    // Hybrid-account redesign (2026-05-11): every new business signup gets
+    // canSend=true (instant). canPartner stays false until they apply via
+    // Settings → "Apply to be a Partner Store" and an admin approves the
+    // KYC docs. Legacy `businessRole` kept in sync for back-compat readers
+    // (admin dashboard, old client code).
+    const isPartnerSignup = data.accountType === 'partner';
     const user = this.usersRepo.create({
       name:          data.name?.trim(),
       email,
       phone:         data.phone?.trim() ?? '',
       password:      hashed,
       role:          UserRole.CUSTOMER,
-      businessRole:  data.accountType === 'partner' ? 'partner' : 'sender',
+      businessRole:  isPartnerSignup ? 'partner' : 'sender',
+      capabilities:  { canSend: true, canPartner: false },
       accountId,
       emailVerified: false,
     });
     await this.usersRepo.save(user);
 
-    if (data.accountType === 'partner') {
+    // Every business signup gets a sender business account (the bulk-dispatch
+    // wallet + recurring deliveries surface). Partner mode is *additive* on
+    // top — applied for later via the Settings upgrade flow.
+    const biz = this.bizRepo.create({
+      ownerId:         user.id,
+      companyName:     data.companyName ?? data.name,
+      rcNumber:        data.rcNumber ?? '',
+      businessAddress: data.businessAddress ?? '',
+      walletBalance:   0,
+      loyaltyPoints:   0,
+    });
+    await this.bizRepo.save(biz);
+    await this.usersRepo.update(user.id, { businessAccountId: biz.id });
+
+    // If they ALSO picked "I'm a Partner Store" at signup, queue the partner
+    // application as PENDING_REVIEW. canPartner stays false until admin
+    // approves — backwards-compatible with the existing one-role-per-signup
+    // mental model while unlocking the path for the new hybrid pattern.
+    if (isPartnerSignup) {
       const store = this.storeRepo.create({
         userId:       user.id,
         storeName:    data.storeName ?? data.name,
         storeAddress: data.storeAddress ?? '',
         maxCapacity:  data.capacity ?? 50,
+        status:       PartnerStoreStatus.PENDING_REVIEW,
       });
       await this.storeRepo.save(store);
       await this.usersRepo.update(user.id, { partnerStoreId: store.id });
-    } else {
-      const biz = this.bizRepo.create({
-        ownerId:         user.id,
-        companyName:     data.companyName ?? data.name,
-        rcNumber:        data.rcNumber ?? '',
-        businessAddress: data.businessAddress ?? '',
-        walletBalance:   0,
-        loyaltyPoints:   0,
-      });
-      await this.bizRepo.save(biz);
-      await this.usersRepo.update(user.id, { businessAccountId: biz.id });
     }
 
     await this.issueOtp(user);
@@ -516,7 +564,7 @@ export class AuthService {
       .addSelect('u.password')
       .addSelect('u.failedLoginAttempts')
       .addSelect('u.lockedUntil')
-      .where('LOWER(u.email) = LOWER(:email)', { email: email.trim() })
+      .where('LOWER(u.email) = LOWER(:email)', { email: AuthService.canonicalEmail(email) })
       .getOne();
 
     if (!user || user.role !== UserRole.ADMIN) {
@@ -553,7 +601,7 @@ export class AuthService {
       .addSelect('u.password')
       .addSelect('u.failedLoginAttempts')
       .addSelect('u.lockedUntil')
-      .where('LOWER(u.email) = LOWER(:email)', { email: email.trim() })
+      .where('LOWER(u.email) = LOWER(:email)', { email: AuthService.canonicalEmail(email) })
       .getOne();
 
     if (!user || !user.businessRole) throw new UnauthorizedException('Invalid email or password.');
@@ -586,7 +634,7 @@ export class AuthService {
   }
 
   async businessVerifyOtp(email: string, otp: string) {
-    const normalised = email.trim().toLowerCase();
+    const normalised = AuthService.canonicalEmail(email);
 
     const user = await this.usersRepo
       .createQueryBuilder('u')

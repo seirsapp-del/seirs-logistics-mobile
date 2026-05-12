@@ -138,4 +138,32 @@ export class PartnerStoreController {
   deletionReadiness(@Param('storeId') storeId: string) {
     return this.svc.getDeletionReadiness(storeId);
   }
+
+  // ── Hybrid-account: user upgrades from Business Sender to also become a
+  // Partner Store. Creates a PartnerStore in PENDING_REVIEW state. Admin
+  // reviews KYC docs (storefront photo, CAC reg, owner ID, address) and
+  // calls /admin/partner-stores/:id/approve to flip canPartner=true.
+  // POST /api/v1/partner-store/apply
+  @Post('apply')
+  applyForPartnerStore(
+    @CurrentUser() user: any,
+    @Body() body: {
+      storeName:          string;
+      storeAddress:       string;
+      phone:              string;
+      maxCapacity?:       number;
+      storefrontPhotoUrl: string;
+      cacRegUrl?:         string;
+      ownerIdUrl:         string;
+    },
+  ) {
+    return this.svc.submitPartnerApplication(user.id, body);
+  }
+
+  // GET /api/v1/partner-store/my-application — user polls status of their
+  // pending application. Returns null if they haven't applied.
+  @Get('my-application')
+  myApplication(@CurrentUser() user: any) {
+    return this.svc.getMyApplication(user.id);
+  }
 }

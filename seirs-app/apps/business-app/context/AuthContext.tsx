@@ -12,9 +12,14 @@ export interface AuthUser {
   phone:        string;
   role:         string;
   businessRole: BusinessRole;
+  // Hybrid-account capabilities (Spec V8 2026-05-11). The backend writes
+  // these on every /auth/me + login response. canSend = instant on signup;
+  // canPartner only flips true after admin approves the partner-store KYC.
+  capabilities?: { canSend: boolean; canPartner: boolean };
   accountId:    string;
   companyName?: string;
   storeName?:   string;
+  profilePhoto?: string;
   token:        string;
 }
 
