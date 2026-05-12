@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { partnerApi, uploadApi } from '@/services/api';
+import { useColors } from '@/context/ThemeContext';
 
 // Spec V8 §3 / §4.7 — partner staff scans incoming sender drop-off,
 // confirms details + photo + sender OTP, transitions to RECEIVED_AT_STORE.
@@ -32,6 +33,7 @@ interface Dropoff {
 export default function ReceiveDropoffScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const colors = useColors();
   const [permission, requestPermission] = useCameraPermissions();
 
   const [step,            setStep]            = useState<Step>('scan');
@@ -171,18 +173,18 @@ export default function ReceiveDropoffScreen() {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
-  if (!permission) return <View style={styles.centered}><ActivityIndicator color="#3A7BD5" /></View>;
+  if (!permission) return <View style={[styles.centered, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>;
   if (!permission.granted && step === 'scan') {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
-        <Icon name="Camera" size={48} color="#D1D5DB" />
-        <Text style={styles.permTitle}>Camera Access Required</Text>
-        <Text style={styles.permSub}>Needed to scan drop-off QR codes. You can also enter the code manually below.</Text>
-        <Pressable style={styles.primaryBtn} onPress={requestPermission}>
+      <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <Icon name="Camera" size={48} color={colors.textThird} />
+        <Text style={[styles.permTitle, { color: colors.text }]}>Camera Access Required</Text>
+        <Text style={[styles.permSub, { color: colors.textSecond }]}>Needed to scan drop-off QR codes. You can also enter the code manually below.</Text>
+        <Pressable style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={requestPermission}>
           <Text style={styles.primaryBtnText}>Grant Camera Permission</Text>
         </Pressable>
         <Pressable onPress={() => setScanning(false)}>
-          <Text style={styles.linkText}>Use manual code entry instead</Text>
+          <Text style={[styles.linkText, { color: colors.accent }]}>Use manual code entry instead</Text>
         </Pressable>
       </View>
     );
@@ -222,24 +224,24 @@ export default function ReceiveDropoffScreen() {
         )}
 
         {!scanning && (
-          <View style={[styles.manualSheet, { paddingBottom: insets.bottom + 24 }]}>
-            <Text style={styles.sheetTitle}>Enter drop-off code</Text>
-            <Text style={styles.sheetSub}>SDR-XXXXXXXX or 6-character backup</Text>
+          <View style={[styles.manualSheet, { paddingBottom: insets.bottom + 24, backgroundColor: colors.surface }]}>
+            <Text style={[styles.sheetTitle, { color: colors.text }]}>Enter drop-off code</Text>
+            <Text style={[styles.sheetSub, { color: colors.textSecond }]}>SDR-XXXXXXXX or 6-character backup</Text>
             <TextInput
               autoCapitalize="characters"
               autoFocus
               value={manualCode}
               onChangeText={setManualCode}
               placeholder="SDR-A7K2P9X3"
-              placeholderTextColor="#9CA3AF"
-              style={styles.input}
+              placeholderTextColor={colors.textThird}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             />
             {error !== '' && <Text style={styles.errorText}>{error}</Text>}
             <View style={styles.row}>
-              <Pressable style={styles.cancelBtn} onPress={() => { setScanning(true); setError(''); }}>
-                <Text style={styles.cancelBtnText}>Back to scan</Text>
+              <Pressable style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => { setScanning(true); setError(''); }}>
+                <Text style={[styles.cancelBtnText, { color: colors.textSecond }]}>Back to scan</Text>
               </Pressable>
-              <Pressable style={styles.primaryBtn} onPress={handleManualLookup} disabled={loading}>
+              <Pressable style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={handleManualLookup} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Look up</Text>}
               </Pressable>
             </View>
@@ -256,68 +258,67 @@ export default function ReceiveDropoffScreen() {
     );
   }
 
-  // Details step — weight + photo
   if (step === 'details' && dropoff) {
     return (
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F5F5F0' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={[styles.formContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}>
           <View style={styles.formHeader}>
-            <Pressable onPress={reset} style={styles.backBtn}>
-              <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
+            <Pressable onPress={reset} style={[styles.backBtn, { backgroundColor: colors.surface }]}>
+              <Icon name="ArrowLeft" size={20} color={colors.text} />
             </Pressable>
-            <Text style={styles.formTitle}>Confirm Package</Text>
+            <Text style={[styles.formTitle, { color: colors.text }]}>Confirm Package</Text>
             <View style={{ width: 32 }} />
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>FOR DELIVERY TO</Text>
-            <Text style={styles.cardValue}>{dropoff.recipientName}</Text>
-            <Text style={styles.cardSub}>{dropoff.recipientPhone}</Text>
-            <View style={styles.divider} />
-            <Text style={styles.cardLabel}>DROP-OFF CODE</Text>
-            <Text style={styles.codeChip}>{dropoff.dropCode}</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>FOR DELIVERY TO</Text>
+            <Text style={[styles.cardValue, { color: colors.text }]}>{dropoff.recipientName}</Text>
+            <Text style={[styles.cardSub, { color: colors.textSecond }]}>{dropoff.recipientPhone}</Text>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>DROP-OFF CODE</Text>
+            <Text style={[styles.codeChip, { color: colors.accent }]}>{dropoff.dropCode}</Text>
             {dropoff.packageDescription && (
               <>
-                <View style={styles.divider} />
-                <Text style={styles.cardLabel}>DESCRIPTION</Text>
-                <Text style={styles.cardSubtle}>{dropoff.packageDescription}</Text>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <Text style={[styles.cardLabel, { color: colors.textSecond }]}>DESCRIPTION</Text>
+                <Text style={[styles.cardSubtle, { color: colors.textSecond }]}>{dropoff.packageDescription}</Text>
               </>
             )}
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.fieldLabel}>Measured weight (kg)</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>Measured weight (kg)</Text>
             <TextInput
               keyboardType="decimal-pad"
               value={weightKg}
               onChangeText={setWeightKg}
               placeholder={`Sender said ${dropoff.weightKg} kg`}
-              placeholderTextColor="#9CA3AF"
-              style={styles.input}
+              placeholderTextColor={colors.textThird}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             />
-            <Text style={styles.helperText}>If the actual weight differs, the system will recalculate any weight-based fees.</Text>
+            <Text style={[styles.helperText, { color: colors.textSecond }]}>If the actual weight differs, the system will recalculate any weight-based fees.</Text>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.fieldLabel}>Package photo</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>Package photo</Text>
             {photoUri ? (
               <View style={{ gap: 12 }}>
-                <Image source={{ uri: photoUri }} style={styles.preview} />
-                <Pressable onPress={pickPhoto} style={styles.secondaryBtn}>
-                  <Text style={styles.secondaryBtnText}>Retake photo</Text>
+                <Image source={{ uri: photoUri }} style={[styles.preview, { backgroundColor: colors.surfaceSecond }]} />
+                <Pressable onPress={pickPhoto} style={[styles.secondaryBtn, { backgroundColor: colors.accent + '18' }]}>
+                  <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>Retake photo</Text>
                 </Pressable>
               </View>
             ) : (
-              <Pressable onPress={pickPhoto} style={styles.photoBox}>
-                <Icon name="Camera" size={28} color="#3A7BD5" />
-                <Text style={styles.photoHint}>Tap to take a photo of the package on your counter</Text>
+              <Pressable onPress={pickPhoto} style={[styles.photoBox, { borderColor: colors.accent, backgroundColor: colors.accent + '08' }]}>
+                <Icon name="Camera" size={28} color={colors.accent} />
+                <Text style={[styles.photoHint, { color: colors.textSecond }]}>Tap to take a photo of the package on your counter</Text>
               </Pressable>
             )}
           </View>
 
           {error !== '' && <Text style={styles.errorText}>{error}</Text>}
 
-          <Pressable style={styles.primaryBtnLarge} onPress={submitDetails} disabled={loading}>
+          <Pressable style={[styles.primaryBtnLarge, { backgroundColor: colors.primary }]} onPress={submitDetails} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Continue</Text>}
           </Pressable>
         </ScrollView>
@@ -325,22 +326,21 @@ export default function ReceiveDropoffScreen() {
     );
   }
 
-  // Confirm step — sender OTP + final submit
   if (step === 'confirm' && dropoff) {
     return (
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F5F5F0' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={[styles.formContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}>
           <View style={styles.formHeader}>
-            <Pressable onPress={() => setStep('details')} style={styles.backBtn}>
-              <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
+            <Pressable onPress={() => setStep('details')} style={[styles.backBtn, { backgroundColor: colors.surface }]}>
+              <Icon name="ArrowLeft" size={20} color={colors.text} />
             </Pressable>
-            <Text style={styles.formTitle}>Verify Sender</Text>
+            <Text style={[styles.formTitle, { color: colors.text }]}>Verify Sender</Text>
             <View style={{ width: 32 }} />
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>SENDER VERIFICATION</Text>
-            <Text style={styles.cardSubtle}>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>SENDER VERIFICATION</Text>
+            <Text style={[styles.cardSubtle, { color: colors.textSecond }]}>
               Ask the sender to read the 6-digit code from the verification email they received when they scheduled this drop-off.
             </Text>
             <TextInput
@@ -348,16 +348,19 @@ export default function ReceiveDropoffScreen() {
               value={senderOtp}
               onChangeText={setSenderOtp}
               placeholder="123456"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.textThird}
               maxLength={6}
-              style={[styles.input, { fontSize: 28, textAlign: 'center', letterSpacing: 8, fontWeight: '700' }]}
+              style={[
+                styles.input,
+                { backgroundColor: colors.background, borderColor: colors.border, color: colors.text, fontSize: 28, textAlign: 'center', letterSpacing: 8, fontWeight: '700' },
+              ]}
             />
-            <Text style={styles.helperText}>If they didn&apos;t receive an email, ask them to request a new code from their app.</Text>
+            <Text style={[styles.helperText, { color: colors.textSecond }]}>If they didn&apos;t receive an email, ask them to request a new code from their app.</Text>
           </View>
 
           {error !== '' && <Text style={styles.errorText}>{error}</Text>}
 
-          <Pressable style={styles.primaryBtnLarge} onPress={submitFinal} disabled={loading}>
+          <Pressable style={[styles.primaryBtnLarge, { backgroundColor: colors.primary }]} onPress={submitFinal} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Confirm receipt</Text>}
           </Pressable>
         </ScrollView>
@@ -372,10 +375,10 @@ const CORNER_SIZE = 24;
 const CORNER_THICK = 3;
 
 const styles = StyleSheet.create({
-  centered:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: '#F5F5F0', gap: 16 },
-  permTitle:   { fontSize: 18, fontWeight: '700', color: '#0F2B4C', textAlign: 'center' },
-  permSub:     { fontSize: 14, color: '#6B7280', textAlign: 'center' },
-  linkText:    { fontSize: 14, color: '#3A7BD5', fontWeight: '600' },
+  centered:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 },
+  permTitle:   { fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  permSub:     { fontSize: 14, textAlign: 'center' },
+  linkText:    { fontSize: 14, fontWeight: '600' },
 
   overlay:     { position: 'absolute', top: 0, left: 0, right: 0, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 12, zIndex: 10 },
   closeBtn:    { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
@@ -390,39 +393,39 @@ const styles = StyleSheet.create({
   cornerBR:    { bottom: 0, right: 0, borderBottomWidth: CORNER_THICK, borderRightWidth: CORNER_THICK },
   finderHint:  { color: '#fff', fontSize: 14, opacity: 0.85, textAlign: 'center', paddingHorizontal: 24 },
 
-  manualSheet:    { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
-  sheetTitle:     { fontSize: 18, fontWeight: '700', color: '#0F2B4C' },
-  sheetSub:       { fontSize: 13, color: '#6B7280' },
+  manualSheet:    { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
+  sheetTitle:     { fontSize: 18, fontWeight: '700' },
+  sheetSub:       { fontSize: 13 },
 
   formContent: { padding: 16, gap: 16 },
   formHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  backBtn:     { width: 32, height: 32, borderRadius: 8, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  formTitle:   { fontSize: 18, fontWeight: '700', color: '#0F2B4C' },
+  backBtn:     { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  formTitle:   { fontSize: 18, fontWeight: '700' },
 
-  card:        { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 8, borderWidth: 1, borderColor: '#E5E7EB' },
-  cardLabel:   { fontSize: 11, fontWeight: '700', color: '#6B7280', letterSpacing: 0.8 },
-  cardValue:   { fontSize: 18, fontWeight: '700', color: '#0F2B4C' },
-  cardSub:     { fontSize: 14, color: '#6B7280' },
-  cardSubtle:  { fontSize: 14, color: '#374151', lineHeight: 20 },
-  codeChip:    { fontSize: 16, fontWeight: '700', color: '#3A7BD5', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', letterSpacing: 1 },
-  divider:     { height: 1, backgroundColor: '#E5E7EB', marginVertical: 8 },
+  card:        { borderRadius: 16, padding: 16, gap: 8, borderWidth: 1 },
+  cardLabel:   { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
+  cardValue:   { fontSize: 18, fontWeight: '700' },
+  cardSub:     { fontSize: 14 },
+  cardSubtle:  { fontSize: 14, lineHeight: 20 },
+  codeChip:    { fontSize: 16, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', letterSpacing: 1 },
+  divider:     { height: 1, marginVertical: 8 },
 
-  fieldLabel:  { fontSize: 13, fontWeight: '700', color: '#0F2B4C' },
-  helperText:  { fontSize: 12, color: '#6B7280', lineHeight: 17 },
+  fieldLabel:  { fontSize: 13, fontWeight: '700' },
+  helperText:  { fontSize: 12, lineHeight: 17 },
 
-  input:       { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: '#0F2B4C', backgroundColor: '#F9FAFB' },
+  input:       { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
 
-  photoBox:    { borderWidth: 2, borderColor: '#3A7BD5', borderStyle: 'dashed', borderRadius: 12, paddingVertical: 32, alignItems: 'center', gap: 8, backgroundColor: '#3A7BD508' },
-  photoHint:   { fontSize: 13, color: '#6B7280', textAlign: 'center', paddingHorizontal: 24 },
-  preview:     { width: '100%', height: 200, borderRadius: 12, backgroundColor: '#E5E7EB' },
+  photoBox:    { borderWidth: 2, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 32, alignItems: 'center', gap: 8 },
+  photoHint:   { fontSize: 13, textAlign: 'center', paddingHorizontal: 24 },
+  preview:     { width: '100%', height: 200, borderRadius: 12 },
 
-  primaryBtn:      { backgroundColor: '#0F2B4C', borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
-  primaryBtnLarge: { backgroundColor: '#0F2B4C', borderRadius: 12, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
+  primaryBtn:      { borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  primaryBtnLarge: { borderRadius: 12, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
   primaryBtnText:  { color: '#fff', fontWeight: '700', fontSize: 15 },
-  secondaryBtn:    { backgroundColor: '#3A7BD518', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center' },
-  secondaryBtnText:{ color: '#3A7BD5', fontWeight: '600', fontSize: 14 },
-  cancelBtn:       { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', paddingVertical: 12, alignItems: 'center' },
-  cancelBtnText:   { color: '#6B7280', fontWeight: '600', fontSize: 14 },
+  secondaryBtn:    { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center' },
+  secondaryBtnText:{ fontWeight: '600', fontSize: 14 },
+  cancelBtn:       { flex: 1, borderRadius: 12, borderWidth: 1, paddingVertical: 12, alignItems: 'center' },
+  cancelBtnText:   { fontWeight: '600', fontSize: 14 },
   row:             { flexDirection: 'row', gap: 12 },
 
   errorText:   { color: '#DC2626', fontSize: 13, textAlign: 'center' },

@@ -30,10 +30,12 @@ import { authApi } from '@/services/api';
 import { validatePassword, isPasswordValid, PASSWORD_HELP_TEXT } from '@seirs/shared';
 import { StatePicker } from '@/components/StatePicker';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
+import { useColors } from '@/context/ThemeContext';
 
 export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const colors = useColors();
 
   const [form, setForm] = useState({
     firstName: '', middleName: '', lastName: '',
@@ -137,7 +139,7 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       // 'padding' on iOS, 'height' on Android — together they ensure the
       // ScrollView resizes above the keyboard so focused inputs aren't
       // hidden. Android also benefits from adjustResize in AndroidManifest
@@ -147,6 +149,7 @@ export default function RegisterScreen() {
     >
       <ScrollView
         contentContainerStyle={[styles.form, {
+          backgroundColor: colors.background,
           paddingTop:    insets.top + 16,
           // Bigger bottom pad so the last field sits well above the soft
           // keyboard even on shorter phones.
@@ -337,7 +340,13 @@ function CheckRow({ value, onToggle, label }: { value: boolean; onToggle: () => 
 }
 
 const styles = StyleSheet.create({
-  form:       { backgroundColor: '#F5F5F0', paddingHorizontal: 24 },
+  form:       { paddingHorizontal: 24 },
+  // Note: heading/text/label colors stay in StyleSheet for the light-mode
+  // path that matches the user's preferred design. In dark mode the
+  // outer KeyboardAvoidingView + ScrollView backgrounds flip via inline
+  // overrides at the use site, so the screen is at minimum readable —
+  // a full per-element theming pass can come later if needed since
+  // register is a one-shot screen seen only during signup.
   backBtn:    { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginLeft: -8 },
   heading:    { fontSize: 24, fontWeight: '800', color: '#0F2B4C', marginBottom: 8 },
   sub:        { fontSize: 14, color: '#6B7280', marginBottom: 24, lineHeight: 20 },

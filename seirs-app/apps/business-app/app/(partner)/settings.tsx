@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { useColors } from '@/context/ThemeContext';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -25,6 +26,7 @@ interface StoreSettings {
 
 export default function PartnerSettingsScreen() {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
   const { user, logout } = useAuth();
 
   const [settings, setSettings] = useState<StoreSettings>({
@@ -74,83 +76,87 @@ export default function PartnerSettingsScreen() {
       Alert.alert('Saved', 'Your store settings have been updated.');
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'Could not save settings.');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   if (loading) {
-    return <View style={styles.centered}><ActivityIndicator color="#3A7BD5" /></View>;
+    return <View style={[styles.centered, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>;
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F0' }}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.heading}>Store Settings</Text>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={[styles.header, {
+        paddingTop: insets.top + 12,
+        backgroundColor: colors.surface,
+        borderBottomColor: colors.border,
+      }]}>
+        <Text style={[styles.heading, { color: colors.text }]}>Store Settings</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
 
-        {/* Store info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Store Information</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Store Information</Text>
 
-          <Text style={styles.label}>Store Name</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>Store Name</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             value={settings.storeName}
             onChangeText={(v) => set('storeName', v)}
             placeholder="My Partner Store"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textThird}
           />
 
-          <Text style={styles.label}>Store Address</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>Store Address</Text>
           <TextInput
-            style={[styles.input, styles.multiline]}
+            style={[styles.input, styles.multiline, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             value={settings.storeAddress}
             onChangeText={(v) => set('storeAddress', v)}
             placeholder="123 Lagos Street, Ikeja"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textThird}
             multiline
             numberOfLines={2}
           />
 
-          <Text style={styles.label}>Phone Number</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>Phone Number</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             value={settings.phone}
             onChangeText={(v) => set('phone', v)}
             placeholder="08012345678"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textThird}
             keyboardType="phone-pad"
           />
 
-          <Text style={styles.label}>Max Capacity (packages)</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>Max Capacity (packages)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             value={String(settings.maxCapacity)}
             onChangeText={(v) => set('maxCapacity', parseInt(v, 10) || 0)}
             keyboardType="number-pad"
             placeholder="50"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textThird}
           />
         </View>
 
-        {/* Operating hours */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Operating Hours</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Operating Hours</Text>
 
-          <Text style={styles.label}>Operating Days</Text>
+          <Text style={[styles.label, { color: colors.textSecond }]}>Operating Days</Text>
           <View style={styles.daysRow}>
             {DAYS.map((day) => {
               const active = settings.operatingDays.includes(day);
               return (
                 <Pressable
                   key={day}
-                  style={[styles.dayBtn, active && styles.dayBtnActive]}
+                  style={[
+                    styles.dayBtn,
+                    { backgroundColor: colors.background, borderColor: colors.border },
+                    active && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ]}
                   onPress={() => toggleDay(day)}
                 >
-                  <Text style={[styles.dayBtnText, active && styles.dayBtnTextActive]}>{day}</Text>
+                  <Text style={[styles.dayBtnText, { color: colors.textSecond }, active && { color: '#fff' }]}>{day}</Text>
                 </Pressable>
               );
             })}
@@ -158,81 +164,76 @@ export default function PartnerSettingsScreen() {
 
           <View style={styles.timeRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Opens At</Text>
+              <Text style={[styles.label, { color: colors.textSecond }]}>Opens At</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                 value={settings.openTime}
                 onChangeText={(v) => set('openTime', v)}
                 placeholder="08:00"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textThird}
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Closes At</Text>
+              <Text style={[styles.label, { color: colors.textSecond }]}>Closes At</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                 value={settings.closeTime}
                 onChangeText={(v) => set('closeTime', v)}
                 placeholder="18:00"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textThird}
               />
             </View>
           </View>
         </View>
 
-        {/* Notifications */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Notifications</Text>
 
           {([
             { key: 'notifyNewPackage', label: 'New Package Arrival',    sub: 'When a package arrives at your store' },
             { key: 'notifyPickup',     label: 'Package Pickup',         sub: 'When a customer collects a package' },
             { key: 'notifyPayout',     label: 'Payout Processed',       sub: 'When weekly earnings are transferred' },
           ] as const).map(({ key, label, sub }) => (
-            <View key={key} style={styles.notifRow}>
+            <View key={key} style={[styles.notifRow, { borderTopColor: colors.border }]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.notifLabel}>{label}</Text>
-                <Text style={styles.notifSub}>{sub}</Text>
+                <Text style={[styles.notifLabel, { color: colors.text }]}>{label}</Text>
+                <Text style={[styles.notifSub, { color: colors.textThird }]}>{sub}</Text>
               </View>
               <Switch
                 value={settings[key]}
                 onValueChange={(v) => set(key, v)}
-                trackColor={{ false: '#E5E7EB', true: '#3A7BD5' }}
+                trackColor={{ false: colors.border, true: colors.accent }}
                 thumbColor="#fff"
               />
             </View>
           ))}
         </View>
 
-        {/* Account section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Account</Text>
           <View style={styles.accountRow}>
-            <Icon name="User" size={16} color="#6B7280" />
+            <Icon name="User" size={16} color={colors.textSecond} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.accountLabel}>{user?.name}</Text>
-              <Text style={styles.accountEmail}>{user?.email}</Text>
+              <Text style={[styles.accountLabel, { color: colors.text }]}>{user?.name}</Text>
+              <Text style={[styles.accountEmail, { color: colors.textSecond }]}>{user?.email}</Text>
             </View>
           </View>
-          <Pressable style={styles.logoutBtn} onPress={logout}>
+          <Pressable style={[styles.logoutBtn, { borderTopColor: colors.border }]} onPress={logout}>
             <Icon name="LogOut" size={16} color="#DC2626" />
             <Text style={styles.logoutText}>Sign Out</Text>
           </Pressable>
         </View>
 
-        {/* Save button */}
         <Pressable
-          style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+          style={[styles.saveBtn, { backgroundColor: colors.primary }, saving && styles.saveBtnDisabled]}
           onPress={handleSave}
           disabled={saving}
         >
           {saving
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.saveBtnText}>Save Changes</Text>
-          }
+            : <Text style={styles.saveBtnText}>Save Changes</Text>}
         </Pressable>
 
-        {/* Spec V8 — partner store closing flow with readiness checks */}
         <ClosingSection storeId={user?.partnerStoreId ?? ''} />
       </ScrollView>
     </View>
@@ -241,56 +242,42 @@ export default function PartnerSettingsScreen() {
 
 const styles = StyleSheet.create({
   centered:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header:        {
-    paddingHorizontal: 20, paddingBottom: 14,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
-  },
-  heading:       { fontSize: 20, fontWeight: '800', color: '#0F2B4C' },
+  header:        { paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1 },
+  heading:       { fontSize: 20, fontWeight: '800' },
 
-  section:       {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: '#F3F4F6', marginBottom: 12,
-  },
-  sectionTitle:  { fontSize: 12, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
+  section:       { borderRadius: 14, padding: 16, borderWidth: 1, marginBottom: 12 },
+  sectionTitle:  { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
 
-  label:         { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
+  label:         { fontSize: 13, fontWeight: '600', marginBottom: 6 },
   input:         {
-    backgroundColor: '#F5F5F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    borderWidth: 1, borderColor: '#E5E7EB', fontSize: 15, color: '#0F2B4C', marginBottom: 14,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1, fontSize: 15, marginBottom: 14,
   },
   multiline:     { height: 68, textAlignVertical: 'top', paddingTop: 12 },
 
   daysRow:       { flexDirection: 'row', gap: 6, marginBottom: 14, flexWrap: 'wrap' },
-  dayBtn:        {
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
-    backgroundColor: '#F5F5F0', borderWidth: 1, borderColor: '#E5E7EB',
-  },
-  dayBtnActive:  { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
-  dayBtnText:    { fontSize: 12, fontWeight: '600', color: '#6B7280' },
-  dayBtnTextActive: { color: '#fff' },
+  dayBtn:        { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
+  dayBtnText:    { fontSize: 12, fontWeight: '600' },
 
   timeRow:       { flexDirection: 'row', gap: 12 },
 
-  notifRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  notifLabel:    { fontSize: 14, fontWeight: '600', color: '#0F2B4C' },
-  notifSub:      { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  notifRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: 1 },
+  notifLabel:    { fontSize: 14, fontWeight: '600' },
+  notifSub:      { fontSize: 12, marginTop: 2 },
 
   accountRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  accountLabel:  { fontSize: 14, fontWeight: '700', color: '#0F2B4C' },
-  accountEmail:  { fontSize: 12, color: '#6B7280', marginTop: 1 },
+  accountLabel:  { fontSize: 14, fontWeight: '700' },
+  accountEmail:  { fontSize: 12, marginTop: 1 },
 
-  logoutBtn:     {
-    flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12,
-    borderTopWidth: 1, borderTopColor: '#F3F4F6',
-  },
+  logoutBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, borderTopWidth: 1 },
   logoutText:    { fontSize: 14, fontWeight: '600', color: '#DC2626' },
 
-  saveBtn:       { backgroundColor: '#0F2B4C', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
+  saveBtn:       { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText:   { color: '#fff', fontWeight: '700', fontSize: 16 },
 
-  // ClosingSection styles
-  closingSection: { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#FCA5A5', marginTop: 24 },
+  // Closing section — red semantic colors retained for destructive action
+  closingSection: { backgroundColor: '#FFFBFB', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#FCA5A5', marginTop: 24 },
   closingTitle:   { fontSize: 14, fontWeight: '800', color: '#991B1B', marginBottom: 4 },
   closingSub:     { fontSize: 12, color: '#7F1D1D', lineHeight: 17, marginBottom: 12 },
   blockerCard:    { flexDirection: 'row', gap: 10, padding: 10, borderRadius: 10, backgroundColor: '#FEF3C7', marginBottom: 8, alignItems: 'flex-start' },
@@ -304,9 +291,6 @@ const styles = StyleSheet.create({
 });
 
 // ── Closing flow ──────────────────────────────────────────────────────────
-// Spec V8 — partner can't shut down their store while there are packages
-// in custody. Loads readiness from backend, shows blockers, and gates
-// the destructive action behind a confirm dialog only when ready.
 function ClosingSection({ storeId }: { storeId: string }) {
   const [readiness, setReadiness] = useState<{
     ready: boolean;

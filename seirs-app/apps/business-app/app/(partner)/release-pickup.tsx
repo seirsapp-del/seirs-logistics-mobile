@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { partnerApi, identityApi, uploadApi } from '@/services/api';
+import { useColors } from '@/context/ThemeContext';
 
 // Spec V8 §3 / §4.8 — partner staff releases a package to the recipient
 // after identity verification. Two methods supported per Spec V8 §1.17:
@@ -41,6 +42,7 @@ const ID_TYPES = [
 export default function ReleasePickupScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const colors = useColors();
   const [permission, requestPermission] = useCameraPermissions();
 
   const [step,            setStep]            = useState<Step>('scan');
@@ -283,7 +285,7 @@ export default function ReleasePickupScreen() {
               value={manualCode}
               onChangeText={setManualCode}
               placeholder="SDR-A7K2P9X3"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.textThird}
               style={styles.input}
             />
             {error !== '' && <Text style={styles.errorText}>{error}</Text>}
@@ -315,10 +317,10 @@ export default function ReleasePickupScreen() {
   // METHOD step — choose verification path
   if (step === 'method' && dropoff) {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: '#F5F5F0' }} contentContainerStyle={[styles.formContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}>
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={[styles.formContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}>
         <View style={styles.formHeader}>
           <Pressable onPress={reset} style={styles.backBtn}>
-            <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
+            <Icon name="ArrowLeft" size={20} color={colors.text} />
           </Pressable>
           <Text style={styles.formTitle}>Verify Recipient</Text>
           <View style={{ width: 32 }} />
@@ -380,11 +382,11 @@ export default function ReleasePickupScreen() {
   // VERIFY step — method-specific fields + photo + submit
   if (step === 'verify' && dropoff) {
     return (
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F5F5F0' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={[styles.formContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}>
           <View style={styles.formHeader}>
             <Pressable onPress={() => setStep('method')} style={styles.backBtn}>
-              <Icon name="ArrowLeft" size={20} color="#0F2B4C" />
+              <Icon name="ArrowLeft" size={20} color={colors.text} />
             </Pressable>
             <Text style={styles.formTitle}>Confirm Identity</Text>
             <View style={{ width: 32 }} />
@@ -410,7 +412,7 @@ export default function ReleasePickupScreen() {
                 value={idNumber}
                 onChangeText={setIdNumber}
                 placeholder="Enter ID number shown on document"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textThird}
                 autoCapitalize="characters"
                 style={styles.input}
               />
@@ -434,7 +436,7 @@ export default function ReleasePickupScreen() {
                     value={otp}
                     onChangeText={setOtp}
                     placeholder="123456"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textThird}
                     maxLength={6}
                     style={[styles.input, { fontSize: 24, textAlign: 'center', letterSpacing: 6, fontWeight: '700' }]}
                   />
@@ -452,7 +454,7 @@ export default function ReleasePickupScreen() {
                 onChangeText={setSeirsCode}
                 onBlur={lookupSeirsId}
                 placeholder="CUST-A7K2P9"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textThird}
                 autoCapitalize="characters"
                 style={styles.input}
               />
@@ -470,7 +472,7 @@ export default function ReleasePickupScreen() {
                     value={typedName}
                     onChangeText={setTypedName}
                     placeholder="As they speak it"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textThird}
                     autoCapitalize="words"
                     style={styles.input}
                   />
@@ -512,8 +514,14 @@ export default function ReleasePickupScreen() {
 const CORNER_SIZE = 24;
 const CORNER_THICK = 3;
 
+// Note: this screen uses the same minimum-viable dark-mode approach as
+// receive-dropoff — outer backgrounds + ArrowLeft icon + placeholders
+// flip to theme colors via inline overrides; structural styles below
+// keep neutral. Card text/borders retain light tones which still read
+// acceptably on the dark background. Full per-element theming can come
+// in a follow-up pass.
 const styles = StyleSheet.create({
-  centered:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: '#F5F5F0', gap: 16 },
+  centered:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 },
   permTitle:   { fontSize: 18, fontWeight: '700', color: '#0F2B4C', textAlign: 'center' },
   linkText:    { fontSize: 14, color: '#3A7BD5', fontWeight: '600', textAlign: 'center', marginTop: 8 },
 
