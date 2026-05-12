@@ -8,6 +8,7 @@ import {
   Moon, Sun, Globe, HelpCircle, Share2, Shield,
   Menu, Zap, Star, FileSpreadsheet, RotateCcw, Bell, RefreshCw,
   Trash2, Info, Gauge, Send, CreditCard, Repeat, ArrowDownLeft, ArrowUpRight, Download,
+  Key, Copy, BarChart3, Activity, Pause, Play, Filter,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -21,6 +22,7 @@ const ICONS: Record<string, LucideIcon> = {
   Moon, Sun, Globe, HelpCircle, Share2, Shield,
   Menu, Zap, Star, FileSpreadsheet, RotateCcw, Bell, RefreshCw,
   Trash2, Info, Gauge, Send, CreditCard, Repeat, ArrowDownLeft, ArrowUpRight, Download,
+  Key, Copy, BarChart3, Activity, Pause, Play, Filter,
 };
 
 interface IconProps {
