@@ -138,6 +138,9 @@ export default function PaymentScreen() {
             <Text style={[styles.noticeText, { color: theme.text }]}>
               You'll be redirected to Flutterwave's secure payment page. Supports card, bank transfer, and USSD. Return to the app after payment to confirm.
             </Text>
+            <Text style={[styles.noticeText, { color: theme.textSecond, marginTop: 6, fontSize: 12 }]}>
+              Your card will be saved securely for one-tap reuse next time. Manage saved cards in Settings → Payment Methods.
+            </Text>
           </View>
         )}
 

@@ -39,6 +39,7 @@ export function Drawer({ visible, onClose }: Props) {
   const items: DrawerItem[] = [
     { icon: 'User',       label: t('drawer.profile',       { defaultValue: 'Profile' }),               onPress: () => navigate('/(driver)/profile') },
     { icon: 'TrendingUp', label: t('drawer.earnings',      { defaultValue: 'Earnings' }),              onPress: () => navigate('/(driver)/earnings') },
+    { icon: 'Wallet',     label: t('drawer.payouts',       { defaultValue: 'Live Earnings & Payout' }), onPress: () => navigate('/(driver)/live-earnings') },
     { icon: 'Star',       label: t('drawer.ratings',       { defaultValue: 'Ratings' }),               onPress: () => navigate('/(driver)/ratings') },
     { icon: 'Calendar',   label: t('drawer.schedule',      { defaultValue: 'Schedule' }),              onPress: () => navigate('/(driver)/schedule') },
     { icon: 'Bell',       label: t('drawer.notifications', { defaultValue: 'Notifications' }),         onPress: () => navigate('/(driver)/notification-settings') },
