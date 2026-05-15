@@ -16,9 +16,11 @@ export class FlutterwaveService {
 
   constructor(cfg: ConfigService) {
     this.secretKey  = cfg.get<string>('FLUTTERWAVE_SECRET_KEY', '');
-    // FLUTTERWAVE_WEBHOOK_HASH must match the "Secret Hash" set in the
-    // Flutterwave dashboard webhook config. Used to verify inbound webhooks.
-    this.secretHash = cfg.get<string>('FLUTTERWAVE_WEBHOOK_HASH', '');
+    // FLW_WEBHOOK_HASH must match the "Secret Hash" set in the Flutterwave
+    // dashboard → Settings → Webhooks. Used to verify inbound webhooks.
+    // (Same env var as the older webhook handler in payments.controller.ts —
+    // keep them aligned so a single Railway variable serves both code paths.)
+    this.secretHash = cfg.get<string>('FLW_WEBHOOK_HASH', '');
   }
 
   private async request<T>(method: string, path: string, body?: object): Promise<T> {
