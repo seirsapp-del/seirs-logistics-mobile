@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
-import { NIGERIAN_STATES } from '@/app/(auth)/nigerian-states';
+import { NIGERIAN_STATES } from '@/constants/nigerian-states';
 
 interface Props {
   label?:    string;

@@ -1,18 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 // Flutterwave is the sole payment processor for Seirs.
 // Covers: card payments, bank transfers, mobile money (GHS/KES/UGX/TZS),
-//         driver earnings payouts, refunds, payment verification.
+//         driver earnings payouts, refunds, payment verification,
+//         tokenized card charges (saved cards), bank account verification.
 
 @Injectable()
 export class FlutterwaveService {
   private readonly logger = new Logger(FlutterwaveService.name);
   private readonly baseUrl = 'https://api.flutterwave.com/v3';
   private readonly secretKey: string;
+  private readonly secretHash: string;
 
   constructor(cfg: ConfigService) {
-    this.secretKey = cfg.get<string>('FLUTTERWAVE_SECRET_KEY', '');
+    this.secretKey  = cfg.get<string>('FLUTTERWAVE_SECRET_KEY', '');
+    // FLUTTERWAVE_WEBHOOK_HASH must match the "Secret Hash" set in the
+    // Flutterwave dashboard webhook config. Used to verify inbound webhooks.
+    this.secretHash = cfg.get<string>('FLUTTERWAVE_WEBHOOK_HASH', '');
   }
 
   private async request<T>(method: string, path: string, body?: object): Promise<T> {
@@ -135,6 +141,124 @@ export class FlutterwaveService {
       name: b.name,
       code: b.code,
     }));
+  }
+
+  // ── Tokenized card charges (saved cards / Amazon-style one-tap) ──────────
+
+  /**
+   * Charge a previously-saved card token. The token is returned by Flutterwave
+   * after the user's first successful card payment (in the verify response
+   * under data.card.token). SEIRS stores only the token + display metadata,
+   * never the card number.
+   *
+   * Flutterwave docs: https://developer.flutterwave.com/reference/tokenized-charge
+   */
+  async chargeWithToken(params: {
+    token:      string;
+    txRef:      string;
+    amount:     number;   // major unit (NGN naira, not kobo)
+    currency:   string;   // 'NGN' | 'GHS' | 'KES' | 'UGX'
+    email:      string;
+    narration?: string;
+  }): Promise<{ success: boolean; transactionId?: number; chargeReference?: string; rawStatus?: string }> {
+    try {
+      const data = await this.request<any>('POST', '/tokenized-charges', {
+        token:      params.token,
+        currency:   params.currency,
+        country:    'NG',
+        amount:     params.amount,
+        email:      params.email,
+        tx_ref:     params.txRef,
+        narration:  params.narration ?? `SEIRS delivery payment ${params.txRef}`,
+      });
+      const tx = data.data ?? {};
+      return {
+        success:         tx.status === 'successful',
+        transactionId:   tx.id,
+        chargeReference: tx.flw_ref,
+        rawStatus:       tx.status,
+      };
+    } catch (e: any) {
+      this.logger.error(`Tokenized charge failed (txRef=${params.txRef}): ${e.message}`);
+      return { success: false };
+    }
+  }
+
+  /**
+   * After a successful first-time card charge, fetch the reusable card
+   * details so we can persist a PaymentMethod row. Flutterwave returns the
+   * token in the verify response under data.card.token.
+   */
+  async fetchCardTokenFromTransaction(transactionId: number): Promise<{
+    token:     string;
+    last4:     string;
+    brand:     string;   // 'VISA' | 'MASTERCARD' | 'VERVE' | etc
+    expMonth:  number;
+    expYear:   number;
+    holder:    string | null;
+  } | null> {
+    try {
+      const data = await this.request<any>('GET', `/transactions/${transactionId}/verify`);
+      const card = data.data?.card;
+      if (!card?.token) return null;
+      return {
+        token:    card.token,
+        last4:    String(card.last_4digits ?? '').slice(-4),
+        brand:    String(card.type ?? 'unknown').toUpperCase(),
+        expMonth: parseInt(card.expiry?.split('/')?.[0] ?? '0', 10),
+        expYear:  2000 + parseInt(card.expiry?.split('/')?.[1] ?? '0', 10),
+        holder:   data.data?.customer?.name ?? null,
+      };
+    } catch (e: any) {
+      this.logger.error(`Fetch card token failed (tx=${transactionId}): ${e.message}`);
+      return null;
+    }
+  }
+
+  // ── Bank account verification (driver onboarding) ────────────────────────
+
+  /**
+   * Resolve a bank account number to its registered name. Used during driver
+   * onboarding to confirm the driver owns the bank account they're entering
+   * for payouts. Prevents typos from sending money to the wrong person.
+   *
+   * Returns null if Flutterwave cannot resolve the account.
+   */
+  async verifyBankAccount(params: {
+    bankCode:      string; // CBN bank code
+    accountNumber: string;
+  }): Promise<{ accountName: string } | null> {
+    try {
+      const data = await this.request<any>('POST', '/accounts/resolve', {
+        account_number: params.accountNumber,
+        account_bank:   params.bankCode,
+      });
+      return { accountName: data.data?.account_name ?? '' };
+    } catch (e: any) {
+      this.logger.warn(`Bank verify failed (${params.bankCode}/${params.accountNumber}): ${e.message}`);
+      return null;
+    }
+  }
+
+  // ── Webhook signature verification ───────────────────────────────────────
+
+  /**
+   * Verify an inbound Flutterwave webhook. Flutterwave sends the secret hash
+   * (set in dashboard → webhook config) directly in the `verif-hash` header
+   * of every webhook. We just compare it to our env var. Use timingSafeEqual
+   * to avoid timing attacks.
+   */
+  verifyWebhookSignature(headerHash: string | undefined): boolean {
+    if (!this.secretHash || !headerHash) return false;
+    if (headerHash.length !== this.secretHash.length) return false;
+    try {
+      return timingSafeEqual(
+        Buffer.from(headerHash, 'utf8'),
+        Buffer.from(this.secretHash, 'utf8'),
+      );
+    } catch {
+      return false;
+    }
   }
 
   // ── Mobile money (MTN, Airtel, M-Pesa) ───────────────────────────────────

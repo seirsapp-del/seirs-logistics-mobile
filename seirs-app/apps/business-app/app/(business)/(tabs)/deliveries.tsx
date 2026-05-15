@@ -9,6 +9,15 @@ import { useColors } from '@/context/ThemeContext';
 
 const STATUSES = ['all', 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled'];
 
+const STATUS_LABEL: Record<string, string> = {
+  all:        'All',
+  pending:    'Pending',
+  assigned:   'Assigned',
+  in_transit: 'In Transit',
+  delivered:  'Delivered',
+  cancelled:  'Cancelled',
+};
+
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
   assigned:   '#3A7BD5',
@@ -139,23 +148,30 @@ export default function DeliveriesScreen() {
         data={STATUSES}
         keyExtractor={(s) => s}
         contentContainerStyle={styles.tabs}
+        style={{ flexGrow: 0 }}
         renderItem={({ item: s }) => {
           const active = status === s;
+          // 'All' has no status color of its own — uses the brand primary.
+          const accent = s === 'all' ? colors.primary : STATUS_COLOR[s];
           return (
             <Pressable
               style={[
                 styles.tab,
                 { backgroundColor: colors.surface, borderColor: colors.border },
-                active && { backgroundColor: colors.primary, borderColor: colors.primary },
+                active && { backgroundColor: accent, borderColor: accent },
               ]}
               onPress={() => setStatus(s)}
             >
+              <View style={[
+                styles.tabDot,
+                { backgroundColor: active ? '#fff' : accent },
+              ]} />
               <Text style={[
                 styles.tabText,
-                { color: colors.textSecond },
+                { color: colors.text },
                 active && { color: '#fff' },
               ]}>
-                {s === 'all' ? 'All' : s.replace('_', ' ')}
+                {STATUS_LABEL[s]}
               </Text>
             </Pressable>
           );
@@ -169,7 +185,11 @@ export default function DeliveriesScreen() {
           data={deliveries}
           keyExtractor={(d) => d.id}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+          contentContainerStyle={
+            deliveries.length === 0
+              ? { flexGrow: 1, padding: 16 }
+              : { padding: 16, paddingBottom: 24 }
+          }
           refreshing={refreshing}
           onRefresh={onRefresh}
           onEndReached={() => hasMore && load(page + 1)}
@@ -191,17 +211,20 @@ const styles = StyleSheet.create({
   heading:      { fontSize: 20, fontWeight: '800' },
   searchWrap:   {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    margin: 16, borderRadius: 12,
+    marginHorizontal: 16, marginTop: 16, marginBottom: 0,
+    borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 11,
     borderWidth: 1,
   },
   searchInput:  { flex: 1, fontSize: 14 },
-  tabs:         { paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
+  tabs:         { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10, gap: 10, alignItems: 'center' },
   tab:          {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24,
     borderWidth: 1,
   },
-  tabText:      { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
+  tabDot:       { width: 8, height: 8, borderRadius: 4 },
+  tabText:      { fontSize: 14, fontWeight: '600' },
   card:         { borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1 },
   cardTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
   trackNum:     { fontSize: 13, fontWeight: '700', fontFamily: 'monospace' },
@@ -212,6 +235,6 @@ const styles = StyleSheet.create({
   meta:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText:     { fontSize: 11, textTransform: 'capitalize' },
   price:        { marginLeft: 'auto', fontSize: 13, fontWeight: '700' },
-  empty:        { alignItems: 'center', paddingVertical: 60, gap: 12 },
+  empty:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyText:    { fontSize: 14 },
 });

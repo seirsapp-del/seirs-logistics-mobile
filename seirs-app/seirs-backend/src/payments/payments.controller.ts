@@ -1,10 +1,11 @@
 import {
-  Body, Controller, Get, Param, Post, Patch,
+  Body, Controller, Get, Param, Post, Patch, Delete,
   UseGuards, RawBodyRequest, Req, Headers,
   HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { createHash, timingSafeEqual } from 'crypto';
 import { PaymentsService } from './payments.service';
+import { FlutterwaveService } from './flutterwave.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -15,9 +16,50 @@ import { PaymentMethod } from './payment.entity';
 @Controller('payments')
 export class PaymentsController {
   constructor(
-    private readonly paymentsService: PaymentsService,
+    private readonly paymentsService:   PaymentsService,
     private readonly deliveriesService: DeliveriesService,
+    private readonly flutterwave:       FlutterwaveService,
   ) {}
+
+  // ── Saved cards (one-tap reuse via Flutterwave tokens) ───────────────────
+
+  @UseGuards(JwtAuthGuard)
+  @Get('saved-cards')
+  listSavedCards(@CurrentUser() user: User) {
+    return this.paymentsService.listSavedCards(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('saved-cards/:id/default')
+  async setDefaultCard(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.paymentsService.setDefaultCard(user.id, id);
+    return { ok: true };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('saved-cards/:id')
+  async deleteSavedCard(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.paymentsService.deleteSavedCard(user.id, id);
+    return { ok: true };
+  }
+
+  // ── Bank account verification (driver onboarding) ────────────────────────
+  // Returns the registered name on the account so the driver app can show
+  // "Is this you? Adekunle Adebayo" before they confirm.
+
+  @UseGuards(JwtAuthGuard)
+  @Post('verify-bank')
+  async verifyBank(@Body() body: { bankCode: string; accountNumber: string }) {
+    if (!body.bankCode || !body.accountNumber) {
+      return { verified: false, message: 'bankCode and accountNumber required' };
+    }
+    const result = await this.flutterwave.verifyBankAccount({
+      bankCode:      body.bankCode,
+      accountNumber: body.accountNumber,
+    });
+    if (!result) return { verified: false, message: 'Could not resolve account' };
+    return { verified: true, accountName: result.accountName };
+  }
 
   // ── Customer endpoints ───────────────────────────────────────────────────
 

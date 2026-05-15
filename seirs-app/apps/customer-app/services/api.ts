@@ -18,6 +18,7 @@ export {
   partnerApi,
   configApi,
   pricingApi,
+  loyaltyApi,
 } from '@seirs/shared/services/api';
 
 export type {
@@ -27,4 +28,7 @@ export type {
   RateCard,
   PriceBreakdown,
   QuoteInput,
+  SavedCard,
+  LoyaltyEntry,
+  LoyaltyTier,
 } from '@seirs/shared/services/api';

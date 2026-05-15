@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
+  BackHandler,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+import { GoogleIcon } from '@/components/GoogleIcon';
 import {
-  ArrowLeft, Mail, ArrowRight, Globe, Apple as AppleIcon, Truck,
+  ArrowLeft, Mail, ArrowRight, Apple as AppleIcon, Truck,
 } from 'lucide-react-native';
 
 export default function LoginScreen() {
@@ -26,6 +28,17 @@ export default function LoginScreen() {
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState('');
 
+  // Hardware back button: mirror the on-screen arrow's behavior so users
+  // can rewatch the onboarding animation regardless of how they go back.
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (router.canGoBack()) router.back();
+      else router.push('/(auth)/onboarding' as any);
+      return true;
+    });
+    return () => sub.remove();
+  }, [router]));
+
   const handleLogin = async () => {
     if (!email.trim() || !password) { setError('Please fill in all fields.'); return; }
     setError('');
@@ -34,7 +47,14 @@ export default function LoginScreen() {
       const res = await authApi.login(email.trim().toLowerCase(), password);
       await login({ ...res.user, token: res.token, rememberMe });
     } catch (e: any) {
-      setError(e.message ?? 'Login failed. Please try again.');
+      const msg: string = e.message ?? '';
+      // Account exists but email not verified — send them to OTP screen with
+      // email pre-filled instead of dead-ending on the error text.
+      if (msg.toLowerCase().includes('verify your email')) {
+        router.push({ pathname: '/(auth)/verify-otp' as any, params: { email: email.trim().toLowerCase() } });
+        return;
+      }
+      setError(msg || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -72,7 +92,7 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Back */}
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.push('/(auth)/onboarding')}>
           <View style={[styles.backCircle, { backgroundColor: theme.surface }, Shadows.xs]}>
             <ArrowLeft size={20} color={theme.text} strokeWidth={2} />
           </View>
@@ -177,8 +197,8 @@ export default function LoginScreen() {
             style={[styles.socialBtn, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
             onPress={handleGoogle}
           >
-            <Globe size={20} color="#4285F4" strokeWidth={1.75} />
-            <Text style={[styles.socialText, { color: theme.text }]}>Google</Text>
+            <GoogleIcon size={20} />
+            <Text style={[styles.socialText, { color: theme.text }]}>Continue with Google</Text>
           </Pressable>
 
           {Platform.OS === 'ios' && (

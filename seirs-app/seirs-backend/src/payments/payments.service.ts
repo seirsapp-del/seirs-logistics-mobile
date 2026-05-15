@@ -1,15 +1,18 @@
 import {
-  Injectable, Logger, BadRequestException,
+  Injectable, Logger, BadRequestException, NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Payment, PaymentMethod, PaymentStatus, EscrowStatus } from './payment.entity';
 import { Wallet } from './wallet.entity';
+import { SavedCard } from './saved-card.entity';
 import { FlutterwaveService } from './flutterwave.service';
 import { Delivery } from '../deliveries/delivery.entity';
 import { User } from '../users/user.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
+import { EarningsService } from '../earnings/earnings.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 const toKobo  = (naira: number) => Math.round(naira * 100);
 const toNaira = (kobo:  number) => kobo / 100;
@@ -22,11 +25,70 @@ export class PaymentsService {
   fraudService?: any;
 
   constructor(
-    @InjectRepository(Payment) private paymentsRepo: Repository<Payment>,
-    @InjectRepository(Wallet)  private walletsRepo:  Repository<Wallet>,
+    @InjectRepository(Payment)   private paymentsRepo:   Repository<Payment>,
+    @InjectRepository(Wallet)    private walletsRepo:    Repository<Wallet>,
+    @InjectRepository(SavedCard) private savedCardsRepo: Repository<SavedCard>,
     private flutterwaveService: FlutterwaveService,
+    private earningsService:    EarningsService,
+    private loyaltyService:     LoyaltyService,
     private dataSource: DataSource,
   ) {}
+
+  // ── SavedCard CRUD (Flutterwave-tokenized cards for one-tap reuse) ───────
+
+  async listSavedCards(userId: string): Promise<Array<Omit<SavedCard, 'flutterwaveToken'>>> {
+    const cards = await this.savedCardsRepo.find({
+      where: { userId },
+      order: { isDefault: 'DESC', createdAt: 'DESC' },
+    });
+    // Strip the Flutterwave token from API responses — opaque + sensitive.
+    return cards.map(({ flutterwaveToken: _t, ...rest }) => rest as any);
+  }
+
+  async setDefaultCard(userId: string, cardId: string): Promise<void> {
+    const card = await this.savedCardsRepo.findOneBy({ id: cardId, userId });
+    if (!card) throw new NotFoundException('Saved card not found');
+    await this.dataSource.transaction(async (m) => {
+      await m.update(SavedCard, { userId }, { isDefault: false });
+      await m.update(SavedCard, { id: cardId }, { isDefault: true });
+    });
+  }
+
+  async deleteSavedCard(userId: string, cardId: string): Promise<void> {
+    const card = await this.savedCardsRepo.findOneBy({ id: cardId, userId });
+    if (!card) throw new NotFoundException('Saved card not found');
+    await this.savedCardsRepo.delete(cardId);
+  }
+
+  /**
+   * Persist a Flutterwave card token after a successful first-time charge.
+   * If this is the user's first card, it becomes the default.
+   */
+  async saveCardToken(userId: string, params: {
+    token:     string;
+    last4:     string;
+    brand:     string;
+    expMonth:  number;
+    expYear:   number;
+    holder?:   string | null;
+  }): Promise<SavedCard> {
+    // Skip if we already saved this exact token (idempotent on retries).
+    const existing = await this.savedCardsRepo.findOneBy({ userId, flutterwaveToken: params.token });
+    if (existing) return existing;
+
+    const otherCount = await this.savedCardsRepo.count({ where: { userId } });
+    const card = this.savedCardsRepo.create({
+      userId,
+      flutterwaveToken: params.token,
+      last4:    params.last4,
+      brand:    params.brand.toLowerCase(),
+      expMonth: params.expMonth,
+      expYear:  params.expYear,
+      cardHolder: params.holder ?? null,
+      isDefault: otherCount === 0,
+    });
+    return this.savedCardsRepo.save(card);
+  }
 
   // ── Wallet ────────────────────────────────────────────────────────────────
 
@@ -154,6 +216,37 @@ export class PaymentsService {
       payment.status       = PaymentStatus.SUCCESS;
       payment.escrowStatus = EscrowStatus.HELD;
       this.logger.log(`Payment confirmed: ${txRef} (₦${result.amount})`);
+
+      // Award loyalty points to the customer for this paid delivery.
+      // Bank-transfer bonus uses the original payment.method.
+      if (payment.customer && payment.delivery) {
+        try {
+          await this.loyaltyService.awardDeliveryPoints({
+            userId:     payment.customer.id,
+            deliveryId: payment.delivery.id,
+            naira:      toNaira(payment.amountKobo),
+            paidViaBankTransfer: payment.method === PaymentMethod.BANK,
+          });
+          await this.loyaltyService.awardMonthlyStreak(payment.customer.id);
+        } catch (e: any) {
+          this.logger.warn(`Loyalty award failed for ${txRef}: ${e.message}`);
+        }
+      }
+
+      // If the customer paid by card AND opted to save it, persist the
+      // Flutterwave token so future charges are one-tap. We rely on the
+      // customer's `saveCard` flag stored in payment.meta (set at initiate).
+      if (payment.method === PaymentMethod.CARD && result.transactionId) {
+        try {
+          const card = await this.flutterwaveService.fetchCardTokenFromTransaction(result.transactionId);
+          if (card && payment.customer) {
+            await this.saveCardToken(payment.customer.id, card);
+            this.logger.log(`Card tokenized for user ${payment.customer.id}: ${card.brand} ****${card.last4}`);
+          }
+        } catch (e: any) {
+          this.logger.warn(`Card tokenize failed for ${txRef}: ${e.message}`);
+        }
+      }
     } else {
       await this.paymentsRepo.update(payment.id, { status: PaymentStatus.FAILED });
     }
@@ -198,6 +291,20 @@ export class PaymentsService {
         releasedAt:   new Date(),
       });
     });
+
+    // Per V8 payments spec: also record a DriverEarning ledger entry for
+    // the new payouts pipeline. This runs alongside the existing wallet
+    // credit until the wallet model is fully retired.
+    try {
+      await this.earningsService.recordForDelivery({
+        driverId:        driverUserId,
+        deliveryId,
+        grossNaira:      toNaira(payment.amountKobo),
+        seirsCutPercent: PLATFORM_COMMISSION,
+      });
+    } catch (e: any) {
+      this.logger.warn(`DriverEarning record failed for ${deliveryId}: ${e.message}`);
+    }
 
     this.logger.log(
       `Escrow released for delivery ${deliveryId}. ` +
@@ -244,6 +351,14 @@ export class PaymentsService {
       status:       PaymentStatus.REFUNDED,
       escrowStatus: EscrowStatus.REFUNDED,
     });
+
+    // Loyalty points awarded on the original payment must be clawed back —
+    // we don't want users farming points by paying then disputing.
+    try {
+      await this.loyaltyService.clawbackForDelivery(deliveryId);
+    } catch (e: any) {
+      this.logger.warn(`Loyalty clawback failed for ${deliveryId}: ${e.message}`);
+    }
 
     this.logger.log(`Refund processed for delivery ${deliveryId}`);
   }

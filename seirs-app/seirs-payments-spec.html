@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1100" />
+  <title>SEIRS Payments, Loyalty, Earnings & Fraud Spec — Nigeria Reviewer Edition</title>
+  <style>
+    :root {
+      --navy:#0F2B4C; --sky:#3A7BD5; --cream:#F5F5F0; --surface:#fff;
+      --border:#E5E7EB; --text:#0F2B4C; --muted:#6B7280; --soft:#9CA3AF;
+      --edited:#FEF3C7; --edited-b:#F59E0B; --green:#16A34A; --red:#DC2626;
+      --warn:#FEF3C7; --warn-b:#F59E0B;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:0; background:var(--cream); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; }
+    header.top { position:sticky; top:0; z-index:10; background:var(--navy); color:#fff;
+      padding:16px 24px; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+    header.top h1 { margin:0 0 4px; font-size:20px; }
+    header.top p { margin:0; font-size:13px; opacity:0.85; }
+    header.top .actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    header.top button, header.top label { background:var(--sky); color:#fff; border:0; padding:9px 14px;
+      border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; }
+    header.top button.secondary { background:#fff; color:var(--navy); }
+    header.top .badge { background:#fff2; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+    nav.toc { background:var(--surface); border-bottom:1px solid var(--border); padding:10px 24px;
+      display:flex; flex-wrap:wrap; gap:6px 14px; position:sticky; top:108px; z-index:9; }
+    nav.toc a { color:var(--sky); text-decoration:none; font-size:12px; font-weight:600; }
+    nav.toc a:hover { text-decoration:underline; }
+    main { max-width:1100px; margin:0 auto; padding:28px 24px 60px; }
+    section { background:var(--surface); border-radius:12px; padding:22px 26px; margin-bottom:22px; border:1px solid var(--border); }
+    section h2 { color:var(--navy); margin:0 0 6px; font-size:22px; border-bottom:2px solid var(--sky); padding-bottom:8px; display:inline-block; }
+    section h3 { color:var(--navy); margin:22px 0 8px; font-size:16px; }
+    section p { margin:6px 0; color:var(--text); }
+    section .lede { color:var(--muted); font-size:14px; margin-bottom:14px; }
+    table { border-collapse:collapse; width:100%; margin:10px 0; font-size:13px; }
+    th, td { border:1px solid var(--border); padding:8px 10px; vertical-align:top; text-align:left; }
+    th { background:#F9FAFB; color:var(--navy); font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.3px; }
+    td[contenteditable="true"] { background:#FFFEF8; cursor:text; outline:none; }
+    td[contenteditable="true"]:focus { background:#FEF9E7; box-shadow:inset 0 0 0 2px var(--sky); }
+    td[data-edited="true"] { background:var(--edited) !important; box-shadow:inset 3px 0 0 var(--edited-b); }
+    .formula { background:#0F2B4C; color:#E5E7EB; padding:14px 18px; border-radius:8px;
+      font-family:Menlo,Consolas,monospace; font-size:13px; line-height:1.7; white-space:pre-wrap; }
+    .callout { background:#FEF3C7; border-left:4px solid #F59E0B; padding:12px 16px; border-radius:6px; margin:14px 0; font-size:13px; }
+    .callout.regulatory { background:#FEE2E2; border-left-color:#DC2626; }
+    .callout.profit { background:#DCFCE7; border-left-color:#16A34A; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+    .pill.req { background:#FEE2E2; color:var(--red); }
+    .pill.opt { background:#E0E7FF; color:#4338CA; }
+    .pill.new { background:#DCFCE7; color:var(--green); }
+    .why { color:var(--muted); font-size:12px; font-style:italic; }
+    textarea.note { width:100%; min-height:80px; border:1px solid var(--border); border-radius:8px; padding:10px;
+      font-family:inherit; font-size:13px; resize:vertical; background:#FFFEF8; }
+    textarea.note:focus { outline:none; box-shadow:0 0 0 2px var(--sky); }
+    .legend { display:flex; gap:14px; flex-wrap:wrap; margin:10px 0; font-size:12px; color:var(--muted); }
+    .legend span { display:inline-flex; align-items:center; gap:6px; }
+    .swatch { width:14px; height:14px; border-radius:3px; border:1px solid var(--border); }
+    .top-link { display:block; text-align:right; margin-top:14px; font-size:12px; color:var(--sky); }
+    .flow-diagram { background:#F9FAFB; border:1px solid var(--border); border-radius:8px; padding:18px;
+      font-family:Menlo,Consolas,monospace; font-size:12px; line-height:1.7; white-space:pre; overflow-x:auto; }
+    @media (max-width:700px) { nav.toc { top:auto; position:static; } body { font-size:14px; } }
+  </style>
+</head>
+<body>
+
+<header class="top">
+  <h1>SEIRS Payments, Loyalty, Driver Earnings &amp; Fraud Spec</h1>
+  <p>Nigeria Reviewer Edition. Edit any yellow cell. Click <b>Download edits</b> to save changes as JSON for the dev team.</p>
+  <div class="actions">
+    <button onclick="downloadEdits()">Download edits (JSON)</button>
+    <label class="secondary">Load JSON
+      <input type="file" id="loadInput" accept=".json" style="display:none" onchange="loadEdits(event)" />
+    </label>
+    <span class="badge">v1.0 — 2026-05-15</span>
+    <span class="badge">Nigeria · NGN · Flutterwave-only</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#principles">① Principles</a>
+  <a href="#money-flow">② Money Flow</a>
+  <a href="#methods">③ Payment Methods</a>
+  <a href="#fees">④ Transaction Fees</a>
+  <a href="#loyalty">⑤ Loyalty Points</a>
+  <a href="#earnings">⑥ Driver Earnings</a>
+  <a href="#refunds">⑦ Refunds &amp; Disputes</a>
+  <a href="#fraud">⑧ Fraud Protection</a>
+  <a href="#legal">⑨ Company Protection</a>
+  <a href="#revenue">⑩ Revenue Streams</a>
+  <a href="#impl">⑪ Implementation Plan</a>
+</nav>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="principles">
+  <h2>① Principles &amp; Regulatory Context</h2>
+  <p class="lede">The non-negotiable rules every other section flows from.</p>
+
+  <div class="callout regulatory">
+    <b>SEIRS does not hold customer money.</b> CBN regulations require any entity that holds customer balances to be a licensed bank, microfinance bank, or PSP (Payment Service Provider) under MMO/PSSP/PSB licence. SEIRS holds none of these, so we use a <b>pass-through model</b>: every Naira flows through Flutterwave directly to either the SEIRS company bank account (revenue) or the driver's bank account (payout). No customer-funded "wallet" balances live on our servers.
+  </div>
+
+  <h3>Hard rules</h3>
+  <table>
+    <tr><th style="width:35%">Rule</th><th>Why</th></tr>
+    <tr><td>No customer money is stored on SEIRS servers.</td><td>Avoids CBN PSP licence requirement. All charges are pass-through via Flutterwave.</td></tr>
+    <tr><td>Customer-side "balance" = <b>Loyalty Points</b>, not money.</td><td>McDonald's-style points have no monetary face value; redeemable only for SEIRS services. Not regulated as e-money.</td></tr>
+    <tr><td>Driver "earnings" = ledger entry, not held cash.</td><td>SEIRS records what the driver is owed; Flutterwave Transfers API is the mechanism that moves real money from SEIRS bank → driver bank on payout day.</td></tr>
+    <tr><td>One payment processor: <b>Flutterwave</b>.</td><td>Single relationship simplifies reconciliation, dispute handling, and contractual liability. Paystack and other processors removed.</td></tr>
+    <tr><td>Refunds always go to the original payment method.</td><td>Anti-money-laundering (AML) — money out must match money in. Flutterwave's refund API enforces this by default.</td></tr>
+    <tr><td>Dispute window before driver payout: <span class="pill req">REQUIRED</span></td><td>Customer must have a 24-72h window to flag issues (damaged goods, no-show) before the driver's earnings move from "pending" to "paid out".</td></tr>
+  </table>
+
+  <h3>What this means in plain language</h3>
+  <ul>
+    <li>When a customer pays for a delivery, the money goes <b>Flutterwave → SEIRS bank</b>. SEIRS now owes the driver their share.</li>
+    <li>SEIRS books the driver's share as a <b>liability ("driver earnings owed")</b>. This sits in our internal ledger, not in a real wallet.</li>
+    <li>On the driver's payout day, SEIRS triggers a Flutterwave <b>Transfer</b> from our bank account to the driver's bank account. The liability clears.</li>
+    <li>Loyalty points are awarded for usage, redeemable only for SEIRS service discounts. They have no cash value, cannot be withdrawn, and are not transferable.</li>
+  </ul>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="money-flow">
+  <h2>② Money Flow Architecture</h2>
+  <p class="lede">How a Naira moves from a customer's pocket to a driver's bank — fully traceable, no SEIRS-held funds in transit.</p>
+
+  <h3>Customer payment flow (per delivery)</h3>
+  <div class="flow-diagram">Customer taps "Pay" in the app
+       │
+       ▼
+  Flutterwave Inline (web view) — customer enters card / chooses USSD / bank transfer / Opay
+       │
+       ▼
+  Flutterwave processes payment + holds in SEIRS merchant account
+       │
+       ▼
+  Webhook → SEIRS backend (POST /webhooks/flutterwave)
+       │
+       ├─→ Mark Delivery as paid
+       ├─→ Credit driver's earnings ledger (status: "pending")
+       ├─→ Award customer loyalty points
+       └─→ Push notification: "Driver assigned, on the way"
+       │
+       ▼
+  T+1 settlement: Flutterwave deposits net amount to SEIRS Nigerian bank account
+       │
+       ▼
+  Reconciliation job matches settlement to deliveries (daily cron)</div>
+
+  <h3>Driver payout flow</h3>
+  <div class="flow-diagram">Delivery completed + dispute window expires (e.g. 24h)
+       │
+       ▼
+  Driver earnings status: "pending" → "available"
+       │
+       ▼
+  Driver requests payout (or auto-payout cadence triggers — daily/weekly)
+       │
+       ▼
+  SEIRS backend calls Flutterwave Transfers API
+  (POST /v3/transfers — from SEIRS bank to driver's verified bank account)
+       │
+       ▼
+  Flutterwave debits SEIRS account, credits driver's account
+       │
+       ▼
+  Webhook → SEIRS backend updates ledger status: "available" → "paid"
+       │
+       ▼
+  Push + email to driver: "₦X paid out to your GTBank account"</div>
+
+  <h3>Reconciliation</h3>
+  <p>A nightly cron job pulls Flutterwave's settlement report and matches each settled transaction to a Delivery row. Discrepancies (missing settlements, fee mismatches) are flagged in the admin dashboard for manual review.</p>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="methods">
+  <h2>③ Payment Methods (Flutterwave-supported)</h2>
+  <p class="lede">Order matters — top methods get prominence in the app. Toggle a row's "Show in app" cell to disable it.</p>
+
+  <table>
+    <thead>
+      <tr><th>Method</th><th>How it works for the customer</th><th>Best for</th><th contenteditable="true">Show in app (yes/no)</th><th contenteditable="true">Display priority (1-10)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><b>Card (Visa / Mastercard / Verve)</b></td><td>Customer enters card details once. Card is tokenized by Flutterwave for one-tap reuse. SEIRS never sees the raw card.</td><td>Repeat customers, fastest checkout</td><td contenteditable="true">yes</td><td contenteditable="true">1</td></tr>
+      <tr><td><b>Bank Transfer (dynamic virtual account)</b></td><td>Customer is given a one-time NUBAN account number per order. They transfer from their bank app. Flutterwave confirms within seconds.</td><td>Customers without cards (very common in Nigeria), high-trust transactions</td><td contenteditable="true">yes</td><td contenteditable="true">2</td></tr>
+      <tr><td><b>USSD</b></td><td>Customer dials a code on their feature phone (e.g. <code>*737*...#</code>) and confirms with PIN.</td><td>Feature phones, customers without smartphones banking apps</td><td contenteditable="true">yes</td><td contenteditable="true">3</td></tr>
+      <tr><td><b>Opay / PalmPay (mobile money)</b></td><td>Customer chooses mobile money provider, redirected to that app to confirm.</td><td>Younger users, gig-economy customers heavily on Opay</td><td contenteditable="true">yes</td><td contenteditable="true">4</td></tr>
+      <tr><td><b>Bank Account direct debit</b></td><td>Customer authorizes their bank account once via Flutterwave's mandate flow. Future debits don't require auth.</td><td>Recurring business customers (subscription deliveries)</td><td contenteditable="true">yes</td><td contenteditable="true">5</td></tr>
+      <tr><td><b>Pay with Barter</b></td><td>Customers with Flutterwave's own Barter wallet pay from there.</td><td>Niche — small audience</td><td contenteditable="true">no</td><td contenteditable="true">9</td></tr>
+      <tr><td><b>Pay on Delivery (cash)</b></td><td>Driver collects cash at delivery, settles with SEIRS via app afterward. Adds float requirement on the driver.</td><td>Customers who insist on cash. <span class="pill req">High fraud risk</span> — needs strong driver KYC.</td><td contenteditable="true">yes</td><td contenteditable="true">6</td></tr>
+      <tr><td><b>Apple Pay / Google Pay</b></td><td>One-tap via device biometric. Goes through Flutterwave under the hood.</td><td>iOS users, premium experience</td><td contenteditable="true">yes</td><td contenteditable="true">3</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <b>Cards are tokenized by Flutterwave, not stored by SEIRS.</b> When a customer "saves" a card, Flutterwave returns a re-usable token (a string like <code>flw_tok_abc123</code>). SEIRS stores only the token + the last 4 digits + expiry month/year for display. This keeps SEIRS out of PCI-DSS scope entirely.
+  </div>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="fees">
+  <h2>④ Transaction Fees (Flutterwave's cut)</h2>
+  <p class="lede">These are Flutterwave's fees — they come off the top before settlement to SEIRS. Verify against the current Flutterwave pricing page before launch and update yellow cells.</p>
+
+  <table>
+    <thead><tr><th>Method</th><th contenteditable="true">Rate</th><th contenteditable="true">Cap (NGN)</th><th>Who pays</th></tr></thead>
+    <tbody>
+      <tr><td>Local card (Visa, Mastercard, Verve — Nigerian-issued)</td><td contenteditable="true">1.4%</td><td contenteditable="true">2,000</td><td>SEIRS</td></tr>
+      <tr><td>International card</td><td contenteditable="true">3.8%</td><td contenteditable="true">no cap</td><td>SEIRS (or pass through to customer if international)</td></tr>
+      <tr><td>Bank Transfer (virtual account)</td><td contenteditable="true">1.0%</td><td contenteditable="true">300</td><td>SEIRS</td></tr>
+      <tr><td>USSD</td><td contenteditable="true">1.4%</td><td contenteditable="true">2,000</td><td>SEIRS</td></tr>
+      <tr><td>Bank account direct debit</td><td contenteditable="true">1.4%</td><td contenteditable="true">2,000</td><td>SEIRS</td></tr>
+      <tr><td>Mobile money (Opay/PalmPay)</td><td contenteditable="true">1.4%</td><td contenteditable="true">2,000</td><td>SEIRS</td></tr>
+      <tr><td>Driver payout (Flutterwave Transfers API)</td><td contenteditable="true">₦10-50 fixed</td><td contenteditable="true">n/a</td><td>SEIRS</td></tr>
+      <tr><td>Settlement to SEIRS bank</td><td contenteditable="true">free</td><td contenteditable="true">n/a</td><td>—</td></tr>
+      <tr><td>Refunds</td><td contenteditable="true">free</td><td contenteditable="true">n/a</td><td>—</td></tr>
+      <tr><td>Failed transactions / chargebacks</td><td contenteditable="true">~₦4,000 per chargeback</td><td contenteditable="true">n/a</td><td>SEIRS</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Net to SEIRS, worked example (₦1,500 delivery, local card)</h3>
+  <div class="formula">Customer pays              ₦ 1,500
+Flutterwave fee (1.4%)    ─₦    21
+─────────────────────────────────
+Net to SEIRS bank          ₦ 1,479
+
+Driver share (let's say 75%)   ₦ 1,109
+SEIRS gross profit              ₦   370
+  ─ Flutterwave transfer fee  ─₦    20
+  ─ ops/support overhead       ─₦    50  (estimate)
+─────────────────────────────────────
+SEIRS net per delivery          ₦   300</div>
+
+  <textarea class="note" placeholder="Reviewer notes — flag any fees that look outdated or wrong. Add commentary on negotiation room with Flutterwave for high-volume tiers."></textarea>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="loyalty">
+  <h2>⑤ Loyalty Points System (McDonald's-style)</h2>
+  <p class="lede">Customer-facing rewards that drive repeat usage WITHOUT putting SEIRS into e-money territory.</p>
+
+  <div class="callout regulatory">
+    <b>Why points, not wallet balance:</b> Points have no NGN face value. They are a contractual reward earned by usage, redeemable only for SEIRS service discounts. They cannot be withdrawn, transferred, or sold. CBN does not regulate this — same legal status as airline miles or hotel points.
+  </div>
+
+  <h3>Earn rates (editable)</h3>
+  <table>
+    <thead><tr><th>Action</th><th contenteditable="true">Points earned</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Complete a delivery</td><td contenteditable="true">10 pts per ₦1,000 paid</td><td>Round down. Min 1 pt per order.</td></tr>
+      <tr><td>Pay with bank transfer (vs card)</td><td contenteditable="true">+5 pts bonus</td><td>Encourages cheaper-to-process method.</td></tr>
+      <tr><td>Refer a friend (friend completes 1st order)</td><td contenteditable="true">+200 pts</td><td>Anti-abuse: cap 10 referrals/month per account.</td></tr>
+      <tr><td>Rate a driver after delivery</td><td contenteditable="true">+5 pts</td><td>Drives review volume.</td></tr>
+      <tr><td>5th delivery in a calendar month</td><td contenteditable="true">+50 pts</td><td>Streak bonus, drives frequency.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Redemption (editable)</h3>
+  <table>
+    <thead><tr><th>Reward</th><th contenteditable="true">Points cost</th><th>Approx ₦ value</th></tr></thead>
+    <tbody>
+      <tr><td>₦500 off your next delivery</td><td contenteditable="true">500 pts</td><td>~₦1 per pt</td></tr>
+      <tr><td>Free standard delivery (≤5 km)</td><td contenteditable="true">1,000 pts</td><td>~₦1,000</td></tr>
+      <tr><td>Priority dispatch (front of driver queue)</td><td contenteditable="true">300 pts</td><td>—</td></tr>
+      <tr><td>Insurance upgrade (1 delivery, ₦50,000 cover)</td><td contenteditable="true">200 pts</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Tier structure</h3>
+  <table>
+    <thead><tr><th>Tier</th><th contenteditable="true">Points / 12 months</th><th>Perks</th></tr></thead>
+    <tbody>
+      <tr><td>Bronze</td><td contenteditable="true">0 – 999</td><td>Earn at base rate</td></tr>
+      <tr><td>Silver</td><td contenteditable="true">1,000 – 4,999</td><td>1.25× earn rate, free monthly delivery (≤3 km)</td></tr>
+      <tr><td>Gold</td><td contenteditable="true">5,000 – 14,999</td><td>1.5× earn rate, dedicated support line, no surge pricing</td></tr>
+      <tr><td>Platinum</td><td contenteditable="true">15,000+</td><td>2× earn rate, free unlimited deliveries (≤5 km), priority dispatch always</td></tr>
+    </tbody>
+  </table>
+
+  <textarea class="note" placeholder="Reviewer notes — does this tier structure make commercial sense? Any concerns about CBN classification of points?"></textarea>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="earnings">
+  <h2>⑥ Driver Earnings &amp; Payout</h2>
+  <p class="lede">Uber-Eats-style: drivers see earnings accumulate in real time but receive payouts on a defined cadence with a dispute window.</p>
+
+  <h3>States of earnings</h3>
+  <table>
+    <tr><th>State</th><th>Meaning</th><th>Driver can withdraw?</th></tr>
+    <tr><td><b>Pending</b></td><td>Delivery completed but customer dispute window still open.</td><td>No</td></tr>
+    <tr><td><b>Available</b></td><td>Dispute window expired (24-72h after completion). Funds owed are firmed up.</td><td>Yes</td></tr>
+    <tr><td><b>Paid out</b></td><td>Flutterwave Transfer initiated to driver's bank account.</td><td>—</td></tr>
+    <tr><td><b>Held</b></td><td>SEIRS-flagged for fraud review or pending dispute resolution.</td><td>No</td></tr>
+  </table>
+
+  <h3>Configurable parameters</h3>
+  <table>
+    <thead><tr><th>Parameter</th><th contenteditable="true">Default value</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Dispute window (delivery → available)</td><td contenteditable="true">24 hours</td><td>Industry standard. Longer = more customer protection but slower driver cash flow.</td></tr>
+      <tr><td>Driver share of customer payment</td><td contenteditable="true">75%</td><td>SEIRS keeps 25%. Adjustable per scenario type (e.g. partner-store deliveries pay drivers less since less work).</td></tr>
+      <tr><td>Auto-payout cadence</td><td contenteditable="true">Daily at 2 PM</td><td>Daily for active drivers, weekly for low-volume. Manual on-demand also available.</td></tr>
+      <tr><td>Minimum payout amount</td><td contenteditable="true">₦1,000</td><td>Below this, accumulates to next payout. Reduces transfer-fee waste.</td></tr>
+      <tr><td>Maximum daily payout per driver</td><td contenteditable="true">₦200,000</td><td>Anti-fraud cap. New drivers (&lt;30 days): ₦50,000.</td></tr>
+      <tr><td>Holdback for new drivers (first 30 days)</td><td contenteditable="true">10% of earnings</td><td>Released after 30-day no-incident period.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Payout method</h3>
+  <p>Flutterwave Transfers API. Driver provides bank account during onboarding (KYC step). SEIRS verifies via Flutterwave's bank-name-resolution endpoint before allowing payout. Each Transfer creates a webhook callback so we can confirm success or failure.</p>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="refunds">
+  <h2>⑦ Refunds &amp; Disputes</h2>
+  <p class="lede">When something goes wrong: damaged goods, wrong delivery, no-show, customer cancellation.</p>
+
+  <h3>Refund rules (editable)</h3>
+  <table>
+    <thead><tr><th>Scenario</th><th contenteditable="true">Refund policy</th><th>Driver impact</th></tr></thead>
+    <tbody>
+      <tr><td>Customer cancels before driver assigned</td><td contenteditable="true">100% refund</td><td>None — no driver yet.</td></tr>
+      <tr><td>Customer cancels after driver en-route to pickup</td><td contenteditable="true">75% refund + ₦500 driver compensation from SEIRS share</td><td>Driver paid for time/fuel.</td></tr>
+      <tr><td>Customer cancels after pickup (mid-delivery)</td><td contenteditable="true">No refund</td><td>Driver paid in full.</td></tr>
+      <tr><td>Driver no-show at pickup (≥30 min late)</td><td contenteditable="true">100% refund + 200 loyalty pts</td><td>Driver loses earnings + reliability score.</td></tr>
+      <tr><td>Damaged goods (verified via photo)</td><td contenteditable="true">100% refund + insurance claim</td><td>Driver earnings on hold pending review.</td></tr>
+      <tr><td>Wrong delivery (driver dropped at wrong address)</td><td contenteditable="true">100% refund + free re-delivery</td><td>Driver earnings withheld until correction.</td></tr>
+      <tr><td>Customer dispute filed within window</td><td contenteditable="true">Earnings held; SEIRS support reviews within 24h</td><td>Status: held</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Refund mechanism</h3>
+  <p>Refunds are issued via Flutterwave's <code>POST /v3/transactions/:id/refund</code> endpoint. Money returns to the original payment method (card refund, bank account, etc.) within Flutterwave's stated timelines (1-7 business days depending on method). The matching loyalty points are also clawed back.</p>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="fraud">
+  <h2>⑧ Fraud Protection (multi-layer)</h2>
+  <p class="lede">Fraud comes from three sides: customers, drivers, and customer-driver collusion. Defense in depth.</p>
+
+  <h3>Customer-side fraud</h3>
+  <table>
+    <tr><th>Risk</th><th>Defense</th></tr>
+    <tr><td>Stolen card used for delivery → chargeback later</td><td>Flutterwave's risk score on every transaction. Trigger 3DS for high-risk. Block accounts with ≥2 chargebacks.</td></tr>
+    <tr><td>Fake delivery for refund (claim "didn't arrive")</td><td>Driver photo proof at delivery. GPS trail. Recipient signature/OTP at handoff (already in V8 spec).</td></tr>
+    <tr><td>Coupon abuse (one user, many accounts)</td><td>Device fingerprinting. Phone number verification. Block referral if same device/IP/payment method.</td></tr>
+    <tr><td>Loyalty point farming</td><td>Anti-abuse: max 10 referrals/month, can't refer same person twice, points only awarded after referee's 1st paid order.</td></tr>
+  </table>
+
+  <h3>Driver-side fraud</h3>
+  <table>
+    <tr><th>Risk</th><th>Defense</th></tr>
+    <tr><td>Driver steals package</td><td>Pickup photo + recipient OTP at delivery (V8 §1.17). Hold of earnings until customer confirms receipt. Mandatory KYC + government ID + bank account verification.</td></tr>
+    <tr><td>Cash-on-delivery driver pockets cash</td><td>Real-time settlement: driver must confirm cash collection in app, owes SEIRS that amount, deducted from next payout. Negative balance = account suspension + collections.</td></tr>
+    <tr><td>Fake delivery completions ("ghost rides")</td><td>GPS verification: driver must be within 100m of pickup AND dropoff to mark complete. Customer must confirm delivery (push tap or OTP).</td></tr>
+    <tr><td>Driver creates fake customer account to game incentives</td><td>Same device/payment cross-reference. Block earnings until manual review.</td></tr>
+  </table>
+
+  <h3>Collusion fraud (driver + fake "customer")</h3>
+  <table>
+    <tr><th>Risk</th><th>Defense</th></tr>
+    <tr><td>Driver and accomplice "complete" fake deliveries to extract loyalty pts + commissions</td><td>New-customer payment must use real card or bank with name match. Behavioral analysis: same device, same IP, same payment family flagged for review.</td></tr>
+    <tr><td>Surge / demand manipulation (drivers coordinate to refuse jobs and trigger surge)</td><td>Surge cap at 1.5× base. Acceptance rate scoring — drivers below 80% lose priority.</td></tr>
+  </table>
+
+  <h3>Velocity limits (editable)</h3>
+  <table>
+    <thead><tr><th>Action</th><th contenteditable="true">Limit (new accounts &lt;30 days)</th><th contenteditable="true">Limit (established)</th></tr></thead>
+    <tbody>
+      <tr><td>Deliveries per day per customer</td><td contenteditable="true">5</td><td contenteditable="true">20</td></tr>
+      <tr><td>Total ₦ paid per day per customer</td><td contenteditable="true">50,000</td><td contenteditable="true">500,000</td></tr>
+      <tr><td>Driver payout per day</td><td contenteditable="true">50,000</td><td contenteditable="true">200,000</td></tr>
+      <tr><td>Failed payment attempts before lockout</td><td contenteditable="true">3 in 1h</td><td contenteditable="true">5 in 1h</td></tr>
+    </tbody>
+  </table>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="legal">
+  <h2>⑨ Company Protection (legal &amp; operational)</h2>
+  <p class="lede">Things that need to be in your Terms of Service, your operational playbook, and your insurance contracts.</p>
+
+  <h3>Terms of Service must-haves</h3>
+  <ul>
+    <li><b>Pass-through model disclosure:</b> SEIRS is a logistics matchmaker, not a financial institution. We do not hold customer funds. All payments are processed by Flutterwave under Flutterwave's terms.</li>
+    <li><b>Liability cap:</b> SEIRS' maximum liability for any single delivery is the lower of (a) the value declared by the customer at booking and (b) the insurance cap (e.g. ₦100,000 standard, optional upgrade).</li>
+    <li><b>Arbitration clause:</b> Disputes resolved via arbitration in Lagos under Nigerian Arbitration Act, not court. Reduces legal cost exposure.</li>
+    <li><b>Driver as independent contractor:</b> Drivers are not employees. They use the SEIRS platform but are not on payroll, not entitled to benefits. Critical for cost structure and labour-law exposure.</li>
+    <li><b>Right to refuse service:</b> SEIRS may refuse any delivery (illegal goods, restricted items, fraud risk).</li>
+    <li><b>Loyalty points:</b> Have no cash value, may be modified or revoked at SEIRS' discretion, expire after 24 months of inactivity.</li>
+    <li><b>Data &amp; KYC:</b> Customer/driver consent to identity verification, background checks (drivers), photo capture at delivery.</li>
+  </ul>
+
+  <h3>Insurance products to procure</h3>
+  <table>
+    <thead><tr><th>Coverage</th><th>Why</th><th contenteditable="true">Estimated annual cost (NGN)</th></tr></thead>
+    <tbody>
+      <tr><td>In-transit goods insurance (per delivery, ₦100k cap)</td><td>Covers customer for damage/loss. Build into base price.</td><td contenteditable="true">TBD — get quote from AIICO/Leadway</td></tr>
+      <tr><td>Driver accident cover</td><td>Worker safety + recruitment differentiator.</td><td contenteditable="true">TBD</td></tr>
+      <tr><td>Cyber liability / data breach</td><td>Mandatory under NDPR. Covers fines + remediation.</td><td contenteditable="true">TBD</td></tr>
+      <tr><td>Public liability (general business)</td><td>Standard for any consumer-facing operation.</td><td contenteditable="true">TBD</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Regulatory checkpoints</h3>
+  <ul>
+    <li><b>NDPR / Data Protection:</b> Register with NITDA. Designate a Data Protection Officer. Annual audit.</li>
+    <li><b>FRCN advertising standards:</b> Any pricing or guarantees in marketing must be defensible.</li>
+    <li><b>State-by-state operator licences:</b> Each state may require a transport/courier licence (Lagos LASTMA, etc.). Confirm with local advisor.</li>
+    <li><b>Consumer Protection Council (FCCPC):</b> Refund policies, complaint handling — must publish in T&C and respond within statutory window.</li>
+  </ul>
+
+  <textarea class="note" placeholder="Legal advisor notes — flag missing protections, state-specific requirements, or T&C clauses that need strengthening."></textarea>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="revenue">
+  <h2>⑩ Revenue Streams &amp; Profit Maximization</h2>
+  <p class="lede">Multiple revenue lines reduce dependence on any single one. Build all of them but prioritize 1–3.</p>
+
+  <div class="callout profit">
+    <b>Margin-stack philosophy:</b> Per-delivery commission alone is thin (~20-25% net of Flutterwave fees + driver share). Layer recurring + ad-hoc revenue on top to multiply contribution per active user. Industry benchmark: top logistics apps generate <b>1.6×–2.2× per-delivery revenue</b> from non-commission streams.
+  </div>
+
+  <h3>Primary revenue streams (build in v1)</h3>
+  <table>
+    <thead><tr><th>Stream</th><th>How it works</th><th contenteditable="true">Estimated take rate / fee</th><th>Effort to build</th></tr></thead>
+    <tbody>
+      <tr><td><b>1. Per-delivery commission</b></td><td>Driver gets 75%, SEIRS keeps 25% of customer payment.</td><td contenteditable="true">25%</td><td>Already in spec</td></tr>
+      <tr><td><b>2. Surge pricing</b></td><td>Higher prices in high-demand zones/times. SEIRS keeps the entire surge premium (driver rate stays flat).</td><td contenteditable="true">1.2× – 1.5× base, capped</td><td>Low</td></tr>
+      <tr><td><b>3. Insurance upsell</b></td><td>Customer can buy upgraded coverage (₦500k cap) at booking for a fee.</td><td contenteditable="true">₦100 per ₦100k coverage</td><td>Medium (insurance partner needed)</td></tr>
+      <tr><td><b>4. Express / priority delivery</b></td><td>Customer pays premium for guaranteed &lt;30 min dispatch.</td><td contenteditable="true">+30% on base</td><td>Low</td></tr>
+      <tr><td><b>5. Failed-delivery fee</b></td><td>If customer is unreachable / wrong address / refuses receipt: ₦500 fee retained from refund.</td><td contenteditable="true">₦500</td><td>Low</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Recurring revenue (build in v1.1)</h3>
+  <table>
+    <thead><tr><th>Stream</th><th>How it works</th><th contenteditable="true">Pricing</th></tr></thead>
+    <tbody>
+      <tr><td><b>SEIRS Plus (consumer)</b></td><td>Monthly subscription: free deliveries ≤5 km, no surge ever, priority support, 2× loyalty points.</td><td contenteditable="true">₦2,500/mo</td></tr>
+      <tr><td><b>SEIRS Business</b></td><td>Monthly plan for SMBs: bulk delivery discounts, dedicated account manager, API access, recurring scheduling.</td><td contenteditable="true">₦15,000/mo (small) – ₦100,000/mo (large)</td></tr>
+      <tr><td><b>Driver Pro</b></td><td>Driver pays subscription for: priority job assignment, instant payout (no daily wait), exclusive corporate routes.</td><td contenteditable="true">₦3,000/mo</td></tr>
+      <tr><td><b>Partner Store fees</b></td><td>Restaurants/shops on SEIRS partner network pay setup + monthly + per-order fee.</td><td contenteditable="true">₦20,000 setup + ₦5,000/mo + 5% per order</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Ad-hoc revenue (build in v1.2)</h3>
+  <table>
+    <thead><tr><th>Stream</th><th>How it works</th></tr></thead>
+    <tbody>
+      <tr><td><b>In-app advertising</b></td><td>Sponsored placements for partner restaurants/shops in customer feed. CPC or CPM model.</td></tr>
+      <tr><td><b>Anonymized data products</b></td><td>Logistics analytics for retailers (aggregate delivery patterns, popular routes, demand by zone). B2B subscription.</td></tr>
+      <tr><td><b>White-label API</b></td><td>Other businesses use SEIRS' delivery network via API. ₦/delivery + monthly platform fee.</td></tr>
+      <tr><td><b>Currency arbitrage on int'l cards</b></td><td>Pass-through int'l card fees with small markup.</td></tr>
+      <tr><td><b>Referral revenue (financial products)</b></td><td>Affiliate fees for cross-sell: driver loans, insurance products, mobile data plans.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Cost levers to watch</h3>
+  <ul>
+    <li><b>Flutterwave fee negotiation:</b> Default rates assume low volume. Once volume hits ₦50M/month+, negotiate down to ~0.9% on local cards.</li>
+    <li><b>Driver acquisition cost (CAC):</b> Cap at ₦10,000 per active driver. Refer-a-driver bonus is cheaper than ads.</li>
+    <li><b>Customer support:</b> Use AI chatbot for L1 (FAQ, tracking), human for L2 (disputes). Saves ~70% on support cost.</li>
+    <li><b>Reverse logistics:</b> Returns are expensive — discourage unless paid for, or batch return-pickups.</li>
+  </ul>
+
+  <textarea class="note" placeholder="Reviewer notes — which streams are realistic for Nigerian market? Local advisor input on subscription pricing and competitor benchmarks."></textarea>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="impl">
+  <h2>⑪ Implementation Plan (engineering)</h2>
+  <p class="lede">Phased build. Phase 1 unblocks v1 launch; phases 2-3 are post-launch.</p>
+
+  <h3>Phase 1 — v1 launch (must-have, ~2-3 weeks)</h3>
+  <ol>
+    <li>Backend: <code>PaymentMethod</code> entity (token, last4, expiry, isDefault) — stores Flutterwave card tokens only.</li>
+    <li>Backend: <code>FlutterwaveService</code> abstraction (charge, tokenize, refund, transfer).</li>
+    <li>Backend: <code>POST /webhooks/flutterwave</code> handler — verify HMAC, mark deliveries paid, credit driver ledger.</li>
+    <li>Backend: <code>DriverEarning</code> ledger entity (deliveryId, amount, status: pending|available|paid|held).</li>
+    <li>Backend: cron job — flip pending → available after dispute window.</li>
+    <li>Backend: cron job — daily payout via Flutterwave Transfers API.</li>
+    <li>Backend: <code>LoyaltyPoint</code> ledger entity — earn on payment webhook, redeem at booking.</li>
+    <li>Customer app: replace mock cards with real <code>GET /payment-methods</code>, add card via Flutterwave Inline.</li>
+    <li>Customer app: payment method picker at checkout (cards + bank transfer + USSD).</li>
+    <li>Business app: copy customer-app's payment-methods UI into business; same flow but tied to business account.</li>
+    <li>Driver app: earnings dashboard (today, this week, all-time) + payout history + bank-account verification.</li>
+    <li>Admin dashboard: reconciliation report, manual refund tool, driver payout queue, fraud-flagged accounts.</li>
+    <li>Remove all <b>Paystack</b> references — Flutterwave is the only processor.</li>
+    <li>Hide mock-cards UI in customer-app immediately (until real backend wires up).</li>
+  </ol>
+
+  <h3>Phase 2 — v1.1 (post-launch, ~3-4 weeks)</h3>
+  <ol>
+    <li>SEIRS Plus subscription (consumer) — Flutterwave recurring billing.</li>
+    <li>Surge pricing engine — based on demand/supply by zone.</li>
+    <li>Loyalty tier upgrades + automated tier emails.</li>
+    <li>Insurance integration (partner with AIICO/Leadway).</li>
+    <li>Pay-on-delivery flow with driver settlement.</li>
+    <li>Velocity limits + automated fraud-flagging engine.</li>
+  </ol>
+
+  <h3>Phase 3 — v1.2 (~6+ weeks out)</h3>
+  <ol>
+    <li>Driver Pro subscription.</li>
+    <li>White-label API.</li>
+    <li>In-app ad placements.</li>
+    <li>Data analytics product for B2B.</li>
+  </ol>
+
+  <h3>Pre-launch checklist (legal/ops)</h3>
+  <ul>
+    <li>Get a payments lawyer to review T&amp;C — confirm CBN positioning is sound.</li>
+    <li>Procure insurance products (in-transit, driver accident, cyber liability).</li>
+    <li>Register with NITDA (NDPR compliance) — assign DPO.</li>
+    <li>Negotiate Flutterwave volume rate down before scaling.</li>
+    <li>Confirm state operator licences for Lagos + initial expansion cities.</li>
+    <li>Publish dispute resolution playbook + complaint email/phone.</li>
+  </ul>
+
+  <a class="top-link" href="#">↑ back to top</a>
+</section>
+
+</main>
+
+<script>
+  // ─── Edit tracking ────────────────────────────────────────────────────
+  document.querySelectorAll('td[contenteditable="true"]').forEach((cell, i) => {
+    const original = cell.textContent.trim();
+    cell.dataset.original = original;
+    cell.dataset.cellId = 'cell_' + i;
+    cell.addEventListener('input', () => {
+      if (cell.textContent.trim() !== original) cell.dataset.edited = 'true';
+      else delete cell.dataset.edited;
+    });
+  });
+  document.querySelectorAll('textarea.note').forEach((ta, i) => {
+    ta.dataset.noteId = 'note_' + i;
+  });
+
+  // ─── Download ─────────────────────────────────────────────────────────
+  function downloadEdits() {
+    const edits = {};
+    document.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+      if (cell.dataset.edited === 'true') {
+        edits[cell.dataset.cellId] = {
+          original: cell.dataset.original,
+          edited: cell.textContent.trim(),
+        };
+      }
+    });
+    document.querySelectorAll('textarea.note').forEach(ta => {
+      if (ta.value.trim()) edits[ta.dataset.noteId] = ta.value.trim();
+    });
+    const payload = {
+      doc: 'SEIRS Payments Spec v1.0',
+      generated: new Date().toISOString(),
+      edits,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'seirs-payments-spec-edits-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ─── Load previous edits ──────────────────────────────────────────────
+  function loadEdits(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        const edits = data.edits || {};
+        Object.entries(edits).forEach(([id, val]) => {
+          const cell = document.querySelector(`[data-cell-id="${id}"]`);
+          if (cell && typeof val === 'object') {
+            cell.textContent = val.edited;
+            cell.dataset.edited = 'true';
+          }
+          const ta = document.querySelector(`[data-note-id="${id}"]`);
+          if (ta && typeof val === 'string') ta.value = val;
+        });
+        alert('Loaded ' + Object.keys(edits).length + ' edits.');
+      } catch (err) {
+        alert('Failed to load JSON: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+</script>
+
+</body>
+</html>

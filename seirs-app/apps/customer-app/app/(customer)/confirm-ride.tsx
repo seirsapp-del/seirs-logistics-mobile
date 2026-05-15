@@ -10,7 +10,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
-import { MOCK_VEHICLES, MOCK_DRIVERS, SAVED_CARDS, FARE_BREAKDOWN } from '@/constants/mockData';
+import { MOCK_VEHICLES, MOCK_DRIVERS, FARE_BREAKDOWN } from '@/constants/mockData';
 
 const PAYMENT_OPTS = [
   { id: 'wallet',  label: 'Wallet',         icon: 'wallet-outline',     sub: '₦47,500 available' },

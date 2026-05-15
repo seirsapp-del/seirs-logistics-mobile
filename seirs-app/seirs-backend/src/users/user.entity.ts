@@ -143,6 +143,22 @@ export class User {
   @Column({ nullable: true })
   lockedUntil: Date;
 
+  // ── Driver payout bank account ─────────────────────────────────────────
+  // Captured during driver onboarding; verified via FlutterwaveService
+  // .verifyBankAccount() before any payout is allowed. Never used by
+  // customers (they pay via Flutterwave Inline, not direct debit).
+  @Column({ nullable: true })
+  bankCode: string;            // CBN bank code, e.g. "044" for Access Bank
+
+  @Column({ nullable: true })
+  bankAccountNumber: string;   // 10-digit NUBAN
+
+  @Column({ nullable: true })
+  bankAccountName: string;     // resolved name from Flutterwave
+
+  @Column({ nullable: true })
+  bankVerifiedAt: Date;
+
   @OneToMany(() => Delivery, (d) => d.customer)
   deliveries: Delivery[];
 

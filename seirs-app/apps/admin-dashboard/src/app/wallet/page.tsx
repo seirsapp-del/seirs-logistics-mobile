@@ -133,7 +133,7 @@ export default function WalletPage() {
           </table>
         </div>
         <div className="px-4 py-3 border-t border-gray-100 text-xs text-gray-400 text-center">
-          Showing placeholder data — connect to Paystack/Flutterwave API to load live wallet records
+          Showing placeholder data — connect to Flutterwave API to load live wallet records
         </div>
       </div>
     </div>

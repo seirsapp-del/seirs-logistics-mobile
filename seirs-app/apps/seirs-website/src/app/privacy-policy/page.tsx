@@ -134,7 +134,7 @@ export default function PrivacyPolicyPage() {
                     <><strong>Account data:</strong> Account ID, account type (customer, business sender, partner store, driver), password (stored as a bcrypt hash — never in plain text)</>,
                     <><strong>Business data:</strong> Company name, RC number, business address (for business accounts)</>,
                     <><strong>Location data:</strong> Pickup and delivery addresses, real-time GPS coordinates during active deliveries (drivers only)</>,
-                    <><strong>Financial data:</strong> Wallet balance, transaction history, payout records. We do not store full card numbers — payment processing is handled by our PCI-DSS compliant partner (Paystack).</>,
+                    <><strong>Financial data:</strong> Wallet balance, transaction history, payout records. We do not store full card numbers — payment processing is handled by our PCI-DSS compliant partner (Flutterwave).</>,
                     <><strong>Usage data:</strong> App activity logs, device type, IP address, session duration</>,
                     <><strong>Communications:</strong> Support messages, dispute details</>,
                   ]}
@@ -180,14 +180,14 @@ export default function PrivacyPolicyPage() {
                     <><strong>Drivers:</strong> Your name, phone number, and delivery address are shared with your assigned driver to complete a delivery</>,
                     <><strong>Partner stores:</strong> Recipient name and package tracking number are shared with the partner store holding your package</>,
                     <>
-                      <strong>Paystack:</strong> Payment processing — governed by{" "}
+                      <strong>Flutterwave:</strong> Payment processing — governed by{" "}
                       <a
-                        href="https://paystack.com/privacy"
+                        href="https://flutterwave.com/privacy-policy"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sky hover:underline inline-flex items-center gap-1"
                       >
-                        Paystack&apos;s Privacy Policy
+                        Flutterwave&apos;s Privacy Policy
                         <ExternalLink size={11} />
                       </a>
                     </>,

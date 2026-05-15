@@ -213,7 +213,7 @@ export default function TermsOfServicePage() {
             <Section id="section-6" title="6. Payments and Refunds">
               <BulletList
                 items={[
-                  "Payments are processed via Paystack, a CBN-licensed payment service provider",
+                  "Payments are processed via Flutterwave, a CBN-licensed payment service provider",
                   "Business wallet top-ups are processed immediately; they are non-refundable once delivery orders are created using those funds",
                   "Refunds for failed or cancelled deliveries are credited to your Seirs wallet within 24 hours",
                   "Cash withdrawals from the Seirs wallet are processed within 3–5 business days, subject to identity verification",

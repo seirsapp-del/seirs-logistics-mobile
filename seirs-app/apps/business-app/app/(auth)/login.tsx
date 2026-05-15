@@ -36,7 +36,14 @@ export default function LoginScreen() {
       const { token, user } = await authApi.login(email.trim().toLowerCase(), password);
       await login({ ...user, token });
     } catch (e: any) {
-      setError(e.message ?? 'Invalid email or password.');
+      const msg: string = e.message ?? '';
+      // Account exists but email not verified — route to OTP screen with
+      // email pre-filled so user can finish verification.
+      if (msg.toLowerCase().includes('verify your email')) {
+        router.push({ pathname: '/(auth)/verify-otp' as any, params: { email: email.trim().toLowerCase() } });
+        return;
+      }
+      setError(msg || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }

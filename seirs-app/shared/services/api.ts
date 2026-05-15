@@ -200,7 +200,81 @@ export const paymentsApi = {
     request<{ message: string }>('POST', '/payments/withdraw', { amountNaira }),
   updateBankDetails: (data: { bankName: string; bankAccountNumber: string; bankAccountName: string }) =>
     request<any>('PATCH', '/payments/bank-details', data),
+
+  // ── Saved cards (Flutterwave-tokenized, one-tap reuse) ──
+  listSavedCards: () => request<SavedCard[]>('GET', '/payments/saved-cards'),
+  setDefaultCard: (id: string) => request<{ ok: boolean }>('PATCH', `/payments/saved-cards/${id}/default`),
+  deleteSavedCard: (id: string) => request<{ ok: boolean }>('DELETE', `/payments/saved-cards/${id}`),
+
+  // ── Bank account verify (driver onboarding) ──
+  verifyBank: (bankCode: string, accountNumber: string) =>
+    request<{ verified: boolean; accountName?: string; message?: string }>(
+      'POST', '/payments/verify-bank', { bankCode, accountNumber },
+    ),
 };
+
+// ─── Loyalty Points (customer-facing) ────────────────────────────────────────
+export interface LoyaltyEntry {
+  id:                string;
+  delta:             number;
+  reason:            string;
+  relatedDeliveryId: string | null;
+  expiresAt:         string;
+  note:              string | null;
+  createdAt:         string;
+}
+
+export type LoyaltyTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+
+export const loyaltyApi = {
+  balance: () => request<{ balance: number; tier: LoyaltyTier; history: LoyaltyEntry[] }>('GET', '/loyalty/balance'),
+  redeem: (type: 'discount_500' | 'free_delivery' | 'priority' | 'insurance', deliveryId?: string) =>
+    request<{ redeemedPoints: number; newBalance: number; entryId: string }>(
+      'POST', '/loyalty/redeem', { type, deliveryId },
+    ),
+};
+
+// ─── Driver Earnings (driver-facing) ─────────────────────────────────────────
+export interface EarningsDashboard {
+  today:     { earned: number; deliveries: number };
+  week:      { earned: number; deliveries: number };
+  allTime:   { earned: number; deliveries: number };
+  pending:   number;
+  available: number;
+  nextPayoutEta: string;
+}
+
+export interface DriverEarning {
+  id:         string;
+  deliveryId: string;
+  grossAmount: string;
+  seirsCut:    string;
+  driverNet:   string;
+  status:      'pending' | 'available' | 'paid' | 'held';
+  availableAt: string;
+  paidAt:      string | null;
+  createdAt:   string;
+}
+
+export const earningsApi = {
+  dashboard: () => request<EarningsDashboard>('GET', '/earnings/dashboard'),
+  history:   () => request<DriverEarning[]>('GET', '/earnings/history'),
+  payout:    () => request<{ paidAmount: number; transferId?: string; payoutEarningIds: string[] }>(
+    'POST', '/earnings/payout',
+  ),
+};
+
+// ─── Saved Card type (used by paymentsApi above) ─────────────────────────────
+export interface SavedCard {
+  id:         string;
+  last4:      string;
+  brand:      string;
+  expMonth:   number;
+  expYear:    number;
+  cardHolder: string | null;
+  isDefault:  boolean;
+  createdAt:  string;
+}
 
 // ─── Drivers ─────────────────────────────────────────────────────────────────
 export const driversApi = {

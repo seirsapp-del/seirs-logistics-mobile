@@ -34,6 +34,8 @@ import { OfflineSyncModule } from './offline-sync/offline-sync.module';
 import { DevPlatformModule } from './developer-platform/dev-platform.module';
 import { RolesModule } from './roles/roles.module';
 import { PricingModule } from './pricing/pricing.module';
+import { LoyaltyModule } from './loyalty/loyalty.module';
+import { EarningsModule } from './earnings/earnings.module';
 
 @Module({
   imports: [
@@ -103,6 +105,8 @@ import { PricingModule } from './pricing/pricing.module';
     DevPlatformModule,
     RolesModule,
     PricingModule,
+    LoyaltyModule,
+    EarningsModule,
   ],
 })
 export class AppModule {}

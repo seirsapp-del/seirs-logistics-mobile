@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
+  BackHandler,
 } from 'react-native';
 import { ArrowLeft, Mail, ArrowRight, Truck, AlertCircle } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +23,17 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
+
+  // Hardware back button: mirror the on-screen arrow so users can
+  // get back to the onboarding animation regardless of how they go back.
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (router.canGoBack()) router.back();
+      else router.push('/(auth)/onboarding' as any);
+      return true;
+    });
+    return () => sub.remove();
+  }, [router]));
 
   const handleLogin = async () => {
     if (!email || !password) { setError('Please fill in all fields.'); return; }
@@ -53,7 +65,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.push('/(auth)/onboarding')}>
           <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
             <ArrowLeft size={20} color={theme.text} />
           </View>

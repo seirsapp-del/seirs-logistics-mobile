@@ -20,7 +20,13 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, StatusBar,
   ActivityIndicator, Switch, Alert, Keyboard, ScrollView,
+  LayoutAnimation, Platform, UIManager,
 } from 'react-native';
+
+// Required on Android to enable LayoutAnimation. iOS has it on by default.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -28,6 +34,7 @@ import BottomSheet, {
   BottomSheetTextInput,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
+import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
@@ -116,8 +123,48 @@ export default function NewDeliveryScreen() {
   // ── Map + bottom sheet refs ──────────────────────────────────────────
   const mapRef   = useRef<MapView>(null);
   const sheetRef = useRef<BottomSheet>(null);
+  const scrollRef = useRef<any>(null);
   const snapPoints = useMemo(() => [180, '92%'], []);
   const sheetTopInset = insets.top + 88;
+
+  // Track keyboard height so we can pad the ScrollView only while typing —
+  // padding lets the focused input scroll above the keyboard, and disappears
+  // the moment the keyboard closes (no permanent dead space).
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setKeyboardHeight(0);
+    });
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
+
+  // Bullet-proof keyboard handling: when any input is focused, measure its
+  // Y position inside the sheet's ScrollView and scroll it above the
+  // keyboard. Avoids relying on gorhom's keyboardBehavior heuristics
+  // which were unreliable on Android in practice.
+  const handleInputFocus = useCallback((e: any) => {
+    const node = e?.target;
+    if (!node || !scrollRef.current) return;
+    setTimeout(() => {
+      try {
+        node.measureLayout(
+          scrollRef.current,
+          (_x: number, y: number) => {
+            scrollRef.current?.scrollTo({ y: Math.max(0, y - 80), animated: true });
+          },
+          () => {},
+        );
+      } catch {
+        // Fallback: scroll to end so most-recent input is visible.
+        scrollRef.current?.scrollToEnd?.({ animated: true });
+      }
+    }, 250);
+  }, []);
 
   // ── Route polyline + distance + ETA (auto-optimize when toggle ON) ──
   const stopCoords = draft.stops
@@ -565,6 +612,8 @@ export default function NewDeliveryScreen() {
           <Text style={[styles.topTitleText, { color: colors.text }]}>New Delivery</Text>
           <Text style={[styles.topStep, { color: colors.textSecond }]}>Step {step + 1} / 3 — {STEPS[step]}</Text>
         </View>
+        {/* Spacer so title chip is visually screen-centered (matches back button) */}
+        <View style={styles.backBtn} pointerEvents="none" />
       </SafeAreaView>
 
       <BottomSheet
@@ -574,13 +623,14 @@ export default function NewDeliveryScreen() {
         topInset={sheetTopInset}
         backgroundStyle={{ backgroundColor: colors.surface }}
         handleIndicatorStyle={{ backgroundColor: colors.border }}
-        keyboardBehavior="extend"
+        keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
       >
         <BottomSheetScrollView
+          ref={scrollRef}
           style={styles.sheetInner}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: 32 + keyboardHeight }}
           keyboardShouldPersistTaps="handled"
         >
           {/* Config error banner */}
@@ -604,9 +654,16 @@ export default function NewDeliveryScreen() {
               {catalog.length === 0 ? (
                 <ActivityIndicator color={colors.accent} />
               ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
-                    {catalog.map(cat => {
+                <View>
+                  <GHScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator
+                    decelerationRate="fast"
+                    snapToInterval={132}
+                    snapToAlignment="start"
+                    contentContainerStyle={{ gap: 8, paddingRight: 40, paddingLeft: 2 }}
+                  >
+                    {catalog.map((cat) => {
                       const active = draft.categoryCode === cat.code;
                       return (
                         <Pressable
@@ -618,15 +675,23 @@ export default function NewDeliveryScreen() {
                           ]}
                           onPress={() => setDraft({ categoryCode: cat.code })}
                         >
-                          <Text style={[styles.catName, { color: colors.text }, active && { color: '#fff' }]}>{cat.name}</Text>
-                          <Text style={[styles.catEx, { color: colors.textSecond }, active && { color: '#DBEAFE' }]} numberOfLines={2}>
+                          <Text style={[styles.catName, { color: colors.text }, active && { color: '#fff' }]}>
+                            {cat.name}
+                          </Text>
+                          <Text
+                            style={[styles.catEx, { color: colors.textSecond }, active && { color: '#DBEAFE' }]}
+                            numberOfLines={2}
+                          >
                             {cat.examples}
                           </Text>
                         </Pressable>
                       );
                     })}
-                  </View>
-                </ScrollView>
+                  </GHScrollView>
+                  <Text style={[styles.fieldHint, { color: colors.textThird, marginTop: 6 }]}>
+                    Swipe to see more
+                  </Text>
+                </View>
               )}
 
               <Text style={[styles.label, { color: colors.textSecond }]}>Total weight (kg)</Text>
@@ -638,6 +703,7 @@ export default function NewDeliveryScreen() {
                     const n = Number(v.replace(/[^\d.]/g, ''));
                     setDraft({ weightKg: isNaN(n) ? undefined : n });
                   }}
+                  onFocus={handleInputFocus}
                   placeholder="e.g. 5"
                   placeholderTextColor={colors.textThird}
                   keyboardType="decimal-pad"
@@ -656,6 +722,7 @@ export default function NewDeliveryScreen() {
                     const n = Number(v.replace(/\D/g, ''));
                     setDraft({ quantity: isNaN(n) || n < 1 ? 1 : n });
                   }}
+                  onFocus={handleInputFocus}
                   placeholder="1"
                   placeholderTextColor={colors.textThird}
                   keyboardType="number-pad"
@@ -668,6 +735,7 @@ export default function NewDeliveryScreen() {
                   style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                   value={draft.packageDescription ?? ''}
                   onChangeText={(v) => setDraft({ packageDescription: v })}
+                  onFocus={handleInputFocus}
                   placeholder="e.g. Adebayo's birthday gift, two boxes"
                   placeholderTextColor={colors.textThird}
                 />
@@ -732,7 +800,7 @@ export default function NewDeliveryScreen() {
                   <BottomSheetTextInput
                     value={pickupQuery}
                     onChangeText={onChangePickup}
-                    onFocus={() => { setActiveField({ kind: 'pickup' }); sheetRef.current?.snapToIndex(1); }}
+                    onFocus={(e) => { setActiveField({ kind: 'pickup' }); sheetRef.current?.snapToIndex(1); handleInputFocus(e); }}
                     placeholder="Pickup address"
                     placeholderTextColor={colors.textThird}
                     style={[styles.inputField, { color: colors.text }]}
@@ -760,7 +828,7 @@ export default function NewDeliveryScreen() {
                       <BottomSheetTextInput
                         value={stopQueries[i] ?? ''}
                         onChangeText={(t) => onChangeStop(i, t)}
-                        onFocus={() => { setActiveField({ kind: 'stop', idx: i }); sheetRef.current?.snapToIndex(1); }}
+                        onFocus={(e) => { setActiveField({ kind: 'stop', idx: i }); sheetRef.current?.snapToIndex(1); handleInputFocus(e); }}
                         placeholder="Delivery address"
                         placeholderTextColor={colors.textThird}
                         style={[styles.inputField, { color: colors.text }]}
@@ -775,6 +843,7 @@ export default function NewDeliveryScreen() {
                     style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     value={stop.recipientName}
                     onChangeText={(v) => updateStop(i, { recipientName: v })}
+                    onFocus={handleInputFocus}
                     placeholder="Full name"
                     placeholderTextColor={colors.textThird}
                   />
@@ -783,6 +852,7 @@ export default function NewDeliveryScreen() {
                     style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     value={stop.recipientPhone}
                     onChangeText={(v) => updateStop(i, { recipientPhone: v })}
+                    onFocus={handleInputFocus}
                     placeholder="08012345678"
                     placeholderTextColor={colors.textThird}
                     keyboardType="phone-pad"
@@ -792,6 +862,7 @@ export default function NewDeliveryScreen() {
                     style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     value={stop.note ?? ''}
                     onChangeText={(v) => updateStop(i, { note: v })}
+                    onFocus={handleInputFocus}
                     placeholder="Leave at gate, call before delivery..."
                     placeholderTextColor={colors.textThird}
                   />
@@ -1045,7 +1116,7 @@ function PriceLine({ label, value, bold, negative }: { label: string; value: num
 const styles = StyleSheet.create({
   topBar: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 10 },
   backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
-  topTitle: { flex: 1, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  topTitle: { flex: 1, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
   topTitleText: { fontSize: 14, fontWeight: '700' },
   topStep: { fontSize: 11, marginTop: 2 },
 
@@ -1072,7 +1143,7 @@ const styles = StyleSheet.create({
   suggMain: { fontSize: 14, fontWeight: '500' },
   suggSub: { fontSize: 12, marginTop: 2 },
 
-  catCard: { width: 140, padding: 12, borderRadius: 12, borderWidth: 1 },
+  catCard: { width: 124, padding: 12, borderRadius: 12, borderWidth: 1 },
   catName: { fontSize: 13, fontWeight: '700' },
   catEx: { fontSize: 11, marginTop: 4 },
 

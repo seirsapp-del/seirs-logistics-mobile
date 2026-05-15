@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, Pressable, Dimensions,
   StatusBar, Animated, Platform, Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -79,6 +79,7 @@ export default function OnboardingScreen() {
   const cs          = useColorScheme();
   const theme       = Colors[cs ?? 'light'];
   const isDark      = cs === 'dark';
+  const insets      = useSafeAreaInsets();
 
   const [current, setCurrent] = useState(0);
   const fadeAnim  = useRef(new Animated.Value(1)).current;
@@ -159,7 +160,7 @@ export default function OnboardingScreen() {
       </Animated.View>
 
       {/* ── Bottom sheet (fixed across all slides) ─────────────────────── */}
-      <View style={[styles.sheet, { backgroundColor: sheetBg }]}>
+      <View style={[styles.sheet, { backgroundColor: sheetBg, paddingBottom: insets.bottom + Spacing.md }]}>
         <Pressable
           style={[styles.primaryBtn, { backgroundColor: '#0F2B4C' }]}
           onPress={() => router.push('/(auth)/register' as any)}
