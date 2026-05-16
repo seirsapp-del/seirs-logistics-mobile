@@ -43,6 +43,33 @@ export default function UserDetailPage() {
     setSaving(false);
   };
 
+  // Spec V8 §3.13 — NDPR admin tools (A32 + A33)
+  const exportData = async () => {
+    try {
+      const bundle = await adminApi.ndpr.exportUser(id);
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `seirs-export-${id}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) { alert(e?.message ?? 'Export failed'); }
+  };
+
+  const hardDelete = async () => {
+    const reason = prompt(
+      `IRREVERSIBLE hard-delete of ${data.user.name}.\n\nThis bypasses the 30-day NDPR grace window. The account is archived (PII reduced) and purged from the live users table immediately.\n\nReason for the legal audit log:`,
+    );
+    if (!reason || reason.trim().length < 6) return;
+    if (!confirm(`Final confirm: hard-delete ${data.user.name}?\n\nReason: ${reason.trim()}\n\nThis cannot be undone.`)) return;
+    try {
+      const r = await adminApi.ndpr.hardDeleteUser(id, reason.trim());
+      alert(`Account purged. Archived at ${r.archivedAt}.`);
+      router.push('/users');
+    } catch (e: any) { alert(e?.message ?? 'Hard-delete failed'); }
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>;
   if (!data)   return <div className="min-h-screen flex items-center justify-center text-gray-400">User not found</div>;
 
@@ -95,6 +122,22 @@ export default function UserDetailPage() {
                 className="text-sm px-4 py-2 rounded-lg font-medium bg-purple-100 text-purple-700 hover:bg-purple-200"
               >
                 Promote to Admin
+              </button>
+            )}
+            <button
+              onClick={exportData}
+              className="text-sm px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+              title="NDPR Article 24 — right to data portability"
+            >
+              Export NDPR data
+            </button>
+            {user.role !== 'admin' && (
+              <button
+                onClick={hardDelete}
+                className="text-sm px-4 py-2 rounded-lg font-medium bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                title="NDPR right to erasure — immediate hard-delete"
+              >
+                NDPR hard-delete
               </button>
             )}
           </div>

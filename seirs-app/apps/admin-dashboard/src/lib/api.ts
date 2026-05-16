@@ -195,6 +195,32 @@ export const adminApi = {
       }),
   },
 
+  // Spec V8 §3.13 — NDPR admin tools (A32 + A33)
+  ndpr: {
+    exportUser:      (id: string)                 => req<any>(`/admin/users/${id}/export`),
+    hardDeleteUser:  (id: string, reason: string) =>
+      req<{ ok: true; archivedAt: string }>(`/admin/users/${id}/hard-delete`, {
+        method: 'POST', body: JSON.stringify({ reason }),
+      }),
+  },
+
+  // Spec V8 §3.13 — duplicate accounts (A21)
+  duplicates: {
+    list:    (status?: string) => req<any[]>(`/admin/duplicates${status ? `?status=${status}` : ''}`),
+    scan:    ()                => req<{ scanned: number; newCandidates: number }>('/admin/duplicates/scan', { method: 'POST' }),
+    merge:   (id: string)      => req<any>(`/admin/duplicates/${id}/merge`,   { method: 'POST' }),
+    dismiss: (id: string)      => req<any>(`/admin/duplicates/${id}/dismiss`, { method: 'POST' }),
+  },
+
+  // Spec V8 §3.13 — external partners directory (A40 + A41)
+  externalPartners: {
+    list:   (type?: 'insurance' | 'specialist') =>
+      req<any[]>(`/admin/external-partners${type ? `?type=${type}` : ''}`),
+    create: (body: any)             => req<any>('/admin/external-partners', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id: string, body: any) => req<any>(`/admin/external-partners/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    remove: (id: string)            => req<any>(`/admin/external-partners/${id}`, { method: 'DELETE' }),
+  },
+
   // Spec V8 — public website CMS (articles + FAQ + changelog + page blocks)
   websiteContent: {
     list:   (type?: string, status?: string) => {
@@ -230,8 +256,23 @@ export const adminApi = {
 
   // Spec V8 Tier 3 — Developer Platform admin oversight
   devPlatform: {
-    listAccounts: () => req<any[]>('/dev-platform/keys'), // simplistic: each key = an account in this view
-    listAllUsage: () => req<any>('/dev-platform/usage'),
+    listAccounts:    () => req<any[]>('/dev-platform/admin/keys'),  // all keys, all owners
+    listAllUsage:    () => req<any>('/dev-platform/usage'),
+
+    // A48 — suspend / resume an entire developer account
+    suspendOwner: (ownerUserId: string, reason: string) =>
+      req<{ suspended: number }>(`/dev-platform/admin/owners/${ownerUserId}/suspend`, {
+        method: 'POST', body: JSON.stringify({ reason }),
+      }),
+    resumeOwner: (ownerUserId: string) =>
+      req<{ resumed: number }>(`/dev-platform/admin/owners/${ownerUserId}/resume`, { method: 'POST' }),
+
+    // A49 — set per-key rate-limit override (null = revert to default)
+    setKeyRateLimit: (keyId: string, limitPerMin: number | null) =>
+      req<{ keyId: string; rateLimitOverridePerMin: number | null }>(
+        `/dev-platform/admin/keys/${keyId}/rate-limit`,
+        { method: 'PATCH', body: JSON.stringify({ limitPerMin }) },
+      ),
   },
 
   // Spec V8 — dynamic role management

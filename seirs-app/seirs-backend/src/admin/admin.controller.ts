@@ -8,6 +8,8 @@ import { PartnerStoreService } from '../partner-store/partner-store.service';
 import { DriversService } from '../drivers/drivers.service';
 import { DriverTripStatus } from '../drivers/driver-trip.entity';
 import { PaymentsService } from '../payments/payments.service';
+import { DuplicateStatus } from './duplicate-account.entity';
+import { ExternalPartnerType } from './external-partner.entity';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -444,5 +446,65 @@ export class AdminController {
       adminUserId: admin.id ?? admin.sub,
       reason: body.reason.trim(),
     });
+  }
+
+  // ── NDPR admin tools (Spec V8 §3.13 — A32 + A33) ─────────────────────────
+
+  // GET /api/v1/admin/users/:id/export
+  @Get('users/:id/export')
+  exportUserBundle(@Param('id') id: string) {
+    return this.adminService.adminExportUserData(id);
+  }
+
+  // POST /api/v1/admin/users/:id/hard-delete  { reason }
+  @Post('users/:id/hard-delete')
+  hardDeleteUser(
+    @Param('id') id: string,
+    @Body() body: { reason: string },
+    @CurrentUser() admin: any,
+  ) {
+    return this.adminService.adminHardDeleteUser(id, admin.id ?? admin.sub, body?.reason ?? '');
+  }
+
+  // ── Duplicate accounts (A21) ─────────────────────────────────────────────
+  @Get('duplicates')
+  listDuplicates(@Query('status') status?: DuplicateStatus) {
+    return this.adminService.listDuplicates(status);
+  }
+
+  @Post('duplicates/scan')
+  scanDuplicates() {
+    return this.adminService.scanForDuplicates();
+  }
+
+  @Post('duplicates/:id/merge')
+  mergeDuplicate(@Param('id') id: string, @CurrentUser() admin: any) {
+    return this.adminService.mergeDuplicate(id, admin.id ?? admin.sub);
+  }
+
+  @Post('duplicates/:id/dismiss')
+  dismissDuplicate(@Param('id') id: string, @CurrentUser() admin: any) {
+    return this.adminService.dismissDuplicate(id, admin.id ?? admin.sub);
+  }
+
+  // ── External partner directory (A40 + A41) ───────────────────────────────
+  @Get('external-partners')
+  listExternalPartners(@Query('type') type?: ExternalPartnerType) {
+    return this.adminService.listExternalPartners(type);
+  }
+
+  @Post('external-partners')
+  createExternalPartner(@Body() body: any) {
+    return this.adminService.createExternalPartner(body);
+  }
+
+  @Patch('external-partners/:id')
+  updateExternalPartner(@Param('id') id: string, @Body() body: any) {
+    return this.adminService.updateExternalPartner(id, body);
+  }
+
+  @Delete('external-partners/:id')
+  deleteExternalPartner(@Param('id') id: string) {
+    return this.adminService.removeExternalPartner(id);
   }
 }

@@ -143,6 +143,13 @@ export class User {
   @Column({ nullable: true })
   lockedUntil: Date;
 
+  // Spec V8 §3.13 — set when admin merges this account into another
+  // via /admin/duplicates. The merged-out user is deactivated; their
+  // login is blocked and the UI surfaces "this account was merged".
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  mergedIntoUserId: string;
+
   // ── Driver payout bank account ─────────────────────────────────────────
   // Captured during driver onboarding; verified via FlutterwaveService
   // .verifyBankAccount() before any payout is allowed. Never used by

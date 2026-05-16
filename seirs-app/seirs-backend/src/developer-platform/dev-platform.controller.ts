@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { DevPlatformService } from './dev-platform.service';
 
@@ -47,5 +48,48 @@ export class DevPlatformController {
   @Get('usage')
   usage(@CurrentUser() user: any) {
     return this.svc.getUsageStats(user.id);
+  }
+
+  // ── Spec V8 §3.13 — Admin oversight (A48 + A49) ─────────────────────────
+  // Admin-only — reuses the same /dev-platform path tree so the existing
+  // adminApi.devPlatform helpers extend naturally.
+
+  @UseGuards(AdminGuard)
+  @Get('admin/keys')
+  adminListAllKeys() {
+    return this.svc.listAllKeys();
+  }
+
+  // POST /api/v1/dev-platform/admin/owners/:ownerUserId/suspend
+  @UseGuards(AdminGuard)
+  @Post('admin/owners/:ownerUserId/suspend')
+  suspendOwner(
+    @Param('ownerUserId') ownerUserId: string,
+    @Body() body: { reason: string },
+    @CurrentUser() admin: any,
+  ) {
+    return this.svc.suspendDeveloperAccount(ownerUserId, body?.reason ?? '', admin.id);
+  }
+
+  // POST /api/v1/dev-platform/admin/owners/:ownerUserId/resume
+  @UseGuards(AdminGuard)
+  @Post('admin/owners/:ownerUserId/resume')
+  resumeOwner(
+    @Param('ownerUserId') ownerUserId: string,
+    @CurrentUser() admin: any,
+  ) {
+    return this.svc.resumeDeveloperAccount(ownerUserId, admin.id);
+  }
+
+  // PATCH /api/v1/dev-platform/admin/keys/:keyId/rate-limit
+  // Body: { limitPerMin: number | null }  — null = revert to default
+  @UseGuards(AdminGuard)
+  @Patch('admin/keys/:keyId/rate-limit')
+  setKeyRateLimit(
+    @Param('keyId') keyId: string,
+    @Body() body: { limitPerMin: number | null },
+    @CurrentUser() admin: any,
+  ) {
+    return this.svc.setKeyRateLimit(keyId, body?.limitPerMin ?? null, admin.id);
   }
 }

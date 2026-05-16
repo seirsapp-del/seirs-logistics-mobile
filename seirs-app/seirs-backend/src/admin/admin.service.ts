@@ -1,36 +1,270 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { User, UserRole, AdminSubRole } from '../users/user.entity';
+import { ArchivedUser } from '../users/archived-user.entity';
 import { Driver, DriverStatus } from '../drivers/driver.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { FraudFlag, FraudFlagStatus } from '../fraud/fraud-flag.entity';
 import { FraudService } from '../fraud/fraud.service';
 import { MailService } from '../mail/mail.service';
+import { UsersService } from '../users/users.service';
 import { CmsItem, ContentType, ContentStatus } from './cms-item.entity';
 import { SupportTicket, TicketStatus, TicketPriority } from './support-ticket.entity';
 import { AuditLogEntry } from './audit-log.entity';
 import { PricingConfig } from './pricing-config.entity';
+import { DuplicateAccountCandidate, DuplicateReason, DuplicateStatus } from './duplicate-account.entity';
+import { ExternalPartner, ExternalPartnerStatus, ExternalPartnerType } from './external-partner.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 const PRICING_SINGLETON_ID = 'singleton';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
-    @InjectRepository(User)           private usersRepo:      Repository<User>,
-    @InjectRepository(Driver)         private driversRepo:    Repository<Driver>,
-    @InjectRepository(Delivery)       private deliveriesRepo: Repository<Delivery>,
-    @InjectRepository(FraudFlag)      private flagsRepo:      Repository<FraudFlag>,
-    @InjectRepository(CmsItem)        private cmsRepo:        Repository<CmsItem>,
-    @InjectRepository(SupportTicket)  private ticketsRepo:    Repository<SupportTicket>,
-    @InjectRepository(AuditLogEntry)  private auditRepo:      Repository<AuditLogEntry>,
-    @InjectRepository(PricingConfig)  private pricingRepo:    Repository<PricingConfig>,
+    @InjectRepository(User)                       private usersRepo:      Repository<User>,
+    @InjectRepository(ArchivedUser)               private archiveRepo:    Repository<ArchivedUser>,
+    @InjectRepository(Driver)                     private driversRepo:    Repository<Driver>,
+    @InjectRepository(Delivery)                   private deliveriesRepo: Repository<Delivery>,
+    @InjectRepository(FraudFlag)                  private flagsRepo:      Repository<FraudFlag>,
+    @InjectRepository(CmsItem)                    private cmsRepo:        Repository<CmsItem>,
+    @InjectRepository(SupportTicket)              private ticketsRepo:    Repository<SupportTicket>,
+    @InjectRepository(AuditLogEntry)              private auditRepo:      Repository<AuditLogEntry>,
+    @InjectRepository(PricingConfig)              private pricingRepo:    Repository<PricingConfig>,
+    @InjectRepository(DuplicateAccountCandidate)  private duplicatesRepo: Repository<DuplicateAccountCandidate>,
+    @InjectRepository(ExternalPartner)            private partnersRepo:   Repository<ExternalPartner>,
     private readonly fraudService: FraudService,
     private readonly mailService:  MailService,
+    private readonly usersService: UsersService,
   ) {}
+
+  // ── Spec V8 §3.13 — NDPR admin tools (A32 + A33) ──────────────────────────
+
+  // A32 — export any user's NDPR bundle. Wraps the self-service export
+  // for legal / subject-access requests where the user can't pull it.
+  async adminExportUserData(targetUserId: string) {
+    return this.usersService.exportUserData(targetUserId);
+  }
+
+  // A33 — admin-triggered immediate hard-delete. Bypasses the 30-day
+  // grace window for compliance requests the user has formally
+  // escalated. Refuses on admins (use offboard) or on accounts with
+  // active deliveries (would orphan a customer's package).
+  async adminHardDeleteUser(targetUserId: string, adminId: string, reason: string) {
+    if (!reason || reason.trim().length < 6) {
+      throw new BadRequestException('Reason (min 6 chars) is required.');
+    }
+    const user = await this.usersRepo.findOne({ where: { id: targetUserId } });
+    if (!user) throw new NotFoundException('Account not found.');
+    if (user.role === UserRole.ADMIN) {
+      throw new ForbiddenException('Use offboard for admin accounts.');
+    }
+    const activeAsCustomer = await this.deliveriesRepo.count({
+      where: {
+        customer: { id: targetUserId },
+        status:   In([DeliveryStatus.PENDING, DeliveryStatus.ASSIGNED, DeliveryStatus.PICKED_UP, DeliveryStatus.IN_TRANSIT]),
+      },
+    });
+    if (activeAsCustomer > 0) {
+      throw new BadRequestException(
+        `Cannot hard-delete: user has ${activeAsCustomer} active ${activeAsCustomer === 1 ? 'delivery' : 'deliveries'}.`,
+      );
+    }
+    const emailHash = crypto.createHash('sha256').update(user.email.toLowerCase()).digest('hex');
+    await this.archiveRepo.save(this.archiveRepo.create({
+      originalUserId:    user.id,
+      emailHash,
+      accountId:         user.accountId ?? null,
+      role:              user.role,
+      reason:            `admin_purge: ${reason.trim().slice(0, 200)}`,
+      originalCreatedAt: user.createdAt,
+      deactivatedAt:     user.deactivatedAt ?? new Date(),
+    }));
+    await this.usersRepo.delete(user.id);
+    this.logger.warn(`ADMIN_HARD_DELETE userId=${targetUserId} admin=${adminId} reason="${reason}"`);
+    return { ok: true, archivedAt: new Date().toISOString() };
+  }
+
+  // ── Spec V8 §3.13 — Duplicate account detection + merge (A21) ─────────────
+
+  // Walk all active non-admin users and flag candidate duplicate pairs.
+  // Idempotent: existing (primary, duplicate) rows are preserved with
+  // their current status. Returns counts for the admin UI.
+  async scanForDuplicates(): Promise<{ scanned: number; newCandidates: number }> {
+    const users = await this.usersRepo.find({
+      where: { isActive: true, role: Not(UserRole.ADMIN) },
+      select: ['id', 'name', 'email', 'phone', 'createdAt'],
+      order: { createdAt: 'ASC' },
+    });
+
+    const byPhoneTail  = new Map<string, User[]>();
+    const byEmailLocal = new Map<string, User[]>();
+    for (const u of users) {
+      const phoneTail = (u.phone ?? '').replace(/\D/g, '').slice(-10);
+      if (phoneTail.length === 10) {
+        const arr = byPhoneTail.get(phoneTail) ?? [];
+        arr.push(u);
+        byPhoneTail.set(phoneTail, arr);
+      }
+      const emailLocal = (u.email ?? '').toLowerCase().split('@')[0];
+      if (emailLocal && emailLocal.length >= 3) {
+        const arr = byEmailLocal.get(emailLocal) ?? [];
+        arr.push(u);
+        byEmailLocal.set(emailLocal, arr);
+      }
+    }
+
+    const seen = new Set<string>();
+    const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+    type Candidate = {
+      primaryUserId: string; duplicateUserId: string;
+      primaryName: string; primaryEmail: string; primaryPhone: string;
+      duplicateName: string; duplicateEmail: string; duplicatePhone: string;
+      matchScore: number; reason: DuplicateReason;
+    };
+    const candidates: Candidate[] = [];
+
+    const pushCandidate = (primary: User, duplicate: User, score: number, reason: DuplicateReason) => {
+      const key = pairKey(primary.id, duplicate.id);
+      if (seen.has(key)) return;
+      seen.add(key);
+      candidates.push({
+        primaryUserId:   primary.id,
+        duplicateUserId: duplicate.id,
+        primaryName:     primary.name,
+        primaryEmail:    primary.email,
+        primaryPhone:    primary.phone ?? '',
+        duplicateName:   duplicate.name,
+        duplicateEmail:  duplicate.email,
+        duplicatePhone:  duplicate.phone ?? '',
+        matchScore:      score,
+        reason,
+      });
+    };
+
+    for (const group of byPhoneTail.values()) {
+      if (group.length < 2) continue;
+      group.sort((a, b) => +a.createdAt - +b.createdAt);
+      for (let i = 1; i < group.length; i++) {
+        pushCandidate(group[0], group[i], 0.95, DuplicateReason.SAME_PHONE);
+      }
+    }
+
+    for (const group of byEmailLocal.values()) {
+      if (group.length < 2) continue;
+      const domains = new Set(group.map(u => u.email.toLowerCase().split('@')[1] ?? ''));
+      if (domains.size < 2) continue;
+      group.sort((a, b) => +a.createdAt - +b.createdAt);
+      for (let i = 1; i < group.length; i++) {
+        pushCandidate(group[0], group[i], 0.82, DuplicateReason.EMAIL_LOOKALIKE);
+      }
+    }
+
+    let inserted = 0;
+    for (const c of candidates) {
+      const exists = await this.duplicatesRepo.findOne({
+        where: { primaryUserId: c.primaryUserId, duplicateUserId: c.duplicateUserId },
+      });
+      if (exists) continue;
+      await this.duplicatesRepo.save(this.duplicatesRepo.create(c as any));
+      inserted++;
+    }
+    this.logger.log(`Duplicate scan: ${users.length} users, ${candidates.length} pairs, ${inserted} new`);
+    return { scanned: users.length, newCandidates: inserted };
+  }
+
+  listDuplicates(status?: DuplicateStatus) {
+    const where = status ? { status } : {};
+    return this.duplicatesRepo.find({
+      where,
+      order: { matchScore: 'DESC', createdAt: 'DESC' },
+      take: 200,
+    });
+  }
+
+  // Soft-merge: marks the duplicate as merged-into the primary.
+  // Deactivates the duplicate; sign-in is blocked by mergedIntoUserId.
+  // FK'd data stays on the duplicate row so audit is preserved.
+  async mergeDuplicate(candidateId: string, adminId: string) {
+    const candidate = await this.duplicatesRepo.findOne({ where: { id: candidateId } });
+    if (!candidate) throw new NotFoundException('Candidate not found.');
+    if (candidate.status === DuplicateStatus.MERGED) return candidate;
+
+    const dup = await this.usersRepo.findOne({ where: { id: candidate.duplicateUserId } });
+    if (!dup) throw new NotFoundException('Duplicate account not found.');
+    if (dup.role === UserRole.ADMIN) {
+      throw new ForbiddenException('Cannot merge admin accounts.');
+    }
+
+    await this.usersRepo.update(dup.id, {
+      mergedIntoUserId:   candidate.primaryUserId,
+      isActive:           false,
+      deactivatedAt:      new Date(),
+      deactivationReason: `merged_into_${candidate.primaryUserId}`,
+    });
+    candidate.status            = DuplicateStatus.MERGED;
+    candidate.resolvedByAdminId = adminId;
+    candidate.resolvedAt        = new Date();
+    await this.duplicatesRepo.save(candidate);
+    this.logger.warn(`DUPLICATE_MERGE primary=${candidate.primaryUserId} duplicate=${candidate.duplicateUserId} admin=${adminId}`);
+    return candidate;
+  }
+
+  async dismissDuplicate(candidateId: string, adminId: string) {
+    const candidate = await this.duplicatesRepo.findOne({ where: { id: candidateId } });
+    if (!candidate) throw new NotFoundException('Candidate not found.');
+    candidate.status            = DuplicateStatus.DISMISSED;
+    candidate.resolvedByAdminId = adminId;
+    candidate.resolvedAt        = new Date();
+    return this.duplicatesRepo.save(candidate);
+  }
+
+  // ── Spec V8 §3.13 — External partners directory (A40 + A41) ───────────────
+
+  listExternalPartners(type?: ExternalPartnerType) {
+    const where = type ? { type } : {};
+    return this.partnersRepo.find({ where, order: { name: 'ASC' }, take: 200 });
+  }
+
+  async createExternalPartner(body: Partial<ExternalPartner>) {
+    if (!body.type)         throw new BadRequestException('type is required.');
+    if (!body.name?.trim()) throw new BadRequestException('name is required.');
+    const row = this.partnersRepo.create({
+      type:         body.type,
+      name:         body.name.trim(),
+      contactEmail: body.contactEmail ?? (null as any),
+      contactPhone: body.contactPhone ?? (null as any),
+      websiteUrl:   body.websiteUrl   ?? (null as any),
+      notes:        body.notes        ?? (null as any),
+      status:       body.status       ?? ExternalPartnerStatus.PENDING,
+      meta:         body.meta         ?? {},
+    });
+    return this.partnersRepo.save(row);
+  }
+
+  async updateExternalPartner(id: string, body: Partial<ExternalPartner>) {
+    const row = await this.partnersRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Partner not found.');
+    if (body.name         !== undefined) row.name         = body.name;
+    if (body.contactEmail !== undefined) row.contactEmail = body.contactEmail!;
+    if (body.contactPhone !== undefined) row.contactPhone = body.contactPhone!;
+    if (body.websiteUrl   !== undefined) row.websiteUrl   = body.websiteUrl!;
+    if (body.notes        !== undefined) row.notes        = body.notes!;
+    if (body.status       !== undefined) row.status       = body.status;
+    if (body.meta         !== undefined) row.meta         = body.meta;
+    return this.partnersRepo.save(row);
+  }
+
+  async removeExternalPartner(id: string) {
+    const row = await this.partnersRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Partner not found.');
+    await this.partnersRepo.remove(row);
+    return { ok: true };
+  }
 
   // ── Dashboard stats ───────────────────────────────────────────────────────
 

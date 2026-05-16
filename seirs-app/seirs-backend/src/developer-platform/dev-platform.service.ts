@@ -76,6 +76,59 @@ export class DevPlatformService {
     return { revoked: true };
   }
 
+  // ── Spec V8 §3.13 — admin oversight (A48 + A49) ──────────────────────────
+
+  // List all keys across all owners — used by /admin/dev-accounts to
+  // render the developer-account roll-up. Admins see the suspendedAt /
+  // suspendedReason + rateLimitOverridePerMin columns the partner UI
+  // hides.
+  listAllKeys() {
+    return this.keysRepo.find({ order: { createdAt: 'DESC' } });
+  }
+
+  // A48 — suspend an entire developer account by bulk-flipping every
+  // key for that owner. Records the reason on each key so when the
+  // partner's app fails the guard, ops can answer "why".
+  async suspendDeveloperAccount(ownerUserId: string, reason: string, adminId: string) {
+    if (!reason || reason.trim().length < 4) {
+      throw new ForbiddenException('Suspend reason (min 4 chars) is required.');
+    }
+    const trimmed = reason.trim().slice(0, 300);
+    const result = await this.keysRepo.update(
+      { ownerUserId },
+      {
+        active:          false,
+        suspendedAt:     new Date(),
+        suspendedReason: trimmed,
+      },
+    );
+    this.logger.warn(`DEV_ACCOUNT_SUSPEND owner=${ownerUserId} keys=${result.affected ?? 0} admin=${adminId} reason="${trimmed}"`);
+    return { suspended: result.affected ?? 0 };
+  }
+
+  async resumeDeveloperAccount(ownerUserId: string, adminId: string) {
+    const result = await this.keysRepo.update(
+      { ownerUserId },
+      { active: true, suspendedAt: null as any, suspendedReason: null as any },
+    );
+    this.logger.warn(`DEV_ACCOUNT_RESUME owner=${ownerUserId} keys=${result.affected ?? 0} admin=${adminId}`);
+    return { resumed: result.affected ?? 0 };
+  }
+
+  // A49 — admin sets a per-key rate-limit override. Null = revert to
+  // platform default (60 req/min). Caller-supplied value is clamped to
+  // [1, 100000] for sanity.
+  async setKeyRateLimit(keyId: string, limitPerMin: number | null, adminId: string) {
+    const row = await this.keysRepo.findOne({ where: { id: keyId } });
+    if (!row) throw new NotFoundException('API key not found.');
+    const value = limitPerMin == null
+      ? null
+      : Math.max(1, Math.min(100000, Math.floor(limitPerMin)));
+    await this.keysRepo.update(keyId, { rateLimitOverridePerMin: value as any });
+    this.logger.warn(`KEY_RATE_LIMIT key=${keyId} value=${value ?? 'default'} admin=${adminId}`);
+    return { keyId, rateLimitOverridePerMin: value };
+  }
+
   // Validates an inbound API key + HMAC signature. Used by the public
   // API guard once /v1/* endpoints exist.
   async validateKey(publicKey: string, signature: string, body: string): Promise<ApiKey | null> {
