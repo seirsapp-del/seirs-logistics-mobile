@@ -20,6 +20,36 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   return res.json();
 }
 
+// Spec V8 §3.6 — sliding 30-min admin session. Backend issues admin
+// JWTs with 30m TTL. This helper extends the token while the admin is
+// active by calling /auth/refresh. Called from the dashboard layout
+// every ~5 minutes; no-op when no admin token is in storage.
+export async function refreshAdminTokenIfPresent(): Promise<boolean> {
+  const token = getToken();
+  if (!token) return false;
+  try {
+    const r = await fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        Authorization:   `Bearer ${token}`,
+      },
+    });
+    if (!r.ok) return false;
+    const data = await r.json() as { token?: string; user?: any };
+    if (data?.token) {
+      // Hot-swap the token + user record in localStorage. The next
+      // req() call picks up the fresh token from getToken().
+      const { saveSession } = await import('./auth');
+      saveSession(data.token, data.user);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export const adminApi = {
   login: (email: string, password: string) =>
     req<{ token: string; user: any; requiresTOTP?: boolean; tempToken?: string }>(

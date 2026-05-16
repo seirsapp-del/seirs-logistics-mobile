@@ -63,6 +63,16 @@ export class AuthController {
     return this.authService.getMe(user.id);
   }
 
+  // Spec V8 §3.6 — sliding-window admin session. Admin tokens issue
+  // with a 30-minute TTL; this endpoint extends the window when the
+  // admin is actively using the dashboard. Non-admin callers get the
+  // platform default (7d) so it's effectively a no-op for them.
+  @UseGuards(JwtAuthGuard)
+  @Post('refresh')
+  refresh(@CurrentUser() user: User) {
+    return this.authService.refreshToken(user.id);
+  }
+
   @Post('forgot-password')
   forgotPassword(@Body('email') email: string) {
     return this.authService.forgotPassword(email);

@@ -678,9 +678,24 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
+  // Spec V8 §3.6 — sliding-window refresh for admin sessions. Called
+  // from /auth/refresh on user activity so an actively-working admin
+  // doesn't get bounced mid-action. Non-admins also get a fresh token
+  // (cheap, harmless — keeps the helper generic for all clients).
+  async refreshToken(userId: string) {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Account not found.');
+    if (!user.isActive) throw new UnauthorizedException('Account suspended.');
+    return this.buildAuthResponse(user);
+  }
+
   private async buildAuthResponse(user: User) {
     const payload = { sub: user.id, email: user.email, role: user.role, adminRole: user.adminRole };
-    const token   = this.jwtService.sign(payload);
+    // Spec V8 §3.6 — admin sessions must time out at 30min. Other
+    // user roles keep the platform default (7d) so customers don't
+    // get bounced to login every time they reopen the app.
+    const isAdmin = user.role === UserRole.ADMIN;
+    const token   = this.jwtService.sign(payload, isAdmin ? { expiresIn: '30m' } : {});
 
     // Spec V8 — resolve dynamic role permissions if assigned. The
     // admin client uses this to render the sidebar + gate page access
