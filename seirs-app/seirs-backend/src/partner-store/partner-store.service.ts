@@ -3,9 +3,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Repository, In, Not } from 'typeorm';
+import { LessThanOrEqual, Repository, In, Not } from 'typeorm';
 import { StoreDropoff, DropoffMode, DropoffStatus } from './store-dropoff.entity';
 import { PartnerStore, PartnerStoreStatus } from '../business/partner-store.entity';
+import { PartnerSponsorship, SponsorshipStatus } from './partner-sponsorship.entity';
 import { User } from '../users/user.entity';
 import { FeesService } from '../fees/fees.service';
 import { IdentityService } from '../identity/identity.service';
@@ -41,13 +42,135 @@ export class PartnerStoreService {
   private readonly logger = new Logger(PartnerStoreService.name);
 
   constructor(
-    @InjectRepository(StoreDropoff)  private dropoffRepo: Repository<StoreDropoff>,
-    @InjectRepository(PartnerStore)  private storeRepo:   Repository<PartnerStore>,
-    @InjectRepository(User)          private usersRepo:   Repository<User>,
+    @InjectRepository(StoreDropoff)         private dropoffRepo:     Repository<StoreDropoff>,
+    @InjectRepository(PartnerStore)         private storeRepo:       Repository<PartnerStore>,
+    @InjectRepository(User)                 private usersRepo:       Repository<User>,
+    @InjectRepository(PartnerSponsorship)   private sponsorshipRepo: Repository<PartnerSponsorship>,
     private readonly feesService:    FeesService,
     private readonly identityService: IdentityService,
     private readonly mailService:    MailService,
   ) {}
+
+  // ── Spec V8 §4.11 — Sponsored Placement subscriptions ─────────────────────
+
+  async getMySponsorship(userId: string) {
+    const store = await this.getStoreForUser(userId);
+    const row = await this.sponsorshipRepo.findOne({
+      where: { partnerStoreId: store.id },
+    });
+    const monthlyPriceNgn = await this.feesService.getValueOr('partner_sponsored_placement', 25000);
+    return {
+      store:    { id: store.id, businessName: store.storeName },
+      monthlyPriceNgn,
+      sponsorship: row ?? null,
+    };
+  }
+
+  async activateSponsorship(userId: string) {
+    const store = await this.getStoreForUser(userId);
+    const monthlyFeeNgn = await this.feesService.getValueOr('partner_sponsored_placement', 25000);
+    const monthlyFeeKobo = Math.round(monthlyFeeNgn * 100);
+
+    let row = await this.sponsorshipRepo.findOne({
+      where: { partnerStoreId: store.id },
+    });
+    const now = new Date();
+    const nextInvoiceAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    if (!row) {
+      row = this.sponsorshipRepo.create({
+        partnerStore:   store,
+        partnerStoreId: store.id,
+        status:         SponsorshipStatus.ACTIVE,
+        startedAt:      now,
+        endedAt:        null,
+        lastInvoicedFeeKobo: monthlyFeeKobo,
+        lastInvoicedAt: now,
+        nextInvoiceAt,
+        invoiceCount:   1,
+      });
+    } else {
+      row.status         = SponsorshipStatus.ACTIVE;
+      row.startedAt      = row.startedAt ?? now;
+      row.endedAt        = null;
+      row.consecutiveFailures = 0;
+      row.lastFailureReason   = null;
+      // If they're reactivating mid-cycle, don't double-charge — only
+      // reset the invoice clock if they have no prior bill.
+      if (!row.lastInvoicedAt) {
+        row.lastInvoicedFeeKobo = monthlyFeeKobo;
+        row.lastInvoicedAt      = now;
+        row.invoiceCount        = (row.invoiceCount ?? 0) + 1;
+        row.nextInvoiceAt       = nextInvoiceAt;
+      }
+    }
+    return this.sponsorshipRepo.save(row);
+  }
+
+  async pauseSponsorship(userId: string) {
+    const store = await this.getStoreForUser(userId);
+    const row = await this.sponsorshipRepo.findOne({
+      where: { partnerStoreId: store.id },
+    });
+    if (!row) throw new NotFoundException('No active sponsorship to pause.');
+    row.status  = SponsorshipStatus.PAUSED;
+    row.endedAt = new Date();
+    return this.sponsorshipRepo.save(row);
+  }
+
+  // Helper — find the partner store backing this user. Reuses the same
+  // user.partnerStoreId pattern as scanPackage / getInventory etc.
+  private async getStoreForUser(userId: string): Promise<PartnerStore> {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user?.partnerStoreId) throw new ForbiddenException('Partner store not found.');
+    const store = await this.storeRepo.findOne({ where: { id: user.partnerStoreId } });
+    if (!store) throw new NotFoundException('Partner store not found.');
+    return store;
+  }
+
+  // Monthly invoice cron — runs hourly so a sponsorship that comes due
+  // mid-day still gets billed promptly. Flutterwave subscription pull
+  // isn't wired yet (that's a Phase 2 payments task); for now we just
+  // record the snapshot + advance nextInvoiceAt so the audit trail
+  // is correct and the UI displays accurate "last invoiced" dates.
+  // After 3 consecutive failures (when Flutterwave is wired), the row
+  // auto-pauses and the partner is emailed.
+  @Cron(CronExpression.EVERY_HOUR)
+  async runSponsorshipInvoices() {
+    const due = await this.sponsorshipRepo.find({
+      where: { status: SponsorshipStatus.ACTIVE, nextInvoiceAt: LessThanOrEqual(new Date()) },
+    });
+    if (!due.length) return;
+
+    const monthlyFeeNgn  = await this.feesService.getValueOr('partner_sponsored_placement', 25000);
+    const monthlyFeeKobo = Math.round(monthlyFeeNgn * 100);
+
+    for (const row of due) {
+      try {
+        // PLACEHOLDER: Flutterwave subscription pull goes here.
+        //   await this.flutterwave.chargeRecurring(row.partnerStoreId, monthlyFeeKobo);
+        row.lastInvoicedFeeKobo = monthlyFeeKobo;
+        row.lastInvoicedAt      = new Date();
+        row.invoiceCount       += 1;
+        row.consecutiveFailures = 0;
+        row.lastFailureReason   = null;
+        row.nextInvoiceAt       = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      } catch (e: any) {
+        row.consecutiveFailures += 1;
+        row.lastFailureReason    = (e?.message ?? 'unknown').slice(0, 300);
+        if (row.consecutiveFailures >= 3) {
+          row.status  = SponsorshipStatus.PAUSED;
+          row.endedAt = new Date();
+          this.logger.warn(`Sponsorship ${row.id} auto-paused after ${row.consecutiveFailures} failures`);
+        } else {
+          // Retry in an hour
+          row.nextInvoiceAt = new Date(Date.now() + 60 * 60 * 1000);
+        }
+      }
+      await this.sponsorshipRepo.save(row);
+    }
+    this.logger.log(`Sponsorship invoices processed: ${due.length}`);
+  }
 
   // ── Sender flow ────────────────────────────────────────────────────────
 

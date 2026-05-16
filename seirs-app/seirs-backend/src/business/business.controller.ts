@@ -104,6 +104,27 @@ export class BusinessController {
     return this.svc.getLoyalty(user.id);
   }
 
+  // ─── Recurring delivery templates (Spec V8 §4.2) ──────────────────────────
+  @Get('business/recurring-templates')
+  listRecurring(@CurrentUser() user: User) {
+    return this.svc.listRecurringTemplates(user.id);
+  }
+
+  @Post('business/recurring-templates')
+  createRecurring(@CurrentUser() user: User, @Body() body: any) {
+    return this.svc.createRecurringTemplate(user.id, body);
+  }
+
+  @Patch('business/recurring-templates/:id')
+  toggleRecurring(@CurrentUser() user: User, @Param('id') id: string, @Body() body: { isActive: boolean }) {
+    return this.svc.toggleRecurringTemplate(user.id, id, !!body.isActive);
+  }
+
+  @Delete('business/recurring-templates/:id')
+  deleteRecurring(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.svc.deleteRecurringTemplate(user.id, id);
+  }
+
   // ─── Partner Store ────────────────────────────────────────────────────────────
 
   @Get('partner/dashboard')

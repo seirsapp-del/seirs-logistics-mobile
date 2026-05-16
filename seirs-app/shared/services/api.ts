@@ -571,6 +571,25 @@ export const businessApi = {
     request<any>('DELETE', `/business/team/${memberId}`),
   loyalty:       () => request<any>('GET', '/business/loyalty'),
   specialists:   () => request<any>('GET', '/business/specialists'),
+
+  // Spec V8 §4.2 — recurring delivery templates
+  recurringTemplates: {
+    list:   () => request<any[]>('GET', '/business/recurring-templates'),
+    create: (body: {
+      name: string;
+      cadence: 'daily' | 'weekly' | 'monthly';
+      dayOfWeek?: number;
+      dayOfMonth?: number;
+      hour?: number;
+      minute?: number;
+      payload: any;
+    }) => request<any>('POST', '/business/recurring-templates', body),
+    toggle: (id: string, isActive: boolean) =>
+      request<any>('PATCH', `/business/recurring-templates/${id}`, { isActive }),
+    remove: (id: string) =>
+      request<any>('DELETE', `/business/recurring-templates/${id}`),
+  },
+
 };
 
 // ─── Partner Store ───────────────────────────────────────────────────────────
@@ -650,6 +669,23 @@ export const partnerApi = {
       blockers: Array<{ type: string; count: number; action: string }>;
       partnerStoreId: string;
     }>('GET', `/partner-store/store/${storeId}/deletion-readiness`),
+
+  // Spec V8 §4.11 — sponsored placement subscription
+  sponsorship: {
+    me:       () => request<{
+      store: { id: string; businessName: string };
+      monthlyPriceNgn: number;
+      sponsorship: {
+        id: string; status: 'active' | 'paused' | 'cancelled';
+        startedAt: string; endedAt: string | null;
+        lastInvoicedFeeKobo: number; lastInvoicedAt: string | null;
+        nextInvoiceAt: string; invoiceCount: number;
+        consecutiveFailures: number; lastFailureReason: string | null;
+      } | null;
+    }>('GET', '/partner-store/sponsorship/me'),
+    activate: () => request<any>('POST', '/partner-store/sponsorship/activate'),
+    pause:    () => request<any>('POST', '/partner-store/sponsorship/pause'),
+  },
 };
 
 // ─── Customer-side store drop-off (Spec V8 §3 async flow) ──────────────────

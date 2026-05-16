@@ -166,4 +166,27 @@ export class PartnerStoreController {
   myApplication(@CurrentUser() user: any) {
     return this.svc.getMyApplication(user.id);
   }
+
+  // ── Sponsored Placement (Spec V8 §4.11) ──────────────────────────────
+  // Partner pays a monthly fee to be pinned at the top of the customer map
+  // + drop-off picker. Live monthly price comes from FeesService so the
+  // displayed cost always matches what would be charged.
+
+  // GET /api/v1/partner-store/sponsorship/me
+  @Get('sponsorship/me')
+  mySponsorship(@CurrentUser() user: any) {
+    return this.svc.getMySponsorship(user.id);
+  }
+
+  // POST /api/v1/partner-store/sponsorship/activate
+  @Post('sponsorship/activate')
+  activateSponsorship(@CurrentUser() user: any) {
+    return this.svc.activateSponsorship(user.id);
+  }
+
+  // POST /api/v1/partner-store/sponsorship/pause
+  @Post('sponsorship/pause')
+  pauseSponsorship(@CurrentUser() user: any) {
+    return this.svc.pauseSponsorship(user.id);
+  }
 }

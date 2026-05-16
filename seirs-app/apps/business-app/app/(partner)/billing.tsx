@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator,
   Alert, Switch,
@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
-import { feesApi } from '@/services/api';
+import { partnerApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
 // Spec V8 §4.11 — partner sponsored-placement billing view. Live monthly
@@ -24,48 +24,70 @@ export default function PartnerBillingScreen() {
   const colors = useColors();
 
   const [monthlyPrice, setMonthlyPrice] = useState<number | null>(null);
+  const [sponsorship,  setSponsorship]  = useState<any>(null);
   const [loading,      setLoading]      = useState(true);
+  const [busy,         setBusy]         = useState(false);
 
-  // Local-only campaign state until the subscription backend lands. The
-  // toggle visually confirms the change and the next batch will hook it
-  // up to a real PartnerSubscription entity.
-  const [active,       setActive]       = useState(false);
+  const active = sponsorship?.status === 'active';
+  const lastInvoicedNgn = sponsorship?.lastInvoicedFeeKobo != null
+    ? Math.round(sponsorship.lastInvoicedFeeKobo / 100)
+    : 0;
 
-  useEffect(() => {
-    feesApi.get('partner_sponsored_placement')
-      .then(res => setMonthlyPrice(Number(res.value)))
-      .catch(() => setMonthlyPrice(null))
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    try {
+      const res = await partnerApi.sponsorship.me();
+      setMonthlyPrice(res?.monthlyPriceNgn ?? null);
+      setSponsorship(res?.sponsorship ?? null);
+    } catch (e: any) {
+      // Don't blow up if the partner store isn't fully provisioned;
+      // the screen still renders with a "—" price.
+      setMonthlyPrice(null);
+      setSponsorship(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const handleToggle = (next: boolean) => {
     if (next) {
       Alert.alert(
         'Activate Sponsored Placement',
-        `You'll be billed ${monthlyPrice != null ? fmtNgn(monthlyPrice) : '—'} every month and your store will appear pinned at the top of the customer map.\n\nThis is a placeholder — Flutterwave subscription will be wired up in the next batch. Toggling here today does not bill you.`,
+        `Your store will appear pinned at the top of the customer map.\n\nMonthly fee: ${monthlyPrice != null ? fmtNgn(monthlyPrice) : '—'}.\n\nFlutterwave recurring billing is being wired in Phase 2 payments — for now the invoice is recorded but no card is charged. Pause anytime, no contract.`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Activate', onPress: () => setActive(true) },
+          { text: 'Activate', onPress: async () => {
+            setBusy(true);
+            try { await partnerApi.sponsorship.activate(); await load(); }
+            catch (e: any) { Alert.alert('Could not activate', e?.message ?? 'Try again.'); }
+            finally { setBusy(false); }
+          } },
         ],
       );
     } else {
       Alert.alert(
         'Pause Sponsored Placement',
-        'Your store will return to standard map ranking. Active customers in current sessions will still see you pinned until they refresh.',
+        'Your store will return to standard map ranking. No further monthly invoices until you reactivate.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Pause', style: 'destructive', onPress: () => setActive(false) },
+          { text: 'Pause', style: 'destructive', onPress: async () => {
+            setBusy(true);
+            try { await partnerApi.sponsorship.pause(); await load(); }
+            catch (e: any) { Alert.alert('Could not pause', e?.message ?? 'Try again.'); }
+            finally { setBusy(false); }
+          } },
         ],
       );
     }
   };
 
-  // Mock metrics — real numbers will come from the placement_impressions
-  // table once the customer map starts emitting view events. Numbers are
-  // rendered conservatively to set realistic expectations.
+  // Live metrics: invoice count + last-billed amount are live; impression
+  // counts await the placement_impressions table (Phase 2). Zero-state
+  // is rendered conservatively when not active.
   const stats = active
-    ? { impressions: 2840, clickThroughs: 312, monthSpend: monthlyPrice ?? 0 }
-    : { impressions: 0,    clickThroughs: 0,   monthSpend: 0 };
+    ? { impressions: 0, clickThroughs: 0, monthSpend: lastInvoicedNgn }
+    : { impressions: 0, clickThroughs: 0, monthSpend: 0 };
 
   return (
     <ScrollView
@@ -120,12 +142,17 @@ export default function PartnerBillingScreen() {
 
         <View style={[styles.toggleRow, { borderTopColor: colors.border }]}>
           <Text style={[styles.toggleLabel, { color: colors.text }]}>{active ? 'Active' : 'Activate placement'}</Text>
-          <Switch
-            value={active}
-            onValueChange={handleToggle}
-            trackColor={{ false: colors.border, true: colors.accent }}
-            thumbColor="#fff"
-          />
+          {busy ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : (
+            <Switch
+              value={active}
+              onValueChange={handleToggle}
+              disabled={loading}
+              trackColor={{ false: colors.border, true: colors.accent }}
+              thumbColor="#fff"
+            />
+          )}
         </View>
       </View>
 

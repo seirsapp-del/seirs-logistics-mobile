@@ -1,8 +1,9 @@
 import {
-  Injectable, NotFoundException, BadRequestException, ForbiddenException,
+  Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual, DataSource, In } from 'typeorm';
+import { Cron } from '@nestjs/schedule';
+import { Repository, MoreThanOrEqual, LessThanOrEqual, DataSource, In } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../users/user.entity';
 import { BusinessAccount, BusinessTeamMember } from './business-account.entity';
@@ -10,6 +11,7 @@ import { PartnerStore } from './partner-store.entity';
 import { BusinessPackage, PackageStatus } from './business-package.entity';
 import { BusinessWalletTx } from './business-wallet-tx.entity';
 import { PartnerPayout } from './partner-payout.entity';
+import { RecurringTemplate, RecurringCadence } from './recurring-template.entity';
 import { MailService } from '../mail/mail.service';
 import { PricingService } from '../pricing/pricing.service';
 import { RoutingService } from '../routing/routing.service';
@@ -17,6 +19,9 @@ import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
 
 const PER_PACKAGE_RATE = 500; // ₦500 per package stored
+
+const clamp = (n: number, min: number, max: number) =>
+  Math.min(Math.max(n, min), max);
 
 /**
  * Multi-stop booking payload from the business app. Shape:
@@ -56,6 +61,8 @@ export interface CreateMultiStopDeliveryDto {
 
 @Injectable()
 export class BusinessService {
+  private readonly logger = new Logger(BusinessService.name);
+
   constructor(
     @InjectRepository(User)                private usersRepo:       Repository<User>,
     @InjectRepository(BusinessAccount)     private bizRepo:         Repository<BusinessAccount>,
@@ -66,11 +73,156 @@ export class BusinessService {
     @InjectRepository(PartnerPayout)       private payoutsRepo:     Repository<PartnerPayout>,
     @InjectRepository(Delivery)            private deliveriesRepo:  Repository<Delivery>,
     @InjectRepository(DeliveryStop)        private stopsRepo:       Repository<DeliveryStop>,
+    @InjectRepository(RecurringTemplate)   private recurringRepo:   Repository<RecurringTemplate>,
     private mailService: MailService,
     private pricing: PricingService,
     private routing: RoutingService,
     private dataSource: DataSource,
   ) {}
+
+  // ── Spec V8 §4.2 — Recurring Delivery Templates ───────────────────────────
+
+  async createRecurringTemplate(userId: string, body: {
+    name: string;
+    cadence: RecurringCadence;
+    dayOfWeek?: number;
+    dayOfMonth?: number;
+    hour?: number;
+    minute?: number;
+    payload: any;
+  }) {
+    if (!body.name?.trim()) throw new BadRequestException('Template name required.');
+    if (!Object.values(RecurringCadence).includes(body.cadence)) {
+      throw new BadRequestException('Invalid cadence.');
+    }
+    if (!body.payload?.pickupAddress || !Array.isArray(body.payload?.stops) || !body.payload.stops.length) {
+      throw new BadRequestException('Payload must include a pickup and at least one stop.');
+    }
+    if (body.cadence === RecurringCadence.WEEKLY && (body.dayOfWeek == null || body.dayOfWeek < 0 || body.dayOfWeek > 6)) {
+      throw new BadRequestException('Weekly cadence needs dayOfWeek (0=Sun .. 6=Sat).');
+    }
+    if (body.cadence === RecurringCadence.MONTHLY) {
+      const dom = body.dayOfMonth ?? 1;
+      if (dom < 1 || dom > 28) {
+        throw new BadRequestException('Monthly cadence needs dayOfMonth 1-28 (avoids 30/31 ambiguity).');
+      }
+    }
+
+    const hour   = clamp(body.hour   ?? 9, 0, 23);
+    const minute = clamp(body.minute ?? 0, 0, 59);
+
+    const template = this.recurringRepo.create({
+      owner:      { id: userId } as User,
+      name:       body.name.trim(),
+      cadence:    body.cadence,
+      dayOfWeek:  body.cadence === RecurringCadence.WEEKLY  ? body.dayOfWeek!   : null,
+      dayOfMonth: body.cadence === RecurringCadence.MONTHLY ? (body.dayOfMonth ?? 1) : null,
+      hour,
+      minute,
+      payload:    body.payload,
+      isActive:   true,
+      nextRunAt:  this.computeNextRunAt({
+        cadence: body.cadence, dayOfWeek: body.dayOfWeek, dayOfMonth: body.dayOfMonth, hour, minute,
+      }, new Date()),
+    });
+    return this.recurringRepo.save(template);
+  }
+
+  listRecurringTemplates(userId: string) {
+    return this.recurringRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.owner', 'u')
+      .where('u.id = :userId', { userId })
+      .orderBy('t.createdAt', 'DESC')
+      .getMany();
+  }
+
+  async toggleRecurringTemplate(userId: string, id: string, isActive: boolean) {
+    const t = await this.getOwnedTemplate(userId, id);
+    t.isActive = isActive;
+    if (isActive) {
+      t.nextRunAt = this.computeNextRunAt(t, new Date());
+    }
+    return this.recurringRepo.save(t);
+  }
+
+  async deleteRecurringTemplate(userId: string, id: string) {
+    const t = await this.getOwnedTemplate(userId, id);
+    await this.recurringRepo.remove(t);
+    return { ok: true };
+  }
+
+  private async getOwnedTemplate(userId: string, id: string) {
+    const t = await this.recurringRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.owner', 'u')
+      .where('t.id = :id', { id })
+      .getOne();
+    if (!t) throw new NotFoundException('Template not found.');
+    if (t.owner?.id !== userId) throw new ForbiddenException('Not your template.');
+    return t;
+  }
+
+  // Compute the next firing instant from a cadence definition. Daily =
+  // tomorrow at hour:minute if hour:minute has already passed today,
+  // else today. Weekly = next occurrence of dayOfWeek. Monthly = next
+  // occurrence of dayOfMonth. Server local TZ; can adjust to Africa/
+  // Lagos later if Railway TZ drifts.
+  private computeNextRunAt(t: {
+    cadence: RecurringCadence; dayOfWeek?: number | null; dayOfMonth?: number | null;
+    hour: number; minute: number;
+  }, from: Date): Date {
+    const next = new Date(from);
+    next.setSeconds(0, 0);
+    next.setHours(t.hour, t.minute, 0, 0);
+
+    if (t.cadence === RecurringCadence.DAILY) {
+      if (next <= from) next.setDate(next.getDate() + 1);
+      return next;
+    }
+    if (t.cadence === RecurringCadence.WEEKLY) {
+      const target = t.dayOfWeek ?? 1;
+      let diff = (target - next.getDay() + 7) % 7;
+      if (diff === 0 && next <= from) diff = 7;
+      next.setDate(next.getDate() + diff);
+      return next;
+    }
+    // MONTHLY
+    const target = t.dayOfMonth ?? 1;
+    next.setDate(target);
+    if (next <= from) next.setMonth(next.getMonth() + 1);
+    return next;
+  }
+
+  // Cron — every 5 minutes scan for due templates, fire each, schedule
+  // the next run. Failures bump errorCount + lastError so the owner
+  // can see them in the UI; we don't disable on a single failure.
+  @Cron('*/5 * * * *')
+  async runDueRecurringTemplates() {
+    const due = await this.recurringRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.owner', 'u')
+      .where('t.isActive = true')
+      .andWhere('t.nextRunAt <= :now', { now: new Date() })
+      .getMany();
+    if (!due.length) return;
+
+    for (const t of due) {
+      try {
+        await this.createDelivery(t.owner.id, t.payload as CreateMultiStopDeliveryDto);
+        t.fireCount  += 1;
+        t.lastRunAt  = new Date();
+        t.lastError  = null;
+      } catch (e: any) {
+        t.errorCount += 1;
+        t.lastError  = (e?.message ?? 'unknown').slice(0, 300);
+        this.logger.warn(`Recurring template ${t.id} failed: ${t.lastError}`);
+      }
+      t.nextRunAt = this.computeNextRunAt(t, new Date());
+      await this.recurringRepo.save(t);
+    }
+    this.logger.log(`Recurring templates fired: ${due.length}`);
+  }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
