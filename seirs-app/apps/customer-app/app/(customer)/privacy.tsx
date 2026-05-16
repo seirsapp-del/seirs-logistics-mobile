@@ -1,12 +1,18 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Switch, Alert,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Switch, Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { usersApi } from '@/services/api';
+
+// Subset of notification-prefs keys we treat as "data & analytics consent"
+// so privacy + notifications stay in sync (a user who flips marketing off
+// in either screen sees it off in both).
+const PRIVACY_PREF_KEYS = ['analytics_share', 'personalised_ads', 'data_sharing'] as const;
 
 export default function PrivacyScreen() {
   const router = useRouter();
@@ -19,6 +25,30 @@ export default function PrivacyScreen() {
   const [analyticsShare,  setAnalyticsShare]  = useState(true);
   const [personalisedAds, setPersonalisedAds] = useState(false);
   const [dataSharing,     setDataSharing]     = useState(true);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load remote prefs on mount so privacy + notif screens stay in sync.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { prefs } = await usersApi.getNotificationPrefs();
+        if (prefs?.analytics_share !== undefined)  setAnalyticsShare(prefs.analytics_share);
+        if (prefs?.personalised_ads !== undefined) setPersonalisedAds(prefs.personalised_ads);
+        if (prefs?.data_sharing !== undefined)     setDataSharing(prefs.data_sharing);
+      } catch {}
+    })();
+  }, []);
+
+  const queueSave = (patch: Record<string, boolean>) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      usersApi.updateNotificationPrefs(patch).catch(() => {});
+    }, 400);
+  };
+
+  const onToggleAnalytics = (v: boolean) => { setAnalyticsShare(v);  queueSave({ analytics_share:  v }); };
+  const onTogglePersonalised = (v: boolean) => { setPersonalisedAds(v); queueSave({ personalised_ads: v }); };
+  const onToggleDataSharing = (v: boolean) => { setDataSharing(v);   queueSave({ data_sharing:     v }); };
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -26,9 +56,24 @@ export default function PrivacyScreen() {
       'This will permanently delete your account, trip history, and wallet balance. This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete Permanently', style: 'destructive', onPress: () => {} },
+        {
+          text: 'Continue', style: 'destructive',
+          onPress: () => router.push('/(customer)/delete-account' as any),
+        },
       ]
     );
+  };
+
+  const handleDataDownload = async () => {
+    try {
+      await usersApi.exportData();
+      Alert.alert(
+        'Export queued',
+        'Your data is being prepared. You will receive an email with the download link within 24 hours.',
+      );
+    } catch {
+      Alert.alert('Export failed', 'Please try again later or contact support@seirs.co');
+    }
   };
 
   type RowProps = { icon: string; label: string; sub: string; value: boolean; onChange: (v: boolean) => void };
@@ -91,21 +136,21 @@ export default function PrivacyScreen() {
             label="Usage Analytics"
             sub="Help improve the app by sharing usage data"
             value={analyticsShare}
-            onChange={setAnalyticsShare}
+            onChange={onToggleAnalytics}
           />
           <ToggleRow
             icon="megaphone-outline"
             label="Personalised Ads"
             sub="Ads tailored to your interests"
             value={personalisedAds}
-            onChange={setPersonalisedAds}
+            onChange={onTogglePersonalised}
           />
           <ToggleRow
             icon="share-outline"
             label="Data Sharing with Partners"
             sub="Share anonymised trip data for traffic insights"
             value={dataSharing}
-            onChange={setDataSharing}
+            onChange={onToggleDataSharing}
           />
         </View>
 
@@ -113,8 +158,8 @@ export default function PrivacyScreen() {
         <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>Your Data</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {[
-            { icon: 'download-outline',   label: 'Download My Data',      sub: 'Get a copy of all your SEIRS data',      color: theme.primary, onPress: () => Alert.alert('Download', 'Your data will be prepared and emailed to you within 24 hours.') },
-            { icon: 'trash-outline',      label: 'Clear Trip History',    sub: 'Remove completed trips from your history', color: '#EF4444',    onPress: () => Alert.alert('Clear History', 'This will remove all completed trips.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Clear', style: 'destructive', onPress: () => {} }]) },
+            { icon: 'download-outline',   label: 'Download My Data',      sub: 'NDPR Article 24 — export profile, trips, payments', color: theme.primary, onPress: handleDataDownload },
+            { icon: 'document-text-outline', label: 'View Privacy Policy', sub: 'Read how we handle your data',                       color: theme.textSecond, onPress: () => Linking.openURL('https://seirs.app/privacy-policy') },
           ].map((item, i, arr) => (
             <Pressable
               key={item.label}
@@ -136,13 +181,18 @@ export default function PrivacyScreen() {
         {/* Legal links */}
         <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>Legal</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
-          {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((label, i, arr) => (
+          {[
+            { label: 'Privacy Policy',    url: 'https://seirs.app/privacy-policy'    },
+            { label: 'Terms of Service',  url: 'https://seirs.app/terms-of-service'  },
+            { label: 'Dispute Resolution', url: 'https://seirs.app/dispute-resolution' },
+          ].map((item, i, arr) => (
             <Pressable
-              key={label}
+              key={item.label}
               style={[styles.row, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}
+              onPress={() => Linking.openURL(item.url)}
             >
               <Ionicons name="document-text-outline" size={18} color={theme.textSecond} />
-              <Text style={[styles.linkLabel, { color: theme.text }]}>{label}</Text>
+              <Text style={[styles.linkLabel, { color: theme.text }]}>{item.label}</Text>
               <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
             </Pressable>
           ))}

@@ -254,6 +254,36 @@ export class MailService {
     await this.send(to, `Delivered — ${trackingCode}`, html);
   }
 
+  // Receipt resend — triggered by the customer tapping "Email receipt" on
+  // the in-app receipt screen. Plain-text fare breakdown for reliability.
+  async sendDeliveryReceipt(
+    to: string,
+    name: string,
+    trackingCode: string,
+    totalNaira: number,
+    paymentMethod: string,
+    completedAt?: Date,
+  ) {
+    const formattedDate = completedAt
+      ? new Date(completedAt).toLocaleString('en-NG', { dateStyle: 'long', timeStyle: 'short' })
+      : '—';
+    const html = baseTemplate(`
+      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Your SEIRS receipt</h2>
+      <p>Hi ${name},</p>
+      <p>Here's the receipt for delivery <strong>${trackingCode}</strong>.</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0">
+        <tr><td style="padding:6px 0;color:#6B7280">Tracking code</td><td align="right"><strong>${trackingCode}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#6B7280">Completed</td><td align="right">${formattedDate}</td></tr>
+        <tr><td style="padding:6px 0;color:#6B7280">Payment method</td><td align="right">${paymentMethod}</td></tr>
+        <tr><td style="padding:12px 0;border-top:1px solid #E5E7EB"><strong>Total paid</strong></td>
+            <td align="right" style="padding:12px 0;border-top:1px solid #E5E7EB"><strong>₦${totalNaira.toLocaleString()}</strong></td></tr>
+      </table>
+      <p style="font-size:13px;color:#9CA3AF">Keep this email for your records. Reply to support@seirs.co if anything looks wrong.</p>
+    `);
+
+    await this.send(to, `Receipt — ${trackingCode}`, html);
+  }
+
   // ── Delivery failed ──────────────────────────────────────────────────────────
 
   async sendDeliveryFailed(to: string, name: string, trackingCode: string) {

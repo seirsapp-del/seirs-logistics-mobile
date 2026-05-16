@@ -43,4 +43,20 @@ export class UsersController {
   exportData(@CurrentUser() user: User) {
     return this.usersService.exportUserData(user.id);
   }
+
+  // GET /api/v1/users/me/notification-prefs
+  @Get('me/notification-prefs')
+  async getNotificationPrefs(@CurrentUser() user: User) {
+    const u = await this.usersService.findById(user.id);
+    return { prefs: u.notificationPrefs ?? {} };
+  }
+
+  // PUT /api/v1/users/me/notification-prefs  { prefs: { key: boolean } }
+  @Patch('me/notification-prefs')
+  updateNotificationPrefs(
+    @CurrentUser() user: User,
+    @Body() body: { prefs: Record<string, boolean> },
+  ) {
+    return this.usersService.updateNotificationPrefs(user.id, body.prefs);
+  }
 }

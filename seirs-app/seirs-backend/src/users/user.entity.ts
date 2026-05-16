@@ -166,6 +166,13 @@ export class User {
   @Column({ nullable: true })
   bankVerifiedAt: Date;
 
+  // Per-channel push/email opt-ins. Mirrors the toggles in the apps'
+  // notification-settings screens. Keys not present default to true at
+  // send time (see NotificationsService.shouldSend). Null entire blob
+  // = all channels on (default for new users).
+  @Column({ type: 'jsonb', nullable: true })
+  notificationPrefs: Record<string, boolean>;
+
   @OneToMany(() => Delivery, (d) => d.customer)
   deliveries: Delivery[];
 

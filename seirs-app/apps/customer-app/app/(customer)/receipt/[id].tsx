@@ -1,13 +1,14 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator, Alert, Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
-import { MOCK_TRIPS } from '@/constants/mockData';
+import { deliveriesApi } from '@/services/api';
 
 export default function ReceiptScreen() {
   const router = useRouter();
@@ -16,20 +17,86 @@ export default function ReceiptScreen() {
   const isDark = cs === 'dark';
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const trip = MOCK_TRIPS.find(t => t.id === id) ?? MOCK_TRIPS[0];
+  const [trip, setTrip] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        const d = await deliveriesApi.get(id);
+        setTrip(d);
+      } catch {
+        setTrip(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center' }}>
+        <ActivityIndicator color={theme.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!trip) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.lg }}>
+        <Ionicons name="receipt-outline" size={48} color={theme.textThird} />
+        <Text style={{ color: theme.textSecond, marginTop: Spacing.md, textAlign: 'center' }}>
+          Receipt not available. The trip may not be completed yet.
+        </Text>
+        <Pressable onPress={() => router.back()} style={{ marginTop: Spacing.lg }}>
+          <Text style={{ color: theme.primary, fontWeight: '600' }}>Go back</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  // Real delivery payloads use camelCase fields directly from the API.
+  const totalAmount = Number(trip.totalAmount ?? trip.price ?? 0);
+  const breakdown = (trip.breakdown ?? {}) as { base?: number; distance?: number; time?: number; service?: number };
   const fareRows = [
-    { label: 'Base fare',    amount: 500 },
-    { label: 'Distance fee', amount: Math.round(trip.price * 0.45) },
-    { label: 'Time fee',     amount: Math.round(trip.price * 0.12) },
-    { label: 'Service fee',  amount: Math.round(trip.price * 0.09) },
+    { label: 'Base fare',    amount: Number(breakdown.base     ?? Math.round(totalAmount * 0.34)) },
+    { label: 'Distance fee', amount: Number(breakdown.distance ?? Math.round(totalAmount * 0.45)) },
+    { label: 'Time fee',     amount: Number(breakdown.time     ?? Math.round(totalAmount * 0.12)) },
+    { label: 'Service fee',  amount: Number(breakdown.service  ?? Math.round(totalAmount * 0.09)) },
   ];
 
+  const trackingCode    = trip.trackingCode    ?? trip.id;
+  const pickupAddress   = trip.pickupAddress   ?? trip.pickup?.address   ?? '—';
+  const dropoffAddress  = trip.dropoffAddress  ?? trip.dropoff?.address  ?? '—';
+  const distance        = trip.distance        ?? '—';
+  const duration        = trip.duration        ?? '—';
+  const paymentMethod   = trip.paymentMethod   ?? 'wallet';
+  const completedDate   = trip.deliveredAt     ?? trip.completedAt       ?? trip.createdAt;
+  const rating          = trip.rating          ?? trip.driverRating      ?? null;
+
+  const onShare = async () => {
+    try {
+      await Share.share({
+        message: `SEIRS receipt ${trackingCode} — ₦${totalAmount.toLocaleString()} paid via ${paymentMethod}`,
+      });
+    } catch {}
+  };
+
+  const onEmailReceipt = async () => {
+    try {
+      await deliveriesApi.emailReceipt(trip.id);
+      Alert.alert('Sent', 'A copy of this receipt has been emailed to you.');
+    } catch {
+      Alert.alert('Send failed', 'Please try again later.');
+    }
+  };
+
   const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-NG', {
+    iso ? new Date(iso).toLocaleDateString('en-NG', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
-    });
+    }) : '—';
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -42,7 +109,7 @@ export default function ReceiptScreen() {
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
           <Text style={[styles.title, { color: theme.text }]}>Receipt</Text>
-          <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]}>
+          <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={onShare}>
             <Ionicons name="share-outline" size={20} color={theme.text} />
           </Pressable>
         </View>
@@ -55,7 +122,7 @@ export default function ReceiptScreen() {
               <Ionicons name="checkmark-circle" size={36} color="#22C55E" />
             </View>
             <Text style={[styles.successTitle, { color: '#16A34A' }]}>Trip Completed</Text>
-            <Text style={[styles.successDate,  { color: '#4ADE80' }]}>{formatDate(trip.date)}</Text>
+            <Text style={[styles.successDate,  { color: '#4ADE80' }]}>{formatDate(completedDate)}</Text>
           </View>
 
           {/* Receipt card */}
@@ -64,21 +131,21 @@ export default function ReceiptScreen() {
             {/* Tracking code */}
             <View style={[styles.trackRow, { backgroundColor: theme.surfaceSecond }]}>
               <Text style={[styles.trackLabel, { color: theme.textSecond }]}>Tracking Code</Text>
-              <Text style={[styles.trackCode,  { color: theme.primary }]}>{trip.trackingCode}</Text>
+              <Text style={[styles.trackCode,  { color: theme.primary }]}>{trackingCode}</Text>
             </View>
 
             {/* Driver */}
             {trip.driver && (
               <View style={[styles.driverRow, { borderTopColor: theme.border }]}>
-                <Avatar name={trip.driver.name} size={40} />
+                <Avatar name={trip.driver.name ?? 'Driver'} uri={trip.driver.profilePhoto} size={40} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.driverName, { color: theme.text }]}>{trip.driver.name}</Text>
-                  <Text style={[styles.driverSub,  { color: theme.textSecond }]}>{trip.driver.plate}</Text>
+                  <Text style={[styles.driverName, { color: theme.text }]}>{trip.driver.name ?? 'Driver'}</Text>
+                  <Text style={[styles.driverSub,  { color: theme.textSecond }]}>{trip.driver.vehicleNumber ?? trip.driver.plate ?? ''}</Text>
                 </View>
-                {trip.rating && (
+                {!!rating && (
                   <View style={styles.rating}>
                     {[1, 2, 3, 4, 5].map(s => (
-                      <Ionicons key={s} name={s <= trip.rating! ? 'star' : 'star-outline'} size={13} color="#FFBE0B" />
+                      <Ionicons key={s} name={s <= rating ? 'star' : 'star-outline'} size={13} color="#FFBE0B" />
                     ))}
                   </View>
                 )}
@@ -95,18 +162,18 @@ export default function ReceiptScreen() {
                   <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
                 </View>
                 <View style={styles.routeAddrs}>
-                  <Text style={[styles.routeAddr, { color: theme.text }]}>{trip.pickupAddress}</Text>
-                  <Text style={[styles.routeAddr, { color: theme.text, marginTop: Spacing.md }]}>{trip.dropoffAddress}</Text>
+                  <Text style={[styles.routeAddr, { color: theme.text }]}>{pickupAddress}</Text>
+                  <Text style={[styles.routeAddr, { color: theme.text, marginTop: Spacing.md }]}>{dropoffAddress}</Text>
                 </View>
               </View>
               <View style={styles.routeMeta}>
                 <View style={styles.routeMetaItem}>
                   <Ionicons name="navigate-outline" size={13} color={theme.textSecond} />
-                  <Text style={[styles.routeMetaText, { color: theme.textSecond }]}>{trip.distance}</Text>
+                  <Text style={[styles.routeMetaText, { color: theme.textSecond }]}>{distance}</Text>
                 </View>
                 <View style={styles.routeMetaItem}>
                   <Ionicons name="time-outline" size={13} color={theme.textSecond} />
-                  <Text style={[styles.routeMetaText, { color: theme.textSecond }]}>{trip.duration}</Text>
+                  <Text style={[styles.routeMetaText, { color: theme.textSecond }]}>{duration}</Text>
                 </View>
               </View>
             </View>
@@ -125,12 +192,12 @@ export default function ReceiptScreen() {
               ))}
               <View style={[styles.totalRow, { borderTopColor: theme.border }]}>
                 <Text style={[styles.totalLabel, { color: theme.text }]}>Total Paid</Text>
-                <Text style={[styles.totalAmt,   { color: theme.primary }]}>₦{trip.price.toLocaleString()}</Text>
+                <Text style={[styles.totalAmt,   { color: theme.primary }]}>₦{totalAmount.toLocaleString()}</Text>
               </View>
               <View style={[styles.payBadge, { backgroundColor: theme.surfaceSecond }]}>
                 <Ionicons name="wallet-outline" size={14} color={theme.textSecond} />
                 <Text style={[styles.payBadgeText, { color: theme.textSecond }]}>
-                  Paid via {trip.paymentMethod.charAt(0).toUpperCase() + trip.paymentMethod.slice(1)}
+                  Paid via {String(paymentMethod).charAt(0).toUpperCase() + String(paymentMethod).slice(1)}
                 </Text>
               </View>
             </View>
@@ -138,11 +205,11 @@ export default function ReceiptScreen() {
 
           {/* Actions */}
           <View style={styles.actions}>
-            <Pressable style={[styles.actionBtn, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
-              <Ionicons name="download-outline" size={20} color={theme.text} />
-              <Text style={[styles.actionBtnText, { color: theme.text }]}>Download PDF</Text>
+            <Pressable style={[styles.actionBtn, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]} onPress={onShare}>
+              <Ionicons name="share-outline" size={20} color={theme.text} />
+              <Text style={[styles.actionBtnText, { color: theme.text }]}>Share</Text>
             </Pressable>
-            <Pressable style={[styles.actionBtn, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '40' }, Shadows.xs]}>
+            <Pressable style={[styles.actionBtn, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '40' }, Shadows.xs]} onPress={onEmailReceipt}>
               <Ionicons name="mail-outline" size={20} color={theme.primary} />
               <Text style={[styles.actionBtnText, { color: theme.primary }]}>Email Receipt</Text>
             </Pressable>

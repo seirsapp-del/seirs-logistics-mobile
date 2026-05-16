@@ -7,21 +7,18 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import i18n, { changeLanguage, type LanguageCode } from '@/i18n';
 
-const LANGUAGES = [
-  { code: 'en-NG', label: 'English',  sub: 'Nigeria', flag: '🇳🇬' },
-  { code: 'en-GB', label: 'English',  sub: 'United Kingdom', flag: '🇬🇧' },
-  { code: 'yo',    label: 'Yorùbá',   sub: 'Nigeria', flag: '🇳🇬' },
-  { code: 'ha',    label: 'Hausa',    sub: 'Nigeria', flag: '🇳🇬' },
-  { code: 'ig',    label: 'Igbo',     sub: 'Nigeria', flag: '🇳🇬' },
-  { code: 'fr',    label: 'Français', sub: 'France',  flag: '🇫🇷' },
+// Only show languages we actually have translations for.
+const LANGUAGES: { code: LanguageCode; label: string; sub: string; flag: string }[] = [
+  { code: 'en', label: 'English',  sub: 'Nigeria', flag: '🇳🇬' },
+  { code: 'yo', label: 'Yorùbá',   sub: 'Nigeria', flag: '🇳🇬' },
+  { code: 'ha', label: 'Hausa',    sub: 'Nigeria', flag: '🇳🇬' },
+  { code: 'ig', label: 'Igbo',     sub: 'Nigeria', flag: '🇳🇬' },
 ];
 
 const CURRENCIES = [
   { code: 'NGN', symbol: '₦', label: 'Nigerian Naira',  flag: '🇳🇬' },
-  { code: 'USD', symbol: '$', label: 'US Dollar',       flag: '🇺🇸' },
-  { code: 'GBP', symbol: '£', label: 'British Pound',   flag: '🇬🇧' },
-  { code: 'EUR', symbol: '€', label: 'Euro',            flag: '🇪🇺' },
 ];
 
 export default function LanguageScreen() {
@@ -30,8 +27,15 @@ export default function LanguageScreen() {
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
 
-  const [selectedLang, setSelectedLang] = useState('en-NG');
-  const [selectedCurr, setSelectedCurr] = useState('NGN');
+  const current = (i18n.language?.split('-')[0] ?? 'en') as LanguageCode;
+  const [selectedLang, setSelectedLang] = useState<LanguageCode>(current);
+  // All transactions are NGN at launch; FX display is a v1.1 feature.
+  const [selectedCurr] = useState('NGN');
+
+  const handleLanguageChange = async (code: LanguageCode) => {
+    setSelectedLang(code);
+    await changeLanguage(code);
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
@@ -58,7 +62,7 @@ export default function LanguageScreen() {
                 i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
                 selectedLang === lang.code && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
               ]}
-              onPress={() => setSelectedLang(lang.code)}
+              onPress={() => handleLanguageChange(lang.code)}
             >
               <Text style={styles.flag}>{lang.flag}</Text>
               <View style={{ flex: 1 }}>
@@ -83,7 +87,7 @@ export default function LanguageScreen() {
                 i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
                 selectedCurr === curr.code && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
               ]}
-              onPress={() => setSelectedCurr(curr.code)}
+              onPress={() => {}}
             >
               <Text style={styles.flag}>{curr.flag}</Text>
               <View style={[styles.symbolWrap, { backgroundColor: selectedCurr === curr.code ? theme.primary : theme.surfaceSecond }]}>

@@ -173,6 +173,11 @@ export const usersApi = {
     request<{ message: string }>('DELETE', '/users/me', { password, reason }),
   // NDPR Article 24 — right to data portability. Returns a JSON dump.
   exportData: () => request<any>('GET', '/users/me/export'),
+  // Notification opt-in toggles. Keys mirror what the apps render.
+  getNotificationPrefs: () =>
+    request<{ prefs: Record<string, boolean> }>('GET', '/users/me/notification-prefs'),
+  updateNotificationPrefs: (prefs: Record<string, boolean>) =>
+    request<{ prefs: Record<string, boolean> }>('PATCH', '/users/me/notification-prefs', { prefs }),
 };
 
 export const deliveriesApi = {
@@ -180,11 +185,14 @@ export const deliveriesApi = {
   create: (body: object) => request<any>('POST', '/deliveries', normalizeBodyVehicle(body as any)),
   myDeliveries: (page = 1, limit = 20) =>
     request<{ items: any[]; total: number; pages: number }>('GET', `/deliveries?page=${page}&limit=${limit}`),
+  get: (id: string) => request<any>('GET', `/deliveries/${id}`),
   track: (code: string) => request<any>('GET', `/deliveries/track/${code}`, undefined, false),
   updateStatus: (id: string, status: string, proofPhotoUrl?: string) =>
     request<any>('PATCH', `/deliveries/${id}/status`, { status, ...(proofPhotoUrl ? { proofPhotoUrl } : {}) }),
   rate: (id: string, rating: number, comment?: string) =>
     request<any>('POST', `/deliveries/${id}/rate`, { rating, comment }),
+  emailReceipt: (id: string) =>
+    request<{ sent: boolean }>('POST', `/deliveries/${id}/email-receipt`),
 };
 
 // ─── Payments ─────────────────────────────────────────────────────────────────

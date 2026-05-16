@@ -315,6 +315,38 @@ export class DeliveriesService {
     return delivery;
   }
 
+  // Customer-scoped fetch with driver + stops eagerly loaded so the
+  // receipt screen has everything it needs in one round-trip.
+  async findByIdForUser(id: string, userId: string) {
+    const delivery = await this.repo.findOne({
+      where:    { id, customer: { id: userId } },
+      relations: ['driver', 'driver.user', 'customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    return delivery;
+  }
+
+  async emailReceipt(id: string, userId: string) {
+    const delivery = await this.repo.findOne({
+      where:    { id, customer: { id: userId } },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.status !== DeliveryStatus.DELIVERED) {
+      const { BadRequestException } = await import('@nestjs/common');
+      throw new BadRequestException('Receipt is only available for completed deliveries.');
+    }
+    await this.mailService.sendDeliveryReceipt(
+      delivery.customer.email,
+      delivery.customer.name,
+      delivery.trackingCode,
+      Number(delivery.price ?? 0),
+      'wallet',
+      delivery.deliveredAt ?? delivery.updatedAt,
+    );
+    return { sent: true };
+  }
+
   async rateDelivery(id: string, customerId: string, rating: number, comment?: string) {
     const delivery = await this.repo.findOne({
       where: { id, customer: { id: customerId } },

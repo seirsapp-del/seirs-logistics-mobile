@@ -31,6 +31,13 @@ export class UsersService {
     return this.findById(userId);
   }
 
+  async updateNotificationPrefs(userId: string, prefs: Record<string, boolean>) {
+    const existing = await this.repo.findOne({ where: { id: userId } });
+    const merged = { ...(existing?.notificationPrefs ?? {}), ...prefs };
+    await this.repo.update(userId, { notificationPrefs: merged });
+    return { prefs: merged };
+  }
+
   // Spec V8 — NDPR right to erasure. Soft-delete first (isActive=false +
   // deactivatedAt timestamp) so we keep audit trails for any pending
   // disputes; the daily cron below hard-deletes after the 30-day grace

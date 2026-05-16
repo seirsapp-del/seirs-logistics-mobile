@@ -3,10 +3,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { usersApi } from '@/services/api';
 
 type ToggleKey =
   | 'trip_updates' | 'driver_assigned' | 'trip_completed' | 'trip_cancelled'
@@ -64,14 +65,41 @@ export default function NotificationSettingsScreen() {
   const isDark = cs === 'dark';
 
   const [settings, setSettings] = useState<Record<ToggleKey, boolean>>(DEFAULTS);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load remote prefs on mount; fall back to DEFAULTS if user has none yet.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { prefs } = await usersApi.getNotificationPrefs();
+        if (prefs && Object.keys(prefs).length > 0) {
+          setSettings({ ...DEFAULTS, ...prefs } as Record<ToggleKey, boolean>);
+        }
+      } catch {}
+    })();
+  }, []);
+
+  // Debounced save — collapses bursts of toggles into one PATCH.
+  const queueSave = (next: Record<ToggleKey, boolean>) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      usersApi.updateNotificationPrefs(next).catch(() => {});
+    }, 400);
+  };
 
   const toggle = (key: ToggleKey) =>
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+    setSettings(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      queueSave(next);
+      return next;
+    });
 
   const allOn  = Object.values(settings).every(Boolean);
   const toggleAll = () => {
-    const next = !allOn;
-    setSettings(Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, next])) as Record<ToggleKey, boolean>);
+    const flag = !allOn;
+    const next = Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, flag])) as Record<ToggleKey, boolean>;
+    setSettings(next);
+    queueSave(next);
   };
 
   return (

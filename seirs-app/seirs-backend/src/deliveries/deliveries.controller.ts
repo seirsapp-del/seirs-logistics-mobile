@@ -83,4 +83,18 @@ export class DeliveriesController {
   ) {
     return this.deliveriesService.updateStatus(id, body.status, body.proofPhotoUrl);
   }
+
+  // GET /api/v1/deliveries/:id — single delivery with driver + breakdown
+  // Must come AFTER all literal-segment routes above so they don't get
+  // caught by :id.
+  @Get(':id')
+  getOne(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.findByIdForUser(id, user.id);
+  }
+
+  // POST /api/v1/deliveries/:id/email-receipt — resend the receipt email
+  @Post(':id/email-receipt')
+  emailReceipt(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.emailReceipt(id, user.id);
+  }
 }
