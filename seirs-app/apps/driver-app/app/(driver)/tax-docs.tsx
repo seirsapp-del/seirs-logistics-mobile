@@ -10,7 +10,7 @@ import {
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { paymentsApi } from '@/services/api';
+import { driversApi } from '@/services/api';
 
 // Spec V8 §2 — driver yearly earnings statements for FIRS tax filing.
 // Once the backend tax-export endpoint ships, "Download" generates a
@@ -40,25 +40,15 @@ export default function TaxDocsScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const history = await paymentsApi.history();
-        const arr = Array.isArray(history) ? history : [];
-        // Aggregate by year — quick client-side roll-up. Backend will
-        // expose /payments/tax-summary for canonical numbers later.
-        const byYear: Record<number, YearSummary> = {};
-        for (const tx of arr) {
-          const date = new Date(tx.createdAt ?? tx.date ?? Date.now());
-          const year = date.getFullYear();
-          const amt  = Number(tx.amount ?? 0);
-          if (!byYear[year]) byYear[year] = { year, grossNgn: 0, commissionNgn: 0, netNgn: 0, trips: 0 };
-          if (tx.type === 'credit' || amt > 0) {
-            byYear[year].netNgn += Math.abs(amt);
-            byYear[year].trips  += 1;
-          }
-        }
-        const sorted = Object.values(byYear)
-          .map(y => ({ ...y, grossNgn: Math.round(y.netNgn / 0.75), commissionNgn: Math.round(y.netNgn / 0.75) - y.netNgn }))
-          .sort((a, b) => b.year - a.year);
-        setSummaries(sorted);
+        const res = await driversApi.taxSummary();
+        const items = res?.years ?? [];
+        setSummaries(items.map(y => ({
+          year:          y.year,
+          grossNgn:      y.grossNgn,
+          commissionNgn: y.commissionNgn,
+          netNgn:        y.netNgn,
+          trips:         y.tripCount,
+        })));
       } catch { setSummaries([]); }
       finally { setLoading(false); }
     })();
@@ -67,7 +57,7 @@ export default function TaxDocsScreen() {
   const handleDownload = (year: number) => {
     Alert.alert(
       `Download ${year} statement`,
-      'PDF export will be available once the backend tax-summary endpoint ships. The numbers shown here are derived live from your payment history.',
+      'PDF export ships in a follow-up — for now the numbers shown are the canonical aggregates the backend will use to generate the PDF. Screenshot this page if you need to file before then.',
       [{ text: 'OK' }],
     );
   };

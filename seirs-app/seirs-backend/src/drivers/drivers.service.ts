@@ -1,6 +1,7 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { In, LessThan, Repository } from 'typeorm';
 import { Driver } from './driver.entity';
 import { DriverTrip, DriverTripStatus } from './driver-trip.entity';
 import { DriverStatusBroadcast, DriverStatusBroadcastType } from './driver-status-broadcast.entity';
@@ -23,6 +24,13 @@ const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
 
 @Injectable()
 export class DriversService {
+  private readonly logger = new Logger(DriversService.name);
+
+  // Lazy-set by SchedulerModule wiring so we can push silent notifications
+  // from the auto-checkin cron without coupling DriversModule to
+  // NotificationsModule (would risk a circular dep).
+  notificationsService?: any;
+
   constructor(
     @InjectRepository(Driver)                 private repo:           Repository<Driver>,
     @InjectRepository(Delivery)               private deliveriesRepo: Repository<Delivery>,
@@ -116,12 +124,32 @@ export class DriversService {
       );
     }
 
-    await this.repo.update(driver.id, {
+    const now = new Date();
+    const updates: Partial<Driver> = {
       lastOrderMode:      enabled,
-      lastOrderEnabledAt: enabled ? new Date() : null as any,
-    });
+      lastOrderEnabledAt: enabled ? now : (null as any),
+    };
 
-    return { lastOrderMode: enabled };
+    // Spec V8 §2.11 — Next-day priority penalty.
+    // If the driver flips to wind-down within 30 minutes of going
+    // online, deprioritise them in matching until end-of-tomorrow.
+    // 30-minute threshold mirrors the spec language "within 30min of
+    // going online". Cleared automatically when timestamp passes.
+    if (enabled && driver.lastOnlineAt) {
+      const minsOnline = (now.getTime() - new Date(driver.lastOnlineAt).getTime()) / 60_000;
+      if (minsOnline >= 0 && minsOnline < 30) {
+        const endOfTomorrow = new Date(now);
+        endOfTomorrow.setDate(endOfTomorrow.getDate() + 2);
+        endOfTomorrow.setHours(0, 0, 0, 0);
+        updates.priorityPenaltyUntil = endOfTomorrow;
+        this.logger.warn(
+          `Early-wind-down penalty: driver=${driver.id} mins-online=${Math.round(minsOnline)} until=${endOfTomorrow.toISOString()}`,
+        );
+      }
+    }
+
+    await this.repo.update(driver.id, updates);
+    return { lastOrderMode: enabled, priorityPenaltyUntil: updates.priorityPenaltyUntil ?? null };
   }
 
   // ── Spec V8 §2.18 — Interstate trip declarations ──────────────────────────
@@ -201,6 +229,73 @@ export class DriversService {
     return this.tripsRepo.save(trip);
   }
 
+  // ── Spec V8 §2.13 — Auto check-in cron ────────────────────────────────────
+  // Drivers who are online but haven't pinged GPS in 5+ min get a silent
+  // "are you OK?" push. Helps detect crashed phones, dead batteries,
+  // signal black spots. Runs every 5 minutes; once a driver pings back
+  // their locationUpdatedAt advances and they're cleared.
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async pingStaleOnlineDrivers() {
+    const cutoff = new Date(Date.now() - 5 * 60 * 1000);
+    const stale = await this.repo.find({
+      where: { isOnline: true, locationUpdatedAt: LessThan(cutoff) },
+      relations: ['user'],
+      take: 200,
+    });
+    if (!stale.length) return;
+    let pinged = 0;
+    for (const d of stale) {
+      if (!d.user?.id || !this.notificationsService) continue;
+      this.notificationsService.create(
+        d.user.id,
+        'Are you OK?',
+        'We haven\'t seen your location in a few minutes. Open SEIRS so we know you\'re safe.',
+        'general',
+      ).catch(() => {});
+      pinged++;
+    }
+    if (pinged) this.logger.log(`Auto check-in: pinged ${pinged} stale online drivers`);
+  }
+
+  // ── Spec V8 §2.9 — Driver tax summary ─────────────────────────────────────
+  // Aggregates the driver's delivery earnings by year so the FIRS-filing
+  // helper screen (drv.taxDocs) can render a real table. Returns flat
+  // JSON; the client can PDF-render if needed.
+  async getTaxSummary(userId: string, year?: number) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    const qb = this.deliveriesRepo
+      .createQueryBuilder('d')
+      .select(`EXTRACT(YEAR FROM d.deliveredAt)::int`, 'year')
+      .addSelect('COUNT(d.id)::int',                    'tripCount')
+      .addSelect('COALESCE(SUM(d.price), 0)::float',    'grossNgn')
+      .addSelect('COALESCE(SUM(d.driverEarnings), 0)::float', 'netNgn')
+      .where('d.driverId = :driverId', { driverId: driver.id })
+      .andWhere('d.status = :status',  { status: DeliveryStatus.DELIVERED })
+      .andWhere('d.deliveredAt IS NOT NULL');
+
+    if (year) qb.andWhere('EXTRACT(YEAR FROM d.deliveredAt) = :year', { year });
+
+    const rows = await qb
+      .groupBy(`EXTRACT(YEAR FROM d.deliveredAt)`)
+      .orderBy(`EXTRACT(YEAR FROM d.deliveredAt)`, 'DESC')
+      .getRawMany();
+
+    return {
+      driverId:   driver.id,
+      generatedAt: new Date().toISOString(),
+      years:      rows.map((r: any) => ({
+        year:        Number(r.year),
+        tripCount:   Number(r.tripCount),
+        grossNgn:    Math.round(Number(r.grossNgn)),
+        commissionNgn: Math.round(Number(r.grossNgn) - Number(r.netNgn)),
+        netNgn:      Math.round(Number(r.netNgn)),
+      })),
+      note: 'Self-employed driver earnings for Nigerian FIRS filing. Includes only completed deliveries; tips and instant-payout fees not included.',
+    };
+  }
+
   // ── Spec V8 §2.14 — Driver status broadcast (network/traffic/help) ─────────
   async recordStatusBroadcast(userId: string, body: {
     type: DriverStatusBroadcastType;
@@ -272,7 +367,11 @@ export class DriversService {
       }
     }
 
-    await this.repo.update(driver.id, { isOnline });
+    const updates: Partial<Driver> = { isOnline };
+    if (isOnline) {
+      updates.lastOnlineAt = new Date();
+    }
+    await this.repo.update(driver.id, updates);
     return { isOnline };
   }
 

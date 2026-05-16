@@ -7,6 +7,7 @@ import {
   OneToOne,
   JoinColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Delivery } from '../deliveries/delivery.entity';
@@ -68,6 +69,24 @@ export class Driver {
   // online costs them next-day priority.
   @Column({ nullable: true })
   lastOrderEnabledAt: Date;
+
+  // Timestamp when this driver last flipped online — used by the
+  // 30-min "early wind-down" detector (Spec V8 §2.11).
+  @Column({ nullable: true })
+  lastOnlineAt: Date;
+
+  // Spec V8 §2.11 — set if the driver triggered the early-wind-down
+  // penalty. Matching service deprioritises them while this is in the
+  // future. Cleared automatically when the timestamp passes.
+  @Column({ type: 'timestamptz', nullable: true })
+  priorityPenaltyUntil: Date | null;
+
+  // Spec V8 §1.13 — driver referral attribution. Set when a new
+  // driver provides a referredByCode at signup. Reward fulfilment is
+  // a follow-up; this column anchors the relationship.
+  @Index()
+  @Column({ nullable: true })
+  referredByCode: string;
 
   // Last known GPS position
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })

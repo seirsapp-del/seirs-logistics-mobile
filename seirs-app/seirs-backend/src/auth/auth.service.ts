@@ -135,7 +135,14 @@ export class AuthService {
     await this.usersRepo.save(user);
 
     if (dto.role === UserRole.DRIVER) {
-      const driver = this.driversRepo.create({ user, vehicleType: dto.vehicleType });
+      const driver = this.driversRepo.create({
+        user,
+        vehicleType:    dto.vehicleType,
+        // Spec V8 §2.9 — driver referral attribution. Same code shape
+        // as customers (8-char uppercase). Stored on both the user
+        // and driver row for downstream reward fulfilment.
+        referredByCode: dto.referralCode?.trim().toUpperCase() || null,
+      });
       await this.driversRepo.save(driver);
     }
 

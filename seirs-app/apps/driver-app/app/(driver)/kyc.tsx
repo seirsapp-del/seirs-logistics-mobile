@@ -8,7 +8,7 @@ import {
   Users, CheckCircle, Clock, XCircle, UploadCloud, ChevronRight,
   ExternalLink,
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -63,6 +63,26 @@ export default function KycScreen() {
   const [docs,      setDocs]      = useState<DocItem[]>(INITIAL_DOCS);
   const [uploading, setUploading] = useState<string | null>(null);
   const [showInsurance, setShowInsurance] = useState(false);
+  // Spec V8 §"Camera policy" — drivers MUST have a working phone
+  // camera as a signup criterion. We probe permission upfront so
+  // a denied/unavailable camera is surfaced before they try to
+  // upload anything. 'unknown' = haven't checked yet (no banner).
+  const [cameraStatus, setCameraStatus] = useState<'ok' | 'denied' | 'unknown'>('unknown');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const current = await ImagePicker.getCameraPermissionsAsync();
+        if (current.status === 'granted') { setCameraStatus('ok'); return; }
+        // OS-blocked (user picked "never ask again") — no point reprompting
+        if (!current.canAskAgain) { setCameraStatus('denied'); return; }
+        const asked = await ImagePicker.requestCameraPermissionsAsync();
+        setCameraStatus(asked.status === 'granted' ? 'ok' : 'denied');
+      } catch {
+        setCameraStatus('denied');
+      }
+    })();
+  }, []);
 
   const requiredDocs = docs.filter(d => d.required);
   const verified     = requiredDocs.filter(d => d.status === 'verified').length;
@@ -122,6 +142,29 @@ export default function KycScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+
+        {/* Spec V8 — working phone camera is a signup criterion for
+            drivers. Surface a hard banner if permission was denied so
+            the user understands why the upload buttons will keep
+            failing. App settings deep-link bumps them straight to the
+            permission screen rather than making them hunt. */}
+        {cameraStatus === 'denied' && (
+          <View style={[styles.cameraBlocker]}>
+            <Camera size={20} color="#DC2626" strokeWidth={1.75} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cameraBlockerTitle}>Camera access required</Text>
+              <Text style={styles.cameraBlockerDesc}>
+                A working phone camera is a requirement to drive on SEIRS. Enable camera permission in your phone settings to upload KYC documents and complete deliveries (proof photos at every pickup + dropoff).
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => { import('react-native').then(({ Linking }) => Linking.openSettings().catch(() => {})); }}
+              style={styles.cameraBlockerBtn}
+            >
+              <Text style={styles.cameraBlockerBtnText}>Open Settings</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Progress card */}
         <View style={[styles.progressCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
@@ -256,6 +299,11 @@ export default function KycScreen() {
 }
 
 const styles = StyleSheet.create({
+  cameraBlocker:        { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14, borderRadius: 12, borderWidth: 1, backgroundColor: '#FEF2F2', borderColor: '#FCA5A5', marginBottom: 16 },
+  cameraBlockerTitle:   { fontSize: 14, fontWeight: '700', color: '#DC2626', marginBottom: 4 },
+  cameraBlockerDesc:    { fontSize: 12, color: '#7F1D1D', lineHeight: 17 },
+  cameraBlockerBtn:     { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: '#DC2626' },
+  cameraBlockerBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   header:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
   backBtn:       { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   headerTitle:   { fontSize: FontSize.md, fontWeight: FontWeight.bold as any },

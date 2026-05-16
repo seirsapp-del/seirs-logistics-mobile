@@ -52,6 +52,7 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'HelpCircle', label: t('drawer.help',          { defaultValue: 'Help & FAQ' }),            onPress: () => navigate('/(driver)/help') },
     { icon: 'Lock',       label: t('drawer.privacy',       { defaultValue: 'Privacy Policy' }),        onPress: () => navigate('/(driver)/privacy') },
     { icon: 'Phone',      label: t('drawer.contact',       { defaultValue: 'Contact Support' }),       onPress: () => navigate('/(driver)/help') },
+    { icon: 'AlertTriangle', label: t('drawer.sos',         { defaultValue: 'SOS Emergency' }),         onPress: () => navigate('/(driver)/sos') },
   ];
 
   return (

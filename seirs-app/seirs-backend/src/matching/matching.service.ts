@@ -129,12 +129,20 @@ export class MatchingService {
       ? FRAGILE_SUITABILITY[driver.vehicleType] ?? 0.5
       : 1.0; // non-fragile = any vehicle is fine
 
-    const score =
+    let score =
       distanceScore  * WEIGHTS.distance +
       vehicleScore   * WEIGHTS.vehicle  +
       ratingScore    * WEIGHTS.rating   +
       speedScore     * WEIGHTS.speed    +
       fragileScore   * WEIGHTS.fragile;
+
+    // Spec V8 §2.11 — next-day priority penalty. Drivers who flipped
+    // wind-down within 30min of going online get a -0.15 score hit
+    // until end-of-tomorrow. Lower in the ranking, not excluded —
+    // they'll still get jobs when no penalty-free driver is closer.
+    if (driver.priorityPenaltyUntil && new Date(driver.priorityPenaltyUntil) > new Date()) {
+      score = Math.max(0, score - 0.15);
+    }
 
     return {
       driver,

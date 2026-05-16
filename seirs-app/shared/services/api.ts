@@ -345,6 +345,14 @@ export const driversApi = {
     lat?: number;
     lng?: number;
   }) => request<any>('POST', '/drivers/status-broadcasts', body),
+
+  // Spec V8 §2.9 — yearly earnings aggregate for FIRS filing.
+  taxSummary: (year?: number) =>
+    request<{
+      driverId: string; generatedAt: string;
+      years: Array<{ year: number; tripCount: number; grossNgn: number; commissionNgn: number; netNgn: number }>;
+      note: string;
+    }>('GET', `/drivers/me/tax-summary${year ? `?year=${year}` : ''}`),
 };
 
 // ─── Promotions (Spec V8 §3.13) ──────────────────────────────────────────────

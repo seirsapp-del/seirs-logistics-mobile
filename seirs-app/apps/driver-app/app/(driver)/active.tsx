@@ -209,8 +209,15 @@ export default function ActiveDeliveryScreen() {
           <Text style={[styles.trackCode, { color: theme.textSecond }]}>{delivery.trackingCode}</Text>
         </View>
         <Pressable
+          onPress={() => router.push({ pathname: '/(driver)/sos' as any, params: { deliveryId: id ?? '' } } as any)}
+          style={[styles.backCircle, { backgroundColor: '#FEE2E2' }]}
+          accessibilityLabel="SOS — emergency"
+        >
+          <Ionicons name="warning" size={20} color="#DC2626" />
+        </Pressable>
+        <Pressable
           onPress={() => router.push('/(driver)/status-broadcast' as any)}
-          style={[styles.backCircle, { backgroundColor: theme.surface }]}
+          style={[styles.backCircle, { backgroundColor: theme.surface, marginLeft: 8 }]}
           accessibilityLabel="Broadcast status"
         >
           <Ionicons name="radio-outline" size={20} color={theme.text} />

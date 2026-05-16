@@ -52,6 +52,7 @@ export default function DriverRegisterScreen() {
   const [password,     setPassword]     = useState('');
   const [confirmPass,  setConfirmPass]  = useState('');
   const [vehicle,      setVehicle]      = useState<VehicleType | null>(null);
+  const [referralCode, setReferralCode] = useState('');
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [termsConfirmed, setTermsConfirmed] = useState(false);
   const [loading,      setLoading]      = useState(false);
@@ -88,6 +89,7 @@ export default function DriverRegisterScreen() {
     setError('');
     setLoading(true);
     try {
+      const trimmedRef = referralCode.trim().toUpperCase();
       await authApi.register({
         name: fullName,
         email,
@@ -97,6 +99,7 @@ export default function DriverRegisterScreen() {
         vehicleType: vehicle!,
         ageConfirmed: true,
         termsAcceptedAt: new Date().toISOString(),
+        ...(trimmedRef ? { referralCode: trimmedRef } : {}),
       });
       router.replace({ pathname: '/(auth)/verify-otp' as any, params: { email } });
     } catch (e: any) {

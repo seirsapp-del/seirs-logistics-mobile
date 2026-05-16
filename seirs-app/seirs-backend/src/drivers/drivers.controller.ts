@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { DriversService } from './drivers.service';
 import { DriverStatusBroadcastType } from './driver-status-broadcast.entity';
 import { RedisService } from '../tracking/redis.service';
@@ -107,5 +107,13 @@ export class DriversController {
     type: DriverStatusBroadcastType; deliveryId?: string; lat?: number; lng?: number;
   }) {
     return this.driversService.recordStatusBroadcast(user.id, body);
+  }
+
+  // Spec V8 §2.9 — yearly earnings aggregate for FIRS filing.
+  // Optional ?year=2026 to scope to one year; default returns all years.
+  @Get('me/tax-summary')
+  taxSummary(@CurrentUser() user: User, @Query('year') year?: string) {
+    const y = year ? Number(year) : undefined;
+    return this.driversService.getTaxSummary(user.id, Number.isFinite(y) ? y : undefined);
   }
 }
