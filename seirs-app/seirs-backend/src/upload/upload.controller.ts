@@ -8,14 +8,14 @@ import { extname } from 'path';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { UploadService } from './upload.service';
 
-type UploadFolder = 'kyc' | 'proof' | 'avatars';
+type UploadFolder = 'kyc' | 'proof' | 'avatars' | 'cms';
 
 @UseGuards(JwtAuthGuard)
 @Controller('upload')
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
-  // POST /api/v1/upload?folder=kyc|proof|avatars
+  // POST /api/v1/upload?folder=kyc|proof|avatars|cms
   @Post()
   @UseInterceptors(FileInterceptor('file', {
     storage: memoryStorage(),
@@ -34,7 +34,7 @@ export class UploadController {
   ) {
     if (!file) throw new BadRequestException('No file provided.');
 
-    const validFolders: UploadFolder[] = ['kyc', 'proof', 'avatars'];
+    const validFolders: UploadFolder[] = ['kyc', 'proof', 'avatars', 'cms'];
     const dest: UploadFolder = validFolders.includes(folder as UploadFolder)
       ? (folder as UploadFolder)
       : 'kyc';

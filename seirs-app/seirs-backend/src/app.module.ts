@@ -38,6 +38,7 @@ import { LoyaltyModule } from './loyalty/loyalty.module';
 import { EarningsModule } from './earnings/earnings.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { SuggestionsModule } from './suggestions/suggestions.module';
+import { WebsiteContentModule } from './website-content/website-content.module';
 
 @Module({
   imports: [
@@ -111,6 +112,7 @@ import { SuggestionsModule } from './suggestions/suggestions.module';
     EarningsModule,
     PromotionsModule,
     SuggestionsModule,
+    WebsiteContentModule,
   ],
 })
 export class AppModule {}

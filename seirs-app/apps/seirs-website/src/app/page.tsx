@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getPageBlock } from "@/lib/cms";
 import {
   Package,
   Truck,
@@ -233,7 +234,17 @@ function PartnerBenefit({
 /* ══════════════════════════════════════════════
    HOME PAGE
 ══════════════════════════════════════════════ */
-export default function HomePage() {
+
+// Revalidate ISR every 60s so CMS edits to the hero block land on the
+// marketing site within ~1 min without a redeploy.
+export const revalidate = 60;
+
+export default async function HomePage() {
+  // Inline-editable hero block — falls back to the hardcoded copy below
+  // when the CMS row is missing or unreachable, so marketing can edit
+  // without breaking the page.
+  const hero = await getPageBlock('home_hero');
+
   return (
     <>
       {/* ── HERO ── */}
@@ -267,17 +278,20 @@ export default function HomePage() {
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-6 tracking-tight">
-                Nigeria&apos;s Smartest
-                <br />
-                <span className="text-sky">Last-Mile Delivery</span>
-                <br />
-                Platform
+                {hero?.title ?? (
+                  <>
+                    Nigeria&apos;s Smartest
+                    <br />
+                    <span className="text-sky">Last-Mile Delivery</span>
+                    <br />
+                    Platform
+                  </>
+                )}
               </h1>
 
               <p className="text-white/70 text-lg leading-relaxed mb-8 max-w-lg">
-                Send thousands of packages with one click. Real-time tracking,
-                business wallets, and a network of verified drivers and partner
-                stores across Nigeria.
+                {hero?.excerpt ??
+                  'Send thousands of packages with one click. Real-time tracking, business wallets, and a network of verified drivers and partner stores across Nigeria.'}
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-14">

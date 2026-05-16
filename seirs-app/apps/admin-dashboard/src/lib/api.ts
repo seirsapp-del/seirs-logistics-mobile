@@ -195,6 +195,39 @@ export const adminApi = {
       }),
   },
 
+  // Spec V8 — public website CMS (articles + FAQ + changelog + page blocks)
+  websiteContent: {
+    list:   (type?: string, status?: string) => {
+      const params = new URLSearchParams();
+      if (type)   params.set('type', type);
+      if (status) params.set('status', status);
+      const qs = params.toString();
+      return req<any[]>(`/admin/website/content${qs ? `?${qs}` : ''}`);
+    },
+    get:    (id: string)             => req<any>(`/admin/website/content/${id}`),
+    create: (body: any)              => req<any>('/admin/website/content', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id: string, body: any)  => req<any>(`/admin/website/content/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    remove: (id: string)             => req<any>(`/admin/website/content/${id}`, { method: 'DELETE' }),
+  },
+
+  // Direct R2 upload helper for the CMS image picker (re-uses the
+  // existing /upload endpoint with folder=cms).
+  upload: {
+    image: async (file: File): Promise<{ url: string }> => {
+      const form = new FormData();
+      form.append('file', file);
+      const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
+      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+      const r = await fetch(`${base}/upload?folder=cms`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      if (!r.ok) throw new Error(`Upload failed (${r.status})`);
+      return r.json();
+    },
+  },
+
   // Spec V8 Tier 3 — Developer Platform admin oversight
   devPlatform: {
     listAccounts: () => req<any[]>('/dev-platform/keys'), // simplistic: each key = an account in this view

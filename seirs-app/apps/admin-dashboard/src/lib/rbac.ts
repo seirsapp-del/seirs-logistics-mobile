@@ -167,7 +167,8 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'CONTENT',
     items: [
-      { href: '/cms',        label: 'CMS',        icon: 'FileText', permission: 'cms'        },
+      { href: '/cms',        label: 'In-App CMS', icon: 'FileText', permission: 'cms'        },
+      { href: '/website',    label: 'Website',    icon: 'Globe',    permission: 'cms'        },
       { href: '/promotions', label: 'Promotions', icon: 'Percent',  permission: 'promotions' },
     ],
   },
