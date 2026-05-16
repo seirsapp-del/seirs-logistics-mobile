@@ -139,6 +139,12 @@ export const adminApi = {
     handoffChain: (deliveryId: string) => req<any[]>(`/identity/handoff/${deliveryId}/chain`),
   },
 
+  // Spec V8 §3.12 — Interstate trip board.
+  interstateTrips: {
+    list: (status?: 'active' | 'completed' | 'cancelled') =>
+      req<any[]>(`/admin/interstate-trips${status ? `?status=${status}` : ''}`),
+  },
+
   // Spec V8 Tier 3 — Developer Platform admin oversight
   devPlatform: {
     listAccounts: () => req<any[]>('/dev-platform/keys'), // simplistic: each key = an account in this view

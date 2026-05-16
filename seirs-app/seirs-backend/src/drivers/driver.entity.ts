@@ -57,6 +57,18 @@ export class Driver {
   @Column({ default: false })
   isOnline: boolean;
 
+  // Spec V8 §2.11 — wind-down mode. While true, the matching service
+  // skips this driver for new assignments but they continue completing
+  // already-accepted jobs. One-way until the driver fully signs off.
+  @Column({ default: false })
+  lastOrderMode: boolean;
+
+  // Timestamp when the driver flipped lastOrderMode to true. Used to
+  // detect the 30-min penalty window: enabling within 30min of going
+  // online costs them next-day priority.
+  @Column({ nullable: true })
+  lastOrderEnabledAt: Date;
+
   // Last known GPS position
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   lastLat: number;

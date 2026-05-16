@@ -5,6 +5,8 @@ import {
 import { Request } from 'express';
 import { AdminService } from './admin.service';
 import { PartnerStoreService } from '../partner-store/partner-store.service';
+import { DriversService } from '../drivers/drivers.service';
+import { DriverTripStatus } from '../drivers/driver-trip.entity';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -16,8 +18,9 @@ import { TicketStatus, TicketPriority } from './support-ticket.entity';
 @Controller('admin')
 export class AdminController {
   constructor(
-    private readonly adminService:       AdminService,
+    private readonly adminService:        AdminService,
     private readonly partnerStoreService: PartnerStoreService,
+    private readonly driversService:      DriversService,
   ) {}
 
   // ── Overview ──────────────────────────────────────────────────────────────
@@ -409,5 +412,15 @@ export class AdminController {
   @Get('ops-map/deliveries')
   getOpsMapDeliveries() {
     return this.adminService.getOpsMapDeliveries();
+  }
+
+  // ── Interstate Trip Board (Spec V8 §3.12) ────────────────────────────────
+  // GET /api/v1/admin/interstate-trips?status=active
+  // Returns declared intercity trips for the ops board. Default: active only.
+  @Get('interstate-trips')
+  getInterstateTrips(@Query('status') status?: DriverTripStatus) {
+    return this.driversService.listAllInterstateTrips({
+      status: status ?? DriverTripStatus.ACTIVE,
+    });
   }
 }

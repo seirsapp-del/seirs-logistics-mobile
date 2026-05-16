@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { DriversService } from './drivers.service';
+import { DriverStatusBroadcastType } from './driver-status-broadcast.entity';
 import { RedisService } from '../tracking/redis.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -72,5 +73,39 @@ export class DriversController {
   @Get('me/deletion-readiness')
   deletionReadiness(@CurrentUser() user: User) {
     return this.driversService.getDeletionReadiness(user.id);
+  }
+
+  // Spec V8 §2.11 — Last Order (wind-down) toggle. One-way until
+  // full sign-off; service throws LAST_ORDER_LOCKED on disable attempt.
+  @Patch('last-order-mode')
+  setLastOrderMode(@CurrentUser() user: User, @Body() body: { enabled: boolean }) {
+    return this.driversService.setLastOrderMode(user.id, !!body.enabled);
+  }
+
+  // Spec V8 §2.18 — Interstate trip declarations.
+  @Post('interstate-trips')
+  declareInterstateTrip(@CurrentUser() user: User, @Body() body: {
+    fromCity: string; toCity: string; departAt: string; spareCapacityKg: number;
+  }) {
+    return this.driversService.declareInterstateTrip(user.id, body);
+  }
+
+  @Get('interstate-trips/me')
+  myInterstateTrips(@CurrentUser() user: User) {
+    return this.driversService.listMyInterstateTrips(user.id);
+  }
+
+  @Patch('interstate-trips/:id/cancel')
+  cancelInterstateTrip(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.driversService.cancelInterstateTrip(user.id, id);
+  }
+
+  // Spec V8 §2.14 — three-tap status broadcast. Persisted + WS-fanned
+  // to admin + active customer (when deliveryId supplied).
+  @Post('status-broadcasts')
+  recordStatusBroadcast(@CurrentUser() user: User, @Body() body: {
+    type: DriverStatusBroadcastType; deliveryId?: string; lat?: number; lng?: number;
+  }) {
+    return this.driversService.recordStatusBroadcast(user.id, body);
   }
 }

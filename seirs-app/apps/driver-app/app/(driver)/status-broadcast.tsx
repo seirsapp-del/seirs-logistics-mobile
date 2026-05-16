@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, Wifi, AlertCircle, AlertTriangle, ChevronRight, CheckCircle } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { driversApi } from '@/services/api';
 
 // Spec V8 §2.14 — quick three-button status broadcast. When network is
 // flaky or driver is delayed, one tap sends a status that's queued and
@@ -17,6 +18,13 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 // provides feedback so drivers can practice the flow during testing.
 
 type Status = 'network' | 'traffic' | 'help';
+
+// Wire-level type matches DriverStatusBroadcastType enum on the backend.
+const WIRE: Record<Status, 'network_bad' | 'traffic' | 'need_help'> = {
+  network: 'network_bad',
+  traffic: 'traffic',
+  help:    'need_help',
+};
 
 const OPTIONS: Array<{ key: Status; label: string; sub: string; color: string; Icon: any }> = [
   { key: 'network', label: 'Network is bad — still moving',     sub: 'GPS may be delayed but I&apos;m on the way',                color: '#3A7BD5', Icon: Wifi          },
@@ -36,9 +44,7 @@ export default function StatusBroadcastScreen() {
     setSending(key);
     setSent(null);
     try {
-      // Offline-safe submit — queues into local SQLite via the GPS sync
-      // layer (be.offline). For now we simulate with an await + alert.
-      await new Promise(r => setTimeout(r, 600));
+      await driversApi.sendStatusBroadcast({ type: WIRE[key] });
       setSent(key);
       const msg = OPTIONS.find(o => o.key === key)?.label ?? '';
       Alert.alert('Status sent', `Customer will see: "${msg}". Will retry until acknowledged if your network is offline.`);

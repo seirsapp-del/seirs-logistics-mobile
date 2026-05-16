@@ -22,6 +22,7 @@ export const WsEvents = {
   DELIVERY_COMPLETE: 'delivery:completed',
   CHAT_MESSAGE:      'chat:message',
   SOS_ALERT:         'sos:alert',
+  DRIVER_STATUS:     'driver:status',
 };
 
 const ClientEvents = {
@@ -304,5 +305,28 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
       ...alert,
       createdAt: alert.createdAt instanceof Date ? alert.createdAt.toISOString() : alert.createdAt,
     });
+  }
+
+  // Spec V8 §2.14 — driver status broadcast fan-out. Admin always
+  // receives it; the active delivery's room (so the customer's
+  // tracking screen) gets it when deliveryId is bound.
+  broadcastDriverStatus(payload: {
+    id:         string;
+    driverId:   string;
+    driverName: string;
+    deliveryId: string | null;
+    type:       string;
+    lat:        number | null;
+    lng:        number | null;
+    createdAt:  Date;
+  }) {
+    const wire = {
+      ...payload,
+      createdAt: payload.createdAt instanceof Date ? payload.createdAt.toISOString() : payload.createdAt,
+    };
+    this.server.to('admin').emit(WsEvents.DRIVER_STATUS, wire);
+    if (payload.deliveryId) {
+      this.server.to(`delivery:${payload.deliveryId}`).emit(WsEvents.DRIVER_STATUS, wire);
+    }
   }
 }

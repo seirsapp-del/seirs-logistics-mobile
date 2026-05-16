@@ -319,6 +319,27 @@ export const driversApi = {
       blockers: Array<{ type: string; count: number; action: string }>;
       driverId?: string;
     }>('GET', '/drivers/me/deletion-readiness'),
+
+  // Spec V8 §2.11 — Last Order (wind-down) toggle. One-way until
+  // full sign-off; backend throws LAST_ORDER_LOCKED on disable attempt.
+  setLastOrderMode: (enabled: boolean) =>
+    request<{ lastOrderMode: boolean }>('PATCH', '/drivers/last-order-mode', { enabled }),
+
+  // Spec V8 §2.18 — Interstate trip declarations.
+  declareInterstateTrip: (body: {
+    fromCity: string; toCity: string; departAt: string; spareCapacityKg: number;
+  }) => request<any>('POST', '/drivers/interstate-trips', body),
+  myInterstateTrips: () => request<any[]>('GET', '/drivers/interstate-trips/me'),
+  cancelInterstateTrip: (id: string) =>
+    request<any>('PATCH', `/drivers/interstate-trips/${id}/cancel`),
+
+  // Spec V8 §2.14 — three-tap driver status broadcast.
+  sendStatusBroadcast: (body: {
+    type: 'network_bad' | 'traffic' | 'need_help';
+    deliveryId?: string;
+    lat?: number;
+    lng?: number;
+  }) => request<any>('POST', '/drivers/status-broadcasts', body),
 };
 
 // ─── Offline GPS sync (Spec V8 §2.13) ────────────────────────────────────────

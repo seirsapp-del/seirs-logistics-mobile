@@ -10,6 +10,7 @@ import {
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { driversApi } from '@/services/api';
 
 // Spec V8 §2.18 — driver declares an upcoming intercity trip
 // (Lagos → Ibadan, etc.). System surfaces matching packages along
@@ -39,14 +40,23 @@ export default function InterstateScreen() {
   const submit = async () => {
     if (!from.trim() || !to.trim()) { Alert.alert('Both cities required'); return; }
     if (!departAt) { Alert.alert('Departure time required'); return; }
+    // Accept "YYYY-MM-DD HH:mm" form by normalizing to ISO before sending.
+    const depart = departAt.includes('T') ? departAt : departAt.replace(' ', 'T');
+    if (Number.isNaN(new Date(depart).getTime())) {
+      Alert.alert('Invalid departure', 'Use the format YYYY-MM-DD HH:mm.');
+      return;
+    }
     setSubmitting(true);
     try {
-      // Backend route declaration endpoint is a follow-up — for now we
-      // simulate so drivers can practice the flow during testing.
-      await new Promise(r => setTimeout(r, 800));
+      await driversApi.declareInterstateTrip({
+        fromCity:        from.trim(),
+        toCity:          to.trim(),
+        departAt:        new Date(depart).toISOString(),
+        spareCapacityKg: Number(vehicleSpace) || 0,
+      });
       Alert.alert(
         'Trip declared',
-        `You're listed for ${from} → ${to} on ${new Date(departAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Matching packages will appear in your available jobs.`,
+        `You're listed for ${from} → ${to} on ${new Date(depart).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Matching packages will appear in your available jobs.`,
         [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch (e: any) {

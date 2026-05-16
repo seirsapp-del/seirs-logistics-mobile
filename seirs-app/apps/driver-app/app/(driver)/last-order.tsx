@@ -43,6 +43,20 @@ export default function LastOrderScreen() {
 
   const meetsThreshold = acceptanceRate == null || acceptanceRate >= 80;
 
+  const commitToggle = async (next: boolean) => {
+    try {
+      const res = await driversApi.setLastOrderMode(next);
+      setEnabled(!!res.lastOrderMode);
+    } catch (e: any) {
+      const raw = e?.message ?? 'Try again.';
+      const locked = raw.includes('LAST_ORDER_LOCKED');
+      Alert.alert(
+        locked ? 'Already winding down' : 'Could not update',
+        locked ? 'Sign off completely before re-enabling job acceptance.' : raw.replace(/^[A-Z_]+:\s*/, ''),
+      );
+    }
+  };
+
   const handleToggle = (next: boolean) => {
     if (next && !meetsThreshold) {
       Alert.alert(
@@ -57,7 +71,7 @@ export default function LastOrderScreen() {
         'No new jobs will be assigned to you. You\'ll still complete the ones you\'ve already accepted. Once enabled you can\'t turn it off until you fully sign off.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Wind down', onPress: () => setEnabled(true) },
+          { text: 'Wind down', onPress: () => commitToggle(true) },
         ],
       );
     } else {

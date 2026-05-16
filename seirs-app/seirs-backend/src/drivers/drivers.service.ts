@@ -1,7 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Driver } from './driver.entity';
+import { DriverTrip, DriverTripStatus } from './driver-trip.entity';
+import { DriverStatusBroadcast, DriverStatusBroadcastType } from './driver-status-broadcast.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { Wallet } from '../payments/wallet.entity';
 import { FraudService } from '../fraud/fraud.service';
@@ -22,9 +24,11 @@ const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
 @Injectable()
 export class DriversService {
   constructor(
-    @InjectRepository(Driver)   private repo:           Repository<Driver>,
-    @InjectRepository(Delivery) private deliveriesRepo: Repository<Delivery>,
-    @InjectRepository(Wallet)   private walletsRepo:    Repository<Wallet>,
+    @InjectRepository(Driver)                 private repo:           Repository<Driver>,
+    @InjectRepository(Delivery)               private deliveriesRepo: Repository<Delivery>,
+    @InjectRepository(Wallet)                 private walletsRepo:    Repository<Wallet>,
+    @InjectRepository(DriverTrip)             private tripsRepo:      Repository<DriverTrip>,
+    @InjectRepository(DriverStatusBroadcast)  private broadcastsRepo: Repository<DriverStatusBroadcast>,
     private fraudService:    FraudService,
     private trackingGateway: TrackingGateway,
   ) {}
@@ -53,7 +57,9 @@ export class DriversService {
     startOfWeek.setDate(startOfWeek.getDate() - offsetToMon);
 
     // Sum driverEarnings of completed deliveries since each cutoff in parallel.
-    const [todayRow, weekRow, wallet] = await Promise.all([
+    // Active-jobs count: needed by the home dashboard AND the Last Order
+    // gate (a driver in wind-down should see what they still owe).
+    const [todayRow, weekRow, wallet, activeJobsCount] = await Promise.all([
       this.deliveriesRepo
         .createQueryBuilder('d')
         .select('COALESCE(SUM(d.driverEarnings), 0)', 'sum')
@@ -69,6 +75,12 @@ export class DriversService {
         .andWhere('d.deliveredAt >= :cutoff', { cutoff: startOfWeek })
         .getRawOne<{ sum: string }>(),
       this.walletsRepo.findOne({ where: { user: { id: userId } } }),
+      this.deliveriesRepo.count({
+        where: {
+          driver: { id: driver.id },
+          status: In([DeliveryStatus.ASSIGNED, DeliveryStatus.PICKED_UP, DeliveryStatus.IN_TRANSIT]),
+        },
+      }),
     ]);
 
     return {
@@ -77,7 +89,166 @@ export class DriversService {
       weekEarnings:  Number(weekRow?.sum  ?? 0),
       // balanceKobo is bigint in DB → string at runtime; coerce to number then naira.
       balance:       wallet ? Number(wallet.balanceKobo) / 100 : 0,
+      // Spec V8 §2.11 Last Order surface — UI uses these directly.
+      lastOrderMode:        driver.lastOrderMode,
+      activeJobsCount,
+      // Acceptance-rate calc is a follow-up: needs an offers table to
+      // count offered vs accepted. Return null so the UI threshold check
+      // is permissive (acceptanceRate == null ⇒ allow toggle).
+      todayAcceptanceRate:  null as number | null,
     };
+  }
+
+  // ── Spec V8 §2.11 — Last Order (wind-down) mode ───────────────────────────
+  // One-way switch: once on, the matching service skips this driver for
+  // new assignments. They must complete active jobs and fully sign off
+  // before the flag can be cleared. Enforced 80% acceptance gate is
+  // currently informational only — flip to hard-block once the offers
+  // table lands and todayAcceptanceRate is populated.
+  async setLastOrderMode(userId: string, enabled: boolean) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    if (!enabled && driver.lastOrderMode) {
+      // Per spec, can't re-enable without a full sign-off (offline + back online).
+      throw new BadRequestException(
+        'LAST_ORDER_LOCKED: sign off completely before re-enabling job acceptance.',
+      );
+    }
+
+    await this.repo.update(driver.id, {
+      lastOrderMode:      enabled,
+      lastOrderEnabledAt: enabled ? new Date() : null as any,
+    });
+
+    return { lastOrderMode: enabled };
+  }
+
+  // ── Spec V8 §2.18 — Interstate trip declarations ──────────────────────────
+  async declareInterstateTrip(userId: string, body: {
+    fromCity: string; toCity: string; departAt: string; spareCapacityKg: number;
+  }) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    const from = body.fromCity?.trim();
+    const to   = body.toCity?.trim();
+    if (!from || !to) throw new BadRequestException('Both cities required.');
+    if (from.toLowerCase() === to.toLowerCase()) {
+      throw new BadRequestException('From and To cities must differ.');
+    }
+
+    const depart = new Date(body.departAt);
+    if (Number.isNaN(depart.getTime())) {
+      throw new BadRequestException('Invalid departure time.');
+    }
+    if (depart.getTime() < Date.now() - 60_000) {
+      throw new BadRequestException('Departure time must be in the future.');
+    }
+
+    const capacity = Number(body.spareCapacityKg ?? 0);
+    if (!Number.isFinite(capacity) || capacity < 0) {
+      throw new BadRequestException('Spare capacity must be a non-negative number.');
+    }
+
+    const trip = this.tripsRepo.create({
+      driver,
+      fromCity:        from,
+      toCity:          to,
+      departAt:        depart,
+      spareCapacityKg: capacity,
+      status:          DriverTripStatus.ACTIVE,
+    });
+    return this.tripsRepo.save(trip);
+  }
+
+  listMyInterstateTrips(userId: string) {
+    return this.tripsRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.driver', 'd')
+      .leftJoinAndSelect('d.user', 'u')
+      .where('u.id = :userId', { userId })
+      .orderBy('t.departAt', 'DESC')
+      .limit(50)
+      .getMany();
+  }
+
+  // Admin board — Spec V8 §3.12. Returns trips with driver + user joined
+  // for the UI to display "<name> | Lagos → Ibadan | <kg> free".
+  listAllInterstateTrips(opts: { status?: DriverTripStatus } = {}) {
+    const qb = this.tripsRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.driver', 'd')
+      .leftJoinAndSelect('d.user', 'u')
+      .orderBy('t.departAt', 'ASC')
+      .limit(100);
+    if (opts.status) qb.where('t.status = :status', { status: opts.status });
+    return qb.getMany();
+  }
+
+  async cancelInterstateTrip(userId: string, tripId: string) {
+    const trip = await this.tripsRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.driver', 'd')
+      .leftJoinAndSelect('d.user', 'u')
+      .where('t.id = :tripId', { tripId })
+      .getOne();
+    if (!trip) throw new NotFoundException('Trip not found.');
+    if (trip.driver.user.id !== userId) {
+      throw new ForbiddenException('Not your trip.');
+    }
+    trip.status = DriverTripStatus.CANCELLED;
+    return this.tripsRepo.save(trip);
+  }
+
+  // ── Spec V8 §2.14 — Driver status broadcast (network/traffic/help) ─────────
+  async recordStatusBroadcast(userId: string, body: {
+    type: DriverStatusBroadcastType;
+    deliveryId?: string;
+    lat?: number;
+    lng?: number;
+  }) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    if (!Object.values(DriverStatusBroadcastType).includes(body.type)) {
+      throw new BadRequestException('Unknown broadcast type.');
+    }
+
+    // Bind to an active delivery if the driver is mid-trip and one was
+    // supplied — otherwise the broadcast is scoped to the admin room only.
+    let delivery: Delivery | null = null;
+    if (body.deliveryId) {
+      delivery = await this.deliveriesRepo.findOne({
+        where: { id: body.deliveryId, driver: { id: driver.id } },
+      });
+    }
+
+    const lat = body.lat ?? (driver.lastLat != null ? Number(driver.lastLat) : null);
+    const lng = body.lng ?? (driver.lastLng != null ? Number(driver.lastLng) : null);
+
+    const broadcast = this.broadcastsRepo.create({
+      driver,
+      delivery,
+      type: body.type,
+      lat,
+      lng,
+    });
+    const saved = await this.broadcastsRepo.save(broadcast);
+
+    // Fan-out: admin room always; delivery room when bound to a trip.
+    this.trackingGateway.broadcastDriverStatus({
+      id:          saved.id,
+      driverId:    driver.id,
+      driverName:  driver.user?.name ?? 'Driver',
+      deliveryId:  delivery?.id ?? null,
+      type:        body.type,
+      lat,
+      lng,
+      createdAt:   saved.createdAt,
+    });
+
+    return saved;
   }
 
   async toggleOnline(userId: string, isOnline: boolean) {
