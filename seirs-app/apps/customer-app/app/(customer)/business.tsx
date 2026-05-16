@@ -1,348 +1,328 @@
+/**
+ * Send Multiple — single pickup, up to 5 recipients in one go.
+ *
+ * Designed for retail customers with a clustered need (moving day,
+ * holiday shipping, sending gifts to several friends at once).
+ *
+ * Not the same as the Business app's CSV bulk upload — that's for
+ * sustained N-per-day operators. This is a one-off "I have 3 things
+ * to send right now" surface.
+ *
+ * Architecture: spawns N independent deliveries in parallel rather
+ * than one multi-stop trip, so each recipient gets their own driver
+ * + tracking code. Faster for the last recipient, costs N delivery
+ * fees instead of one shared fee — which retail customers prefer
+ * for irreplaceable items.
+ */
 import {
   View, Text, TextInput, Pressable, StyleSheet,
-  ScrollView, ActivityIndicator, Alert,
+  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { CheckCircle2 } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows, Palette } from '@/constants/theme';
+import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import InlineAddressPicker from '@/components/InlineAddressPicker';
+import { deliveriesApi } from '@/services/api';
 
-const BASE_URL = __DEV__
-  ? 'http://192.168.2.113:3000/api/v1'
-  : 'https://api.seirs.app/api/v1';
+const MAX_RECIPIENTS = 5;
 
-interface DeliveryRow {
-  pickupAddress:   string;
-  pickupLat:       string;
-  pickupLng:       string;
-  dropoffAddress:  string;
-  dropoffLat:      string;
-  dropoffLng:      string;
-  packageDescription: string;
+interface Recipient {
+  id:          string;            // local React key
+  name:        string;
+  address:     string;
+  lat:         number | null;
+  lng:         number | null;
+  description: string;
 }
 
-const emptyRow = (): DeliveryRow => ({
-  pickupAddress: '', pickupLat: '6.4550', pickupLng: '3.3841',
-  dropoffAddress: '', dropoffLat: '6.5244', dropoffLng: '3.3792',
-  packageDescription: '',
-});
+function makeRecipient(): Recipient {
+  return {
+    id:          `r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name:        '',
+    address:     '',
+    lat:         null,
+    lng:         null,
+    description: '',
+  };
+}
 
-export default function BusinessScreen() {
+export default function SendMultipleScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const cs     = useColorScheme();
+  const theme  = Colors[cs ?? 'light'];
+  const isDark = cs === 'dark';
 
-  const [rows,       setRows]       = useState<DeliveryRow[]>([emptyRow()]);
-  const [poRef,      setPoRef]      = useState('');
+  // Single pickup shared by all recipients
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [pickupLat,     setPickupLat]     = useState<number | null>(null);
+  const [pickupLng,     setPickupLng]     = useState<number | null>(null);
+
+  const [recipients, setRecipients] = useState<Recipient[]>([makeRecipient(), makeRecipient()]);
+
   const [submitting, setSubmitting] = useState(false);
-  const [result,     setResult]     = useState<any>(null);
+  const [result, setResult]         = useState<{ tracking: string[]; failed: number } | null>(null);
 
-  const addRow = () => {
-    if (rows.length >= 20) return;
-    setRows([...rows, emptyRow()]);
+  const update = (id: string, patch: Partial<Recipient>) =>
+    setRecipients(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
+
+  const remove = (id: string) => {
+    if (recipients.length <= 1) return;
+    setRecipients(prev => prev.filter(r => r.id !== id));
   };
 
-  const removeRow = (i: number) => {
-    if (rows.length === 1) return;
-    setRows(rows.filter((_, idx) => idx !== i));
+  const add = () => {
+    if (recipients.length >= MAX_RECIPIENTS) return;
+    setRecipients(prev => [...prev, makeRecipient()]);
   };
 
-  const updateRow = (i: number, field: keyof DeliveryRow, value: string) => {
-    setRows(rows.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
-  };
+  const canSubmit =
+    pickupLat != null && pickupLng != null && pickupAddress.length > 0 &&
+    recipients.every(r => r.name && r.address && r.lat != null && r.lng != null && r.description);
 
   const submit = async () => {
-    const incomplete = rows.some(r => !r.pickupAddress || !r.dropoffAddress || !r.packageDescription);
-    if (incomplete) {
-      Alert.alert('Missing Info', 'Please fill in all address and description fields.');
+    if (!canSubmit) {
+      Alert.alert('Missing info', 'Add a pickup address and complete every recipient before sending.');
       return;
     }
-
     setSubmitting(true);
-    try {
-      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-      const stored = await AsyncStorage.getItem('seirs_user');
-      const token = stored ? JSON.parse(stored).token : null;
-
-      const res = await fetch(`${BASE_URL}/bulk`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          poReference:   poRef || undefined,
-          paymentMethod: 'cash_on_delivery',
-          deliveries: rows.map(r => ({
-            pickupAddress:      r.pickupAddress,
-            pickupLat:          parseFloat(r.pickupLat),
-            pickupLng:          parseFloat(r.pickupLng),
-            dropoffAddress:     r.dropoffAddress,
-            dropoffLat:         parseFloat(r.dropoffLat),
-            dropoffLng:         parseFloat(r.dropoffLng),
-            packageDescription: r.packageDescription,
-            packageSize:        'small',
-            isFragile:          false,
-            urgency:            'standard',
-          })),
+    setResult(null);
+    // Fire each delivery in parallel; the matching service handles them
+    // independently so multi-driver dispatch is implicit.
+    const results = await Promise.allSettled(
+      recipients.map(r =>
+        deliveriesApi.create({
+          pickupAddress,
+          pickupLat:        pickupLat!,
+          pickupLng:        pickupLng!,
+          dropoffAddress:   r.address,
+          dropoffLat:       r.lat!,
+          dropoffLng:       r.lng!,
+          packageDescription: `${r.description} (for ${r.name})`,
+          packageSize:      'medium',
+          isFragile:        false,
+          urgency:          'standard',
         }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? 'Failed');
-      setResult(data);
-    } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Failed to submit bulk order.');
-    } finally {
-      setSubmitting(false);
-    }
+      ),
+    );
+    const tracking = results
+      .filter(r => r.status === 'fulfilled')
+      .map((r: any) => r.value?.trackingCode ?? r.value?.delivery?.trackingCode ?? '—');
+    const failed = results.filter(r => r.status === 'rejected').length;
+    setResult({ tracking, failed });
+    setSubmitting(false);
   };
 
   if (result) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-        <ScrollView contentContainerStyle={{ padding: Spacing.xl }}>
-          <View style={styles.successIcon}>
-            <CheckCircle2 size={56} color={theme.success ?? '#16A34A'} strokeWidth={1.5} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
+        <ScrollView contentContainerStyle={styles.successWrap}>
+          <View style={[styles.successIcon, { backgroundColor: '#F0FDF4' }]}>
+            <Ionicons name="checkmark-circle" size={56} color="#16A34A" />
           </View>
-          <Text style={[styles.successTitle, { color: theme.text }]}>Bulk Order Placed!</Text>
-          <Text style={[styles.successSub, { color: theme.textSecond }]}>
-            {result.orderCount} deliveries created
-            {result.discountApplied ? ` · ${result.discountRate} B2B discount applied` : ''}
+          <Text style={[styles.successTitle, { color: theme.text }]}>
+            {result.tracking.length} delivery{result.tracking.length === 1 ? '' : 'ies'} booked
           </Text>
-
-          <View style={[styles.totalCard, { backgroundColor: theme.primary }]}>
-            <Text style={styles.totalLabel}>Total Amount</Text>
-            <Text style={styles.totalAmount}>₦{result.totalPrice?.toLocaleString()}</Text>
-          </View>
-
-          <View style={{ gap: Spacing.sm, marginBottom: Spacing.xl }}>
-            {result.deliveries?.map((d: any) => (
-              <View key={d.index} style={[styles.resultRow, { backgroundColor: theme.surface }, Shadows.sm]}>
-                <Text style={[styles.resultIdx, { color: theme.textSecond }]}>#{d.index + 1}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.resultCode, { color: theme.text }]}>{d.trackingCode}</Text>
-                </View>
-                <Text style={[styles.resultPrice, { color: theme.primary }]}>₦{d.price?.toLocaleString()}</Text>
-              </View>
+          {result.failed > 0 && (
+            <Text style={[styles.successFail, { color: '#DC2626' }]}>
+              {result.failed} could not be created. Try those individually from Send a Package.
+            </Text>
+          )}
+          <View style={[styles.codesCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.codesLabel, { color: theme.textSecond }]}>Tracking codes</Text>
+            {result.tracking.map(code => (
+              <Text key={code} style={[styles.codeRow, { color: theme.text }]}>{code}</Text>
             ))}
           </View>
-
-          <Pressable
-            style={[styles.btn, { backgroundColor: theme.primary }]}
-            onPress={() => router.replace('/(customer)')}
-          >
-            <Text style={styles.btnText}>Back to Home</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg }}>
+            <Pressable
+              style={[styles.secondaryBtn, { borderColor: theme.border }]}
+              onPress={() => { setResult(null); setRecipients([makeRecipient(), makeRecipient()]); }}
+            >
+              <Text style={[styles.secondaryBtnText, { color: theme.text }]}>Send another batch</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
+              onPress={() => router.replace('/(customer)/(tabs)' as any)}
+            >
+              <Text style={styles.primaryBtnText}>Done</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={[styles.backText, { color: theme.primary }]}>←</Text>
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Bulk Delivery</Text>
-          <Text style={[styles.headerSub, { color: theme.textSecond }]}>5+ orders get 10% off</Text>
-        </View>
-        <View style={[styles.badge, { backgroundColor: rows.length >= 5 ? Palette.success : theme.primary }]}>
-          <Text style={styles.badgeText}>{rows.length} orders</Text>
-        </View>
-      </View>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.xl }}>
-
-        {/* PO Reference */}
-        <TextInput
-          style={[styles.poInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
-          placeholder="PO Reference (optional)"
-          placeholderTextColor={theme.textSecond}
-          value={poRef}
-          onChangeText={setPoRef}
-        />
-
-        {/* Discount banner */}
-        {rows.length >= 5 && (
-          <View style={[styles.discountBanner, { backgroundColor: Palette.success + '18' }]}>
-            <Text style={{ color: Palette.success, fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
-              ✓ 10% B2B discount applied — {rows.length} orders
-            </Text>
-          </View>
-        )}
-        {rows.length < 5 && (
-          <View style={[styles.discountBanner, { backgroundColor: theme.surfaceSecond }]}>
-            <Text style={{ color: theme.textSecond, fontSize: FontSize.sm }}>
-              Add {5 - rows.length} more order{5 - rows.length !== 1 ? 's' : ''} to unlock 10% discount
-            </Text>
-          </View>
-        )}
-
-        {/* Delivery rows */}
-        {rows.map((row, i) => (
-          <View key={i} style={[styles.deliveryCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-            <View style={styles.cardHeader}>
-              <Text style={[styles.cardNum, { color: theme.primary }]}>Delivery #{i + 1}</Text>
-              {rows.length > 1 && (
-                <Pressable onPress={() => removeRow(i)}>
-                  <Text style={{ color: theme.error, fontSize: FontSize.sm }}>Remove</Text>
-                </Pressable>
-              )}
-            </View>
-
-            <TextInput
-              style={[styles.field, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surfaceSecond }]}
-              placeholder="Pickup address"
-              placeholderTextColor={theme.textSecond}
-              value={row.pickupAddress}
-              onChangeText={(v) => updateRow(i, 'pickupAddress', v)}
-            />
-            <View style={styles.coordRow}>
-              <TextInput
-                style={[styles.coordField, { flex: 1, borderColor: theme.border, color: theme.text, backgroundColor: theme.surfaceSecond }]}
-                placeholder="Pickup Lat"
-                value={row.pickupLat}
-                onChangeText={(v) => updateRow(i, 'pickupLat', v)}
-                keyboardType="decimal-pad"
-                placeholderTextColor={theme.textSecond}
-              />
-              <TextInput
-                style={[styles.coordField, { flex: 1, borderColor: theme.border, color: theme.text, backgroundColor: theme.surfaceSecond }]}
-                placeholder="Pickup Lng"
-                value={row.pickupLng}
-                onChangeText={(v) => updateRow(i, 'pickupLng', v)}
-                keyboardType="decimal-pad"
-                placeholderTextColor={theme.textSecond}
-              />
-            </View>
-
-            <TextInput
-              style={[styles.field, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surfaceSecond }]}
-              placeholder="Drop-off address"
-              placeholderTextColor={theme.textSecond}
-              value={row.dropoffAddress}
-              onChangeText={(v) => updateRow(i, 'dropoffAddress', v)}
-            />
-            <View style={styles.coordRow}>
-              <TextInput
-                style={[styles.coordField, { flex: 1, borderColor: theme.border, color: theme.text, backgroundColor: theme.surfaceSecond }]}
-                placeholder="Dropoff Lat"
-                value={row.dropoffLat}
-                onChangeText={(v) => updateRow(i, 'dropoffLat', v)}
-                keyboardType="decimal-pad"
-                placeholderTextColor={theme.textSecond}
-              />
-              <TextInput
-                style={[styles.coordField, { flex: 1, borderColor: theme.border, color: theme.text, backgroundColor: theme.surfaceSecond }]}
-                placeholder="Dropoff Lng"
-                value={row.dropoffLng}
-                onChangeText={(v) => updateRow(i, 'dropoffLng', v)}
-                keyboardType="decimal-pad"
-                placeholderTextColor={theme.textSecond}
-              />
-            </View>
-
-            <TextInput
-              style={[styles.field, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surfaceSecond }]}
-              placeholder="Package description"
-              placeholderTextColor={theme.textSecond}
-              value={row.packageDescription}
-              onChangeText={(v) => updateRow(i, 'packageDescription', v)}
-            />
-          </View>
-        ))}
-
-        {/* Add row */}
-        {rows.length < 20 && (
-          <Pressable style={[styles.addBtn, { borderColor: theme.primary }]} onPress={addRow}>
-            <Text style={[styles.addBtnText, { color: theme.primary }]}>+ Add Another Delivery</Text>
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
-        )}
+          <Text style={[styles.title, { color: theme.text }]}>Send Multiple</Text>
+          <View style={{ width: 36 }} />
+        </View>
 
-        {/* Submit */}
-        <Pressable
-          style={[styles.btn, { backgroundColor: submitting ? theme.border : theme.primary, marginTop: Spacing.lg }]}
-          onPress={submit}
-          disabled={submitting}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
         >
-          {submitting
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnText}>Submit {rows.length} Deliver{rows.length !== 1 ? 'ies' : 'y'}</Text>}
-        </Pressable>
 
-        <View style={{ height: Spacing.xl }} />
-      </ScrollView>
-    </SafeAreaView>
+          {/* Hero */}
+          <View style={[styles.heroCard, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
+            <Ionicons name="git-branch-outline" size={24} color={theme.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.heroTitle, { color: theme.text }]}>One pickup, multiple recipients</Text>
+              <Text style={[styles.heroBody, { color: theme.textSecond }]}>
+                Up to {MAX_RECIPIENTS} addresses in one go. Each gets its own driver + tracking code.
+              </Text>
+            </View>
+          </View>
+
+          {/* Pickup */}
+          <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>Pickup</Text>
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+            <InlineAddressPicker
+              label="Pickup address"
+              dotColor="#22C55E"
+              value={pickupAddress}
+              onSelect={(p) => { setPickupAddress(p.address); setPickupLat(p.lat); setPickupLng(p.lng); }}
+              onClear={() => { setPickupAddress(''); setPickupLat(null); setPickupLng(null); }}
+            />
+          </View>
+
+          {/* Recipients */}
+          <View style={styles.recipientsHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>
+              Recipients ({recipients.length}/{MAX_RECIPIENTS})
+            </Text>
+            {recipients.length < MAX_RECIPIENTS && (
+              <Pressable onPress={add} style={styles.addBtn}>
+                <Ionicons name="add" size={16} color={theme.primary} />
+                <Text style={[styles.addBtnText, { color: theme.primary }]}>Add recipient</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {recipients.map((r, idx) => (
+            <View
+              key={r.id}
+              style={[styles.recipientCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+            >
+              <View style={styles.recipientHeader}>
+                <Text style={[styles.recipientNum, { color: theme.text }]}>Recipient {idx + 1}</Text>
+                {recipients.length > 1 && (
+                  <Pressable onPress={() => remove(r.id)} hitSlop={10}>
+                    <Ionicons name="close-circle" size={20} color={theme.textThird} />
+                  </Pressable>
+                )}
+              </View>
+
+              <View style={styles.field}>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Recipient name</Text>
+                <TextInput
+                  value={r.name}
+                  onChangeText={(v) => update(r.id, { name: v })}
+                  placeholder="e.g. Aunt Funke"
+                  placeholderTextColor={theme.textThird}
+                  style={[styles.fieldInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
+                />
+              </View>
+
+              <InlineAddressPicker
+                label="Delivery address"
+                dotColor="#EF4444"
+                value={r.address}
+                onSelect={(p) => update(r.id, { address: p.address, lat: p.lat, lng: p.lng })}
+                onClear={() => update(r.id, { address: '', lat: null, lng: null })}
+              />
+
+              <View style={styles.field}>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>What's in this package?</Text>
+                <TextInput
+                  value={r.description}
+                  onChangeText={(v) => update(r.id, { description: v })}
+                  placeholder="e.g. Birthday gift, documents, food parcel"
+                  placeholderTextColor={theme.textThird}
+                  style={[styles.fieldInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
+                />
+              </View>
+            </View>
+          ))}
+
+          {/* Submit */}
+          <Pressable
+            style={[styles.submitBtn, { backgroundColor: canSubmit ? theme.primary : theme.surfaceSecond }, submitting && { opacity: 0.6 }]}
+            disabled={!canSubmit || submitting}
+            onPress={submit}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={[styles.submitBtnText, { color: canSubmit ? '#fff' : theme.textThird }]}>
+                Book {recipients.length} deliver{recipients.length === 1 ? 'y' : 'ies'}
+              </Text>
+            )}
+          </Pressable>
+
+          <Text style={[styles.note, { color: theme.textThird }]}>
+            Each recipient is a separate trip — you'll pay for each individually at checkout. Need 10+ packages? The SEIRS Business app handles bulk dispatch with one wallet.
+          </Text>
+
+        </ScrollView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderBottomWidth: 1,
-  },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  backText: { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
-  headerTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-  headerSub: { fontSize: FontSize.xs },
-  badge: {
-    paddingHorizontal: Spacing.sm, paddingVertical: 4,
-    borderRadius: Radius.full,
-  },
-  badgeText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-  poInput: {
-    borderWidth: 1.5, borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md, height: 48,
-    fontSize: FontSize.base, marginBottom: Spacing.sm,
-  },
-  discountBanner: {
-    padding: Spacing.sm, borderRadius: Radius.md,
-    marginBottom: Spacing.md, alignItems: 'center',
-  },
-  deliveryCard: {
-    borderRadius: Radius.lg, padding: Spacing.md,
-    marginBottom: Spacing.md, gap: Spacing.xs,
-  },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
-  cardNum: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
-  field: {
-    borderWidth: 1, borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm, height: 44, fontSize: FontSize.sm,
-  },
-  coordRow: { flexDirection: 'row', gap: Spacing.xs },
-  coordField: {
-    borderWidth: 1, borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm, height: 36, fontSize: FontSize.xs,
-  },
-  addBtn: {
-    height: 48, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed',
-    justifyContent: 'center', alignItems: 'center', marginTop: Spacing.sm,
-  },
-  addBtnText: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  btn: {
-    height: 56, borderRadius: Radius.lg,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  btnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },
-  successIcon: { alignItems: 'center', marginBottom: Spacing.md },
-  successTitle: { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold, textAlign: 'center', marginBottom: Spacing.sm },
-  successSub: { fontSize: FontSize.sm, textAlign: 'center', marginBottom: Spacing.xl },
-  totalCard: {
-    borderRadius: Radius.lg, padding: Spacing.xl,
-    alignItems: 'center', marginBottom: Spacing.xl,
-  },
-  totalLabel: { color: 'rgba(255,255,255,0.8)', fontSize: FontSize.sm, marginBottom: Spacing.xs },
-  totalAmount: { color: '#fff', fontSize: FontSize['3xl'], fontWeight: FontWeight.bold },
-  resultRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    padding: Spacing.md, borderRadius: Radius.md,
-  },
-  resultIdx: { fontSize: FontSize.sm, width: 28 },
-  resultCode: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  resultPrice: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  header:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  title:   { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+
+  content: { padding: Spacing.md, gap: Spacing.md, paddingBottom: Spacing.xl },
+
+  heroCard:  { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+  heroTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold, marginBottom: 4 },
+  heroBody:  { fontSize: FontSize.sm, lineHeight: 20 },
+
+  sectionTitle: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5, paddingLeft: Spacing.xs },
+
+  card: { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
+
+  recipientsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  addBtn:           { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
+  addBtnText:       { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+
+  recipientCard:   { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.md },
+  recipientHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  recipientNum:    { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+
+  field:       { gap: 6 },
+  fieldLabel:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  fieldInput:  { height: 46, borderRadius: Radius.md, borderWidth: 1, paddingHorizontal: Spacing.md, fontSize: FontSize.base },
+
+  submitBtn:     { height: 54, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.sm },
+  submitBtnText: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+
+  note: { fontSize: FontSize.xs, lineHeight: 18, textAlign: 'center', paddingHorizontal: Spacing.md },
+
+  // Success state
+  successWrap:  { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg, gap: Spacing.md },
+  successIcon:  { width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.md },
+  successTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, textAlign: 'center' },
+  successFail:  { fontSize: FontSize.sm, textAlign: 'center', marginTop: -4 },
+  codesCard:    { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: 6, minWidth: 240, alignItems: 'center', marginTop: Spacing.sm },
+  codesLabel:   { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  codeRow:      { fontSize: FontSize.base, fontWeight: FontWeight.bold, letterSpacing: 0.5, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+
+  primaryBtn:     { flex: 1, height: 50, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },
+  primaryBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  secondaryBtn:   { flex: 1, height: 50, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5 },
+  secondaryBtnText:{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
 });
