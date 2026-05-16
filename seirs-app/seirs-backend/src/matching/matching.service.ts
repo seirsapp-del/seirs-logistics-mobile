@@ -91,8 +91,16 @@ export class MatchingService {
       return null;
     }
 
+    // Premium subscription priority boost (Spec V8 §2.13). Resolved in
+    // parallel for the candidate set — cheap on a per-candidate basis
+    // since most pools are <30 drivers.
+    const premiumIds = await Promise.all(
+      nearbyDrivers.map(async (d) => [d.id, await this.driversService.isPremiumActive(d.id)] as const),
+    );
+    const premiumSet = new Set(premiumIds.filter(([, on]) => on).map(([id]) => id));
+
     const scored = nearbyDrivers
-      .map((driver) => this.scoreDriver(driver, delivery))
+      .map((driver) => this.scoreDriver(driver, delivery, premiumSet.has(driver.id)))
       .filter((s) => s.score > 0.1) // discard clearly unsuitable drivers
       .sort((a, b) => b.score - a.score);
 
@@ -104,7 +112,7 @@ export class MatchingService {
     return scored[0] ?? null;
   }
 
-  private scoreDriver(driver: Driver, delivery: Delivery): ScoredDriver {
+  private scoreDriver(driver: Driver, delivery: Delivery, isPremium = false): ScoredDriver {
     const distanceKm = PricingService.haversineKm(
       delivery.pickupLat, delivery.pickupLng,
       driver.lastLat ?? 0, driver.lastLng ?? 0,
@@ -144,6 +152,13 @@ export class MatchingService {
       score = Math.max(0, score - 0.15);
     }
 
+    // Spec V8 §2.13 — Driver Premium subscribers get a priority boost
+    // symmetric to the wind-down penalty. Sized to outrank a 0.5-star
+    // rating gap (rating contributes 0.20 weight × 0.1 step = 0.02 max).
+    if (isPremium) {
+      score = Math.min(1, score + 0.15);
+    }
+
     return {
       driver,
       score: Math.round(score * 1000) / 1000,
@@ -159,9 +174,13 @@ export class MatchingService {
       delivery.pickupLng,
       this.radiusKm,
     );
+    const premiumIds = await Promise.all(
+      nearbyDrivers.map(async (d) => [d.id, await this.driversService.isPremiumActive(d.id)] as const),
+    );
+    const premiumSet = new Set(premiumIds.filter(([, on]) => on).map(([id]) => id));
 
     return nearbyDrivers
-      .map((d) => this.scoreDriver(d, delivery))
+      .map((d) => this.scoreDriver(d, delivery, premiumSet.has(d.id)))
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
   }

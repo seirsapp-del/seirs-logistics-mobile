@@ -5,10 +5,12 @@ import { In, LessThan, Repository } from 'typeorm';
 import { Driver } from './driver.entity';
 import { DriverTrip, DriverTripStatus } from './driver-trip.entity';
 import { DriverStatusBroadcast, DriverStatusBroadcastType } from './driver-status-broadcast.entity';
+import { DriverSubscription, DriverSubscriptionStatus } from './driver-subscription.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { Wallet } from '../payments/wallet.entity';
 import { FraudService } from '../fraud/fraud.service';
 import { TrackingGateway } from '../tracking/tracking.gateway';
+import { FeesService } from '../fees/fees.service';
 
 // Spec V8 §2.1 — recognised KYC document IDs
 const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
@@ -37,8 +39,10 @@ export class DriversService {
     @InjectRepository(Wallet)                 private walletsRepo:    Repository<Wallet>,
     @InjectRepository(DriverTrip)             private tripsRepo:      Repository<DriverTrip>,
     @InjectRepository(DriverStatusBroadcast)  private broadcastsRepo: Repository<DriverStatusBroadcast>,
+    @InjectRepository(DriverSubscription)     private subsRepo:       Repository<DriverSubscription>,
     private fraudService:    FraudService,
     private trackingGateway: TrackingGateway,
+    private feesService:     FeesService,
   ) {}
 
   findByUserId(userId: string) {
@@ -601,5 +605,128 @@ export class DriversService {
         };
       }),
     };
+  }
+
+  // ── Driver Premium subscription (Spec V8 §2.13 / D35) ─────────────────────
+
+  async getSubscription(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+    const sub = await this.subsRepo.findOne({ where: { driverId: driver.id } });
+    const feeNgn = await this.feesService.getValueOr('driver_premium_subscription', 5000);
+    return {
+      subscription:    sub,
+      weeklyPriceKobo: Math.round(feeNgn * 100),
+      weeklyPriceNgn:  feeNgn,
+    };
+  }
+
+  async activateSubscription(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    let sub = await this.subsRepo.findOne({ where: { driverId: driver.id } });
+    const now = new Date();
+    const nextInvoice = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    if (sub) {
+      sub.status              = DriverSubscriptionStatus.ACTIVE;
+      sub.startedAt           = sub.startedAt ?? now;
+      sub.endedAt             = null;
+      sub.nextInvoiceAt       = sub.nextInvoiceAt > now ? sub.nextInvoiceAt : nextInvoice;
+      sub.consecutiveFailures = 0;
+      sub.lastFailureReason   = null;
+    } else {
+      sub = this.subsRepo.create({
+        driverId:        driver.id,
+        driver,
+        status:          DriverSubscriptionStatus.ACTIVE,
+        startedAt:       now,
+        nextInvoiceAt:   nextInvoice,
+      });
+    }
+    return this.subsRepo.save(sub);
+  }
+
+  async pauseSubscription(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+    const sub = await this.subsRepo.findOne({ where: { driverId: driver.id } });
+    if (!sub) throw new NotFoundException('No subscription to pause.');
+    sub.status  = DriverSubscriptionStatus.PAUSED;
+    sub.endedAt = new Date();
+    return this.subsRepo.save(sub);
+  }
+
+  async cancelSubscription(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+    const sub = await this.subsRepo.findOne({ where: { driverId: driver.id } });
+    if (!sub) throw new NotFoundException('No subscription to cancel.');
+    sub.status  = DriverSubscriptionStatus.CANCELLED;
+    sub.endedAt = new Date();
+    return this.subsRepo.save(sub);
+  }
+
+  // True when this driver currently has an ACTIVE subscription. Used by
+  // matching to apply the priority boost. PAST_DUE drivers keep
+  // benefits during the retry window so a transient wallet shortfall
+  // doesn't drop them out of priority mid-day.
+  async isPremiumActive(driverId: string): Promise<boolean> {
+    const sub = await this.subsRepo.findOne({ where: { driverId } });
+    if (!sub) return false;
+    return sub.status === DriverSubscriptionStatus.ACTIVE ||
+           sub.status === DriverSubscriptionStatus.PAST_DUE;
+  }
+
+  // Hourly so a sub that comes due at 03:14 fires at 04:00 instead of
+  // waiting for midnight. Idempotent — a row is only charged when its
+  // nextInvoiceAt is in the past.
+  @Cron(CronExpression.EVERY_HOUR)
+  async invoiceDueSubscriptions() {
+    const due = await this.subsRepo.find({
+      where: {
+        status:        In([DriverSubscriptionStatus.ACTIVE, DriverSubscriptionStatus.PAST_DUE]),
+        nextInvoiceAt: LessThan(new Date()),
+      },
+      take: 100,
+    });
+    if (due.length === 0) return;
+
+    const feeNgnInvoice = await this.feesService.getValueOr('driver_premium_subscription', 5000);
+    const feeKobo       = Math.round(feeNgnInvoice * 100);
+    this.logger.log(`[driver-premium] Invoicing ${due.length} subscriptions @ ${feeKobo} kobo`);
+
+    for (const sub of due) {
+      try {
+        const wallet = await this.walletsRepo.findOne({ where: { user: { id: sub.driverId } } });
+        if (!wallet || wallet.balanceKobo < feeKobo) {
+          sub.consecutiveFailures += 1;
+          sub.lastFailureReason   = 'Insufficient wallet balance';
+          if (sub.consecutiveFailures >= 3) {
+            sub.status  = DriverSubscriptionStatus.PAUSED;
+            sub.endedAt = new Date();
+          } else {
+            sub.status = DriverSubscriptionStatus.PAST_DUE;
+          }
+          // Retry tomorrow rather than next week so we recover fast
+          // when the driver tops up.
+          sub.nextInvoiceAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+          await this.subsRepo.save(sub);
+          continue;
+        }
+        await this.walletsRepo.update(wallet.id, { balanceKobo: wallet.balanceKobo - feeKobo });
+        sub.lastInvoicedFeeKobo = feeKobo;
+        sub.lastInvoicedAt      = new Date();
+        sub.invoiceCount       += 1;
+        sub.consecutiveFailures = 0;
+        sub.lastFailureReason   = null;
+        sub.status              = DriverSubscriptionStatus.ACTIVE;
+        sub.nextInvoiceAt       = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await this.subsRepo.save(sub);
+      } catch (e) {
+        this.logger.error(`[driver-premium] Charge failed for ${sub.id}: ${(e as Error).message}`);
+      }
+    }
   }
 }

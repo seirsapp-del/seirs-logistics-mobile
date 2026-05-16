@@ -57,6 +57,28 @@ export class DriversController {
     return this.driversService.updateKycDoc(user.id, body.docId, body.url);
   }
 
+  // ── Driver Premium subscription (Spec V8 §2.13 / D35) ─────────────────────
+
+  @Get('me/subscription')
+  getSubscription(@CurrentUser() user: User) {
+    return this.driversService.getSubscription(user.id);
+  }
+
+  @Post('me/subscription/activate')
+  activateSubscription(@CurrentUser() user: User) {
+    return this.driversService.activateSubscription(user.id);
+  }
+
+  @Post('me/subscription/pause')
+  pauseSubscription(@CurrentUser() user: User) {
+    return this.driversService.pauseSubscription(user.id);
+  }
+
+  @Post('me/subscription/cancel')
+  cancelSubscription(@CurrentUser() user: User) {
+    return this.driversService.cancelSubscription(user.id);
+  }
+
   // PATCH /api/v1/drivers/me/vehicle  { vehicleType?, vehiclePlate?, make?, model?, year?, color? }
   // Driver app's Vehicle Details screen saves here. vehicleType + plate
   // route through the same column as registration; make/model/year/color

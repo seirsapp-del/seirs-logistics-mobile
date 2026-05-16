@@ -46,6 +46,7 @@ const MENU_SECTIONS: MenuSection[] = [
       { icon: 'calendar-outline',         label: 'My Schedule',         sub: 'Set working hours',           route: '/(driver)/schedule' },
       { icon: 'receipt-outline',          label: 'Trip History',        sub: 'View past deliveries',        route: '/(driver)/history' },
       { icon: 'notifications-outline',    label: 'Notifications',       sub: '',                            route: '/(driver)/notifications', badge: '2' },
+      { icon: 'rocket-outline',            label: 'SEIRS Premium',       sub: 'Priority matching + badge',   route: '/(driver)/subscription' },
     ],
   },
   {

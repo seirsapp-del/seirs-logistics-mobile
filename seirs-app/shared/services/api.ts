@@ -365,6 +365,20 @@ export const driversApi = {
     lng?: number;
   }) => request<any>('POST', '/drivers/status-broadcasts', body),
 
+  // Spec V8 §2.13 — Driver Premium (D35) subscription.
+  getSubscription: () =>
+    request<{
+      subscription: any | null;
+      weeklyPriceKobo: number;
+      weeklyPriceNgn:  number;
+    }>('GET', '/drivers/me/subscription'),
+  activateSubscription: () =>
+    request<any>('POST', '/drivers/me/subscription/activate'),
+  pauseSubscription: () =>
+    request<any>('POST', '/drivers/me/subscription/pause'),
+  cancelSubscription: () =>
+    request<any>('POST', '/drivers/me/subscription/cancel'),
+
   // Spec V8 §2.9 — yearly earnings aggregate for FIRS filing.
   taxSummary: (year?: number) =>
     request<{
