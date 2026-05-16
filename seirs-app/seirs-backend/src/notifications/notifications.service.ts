@@ -3,7 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './notification.entity';
 import { FcmService } from './fcm.service';
-import { User } from '../users/user.entity';
+import { User, UserRole } from '../users/user.entity';
+
+export type BroadcastAudience = 'all_customers' | 'all_drivers' | 'all_partners' | 'specific_zone';
 
 @Injectable()
 export class NotificationsService {
@@ -160,5 +162,79 @@ export class NotificationsService {
       `₦${Math.round(amount).toLocaleString()} has been credited to your wallet.`,
       NotificationType.PAYMENT_RECEIVED,
     );
+  }
+
+  // ── Admin broadcast — Spec V8 §3.13 ──────────────────────────────────────
+  // Fan-out for ops events (service interruptions, weather alerts).
+  // Resolves the audience to a user-id list, persists one notification
+  // row per recipient (so they show up in the in-app notification
+  // centre), and pushes via FCM. Returns counts for the admin UI.
+  async broadcastToAudience(input: {
+    audience: BroadcastAudience;
+    zone?: string;
+    title: string;
+    body:  string;
+  }): Promise<{ recipients: number; pushed: number }> {
+    const { audience, zone, title, body } = input;
+    if (!title?.trim() || !body?.trim()) {
+      throw new Error('Title and body required.');
+    }
+
+    const recipients = await this.resolveAudience(audience, zone);
+    if (recipients.length === 0) return { recipients: 0, pushed: 0 };
+
+    // Persist one Notification per recipient. Chunk inserts so we
+    // don't blow the parameter limit on huge audiences.
+    const CHUNK = 500;
+    for (let i = 0; i < recipients.length; i += CHUNK) {
+      const slice = recipients.slice(i, i + CHUNK);
+      const rows = slice.map(u => this.repo.create({
+        userId: u.id,
+        title,
+        body,
+        type: NotificationType.SYSTEM,
+      }));
+      await this.repo.save(rows);
+    }
+
+    // FCM push — best-effort, ignore individual failures.
+    let pushed = 0;
+    const tokens = recipients.map(r => r.fcmToken).filter((t): t is string => !!t);
+    await Promise.all(tokens.map(async token => {
+      const stale = await this.fcm.sendToToken(token, title, body, { type: 'broadcast' }).catch(() => true);
+      if (!stale) pushed++;
+    }));
+
+    this.logger.log(`Broadcast to ${audience}${zone ? `:${zone}` : ''} — ${recipients.length} users, ${pushed} pushed`);
+    return { recipients: recipients.length, pushed };
+  }
+
+  private async resolveAudience(audience: BroadcastAudience, zone?: string): Promise<Array<Pick<User, 'id' | 'fcmToken'>>> {
+    // 'specific_zone' is a future-ship — Geo-fence by city/LGA needs an
+    // Address index, which isn't there yet. For now treat it as all
+    // customers so the endpoint behaves predictably.
+    if (audience === 'all_drivers') {
+      return this.usersRepo.find({
+        where: { role: UserRole.DRIVER, isActive: true },
+        select: ['id', 'fcmToken'],
+      });
+    }
+    if (audience === 'all_partners') {
+      // Partner identity = User.capabilities.canPartner true. JSON
+      // filter is awkward in TypeORM where(), so do a raw scan and
+      // filter in code (partner population is small).
+      const candidates = await this.usersRepo
+        .createQueryBuilder('u')
+        .where(`u.capabilities->>'canPartner' = 'true'`)
+        .andWhere('u.isActive = true')
+        .select(['u.id', 'u.fcmToken'])
+        .getMany();
+      return candidates;
+    }
+    // all_customers + specific_zone (zone-filter is a follow-up)
+    return this.usersRepo.find({
+      where: { role: UserRole.CUSTOMER, isActive: true },
+      select: ['id', 'fcmToken'],
+    });
   }
 }

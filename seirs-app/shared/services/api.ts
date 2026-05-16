@@ -342,6 +342,39 @@ export const driversApi = {
   }) => request<any>('POST', '/drivers/status-broadcasts', body),
 };
 
+// ─── Promotions (Spec V8 §3.13) ──────────────────────────────────────────────
+// Customer-facing promo code list + redeem.
+export interface PromoDTO {
+  id:           string;
+  code:         string;
+  type:         'flat_discount' | 'percent' | 'free_delivery';
+  value:        number;
+  description?: string;
+  validFrom:    string;
+  validTo:      string;
+  minSubtotalKobo: number;
+  status:       'active' | 'scheduled';
+}
+
+export const promotionsApi = {
+  listActive: () => request<PromoDTO[]>('GET', '/promotions/active'),
+  redeem:     (body: { code: string; subtotalKobo: number; deliveryId?: string }) =>
+    request<{
+      id: string; promoId: string; code: string;
+      discountAppliedKobo: number; finalSubtotalKobo: number;
+    }>('POST', '/promotions/redeem', body),
+};
+
+// ─── Suggestions (Spec V8 §3.13) ─────────────────────────────────────────────
+export const suggestionsApi = {
+  submit: (body: { subject: string; body: string; category?: string }) =>
+    request<any>('POST', '/suggestions', body),
+  list:   (page = 1, status?: string) =>
+    request<{ items: any[]; total: number; page: number }>('GET', `/suggestions?page=${page}${status ? `&status=${status}` : ''}`),
+  vote:   (id: string) => request<{ voted: boolean; voteCount: number }>('POST', `/suggestions/${id}/vote`),
+  unvote: (id: string) => request<{ voted: boolean; voteCount: number }>('POST', `/suggestions/${id}/unvote`),
+};
+
 // ─── Offline GPS sync (Spec V8 §2.13) ────────────────────────────────────────
 // Driver app should queue location pings to AsyncStorage when REST fails
 // (network drop) and drain via this batch endpoint on reconnect. Server

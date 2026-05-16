@@ -1,12 +1,13 @@
 import {
   Controller, Get, Post, Patch, Delete, Param, Body,
-  UseGuards, Query, Req,
+  UseGuards, Query, Req, BadRequestException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
 import { PartnerStoreService } from '../partner-store/partner-store.service';
 import { DriversService } from '../drivers/drivers.service';
 import { DriverTripStatus } from '../drivers/driver-trip.entity';
+import { PaymentsService } from '../payments/payments.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -21,6 +22,7 @@ export class AdminController {
     private readonly adminService:        AdminService,
     private readonly partnerStoreService: PartnerStoreService,
     private readonly driversService:      DriversService,
+    private readonly paymentsService:     PaymentsService,
   ) {}
 
   // ── Overview ──────────────────────────────────────────────────────────────
@@ -421,6 +423,26 @@ export class AdminController {
   getInterstateTrips(@Query('status') status?: DriverTripStatus) {
     return this.driversService.listAllInterstateTrips({
       status: status ?? DriverTripStatus.ACTIVE,
+    });
+  }
+
+  // ── Manual Refund (Spec V8 §3.13 — closes A23) ───────────────────────────
+  // Admin-initiated refund for a delivery whose escrow is still HELD.
+  // Body: { reason: string }. Wraps PaymentsService.refundEscrow which
+  // talks to Flutterwave (card) or credits the wallet (wallet method).
+  @Post('payments/:deliveryId/refund')
+  manualRefund(
+    @Param('deliveryId') deliveryId: string,
+    @Body() body: { reason: string },
+    @CurrentUser() admin: any,
+  ) {
+    if (!body?.reason || body.reason.trim().length < 6) {
+      throw new BadRequestException('Reason (min 6 chars) is required.');
+    }
+    return this.paymentsService.manualRefund({
+      deliveryId,
+      adminUserId: admin.id ?? admin.sub,
+      reason: body.reason.trim(),
     });
   }
 }

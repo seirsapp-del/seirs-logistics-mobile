@@ -2,8 +2,9 @@ import {
   Body, Controller, Get, Patch, Param, Post, Query,
   UseGuards, ParseIntPipe, DefaultValuePipe,
 } from '@nestjs/common';
-import { NotificationsService } from './notifications.service';
+import { NotificationsService, BroadcastAudience } from './notifications.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
 
@@ -52,5 +53,16 @@ export class NotificationsController {
   ) {
     await this.svc.registerToken(user.id, body?.token ?? null);
     return { ok: true };
+  }
+
+  // POST /api/v1/notifications/broadcast  (admin only)
+  // Spec V8 §3.13 — ops broadcast composer endpoint. Fans out one push
+  // to every user in the chosen audience. Returns { recipients, pushed }.
+  @UseGuards(AdminGuard)
+  @Post('broadcast')
+  broadcast(@Body() body: {
+    audience: BroadcastAudience; zone?: string; title: string; body: string;
+  }) {
+    return this.svc.broadcastToAudience(body);
   }
 }

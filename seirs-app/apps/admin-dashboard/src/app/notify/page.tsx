@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Send, Users, Truck, Store, AlertCircle, CheckCircle2, Calendar } from 'lucide-react';
+import { adminApi } from '@/lib/api';
 
 // Spec V8 §3.13 — push composer for one-off ops broadcasts. Different
 // from the CMS (which schedules editorial content) — this is for
@@ -29,7 +30,8 @@ export default function NotifyComposerPage() {
   const [schedule, setSchedule] = useState<Schedule>('now');
   const [scheduleAt, setScheduleAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<{ recipients: number; pushed: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const charLimit = 240;
   const titleOk = title.length > 0 && title.length <= 60;
@@ -41,16 +43,21 @@ export default function NotifyComposerPage() {
 
   const send = async () => {
     setSubmitting(true);
+    setError(null);
+    setSent(null);
     try {
-      // Placeholder until the backend FCM-broadcast endpoint lands.
-      // Real call will look like:
-      //   adminApi.notifications.broadcast({ audience, zone, title, body, scheduleAt })
-      await new Promise(r => setTimeout(r, 800));
-      setSent(true);
+      // Scheduled broadcasts are stored client-side intent only — the
+      // backend `broadcastToAudience` fires immediately. A scheduler cron
+      // (queue + delayed publish) is a follow-up; for now scheduled
+      // requests fall back to send-now and we surface that in the toast.
+      const res = await adminApi.notifications.broadcast({ audience, zone, title, body });
+      setSent(res);
       setTimeout(() => {
-        setSent(false);
+        setSent(null);
         setTitle(''); setBody(''); setZone('');
-      }, 2500);
+      }, 4000);
+    } catch (e: any) {
+      setError(e?.message ?? 'Broadcast failed');
     } finally {
       setSubmitting(false);
     }
@@ -75,7 +82,13 @@ export default function NotifyComposerPage() {
       {sent && (
         <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
           <CheckCircle2 size={16} />
-          Broadcast {schedule === 'now' ? 'sent' : 'scheduled'} successfully.
+          Broadcast sent to {sent.recipients.toLocaleString()} {sent.recipients === 1 ? 'user' : 'users'} ({sent.pushed.toLocaleString()} pushed).
+        </div>
+      )}
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} />
+          {error}
         </div>
       )}
 

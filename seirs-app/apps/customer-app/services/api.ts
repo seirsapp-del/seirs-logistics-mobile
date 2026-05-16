@@ -19,6 +19,8 @@ export {
   configApi,
   pricingApi,
   loyaltyApi,
+  promotionsApi,
+  suggestionsApi,
 } from '@seirs/shared/services/api';
 
 export type {
@@ -31,4 +33,5 @@ export type {
   SavedCard,
   LoyaltyEntry,
   LoyaltyTier,
+  PromoDTO,
 } from '@seirs/shared/services/api';

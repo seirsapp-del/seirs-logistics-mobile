@@ -36,6 +36,8 @@ import { RolesModule } from './roles/roles.module';
 import { PricingModule } from './pricing/pricing.module';
 import { LoyaltyModule } from './loyalty/loyalty.module';
 import { EarningsModule } from './earnings/earnings.module';
+import { PromotionsModule } from './promotions/promotions.module';
+import { SuggestionsModule } from './suggestions/suggestions.module';
 
 @Module({
   imports: [
@@ -107,6 +109,8 @@ import { EarningsModule } from './earnings/earnings.module';
     PricingModule,
     LoyaltyModule,
     EarningsModule,
+    PromotionsModule,
+    SuggestionsModule,
   ],
 })
 export class AppModule {}

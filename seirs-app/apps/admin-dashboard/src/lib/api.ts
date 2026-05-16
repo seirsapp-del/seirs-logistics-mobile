@@ -145,6 +145,56 @@ export const adminApi = {
       req<any[]>(`/admin/interstate-trips${status ? `?status=${status}` : ''}`),
   },
 
+  // Spec V8 §3.13 — ops broadcast composer.
+  notifications: {
+    broadcast: (body: {
+      audience: 'all_customers' | 'all_drivers' | 'all_partners' | 'specific_zone';
+      zone?: string;
+      title: string;
+      body: string;
+    }) => req<{ recipients: number; pushed: number }>('/notifications/broadcast', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  },
+
+  // Spec V8 §3.13 — email template catalogue + override layer.
+  emailTemplates: {
+    list: () => req<Array<{
+      key:      string;
+      name:     string;
+      vars:     string[];
+      defaults: { subject: string; bodyHtml: string };
+      override: { subject: string; bodyHtml: string; active: boolean; updatedAt: string } | null;
+    }>>('/admin/email-templates'),
+    update: (key: string, body: { subject?: string; bodyHtml?: string; active?: boolean }) =>
+      req<any>(`/admin/email-templates/${key}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  },
+
+  // Spec V8 §3.13 — promotions CRUD.
+  promotions: {
+    list:   (status?: string) => req<any[]>(`/admin/promotions${status ? `?status=${status}` : ''}`),
+    create: (body: any)       => req<any>('/admin/promotions', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id: string, body: any) => req<any>(`/admin/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    remove: (id: string)      => req<any>(`/admin/promotions/${id}`, { method: 'DELETE' }),
+  },
+
+  // Spec V8 §3.13 — suggestions inbox.
+  suggestions: {
+    list:   (status?: string) => req<{ items: any[]; total: number; page: number }>(`/admin/suggestions${status ? `?status=${status}` : ''}`),
+    update: (id: string, body: { status?: string; adminReply?: string }) =>
+      req<any>(`/admin/suggestions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  },
+
+  // Spec V8 §3.13 — manual refund (closes A23).
+  payments: {
+    refund: (deliveryId: string, reason: string) =>
+      req<{ ok: true; refundedAtIso: string }>(`/admin/payments/${deliveryId}/refund`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      }),
+  },
+
   // Spec V8 Tier 3 — Developer Platform admin oversight
   devPlatform: {
     listAccounts: () => req<any[]>('/dev-platform/keys'), // simplistic: each key = an account in this view

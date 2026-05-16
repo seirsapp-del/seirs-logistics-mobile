@@ -12,6 +12,7 @@ export enum NotificationType {
   CHAT_MESSAGE      = 'chat_message',
   SOS_ALERT         = 'sos_alert',
   GENERAL           = 'general',
+  SYSTEM            = 'system',
 }
 
 @Entity('notifications')

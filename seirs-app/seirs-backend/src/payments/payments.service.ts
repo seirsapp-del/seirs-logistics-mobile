@@ -312,6 +312,42 @@ export class PaymentsService {
     );
   }
 
+  // ── Admin manual refund — Spec V8 §3.13 (closes A23) ─────────────────────
+  // Wraps refundEscrow so the existing failure-driven path stays the
+  // single source of truth. The reason is logged for audit.
+  async manualRefund(args: {
+    deliveryId: string;
+    adminUserId: string;
+    reason: string;
+  }): Promise<{ ok: true; refundedAtIso: string }> {
+    const payment = await this.paymentsRepo.findOne({
+      where: { delivery: { id: args.deliveryId } },
+      relations: ['delivery', 'delivery.customer'],
+    });
+    if (!payment) {
+      throw new NotFoundException('Payment for that delivery not found.');
+    }
+    if (payment.status === PaymentStatus.REFUNDED) {
+      throw new BadRequestException('Payment already refunded.');
+    }
+    if (payment.status !== PaymentStatus.SUCCESS) {
+      throw new BadRequestException(`Cannot refund a payment in status ${payment.status}.`);
+    }
+    if (payment.escrowStatus !== EscrowStatus.HELD) {
+      throw new BadRequestException(
+        `Funds are already ${payment.escrowStatus}; manual refund not possible.`,
+      );
+    }
+    const customerId = payment.delivery?.customer?.id;
+    if (!customerId) throw new NotFoundException('Customer not found on delivery.');
+
+    this.logger.warn(
+      `MANUAL_REFUND deliveryId=${args.deliveryId} admin=${args.adminUserId} reason="${args.reason}"`,
+    );
+    await this.refundEscrow(args.deliveryId, customerId);
+    return { ok: true, refundedAtIso: new Date().toISOString() };
+  }
+
   // ── Refund escrow — called when delivery fails or cancels ────────────────
 
   async refundEscrow(deliveryId: string, customerUserId: string): Promise<void> {
