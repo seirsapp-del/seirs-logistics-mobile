@@ -59,6 +59,7 @@ export default function ContactPage() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -66,15 +67,26 @@ export default function ContactPage() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    console.log("Contact form submission:", form);
-    // Simulate a short delay for UX
-    setTimeout(() => {
-      setLoading(false);
+    setError(null);
+    try {
+      const base = process.env.NEXT_PUBLIC_API_BASE_URL
+        ?? 'https://seirs-logistics-mobile-production.up.railway.app/api/v1';
+      const r = await fetch(`${base}/website/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data?.message ?? `Submission failed (${r.status})`);
       setSubmitted(true);
-    }, 900);
+    } catch (err: any) {
+      setError(err?.message ?? 'Could not submit. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -238,6 +250,11 @@ export default function ContactPage() {
                     />
                   </div>
 
+                  {error && (
+                    <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-btn text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
                   <button
                     type="submit"
                     disabled={loading}

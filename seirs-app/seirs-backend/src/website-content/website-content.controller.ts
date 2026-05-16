@@ -1,9 +1,11 @@
 import {
-  Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards,
+  Body, Controller, Delete, Get, Ip, Param, Patch, Post, Query, Req, UseGuards,
   DefaultValuePipe, ParseIntPipe,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { WebsiteContentService } from './website-content.service';
 import { WebContentStatus, WebContentType } from './website-content.entity';
+import { ContactStatus, ContactSubject } from './contact-submission.entity';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { Public } from '../common/decorators/public.decorator';
@@ -82,5 +84,41 @@ export class WebsiteContentController {
   @Delete('admin/website/content/:id')
   adminDelete(@Param('id') id: string) {
     return this.svc.remove(id);
+  }
+
+  // ── Public contact form (Spec V8 §3.13 — W7) ─────────────────────────────
+  // No auth. Body: { name, email, phone?, subject, message }.
+  // Returns { ok: true, id }.
+  @Public()
+  @Post('website/contact')
+  submitContact(
+    @Body() body: { name: string; email: string; phone?: string; subject: ContactSubject; message: string },
+    @Ip()   sourceIp: string,
+    @Req()  req: Request,
+  ) {
+    return this.svc.submitContact({
+      ...body,
+      sourceIp,
+      userAgent: (req.headers['user-agent'] as string | undefined)?.slice(0, 500),
+    });
+  }
+
+  // ── Admin contact-submission inbox ───────────────────────────────────────
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get('admin/contact-submissions')
+  adminListContact(
+    @Query('status') status?: ContactStatus,
+    @Query('page',  new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+  ) {
+    return this.svc.listContactSubmissions({ status, page });
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Patch('admin/contact-submissions/:id')
+  adminUpdateContact(
+    @Param('id') id: string,
+    @Body() body: { status?: ContactStatus; internalNote?: string },
+  ) {
+    return this.svc.updateContactSubmission(id, body);
   }
 }

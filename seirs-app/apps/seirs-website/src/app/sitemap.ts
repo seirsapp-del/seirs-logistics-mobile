@@ -9,7 +9,10 @@ export const revalidate = 60;
 const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://seirs.app';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const articles = await listContent('article', { pageSize: 200 });
+  const [articles, jobs] = await Promise.all([
+    listContent('article',     { pageSize: 200 }),
+    listContent('job_listing', { pageSize: 100 }),
+  ]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE}/`,                   changeFrequency: 'weekly',  priority: 1.0 },
@@ -20,6 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/news`,               changeFrequency: 'daily',   priority: 0.9 },
     { url: `${BASE}/faq`,                changeFrequency: 'monthly', priority: 0.7 },
     { url: `${BASE}/changelog`,          changeFrequency: 'weekly',  priority: 0.6 },
+    { url: `${BASE}/careers`,            changeFrequency: 'weekly',  priority: 0.7 },
     { url: `${BASE}/contact`,            changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE}/privacy-policy`,     changeFrequency: 'yearly',  priority: 0.3 },
     { url: `${BASE}/terms-of-service`,   changeFrequency: 'yearly',  priority: 0.3 },
@@ -32,5 +36,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...articleRoutes];
+  const jobRoutes: MetadataRoute.Sitemap = jobs.map(j => ({
+    url: `${BASE}/careers/${j.slug}`,
+    lastModified: j.publishedAt ?? undefined,
+    changeFrequency: 'weekly' as const,
+    priority: 0.6,
+  }));
+
+  return [...staticRoutes, ...articleRoutes, ...jobRoutes];
 }

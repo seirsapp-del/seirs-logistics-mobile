@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebsiteContent, WebContentStatus, WebContentType } from './website-content.entity';
+import { ContactSubmission, ContactStatus, ContactSubject } from './contact-submission.entity';
 
 // Slugs are URL-safe identifiers — lowercase alphanumerics + hyphens,
 // 2-120 chars. Keep it strict to avoid Next.js dynamic route ambiguity.
@@ -15,8 +16,62 @@ export class WebsiteContentService implements OnModuleInit {
   private readonly logger = new Logger(WebsiteContentService.name);
 
   constructor(
-    @InjectRepository(WebsiteContent) private repo: Repository<WebsiteContent>,
+    @InjectRepository(WebsiteContent)    private repo:        Repository<WebsiteContent>,
+    @InjectRepository(ContactSubmission) private contactRepo: Repository<ContactSubmission>,
   ) {}
+
+  // ── Spec V8 §3.13 — Public contact form (W7) ─────────────────────────────
+
+  async submitContact(input: {
+    name: string;
+    email: string;
+    phone?: string;
+    subject: ContactSubject;
+    message: string;
+    sourceIp?: string;
+    userAgent?: string;
+  }) {
+    const name    = input.name?.trim();
+    const email   = input.email?.trim().toLowerCase();
+    const message = input.message?.trim();
+    if (!name || name.length < 2)       throw new BadRequestException('Name required.');
+    if (!email || !/.+@.+\..+/.test(email)) throw new BadRequestException('Valid email required.');
+    if (!message || message.length < 12) throw new BadRequestException('Message must be at least 12 characters.');
+    if (message.length > 5000)           throw new BadRequestException('Message too long (max 5000 chars).');
+
+    const subject = Object.values(ContactSubject).includes(input.subject)
+      ? input.subject : ContactSubject.GENERAL;
+
+    const row = this.contactRepo.create({
+      name, email, phone: input.phone?.trim() ?? null as any,
+      subject, message, sourceIp: input.sourceIp, userAgent: input.userAgent,
+    });
+    const saved = await this.contactRepo.save(row);
+
+    // Email fan-out is a follow-up — for now the row sits in the table
+    // and admin can pull it from /admin/contact-submissions. When mail
+    // routing is wired, dispatch to subject-specific inboxes (support@
+    // business@ legal@ etc.) based on `subject`.
+    this.logger.log(`CONTACT_SUBMISSION id=${saved.id} subject=${subject} from="${email}"`);
+    return { ok: true, id: saved.id };
+  }
+
+  listContactSubmissions(opts: { status?: ContactStatus; page?: number } = {}) {
+    const page  = opts.page ?? 1;
+    const take  = 50;
+    const where = opts.status ? { status: opts.status } : {};
+    return this.contactRepo.findAndCount({
+      where, order: { createdAt: 'DESC' }, take, skip: (page - 1) * take,
+    }).then(([items, total]) => ({ items, total, page, take }));
+  }
+
+  async updateContactSubmission(id: string, body: { status?: ContactStatus; internalNote?: string }) {
+    const row = await this.contactRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Submission not found.');
+    if (body.status       !== undefined) row.status       = body.status;
+    if (body.internalNote !== undefined) row.internalNote = body.internalNote;
+    return this.contactRepo.save(row);
+  }
 
   // Idempotent seed — only inserts rows that don't already exist by
   // (type, slug, lang). Lets us ship sensible defaults so the website

@@ -10,7 +10,7 @@ import { adminApi } from '@/lib/api';
 // Manages four content types under tabs: articles (news/blog/press),
 // page blocks (inline-editable homepage chunks), FAQ, changelog.
 
-type WebType = 'article' | 'page_block' | 'faq' | 'changelog';
+type WebType = 'article' | 'page_block' | 'faq' | 'changelog' | 'job_listing';
 
 interface Row {
   id:              string;
@@ -32,10 +32,11 @@ interface Row {
 }
 
 const TABS: Array<{ key: WebType; label: string; sub: string }> = [
-  { key: 'article',    label: 'Articles',    sub: 'News, blog posts, press releases' },
-  { key: 'page_block', label: 'Page Blocks', sub: 'Inline-editable copy on home/how-it-works' },
-  { key: 'faq',        label: 'FAQ',         sub: 'Frequently asked questions' },
-  { key: 'changelog',  label: 'Changelog',   sub: 'Product release notes' },
+  { key: 'article',     label: 'Articles',     sub: 'News, blog posts, press releases' },
+  { key: 'page_block',  label: 'Page Blocks',  sub: 'Inline-editable copy on home/how-it-works' },
+  { key: 'faq',         label: 'FAQ',          sub: 'Frequently asked questions' },
+  { key: 'changelog',   label: 'Changelog',    sub: 'Product release notes' },
+  { key: 'job_listing', label: 'Careers',      sub: 'Open roles at /careers' },
 ];
 
 const STATUS_STYLES: Record<string, string> = {

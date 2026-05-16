@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Mail, Phone, MapPin } from "lucide-react";
+import { AppStoreBadges } from "@/components/AppStoreBadges";
 
 export default function Footer() {
   return (
@@ -43,6 +44,8 @@ export default function Footer() {
                 { label: "For Business",   href: "/for-business" },
                 { label: "For Drivers",    href: "/for-drivers" },
                 { label: "Partner Stores", href: "/for-partner-stores" },
+                { label: "Careers",        href: "/careers" },
+                { label: "News",           href: "/news" },
                 { label: "Contact",        href: "/contact" },
               ].map((link) => (
                 <li key={link.label}>
@@ -116,8 +119,18 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* App-store badges — render in 'coming soon' state until the
+            apps publish and NEXT_PUBLIC_PLAY_STORE_URL + APP_STORE_URL
+            are set on Vercel. */}
+        <div className="border-t border-white/10 pt-8 mb-6">
+          <h4 className="text-white font-bold text-sm tracking-wider uppercase mb-4">
+            Get the App
+          </h4>
+          <AppStoreBadges theme="navy" />
+        </div>
+
         {/* Divider */}
-        <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-white/40 text-sm text-center sm:text-left">
             &copy; 2026 Seirs Logistics Ltd. All rights reserved.
           </p>
@@ -134,6 +147,13 @@ export default function Footer() {
               className="text-white/40 hover:text-white/70 text-xs transition-colors"
             >
               Terms of Service
+            </Link>
+            <span className="text-white/20">·</span>
+            <Link
+              href="/careers"
+              className="text-white/40 hover:text-white/70 text-xs transition-colors"
+            >
+              Careers
             </Link>
           </div>
         </div>

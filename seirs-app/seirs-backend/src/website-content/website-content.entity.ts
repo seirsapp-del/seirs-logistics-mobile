@@ -13,10 +13,11 @@ import {
 // Next.js ISR (revalidate: 60), so a publish appears within ~1 min.
 
 export enum WebContentType {
-  ARTICLE    = 'article',       // /news/[slug] — blog + news + press
-  CHANGELOG  = 'changelog',     // /changelog page entries
-  FAQ        = 'faq',           // /faq page entries
-  PAGE_BLOCK = 'page_block',    // inline copy block — slug = "home_hero", etc.
+  ARTICLE     = 'article',       // /news/[slug] — blog + news + press
+  CHANGELOG   = 'changelog',     // /changelog page entries
+  FAQ         = 'faq',           // /faq page entries
+  PAGE_BLOCK  = 'page_block',    // inline copy block — slug = "home_hero", etc.
+  JOB_LISTING = 'job_listing',   // /careers/[slug] — open roles
 }
 
 export enum WebContentStatus {

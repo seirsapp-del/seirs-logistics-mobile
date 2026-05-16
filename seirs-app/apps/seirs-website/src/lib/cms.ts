@@ -12,7 +12,7 @@ const API_BASE =
 // Re-validate cached responses every 60 seconds.
 const REVALIDATE = 60;
 
-export type WebType = 'article' | 'changelog' | 'faq' | 'page_block';
+export type WebType = 'article' | 'changelog' | 'faq' | 'page_block' | 'job_listing';
 
 export interface WebsiteContent {
   id:              string;
