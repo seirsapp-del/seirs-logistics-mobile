@@ -12,7 +12,7 @@ const nextConfig = {
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      `connect-src 'self' ${apiHost} wss: https://maps.googleapis.com https://maps.gstatic.com`,
+      `connect-src 'self' ${apiHost} wss: https://maps.googleapis.com https://maps.gstatic.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io`,
       "img-src 'self' data: blob: https:",
       "font-src 'self' https://fonts.gstatic.com",
       "frame-ancestors 'none'",
@@ -36,4 +36,21 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// Sentry: wrap the export so the Next plugin can hook source-map upload
+// + tree-shake Sentry SDK debug code in production. Falls through to a
+// plain export when @sentry/nextjs isn't installed yet (so local builds
+// don't break before `npm install`).
+let exportedConfig = nextConfig;
+try {
+  const { withSentryConfig } = require('@sentry/nextjs');
+  exportedConfig = withSentryConfig(nextConfig, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    silent: !process.env.CI,
+    widenClientFileUpload: true,
+    disableLogger: true,
+  });
+} catch (_) {}
+
+module.exports = exportedConfig;

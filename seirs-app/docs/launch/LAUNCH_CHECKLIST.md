@@ -18,6 +18,7 @@ Use the per-item docs as drafts — adapt to your actual contacts and timelines,
 | 5 | **Flutterwave volume-rate negotiation** | [05-flutterwave-rate-negotiation.md](05-flutterwave-rate-negotiation.md) | Founder | ☐ Not started | T-21 days |
 | 6 | **Apple Developer enrollment** (iOS only — defer until iOS build is on the table) | [06-apple-developer-enrollment.md](06-apple-developer-enrollment.md) | Founder | ☐ Deferred | iOS Phase |
 | 7 | **Public dispute resolution playbook** | [07-dispute-resolution-playbook.md](07-dispute-resolution-playbook.md) | Founder + Legal | ☐ Not started | T-14 days |
+| 8 | **Production observability** (Sentry + Better Stack — code shipped in bucket 15, needs DSNs) | [08-observability.md](08-observability.md) | Founder + Eng | ☐ Setup pending | T-7 days |
 
 ---
 

@@ -1,3 +1,7 @@
+// MUST stay at the very top — Sentry patches http/express/etc. on import
+// and any module loaded before it will be invisible to the SDK.
+import './common/instrument';
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -5,6 +9,7 @@ import { join } from 'path';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './tracking/redis-io.adapter';
+import { SentryExceptionFilter } from './common/filters/sentry-exception.filter';
 
 async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -65,6 +70,11 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // Capture every unhandled exception to Sentry + return safe JSON.
+  // Registered after pipes so validation errors still surface as 4xx
+  // through the framework (not reported — see filter for 5xx gating).
+  app.useGlobalFilters(new SentryExceptionFilter());
 
   // Restrict CORS to declared origins — set ALLOWED_ORIGINS as comma-separated list in .env
   // e.g. ALLOWED_ORIGINS=https://admin.seirs.co,https://app.seirs.co

@@ -39,6 +39,7 @@ import { EarningsModule } from './earnings/earnings.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { SuggestionsModule } from './suggestions/suggestions.module';
 import { WebsiteContentModule } from './website-content/website-content.module';
+import { TelemetryModule } from './telemetry/telemetry.module';
 
 @Module({
   imports: [
@@ -113,6 +114,7 @@ import { WebsiteContentModule } from './website-content/website-content.module';
     PromotionsModule,
     SuggestionsModule,
     WebsiteContentModule,
+    TelemetryModule,
   ],
 })
 export class AppModule {}

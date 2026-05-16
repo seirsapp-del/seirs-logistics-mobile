@@ -9,3 +9,4 @@ export { Drawer }               from './Drawer';
 export type { DrawerItem, DrawerThemeTokens, DrawerProps } from './Drawer';
 export { VehicleIcon }          from './VehicleIcon';
 export type { VehicleType }     from './VehicleIcon';
+export { ErrorBoundary }        from './ErrorBoundary';

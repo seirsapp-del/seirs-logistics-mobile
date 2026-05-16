@@ -9,10 +9,24 @@ import { Colors } from '@/constants/theme';
 import { API_BASE } from '@/constants/config';
 import { configureApi } from '@/services/api';
 import * as Updates from 'expo-updates';
+import Constants from 'expo-constants';
 import { initI18n } from '@/i18n';
 import { usePushRegistration } from '@seirs/shared/hooks/usePushRegistration';
+import { ErrorBoundary } from '@seirs/shared/components/ErrorBoundary';
+import {
+  configureErrorReporter,
+  installGlobalErrorHandler,
+  setReporterUserIdGetter,
+} from '@seirs/shared/services/errorReporter';
 
 configureApi(API_BASE);
+
+configureErrorReporter({
+  baseUrl: API_BASE,
+  app: 'driver',
+  appVersion: Constants.expoConfig?.version,
+});
+installGlobalErrorHandler();
 
 function NavigationGuard() {
   const { isAuthenticated, role, isLoading } = useAuth();
@@ -83,10 +97,13 @@ function OTAUpdateChecker() {
 // before NavigationGuard's useEffect can redirect — visible as a brief
 // flash of the inside of the app on cold launch.
 function AppContent() {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
   // Register the device push token once authenticated. No-op until
   // expo-notifications is installed + a native rebuild ships.
   usePushRegistration(isAuthenticated);
+  useEffect(() => {
+    setReporterUserIdGetter(() => user?.id ?? null);
+  }, [user?.id]);
   if (isLoading) return null;
   return (
     <>
@@ -109,12 +126,14 @@ export default function RootLayout() {
   if (!i18nReady) return null;
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

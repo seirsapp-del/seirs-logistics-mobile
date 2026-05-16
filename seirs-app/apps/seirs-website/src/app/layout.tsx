@@ -3,6 +3,7 @@ import "../styles/globals.css";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
+import SentryInit from "@/components/SentryInit";
 
 export const metadata: Metadata = {
   title: {
@@ -47,6 +48,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        <SentryInit />
         <Nav />
         <main className="pt-16">{children}</main>
         <Footer />
