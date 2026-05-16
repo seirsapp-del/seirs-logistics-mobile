@@ -193,6 +193,9 @@ export const deliveriesApi = {
     request<any>('POST', `/deliveries/${id}/rate`, { rating, comment }),
   emailReceipt: (id: string) =>
     request<{ sent: boolean }>('POST', `/deliveries/${id}/email-receipt`),
+  // Driver-initiated claim of an unassigned pending job.
+  claim: (id: string) =>
+    request<any>('POST', `/deliveries/${id}/claim`),
 };
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
@@ -318,6 +321,14 @@ export const driversApi = {
   },
   updateKycDoc:   (docId: string, url: string) =>
     request<{ docId: string; saved: boolean }>('PATCH', '/drivers/me/kyc', { docId, url }),
+  updateVehicle: (body: {
+    vehicleType?:  string;
+    vehiclePlate?: string;
+    make?:         string;
+    model?:        string;
+    year?:         string;
+    color?:        string;
+  }) => request<any>('PATCH', '/drivers/me/vehicle', body),
   demandZones:    () =>
     request<{ zones: Array<{ latitude: number; longitude: number; radiusM: number; intensity: number; orderCount: number }> }>(
       'GET', '/drivers/demand-zones',

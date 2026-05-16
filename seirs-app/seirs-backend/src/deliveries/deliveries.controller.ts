@@ -97,4 +97,10 @@ export class DeliveriesController {
   emailReceipt(@Param('id') id: string, @CurrentUser() user: User) {
     return this.deliveriesService.emailReceipt(id, user.id);
   }
+
+  // POST /api/v1/deliveries/:id/claim — driver picks up an unassigned job
+  @Post(':id/claim')
+  claim(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.claimByDriver(id, user.id);
+  }
 }

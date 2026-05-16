@@ -3,10 +3,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { usersApi } from '@/services/api';
 
 type ToggleKey =
   | 'newJobs' | 'jobAssigned' | 'jobCancelled'
@@ -53,21 +54,48 @@ export default function DriverNotificationSettingsScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
+  const DEFAULTS: Record<ToggleKey, boolean> = {
     newJobs: true, jobAssigned: true, jobCancelled: true,
     earningsCredited: true, withdrawalStatus: true, weeklyEarnings: false,
     customerMessages: true, tripUpdates: true,
     promos: false, appUpdates: true,
-  });
+  };
+
+  const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>(DEFAULTS);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { prefs } = await usersApi.getNotificationPrefs();
+        if (prefs && Object.keys(prefs).length > 0) {
+          setToggles({ ...DEFAULTS, ...prefs } as Record<ToggleKey, boolean>);
+        }
+      } catch {}
+    })();
+  }, []);
+
+  const queueSave = (next: Record<ToggleKey, boolean>) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      usersApi.updateNotificationPrefs(next).catch(() => {});
+    }, 400);
+  };
 
   const allOn  = Object.values(toggles).every(Boolean);
-  const allOff = Object.values(toggles).every(v => !v);
 
-  const setAll = (val: boolean) =>
-    setToggles(Object.fromEntries(Object.keys(toggles).map(k => [k, val])) as Record<ToggleKey, boolean>);
+  const setAll = (val: boolean) => {
+    const next = Object.fromEntries(Object.keys(toggles).map(k => [k, val])) as Record<ToggleKey, boolean>;
+    setToggles(next);
+    queueSave(next);
+  };
 
   const toggle = (key: ToggleKey) =>
-    setToggles(prev => ({ ...prev, [key]: !prev[key] }));
+    setToggles(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      queueSave(next);
+      return next;
+    });
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>

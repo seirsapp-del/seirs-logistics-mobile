@@ -15,6 +15,8 @@ import { FallbackService } from '../fallback/fallback.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MailService } from '../mail/mail.service';
 import { FxModule } from '../fx/fx.module';
+import { DriversModule } from '../drivers/drivers.module';
+import { DriversService } from '../drivers/drivers.service';
 
 @Module({
   imports: [
@@ -24,6 +26,7 @@ import { FxModule } from '../fx/fx.module';
     forwardRef(() => PaymentsModule),
     FallbackModule,
     FxModule,
+    forwardRef(() => DriversModule),
   ],
   controllers: [DeliveriesController],
   providers: [DeliveriesService, PricingService],
@@ -38,6 +41,7 @@ export class DeliveriesModule implements OnModuleInit {
     private fallbackService:      FallbackService,
     private notificationsService: NotificationsService,
     private mailService:          MailService,
+    private driversService:       DriversService,
   ) {}
 
   onModuleInit() {
@@ -47,6 +51,7 @@ export class DeliveriesModule implements OnModuleInit {
     this.deliveriesService.fallbackService      = this.fallbackService;
     this.deliveriesService.notificationsService = this.notificationsService;
     this.deliveriesService.mailService          = this.mailService;
+    this.deliveriesService.driversService       = this.driversService;
 
     // Give NotificationsService a reference to the gateway for WS delivery
     this.notificationsService.trackingGateway = this.trackingGateway;

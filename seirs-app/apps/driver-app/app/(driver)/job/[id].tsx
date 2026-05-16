@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert, Linking,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert, Linking, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -10,7 +10,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { MOCK_DRIVER_JOBS } from '@/constants/driverMockData';
+import { deliveriesApi } from '@/services/api';
 
 const URGENCY_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
   instant:   { label: 'Instant',   color: '#EF4444', Icon: Zap  },
@@ -27,13 +27,46 @@ export default function JobDetailScreen() {
   const theme     = Colors[cs ?? 'light'];
   const isDark    = cs === 'dark';
 
+  // ?offered=1 → auto-match pushed this to the driver (countdown applies).
+  // No flag = driver tapped the job from the browse list (no countdown).
+  const { offered } = useLocalSearchParams<{ offered?: string }>();
+  const isOffered = offered === '1';
+
   const [countdown, setCountdown] = useState(ACCEPT_TIMEOUT_SEC);
+  const [job,       setJob]       = useState<any | null>(null);
+  const [loading,   setLoading]   = useState(true);
+  const [claiming,  setClaiming]  = useState(false);
   const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const job = MOCK_DRIVER_JOBS.find(j => j.id === id);
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        const d = await deliveriesApi.get(id);
+        setJob({
+          id:                d.id,
+          urgency:           d.urgency ?? 'standard',
+          pickupAddress:     d.pickupAddress ?? '—',
+          dropoffAddress:    d.dropoffAddress ?? '—',
+          distanceKm:        d.distanceKm ? Number(d.distanceKm).toFixed(1) : null,
+          estimatedDuration: d.estimatedTotalMinutes,
+          price:             Number(d.price ?? 0),
+          driverEarnings:    Number(d.driverEarnings ?? 0),
+          packageDescription: d.packageDescription,
+          customer: {
+            name: d.customer?.name ?? 'Customer',
+          },
+        });
+      } catch {
+        setJob(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
 
   useEffect(() => {
-    if (!job) return;
+    if (!job || !isOffered) return;
     timerRef.current = setInterval(() => {
       setCountdown(c => {
         if (c <= 1) {
@@ -45,7 +78,15 @@ export default function JobDetailScreen() {
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [job]);
+  }, [job, isOffered]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center' }}>
+        <ActivityIndicator color={theme.primary} />
+      </SafeAreaView>
+    );
+  }
 
   if (!job) {
     return (
@@ -73,25 +114,38 @@ export default function JobDetailScreen() {
     ]);
   };
 
+  const restartCountdown = () => {
+    if (!isOffered) return;
+    timerRef.current = setInterval(() => {
+      setCountdown(c => {
+        if (c <= 1) { clearInterval(timerRef.current!); router.back(); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+  };
+
   const handleAccept = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     Alert.alert(
       'Accept Job?',
       `You are accepting a delivery for ${job.customer.name}. Head to pickup immediately.`,
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => {
-          // restart timer
-          timerRef.current = setInterval(() => {
-            setCountdown(c => { if (c <= 1) { clearInterval(timerRef.current!); router.back(); return 0; } return c - 1; });
-          }, 1000);
-        }},
+        { text: 'Cancel', style: 'cancel', onPress: restartCountdown },
         {
           text: 'Accept',
-          onPress: () => {
-            router.replace({ pathname: '/(driver)/active', params: { id: job.id } });
-            // Deep-link to navigation with pickup address
-            const q = encodeURIComponent(job.pickupAddress);
-            Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${q}`).catch(() => {});
+          onPress: async () => {
+            setClaiming(true);
+            try {
+              await deliveriesApi.claim(job.id);
+              router.replace({ pathname: '/(driver)/active', params: { id: job.id } });
+              const q = encodeURIComponent(job.pickupAddress);
+              Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${q}`).catch(() => {});
+            } catch (e: any) {
+              Alert.alert('Could not accept', e?.message ?? 'Another driver may have claimed this job.');
+              restartCountdown();
+            } finally {
+              setClaiming(false);
+            }
           },
         },
       ],
@@ -104,11 +158,7 @@ export default function JobDetailScreen() {
       'Decline Job?',
       'This job will be offered to another driver.',
       [
-        { text: 'Keep Job', style: 'cancel', onPress: () => {
-          timerRef.current = setInterval(() => {
-            setCountdown(c => { if (c <= 1) { clearInterval(timerRef.current!); router.back(); return 0; } return c - 1; });
-          }, 1000);
-        }},
+        { text: 'Keep Job', style: 'cancel', onPress: restartCountdown },
         { text: 'Decline', style: 'destructive', onPress: () => router.back() },
       ],
     );
@@ -131,18 +181,21 @@ export default function JobDetailScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Countdown */}
-        <View style={[styles.countdownCard, { backgroundColor: countdownColor + '15', borderColor: countdownColor + '40' }]}>
-          <View style={styles.countdownTop}>
-            <Clock size={18} color={countdownColor} strokeWidth={1.75} />
-            <Text style={[styles.countdownLabel, { color: countdownColor }]}>
-              Accept in {countdown}s or it auto-declines
-            </Text>
+        {/* Countdown — only when this was auto-offered (not when the driver
+            tapped through from the browse list). */}
+        {isOffered && (
+          <View style={[styles.countdownCard, { backgroundColor: countdownColor + '15', borderColor: countdownColor + '40' }]}>
+            <View style={styles.countdownTop}>
+              <Clock size={18} color={countdownColor} strokeWidth={1.75} />
+              <Text style={[styles.countdownLabel, { color: countdownColor }]}>
+                Accept in {countdown}s or it auto-declines
+              </Text>
+            </View>
+            <View style={[styles.countdownTrack, { backgroundColor: theme.surfaceSecond }]}>
+              <View style={[styles.countdownFill, { width: `${countdownPct}%`, backgroundColor: countdownColor }]} />
+            </View>
           </View>
-          <View style={[styles.countdownTrack, { backgroundColor: theme.surfaceSecond }]}>
-            <View style={[styles.countdownFill, { width: `${countdownPct}%`, backgroundColor: countdownColor }]} />
-          </View>
-        </View>
+        )}
 
         {/* Fare card */}
         <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>

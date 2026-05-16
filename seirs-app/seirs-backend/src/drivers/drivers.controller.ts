@@ -57,6 +57,25 @@ export class DriversController {
     return this.driversService.updateKycDoc(user.id, body.docId, body.url);
   }
 
+  // PATCH /api/v1/drivers/me/vehicle  { vehicleType?, vehiclePlate?, make?, model?, year?, color? }
+  // Driver app's Vehicle Details screen saves here. vehicleType + plate
+  // route through the same column as registration; make/model/year/color
+  // are stored in jsonb for display only.
+  @Patch('me/vehicle')
+  updateVehicle(
+    @CurrentUser() user: User,
+    @Body() body: {
+      vehicleType?:  string;
+      vehiclePlate?: string;
+      make?:         string;
+      model?:        string;
+      year?:         string;
+      color?:        string;
+    },
+  ) {
+    return this.driversService.updateVehicle(user.id, body);
+  }
+
   // GET /api/v1/drivers/demand-zones
   // Returns up to 20 demand-density zones in a ~25km radius around the
   // driver's last known position. Intensity scaled 0.0-1.0 from order count.

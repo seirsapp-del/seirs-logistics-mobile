@@ -1,12 +1,13 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Switch, StatusBar, Alert,
+  View, Text, Pressable, StyleSheet, ScrollView, Switch, StatusBar, Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { usersApi } from '@/services/api';
 
 export default function DriverPrivacyScreen() {
   const router  = useRouter();
@@ -18,6 +19,31 @@ export default function DriverPrivacyScreen() {
   const [shareLocation,     setShareLocation]     = useState(true);
   const [analyticsData,     setAnalyticsData]     = useState(true);
   const [personalisedOffers,setPersonalisedOffers]= useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { prefs } = await usersApi.getNotificationPrefs();
+        if (prefs?.location_always   !== undefined) setLocationAlways(prefs.location_always);
+        if (prefs?.share_location    !== undefined) setShareLocation(prefs.share_location);
+        if (prefs?.analytics_share   !== undefined) setAnalyticsData(prefs.analytics_share);
+        if (prefs?.personalised_ads  !== undefined) setPersonalisedOffers(prefs.personalised_ads);
+      } catch {}
+    })();
+  }, []);
+
+  const queueSave = (patch: Record<string, boolean>) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      usersApi.updateNotificationPrefs(patch).catch(() => {});
+    }, 400);
+  };
+
+  const onLocationAlways    = (v: boolean) => { setLocationAlways(v);    queueSave({ location_always:   v }); };
+  const onShareLocation     = (v: boolean) => { setShareLocation(v);     queueSave({ share_location:    v }); };
+  const onAnalyticsData     = (v: boolean) => { setAnalyticsData(v);     queueSave({ analytics_share:   v }); };
+  const onPersonalisedOffers= (v: boolean) => { setPersonalisedOffers(v); queueSave({ personalised_ads: v }); };
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -25,29 +51,37 @@ export default function DriverPrivacyScreen() {
       'This will permanently delete your driver account, vehicle info, earnings history, and all personal data. This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => {} },
+        {
+          text: 'Continue', style: 'destructive',
+          onPress: () => router.push('/(driver)/delete-account' as any),
+        },
       ],
     );
   };
 
-  const handleDownloadData = () => {
-    Alert.alert('Data Export', 'Your data export has been requested. You will receive an email at your registered address within 48 hours.');
+  const handleDownloadData = async () => {
+    try {
+      await usersApi.exportData();
+      Alert.alert('Export queued', 'Your data export has been requested. You will receive an email with the download link within 24 hours.');
+    } catch {
+      Alert.alert('Export failed', 'Please try again later or contact support@seirs.co');
+    }
   };
 
   const LOCATION_ITEMS = [
-    { label: 'Background Location Tracking', sub: 'Required for real-time delivery navigation and job matching', value: locationAlways, setter: setLocationAlways },
-    { label: 'Share Location with Customers',sub: 'Customers can see your live location during active trips', value: shareLocation, setter: setShareLocation },
+    { label: 'Background Location Tracking', sub: 'Required for real-time delivery navigation and job matching', value: locationAlways, setter: onLocationAlways },
+    { label: 'Share Location with Customers',sub: 'Customers can see your live location during active trips', value: shareLocation, setter: onShareLocation },
   ];
 
   const DATA_ITEMS = [
-    { label: 'Analytics & Performance',  sub: 'Help improve the platform by sharing anonymised usage data', value: analyticsData,      setter: setAnalyticsData      },
-    { label: 'Personalised Offers',       sub: 'Receive bonus offers tailored to your driving patterns',     value: personalisedOffers,  setter: setPersonalisedOffers  },
+    { label: 'Analytics & Performance',  sub: 'Help improve the platform by sharing anonymised usage data', value: analyticsData,      setter: onAnalyticsData      },
+    { label: 'Personalised Offers',       sub: 'Receive bonus offers tailored to your driving patterns',     value: personalisedOffers,  setter: onPersonalisedOffers  },
   ];
 
   const LEGAL_ITEMS = [
-    { label: 'Privacy Policy',     icon: 'document-text-outline' },
-    { label: 'Terms of Service',   icon: 'reader-outline'         },
-    { label: 'Cookie Policy',      icon: 'information-circle-outline' },
+    { label: 'Privacy Policy',     icon: 'document-text-outline',          url: 'https://seirs.app/privacy-policy'    },
+    { label: 'Terms of Service',   icon: 'reader-outline',                  url: 'https://seirs.app/terms-of-service'  },
+    { label: 'Dispute Resolution', icon: 'information-circle-outline',      url: 'https://seirs.app/dispute-resolution' },
   ];
 
   const renderToggleRow = (
@@ -134,6 +168,7 @@ export default function DriverPrivacyScreen() {
                 styles.actionRow,
                 i < LEGAL_ITEMS.length - 1 && { borderBottomColor: theme.border, borderBottomWidth: 0.5 },
               ]}
+              onPress={() => Linking.openURL(item.url)}
             >
               <Ionicons name={item.icon as any} size={20} color={theme.textSecond} />
               <Text style={[styles.rowLabel, { color: theme.text, flex: 1 }]}>{item.label}</Text>

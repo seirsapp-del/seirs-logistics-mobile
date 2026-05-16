@@ -1,15 +1,15 @@
 import {
-  View, Text, Pressable, StyleSheet, FlatList, StatusBar,
+  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
-import { MOCK_DRIVER_DELIVERIES } from '@/constants/driverMockData';
+import { driversApi } from '@/services/api';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   delivered:  { label: 'Delivered',   color: '#22C55E', icon: 'checkmark-circle' },
@@ -28,16 +28,44 @@ export default function DriverHistoryScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [tab, setTab] = useState<Tab>('All');
+  const [tab, setTab]               = useState<Tab>('All');
+  const [items, setItems]           = useState<any[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filtered = MOCK_DRIVER_DELIVERIES.filter(d => {
+  const load = useCallback(async () => {
+    try {
+      const rows = await driversApi.myDeliveries();
+      setItems((rows ?? []).map((d: any) => ({
+        id:              d.id,
+        status:          String(d.status ?? 'pending'),
+        date:            d.deliveredAt ?? d.createdAt ?? new Date().toISOString(),
+        pickupAddress:   d.pickupAddress  ?? '—',
+        dropoffAddress:  d.dropoffAddress ?? '—',
+        distance:        d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '',
+        price:           Number(d.price ?? 0),
+        driverEarnings:  Number(d.driverEarnings ?? 0),
+        customer:        d.customer ? { name: d.customer.name } : { name: 'Customer' },
+      })));
+    } catch {
+      setItems([]);
+    }
+  }, []);
+
+  useEffect(() => { (async () => { await load(); setLoading(false); })(); }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true); await load(); setRefreshing(false);
+  }, [load]);
+
+  const filtered = items.filter(d => {
     if (tab === 'All')       return true;
     if (tab === 'Delivered') return d.status === 'delivered';
-    if (tab === 'Cancelled') return d.status === 'cancelled';
+    if (tab === 'Cancelled') return d.status === 'cancelled' || d.status === 'failed';
     return true;
   });
 
-  const totalEarned = MOCK_DRIVER_DELIVERIES
+  const totalEarned = items
     .filter(d => d.status === 'delivered')
     .reduce((s, d) => s + d.driverEarnings, 0);
 
@@ -75,14 +103,19 @@ export default function DriverHistoryScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <View style={[styles.emptyIcon, { backgroundColor: theme.surfaceSecond }]}>
-              <Ionicons name="car-outline" size={44} color={theme.textThird} />
+          loading ? (
+            <View style={styles.empty}><ActivityIndicator color={theme.primary} /></View>
+          ) : (
+            <View style={styles.empty}>
+              <View style={[styles.emptyIcon, { backgroundColor: theme.surfaceSecond }]}>
+                <Ionicons name="car-outline" size={44} color={theme.textThird} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips yet</Text>
+              <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>Complete deliveries to see them here.</Text>
             </View>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips yet</Text>
-            <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>Complete deliveries to see them here.</Text>
-          </View>
+          )
         }
         renderItem={({ item }) => {
           const sc = STATUS_CONFIG[item.status] ?? { label: item.status, color: '#A1A1AA', icon: 'ellipse-outline' };

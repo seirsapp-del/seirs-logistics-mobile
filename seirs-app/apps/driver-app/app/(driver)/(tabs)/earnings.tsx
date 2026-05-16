@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,17 +8,16 @@ import {
   ArrowDownCircle, Receipt, ChevronRight, Target, Calendar,
 } from 'lucide-react-native';
 import { HamburgerButton } from '@/components/HamburgerButton';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import {
-  MOCK_DRIVER, MOCK_DRIVER_EARNINGS, MOCK_DRIVER_DELIVERIES, WEEKLY_EARNINGS,
-} from '@/constants/driverMockData';
+import { earningsApi } from '@/services/api';
 
 type Period = 'today' | 'week' | 'month';
 
 const GOAL_TARGET = 50000;
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'] as const;
 
 export default function EarningsScreen() {
   const router  = useRouter();
@@ -26,16 +25,50 @@ export default function EarningsScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [period, setPeriod] = useState<Period>('week');
+  const [period, setPeriod]         = useState<Period>('week');
+  const [dashboard, setDashboard]   = useState<any | null>(null);
+  const [history, setHistory]       = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const totalEarned = MOCK_DRIVER_DELIVERIES
-    .filter(d => d.status === 'delivered')
-    .reduce((s, d) => s + d.driverEarnings, 0);
+  const load = useCallback(async () => {
+    try {
+      const [d, h] = await Promise.all([
+        earningsApi.dashboard().catch(() => null),
+        earningsApi.history().catch(() => [] as any[]),
+      ]);
+      setDashboard(d);
+      setHistory(h ?? []);
+    } catch {}
+  }, []);
 
-  const weekTotal  = WEEKLY_EARNINGS.reduce((s, d) => s + d.amount, 0);
-  const todayTotal = WEEKLY_EARNINGS.find(d => d.day === 'Today')?.amount ?? WEEKLY_EARNINGS[WEEKLY_EARNINGS.length - 1].amount;
-  const maxBar     = Math.max(...WEEKLY_EARNINGS.map(d => d.amount));
-  const goalPct    = Math.min((weekTotal / GOAL_TARGET) * 100, 100);
+  useEffect(() => { load(); }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true); await load(); setRefreshing(false);
+  }, [load]);
+
+  // Build a 7-day rolling earnings series from history. Falls back to a
+  // flat zero series when there's no data yet.
+  const dayTotals = (() => {
+    const totals = Array(7).fill(0);
+    const now = Date.now();
+    for (const e of history) {
+      const t = new Date(e.createdAt ?? e.earnedAt ?? e.deliveredAt ?? 0).getTime();
+      if (!t) continue;
+      const daysAgo = Math.floor((now - t) / 86400000);
+      if (daysAgo < 0 || daysAgo > 6) continue;
+      totals[6 - daysAgo] += Number(e.driverEarnings ?? e.amount ?? 0);
+    }
+    return totals;
+  })();
+  const weekTotal      = dayTotals.reduce((s, n) => s + n, 0);
+  const todayTotal     = dayTotals[6] ?? 0;
+  const totalEarned    = Number(dashboard?.totalEarnings ?? 0);
+  const totalTrips     = Number(dashboard?.totalTrips    ?? 0);
+  const balance        = Number(dashboard?.pendingBalance ?? dashboard?.balance ?? 0);
+  const maxBar         = Math.max(1, ...dayTotals);
+  const goalPct        = Math.min((weekTotal / GOAL_TARGET) * 100, 100);
+  const recentEarnings = history.slice(0, 5);
 
   const walletGradient: [string, string] = isDark
     ? ['#161B22', '#0D1117']
@@ -51,17 +84,21 @@ export default function EarningsScreen() {
   ];
 
   const STATS = [
-    { label: 'This Week',    value: `₦${weekTotal.toLocaleString()}`,  Icon: Calendar,   color: theme.primary },
-    { label: 'Avg / Trip',   value: `₦${Math.round(totalEarned / Math.max(MOCK_DRIVER.totalTrips, 1))}`, Icon: TrendingUp, color: '#16A34A' },
-    { label: 'Total Trips',  value: MOCK_DRIVER.totalTrips.toLocaleString(), Icon: Receipt,    color: '#8B5CF6' },
-    { label: 'Total Earned', value: `₦${(MOCK_DRIVER.totalEarned / 1_000_000).toFixed(1)}M`, Icon: Ribbon, color: '#FFBE0B' },
+    { label: 'This Week',    value: `₦${weekTotal.toLocaleString()}`,                                                Icon: Calendar,   color: theme.primary },
+    { label: 'Avg / Trip',   value: `₦${Math.round(totalEarned / Math.max(totalTrips, 1)).toLocaleString()}`,         Icon: TrendingUp, color: '#16A34A' },
+    { label: 'Total Trips',  value: totalTrips.toLocaleString(),                                                      Icon: Receipt,    color: '#8B5CF6' },
+    { label: 'Total Earned', value: totalEarned >= 1_000_000 ? `₦${(totalEarned / 1_000_000).toFixed(1)}M` : `₦${totalEarned.toLocaleString()}`, Icon: Ribbon, color: '#FFBE0B' },
   ];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+      >
 
         <View style={styles.pageHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -95,11 +132,7 @@ export default function EarningsScreen() {
                 <Text style={styles.walletAmount}>₦{displayAmount.toLocaleString()}</Text>
               </View>
               <View style={styles.walletRight}>
-                <View style={[styles.tierChip, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                  <Ribbon size={12} color="#fff" strokeWidth={1.75} />
-                  <Text style={styles.tierChipText}>{MOCK_DRIVER.tier}</Text>
-                </View>
-                <Text style={styles.balanceLabel}>Balance ₦{MOCK_DRIVER.balance.toLocaleString()}</Text>
+                <Text style={styles.balanceLabel}>Available ₦{balance.toLocaleString()}</Text>
               </View>
             </View>
             <View style={styles.walletActions}>
@@ -158,18 +191,19 @@ export default function EarningsScreen() {
             <Text style={[styles.chartTotal, { color: '#16A34A' }]}>₦{weekTotal.toLocaleString()}</Text>
           </View>
           <View style={styles.barRow}>
-            {WEEKLY_EARNINGS.map(d => {
-              const pct   = (d.amount / maxBar) * 100;
-              const isMax = d.amount === maxBar;
+            {dayTotals.map((amount, i) => {
+              const pct   = (amount / maxBar) * 100;
+              const isMax = amount === maxBar && amount > 0;
+              const day   = DAY_LABELS[i];
               return (
-                <View key={d.day} style={styles.barCol}>
+                <View key={day} style={styles.barCol}>
                   <Text style={[styles.barAmt, { color: isMax ? theme.primary : theme.textThird }]}>
-                    {d.amount >= 1000 ? `${(d.amount / 1000).toFixed(0)}k` : d.amount}
+                    {amount >= 1000 ? `${(amount / 1000).toFixed(0)}k` : amount}
                   </Text>
                   <View style={[styles.barTrack, { backgroundColor: theme.surfaceSecond }]}>
                     <View style={[styles.barFill, { height: `${Math.max(pct, 8)}%`, backgroundColor: isMax ? theme.primary : theme.primary + '45' }]} />
                   </View>
-                  <Text style={[styles.barDay, { color: theme.textSecond }]}>{d.day}</Text>
+                  <Text style={[styles.barDay, { color: theme.textSecond }]}>{day}</Text>
                 </View>
               );
             })}
@@ -185,9 +219,17 @@ export default function EarningsScreen() {
             </Pressable>
           </View>
 
-          {MOCK_DRIVER_EARNINGS.slice(0, 5).map(tx => {
-            const isCredit = tx.type === 'credit';
+          {recentEarnings.length === 0 ? (
+            <View style={{ paddingVertical: Spacing.lg, alignItems: 'center' }}>
+              <Text style={{ color: theme.textThird }}>No transactions yet.</Text>
+            </View>
+          ) : recentEarnings.map((tx: any) => {
+            const amount   = Number(tx.driverEarnings ?? tx.amount ?? 0);
+            const isCredit = tx.type !== 'debit' && tx.type !== 'payout' && tx.type !== 'withdrawal';
             const amtColor = isCredit ? '#16A34A' : '#EF4444';
+            const label    = tx.label ?? (isCredit ? `Trip ${tx.trackingCode ?? ''}`.trim() : 'Withdrawal');
+            const date     = new Date(tx.createdAt ?? tx.earnedAt ?? tx.deliveredAt ?? Date.now())
+              .toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
             return (
               <Pressable
                 key={tx.id}
@@ -201,11 +243,11 @@ export default function EarningsScreen() {
                   }
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.txLabel, { color: theme.text }]}>{tx.label}</Text>
-                  <Text style={[styles.txDate,  { color: theme.textSecond }]}>{tx.date}</Text>
+                  <Text style={[styles.txLabel, { color: theme.text }]}>{label}</Text>
+                  <Text style={[styles.txDate,  { color: theme.textSecond }]}>{date}</Text>
                 </View>
                 <Text style={[styles.txAmount, { color: amtColor }]}>
-                  {isCredit ? '+' : '−'}₦{tx.amount.toLocaleString()}
+                  {isCredit ? '+' : '−'}₦{amount.toLocaleString()}
                 </Text>
                 <ChevronRight size={14} color={theme.textThird} strokeWidth={1.75} style={{ marginLeft: 4 }} />
               </Pressable>

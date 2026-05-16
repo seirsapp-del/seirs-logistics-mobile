@@ -52,6 +52,12 @@ export class Driver {
   @Column({ nullable: true })
   vehiclePlate: string;
 
+  // Display-only metadata (make/model/year/color). Not used by matching
+  // — matching reads vehicleType. Edits land in "pending review" UX but
+  // are persisted immediately; admin reviews via the drivers list.
+  @Column({ type: 'jsonb', nullable: true })
+  vehicleDetails: { make?: string; model?: string; year?: string; color?: string };
+
   @Column({ type: 'enum', enum: DriverStatus, default: DriverStatus.PENDING })
   status: DriverStatus;
 

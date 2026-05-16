@@ -1,12 +1,13 @@
 import {
-  View, Text, Pressable, StyleSheet, FlatList, StatusBar,
+  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { notificationsApi } from '@/services/api';
 
 type NotifType = 'job' | 'payment' | 'system' | 'rating';
 
@@ -19,16 +20,6 @@ interface Notif {
   read:   boolean;
 }
 
-const MOCK_NOTIFS: Notif[] = [
-  { id: 'n1', type: 'job',     title: 'New Job Available',         body: 'Instant delivery request — Victoria Island to Lekki. ₦1,920 earnings.',                  time: '10:32 AM', read: false },
-  { id: 'n2', type: 'payment', title: 'Earnings Credited',         body: '₦1,920 has been credited to your SEIRS wallet for trip SRS-VT12AB34.',                    time: '10:30 AM', read: false },
-  { id: 'n3', type: 'rating',  title: 'New Rating Received',       body: 'Adebayo A. gave you 5 stars! "Very professional and punctual!"',                            time: 'Yesterday', read: true },
-  { id: 'n4', type: 'payment', title: 'Earnings Credited',         body: '₦2,480 has been credited to your SEIRS wallet for trip SRS-YB56CD78.',                    time: 'Yesterday', read: true },
-  { id: 'n5', type: 'system',  title: 'Profile Verified',          body: 'Your KYC documents have been approved. You are now eligible for all job types.',          time: '2 days ago', read: true },
-  { id: 'n6', type: 'job',     title: 'Job Assigned',              body: 'New delivery assigned: Surulere to Ajah, 18.6 km. Estimated ₦3,840 earnings.',             time: '3 days ago', read: true },
-  { id: 'n7', type: 'system',  title: 'Weekend Bonus Active',      body: 'Earn an extra ₦500 bonus for every 5 trips completed this weekend!',                      time: '4 days ago', read: true },
-];
-
 const TYPE_CONFIG: Record<NotifType, { color: string; icon: string }> = {
   job:     { color: '#3A86FF', icon: 'briefcase-outline' },
   payment: { color: '#22C55E', icon: 'cash-outline' },
@@ -36,17 +27,74 @@ const TYPE_CONFIG: Record<NotifType, { color: string; icon: string }> = {
   rating:  { color: '#FFBE0B', icon: 'star-outline' },
 };
 
+// Map backend notification.type → our 4 visual buckets.
+function bucketType(t: string | undefined): NotifType {
+  if (!t) return 'system';
+  if (t.includes('payment') || t.includes('earning') || t.includes('payout')) return 'payment';
+  if (t.includes('rating')  || t.includes('review'))                          return 'rating';
+  if (t.includes('job')     || t.includes('delivery'))                        return 'job';
+  return 'system';
+}
+
+function relativeTime(iso: string): string {
+  const d = new Date(iso).getTime();
+  if (!d) return '';
+  const delta = (Date.now() - d) / 1000;
+  if (delta < 60)     return 'Just now';
+  if (delta < 3600)   return `${Math.floor(delta / 60)} min ago`;
+  if (delta < 86400)  return new Date(iso).toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit' });
+  if (delta < 172800) return 'Yesterday';
+  if (delta < 604800) return `${Math.floor(delta / 86400)} days ago`;
+  return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+}
+
 export default function DriverNotificationsScreen() {
   const router  = useRouter();
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [notifs, setNotifs] = useState<Notif[]>(MOCK_NOTIFS);
+  const [notifs,     setNotifs]     = useState<Notif[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await notificationsApi.list(1);
+      setNotifs((res.items ?? []).map((n: any) => ({
+        id:    n.id,
+        type:  bucketType(n.type),
+        title: n.title ?? 'Notification',
+        body:  n.body ?? n.message ?? '',
+        time:  relativeTime(n.createdAt ?? n.timestamp ?? new Date().toISOString()),
+        read:  !!n.readAt || !!n.read,
+      })));
+    } catch {
+      setNotifs([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    (async () => { await load(); setLoading(false); })();
+  }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   const unreadCount = notifs.filter(n => !n.read).length;
 
-  const markAllRead = () => setNotifs(prev => prev.map(n => ({ ...n, read: true })));
+  const markAllRead = async () => {
+    setNotifs(prev => prev.map(n => ({ ...n, read: true })));
+    try { await notificationsApi.markAllRead(); } catch {}
+  };
+
+  const markOneRead = async (id: string) => {
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    try { await notificationsApi.markRead(id); } catch {}
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
@@ -71,11 +119,16 @@ export default function DriverNotificationsScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="notifications-off-outline" size={48} color={theme.textThird} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No notifications</Text>
-          </View>
+          loading ? (
+            <View style={styles.empty}><ActivityIndicator color={theme.primary} /></View>
+          ) : (
+            <View style={styles.empty}>
+              <Ionicons name="notifications-off-outline" size={48} color={theme.textThird} />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>No notifications</Text>
+            </View>
+          )
         }
         renderItem={({ item }) => {
           const cfg = TYPE_CONFIG[item.type];
@@ -86,7 +139,7 @@ export default function DriverNotificationsScreen() {
                 { backgroundColor: item.read ? theme.surface : (isDark ? '#001020' : '#EFF6FF'), borderColor: item.read ? theme.border : theme.primary + '30' },
                 Shadows.xs,
               ]}
-              onPress={() => setNotifs(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n))}
+              onPress={() => markOneRead(item.id)}
             >
               <View style={[styles.notifIcon, { backgroundColor: cfg.color + '18' }]}>
                 <Ionicons name={cfg.icon as any} size={20} color={cfg.color} />

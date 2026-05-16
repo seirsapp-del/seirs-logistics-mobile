@@ -1,14 +1,14 @@
 import {
   View, Text, Pressable, StyleSheet, ScrollView, TextInput,
-  StatusBar, Alert,
+  StatusBar, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { MOCK_DRIVER } from '@/constants/driverMockData';
+import { driversApi } from '@/services/api';
 
 const VEHICLE_TYPES = [
   { id: 'bicycle',  label: 'Bicycle',    icon: 'bicycle-outline' },
@@ -25,23 +25,68 @@ export default function VehicleScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const v = MOCK_DRIVER.vehicle;
-  const [make,    setMake]    = useState(v.make);
-  const [model,   setModel]   = useState(v.model);
-  const [year,    setYear]    = useState(v.year);
-  const [color,   setColor]   = useState(v.color);
-  const [plate,   setPlate]   = useState(v.plate);
-  const [type,    setType]    = useState(v.type);
+  const [original, setOriginal] = useState<any>(null);
+  const [loading, setLoading]   = useState(true);
+  const [make,    setMake]    = useState('');
+  const [model,   setModel]   = useState('');
+  const [year,    setYear]    = useState('');
+  const [color,   setColor]   = useState('');
+  const [plate,   setPlate]   = useState('');
+  const [type,    setType]    = useState('');
   const [saving,  setSaving]  = useState(false);
   const [saved,   setSaved]   = useState(false);
 
-  const hasChanges = make !== v.make || model !== v.model || year !== v.year ||
-                     color !== v.color || plate !== v.plate || type !== v.type;
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await driversApi.me();
+        const details = me?.vehicleDetails ?? {};
+        const snap = {
+          make:  details.make ?? '',
+          model: details.model ?? '',
+          year:  details.year ?? '',
+          color: details.color ?? '',
+          plate: me?.vehiclePlate ?? '',
+          type:  me?.vehicleType  ?? '',
+        };
+        setOriginal(snap);
+        setMake(snap.make); setModel(snap.model); setYear(snap.year);
+        setColor(snap.color); setPlate(snap.plate); setType(snap.type);
+      } catch {}
+      setLoading(false);
+    })();
+  }, []);
 
-  const handleSave = () => {
+  const hasChanges = !!original && (
+    make !== original.make || model !== original.model || year !== original.year ||
+    color !== original.color || plate !== original.plate || type !== original.type
+  );
+
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => { setSaving(false); setSaved(true); }, 1000);
-    setTimeout(() => setSaved(false), 3000);
+    try {
+      const fresh = await driversApi.updateVehicle({
+        vehicleType:  type || undefined,
+        vehiclePlate: plate || undefined,
+        make, model, year, color,
+      });
+      const details = fresh?.vehicleDetails ?? {};
+      const next = {
+        make:  details.make ?? '',
+        model: details.model ?? '',
+        year:  details.year ?? '',
+        color: details.color ?? '',
+        plate: fresh?.vehiclePlate ?? plate,
+        type:  fresh?.vehicleType  ?? type,
+      };
+      setOriginal(next);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e: any) {
+      Alert.alert('Could not save', e?.message ?? 'Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const fields = [
@@ -64,6 +109,11 @@ export default function VehicleScreen() {
         <View style={{ width: 36 }} />
       </View>
 
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.primary} />
+        </View>
+      ) : (
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
         {/* Current vehicle preview */}
@@ -139,6 +189,7 @@ export default function VehicleScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      )}
 
       <View style={[styles.ctaBar, { backgroundColor: theme.navBackground, borderTopColor: theme.border }]}>
         <Pressable

@@ -23,6 +23,7 @@ export class DeliveriesService {
   fallbackService?:      any;
   notificationsService?: any;
   mailService?:          any;
+  driversService?:       any;
   // Spec V8 Tier 3 — when set, status changes fan out to subscribed
   // partner webhooks (POST /api/v1/dev-platform/webhooks subscribers).
   // Wired lazily by DevPlatformModule on app boot to avoid a circular
@@ -324,6 +325,60 @@ export class DeliveriesService {
     });
     if (!delivery) throw new NotFoundException('Delivery not found.');
     return delivery;
+  }
+
+  // Driver-initiated claim of an unassigned pending job. Used by the
+  // driver app's job-detail screen "Accept" button. Mirrors what the
+  // matching service does on auto-match: flip status to ASSIGNED, set
+  // assignedAt, broadcast to tracking + notify customer.
+  async claimByDriver(deliveryId: string, userId: string) {
+    if (!this.driversService) {
+      const { ServiceUnavailableException } = await import('@nestjs/common');
+      throw new ServiceUnavailableException('Driver service not wired.');
+    }
+    const driver = await this.driversService.findByUserId(userId);
+    if (!driver) {
+      const { ForbiddenException } = await import('@nestjs/common');
+      throw new ForbiddenException('Only drivers can claim jobs.');
+    }
+
+    const delivery = await this.repo.findOne({
+      where:    { id: deliveryId },
+      relations: ['customer', 'driver'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    const { BadRequestException, ConflictException } = await import('@nestjs/common');
+    if (delivery.status !== DeliveryStatus.PENDING) {
+      throw new BadRequestException(`This job is no longer available (status: ${delivery.status}).`);
+    }
+    if (delivery.driver) {
+      throw new ConflictException('This job was already claimed by another driver.');
+    }
+
+    await this.repo.update(deliveryId, {
+      driver,
+      status:     DeliveryStatus.ASSIGNED,
+      assignedAt: new Date(),
+    });
+
+    if (this.trackingGateway) {
+      try { this.trackingGateway.broadcastDriverAssigned(deliveryId, driver); } catch {}
+      try { this.trackingGateway.broadcastStatusChange(deliveryId, DeliveryStatus.ASSIGNED); } catch {}
+    }
+    if (this.notificationsService) {
+      this.notificationsService.notifyDeliveryAssigned(
+        delivery.customer.id,
+        delivery.trackingCode,
+        driver.user?.name ?? 'Your driver',
+        delivery.id,
+      ).catch(() => {});
+    }
+
+    return this.repo.findOne({
+      where:     { id: deliveryId },
+      relations: ['customer', 'driver', 'driver.user'],
+    });
   }
 
   async emailReceipt(id: string, userId: string) {

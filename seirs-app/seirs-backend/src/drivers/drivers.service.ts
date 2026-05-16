@@ -504,6 +504,37 @@ export class DriversService {
     };
   }
 
+  async updateVehicle(
+    userId: string,
+    body: {
+      vehicleType?:  string;
+      vehiclePlate?: string;
+      make?:         string;
+      model?:        string;
+      year?:         string;
+      color?:        string;
+    },
+  ) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    const patch: Partial<Driver> = {};
+    if (body.vehicleType)  patch.vehicleType  = body.vehicleType as any;
+    if (body.vehiclePlate) patch.vehiclePlate = body.vehiclePlate;
+
+    const mergedDetails = {
+      ...(driver.vehicleDetails ?? {}),
+      ...(body.make  !== undefined ? { make:  String(body.make).slice(0,  64) } : {}),
+      ...(body.model !== undefined ? { model: String(body.model).slice(0, 64) } : {}),
+      ...(body.year  !== undefined ? { year:  String(body.year).slice(0,  8)  } : {}),
+      ...(body.color !== undefined ? { color: String(body.color).slice(0, 32) } : {}),
+    };
+    if (Object.keys(mergedDetails).length > 0) patch.vehicleDetails = mergedDetails;
+
+    await this.repo.update(driver.id, patch);
+    return this.findByUserId(userId);
+  }
+
   // Spec V8 §2.1 — record uploaded KYC document URL against the right column.
   async updateKycDoc(userId: string, docId: string, url: string) {
     const field = KYC_DOC_FIELD_MAP[docId];
