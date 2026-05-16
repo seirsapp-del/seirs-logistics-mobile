@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { LessThanOrEqual, Repository, MoreThan } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { ApiKey } from './api-key.entity';
@@ -197,6 +198,119 @@ export class DevPlatformService {
       }),
     ));
     return { queued: targets.length };
+  }
+
+  // ── Webhook dispatcher cron — Spec V8 Tier 3 ────────────────────────────
+  // Runs every minute. Picks up pending + retryable deliveries, POSTs
+  // signed payloads, advances nextAttemptAt with exponential backoff
+  // on failure. Caps at 5 attempts; max backoff 1h.
+
+  private static readonly MAX_ATTEMPTS = 5;
+  private static readonly BASE_BACKOFF_MS = 5 * 60 * 1000;  // 5 min
+  private static readonly MAX_BACKOFF_MS  = 60 * 60 * 1000; // 1 hr
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async runWebhookDispatcher() {
+    const now = new Date();
+    const due = await this.deliveriesRepo.find({
+      where: [
+        { status: 'pending' as any, nextAttemptAt: null as any },
+        { status: 'pending' as any, nextAttemptAt: LessThanOrEqual(now) },
+      ],
+      take: 50,
+    });
+    if (!due.length) return;
+
+    // Hydrate endpoint URLs once per cron tick
+    const endpointIds = Array.from(new Set(due.map(d => d.endpointId)));
+    const endpoints = await this.endpointsRepo
+      .createQueryBuilder('e')
+      .addSelect('e.secretHash')
+      .where('e.id IN (:...ids)', { ids: endpointIds })
+      .getMany();
+    const byId = new Map(endpoints.map(e => [e.id, e]));
+
+    let delivered = 0;
+    let failed = 0;
+    for (const d of due) {
+      const ep = byId.get(d.endpointId);
+      if (!ep || !ep.active) {
+        d.status = 'failed';
+        d.lastError = 'endpoint missing or inactive';
+        await this.deliveriesRepo.save(d);
+        failed++;
+        continue;
+      }
+      const ok = await this.fireWebhook(ep, d);
+      if (ok) delivered++; else failed++;
+    }
+    this.logger.log(`Webhook dispatcher: ${due.length} due, ${delivered} delivered, ${failed} pending-retry/failed`);
+  }
+
+  private async fireWebhook(ep: WebhookEndpoint, d: WebhookDelivery): Promise<boolean> {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const bodyStr   = JSON.stringify({ event: d.event, payload: d.payload, deliveryId: d.id, timestamp });
+    // Signature: HMAC-SHA256(secretHash, timestamp + body). We use the
+    // bcrypt hash itself as the signing material — partners verify
+    // against the same hash they received at create-time. Acceptable
+    // for v1 (the bcrypt output is high-entropy); v1.1 will migrate to
+    // raw secrets encrypted at rest.
+    const sig = crypto.createHmac('sha256', ep.secretHash ?? '').update(`${timestamp}${bodyStr}`).digest('hex');
+
+    try {
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 10_000);
+      const res = await fetch(ep.url, {
+        method:  'POST',
+        headers: {
+          'Content-Type':       'application/json',
+          'X-SEIRS-Signature':  sig,
+          'X-SEIRS-Timestamp':  String(timestamp),
+          'X-SEIRS-Event':      d.event,
+          'X-SEIRS-Delivery-Id':d.id,
+        },
+        body: bodyStr,
+        signal: ctrl.signal,
+      });
+      clearTimeout(to);
+
+      d.attempts += 1;
+      d.responseCode = res.status;
+      d.responseBody = (await res.text().catch(() => '')).slice(0, 2000);
+
+      if (res.ok) {
+        d.status      = 'delivered';
+        d.deliveredAt = new Date();
+        d.lastError   = null;
+        await this.deliveriesRepo.save(d);
+        return true;
+      }
+      // Non-2xx → schedule retry or fail-permanent
+      d.lastError = `HTTP ${res.status}`;
+      this.scheduleRetryOrFail(d);
+      await this.deliveriesRepo.save(d);
+      return false;
+    } catch (err: any) {
+      d.attempts += 1;
+      d.lastError = (err?.message ?? 'request error').slice(0, 300);
+      this.scheduleRetryOrFail(d);
+      await this.deliveriesRepo.save(d);
+      return false;
+    }
+  }
+
+  private scheduleRetryOrFail(d: WebhookDelivery) {
+    if (d.attempts >= DevPlatformService.MAX_ATTEMPTS) {
+      d.status = 'failed';
+      d.nextAttemptAt = null;
+      return;
+    }
+    // Exponential: 5min → 10 → 20 → 40 → 80 (capped at 60)
+    const backoff = Math.min(
+      DevPlatformService.BASE_BACKOFF_MS * Math.pow(2, d.attempts - 1),
+      DevPlatformService.MAX_BACKOFF_MS,
+    );
+    d.nextAttemptAt = new Date(Date.now() + backoff);
   }
 
   // ── Usage stats ────────────────────────────────────────────────────────

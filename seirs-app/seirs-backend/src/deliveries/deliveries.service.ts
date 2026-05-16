@@ -23,6 +23,11 @@ export class DeliveriesService {
   fallbackService?:      any;
   notificationsService?: any;
   mailService?:          any;
+  // Spec V8 Tier 3 — when set, status changes fan out to subscribed
+  // partner webhooks (POST /api/v1/dev-platform/webhooks subscribers).
+  // Wired lazily by DevPlatformModule on app boot to avoid a circular
+  // dep with DeliveriesModule.
+  devPlatformService?:   any;
 
   constructor(
     @InjectRepository(Delivery) private repo: Repository<Delivery>,
@@ -222,6 +227,26 @@ export class DeliveriesService {
 
     if (this.trackingGateway) {
       this.trackingGateway.broadcastStatusChange(id, status);
+    }
+
+    // Spec V8 Tier 3 — fan out to partner webhook subscribers
+    if (this.devPlatformService) {
+      const eventMap: Record<string, string> = {
+        assigned:   'order.driver_assigned',
+        picked_up:  'order.picked_up',
+        delivered:  'order.delivered',
+        failed:     'order.failed',
+        cancelled:  'order.cancelled',
+      };
+      const eventName = eventMap[String(status)];
+      if (eventName) {
+        this.devPlatformService.enqueue(eventName, {
+          orderId:      id,
+          trackingCode: delivery.trackingCode,
+          status,
+          occurredAt:   new Date().toISOString(),
+        }).catch(() => {});
+      }
     }
 
     // Fetch customer for email (delivery.customer may not have email loaded)

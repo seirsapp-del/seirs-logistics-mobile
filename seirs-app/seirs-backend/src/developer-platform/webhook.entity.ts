@@ -69,6 +69,15 @@ export class WebhookDelivery {
   @Column({ nullable: true })
   deliveredAt: Date;
 
+  // Set by the retry cron — pending rows fire when nextAttemptAt <= now.
+  // Null = "fire on next cron tick".
+  @Index()
+  @Column({ type: 'timestamptz', nullable: true })
+  nextAttemptAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  lastError: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }
