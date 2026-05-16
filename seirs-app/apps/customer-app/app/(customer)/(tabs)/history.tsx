@@ -1,16 +1,16 @@
 import {
-  View, Text, Pressable, StyleSheet, FlatList, StatusBar,
+  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
-import { MOCK_TRIPS } from '@/constants/mockData';
+import { deliveriesApi } from '@/services/api';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   pending:     { label: 'Pending',     color: '#3A86FF', icon: 'time-outline' },
@@ -30,6 +30,41 @@ const ACTIVE_STATUSES   = new Set(['pending', 'assigned', 'picked_up', 'in_trans
 const COMPLETED_STATUSES = new Set(['completed', 'delivered']);
 const CANCELLED_STATUSES = new Set(['cancelled', 'failed']);
 
+type Trip = {
+  id: string;
+  status: string;
+  date: string;
+  pickupAddress: string;
+  dropoffAddress: string;
+  distance: string;
+  price: number;
+  driver: { id: string; name: string; profilePhoto?: string } | null;
+  rating: number | null;
+  trackingCode: string;
+};
+
+function toTrip(d: any): Trip {
+  const drv = d.driver
+    ? {
+        id:           d.driver.id ?? d.driver.user?.id ?? 'd',
+        name:         d.driver.user?.name ?? d.driver.name ?? 'Driver',
+        profilePhoto: d.driver.user?.profilePhoto ?? d.driver.profilePhoto,
+      }
+    : null;
+  return {
+    id:             d.id,
+    status:         String(d.status ?? 'pending'),
+    date:           d.deliveredAt ?? d.createdAt ?? new Date().toISOString(),
+    pickupAddress:  d.pickupAddress ?? '—',
+    dropoffAddress: d.dropoffAddress ?? '—',
+    distance:       d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '—',
+    price:          Number(d.price ?? 0),
+    driver:         drv,
+    rating:         d.customerRating ?? null,
+    trackingCode:   d.trackingCode ?? d.id,
+  };
+}
+
 export default function HistoryScreen() {
   const router  = useRouter();
   const cs      = useColorScheme();
@@ -37,8 +72,30 @@ export default function HistoryScreen() {
   const isDark  = cs === 'dark';
 
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
+  const [trips, setTrips]         = useState<Trip[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filtered = MOCK_TRIPS.filter(t => {
+  const load = useCallback(async () => {
+    try {
+      const res = await deliveriesApi.myDeliveries(1, 50);
+      setTrips((res.items ?? []).map(toTrip));
+    } catch {
+      setTrips([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    (async () => { await load(); setLoading(false); })();
+  }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  const filtered = trips.filter(t => {
     if (activeTab === 'All')       return true;
     if (activeTab === 'Active')    return ACTIVE_STATUSES.has(t.status);
     if (activeTab === 'Completed') return COMPLETED_STATUSES.has(t.status);
@@ -84,22 +141,27 @@ export default function HistoryScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <View style={[styles.emptyIcon, { backgroundColor: theme.surfaceSecond }]}>
-              <Ionicons name="car-outline" size={48} color={theme.textThird} />
+          loading ? (
+            <View style={styles.empty}><ActivityIndicator color={theme.primary} /></View>
+          ) : (
+            <View style={styles.empty}>
+              <View style={[styles.emptyIcon, { backgroundColor: theme.surfaceSecond }]}>
+                <Ionicons name="car-outline" size={48} color={theme.textThird} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips here</Text>
+              <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
+                {activeTab === 'All' ? 'Request your first ride to see it here.' : `No ${activeTab.toLowerCase()} trips.`}
+              </Text>
+              {activeTab === 'All' && (
+                <Pressable style={[styles.ctaBtn, { backgroundColor: theme.primary }]} onPress={() => router.push('/(customer)/request')}>
+                  <Ionicons name="car" size={16} color="#fff" />
+                  <Text style={styles.ctaBtnText}>Request a Ride</Text>
+                </Pressable>
+              )}
             </View>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips here</Text>
-            <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
-              {activeTab === 'All' ? 'Request your first ride to see it here.' : `No ${activeTab.toLowerCase()} trips.`}
-            </Text>
-            {activeTab === 'All' && (
-              <Pressable style={[styles.ctaBtn, { backgroundColor: theme.primary }]} onPress={() => router.push('/(customer)/request')}>
-                <Ionicons name="car" size={16} color="#fff" />
-                <Text style={styles.ctaBtnText}>Request a Ride</Text>
-              </Pressable>
-            )}
-          </View>
+          )
         }
         renderItem={({ item: trip }) => {
           const status = STATUS_CONFIG[trip.status] ?? { label: trip.status, color: '#A1A1AA', icon: 'ellipse-outline' };
@@ -138,7 +200,7 @@ export default function HistoryScreen() {
               <View style={styles.cardFooter}>
                 {trip.driver ? (
                   <View style={styles.driverMini}>
-                    <Avatar name={trip.driver.name} size={24} />
+                    <Avatar name={trip.driver.name} uri={trip.driver.profilePhoto} size={24} />
                     <Text style={[styles.driverName, { color: theme.textSecond }]}>{trip.driver.name}</Text>
                   </View>
                 ) : (

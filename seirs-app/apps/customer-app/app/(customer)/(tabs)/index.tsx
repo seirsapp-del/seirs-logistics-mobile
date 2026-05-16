@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
-  TextInput, Dimensions, Alert,
+  TextInput, Dimensions, Alert, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   Colors, Spacing, Radius, FontSize, FontWeight, Shadows,
@@ -14,7 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/Drawer';
-import { MOCK_TRIPS, MOCK_USER } from '@/constants/mockData';
+import { deliveriesApi, paymentsApi } from '@/services/api';
 import {
   AlignLeft, MapPin, Package, Car, Clock, Search,
   Wallet, Bell, TrendingUp, ChevronRight, Plus,
@@ -43,27 +43,64 @@ export default function CustomerHomeScreen() {
   const isDark  = cs === 'dark';
   const { user } = useAuth();
 
-  const firstName  = user?.name?.split(' ')[0] ?? MOCK_USER.name.split(' ')[0];
-  const balance    = MOCK_USER.walletBalance;
+  const firstName  = user?.name?.split(' ')[0] ?? 'there';
 
   const [activeTab,     setActiveTab]     = useState<TripTab>('in_progress');
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [sendPressed,   setSendPressed]   = useState(false);
   const [ridePressed,   setRidePressed]   = useState(false);
+  const [balance,       setBalance]       = useState(0);
+  const [trips,         setTrips]         = useState<Array<{
+    id: string; status: string; date: string; dropoffAddress: string; price: number; distance: string;
+  }>>([]);
+  const [refreshing,    setRefreshing]    = useState(false);
 
-  const TRIPS = MOCK_TRIPS;
+  const reload = useCallback(async () => {
+    try {
+      const [wallet, deliveries] = await Promise.all([
+        paymentsApi.wallet().catch(() => null),
+        deliveriesApi.myDeliveries(1, 20).catch(() => ({ items: [] })),
+      ]);
+      if (wallet) setBalance(Number(wallet.balanceNaira ?? 0));
+      const mapped = (deliveries.items ?? []).map((d: any) => ({
+        id:             d.id,
+        status:         String(d.status ?? 'pending').replace('picked_up', 'in_progress').replace('in_transit', 'in_progress'),
+        date:           d.deliveredAt ?? d.createdAt ?? new Date().toISOString(),
+        dropoffAddress: d.dropoffAddress ?? '—',
+        price:          Number(d.price ?? 0),
+        distance:       d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '',
+      }));
+      setTrips(mapped);
+    } catch {}
+  }, []);
+
+  // Refresh every time the tab gains focus so a freshly-completed
+  // delivery shows up without a manual pull-to-refresh.
+  useFocusEffect(useCallback(() => { reload(); }, [reload]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await reload();
+    setRefreshing(false);
+  }, [reload]);
+
+  const TRIPS = trips;
   const tabTrips = activeTab === 'in_progress'
-    ? TRIPS.filter(t => t.status === 'in_progress')
+    ? TRIPS.filter(t => t.status === 'in_progress' || t.status === 'pending' || t.status === 'assigned')
     : activeTab === 'delivered'
-    ? TRIPS.filter(t => t.status === 'completed')
+    ? TRIPS.filter(t => t.status === 'completed' || t.status === 'delivered')
     : TRIPS.slice(0, 2);
 
-  const activeTrip = TRIPS.find(t => t.status === 'in_progress');
+  const activeTrip = TRIPS.find(t => ['in_progress', 'pending', 'assigned'].includes(t.status));
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+      >
 
         {/* ── Top bar ─────────────────────────────────────────────────────── */}
         <View style={styles.topBar}>
@@ -79,7 +116,7 @@ export default function CustomerHomeScreen() {
           </Text>
 
           <Pressable onPress={() => router.push('/(customer)/profile' as any)}>
-            <Avatar name={user?.name ?? MOCK_USER.name} uri={user?.profilePhoto} size={40} />
+            <Avatar name={user?.name ?? firstName} uri={user?.profilePhoto} size={40} />
           </Pressable>
         </View>
 

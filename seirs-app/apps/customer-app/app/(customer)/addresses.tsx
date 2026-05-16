@@ -9,21 +9,16 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, MapPin, Plus, Home, Briefcase, Trash2, Check } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { addressesApi, type SavedAddressDTO } from '@/services/api';
 
-// Spec V8 — saved address book. Send/Request flows currently re-type
-// every booking; this lets customers maintain Home / Work / Custom
-// addresses for one-tap selection. Persisted in AsyncStorage for now;
-// backend Address entity is a follow-up that lets the data sync
-// across devices and feed driver routing pre-fill.
+// Spec V8 — saved address book synced to backend so the data follows
+// the user across devices + can pre-fill driver routing. AsyncStorage
+// is kept as a warm cache so the list renders before the network round
+// trip on cold starts.
 
-interface SavedAddress {
-  id:    string;
-  label: string;
-  text:  string;
-  type:  'home' | 'work' | 'other';
-}
+type SavedAddress = SavedAddressDTO;
 
-const STORAGE_KEY = 'seirs.savedAddresses.v1';
+const CACHE_KEY = 'seirs.savedAddresses.cache.v2';
 
 export default function AddressesScreen() {
   const router = useRouter();
@@ -37,19 +32,26 @@ export default function AddressesScreen() {
   const [draftText,  setDraftText]  = useState('');
   const [draftType,  setDraftType]  = useState<SavedAddress['type']>('home');
 
+  // Render the cached list immediately, then reconcile with the backend
+  // so the list never appears empty on a flaky connection.
   useEffect(() => {
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        const raw = await AsyncStorage.getItem(CACHE_KEY);
         if (raw) setItems(JSON.parse(raw));
-      } catch { /* fresh state */ }
-      finally { setLoading(false); }
+      } catch {}
+      try {
+        const fresh = await addressesApi.list();
+        setItems(fresh);
+        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(fresh));
+      } catch {}
+      setLoading(false);
     })();
   }, []);
 
-  const persist = async (next: SavedAddress[]) => {
+  const cache = async (next: SavedAddress[]) => {
     setItems(next);
-    try { await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* best-effort */ }
+    try { await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(next)); } catch {}
   };
 
   const addAddress = async () => {
@@ -57,21 +59,30 @@ export default function AddressesScreen() {
       Alert.alert('Both label and address are required');
       return;
     }
-    const fresh: SavedAddress = {
-      id:    String(Date.now()),
-      label: draftLabel.trim(),
-      text:  draftText.trim(),
-      type:  draftType,
-    };
-    await persist([...items, fresh]);
-    setDraftLabel(''); setDraftText(''); setDraftType('home');
-    setAdding(false);
+    try {
+      const created = await addressesApi.create({
+        label: draftLabel.trim(),
+        text:  draftText.trim(),
+        type:  draftType,
+      });
+      await cache([...items, created]);
+      setDraftLabel(''); setDraftText(''); setDraftType('home');
+      setAdding(false);
+    } catch (e: any) {
+      Alert.alert('Could not save', e?.message ?? 'Please try again.');
+    }
   };
 
   const removeAddress = (id: string) => {
     Alert.alert('Remove address', 'Delete this saved address?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => persist(items.filter(a => a.id !== id)) },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          try { await addressesApi.remove(id); } catch {}
+          await cache(items.filter(a => a.id !== id));
+        },
+      },
     ]);
   };
 

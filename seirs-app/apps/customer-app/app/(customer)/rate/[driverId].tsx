@@ -1,15 +1,15 @@
 import {
-  View, Text, Pressable, StyleSheet, TextInput, StatusBar, KeyboardAvoidingView, Platform, ScrollView,
+  View, Text, Pressable, StyleSheet, TextInput, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { MOCK_DRIVERS } from '@/constants/mockData';
+import { deliveriesApi } from '@/services/api';
 
 const TAGS = ['Punctual', 'Professional', 'Safe driver', 'Clean car', 'Great music', 'Friendly'];
 const STAR_LABELS = ['', 'Terrible', 'Bad', 'Okay', 'Good', 'Excellent'];
@@ -19,9 +19,31 @@ export default function RateDriverScreen() {
   const cs       = useColorScheme();
   const theme    = Colors[cs ?? 'light'];
   const isDark   = cs === 'dark';
-  const { driverId } = useLocalSearchParams<{ driverId: string }>();
+  const { driverId, tripId } = useLocalSearchParams<{ driverId: string; tripId?: string }>();
 
-  const driver = MOCK_DRIVERS.find(d => d.id === driverId) ?? MOCK_DRIVERS[0];
+  const [driver, setDriver] = useState<{ name: string; vehicle: string; color: string; plate: string; profilePhoto?: string }>({
+    name: 'Driver', vehicle: '', color: '', plate: '',
+  });
+
+  // If we know the trip, pull driver info from the real delivery payload
+  // so we don't render a mock name like "John Driver".
+  useEffect(() => {
+    if (!tripId) return;
+    (async () => {
+      try {
+        const d = await deliveriesApi.get(tripId);
+        if (d?.driver) {
+          setDriver({
+            name:         d.driver.user?.name ?? d.driver.name ?? 'Driver',
+            profilePhoto: d.driver.user?.profilePhoto ?? d.driver.profilePhoto,
+            vehicle:      d.driver.vehicleModel ?? '',
+            color:        d.driver.vehicleColor ?? '',
+            plate:        d.driver.vehicleNumber ?? d.driver.plate ?? '',
+          });
+        }
+      } catch {}
+    })();
+  }, [tripId]);
 
   const [stars,    setStars]    = useState(0);
   const [hovered,  setHovered]  = useState(0);
@@ -40,12 +62,28 @@ export default function RateDriverScreen() {
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!tripId) {
+      // Without a tripId we have nothing to attach the rating to. Bounce
+      // the user back to history so they can pick the trip they meant.
+      Alert.alert('No trip linked', 'Please open this from the trip details screen.');
+      return;
+    }
+    if (!stars) {
+      Alert.alert('Pick a rating', 'Tap the stars to score your trip first.');
+      return;
+    }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const tagText = Array.from(selected).join(', ');
+      const noteText = [tagText, comment.trim()].filter(Boolean).join(' — ');
+      await deliveriesApi.rate(tripId, stars, noteText || undefined);
       router.replace('/(customer)/(tabs)' as any);
-    }, 1200);
+    } catch (e: any) {
+      Alert.alert('Could not submit', e?.message ?? 'Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const TIP_OPTIONS = [100, 200, 500];
@@ -70,9 +108,9 @@ export default function RateDriverScreen() {
 
           {/* Driver */}
           <View style={[styles.driverCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-            <Avatar name={driver.name} size={72} />
+            <Avatar name={driver.name} uri={driver.profilePhoto} size={72} />
             <Text style={[styles.driverName, { color: theme.text }]}>{driver.name}</Text>
-            <Text style={[styles.driverSub, { color: theme.textSecond }]}>{driver.color} {driver.vehicle} · {driver.plate}</Text>
+            <Text style={[styles.driverSub, { color: theme.textSecond }]}>{[driver.color, driver.vehicle, driver.plate].filter(Boolean).join(' · ')}</Text>
           </View>
 
           {/* Stars */}

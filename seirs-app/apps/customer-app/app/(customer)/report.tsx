@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, TextInput, StatusBar, KeyboardAvoidingView, Platform,
+  View, Text, Pressable, StyleSheet, ScrollView, TextInput, StatusBar, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
+import { ticketsApi } from '@/services/api';
 
 const CATEGORIES = [
   { id: 'lost_item',     icon: 'bag-outline',       label: 'Lost Item',         desc: 'Left something in the vehicle' },
@@ -30,9 +31,23 @@ export default function ReportScreen() {
   const [loading,  setLoading]  = useState(false);
   const [done,     setDone]     = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!category) return;
+    const cat = CATEGORIES.find(c => c.id === category)!;
     setLoading(true);
-    setTimeout(() => { setLoading(false); setDone(true); }, 1200);
+    try {
+      await ticketsApi.create({
+        subject:     cat.label + (tripId ? ` — trip ${String(tripId).toUpperCase()}` : ''),
+        description: detail.trim() || cat.desc,
+        category,
+        tripId:      tripId ?? undefined,
+      });
+      setDone(true);
+    } catch (e: any) {
+      Alert.alert('Could not submit', e?.message ?? 'Please try again later.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (done) {

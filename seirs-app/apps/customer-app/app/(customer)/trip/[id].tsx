@@ -1,15 +1,16 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { MOCK_TRIPS } from '@/constants/mockData';
+import { deliveriesApi } from '@/services/api';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   pending:     { label: 'Pending',     color: '#3A86FF', icon: 'time-outline' },
@@ -35,10 +36,70 @@ export default function TripDetailsScreen() {
   const isDark = cs === 'dark';
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const trip = MOCK_TRIPS.find(t => t.id === id) ?? MOCK_TRIPS[0];
+  const [raw, setRaw] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        const d = await deliveriesApi.get(id);
+        setRaw(d);
+      } catch {
+        setRaw(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center' }}>
+        <ActivityIndicator color={theme.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!raw) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.lg }}>
+        <Ionicons name="alert-circle-outline" size={48} color={theme.textThird} />
+        <Text style={{ color: theme.textSecond, marginTop: Spacing.md, textAlign: 'center' }}>
+          Trip not found.
+        </Text>
+        <Pressable onPress={() => router.back()} style={{ marginTop: Spacing.lg }}>
+          <Text style={{ color: theme.primary, fontWeight: '600' }}>Go back</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  // Unified trip shape — maps raw API fields to what the UI below uses.
+  const trip = {
+    id:             raw.id,
+    status:         String(raw.status ?? 'pending'),
+    date:           raw.deliveredAt ?? raw.createdAt ?? new Date().toISOString(),
+    trackingCode:   raw.trackingCode ?? raw.id,
+    pickupAddress:  raw.pickupAddress ?? '—',
+    dropoffAddress: raw.dropoffAddress ?? '—',
+    distance:       raw.distanceKm ? `${Number(raw.distanceKm).toFixed(1)} km` : '—',
+    duration:       raw.estimatedTotalMinutes ? `${raw.estimatedTotalMinutes} min` : '—',
+    price:          Number(raw.price ?? 0),
+    paymentMethod:  raw.paymentMethod ?? 'wallet',
+    driver:         raw.driver ? {
+      id:           raw.driver.id ?? raw.driver.user?.id ?? 'd',
+      name:         raw.driver.user?.name ?? raw.driver.name ?? 'Driver',
+      profilePhoto: raw.driver.user?.profilePhoto ?? raw.driver.profilePhoto,
+      plate:        raw.driver.vehicleNumber ?? raw.driver.plate ?? '',
+      rating:       raw.driver.rating ?? 5,
+    } : null,
+    rating:         raw.customerRating ?? null,
+    packageDescription: raw.packageDescription ?? '',
+  };
   const status = STATUS_CONFIG[trip.status] ?? { label: trip.status, color: '#A1A1AA', icon: 'ellipse-outline' };
   const isActive    = ['pending', 'assigned', 'picked_up', 'in_transit', 'in_progress'].includes(trip.status);
-  const isCompleted = trip.status === 'completed';
+  const isCompleted = trip.status === 'completed' || trip.status === 'delivered';
   const isCancelled = trip.status === 'cancelled';
 
   const formatDate = (iso: string) =>

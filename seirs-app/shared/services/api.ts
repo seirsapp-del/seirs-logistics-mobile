@@ -386,6 +386,38 @@ export const promotionsApi = {
     }>('POST', '/promotions/redeem', body),
 };
 
+// ─── Saved addresses ──────────────────────────────────────────────────────────
+export type SavedAddressDTO = {
+  id:    string;
+  label: string;
+  text:  string;
+  type:  'home' | 'work' | 'other';
+  lat?:  number;
+  lng?:  number;
+};
+
+export const addressesApi = {
+  list:   () => request<SavedAddressDTO[]>('GET', '/addresses'),
+  create: (body: Omit<SavedAddressDTO, 'id'>) =>
+    request<SavedAddressDTO>('POST', '/addresses', body),
+  update: (id: string, body: Partial<Omit<SavedAddressDTO, 'id'>>) =>
+    request<SavedAddressDTO>('PATCH', `/addresses/${id}`, body),
+  remove: (id: string) =>
+    request<{ deleted: true }>('DELETE', `/addresses/${id}`),
+};
+
+// ─── Support tickets (customer-facing) ────────────────────────────────────────
+export const ticketsApi = {
+  create: (body: {
+    subject: string;
+    description: string;
+    category?: string;
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
+    tripId?: string;
+  }) => request<{ id: string; status: string }>('POST', '/tickets', body),
+  listMine: () => request<any[]>('GET', '/tickets/mine'),
+};
+
 // ─── Suggestions (Spec V8 §3.13) ─────────────────────────────────────────────
 export const suggestionsApi = {
   submit: (body: { subject: string; body: string; category?: string }) =>

@@ -1,14 +1,22 @@
 import {
-  View, Text, Pressable, StyleSheet, FlatList, StatusBar,
+  View, Text, Pressable, StyleSheet, FlatList, StatusBar, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { MOCK_PROMOS } from '@/constants/mockData';
+import { promotionsApi, type PromoDTO } from '@/services/api';
+
+// Render the discount value as a chip label per promo type.
+function promoLabel(p: PromoDTO): string {
+  if (p.type === 'flat_discount') return `₦${Number(p.value).toLocaleString()} off`;
+  if (p.type === 'percent')       return `${Number(p.value)}% off`;
+  return 'Free delivery';
+}
 
 const PROMO_GRADIENTS = [
   ['#3A86FF', '#1D6AE5'],
@@ -23,9 +31,32 @@ export default function PromotionsScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copied,    setCopied]    = useState<string | null>(null);
+  const [promos,    setPromos]    = useState<PromoDTO[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleCopy = (code: string) => {
+  const load = useCallback(async () => {
+    try {
+      const items = await promotionsApi.listActive();
+      setPromos(items ?? []);
+    } catch {
+      setPromos([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    (async () => { await load(); setLoading(false); })();
+  }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  const handleCopy = async (code: string) => {
+    try { await Clipboard.setStringAsync(code); } catch {}
     setCopied(code);
     setTimeout(() => setCopied(null), 2000);
   };
@@ -46,10 +77,11 @@ export default function PromotionsScreen() {
       </View>
 
       <FlatList
-        data={MOCK_PROMOS}
+        data={promos}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         ListHeaderComponent={
           <View style={styles.bannerWrap}>
             <LinearGradient
@@ -73,7 +105,7 @@ export default function PromotionsScreen() {
         renderItem={({ item: promo, index }) => {
           const grad = PROMO_GRADIENTS[index % PROMO_GRADIENTS.length];
           const isCopied = copied === promo.code;
-          const daysLeft = Math.max(0, Math.ceil((new Date(promo.expiry).getTime() - Date.now()) / 86400000));
+          const daysLeft = Math.max(0, Math.ceil((new Date(promo.validTo).getTime() - Date.now()) / 86400000));
           return (
             <View style={[styles.promoCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
               <LinearGradient
@@ -83,10 +115,10 @@ export default function PromotionsScreen() {
                 style={styles.promoGradLeft}
               >
                 <Ionicons name="ticket-outline" size={28} color="rgba(255,255,255,0.8)" />
-                <Text style={styles.promoAmount}>{promo.label}</Text>
+                <Text style={styles.promoAmount}>{promoLabel(promo)}</Text>
               </LinearGradient>
               <View style={styles.promoInfo}>
-                <Text style={[styles.promoDesc, { color: theme.text }]}>{promo.desc}</Text>
+                <Text style={[styles.promoDesc, { color: theme.text }]}>{promo.description ?? promo.code}</Text>
                 <View style={styles.promoMeta}>
                   <View style={[styles.expiryBadge, { backgroundColor: daysLeft <= 3 ? '#FEF2F2' : isDark ? '#111' : '#F1F5F9', borderColor: daysLeft <= 3 ? '#FECACA' : theme.border }]}>
                     <Ionicons name="time-outline" size={11} color={daysLeft <= 3 ? '#EF4444' : theme.textThird} />
@@ -107,10 +139,14 @@ export default function PromotionsScreen() {
           );
         }}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="ticket-outline" size={48} color={theme.textThird} />
-            <Text style={[styles.emptyText, { color: theme.textSecond }]}>No active promotions</Text>
-          </View>
+          loading ? (
+            <View style={styles.empty}><ActivityIndicator color={theme.primary} /></View>
+          ) : (
+            <View style={styles.empty}>
+              <Ionicons name="ticket-outline" size={48} color={theme.textThird} />
+              <Text style={[styles.emptyText, { color: theme.textSecond }]}>No active promotions</Text>
+            </View>
+          )
         }
       />
     </SafeAreaView>
