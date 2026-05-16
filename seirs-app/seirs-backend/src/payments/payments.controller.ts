@@ -7,6 +7,7 @@ import { createHash, timingSafeEqual } from 'crypto';
 import { PaymentsService } from './payments.service';
 import { FlutterwaveService } from './flutterwave.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { MaintenanceGuard } from '../maintenance/maintenance.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
@@ -70,7 +71,7 @@ export class PaymentsController {
   //                    opens by default. Omit to show all.
   // - method=wallet  → debits the customer's SEIRS wallet
   // COD is rejected — Spec V8 §"Confirmed Decisions" removes COD.
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, MaintenanceGuard)
   @Post('initiate')
   async initiatePayment(
     @CurrentUser() user: User,

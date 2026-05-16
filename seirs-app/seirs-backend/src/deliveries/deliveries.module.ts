@@ -17,6 +17,7 @@ import { MailService } from '../mail/mail.service';
 import { FxModule } from '../fx/fx.module';
 import { DriversModule } from '../drivers/drivers.module';
 import { DriversService } from '../drivers/drivers.service';
+import { MaintenanceModule } from '../maintenance/maintenance.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DriversService } from '../drivers/drivers.service';
     FallbackModule,
     FxModule,
     forwardRef(() => DriversModule),
+    MaintenanceModule,
   ],
   controllers: [DeliveriesController],
   providers: [DeliveriesService, PricingService],

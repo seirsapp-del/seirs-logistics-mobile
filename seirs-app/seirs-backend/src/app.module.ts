@@ -42,6 +42,7 @@ import { WebsiteContentModule } from './website-content/website-content.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { AddressesModule } from './addresses/addresses.module';
+import { MaintenanceModule } from './maintenance/maintenance.module';
 
 @Module({
   imports: [
@@ -119,6 +120,7 @@ import { AddressesModule } from './addresses/addresses.module';
     TelemetryModule,
     TicketsModule,
     AddressesModule,
+    MaintenanceModule,
   ],
 })
 export class AppModule {}

@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Get, Param, Post, Patch, Query, 
 import { DeliveriesService } from './deliveries.service';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { MaintenanceGuard } from '../maintenance/maintenance.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { User } from '../users/user.entity';
@@ -13,12 +14,15 @@ export class DeliveriesController {
   constructor(private readonly deliveriesService: DeliveriesService) {}
 
   // POST /api/v1/deliveries/quote — get price before booking
+  // Maintenance-guarded so we don't show prices for trips that can't be booked.
+  @UseGuards(MaintenanceGuard)
   @Post('quote')
   getQuote(@Body() dto: CreateDeliveryDto) {
     return this.deliveriesService.getQuote(dto);
   }
 
   // POST /api/v1/deliveries — create delivery
+  @UseGuards(MaintenanceGuard)
   @Post()
   create(@Body() dto: CreateDeliveryDto, @CurrentUser() user: User) {
     return this.deliveriesService.create(dto, user);

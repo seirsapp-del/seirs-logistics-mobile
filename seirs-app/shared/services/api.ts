@@ -516,6 +516,14 @@ export const chatApi = {
   conversations: () => request<ChatConversationDTO[]>('GET', '/chats'),
 };
 
+// ─── Maintenance status (public — apps poll to show banner) ────────────────
+export const maintenanceApi = {
+  status: () =>
+    request<{ maintenanceMode: boolean; message: string | null }>(
+      'GET', '/maintenance/status', undefined, false,
+    ),
+};
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 export const notificationsApi = {
   list:        (page = 1) =>
