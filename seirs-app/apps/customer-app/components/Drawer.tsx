@@ -41,6 +41,8 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'User',       label: t('drawer.profile',       { defaultValue: 'Profile' }),         onPress: () => navigate('/(customer)/profile') },
     { icon: 'CreditCard', label: t('drawer.paymentMethods',{ defaultValue: 'Payment Methods' }), onPress: () => navigate('/(customer)/payment-methods') },
     { icon: 'Gift',       label: t('drawer.rewards',       { defaultValue: 'Rewards & Points' }),onPress: () => navigate('/(customer)/loyalty') },
+    { icon: 'QrCode',     label: t('drawer.seirsId',       { defaultValue: 'My SEIRS ID' }),     onPress: () => navigate('/(customer)/seirs-id') },
+    { icon: 'Users',      label: t('drawer.poolPrefs',     { defaultValue: 'Ride Pool Preferences' }), onPress: () => navigate('/(customer)/pool-preferences') },
     { icon: 'Settings',   label: t('drawer.settings',      { defaultValue: 'Settings' }),        onPress: () => navigate('/(customer)/notification-settings') },
     { icon: 'Bell',       label: t('drawer.notifications', { defaultValue: 'Notifications' }),   onPress: () => navigate('/notifications') },
     { icon: 'Globe',      label: t('drawer.language',      { defaultValue: 'Language' }),        onPress: () => navigate('/(customer)/language') },

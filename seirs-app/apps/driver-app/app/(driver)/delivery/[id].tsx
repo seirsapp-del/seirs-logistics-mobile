@@ -168,7 +168,13 @@ export default function DeliveryDetailScreen() {
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
           {delivery.isMultiStop ? `${delivery.stops.length}-stop trip` : 'Active trip'}
         </Text>
-        <View style={{ width: 36 }} />
+        <Pressable
+          style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]}
+          onPress={() => router.push('/(driver)/status-broadcast' as any)}
+          accessibilityLabel="Broadcast status"
+        >
+          <Ionicons name="radio-outline" size={20} color={theme.text} />
+        </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>

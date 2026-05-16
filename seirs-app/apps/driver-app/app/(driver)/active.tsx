@@ -208,7 +208,13 @@ export default function ActiveDeliveryScreen() {
           <Text style={[styles.headerTitle, { color: theme.text }]}>Active Delivery</Text>
           <Text style={[styles.trackCode, { color: theme.textSecond }]}>{delivery.trackingCode}</Text>
         </View>
-        <View style={{ width: 40 }} />
+        <Pressable
+          onPress={() => router.push('/(driver)/status-broadcast' as any)}
+          style={[styles.backCircle, { backgroundColor: theme.surface }]}
+          accessibilityLabel="Broadcast status"
+        >
+          <Ionicons name="radio-outline" size={20} color={theme.text} />
+        </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>

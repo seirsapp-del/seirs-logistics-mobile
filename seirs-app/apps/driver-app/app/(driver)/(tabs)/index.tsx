@@ -156,7 +156,9 @@ export default function DriverHomeScreen() {
   const goalPct       = Math.min((weekEarnings / GOAL_TARGET) * 100, 100);
   const walletBal     = Number(driverData?.balance       ?? 0);
 
-  const activeJob = deliveries.find(d => d.status === 'assigned' || d.status === 'picked_up');
+  const activeJobs = deliveries.filter(d => d.status === 'assigned' || d.status === 'picked_up');
+  const activeJob  = activeJobs[0];
+  const isPooled   = activeJobs.length > 1;
   const pendingJobs = deliveries.filter(d => d.status === 'pending').slice(0, 3);
 
   const navGrad: [string, string] = isDark
@@ -217,6 +219,27 @@ export default function DriverHomeScreen() {
             }
           </View>
         </LinearGradient>
+
+        {/* ── Pool banner: 2+ active legs → multi-leg view ─────────────── */}
+        {isPooled && (
+          <Pressable
+            style={[styles.poolBanner, { backgroundColor: theme.surface, borderColor: '#3A7BD540' }, Shadows.sm]}
+            onPress={() => router.push('/(driver)/multi-leg' as any)}
+          >
+            <View style={styles.poolBannerLeft}>
+              <View style={[styles.poolBadge, { backgroundColor: '#3A7BD5' }]}>
+                <Text style={styles.poolBadgeText}>{activeJobs.length}/4</Text>
+              </View>
+              <View>
+                <Text style={[styles.poolBannerTitle, { color: theme.text }]}>Pool trip active</Text>
+                <Text style={[styles.poolBannerSub, { color: theme.textSecond }]}>
+                  Tap to view all {activeJobs.length} legs
+                </Text>
+              </View>
+            </View>
+            <ChevronRight size={20} color={theme.textSecond} />
+          </Pressable>
+        )}
 
         {/* ── Active job card ───────────────────────────────────────────── */}
         {activeJob && (
@@ -411,6 +434,12 @@ const styles = StyleSheet.create({
   toggleSub:     { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
 
   activeCard:    { marginHorizontal: Spacing.md, marginTop: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5, padding: Spacing.md, gap: Spacing.xs },
+  poolBanner:        { marginHorizontal: Spacing.md, marginTop: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  poolBannerLeft:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flex: 1 },
+  poolBadge:         { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  poolBadgeText:     { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
+  poolBannerTitle:   { fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
+  poolBannerSub:     { fontSize: FontSize.xs, marginTop: 2 },
   activeTop:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   activeDot:     { width: 8, height: 8, borderRadius: 4 },
   activeLabel:   { fontSize: FontSize.xs, fontWeight: FontWeight.black as any, letterSpacing: 1 },

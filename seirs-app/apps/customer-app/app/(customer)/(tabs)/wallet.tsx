@@ -171,7 +171,7 @@ export default function WalletScreen() {
                 {
                   Icon: QrCode,
                   label: 'My ID',
-                  onPress: () => router.push('/(customer)/recipient-id' as any),
+                  onPress: () => router.push('/(customer)/seirs-id' as any),
                 },
               ].map(({ Icon, label, onPress }) => (
                 <Pressable key={label} style={styles.cardActionBtn} onPress={onPress}>
