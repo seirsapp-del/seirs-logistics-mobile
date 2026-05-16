@@ -104,6 +104,33 @@ export class BusinessController {
     return this.svc.getLoyalty(user.id);
   }
 
+  // Spec V8 — B13 Cancel a scheduled/pending delivery.
+  // Body: { reason?: string }. Owner/manager/dispatcher allowed.
+  @Post('business/deliveries/:id/cancel')
+  cancelDelivery(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.svc.cancelMyDelivery(user.id, id, body?.reason);
+  }
+
+  // Spec V8 — B21 Business profile editor.
+  // GET returns the full BusinessAccount snapshot + caller's teamRole.
+  // PATCH owner-only; takes any subset of the editable fields.
+  @Get('business/account')
+  getBusinessAccount(@CurrentUser() user: User) {
+    return this.svc.getBusinessProfile(user.id);
+  }
+
+  @Patch('business/account')
+  updateBusinessAccount(@CurrentUser() user: User, @Body() body: {
+    companyName?: string; rcNumber?: string;
+    businessAddress?: string; state?: string; city?: string; streetAddress?: string;
+  }) {
+    return this.svc.updateBusinessProfile(user.id, body);
+  }
+
   // ─── Recurring delivery templates (Spec V8 §4.2) ──────────────────────────
   @Get('business/recurring-templates')
   listRecurring(@CurrentUser() user: User) {

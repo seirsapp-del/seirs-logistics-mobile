@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, FlatList, TextInput, ActivityIndicator,
+  View, Text, Pressable, StyleSheet, FlatList, TextInput, ActivityIndicator, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
@@ -72,6 +72,24 @@ export default function DeliveriesScreen() {
 
   const onRefresh = () => { setRefreshing(true); load(1, true); };
 
+  const handleCancel = (item: Delivery) => {
+    Alert.alert(
+      'Cancel delivery?',
+      `Tracking: ${item.trackingNumber ?? item.trackingCode ?? item.id.slice(0, 8)}. The driver will be notified and the wallet will be refunded if funds are still in escrow. This cannot be undone.`,
+      [
+        { text: 'Keep', style: 'cancel' },
+        { text: 'Cancel delivery', style: 'destructive', onPress: async () => {
+          try {
+            await businessApi.cancelDelivery(item.id);
+            load();
+          } catch (e: any) {
+            Alert.alert('Could not cancel', e?.message ?? 'Try again.');
+          }
+        } },
+      ],
+    );
+  };
+
   const renderItem = ({ item }: { item: Delivery }) => {
     const c = STATUS_COLOR[item.status] ?? colors.textThird;
     const stopCount = item.stops?.length ?? (item.isMultiStop ? 0 : 1);
@@ -79,6 +97,7 @@ export default function DeliveriesScreen() {
       ?? (item.stops?.[item.stops.length - 1] as any)?.address
       ?? item.pickupAddress
       ?? '—';
+    const isCancellable = item.status === 'pending' || item.status === 'assigned';
     return (
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardTop}>
@@ -110,6 +129,16 @@ export default function DeliveriesScreen() {
             </Text>
           </View>
           <Text style={[styles.price, { color: colors.text }]}>{fmt(item.price)}</Text>
+          {isCancellable && (
+            <Pressable
+              onPress={() => handleCancel(item)}
+              style={styles.cancelLink}
+              hitSlop={8}
+            >
+              <Icon name="X" size={12} color="#DC2626" />
+              <Text style={styles.cancelLinkText}>Cancel</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     );
@@ -235,6 +264,8 @@ const styles = StyleSheet.create({
   meta:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText:     { fontSize: 11, textTransform: 'capitalize' },
   price:        { marginLeft: 'auto', fontSize: 13, fontWeight: '700' },
+  cancelLink:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 12 },
+  cancelLinkText: { color: '#DC2626', fontSize: 11, fontWeight: '700' },
   empty:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyText:    { fontSize: 14 },
 });

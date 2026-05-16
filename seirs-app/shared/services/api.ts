@@ -585,6 +585,25 @@ export const businessApi = {
   loyalty:       () => request<any>('GET', '/business/loyalty'),
   specialists:   () => request<any>('GET', '/business/specialists'),
 
+  // Spec V8 — B13 Cancel scheduled/pending delivery
+  cancelDelivery: (id: string, reason?: string) =>
+    request<{ ok: true; status: string }>('POST', `/business/deliveries/${id}/cancel`, { reason }),
+
+  // Spec V8 — B21 Business profile (companyName, RC, structured address)
+  account: {
+    get:    () => request<{
+      id: string; companyName: string; rcNumber: string;
+      businessAddress: string; state: string; city: string; streetAddress: string;
+      status: string; walletBalance: number;
+      myTeamRole: 'owner' | 'manager' | 'dispatcher' | 'viewer';
+      createdAt: string;
+    }>('GET', '/business/account'),
+    update: (body: {
+      companyName?: string; rcNumber?: string;
+      businessAddress?: string; state?: string; city?: string; streetAddress?: string;
+    }) => request<any>('PATCH', '/business/account', body),
+  },
+
   // Spec V8 §4.2 — recurring delivery templates
   recurringTemplates: {
     list:   () => request<any[]>('GET', '/business/recurring-templates'),

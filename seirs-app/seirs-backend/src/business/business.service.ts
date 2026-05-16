@@ -862,6 +862,7 @@ export class BusinessService {
 
   async inviteTeamMember(userId: string, data: { name: string; email: string; teamRole: string }) {
     const biz = await this.getBizAccount(userId);
+    await this.requireTeamRole(userId, biz.id, ['owner', 'manager']);
 
     const existing = await this.teamRepo.findOne({
       where: { businessAccountId: biz.id, email: data.email.toLowerCase() },
@@ -888,12 +889,117 @@ export class BusinessService {
 
   async removeTeamMember(userId: string, memberId: string) {
     const biz = await this.getBizAccount(userId);
+    await this.requireTeamRole(userId, biz.id, ['owner', 'manager']);
     const member = await this.teamRepo.findOne({
       where: { id: memberId, businessAccountId: biz.id },
     });
     if (!member) throw new NotFoundException('Team member not found.');
+    // Spec V8 §4.6 — owner row can't be removed via this endpoint
+    // (gets removed automatically when the account is closed).
+    if (member.teamRole === 'owner') {
+      throw new ForbiddenException('Cannot remove the account owner via this endpoint.');
+    }
     await this.teamRepo.delete(memberId);
     return { message: 'Team member removed.' };
+  }
+
+  // Spec V8 §4.6 — team-role gate. Owner detected by biz.ownerId match;
+  // other roles by email match against a BusinessTeamMember row (members
+  // aren't stored with userId — they can sign up before/after being
+  // invited, and we match on email at join time). Throws
+  // ForbiddenException with TEAM_ROLE_REQUIRED if the caller's role
+  // isn't in `allowed`.
+  private async requireTeamRole(userId: string, businessAccountId: string, allowed: string[]) {
+    const biz = await this.bizRepo.findOne({ where: { id: businessAccountId } });
+    if (!biz) throw new NotFoundException('Business account not found.');
+    if (biz.ownerId === userId && allowed.includes('owner')) return;
+
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) throw new ForbiddenException('User not found.');
+    const member = await this.teamRepo.findOne({
+      where: { businessAccountId, email: user.email.toLowerCase(), status: 'active' as any },
+    });
+    if (!member || !allowed.includes(member.teamRole)) {
+      throw new ForbiddenException(
+        `TEAM_ROLE_REQUIRED: this action requires one of [${allowed.join(', ')}].`,
+      );
+    }
+  }
+
+  // ─── Business Sender: Cancel scheduled delivery (Spec V8 — B13) ──────────
+  async cancelMyDelivery(userId: string, deliveryId: string, reason?: string) {
+    const biz = await this.getBizAccount(userId);
+    await this.requireTeamRole(userId, biz.id, ['owner', 'manager', 'dispatcher']);
+
+    const delivery = await this.deliveriesRepo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.customer?.id !== userId && biz.ownerId !== delivery.customer?.id) {
+      throw new ForbiddenException('Delivery belongs to another account.');
+    }
+    if (![DeliveryStatus.PENDING, DeliveryStatus.ASSIGNED].includes(delivery.status as any)) {
+      throw new BadRequestException(
+        `Cannot cancel a ${delivery.status} delivery — only pending or assigned orders can be cancelled.`,
+      );
+    }
+
+    await this.deliveriesRepo.update(delivery.id, { status: DeliveryStatus.CANCELLED });
+    this.logger.warn(`BUSINESS_CANCEL deliveryId=${deliveryId} byUser=${userId} reason="${(reason ?? '').slice(0, 200)}"`);
+    return { ok: true, status: 'cancelled' };
+  }
+
+  // ─── Business profile editor (Spec V8 — B21) ────────────────────────────
+  async getBusinessProfile(userId: string) {
+    const biz = await this.getBizAccount(userId);
+    const myRole = await this.lookupMyTeamRole(userId, biz.id);
+    return {
+      id:              biz.id,
+      companyName:     biz.companyName,
+      rcNumber:        biz.rcNumber,
+      businessAddress: biz.businessAddress,
+      state:           biz.state,
+      city:            biz.city,
+      streetAddress:   biz.streetAddress,
+      status:          biz.status,
+      walletBalance:   Number(biz.walletBalance ?? 0),
+      myTeamRole:      myRole,
+      createdAt:       biz.createdAt,
+    };
+  }
+
+  async updateBusinessProfile(userId: string, body: {
+    companyName?: string; rcNumber?: string;
+    businessAddress?: string; state?: string; city?: string; streetAddress?: string;
+  }) {
+    const biz = await this.getBizAccount(userId);
+    await this.requireTeamRole(userId, biz.id, ['owner']);  // owner-only per spec
+
+    const updates: Partial<BusinessAccount> = {};
+    if (body.companyName     !== undefined) updates.companyName     = body.companyName.trim();
+    if (body.rcNumber        !== undefined) updates.rcNumber        = body.rcNumber.trim();
+    if (body.businessAddress !== undefined) updates.businessAddress = body.businessAddress.trim();
+    if (body.state           !== undefined) updates.state           = body.state.trim();
+    if (body.city            !== undefined) updates.city            = body.city.trim();
+    if (body.streetAddress   !== undefined) updates.streetAddress   = body.streetAddress.trim();
+
+    if (updates.companyName != null && updates.companyName.length < 2) {
+      throw new BadRequestException('Company name must be at least 2 characters.');
+    }
+    await this.bizRepo.update(biz.id, updates);
+    return this.getBusinessProfile(userId);
+  }
+
+  private async lookupMyTeamRole(userId: string, businessAccountId: string): Promise<string> {
+    const biz = await this.bizRepo.findOne({ where: { id: businessAccountId } });
+    if (biz?.ownerId === userId) return 'owner';
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) return 'viewer';
+    const member = await this.teamRepo.findOne({
+      where: { businessAccountId, email: user.email.toLowerCase() },
+    });
+    return member?.teamRole ?? 'viewer';
   }
 
   // ─── Business Sender: Loyalty ────────────────────────────────────────────────
