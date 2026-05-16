@@ -17,6 +17,8 @@ import { AuditLogEntry } from './audit-log.entity';
 import { PricingConfig } from './pricing-config.entity';
 import { DuplicateAccountCandidate, DuplicateReason, DuplicateStatus } from './duplicate-account.entity';
 import { ExternalPartner, ExternalPartnerStatus, ExternalPartnerType } from './external-partner.entity';
+import { PlatformConfig } from './platform-config.entity';
+import { DriverEarning } from '../earnings/driver-earning.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 const PRICING_SINGLETON_ID = 'singleton';
@@ -37,6 +39,8 @@ export class AdminService {
     @InjectRepository(PricingConfig)              private pricingRepo:    Repository<PricingConfig>,
     @InjectRepository(DuplicateAccountCandidate)  private duplicatesRepo: Repository<DuplicateAccountCandidate>,
     @InjectRepository(ExternalPartner)            private partnersRepo:   Repository<ExternalPartner>,
+    @InjectRepository(PlatformConfig)             private configRepo:     Repository<PlatformConfig>,
+    @InjectRepository(DriverEarning)              private earningsRepo:   Repository<DriverEarning>,
     private readonly fraudService: FraudService,
     private readonly mailService:  MailService,
     private readonly usersService: UsersService,
@@ -1014,5 +1018,183 @@ export class AdminService {
       ip,
     });
     await this.auditRepo.save(entry).catch(() => {});
+  }
+
+  // ── Wallet / Payouts (admin ops view) ───────────────────────────────────
+
+  async listPendingPayouts(limit = 50) {
+    const rows = await this.earningsRepo
+      .createQueryBuilder('e')
+      .leftJoinAndSelect('e.driver', 'driver')
+      .where('e.status = :status', { status: 'available' })
+      .orderBy('e.availableAt', 'ASC')
+      .limit(limit)
+      .getMany();
+    return rows.map(r => ({
+      id:             r.id,
+      driverId:       r.driverId,
+      driverName:     r.driver?.name ?? '—',
+      grossAmount:    Number(r.grossAmount),
+      seirsCut:       Number(r.seirsCut),
+      driverNet:      Number(r.driverNet),
+      availableAt:    r.availableAt,
+      deliveryId:     r.deliveryId,
+    }));
+  }
+
+  async listHeldEarnings(limit = 50) {
+    const rows = await this.earningsRepo
+      .createQueryBuilder('e')
+      .leftJoinAndSelect('e.driver', 'driver')
+      .where('e.status = :status', { status: 'held' })
+      .orderBy('e.updatedAt', 'DESC')
+      .limit(limit)
+      .getMany();
+    return rows.map(r => ({
+      id:           r.id,
+      driverId:     r.driverId,
+      driverName:   r.driver?.name ?? '—',
+      driverNet:    Number(r.driverNet),
+      holdReason:   r.holdReason,
+      updatedAt:    r.updatedAt,
+      deliveryId:   r.deliveryId,
+    }));
+  }
+
+  async releaseHeldEarning(id: string, admin: any) {
+    const earning = await this.earningsRepo.findOne({ where: { id } });
+    if (!earning) throw new NotFoundException('Earning row not found.');
+    if (earning.status !== 'held') throw new BadRequestException('Only held earnings can be released.');
+    await this.earningsRepo.update(id, { status: 'available', holdReason: null });
+    await this.recordAudit(admin, 'earning.release', `earning:${id}`, { previousStatus: 'held' });
+    return { ok: true };
+  }
+
+  async listRecentWithdrawals(limit = 50) {
+    const rows = await this.earningsRepo
+      .createQueryBuilder('e')
+      .leftJoinAndSelect('e.driver', 'driver')
+      .where('e.status = :status', { status: 'paid' })
+      .andWhere('e.paidAt IS NOT NULL')
+      .orderBy('e.paidAt', 'DESC')
+      .limit(limit)
+      .getMany();
+    return rows.map(r => ({
+      id:                    r.id,
+      driverId:              r.driverId,
+      driverName:            r.driver?.name ?? '—',
+      driverNet:             Number(r.driverNet),
+      paidAt:                r.paidAt,
+      flutterwaveTransferId: r.flutterwaveTransferId,
+      deliveryId:            r.deliveryId,
+    }));
+  }
+
+  async walletSummary() {
+    const [pending, held, mtdPaid] = await Promise.all([
+      this.earningsRepo.createQueryBuilder('e')
+        .select('COALESCE(SUM(e.driverNet), 0)', 'total').addSelect('COUNT(e.id)', 'count')
+        .where('e.status = :s', { s: 'available' }).getRawOne(),
+      this.earningsRepo.createQueryBuilder('e')
+        .select('COALESCE(SUM(e.driverNet), 0)', 'total').addSelect('COUNT(e.id)', 'count')
+        .where('e.status = :s', { s: 'held' }).getRawOne(),
+      this.earningsRepo.createQueryBuilder('e')
+        .select('COALESCE(SUM(e.driverNet), 0)', 'total').addSelect('COUNT(e.id)', 'count')
+        .where('e.status = :s', { s: 'paid' })
+        .andWhere(`e.paidAt >= DATE_TRUNC('month', NOW())`).getRawOne(),
+    ]);
+    return {
+      pendingTotal:  Number(pending?.total ?? 0),
+      pendingCount:  Number(pending?.count ?? 0),
+      heldTotal:     Number(held?.total ?? 0),
+      heldCount:     Number(held?.count ?? 0),
+      paidMtdTotal:  Number(mtdPaid?.total ?? 0),
+      paidMtdCount:  Number(mtdPaid?.count ?? 0),
+    };
+  }
+
+  // ── Referrals (admin view) ──────────────────────────────────────────────
+
+  async listReferrals(limit = 100) {
+    // Pair each user that signed up via a referredByCode with the user
+    // whose accountId matches that code. Status is derived from the
+    // referrer's existence (=credited if found, otherwise pending).
+    const referred = await this.usersRepo.find({
+      where:  { referredByCode: Not(undefined) },
+      select: ['id', 'name', 'email', 'referredByCode', 'createdAt'],
+      order:  { createdAt: 'DESC' },
+      take:   limit,
+    });
+    const codes = referred.map(r => r.referredByCode).filter(Boolean);
+    const referrers = codes.length
+      ? await this.usersRepo.find({
+          where: { accountId: In(codes) },
+          select: ['id', 'name', 'accountId'],
+        })
+      : [];
+    const byCode = new Map(referrers.map(r => [r.accountId, r]));
+    return referred.map(r => {
+      const referrer = byCode.get(r.referredByCode);
+      return {
+        referredId:   r.id,
+        referredName: r.name,
+        referredAt:   r.createdAt,
+        code:         r.referredByCode,
+        referrerId:   referrer?.id ?? null,
+        referrerName: referrer?.name ?? null,
+        status:       referrer ? 'credited' : 'pending',
+      };
+    });
+  }
+
+  async referralsSummary() {
+    const totalRefs = await this.usersRepo
+      .createQueryBuilder('u').where('u.referredByCode IS NOT NULL').getCount();
+    const sinceMonth = await this.usersRepo
+      .createQueryBuilder('u')
+      .where('u.referredByCode IS NOT NULL')
+      .andWhere(`u.createdAt >= DATE_TRUNC('month', NOW())`)
+      .getCount();
+    return { totalReferrals: totalRefs, monthToDate: sinceMonth };
+  }
+
+  // ── Platform Config (settings page) ─────────────────────────────────────
+
+  private static DEFAULT_CONFIG: Array<Partial<PlatformConfig>> = [
+    { key: 'platform_name',         value: 'Seirs Logistics',         description: 'Display name shown across the platform.', isEditable: false },
+    { key: 'support_email',         value: 'support@seirs.co',        description: 'Public support inbox shown on website.',  isEditable: true  },
+    { key: 'max_active_deliveries', value: '1000',                    description: 'Soft cap; matching pauses above this.',    isEditable: true  },
+    { key: 'default_currency',      value: 'NGN',                     description: 'Settlement currency.',                     isEditable: false },
+    { key: 'default_timezone',      value: 'Africa/Lagos',            description: 'Default app timezone.',                    isEditable: false },
+    { key: 'maintenance_mode',      value: 'off',                     description: 'When "on", apps render maintenance UI.',   isEditable: true  },
+  ];
+
+  async listPlatformConfig() {
+    const existing = await this.configRepo.find({ order: { key: 'ASC' } });
+    const byKey = new Map(existing.map(r => [r.key, r]));
+    // Backfill any new default key the DB hasn't seen yet so the UI
+    // always renders the full set without a migration.
+    const upserts: PlatformConfig[] = [];
+    for (const def of AdminService.DEFAULT_CONFIG) {
+      if (!byKey.has(def.key!)) {
+        const row = this.configRepo.create(def);
+        upserts.push(row);
+      }
+    }
+    if (upserts.length > 0) {
+      await this.configRepo.save(upserts);
+      for (const r of upserts) byKey.set(r.key, r);
+    }
+    return Array.from(byKey.values()).sort((a, b) => a.key.localeCompare(b.key));
+  }
+
+  async updatePlatformConfig(key: string, value: string, admin: any) {
+    const row = await this.configRepo.findOne({ where: { key } });
+    if (!row) throw new NotFoundException(`Unknown config key: ${key}`);
+    if (!row.isEditable) throw new BadRequestException(`${key} is read-only.`);
+    const previous = row.value;
+    await this.configRepo.update(key, { value });
+    await this.recordAudit(admin, 'config.update', `config:${key}`, { previous, next: value });
+    return this.configRepo.findOne({ where: { key } });
   }
 }

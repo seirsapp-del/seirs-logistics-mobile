@@ -389,4 +389,25 @@ export const adminApi = {
       method: 'PUT', body: JSON.stringify(body),
     }),
   },
+
+  wallet: {
+    summary:           () => req<{ pendingTotal: number; pendingCount: number; heldTotal: number; heldCount: number; paidMtdTotal: number; paidMtdCount: number }>('/admin/wallet/summary'),
+    pendingPayouts:    () => req<any[]>('/admin/wallet/pending-payouts'),
+    heldEarnings:      () => req<any[]>('/admin/wallet/held-earnings'),
+    recentWithdrawals: () => req<any[]>('/admin/wallet/recent-withdrawals'),
+    releaseHeld:       (id: string) => req<any>(`/admin/wallet/earnings/${id}/release`, { method: 'PATCH' }),
+  },
+
+  referrals: {
+    list:    () => req<any[]>('/admin/referrals'),
+    summary: () => req<{ totalReferrals: number; monthToDate: number }>('/admin/referrals/summary'),
+  },
+
+  settings: {
+    list:   () => req<any[]>('/admin/settings'),
+    update: (key: string, value: string) =>
+      req<any>(`/admin/settings/${encodeURIComponent(key)}`, {
+        method: 'PATCH', body: JSON.stringify({ value }),
+      }),
+  },
 };

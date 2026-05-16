@@ -1,67 +1,142 @@
 'use client';
-import { FileBarChart, Download, Calendar, BarChart2, TrendingUp, Package } from 'lucide-react';
+import { useState } from 'react';
+import { FileBarChart, Download, BarChart2, TrendingUp, Package, Users, AlertCircle } from 'lucide-react';
+import { adminApi } from '@/lib/api';
 
-const REPORT_TYPES = [
+type ReportKey = 'delivery_performance' | 'revenue_finance' | 'driver_activity' | 'customer_growth';
+
+const REPORTS: { key: ReportKey; title: string; description: string; icon: any }[] = [
   {
-    title:       'Delivery Performance Report',
-    description: 'On-time rate, SLA breaches, average delivery time by zone and vehicle type.',
+    key:         'delivery_performance',
+    title:       'Delivery Performance',
+    description: 'Counts by status over the last 30 days. Rebuilds from /admin/analytics/deliveries-by-status.',
     icon:        Package,
-    period:      'Weekly / Monthly',
-    lastRun:     '—',
-    format:      'CSV, PDF',
   },
   {
-    title:       'Revenue & Finance Summary',
-    description: 'Total revenue, platform fees, driver payouts, and refunds by period.',
+    key:         'revenue_finance',
+    title:       'Revenue Trend',
+    description: 'Daily revenue totals over the last 30 days. Rebuilds from /admin/analytics/revenue.',
     icon:        TrendingUp,
-    period:      'Monthly',
-    lastRun:     '—',
-    format:      'XLSX, PDF',
   },
   {
-    title:       'Driver Activity Report',
-    description: 'Active drivers, trips completed, earnings, and compliance status.',
+    key:         'driver_activity',
+    title:       'Top Drivers',
+    description: 'Top 50 drivers by completed-trip count + earnings. Rebuilds from /admin/analytics/top-drivers.',
     icon:        BarChart2,
-    period:      'Weekly',
-    lastRun:     '—',
-    format:      'CSV, PDF',
   },
   {
-    title:       'Customer Growth Report',
-    description: 'New signups, retention rate, referrals, and geographical spread.',
-    icon:        FileBarChart,
-    period:      'Monthly',
-    lastRun:     '—',
-    format:      'PDF',
+    key:         'customer_growth',
+    title:       'Referral Funnel',
+    description: 'Counts of users who signed up via referral, broken down by referrer cohort.',
+    icon:        Users,
   },
 ];
 
+// Convert an array of objects to a CSV string. Keys from the first row
+// become the header. Values are JSON.stringify'd if non-primitive so
+// nested structures don't smash the row.
+function toCsv(rows: any[]): string {
+  if (!rows || rows.length === 0) return '';
+  const cols = Object.keys(rows[0]);
+  const head = cols.map(escape).join(',');
+  const body = rows.map(r => cols.map(c => escape(r[c])).join(',')).join('\n');
+  return `${head}\n${body}`;
+}
+
+function escape(v: any): string {
+  if (v === null || v === undefined) return '';
+  const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+  // Quote if it contains comma, quote, or newline
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function fetchReport(key: ReportKey): Promise<any[]> {
+  switch (key) {
+    case 'delivery_performance': {
+      const data = await adminApi.analytics.deliveriesByStatus();
+      // Normalise — backend may return either an object or an array of {status,count}.
+      if (Array.isArray(data)) return data;
+      return Object.entries(data ?? {}).map(([status, count]) => ({ status, count }));
+    }
+    case 'revenue_finance': {
+      const data = await adminApi.analytics.revenue(30);
+      if (Array.isArray(data)) return data;
+      return Object.entries(data ?? {}).map(([date, revenue]) => ({ date, revenue }));
+    }
+    case 'driver_activity': {
+      const data = await adminApi.analytics.topDrivers(50);
+      return Array.isArray(data) ? data : [];
+    }
+    case 'customer_growth': {
+      const data = await adminApi.analytics.referralFunnel();
+      if (Array.isArray(data)) return data;
+      return Object.entries(data ?? {}).map(([cohort, count]) => ({ cohort, count }));
+    }
+  }
+}
+
 export default function ReportsPage() {
+  const [busyKey, setBusyKey] = useState<ReportKey | null>(null);
+  const [error, setError]     = useState<string | null>(null);
+  const [lastRun, setLastRun] = useState<Record<ReportKey, string | null>>({} as any);
+
+  const generate = async (key: ReportKey, title: string) => {
+    setBusyKey(key);
+    setError(null);
+    try {
+      const rows = await fetchReport(key);
+      if (rows.length === 0) {
+        setError(`${title}: no data returned for the selected period.`);
+        return;
+      }
+      const stamp = new Date().toISOString().slice(0, 10);
+      downloadCsv(`seirs_${key}_${stamp}.csv`, toCsv(rows));
+      setLastRun(prev => ({ ...prev, [key]: new Date().toLocaleString('en-NG') }));
+    } catch (e: any) {
+      setError(`${title} failed: ${e?.message ?? 'unknown error'}`);
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
-            <FileBarChart size={18} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-[#0F2B4C]">Reports</h1>
-            <p className="text-sm text-gray-500">Generate, schedule, and download platform reports</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
+          <FileBarChart size={18} className="text-white" />
         </div>
-        <button className="flex items-center gap-2 border border-[#3A7BD5] text-[#3A7BD5] text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#3A7BD5]/5 transition-colors">
-          <Calendar size={15} />
-          Schedule Report
-        </button>
+        <div>
+          <h1 className="text-lg font-bold text-[#0F2B4C]">Reports</h1>
+          <p className="text-sm text-gray-500">CSV exports built from live analytics. Generated on demand.</p>
+        </div>
       </div>
 
-      {/* Report cards */}
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
-        {REPORT_TYPES.map((r) => {
+        {REPORTS.map(r => {
           const Icon = r.icon;
+          const busy = busyKey === r.key;
           return (
-            <div key={r.title} className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-4">
+            <div key={r.key} className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-[#0F2B4C]/8 flex items-center justify-center shrink-0">
                   <Icon size={18} className="text-[#0F2B4C]" />
@@ -72,29 +147,23 @@ export default function ReportsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100">
-                <span><span className="font-medium text-gray-700">Period:</span> {r.period}</span>
-                <span><span className="font-medium text-gray-700">Last run:</span> {r.lastRun}</span>
-                <span><span className="font-medium text-gray-700">Formats:</span> {r.format}</span>
+                <span><span className="font-medium text-gray-700">Last run:</span> {lastRun[r.key] ?? '—'}</span>
               </div>
-              <div className="flex gap-2">
-                <button className="flex-1 flex items-center justify-center gap-1.5 bg-[#0F2B4C] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#0F2B4C]/90 transition-colors">
-                  <Download size={12} />
-                  Generate Now
-                </button>
-                <button className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 text-gray-600 text-xs font-medium py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Calendar size={12} />
-                  Schedule
-                </button>
-              </div>
+              <button
+                onClick={() => generate(r.key, r.title)}
+                disabled={busy}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-[#0F2B4C] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#0F2B4C]/90 transition-colors disabled:opacity-50"
+              >
+                <Download size={12} />
+                {busy ? 'Generating…' : 'Download CSV'}
+              </button>
             </div>
           );
         })}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
-        <FileBarChart size={32} className="text-gray-300 mx-auto mb-2" />
-        <p className="text-sm text-gray-500">Report history and download archive will appear here once reports are generated.</p>
-        <p className="text-xs text-gray-400 mt-1">Connect to API to enable automated report generation and scheduling.</p>
+      <div className="text-xs text-gray-400 text-center">
+        Scheduled report delivery (weekly/monthly email digests) is a v1.1 feature. For now, run on demand.
       </div>
     </div>
   );

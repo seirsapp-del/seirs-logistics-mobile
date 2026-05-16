@@ -507,4 +507,62 @@ export class AdminController {
   deleteExternalPartner(@Param('id') id: string) {
     return this.adminService.removeExternalPartner(id);
   }
+
+  // ── Wallet / Payouts (admin ops view) ─────────────────────────────────────
+
+  @Get('wallet/summary')
+  walletSummary() {
+    return this.adminService.walletSummary();
+  }
+
+  @Get('wallet/pending-payouts')
+  listPendingPayouts(@Query('limit') limit?: string) {
+    return this.adminService.listPendingPayouts(Number(limit ?? 50));
+  }
+
+  @Get('wallet/held-earnings')
+  listHeldEarnings(@Query('limit') limit?: string) {
+    return this.adminService.listHeldEarnings(Number(limit ?? 50));
+  }
+
+  @Get('wallet/recent-withdrawals')
+  listRecentWithdrawals(@Query('limit') limit?: string) {
+    return this.adminService.listRecentWithdrawals(Number(limit ?? 50));
+  }
+
+  @Patch('wallet/earnings/:id/release')
+  releaseHeldEarning(@Param('id') id: string, @CurrentUser() admin: any) {
+    return this.adminService.releaseHeldEarning(id, admin);
+  }
+
+  // ── Referrals ─────────────────────────────────────────────────────────────
+
+  @Get('referrals')
+  listReferrals(@Query('limit') limit?: string) {
+    return this.adminService.listReferrals(Number(limit ?? 100));
+  }
+
+  @Get('referrals/summary')
+  referralsSummary() {
+    return this.adminService.referralsSummary();
+  }
+
+  // ── Platform Config (settings) ────────────────────────────────────────────
+
+  @Get('settings')
+  listPlatformConfig() {
+    return this.adminService.listPlatformConfig();
+  }
+
+  @Patch('settings/:key')
+  updatePlatformConfig(
+    @Param('key') key: string,
+    @Body() body: { value: string },
+    @CurrentUser() admin: any,
+  ) {
+    if (typeof body?.value !== 'string') {
+      throw new BadRequestException('value is required.');
+    }
+    return this.adminService.updatePlatformConfig(key, body.value, admin);
+  }
 }
