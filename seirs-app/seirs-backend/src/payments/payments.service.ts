@@ -113,7 +113,9 @@ export class PaymentsService {
 
   // ── Initiate card payment via Flutterwave hosted page ────────────────────
 
-  async initiateCardPayment(delivery: Delivery, customer: User): Promise<{
+  async initiateCardPayment(delivery: Delivery, customer: User, opts?: {
+    paymentOption?: 'card' | 'banktransfer' | 'ussd' | 'mobilemoney';
+  }): Promise<{
     authorizationUrl: string;
     reference:        string;
     paymentId:        string;
@@ -133,6 +135,7 @@ export class PaymentsService {
         trackingCode: delivery.trackingCode,
         customerId:   customer.id,
       },
+      paymentOption: opts?.paymentOption,
     });
 
     const payment = this.paymentsRepo.create({

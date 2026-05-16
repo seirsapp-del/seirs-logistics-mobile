@@ -188,10 +188,15 @@ export const deliveriesApi = {
 };
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
+// Flutterwave widget tab hint — when set, the hosted page opens
+// straight on that tab. Maps from the customer-facing picker (card /
+// bank transfer / USSD) to Flutterwave's internal option names.
+export type FlutterwavePaymentOption = 'card' | 'banktransfer' | 'ussd' | 'mobilemoney';
+
 export const paymentsApi = {
-  initiate: (deliveryId: string, method: string) =>
-    request<{ authorizationUrl?: string; reference?: string; paymentId?: string; id?: string }>(
-      'POST', '/payments/initiate', { deliveryId, method },
+  initiate: (deliveryId: string, method: string, paymentOption?: FlutterwavePaymentOption) =>
+    request<{ authorizationUrl?: string; reference?: string; paymentId?: string; id?: string; error?: string }>(
+      'POST', '/payments/initiate', { deliveryId, method, paymentOption },
     ),
   verify:   (reference: string) => request<any>('POST', `/payments/verify/${reference}`),
   wallet:   () => request<{ balanceKobo: number; balanceNaira: number; currency: string }>('GET', '/payments/wallet'),

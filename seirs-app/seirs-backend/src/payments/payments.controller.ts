@@ -64,24 +64,39 @@ export class PaymentsController {
   // ── Customer endpoints ───────────────────────────────────────────────────
 
   // POST /api/v1/payments/initiate
-  // Body: { deliveryId, method: 'card' | 'wallet' | 'cash_on_delivery' }
+  // Body: { deliveryId, method: 'card' | 'wallet', paymentOption? }
+  // - method=card    → Flutterwave hosted page; paymentOption hints
+  //                    which tab (card / banktransfer / ussd / mobilemoney)
+  //                    opens by default. Omit to show all.
+  // - method=wallet  → debits the customer's SEIRS wallet
+  // COD is rejected — Spec V8 §"Confirmed Decisions" removes COD.
   @UseGuards(JwtAuthGuard)
   @Post('initiate')
   async initiatePayment(
     @CurrentUser() user: User,
-    @Body() body: { deliveryId: string; method: PaymentMethod },
+    @Body() body: {
+      deliveryId: string;
+      method: PaymentMethod;
+      paymentOption?: 'card' | 'banktransfer' | 'ussd' | 'mobilemoney';
+    },
   ) {
     const delivery = await this.deliveriesService.findById(body.deliveryId);
 
     switch (body.method) {
       case PaymentMethod.CARD:
-        return this.paymentsService.initiateCardPayment(delivery, user);
+      case PaymentMethod.BANK:
+      case PaymentMethod.MOBILE_MONEY:
+        // All Flutterwave-routed methods share one initiation path —
+        // payment_options on the Flutterwave widget decides the tab.
+        return this.paymentsService.initiateCardPayment(delivery, user, {
+          paymentOption: body.paymentOption,
+        });
 
       case PaymentMethod.WALLET:
         return this.paymentsService.payFromWallet(delivery, user);
 
       case PaymentMethod.COD:
-        return this.paymentsService.initiateCOD(delivery, user);
+        return { error: 'Cash on delivery is not supported.' };
 
       default:
         return { error: 'Unsupported payment method' };

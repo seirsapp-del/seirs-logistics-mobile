@@ -5,18 +5,33 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CreditCard, Wallet, Banknote, Lock, ShieldCheck } from 'lucide-react-native';
+import { CreditCard, Wallet, Smartphone, Landmark, ShieldCheck } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { paymentsApi } from '@/services/api';
+import { paymentsApi, type FlutterwavePaymentOption } from '@/services/api';
 
-type Method = 'card' | 'wallet' | 'cash_on_delivery';
+// Spec V8 §"Confirmed Decisions" — COD removed. All non-wallet methods
+// route through Flutterwave; the paymentOption hint controls which tab
+// of the Flutterwave widget opens.
+type PickerId = 'card' | 'bank_transfer' | 'ussd' | 'wallet';
 
-const METHODS: { id: Method; Icon: LucideIcon; label: string; desc: string }[] = [
-  { id: 'card',             Icon: CreditCard, label: 'Card / Bank Transfer', desc: 'Pay securely via Flutterwave' },
-  { id: 'wallet',           Icon: Wallet,     label: 'Seirs Wallet',         desc: 'Use your wallet balance'      },
-  { id: 'cash_on_delivery', Icon: Banknote,   label: 'Cash on Delivery',     desc: 'Pay driver when delivered'   },
+interface PickerEntry {
+  id:            PickerId;
+  Icon:          LucideIcon;
+  label:         string;
+  desc:          string;
+  // null = SEIRS wallet (no Flutterwave roundtrip). Otherwise the tab
+  // hint we pass through to Flutterwave's hosted widget.
+  flutterwave:   FlutterwavePaymentOption | null;
+  backendMethod: 'card' | 'bank_transfer' | 'wallet';
+}
+
+const METHODS: PickerEntry[] = [
+  { id: 'card',          Icon: CreditCard, label: 'Card',          desc: 'Pay with a Nigerian Visa, Mastercard, or Verve card', flutterwave: 'card',         backendMethod: 'card' },
+  { id: 'bank_transfer', Icon: Landmark,   label: 'Bank Transfer', desc: 'Get a one-time account number to transfer to',         flutterwave: 'banktransfer', backendMethod: 'bank_transfer' },
+  { id: 'ussd',          Icon: Smartphone, label: 'USSD',          desc: 'Dial a code from your bank app or any phone',           flutterwave: 'ussd',         backendMethod: 'card' },
+  { id: 'wallet',        Icon: Wallet,     label: 'Seirs Wallet',  desc: 'Use your existing SEIRS wallet balance',                flutterwave: null,           backendMethod: 'wallet' },
 ];
 
 export default function PaymentScreen() {
@@ -29,19 +44,26 @@ export default function PaymentScreen() {
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
 
-  const [selectedMethod, setSelectedMethod] = useState<Method>('card');
-  const [loading,        setLoading]        = useState(false);
-  const [verifying,      setVerifying]      = useState(false);
-  const [error,          setError]          = useState('');
-  const pendingTxRef     = useRef<string | null>(null);
+  const [selectedId, setSelectedId] = useState<PickerId>('card');
+  const [loading,    setLoading]    = useState(false);
+  const [verifying,  setVerifying]  = useState(false);
+  const [error,      setError]      = useState('');
+  const pendingTxRef = useRef<string | null>(null);
+
+  const selected = METHODS.find(m => m.id === selectedId)!;
 
   const handlePay = async () => {
     setError('');
     setLoading(true);
     try {
-      const res = await paymentsApi.initiate(deliveryId, selectedMethod);
+      const res = await paymentsApi.initiate(
+        deliveryId,
+        selected.backendMethod,
+        selected.flutterwave ?? undefined,
+      );
+      if (res.error) throw new Error(res.error);
 
-      if (selectedMethod === 'card' && res.authorizationUrl) {
+      if (selected.flutterwave && res.authorizationUrl) {
         pendingTxRef.current = res.reference ?? null;
 
         // Watch for app returning to foreground — auto-verify payment
@@ -102,21 +124,21 @@ export default function PaymentScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Payment Method</Text>
           {METHODS.map((m) => {
-            const selected = selectedMethod === m.id;
+            const on = selectedId === m.id;
             return (
               <Pressable
                 key={m.id}
                 style={[
                   styles.methodCard,
                   {
-                    backgroundColor: selected ? theme.primary + '12' : theme.surface,
-                    borderColor:     selected ? theme.primary : theme.border,
+                    backgroundColor: on ? theme.primary + '12' : theme.surface,
+                    borderColor:     on ? theme.primary : theme.border,
                   },
                   Shadows.sm,
                 ]}
-                onPress={() => setSelectedMethod(m.id)}
+                onPress={() => setSelectedId(m.id)}
               >
-                <m.Icon size={24} color={selected ? theme.primary : theme.text} strokeWidth={1.5} style={styles.methodIcon} />
+                <m.Icon size={24} color={on ? theme.primary : theme.text} strokeWidth={1.5} style={styles.methodIcon} />
                 <View style={styles.methodInfo}>
                   <Text style={[styles.methodLabel, { color: theme.text }]}>{m.label}</Text>
                   <Text style={[styles.methodDesc,  { color: theme.textSecond }]}>{m.desc}</Text>
@@ -124,8 +146,8 @@ export default function PaymentScreen() {
                 <View style={[
                   styles.radio,
                   {
-                    borderColor:     selected ? theme.primary : theme.border,
-                    backgroundColor: selected ? theme.primary : 'transparent',
+                    borderColor:     on ? theme.primary : theme.border,
+                    backgroundColor: on ? theme.primary : 'transparent',
                   },
                 ]} />
               </Pressable>
@@ -133,10 +155,10 @@ export default function PaymentScreen() {
           })}
         </View>
 
-        {selectedMethod === 'card' && (
+        {selectedId === 'card' && (
           <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
-              You'll be redirected to Flutterwave's secure payment page. Supports card, bank transfer, and USSD. Return to the app after payment to confirm.
+              You&apos;ll be redirected to Flutterwave&apos;s secure card form. Return to the app after payment to confirm.
             </Text>
             <Text style={[styles.noticeText, { color: theme.textSecond, marginTop: 6, fontSize: 12 }]}>
               Your card will be saved securely for one-tap reuse next time. Manage saved cards in Settings → Payment Methods.
@@ -144,10 +166,26 @@ export default function PaymentScreen() {
           </View>
         )}
 
-        {selectedMethod === 'cash_on_delivery' && (
-          <View style={[styles.noticeBox, { backgroundColor: theme.warning + '18', borderColor: theme.warning }]}>
+        {selectedId === 'bank_transfer' && (
+          <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
-              You will pay the driver in cash when your package is delivered. Please have the exact amount ready.
+              Flutterwave will generate a one-time virtual account number for this transfer. Send the exact amount from your bank app — the order confirms automatically when funds land.
+            </Text>
+          </View>
+        )}
+
+        {selectedId === 'ussd' && (
+          <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
+            <Text style={[styles.noticeText, { color: theme.text }]}>
+              Pick your bank on the next screen and dial the code from any phone — no smartphone or internet required for the transfer itself.
+            </Text>
+          </View>
+        )}
+
+        {selectedId === 'wallet' && (
+          <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
+            <Text style={[styles.noticeText, { color: theme.text }]}>
+              Charged instantly to your SEIRS wallet — no Flutterwave roundtrip.
             </Text>
           </View>
         )}
@@ -176,9 +214,7 @@ export default function PaymentScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.payBtnText}>
-                {selectedMethod === 'cash_on_delivery'
-                  ? 'Confirm Order'
-                  : `Pay ₦${Number(price ?? 0).toLocaleString()}`}
+                Pay ₦{Number(price ?? 0).toLocaleString()}
               </Text>
             )}
           </Pressable>

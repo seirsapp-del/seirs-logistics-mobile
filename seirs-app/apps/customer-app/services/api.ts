@@ -34,4 +34,5 @@ export type {
   LoyaltyEntry,
   LoyaltyTier,
   PromoDTO,
+  FlutterwavePaymentOption,
 } from '@seirs/shared/services/api';

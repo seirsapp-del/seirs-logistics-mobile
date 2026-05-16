@@ -51,6 +51,9 @@ export class FlutterwaveService {
     name:        string;
     redirectUrl: string;
     meta:        object;
+    // Optional method hint — when set, Flutterwave's widget opens
+    // directly on that tab. When omitted, the user sees all 4 tabs.
+    paymentOption?: 'card' | 'banktransfer' | 'ussd' | 'mobilemoney';
   }): Promise<{ paymentLink: string; txRef: string }> {
     const data = await this.request<any>('POST', '/payments', {
       tx_ref:          params.txRef,
@@ -63,7 +66,7 @@ export class FlutterwaveService {
         name:        params.name,
       },
       meta:            params.meta,
-      payment_options: 'card,banktransfer,mobilemoney,ussd',
+      payment_options: params.paymentOption ?? 'card,banktransfer,mobilemoney,ussd',
     });
 
     return { paymentLink: data.data.link, txRef: params.txRef };
