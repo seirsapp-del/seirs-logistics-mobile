@@ -39,7 +39,13 @@ async function bootstrap() {
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   }));
 
-  app.setGlobalPrefix('api/v1');
+  // Internal apps + admin hit `/api/v1/*`. The public Developer
+  // Platform surface (V1Controller) sits at `/v1/*` directly so
+  // partners get Stripe-style URLs (api.seirs.app/v1/orders) instead
+  // of the doubled `/api/v1/v1/*` shape.
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['v1/(.*)', 'v1'],
+  });
 
   // In production, uploads go to Cloudflare R2 — local static serving is dev-only
   if (!isProduction) {

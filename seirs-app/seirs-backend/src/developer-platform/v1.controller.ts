@@ -9,9 +9,9 @@ import { V1Service, V1OrderInput, V1QuoteInput } from './v1.service';
 // Spec V8 Tier 3 — public Developer Platform API. All requests
 // authenticated via the ApiKeyGuard (Bearer sk_(live|test)_xxx).
 //
-// Stable URL prefix: /api/v1/*  (the /api prefix comes from the
-// global app prefix in main.ts; the /v1 prefix lives here so we
-// can ship /v2 later without breaking partners).
+// Stable URL prefix: /v1/*  (excluded from the api/v1 global prefix
+// in main.ts so partner-facing URLs are clean Stripe-style
+// /v1/orders rather than the doubled /api/v1/v1/orders shape).
 //
 // Idempotency-Key header is honored on every POST: a repeated request
 // within 24h returns the cached response instead of double-creating.
