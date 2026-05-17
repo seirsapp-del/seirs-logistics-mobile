@@ -81,6 +81,29 @@ Most of these are already done across buckets 1-13 — re-verify before launch d
 
 ---
 
+## Founder TODO — needs you, not the codebase
+
+These are tracked separately because they all need YOU to do something outside the repo (sign up for a service, click a dashboard, etc.). Code is already shipped silent — these flip the switch.
+
+- [ ] **Sentry projects + DSNs** ([08-observability.md](08-observability.md))
+  Create 6 Sentry projects, set DSN env vars on Railway + Vercel.
+  Until done: zero error monitoring. After: 30-second alerting on every production exception.
+
+- [ ] **Better Stack uptime monitors** ([08-observability.md](08-observability.md))
+  5 monitors covering API + admin + website + db + redis health.
+  Until done: you find out about downtime from a customer complaint.
+
+- [ ] **Vercel deploy verification**
+  Open dashboard for admin-dashboard + seirs-website. Confirm both show recent green builds. (Silent build failures hit the backend yesterday — same risk class applies here.)
+
+- [ ] **Sentry / Better Stack disclosure on privacy policy**
+  Add to the Third-party processors section after Sentry is live.
+
+- [ ] **Phase 1-8 ops/legal workstreams** (rows 1-8 above)
+  All have draft docs ready. Each takes an email to start.
+
+---
+
 ## Post-launch (week 2+)
 
 These items shouldn't block launch but should land soon after:
