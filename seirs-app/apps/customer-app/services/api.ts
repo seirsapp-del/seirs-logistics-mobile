@@ -21,6 +21,11 @@ export {
   loyaltyApi,
   promotionsApi,
   suggestionsApi,
+  // Wave 16B additions
+  addressesApi,
+  ticketsApi,
+  // Wave 16E addition
+  maintenanceApi,
 } from '@seirs/shared/services/api';
 
 export type {
@@ -35,4 +40,5 @@ export type {
   LoyaltyTier,
   PromoDTO,
   FlutterwavePaymentOption,
+  SavedAddressDTO,
 } from '@seirs/shared/services/api';
