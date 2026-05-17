@@ -1066,7 +1066,7 @@ export class AdminService {
     if (!earning) throw new NotFoundException('Earning row not found.');
     if (earning.status !== 'held') throw new BadRequestException('Only held earnings can be released.');
     await this.earningsRepo.update(id, { status: 'available', holdReason: null });
-    await this.recordAudit(admin, 'earning.release', `earning:${id}`, { previousStatus: 'held' });
+    await this.logAudit(admin, 'earning.release', `earning:${id}`, { previousStatus: 'held' });
     return { ok: true };
   }
 
@@ -1194,7 +1194,7 @@ export class AdminService {
     if (!row.isEditable) throw new BadRequestException(`${key} is read-only.`);
     const previous = row.value;
     await this.configRepo.update(key, { value });
-    await this.recordAudit(admin, 'config.update', `config:${key}`, { previous, next: value });
+    await this.logAudit(admin, 'config.update', `config:${key}`, { previous, next: value });
     return this.configRepo.findOne({ where: { key } });
   }
 }

@@ -4,6 +4,7 @@ import { TicketsService } from './tickets.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
+import { TicketPriority } from '../admin/support-ticket.entity';
 
 class CreateTicketDto {
   @IsString() @MaxLength(200)
@@ -15,8 +16,8 @@ class CreateTicketDto {
   @IsOptional() @IsString() @MaxLength(50)
   category?: string;
 
-  @IsOptional() @IsIn(['low', 'medium', 'high', 'urgent'])
-  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  @IsOptional() @IsIn(Object.values(TicketPriority))
+  priority?: TicketPriority;
 
   @IsOptional() @IsString() @MaxLength(64)
   tripId?: string;
