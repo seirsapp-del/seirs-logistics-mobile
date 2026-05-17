@@ -1,9 +1,20 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Mail, MapPin } from 'lucide-react';
-import { getContentBySlug, fmtDate, renderMarkdown } from '@/lib/cms';
+import { getContentBySlug, listContent, fmtDate, renderMarkdown } from '@/lib/cms';
 
 export const revalidate = 60;
+
+// Required by Next.js `output: 'export'` (next.config.ts). Vercel build
+// hits the CMS at build time and pre-renders one page per slug. If the
+// CMS is unreachable or empty during the build, returns []; the listing
+// at /careers still renders, individual slugs just 404 until the next
+// deploy. Re-deploy after publishing new content (or wire a Vercel
+// deploy hook from the admin CMS publish action).
+export async function generateStaticParams() {
+  const roles = await listContent('job_listing', { pageSize: 100 });
+  return roles.map(r => ({ slug: r.slug }));
+}
 
 interface Props { params: Promise<{ slug: string }> }
 

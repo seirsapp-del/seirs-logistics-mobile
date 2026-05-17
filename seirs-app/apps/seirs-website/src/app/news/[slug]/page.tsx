@@ -1,9 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Calendar } from 'lucide-react';
-import { getContentBySlug, fmtDate, renderMarkdown } from '@/lib/cms';
+import { getContentBySlug, listContent, fmtDate, renderMarkdown } from '@/lib/cms';
 
 export const revalidate = 60;
+
+// Required by Next.js `output: 'export'` — see careers/[slug] for the
+// full reasoning. Re-deploy the website to pick up new news posts.
+export async function generateStaticParams() {
+  const items = await listContent('news', { pageSize: 100 });
+  return items.map(a => ({ slug: a.slug }));
+}
 
 interface Props { params: Promise<{ slug: string }> }
 
