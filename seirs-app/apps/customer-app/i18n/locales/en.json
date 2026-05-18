@@ -144,7 +144,15 @@
     "required": "required",
     "optional": "optional",
     "cancel": "Cancel",
-    "comingSoon": "Coming soon"
+    "comingSoon": "Coming soon",
+    "ok": "OK",
+    "delete": "Delete",
+    "continue": "Continue",
+    "done": "Done",
+    "save": "Save",
+    "edit": "Edit",
+    "yes": "Yes",
+    "no": "No"
   },
   "drawer": {
     "profile": "Profile",

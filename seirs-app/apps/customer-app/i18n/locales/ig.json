@@ -144,7 +144,15 @@
     "required": "dị mkpa",
     "optional": "ọ dịghị mkpa",
     "cancel": "Kagbuo",
-    "comingSoon": "Na-abịa"
+    "comingSoon": "Na-abịa",
+    "ok": "Ọ dị mma",
+    "delete": "Hichapụ",
+    "continue": "Gaa n'ihu",
+    "done": "Emechara",
+    "save": "Chekwaa",
+    "edit": "Dezie",
+    "yes": "Ee",
+    "no": "Mba"
   },
   "drawer": {
     "profile": "Profaịlụ",

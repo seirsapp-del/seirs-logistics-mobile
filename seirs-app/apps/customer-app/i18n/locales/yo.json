@@ -144,7 +144,15 @@
     "required": "pọndandan",
     "optional": "kò pọndandan",
     "cancel": "Fagilé",
-    "comingSoon": "Ó ń bọ̀"
+    "comingSoon": "Ó ń bọ̀",
+    "ok": "O dáa",
+    "delete": "Pa rẹ́",
+    "continue": "Tẹ̀síwájú",
+    "done": "Ti parí",
+    "save": "Fipamọ́",
+    "edit": "Ṣàtúnṣe",
+    "yes": "Bẹ́ẹ̀ni",
+    "no": "Bẹ́ẹ̀kọ́"
   },
   "drawer": {
     "profile": "Profáìlì",

@@ -144,7 +144,15 @@
     "required": "wajibi",
     "optional": "ba wajibi ba",
     "cancel": "Soke",
-    "comingSoon": "Yana zuwa"
+    "comingSoon": "Yana zuwa",
+    "ok": "To",
+    "delete": "Goge",
+    "continue": "Ci gaba",
+    "done": "An gama",
+    "save": "Adana",
+    "edit": "Gyara",
+    "yes": "Eh",
+    "no": "A'a"
   },
   "drawer": {
     "profile": "Bayanai",
