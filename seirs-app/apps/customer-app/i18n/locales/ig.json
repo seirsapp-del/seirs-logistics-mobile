@@ -626,5 +626,99 @@
     "statPoints": "Akara",
     "statRating": "Nkwekọrịta",
     "version": "SEIRS Logistics v2.0.0 · Build 204"
+  },
+  "schedule2": {
+    "title": "Hazie Nnyefe",
+    "pickDate": "Họrọ ụbọchị",
+    "pickTime": "Họrọ oge",
+    "package": "Ngwugwu",
+    "small": "Obere",
+    "medium": "Ọkara",
+    "large": "Buru",
+    "weightKg": "Ibu (kg)",
+    "confirm": "Hazie",
+    "scheduledFor": "Ahaziri maka {{when}}"
+  },
+  "multiStop2": {
+    "title": "Nnyefe Nke Nwere Nkwụsị Ọtụtụ",
+    "addStop": "Tinye Nkwụsị",
+    "pickup": "Mbulata",
+    "stop": "Nkwụsị {{n}}",
+    "dropoff": "Mbudata",
+    "addressPlaceholder": "Chọọ adreesị…",
+    "removeStop": "Wepu Nkwụsị",
+    "max5": "Ọnụọgụ 5 ka kacha n'otu nnyefe"
+  },
+  "dropAtStore": {
+    "title": "Hapụ na Ụlọ Ahịa",
+    "selectStore": "Họrọ ụlọ ahịa mmekọ",
+    "plenty": "Ohere buru ibu",
+    "limited": "Ohere oge",
+    "full": "Juru",
+    "openHours": "Mepere {{open}} – {{close}}",
+    "distance": "Anya {{km}} km",
+    "instructions": "Banye ma gosi koodu QR n'ihu kaonta.",
+    "generateCode": "Mepụta Koodu Mbudata",
+    "dropCode": "Koodu Mbudata"
+  },
+  "shareTrip": {
+    "title": "Kekọrịta Njem M",
+    "subtitle": "Zipu njikọ ozugbo nye ndị enyi ma ọ bụ ezi na ụlọ ka ha soro njem gị.",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "copyLink": "Mịrị Njikọ",
+    "linkCopied": "Emịchara njikọ"
+  },
+  "recipientId": {
+    "title": "Nweta Ngwugwu",
+    "subtitle": "Gosi ndị ọrụ mmekọ SEIRS ID gị iji nweta ngwugwu gị.",
+    "registeredName": "AHA EDEBANYERE",
+    "yourQr": "Koodu QR Gị",
+    "yourId": "ID Gị",
+    "sendCode": "Zipu Koodu Mbulata",
+    "enterCode": "Tinye Koodu Mbulata",
+    "couldNotSendCode": "Enweghị ike izipu koodu"
+  },
+  "transactionDetail": {
+    "title": "Nkọwa Azụmahịa",
+    "successful": "Gara nke ọma",
+    "pending": "Na-eche",
+    "failed": "Dara",
+    "ref": "Nrụtụaka",
+    "method": "Ụzọ",
+    "amount": "Ego",
+    "date": "Ụbọchị",
+    "shareReceipt": "Kekọrịta Akwụkwọ Azụmahịa"
+  },
+  "fareBreakdown2": {
+    "title": "Nkewa Ọnụahịa",
+    "baseFare": "Ọnụahịa mbụ",
+    "distanceFee": "Ego anya",
+    "timeFee": "Ego oge",
+    "serviceFee": "Ego ọrụ",
+    "discount": "Mbelata",
+    "total": "Mkpokọta",
+    "priceDetails": "Nkọwa Ọnụahịa",
+    "promoDiscount": "Mbelata mmemme",
+    "priceNotice": "Ọnụahịa ikpeazụ nwere ike ịdị ntakịrị iche dabere n'ezigbo anya na okporo ụzọ."
+  },
+  "vehicleSelect2": {
+    "title": "Họrọ Njem",
+    "availableVehicles": "Ụgbọ dị",
+    "selected": "Ahọpụtara",
+    "continue": "Gaa n'ihu"
+  },
+  "tripProgress2": {
+    "title": "Njem Gị",
+    "stepAssigned": "Enyere onye nkwọ",
+    "stepPickedUp": "Eburu ngwugwu",
+    "stepInTransit": "Na n'ụzọ",
+    "stepDelivered": "Eruola",
+    "callRider": "Kpọọ onye nkwọ",
+    "messageRider": "Zipu ozi nye onye nkwọ",
+    "sosBtn": "SOS",
+    "liveTracking": "Nsochi Ndụ",
+    "arrived": "Eruola",
+    "minAway": "Nkeji {{n}} fọdụrụ"
   }
 }

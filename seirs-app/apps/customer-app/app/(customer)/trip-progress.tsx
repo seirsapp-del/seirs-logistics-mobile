@@ -17,10 +17,10 @@ import { SOCKET_URL } from '@/constants/config';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 
 const STATUS_STEPS = [
-  { key: 'assigned',   label: 'Rider assigned',  icon: 'navigate-outline' },
-  { key: 'picked_up',  label: 'Pickup complete',  icon: 'cube-outline' },
-  { key: 'in_transit', label: 'On the way',       icon: 'car-outline' },
-  { key: 'delivered',  label: 'Arrived',          icon: 'flag-outline' },
+  { key: 'assigned',   labelKey: 'stepAssigned',  icon: 'navigate-outline' },
+  { key: 'picked_up',  labelKey: 'stepPickedUp',  icon: 'cube-outline' },
+  { key: 'in_transit', labelKey: 'stepInTransit', icon: 'car-outline' },
+  { key: 'delivered',  labelKey: 'stepDelivered', icon: 'flag-outline' },
 ] as const;
 
 export default function TripProgressScreen() {
@@ -178,7 +178,7 @@ export default function TripProgressScreen() {
         </Pressable>
         <View style={[styles.livePill, { backgroundColor: theme.surface }, Shadows.sm]}>
           <Animated.View style={[styles.liveDot, { transform: [{ scale: pulse }] }]} />
-          <Text style={[styles.liveText, { color: theme.text }]}>Live Tracking</Text>
+          <Text style={[styles.liveText, { color: theme.text }]}>{t('tripProgress2.liveTracking')}</Text>
         </View>
         <Pressable
           style={[styles.backBtn, { backgroundColor: theme.surface }, Shadows.sm]}
@@ -216,7 +216,9 @@ export default function TripProgressScreen() {
           })}
         </View>
         <Text style={[styles.stepLabel, { color: theme.textSecond }]}>
-          {STATUS_STEPS[currentStep]?.label ?? 'Arrived'}
+          {STATUS_STEPS[currentStep]
+            ? t(`tripProgress2.${STATUS_STEPS[currentStep].labelKey}`)
+            : t('tripProgress2.arrived')}
         </Text>
 
         {/* ETA â€” driver ETA from simulator + real route distance from Directions API */}
@@ -224,7 +226,7 @@ export default function TripProgressScreen() {
           <View style={[styles.etaBadge, { backgroundColor: isDark ? '#1A0C00' : '#EFF6FF' }]}>
             <Ionicons name="time-outline" size={16} color={theme.primary} />
             <Text style={[styles.etaText, { color: theme.primary }]}>
-              {eta === 0 ? 'Arrived' : `${eta} min away`}
+              {eta === 0 ? t('tripProgress2.arrived') : t('tripProgress2.minAway', { n: eta })}
             </Text>
           </View>
           {(distanceText || durationText) && (
@@ -271,7 +273,7 @@ export default function TripProgressScreen() {
             onPress={() => router.push({ pathname: '/(customer)/sos', params: { deliveryId: trip.id } })}
           >
             <Ionicons name="warning-outline" size={16} color={theme.error} />
-            <Text style={[styles.sosBtnText, { color: theme.error }]}>SOS</Text>
+            <Text style={[styles.sosBtnText, { color: theme.error }]}>{t('tripProgress2.sosBtn')}</Text>
           </Pressable>
 
           {currentStep >= 3 && (

@@ -626,5 +626,99 @@
     "statPoints": "Pọ́ìńtì",
     "statRating": "Ìdíyelé",
     "version": "SEIRS Logistics v2.0.0 · Build 204"
+  },
+  "schedule2": {
+    "title": "Ètò Ìfiránṣẹ",
+    "pickDate": "Yan ọjọ́",
+    "pickTime": "Yan àkókò",
+    "package": "Idii",
+    "small": "Kékèèkéké",
+    "medium": "Àárín",
+    "large": "Tóbi",
+    "weightKg": "Ìwọn (kg)",
+    "confirm": "Ṣètò",
+    "scheduledFor": "A ṣètò fún {{when}}"
+  },
+  "multiStop2": {
+    "title": "Ìfiránṣẹ Ọ̀pọ̀-dúró",
+    "addStop": "Fi Ìdúró Kún",
+    "pickup": "Gbigba",
+    "stop": "Ìdúró {{n}}",
+    "dropoff": "Ìfilọ́",
+    "addressPlaceholder": "Wá adirẹsì…",
+    "removeStop": "Yọ Ìdúró Kúrò",
+    "max5": "Ìdúró 5 ní ó pọjù fún ìfiránṣẹ kọ̀ọ̀kan"
+  },
+  "dropAtStore": {
+    "title": "Fi Sí Ilé-ìtajà",
+    "selectStore": "Yan ilé-ìtajà alábàá",
+    "plenty": "Aaye púpọ̀",
+    "limited": "Aaye díẹ̀",
+    "full": "Tí kún",
+    "openHours": "Ó ṣí láàárín {{open}} – {{close}}",
+    "distance": "Ó jìnnà {{km}} km",
+    "instructions": "Wọlé kí o sì fi kóòdù QR hàn ní ọ̀dọ̀ òṣìṣẹ́.",
+    "generateCode": "Ṣe Kóòdù Ìfilọ́",
+    "dropCode": "Kóòdù Ìfilọ́"
+  },
+  "shareTrip": {
+    "title": "Pin Ìrìn Mi",
+    "subtitle": "Fi ìjápọ̀ tààrà ránṣẹ́ sí ọ̀rẹ́ tàbí ẹbí kí wọ́n lè tọ́pa ìrìn rẹ.",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "copyLink": "Daako Ìjápọ̀",
+    "linkCopied": "A ti daako ìjápọ̀"
+  },
+  "recipientId": {
+    "title": "Gba Idii",
+    "subtitle": "Fi SEIRS ID rẹ hàn fún òṣìṣẹ́ alábàá láti gba idii rẹ.",
+    "registeredName": "ORÚKỌ TÍ A FI SÍLẸ̀",
+    "yourQr": "Kóòdù QR Rẹ",
+    "yourId": "ID Rẹ",
+    "sendCode": "Fi Kóòdù Ìgbàgba Ránṣẹ́",
+    "enterCode": "Tẹ Kóòdù Ìgbàgba",
+    "couldNotSendCode": "Kò lè fi kóòdù ránṣẹ́"
+  },
+  "transactionDetail": {
+    "title": "Ẹ̀kúnrẹ́rẹ́ Ìṣòwò",
+    "successful": "Ó ṣẹ́gun",
+    "pending": "Ń dúró",
+    "failed": "Tí kùnà",
+    "ref": "Àmì",
+    "method": "Ọ̀nà",
+    "amount": "Iye",
+    "date": "Ọjọ́",
+    "shareReceipt": "Pin Ìwé-ẹ̀rí"
+  },
+  "fareBreakdown2": {
+    "title": "Ìtúpalẹ̀ Owó",
+    "baseFare": "Owó àkọ́kọ́",
+    "distanceFee": "Owó ìjìnnà",
+    "timeFee": "Owó àkókò",
+    "serviceFee": "Owó iṣẹ́",
+    "discount": "Ẹ̀dínkún",
+    "total": "Lapapọ",
+    "priceDetails": "Àlàyé Owó",
+    "promoDiscount": "Ẹ̀dínkún ìpolówó",
+    "priceNotice": "Owó ìpari le yàtọ̀ díẹ̀ ní ìbámu pẹ̀lú ìjìnnà àti ọkọ̀ ní àárín ọ̀nà."
+  },
+  "vehicleSelect2": {
+    "title": "Yan Ìrìn",
+    "availableVehicles": "Àwọn ọkọ tó wà",
+    "selected": "Tí a yàn",
+    "continue": "Tẹ̀síwájú"
+  },
+  "tripProgress2": {
+    "title": "Ìrìn Rẹ",
+    "stepAssigned": "A ti yan awakọ",
+    "stepPickedUp": "A ti gba idii",
+    "stepInTransit": "Ó ń lọ",
+    "stepDelivered": "Tí dé",
+    "callRider": "Pe awakọ",
+    "messageRider": "Fi ìfiránṣẹ́ ránṣẹ́",
+    "sosBtn": "SOS",
+    "liveTracking": "Tọpinpin Ààyè",
+    "arrived": "Tí dé",
+    "minAway": "Ìṣẹ́jú {{n}} kù"
   }
 }

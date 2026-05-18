@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
@@ -22,9 +23,10 @@ export default function ShareTripScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { t }   = useTranslation();
   const { id }  = useLocalSearchParams<{ id?: string }>();
 
-  const trip = MOCK_TRIPS.find(t => t.id === id) ?? MOCK_TRIPS[2];
+  const trip = MOCK_TRIPS.find(tr => tr.id === id) ?? MOCK_TRIPS[2];
   const [copied, setCopied] = useState(false);
 
   const shareLink = `https://track.seirs.app/${trip.trackingCode}`;
@@ -53,7 +55,7 @@ export default function ShareTripScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Share Trip</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('shareTrip.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 

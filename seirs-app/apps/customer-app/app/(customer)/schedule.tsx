@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Calendar, MapPin, Package, FileText, Briefcase, Box } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -22,6 +23,7 @@ export default function ScheduleScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
 
   const [pickupAddress,  setPickupAddress]  = useState('');
   const [pickupLat,      setPickupLat]      = useState('6.4550');
@@ -77,7 +79,7 @@ export default function ScheduleScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: theme.primary }]}>←</Text>
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Schedule Delivery</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('schedule2.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 

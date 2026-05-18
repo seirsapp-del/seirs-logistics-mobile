@@ -23,10 +23,10 @@ export default function FareBreakdownScreen() {
   const fb      = FARE_BREAKDOWN;
 
   const rows = [
-    { label: 'Base fare',    value: fb.baseFare,    icon: 'flag-outline' },
-    { label: 'Distance fee', value: fb.distanceFee, icon: 'map-outline'  },
-    { label: 'Time fee',     value: fb.timeFee,     icon: 'time-outline' },
-    { label: 'Service fee',  value: fb.serviceFee,  icon: 'shield-outline' },
+    { label: t('fareBreakdown2.baseFare'),    value: fb.baseFare,    icon: 'flag-outline' },
+    { label: t('fareBreakdown2.distanceFee'), value: fb.distanceFee, icon: 'map-outline'  },
+    { label: t('fareBreakdown2.timeFee'),     value: fb.timeFee,     icon: 'time-outline' },
+    { label: t('fareBreakdown2.serviceFee'),  value: fb.serviceFee,  icon: 'shield-outline' },
   ];
 
   return (
@@ -36,7 +36,7 @@ export default function FareBreakdownScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surface }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Fare Breakdown</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('fareBreakdown2.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -87,7 +87,7 @@ export default function FareBreakdownScreen() {
 
         {/* Fare rows */}
         <Card style={styles.fareCard}>
-          <Text style={[styles.fareCardTitle, { color: theme.text }]}>Price Details</Text>
+          <Text style={[styles.fareCardTitle, { color: theme.text }]}>{t('fareBreakdown2.priceDetails')}</Text>
           {rows.map(({ label, value, icon }, i) => (
             <View key={label} style={[
               styles.fareRow,
@@ -110,7 +110,7 @@ export default function FareBreakdownScreen() {
                 <View style={[styles.fareIcon, { backgroundColor: '#DCFCE7' }]}>
                   <Ionicons name="pricetag-outline" size={14} color="#15803D" />
                 </View>
-                <Text style={[styles.fareLabel, { color: '#15803D' }]}>Promo discount</Text>
+                <Text style={[styles.fareLabel, { color: '#15803D' }]}>{t('fareBreakdown2.promoDiscount')}</Text>
               </View>
               <Text style={[styles.fareValue, { color: '#15803D' }]}>-â‚¦{fb.discount.toLocaleString()}</Text>
             </View>
@@ -118,7 +118,7 @@ export default function FareBreakdownScreen() {
 
           {/* Total */}
           <View style={[styles.fareTotal, { borderTopColor: theme.border }]}>
-            <Text style={[styles.fareTotalLabel, { color: theme.text }]}>Total</Text>
+            <Text style={[styles.fareTotalLabel, { color: theme.text }]}>{t('fareBreakdown2.total')}</Text>
             <Text style={[styles.fareTotalValue, { color: theme.primary }]}>
               â‚¦{fb.total.toLocaleString()}
             </Text>
@@ -129,7 +129,7 @@ export default function FareBreakdownScreen() {
         <View style={[styles.notice, { backgroundColor: isDark ? '#001820' : '#F0FDFA', borderColor: '#2EC4B6' }]}>
           <Ionicons name="information-circle-outline" size={16} color="#2EC4B6" />
           <Text style={[styles.noticeText, { color: theme.textSecond }]}>
-            Final price may vary slightly based on actual distance and traffic.
+            {t('fareBreakdown2.priceNotice')}
           </Text>
         </View>
 

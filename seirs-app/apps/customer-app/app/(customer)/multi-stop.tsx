@@ -82,7 +82,7 @@ export default function MultiStopScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Multi-Stop Trip</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('multiStop2.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -137,7 +137,7 @@ export default function MultiStopScreen() {
             onPress={addStop}
           >
             <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
-            <Text style={[styles.addStopText, { color: theme.primary }]}>Add another stop</Text>
+            <Text style={[styles.addStopText, { color: theme.primary }]}>{t('multiStop2.addStop')}</Text>
           </Pressable>
         )}
 

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft, Copy, Shield, CheckCircle, Mail, Package, Clock,
 } from 'lucide-react-native';
@@ -35,6 +36,7 @@ export default function RecipientIdScreen() {
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
   const { user } = useAuth();
+  const { t }   = useTranslation();
 
   const [copied,  setCopied]  = useState(false);
   const [items,   setItems]   = useState<IncomingItem[]>([]);
@@ -131,7 +133,7 @@ export default function RecipientIdScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} strokeWidth={1.75} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Collect a Package</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('recipientId.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -155,7 +157,7 @@ export default function RecipientIdScreen() {
             />
           </View>
 
-          <Text style={[styles.nameLabel, { color: theme.textSecond }]}>REGISTERED NAME</Text>
+          <Text style={[styles.nameLabel, { color: theme.textSecond }]}>{t('recipientId.registeredName')}</Text>
           <Text style={[styles.name, { color: theme.text }]}>{name}</Text>
 
           <View style={[styles.codeRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>

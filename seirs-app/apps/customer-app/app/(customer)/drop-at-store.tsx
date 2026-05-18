@@ -8,6 +8,7 @@ import * as Location from 'expo-location';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft, ArrowRight, Store, MapPin, Package, User, Check, Copy, Share2,
 } from 'lucide-react-native';
@@ -44,6 +45,7 @@ export default function DropAtStoreScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
 
   const [step,             setStep]           = useState<Step>('pickup');
   const [loading,          setLoading]        = useState(false);
@@ -164,7 +166,7 @@ export default function DropAtStoreScreen() {
         <ArrowLeft size={20} color={theme.text} />
       </Pressable>
       <View style={{ flex: 1, alignItems: 'center' }}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Drop at Store</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('dropAtStore.title')}</Text>
         {step !== 'done' && (
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
             {step === 'pickup'      ? 'Step 1 of 4 â€” Pickup store' :
@@ -206,7 +208,7 @@ export default function DropAtStoreScreen() {
                 backgroundColor={theme.surface as string}
               />
             </View>
-            <Text style={[styles.codeLabel, { color: theme.textSecond }]}>DROP-OFF CODE</Text>
+            <Text style={[styles.codeLabel, { color: theme.textSecond }]}>{t('dropAtStore.dropCode').toUpperCase()}</Text>
             <Text style={[styles.codeBig,   { color: theme.primary }]}>{receipt.dropCode}</Text>
 
             <View style={styles.divider} />
@@ -254,7 +256,7 @@ export default function DropAtStoreScreen() {
           {/* Step 1 â€” pickup store â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 'pickup' && (
             <>
-              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>NEAREST PARTNER STORES</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.selectStore').toUpperCase()}</Text>
               {loading && <ActivityIndicator color={theme.primary} style={{ marginVertical: 24 }} />}
               {!loading && stores.length === 0 && (
                 <Text style={[styles.emptyText, { color: theme.textSecond }]}>No partner stores nearby. Try door-to-door delivery instead.</Text>

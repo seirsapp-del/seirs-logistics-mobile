@@ -4,6 +4,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { MOCK_TRANSACTIONS } from '@/constants/mockData';
@@ -12,10 +13,11 @@ const TYPE_CONFIG = {
   credit: { color: '#22C55E', icon: 'arrow-down-circle', sign: '+' },
   debit:  { color: '#EF4444', icon: 'arrow-up-circle',   sign: '−' },
 };
-const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
-  success: { color: '#22C55E', label: 'Successful' },
-  pending: { color: '#FFBE0B', label: 'Pending'    },
-  failed:  { color: '#EF4444', label: 'Failed'     },
+// Status labels resolved via t() at render so language switch reflects live.
+const STATUS_CONFIG: Record<string, { color: string; labelKey: string }> = {
+  success: { color: '#22C55E', labelKey: 'successful' },
+  pending: { color: '#FFBE0B', labelKey: 'pending'    },
+  failed:  { color: '#EF4444', labelKey: 'failed'     },
 };
 
 export default function TransactionDetailsScreen() {
@@ -23,11 +25,14 @@ export default function TransactionDetailsScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const tx = MOCK_TRANSACTIONS.find(t => t.id === id) ?? MOCK_TRANSACTIONS[0];
+  const tx = MOCK_TRANSACTIONS.find(item => item.id === id) ?? MOCK_TRANSACTIONS[0];
   const tc = TYPE_CONFIG[tx.type as keyof typeof TYPE_CONFIG];
-  const sc = STATUS_CONFIG[tx.status] ?? { color: '#A1A1AA', label: tx.status };
+  const scConfig = STATUS_CONFIG[tx.status] ?? { color: '#A1A1AA', labelKey: '' };
+  const scLabel  = scConfig.labelKey ? t(`transactionDetail.${scConfig.labelKey}`) : tx.status;
+  const sc = { color: scConfig.color, label: scLabel };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -39,7 +44,7 @@ export default function TransactionDetailsScreen() {
           <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
-          <Text style={[styles.title, { color: theme.text }]}>Transaction Details</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('transactionDetail.title')}</Text>
           <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]}>
             <Ionicons name="share-outline" size={20} color={theme.text} />
           </Pressable>

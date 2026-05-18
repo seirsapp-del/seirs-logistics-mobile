@@ -460,7 +460,10 @@
     "timeFee": "Time fee",
     "serviceFee": "Service fee",
     "discount": "Discount",
-    "total": "Total"
+    "total": "Total",
+    "priceDetails": "Price Details",
+    "promoDiscount": "Promo discount",
+    "priceNotice": "Final price may vary slightly based on actual distance and traffic."
   },
   "vehicleSelect2": {
     "title": "Choose Ride",
@@ -473,10 +476,13 @@
     "stepAssigned": "Rider assigned",
     "stepPickedUp": "Pickup complete",
     "stepInTransit": "On the way",
-    "stepDelivered": "Delivered",
+    "stepDelivered": "Arrived",
     "callRider": "Call rider",
     "messageRider": "Message rider",
-    "sosBtn": "SOS"
+    "sosBtn": "SOS",
+    "liveTracking": "Live Tracking",
+    "arrived": "Arrived",
+    "minAway": "{{n}} min away"
   },
   "request2": {
     "title": "Request a Ride",

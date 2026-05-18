@@ -626,5 +626,99 @@
     "statPoints": "Puntoci",
     "statRating": "Kima",
     "version": "SEIRS Logistics v2.0.0 · Build 204"
+  },
+  "schedule2": {
+    "title": "Tsara Bayarwa",
+    "pickDate": "Zaɓi rana",
+    "pickTime": "Zaɓi lokaci",
+    "package": "Fakiti",
+    "small": "Ƙarami",
+    "medium": "Matsakaici",
+    "large": "Babba",
+    "weightKg": "Nauyi (kg)",
+    "confirm": "Tsara",
+    "scheduledFor": "An tsara don {{when}}"
+  },
+  "multiStop2": {
+    "title": "Bayarwa Mai Tsayawa Da Yawa",
+    "addStop": "Ƙara Tasha",
+    "pickup": "Karɓa",
+    "stop": "Tasha {{n}}",
+    "dropoff": "Saukewa",
+    "addressPlaceholder": "Nemo adireshi…",
+    "removeStop": "Cire Tasha",
+    "max5": "Iyaka tashoshi 5 a kowane bayarwa"
+  },
+  "dropAtStore": {
+    "title": "Sauke a Shago",
+    "selectStore": "Zaɓi shagon abokin tarayya",
+    "plenty": "Babban sarari",
+    "limited": "Ƙananan sarari",
+    "full": "Cike",
+    "openHours": "A buɗe {{open}} – {{close}}",
+    "distance": "Nisa {{km}} km",
+    "instructions": "Shiga ka nuna lambar QR a teburin biyan kuɗi.",
+    "generateCode": "Ƙirƙiri Lambar Saukewa",
+    "dropCode": "Lambar Saukewa"
+  },
+  "shareTrip": {
+    "title": "Raba Tafiyata",
+    "subtitle": "Aika hanyar haɗi kai tsaye ga abokai ko iyali don su biyo tafiyarka.",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "copyLink": "Kwafi Hanyar Haɗi",
+    "linkCopied": "An kwafi hanyar haɗi"
+  },
+  "recipientId": {
+    "title": "Karɓi Fakiti",
+    "subtitle": "Nuna ma'aikatan abokin tarayya SEIRS ID ɗinka don karɓar fakitin ka.",
+    "registeredName": "SUNAN DA AKA RAJISTA",
+    "yourQr": "Lambar QR Ɗinka",
+    "yourId": "ID Ɗinka",
+    "sendCode": "Aika Lambar Karɓa",
+    "enterCode": "Shigar da Lambar Karɓa",
+    "couldNotSendCode": "Ba a iya aika lambar ba"
+  },
+  "transactionDetail": {
+    "title": "Cikakkun Bayanan Hada-hada",
+    "successful": "Cikin nasara",
+    "pending": "Ana jira",
+    "failed": "Ya kasa",
+    "ref": "Magana",
+    "method": "Hanya",
+    "amount": "Yawan kuɗi",
+    "date": "Kwanan wata",
+    "shareReceipt": "Raba Rasidi"
+  },
+  "fareBreakdown2": {
+    "title": "Rarrabuwar Farashi",
+    "baseFare": "Farashin tushe",
+    "distanceFee": "Kuɗin nisa",
+    "timeFee": "Kuɗin lokaci",
+    "serviceFee": "Kuɗin sabis",
+    "discount": "Rangwame",
+    "total": "Jimla",
+    "priceDetails": "Bayanan Farashi",
+    "promoDiscount": "Rangwamen tallace-tallace",
+    "priceNotice": "Farashin ƙarshe na iya bambanta kaɗan dangane da ainihin nisa da yawan motoci a hanya."
+  },
+  "vehicleSelect2": {
+    "title": "Zaɓi Tafiya",
+    "availableVehicles": "Abubuwan hawa masu samuwa",
+    "selected": "An zaɓa",
+    "continue": "Ci gaba"
+  },
+  "tripProgress2": {
+    "title": "Tafiyarka",
+    "stepAssigned": "An sanya direba",
+    "stepPickedUp": "An ɗauki fakiti",
+    "stepInTransit": "Yana hanya",
+    "stepDelivered": "An kawo",
+    "callRider": "Kira direba",
+    "messageRider": "Aika saƙo ga direba",
+    "sosBtn": "SOS",
+    "liveTracking": "Bin Diddigi Kai Tsaye",
+    "arrived": "An kawo",
+    "minAway": "Minti {{n}} sauran"
   }
 }
