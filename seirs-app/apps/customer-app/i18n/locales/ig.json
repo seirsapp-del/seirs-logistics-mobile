@@ -222,6 +222,11 @@
     "submitted": "Ezigara Akụkọ",
     "submittedMsg": "Otu anyị ga-akpọtụrụ gị n'ime awa 24. Nrụtụaka: {{ref}}"
   },
+  "languageNotice": {
+    "title": "Agbanwere asụsụ",
+    "body": "Anyị ka na-eme ka nsụgharị anyị dị mma site n'aka ndị na-asụ asụsụ ahụ. Ụfọdụ okwu nwere ike pụta na Bekee — daalụ maka ndidi gị ka anyị na-eme ka SEIRS dị mma maka Naịjịrịa.",
+    "ok": "Aghọtara m"
+  },
   "settings": {
     "languageTitle": "Asụsụ & Mpaghara",
     "appLanguage": "Asụsụ Ngwa",

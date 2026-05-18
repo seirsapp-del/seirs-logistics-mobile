@@ -222,6 +222,11 @@
     "submitted": "A Ti Gba Ìròyìn",
     "submittedMsg": "Ẹgbẹ́ wa yóò kàn sí ọ ní àárọ̀ 24. Àmì: {{ref}}"
   },
+  "languageNotice": {
+    "title": "Èdè ti yí",
+    "body": "A ṣì ń tún àwọn ìtumọ̀ ṣe pẹ̀lú àwọn olùsọ̀rọ̀ ìbílẹ̀. Díẹ̀ ninu àwọn ọ̀rọ̀ lè ṣì farahàn ní Èdè Gẹ̀ẹ́sì — a dúpẹ́ fún sùúrù rẹ bí a ṣe ń ṣe SEIRS dára síi fún Nàìjíríà.",
+    "ok": "O dáa"
+  },
   "settings": {
     "languageTitle": "Èdè & Agbègbè",
     "appLanguage": "Èdè Ìṣe",

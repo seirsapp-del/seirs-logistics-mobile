@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +37,16 @@ export default function LanguageScreen() {
   const handleLanguageChange = async (code: LanguageCode) => {
     setSelectedLang(code);
     await changeLanguage(code);
+    // Show the beta-translations notice for any non-English pick.
+    // The Alert renders with the NEW language because changeLanguage()
+    // already swapped i18n before this t() call resolves.
+    if (code !== 'en') {
+      Alert.alert(
+        t('languageNotice.title'),
+        t('languageNotice.body'),
+        [{ text: t('languageNotice.ok'), style: 'default' }],
+      );
+    }
   };
 
   return (

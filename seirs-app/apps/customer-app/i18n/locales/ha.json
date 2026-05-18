@@ -222,6 +222,11 @@
     "submitted": "An Aika Rahoto",
     "submittedMsg": "Tawagar mu za ta tuntube ku cikin awa 24. Magana: {{ref}}"
   },
+  "languageNotice": {
+    "title": "An canza harshe",
+    "body": "Har yanzu muna gyaran fassara tare da masu jin Hausa na asali. Wasu kalmomi na iya bayyana cikin Turanci — mun gode da haƙurin ka yayin da muke inganta SEIRS don Najeriya.",
+    "ok": "Na fahimta"
+  },
   "settings": {
     "languageTitle": "Harshe & Yanki",
     "appLanguage": "Harshen App",

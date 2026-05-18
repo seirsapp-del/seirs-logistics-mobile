@@ -222,6 +222,11 @@
     "submitted": "Report Submitted",
     "submittedMsg": "Our team will reach out within 24 hours. Reference: {{ref}}"
   },
+  "languageNotice": {
+    "title": "Language updated",
+    "body": "We're still polishing the translations with native speakers. Some words may still appear in English — thank you for your patience as we make SEIRS better for Nigeria.",
+    "ok": "Got it"
+  },
   "settings": {
     "languageTitle": "Language & Region",
     "appLanguage": "App Language",
