@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { paymentsApi } from '@/services/api';
+import { paymentsApi, loyaltyApi } from '@/services/api';
 
 interface ApiTx {
   id:        string;
@@ -21,7 +21,7 @@ interface ApiTx {
 }
 import {
   CreditCard, ArrowDownCircle, ArrowUpCircle, Receipt,
-  Plus, ArrowUp, Clock, QrCode,
+  Plus, ArrowUp, Clock, QrCode, Gift, Sparkles,
 } from 'lucide-react-native';
 import { HamburgerButton } from '@/components/HamburgerButton';
 
@@ -37,17 +37,22 @@ export default function WalletScreen() {
   const [activeTab,    setTab]         = useState<Tab>('all');
   const [withdrawing,  setWithdrawing]  = useState(false);
   const [balance,      setBalance]      = useState(0);
+  const [points,       setPoints]       = useState<number | null>(null);
+  const [tier,         setTier]         = useState<string | null>(null);
   const [transactions, setTransactions] = useState<ApiTx[]>([]);
   const [loading,      setLoading]      = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [w, h] = await Promise.all([
+      const [w, h, l] = await Promise.all([
         paymentsApi.wallet().catch(() => null),
         paymentsApi.history().catch(() => []),
+        loyaltyApi.balance().catch(() => null),
       ]);
       if (w) setBalance(w.balanceNaira ?? 0);
+      setPoints(l?.balance ?? 0);
+      setTier(l?.tier ?? null);
       // Backend returns Payment rows; we infer credit/debit from amount sign or type
       const txs = (Array.isArray(h) ? h : []).map((t: any): ApiTx => ({
         id:        t.id,
@@ -113,7 +118,7 @@ export default function WalletScreen() {
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <HamburgerButton />
-            <Text style={[styles.title, { color: theme.text }]}>{t('wallet.myWallet')}</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('rewardsTab.title')}</Text>
           </View>
           <Pressable
             style={[styles.iconBtn, { backgroundColor: theme.surfaceSecond }]}
@@ -123,52 +128,83 @@ export default function WalletScreen() {
           </Pressable>
         </View>
 
-        {/* Balance card */}
+        {/* ── Points hero (primary) ─────────────────────────────────── */}
         <View style={styles.cardWrap}>
           <LinearGradient
-            colors={isDark ? ['#1C2128', '#0D1117'] : ['#0F2B4C', '#1A3A63']}
+            colors={isDark ? ['#FF6B00', '#1A0500'] : ['#3A86FF', '#1D6AE5']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[styles.balanceCard, Shadows.navy]}
           >
-            <Text style={styles.balanceLabel}>{t('wallet.walletBalance')}</Text>
-            <Text style={styles.balanceAmount}>
-              ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-            </Text>
-
-            {/* Escrow breakdown */}
-            <View style={styles.escrowRow}>
-              <View style={styles.escrowItem}>
-                <Text style={styles.escrowLabel}>{t('wallet.available')}</Text>
-                <Text style={styles.escrowValue}>₦{available.toLocaleString()}</Text>
+            <View style={styles.heroTopRow}>
+              <View>
+                <Text style={styles.balanceLabel}>{t('rewardsTab.pointsLabel')}</Text>
+                <Text style={styles.balanceAmount}>
+                  {points != null ? points.toLocaleString() : '—'}
+                </Text>
               </View>
-              <View style={[styles.escrowDivider]} />
-              <View style={styles.escrowItem}>
-                <View style={styles.escrowTitleRow}>
-                  <Clock size={11} color="rgba(255,255,255,0.6)" strokeWidth={2} />
-                  <Text style={styles.escrowLabel}>{t('wallet.pendingEscrow')}</Text>
+              {tier && (
+                <View style={styles.tierPill}>
+                  <Sparkles size={14} color="#fff" strokeWidth={2} />
+                  <Text style={styles.tierPillText}>{tier}</Text>
                 </View>
-                <Text style={styles.escrowValue}>₦{escrow.toLocaleString()}</Text>
-              </View>
+              )}
             </View>
 
-            {/* Actions */}
             <View style={styles.cardActions}>
-              {[
-                { Icon: Plus,       label: t('wallet.topUp'),    onPress: () => router.push('/(customer)/add-payment' as any) },
-                { Icon: ArrowUp,    label: t('wallet.withdraw'), onPress: handleWithdraw },
-                { Icon: CreditCard, label: t('wallet.cards'),    onPress: () => router.push('/(customer)/payment-methods' as any) },
-                { Icon: QrCode,     label: t('home.wallet'),     onPress: () => router.push('/(customer)/seirs-id' as any) },
-              ].map(({ Icon, label, onPress }) => (
-                <Pressable key={label} style={styles.cardActionBtn} onPress={onPress}>
-                  <View style={styles.cardActionIcon}>
-                    <Icon size={20} color="#fff" strokeWidth={2} />
-                  </View>
-                  <Text style={styles.cardActionLabel}>{label}</Text>
-                </Pressable>
-              ))}
+              <Pressable style={styles.cardActionBtn} onPress={() => router.push('/(customer)/rewards' as any)}>
+                <View style={styles.cardActionIcon}>
+                  <Gift size={20} color="#fff" strokeWidth={2} />
+                </View>
+                <Text style={styles.cardActionLabel}>{t('rewardsTab.redeem')}</Text>
+              </Pressable>
+              <Pressable style={styles.cardActionBtn} onPress={() => router.push('/(customer)/referral' as any)}>
+                <View style={styles.cardActionIcon}>
+                  <Plus size={20} color="#fff" strokeWidth={2} />
+                </View>
+                <Text style={styles.cardActionLabel}>{t('rewardsTab.earnMore')}</Text>
+              </Pressable>
+              <Pressable style={styles.cardActionBtn} onPress={() => router.push('/(customer)/payment-methods' as any)}>
+                <View style={styles.cardActionIcon}>
+                  <CreditCard size={20} color="#fff" strokeWidth={2} />
+                </View>
+                <Text style={styles.cardActionLabel}>{t('wallet.cards')}</Text>
+              </Pressable>
+              <Pressable style={styles.cardActionBtn} onPress={() => router.push('/(customer)/seirs-id' as any)}>
+                <View style={styles.cardActionIcon}>
+                  <QrCode size={20} color="#fff" strokeWidth={2} />
+                </View>
+                <Text style={styles.cardActionLabel}>{t('home.wallet')}</Text>
+              </Pressable>
             </View>
           </LinearGradient>
+        </View>
+
+        {/* ── Account credit (secondary) ───────────────────────────── */}
+        {/* This is NOT a savings account. SEIRS can't hold customer NGN per
+            CBN rules (see seirs-payments-spec.html §1). Anything here is
+            promotional credit or pending refunds — labelled clearly so
+            customer doesn't expect a wallet they can top up. */}
+        <View style={[styles.creditCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+          <View style={styles.creditHeader}>
+            <Text style={[styles.creditTitle, { color: theme.text }]}>{t('rewardsTab.accountCredit')}</Text>
+            <Text style={[styles.creditAmount, { color: theme.text }]}>₦{balance.toLocaleString()}</Text>
+          </View>
+          <Text style={[styles.creditNote, { color: theme.textSecond }]}>{t('rewardsTab.accountCreditNote')}</Text>
+          {escrow > 0 && (
+            <View style={[styles.escrowChip, { backgroundColor: theme.surfaceSecond }]}>
+              <Clock size={11} color={theme.textSecond} strokeWidth={2} />
+              <Text style={[styles.escrowChipText, { color: theme.textSecond }]}>
+                {t('rewardsTab.escrowChip', { amount: escrow.toLocaleString() })}
+              </Text>
+            </View>
+          )}
+          {balance > 0 && (
+            <Pressable onPress={handleWithdraw} disabled={withdrawing} style={styles.creditWithdraw}>
+              <ArrowUp size={14} color={theme.primary} strokeWidth={2} />
+              <Text style={[styles.creditWithdrawText, { color: theme.primary }]}>{t('rewardsTab.withdrawCredit')}</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Stats */}
@@ -255,6 +291,19 @@ const styles = StyleSheet.create({
   balanceCard:   { borderRadius: Radius.xl, padding: Spacing.lg },
   balanceLabel:  { color: 'rgba(255,255,255,0.7)', fontSize: FontSize.sm, marginBottom: Spacing.xs },
   balanceAmount: { color: '#fff', fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: -0.5, marginBottom: Spacing.md },
+  heroTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  tierPill:      { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
+  tierPillText:  { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+
+  creditCard:        { marginHorizontal: Spacing.md, marginBottom: Spacing.lg, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1 },
+  creditHeader:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  creditTitle:       { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  creditAmount:      { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  creditNote:        { fontSize: FontSize.xs, marginTop: 4, lineHeight: 17 },
+  escrowChip:        { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Spacing.sm, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full, alignSelf: 'flex-start' },
+  escrowChipText:    { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
+  creditWithdraw:    { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Spacing.sm, alignSelf: 'flex-start' },
+  creditWithdrawText:{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
 
   escrowRow:     { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.lg },
   escrowItem:    { flex: 1, gap: 4 },

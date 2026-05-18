@@ -204,6 +204,16 @@
     "errScheduleTime": "Biko họrọ oge maka nbubata ahaziri.",
     "errBookingFailed": "Idebanye aha dara. Biko nwaa ọzọ."
   },
+  "rewardsTab": {
+    "title": "Ụgwọ Ọrụ M",
+    "pointsLabel": "Akara ụgwọ ọrụ",
+    "redeem": "Gbanwee",
+    "earnMore": "Nweta ihe ọzọ",
+    "accountCredit": "Ego akụn",
+    "accountCreditNote": "Ego mmemme na nkwụghachi ego. SEIRS anaghị ejide ego ndị ahịa — nke a abụghị akụn nchekwa ego.",
+    "escrowChip": "₦{{amount}} na-eche nkwụghachi",
+    "withdrawCredit": "Wepụ ego dị"
+  },
   "wallet": {
     "myWallet": "Mkpamkpa M",
     "walletBalance": "Ego dị na Mkpamkpa",
@@ -449,6 +459,7 @@
     "home": "Ụlọ",
     "bookings": "Ndokwa",
     "wallet": "Akpa Ego",
+    "rewards": "Ụgwọ Ọrụ",
     "messages": "Ozi",
     "profile": "Profaịlụ"
   },

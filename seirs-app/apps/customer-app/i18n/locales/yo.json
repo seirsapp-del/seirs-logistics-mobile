@@ -204,6 +204,16 @@
     "errScheduleTime": "Jọ̀wọ́ yan àkókò fún ìfijiṣẹ́ rẹ tí a ti ṣètò.",
     "errBookingFailed": "Tẹ kùnà. Jọ̀wọ́ gbìyànjú lẹ́ẹ̀kansí."
   },
+  "rewardsTab": {
+    "title": "Àwọn Ẹ̀bùn Mi",
+    "pointsLabel": "Àmì ẹ̀bùn",
+    "redeem": "Lo",
+    "earnMore": "Gba diẹ̀ si",
+    "accountCredit": "Owó àkáǹtà",
+    "accountCreditNote": "Owó ìpolówó àti owó tí a san padà. SEIRS kò ní owó alábàákẹ́gbẹ́ — kì í ṣe àpamọwọ ìfipamọ́ owó.",
+    "escrowChip": "₦{{amount}} wà nínú àtúnyẹ̀wò",
+    "withdrawCredit": "Yọ owó tí ó wà"
+  },
   "wallet": {
     "myWallet": "Àpamọwọ Mi",
     "walletBalance": "Iye Àpamọwọ",
@@ -449,6 +459,7 @@
     "home": "Ilé",
     "bookings": "Àwọn Ìfiránṣẹ",
     "wallet": "Àpamọwọ",
+    "rewards": "Ẹ̀bùn",
     "messages": "Àwọn Ìfiránṣẹ́",
     "profile": "Profáìlì"
   },

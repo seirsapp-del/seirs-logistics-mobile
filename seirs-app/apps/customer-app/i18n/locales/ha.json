@@ -204,6 +204,16 @@
     "errScheduleTime": "Don Allah zaɓi lokacin isarwarka da aka ƙayyade.",
     "errBookingFailed": "Buƙatar ta gaza. Don Allah sake gwadawa."
   },
+  "rewardsTab": {
+    "title": "Lambobina",
+    "pointsLabel": "Maki na lada",
+    "redeem": "Yi amfani",
+    "earnMore": "Sami ƙarin",
+    "accountCredit": "Kuɗin asusu",
+    "accountCreditNote": "Kuɗin tallace-tallace da kuɗin biya. SEIRS ba ya riƙe kuɗin abokin ciniki — wannan ba asusun ajiya ba ne.",
+    "escrowChip": "₦{{amount}} a jiran biya",
+    "withdrawCredit": "Karɓi kuɗin da ke akwai"
+  },
   "wallet": {
     "myWallet": "Walatan Na",
     "walletBalance": "Kuɗin Walat",
@@ -449,6 +459,7 @@
     "home": "Gida",
     "bookings": "Yin Oda",
     "wallet": "Walat",
+    "rewards": "Lambobi",
     "messages": "Saƙonni",
     "profile": "Bayanai"
   },

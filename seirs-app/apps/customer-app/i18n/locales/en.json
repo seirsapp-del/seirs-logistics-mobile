@@ -204,6 +204,16 @@
     "errScheduleTime": "Please pick a time for your scheduled delivery.",
     "errBookingFailed": "Booking failed. Please try again."
   },
+  "rewardsTab": {
+    "title": "My Rewards",
+    "pointsLabel": "Reward points",
+    "redeem": "Redeem",
+    "earnMore": "Earn more",
+    "accountCredit": "Account credit",
+    "accountCreditNote": "Promotional credit and refunds. SEIRS does not hold customer money — this is not a savings account.",
+    "escrowChip": "₦{{amount}} pending (refunds in transit)",
+    "withdrawCredit": "Withdraw available credit"
+  },
   "wallet": {
     "myWallet": "My Wallet",
     "walletBalance": "Wallet Balance",
@@ -680,6 +690,7 @@
     "home": "Home",
     "bookings": "Bookings",
     "wallet": "Wallet",
+    "rewards": "Rewards",
     "messages": "Messages",
     "profile": "Profile"
   },

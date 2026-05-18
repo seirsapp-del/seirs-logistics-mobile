@@ -58,7 +58,7 @@ export default function CustomerTabsLayout() {
       />
       <Tabs.Screen
         name="wallet"
-        options={{ title: t('tabs.wallet'), tabBarIcon: (p) => <TabIcon name="wallet" color={p.color} focused={p.focused} /> }}
+        options={{ title: t('tabs.rewards'), tabBarIcon: (p) => <TabIcon name="gift" color={p.color} focused={p.focused} /> }}
       />
       <Tabs.Screen
         name="messages"
