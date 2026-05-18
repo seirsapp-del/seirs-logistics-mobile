@@ -45,16 +45,10 @@ const PACKAGE_CATEGORIES = [
 ] as const;
 type CategoryId = typeof PACKAGE_CATEGORIES[number]['id'];
 
-const VEHICLES = [
-  { id: 'bicycle',    labelKey: 'vehBicycle',    noteKey: 'vehBicycleNote',    maxKg: 5,    base: 500,   perKm: 50   },
-  { id: 'motorcycle', labelKey: 'vehMotorcycle', noteKey: 'vehMotorcycleNote', maxKg: 20,   base: 800,   perKm: 150  },
-  { id: 'keke',       labelKey: 'vehKeke',       noteKey: 'vehKekeNote',       maxKg: 100,  base: 1200,  perKm: 200  },
-  { id: 'car',        labelKey: 'vehCar',        noteKey: 'vehCarNote',        maxKg: 200,  base: 2000,  perKm: 300  },
-  { id: 'van',        labelKey: 'vehVan',        noteKey: 'vehVanNote',        maxKg: 800,  base: 5000,  perKm: 500  },
-  { id: 'truck_sm',   labelKey: 'vehTruckSm',    noteKey: 'vehTruckSmNote',    maxKg: 3000, base: 15000, perKm: 1000 },
-  { id: 'truck_lg',   labelKey: 'vehTruckLg',    noteKey: 'vehTruckLgNote',    maxKg: 9999, base: 40000, perKm: 2000 },
-] as const;
-type VehicleId = typeof VEHICLES[number]['id'];
+import { PACKAGE_VEHICLES, calcPackageFare } from '@/constants/rateCard';
+
+const VEHICLES = PACKAGE_VEHICLES;
+type VehicleId = typeof PACKAGE_VEHICLES[number]['id'];
 
 const PAYMENT_METHODS = [
   { id: 'card',          labelKey: 'payCard'         },
@@ -110,14 +104,9 @@ const MAX_BOOK_AHEAD  = (() => {
 })();
 
 function calcFare(vid: VehicleId, distKm: number, kg: number) {
-  const v       = VEHICLES.find(x => x.id === vid)!;
-  const base    = v.base;
-  const dist    = distKm * v.perKm;
-  const weight  = kg > 5 ? Math.floor(kg / 5) * 50 : 0;
-  const subtotal= base + dist + weight;
-  const service = Math.round(subtotal * 0.30);
-  const total   = subtotal + service;
-  return { base, dist, weight, service, total };
+  // Delegates to the rate-card calculator so admin can edit prices
+  // without touching screen code. Returns base + dist + weight + handling + service.
+  return calcPackageFare(vid, distKm, kg);
 }
 
 type Field = 'pickup' | 'dropoff';
@@ -746,11 +735,12 @@ export default function SendScreen() {
               <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                 <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.fareBreakdown')}</Text>
                 {([
-                  [t('send.baseFare'),        fare.base   ],
-                  [t('send.distanceCharge'),  fare.dist   ],
-                  [t('send.weightSurcharge'), fare.weight ],
-                  [t('send.serviceFee'),      fare.service],
-                ] as [string, number][]).map(([lbl, amt]) => (
+                  [t('send.baseFare'),        fare.base    ],
+                  [t('send.distanceCharge'),  fare.dist    ],
+                  [t('send.weightSurcharge'), fare.weight  ],
+                  [t('send.handlingFee'),     fare.handling],
+                  [t('send.serviceFee'),      fare.service ],
+                ] as [string, number][]).filter(([, amt]) => amt > 0).map(([lbl, amt]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
                     <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
                     <Text style={[styles.fareAmt,   { color: theme.text }]}>₦{amt.toLocaleString()}</Text>

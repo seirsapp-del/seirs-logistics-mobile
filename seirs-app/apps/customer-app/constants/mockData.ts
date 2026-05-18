@@ -57,80 +57,14 @@ export const MOCK_DRIVERS = [
   },
 ];
 
-// Ride vehicles — what passengers see on /request and /vehicle-select.
-// Nigerian transport names per spec; prices computed via calcRideFare().
-export const RIDE_VEHICLES = [
-  {
-    id: 'okada',
-    label: 'Okada',
-    icon: 'bicycle-outline',
-    subKey: 'okadaSub',
-    description: 'Fastest in traffic',
-    eta: '2 min',
-    base: 600,
-    perKm: 60,
-    capacityKey: 'capacityRider',
-    capacityCount: 1,
-    features: ['Fast', 'Cheap'],
-    shareable: false,
-  },
-  {
-    id: 'keke',
-    label: 'Keke',
-    icon: 'car-outline',
-    subKey: 'kekeSub',
-    description: 'Affordable shaded ride',
-    eta: '3 min',
-    base: 900,
-    perKm: 90,
-    capacityKey: 'capacityRiders',
-    capacityCount: 3,
-    features: ['Shaded', 'Affordable'],
-    shareable: false,
-  },
-  {
-    id: 'car',
-    label: 'Car',
-    icon: 'car-sport-outline',
-    subKey: 'carSub',
-    description: 'Comfortable AC ride',
-    eta: '4 min',
-    base: 1500,
-    perKm: 180,
-    capacityKey: 'capacityRiders',
-    capacityCount: 4,
-    features: ['AC', 'Comfort'],
-    shareable: true,
-  },
-  {
-    id: 'danfo',
-    label: 'Danfo',
-    icon: 'bus-outline',
-    subKey: 'danfoSub',
-    description: 'Group / shared bus',
-    eta: '8 min',
-    base: 3500,
-    perKm: 300,
-    capacityKey: 'capacityRiders',
-    capacityCount: 14,
-    features: ['Large', 'Group'],
-    shareable: true,
-  },
-] as const;
-
-// Ride fare = base + (distance × per-km) + 15% service.
-// Shared ride applies a 20% discount on car / danfo only.
-export function calcRideFare(vehicleId: string, distKm: number, shared: boolean) {
-  const v = RIDE_VEHICLES.find(x => x.id === vehicleId) ?? RIDE_VEHICLES[0];
-  const safeKm   = Math.max(0, distKm || 0);
-  const base     = v.base;
-  const dist     = Math.round(safeKm * v.perKm);
-  const subtotal = base + dist;
-  const service  = Math.round(subtotal * 0.15);
-  const gross    = subtotal + service;
-  const discount = shared && v.shareable ? Math.round(gross * 0.20) : 0;
-  return { base, dist, service, discount, total: gross - discount, vehicle: v };
-}
+// Ride / package vehicles + fare math live in the rate card so admin
+// can edit prices without a code change. Re-exported here so existing
+// `import { RIDE_VEHICLES, calcRideFare } from '@/constants/mockData'`
+// callers keep working.
+import { DEFAULT_RATE_CARD, calcRideFare as _calcRideFare, calcPackageFare as _calcPackageFare } from './rateCard';
+export { RIDE_VEHICLES, PACKAGE_VEHICLES } from './rateCard';
+export const calcRideFare    = (vehicleId: string, distKm: number, shared: boolean) => _calcRideFare(DEFAULT_RATE_CARD, vehicleId, distKm, shared);
+export const calcPackageFare = (vehicleId: string, distKm: number, kg: number)      => _calcPackageFare(DEFAULT_RATE_CARD, vehicleId, distKm, kg);
 
 export const MOCK_VEHICLES = [
   {
