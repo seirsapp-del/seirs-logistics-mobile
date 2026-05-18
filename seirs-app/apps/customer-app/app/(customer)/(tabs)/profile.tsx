@@ -2,7 +2,8 @@ import {
   View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -10,7 +11,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
-import { MOCK_USER, MOCK_TRIPS } from '@/constants/mockData';
+import { deliveriesApi, paymentsApi, loyaltyApi, promotionsApi } from '@/services/api';
 
 type MenuSection = { title: string; items: MenuItem[] };
 type MenuItem = { icon: string; label: string; sub?: string; onPress: () => void; danger?: boolean };
@@ -23,8 +24,42 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { t }            = useTranslation();
 
-  const displayName = user?.name ?? MOCK_USER.name;
-  const completedTrips = MOCK_TRIPS.filter(tr => tr.status === 'completed').length;
+  // Real backend-sourced stats. Default to 0 / null while loading so we
+  // never show MOCK_USER numbers masquerading as the user's own data.
+  const [walletBalance,   setWalletBalance]   = useState<number | null>(null);
+  const [loyaltyPoints,   setLoyaltyPoints]   = useState<number | null>(null);
+  const [loyaltyTier,     setLoyaltyTier]     = useState<string | null>(null);
+  const [completedTrips,  setCompletedTrips]  = useState<number | null>(null);
+  const [activePromos,    setActivePromos]    = useState<number | null>(null);
+  const [referralCode,    setReferralCode]    = useState<string | null>(null);
+
+  // Show the user's actual name when available; empty string otherwise so
+  // <Text> renders nothing (Avatar handles initial without a name).
+  const displayName = user?.name ?? '';
+
+  useFocusEffect(
+    // Re-fetch on every focus so coming back from wallet top-up etc.
+    // shows fresh numbers without a full restart.
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        const [w, l, h, p] = await Promise.all([
+          paymentsApi.wallet().catch(() => null),
+          loyaltyApi.balance().catch(() => null),
+          deliveriesApi.myDeliveries(1, 1).catch(() => null),
+          promotionsApi.listActive().catch(() => null),
+        ]);
+        if (cancelled) return;
+        setWalletBalance(w?.balance ?? 0);
+        setLoyaltyPoints(l?.balance ?? 0);
+        setLoyaltyTier(l?.tier ?? null);
+        setCompletedTrips((h as any)?.total ?? (h as any)?.items?.filter?.((i: any) => i.status === 'completed').length ?? 0);
+        setActivePromos((p ?? []).length);
+        setReferralCode((user as any)?.referralCode ?? null);
+      })();
+      return () => { cancelled = true; };
+    }, [user]),
+  );
 
   const handleLogout = () => {
     Alert.alert(t('profile.signOut'), t('profile.signOutConfirm'), [
@@ -46,11 +81,11 @@ export default function ProfileScreen() {
     {
       title: t('profile.sectionActivity'),
       items: [
-        { icon: 'receipt-outline',   label: t('profile.myTrips'),     sub: t('profile.myTripsSub',  { count: completedTrips }), onPress: () => router.push('/(customer)/history') },
-        { icon: 'wallet-outline',    label: t('profile.wallet'),      sub: t('profile.walletSub',   { balance: MOCK_USER.walletBalance.toLocaleString() }), onPress: () => router.push('/(customer)/wallet') },
-        { icon: 'star-outline',      label: t('profile.rewards'),     sub: t('profile.rewardsSub',  { points: MOCK_USER.points.toLocaleString(), tier: MOCK_USER.tier }), onPress: () => router.push('/(customer)/rewards') },
+        { icon: 'receipt-outline',   label: t('profile.myTrips'),     sub: t('profile.myTripsSub',  { count: completedTrips ?? 0 }), onPress: () => router.push('/(customer)/history') },
+        { icon: 'wallet-outline',    label: t('profile.wallet'),      sub: t('profile.walletSub',   { balance: (walletBalance ?? 0).toLocaleString() }), onPress: () => router.push('/(customer)/wallet') },
+        { icon: 'star-outline',      label: t('profile.rewards'),     sub: t('profile.rewardsSub',  { points: (loyaltyPoints ?? 0).toLocaleString(), tier: loyaltyTier ?? '—' }), onPress: () => router.push('/(customer)/rewards') },
         { icon: 'gift-outline',      label: t('profile.referEarn'),   sub: t('profile.referEarnSub'),     onPress: () => router.push('/(customer)/referral') },
-        { icon: 'ticket-outline',    label: t('profile.promotions'),  sub: t('profile.promotionsSub', { count: 3 }), onPress: () => router.push('/(customer)/promotions') },
+        { icon: 'ticket-outline',    label: t('profile.promotions'),  sub: t('profile.promotionsSub', { count: activePromos ?? 0 }), onPress: () => router.push('/(customer)/promotions') },
       ],
     },
     {
@@ -97,23 +132,26 @@ export default function ProfileScreen() {
           <View style={styles.userCardTop}>
             <Avatar name={displayName} uri={user?.profilePhoto} size={68} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.userName, { color: theme.text }]}>{displayName}</Text>
-              <Text style={[styles.userEmail, { color: theme.textSecond }]}>{user?.email ?? MOCK_USER.email}</Text>
-              <Text style={[styles.userPhone, { color: theme.textSecond }]}>{user?.phone ?? MOCK_USER.phone}</Text>
+              <Text style={[styles.userName, { color: theme.text }]}>{displayName || '—'}</Text>
+              <Text style={[styles.userEmail, { color: theme.textSecond }]}>{user?.email ?? '—'}</Text>
+              <Text style={[styles.userPhone, { color: theme.textSecond }]}>{user?.phone ?? '—'}</Text>
             </View>
-            <View style={[styles.tierPill, { backgroundColor: '#FFBE0B20', borderColor: '#FFBE0B40' }]}>
-              <Ionicons name="medal" size={13} color="#FFBE0B" />
-              <Text style={[styles.tierText, { color: '#B45309' }]}>{MOCK_USER.tier}</Text>
-            </View>
+            {loyaltyTier && (
+              <View style={[styles.tierPill, { backgroundColor: '#FFBE0B20', borderColor: '#FFBE0B40' }]}>
+                <Ionicons name="medal" size={13} color="#FFBE0B" />
+                <Text style={[styles.tierText, { color: '#B45309' }]}>{loyaltyTier}</Text>
+              </View>
+            )}
           </View>
 
           {/* Stats row — drivers get rated, customers don't. Wallet balance is
-              a more relevant stat for the customer to see at a glance. */}
+              a more relevant stat for the customer to see at a glance.
+              Falls back to 0 / '—' while real data loads — NEVER mock values. */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
             {[
-              { label: t('profile.statTrips'),  value: `${completedTrips}` },
-              { label: t('profile.statPoints'), value: MOCK_USER.points.toLocaleString() },
-              { label: t('profile.statWallet'), value: `₦${MOCK_USER.walletBalance.toLocaleString()}` },
+              { label: t('profile.statTrips'),  value: completedTrips != null ? `${completedTrips}` : '—' },
+              { label: t('profile.statPoints'), value: loyaltyPoints  != null ? loyaltyPoints.toLocaleString() : '—' },
+              { label: t('profile.statWallet'), value: walletBalance  != null ? `₦${walletBalance.toLocaleString()}` : '—' },
             ].map((s, i) => (
               <View key={s.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
                 <Text style={[styles.statValue, { color: theme.text }]}>{s.value}</Text>
@@ -123,14 +161,19 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Referral code quick access */}
+        {/* Referral code quick access — only show the code if the user
+            actually has one; otherwise tap-through to the referral screen
+            where they can generate or claim one. */}
         <Pressable
           style={[styles.refRow, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '40' }]}
           onPress={() => router.push('/(customer)/referral')}
         >
           <Ionicons name="gift-outline" size={18} color={theme.primary} />
           <Text style={[styles.refText, { color: theme.text }]}>
-            {t('profile.yourReferralCode')} <Text style={{ color: theme.primary, fontWeight: FontWeight.bold }}>{MOCK_USER.referralCode}</Text>
+            {t('profile.yourReferralCode')}{' '}
+            {referralCode && (
+              <Text style={{ color: theme.primary, fontWeight: FontWeight.bold }}>{referralCode}</Text>
+            )}
           </Text>
           <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
         </Pressable>
