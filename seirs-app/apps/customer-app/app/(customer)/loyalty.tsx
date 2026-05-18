@@ -129,7 +129,7 @@ export default function LoyaltyScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Rewards</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('rewards2.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -161,7 +161,7 @@ export default function LoyaltyScreen() {
           </View>
 
           {/* Redeem options */}
-          <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Redeem</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('rewards2.redeem')}</Text>
           {REDEMPTIONS.map(r => {
             const canAfford = balance >= r.cost;
             return (

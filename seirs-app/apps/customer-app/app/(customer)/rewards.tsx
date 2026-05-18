@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { MOCK_USER, MOCK_REWARDS } from '@/constants/mockData';
@@ -21,6 +22,7 @@ export default function RewardsScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
 
   const points      = MOCK_USER.points;
   const currentTier = TIERS.find(t => points >= t.min && points <= t.max) ?? TIERS[0];
@@ -38,7 +40,7 @@ export default function RewardsScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Rewards</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('rewards2.title')}</Text>
         <Pressable onPress={() => router.push('/(customer)/referral')}>
           <Ionicons name="gift-outline" size={22} color={theme.primary} />
         </Pressable>
@@ -55,7 +57,7 @@ export default function RewardsScreen() {
         >
           <View style={styles.heroTop}>
             <View>
-              <Text style={styles.heroLabel}>Your Points</Text>
+              <Text style={styles.heroLabel}>{t('rewards2.yourPoints')}</Text>
               <Text style={styles.heroPoints}>{points.toLocaleString()}</Text>
             </View>
             <View style={[styles.tierBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
@@ -77,7 +79,7 @@ export default function RewardsScreen() {
 
         {/* Tier levels */}
         <View style={[styles.tiersCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Membership Tiers</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('rewards2.membershipTiers')}</Text>
           {TIERS.map((tier, i) => {
             const isActive = tier.name === currentTier.name;
             return (

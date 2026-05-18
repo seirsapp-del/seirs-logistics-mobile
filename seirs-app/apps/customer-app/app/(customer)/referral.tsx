@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -29,6 +30,7 @@ export default function ReferralScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
   const { user } = useAuth();
+  const { t }   = useTranslation();
 
   // Use the user's accountId (e.g. CUST-A7K2P9) as the referral code so
   // it doubles as their SEIRS Verified ID per Spec V8.
@@ -69,7 +71,7 @@ export default function ReferralScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Refer & Earn</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('referral2.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -85,7 +87,7 @@ export default function ReferralScreen() {
           <View style={styles.heroIcon}>
             <Ionicons name="gift" size={36} color="#fff" />
           </View>
-          <Text style={styles.heroTitle}>Invite friends, earn cash</Text>
+          <Text style={styles.heroTitle}>{t('referral2.heroTitle')}</Text>
           <Text style={styles.heroDesc}>
             You get â‚¦1,000 and your friend gets â‚¦500 off their first ride when they sign up with your code.
           </Text>
@@ -93,7 +95,7 @@ export default function ReferralScreen() {
 
         {/* Referral code */}
         <View style={[styles.codeCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-          <Text style={[styles.codeLabel, { color: theme.textSecond }]}>Your Referral Code</Text>
+          <Text style={[styles.codeLabel, { color: theme.textSecond }]}>{t('referral2.yourCode')}</Text>
           <View style={[styles.codeRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <Text style={[styles.codeText, { color: theme.primary }]}>{referralCode}</Text>
             <Pressable
@@ -106,7 +108,7 @@ export default function ReferralScreen() {
           </View>
           <Pressable style={[styles.shareBtn, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '40' }]} onPress={handleShare}>
             <Ionicons name="share-social-outline" size={18} color={theme.primary} />
-            <Text style={[styles.shareBtnText, { color: theme.primary }]}>Share with friends</Text>
+            <Text style={[styles.shareBtnText, { color: theme.primary }]}>{t('referral2.share')}</Text>
           </Pressable>
         </View>
 

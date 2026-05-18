@@ -7,6 +7,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { promotionsApi, type PromoDTO } from '@/services/api';
@@ -30,6 +31,7 @@ export default function PromotionsScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { t }   = useTranslation();
 
   const [copied,    setCopied]    = useState<string | null>(null);
   const [promos,    setPromos]    = useState<PromoDTO[]>([]);
@@ -70,7 +72,7 @@ export default function PromotionsScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Promotions</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('promotions2.title')}</Text>
         <Pressable onPress={() => router.push('/(customer)/promo')}>
           <Ionicons name="add" size={24} color={theme.primary} />
         </Pressable>
@@ -91,8 +93,8 @@ export default function PromotionsScreen() {
               style={styles.banner}
             >
               <View style={styles.bannerContent}>
-                <Text style={styles.bannerTitle}>Save on every ride</Text>
-                <Text style={styles.bannerDesc}>Apply promo codes at checkout for instant discounts.</Text>
+                <Text style={styles.bannerTitle}>{t('promotions2.bannerTitle')}</Text>
+                <Text style={styles.bannerDesc}>{t('promotions2.bannerDesc')}</Text>
                 <Pressable style={styles.bannerBtn} onPress={() => router.push('/(customer)/promo')}>
                   <Text style={styles.bannerBtnText}>Apply Code</Text>
                   <Ionicons name="arrow-forward" size={14} color="#3A86FF" />
@@ -144,7 +146,7 @@ export default function PromotionsScreen() {
           ) : (
             <View style={styles.empty}>
               <Ionicons name="ticket-outline" size={48} color={theme.textThird} />
-              <Text style={[styles.emptyText, { color: theme.textSecond }]}>No active promotions</Text>
+              <Text style={[styles.emptyText, { color: theme.textSecond }]}>{t('promotions2.noPromos')}</Text>
             </View>
           )
         }
