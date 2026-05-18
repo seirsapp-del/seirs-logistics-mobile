@@ -72,7 +72,9 @@
     "bookDelivery": "Book a delivery to get started",
     "historyHere": "Your delivery history appears here",
     "sendPackage": "Send a Package",
-    "requestRide": "Request a Ride"
+    "requestRide": "Request a Ride",
+    "bookTrip": "Book a Trip",
+    "scheduleTrip": "Schedule for Later"
   },
   "send": {
     "sendPackage": "Send a Package",

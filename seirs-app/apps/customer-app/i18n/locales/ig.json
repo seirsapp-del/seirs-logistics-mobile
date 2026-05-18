@@ -72,7 +72,9 @@
     "bookDelivery": "Dee nnyefe iji bido",
     "historyHere": "Akụkọ nnyefe gị ga-apụta ebe a",
     "sendPackage": "Ziga Ngwugwu",
-    "requestRide": "Arịọ Njem"
+    "requestRide": "Arịọ Njem",
+    "bookTrip": "Debe Njem",
+    "scheduleTrip": "Hazie Maka Emechara"
   },
   "send": {
     "sendPackage": "Ziga Ngwugwu",

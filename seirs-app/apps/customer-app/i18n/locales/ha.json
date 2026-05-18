@@ -72,7 +72,9 @@
     "bookDelivery": "Yi odar isar da kaya don farawa",
     "historyHere": "Tarihin isar da kayanka zai bayyana anan",
     "sendPackage": "Aika Fakiti",
-    "requestRide": "Nemi Tafiya"
+    "requestRide": "Nemi Tafiya",
+    "bookTrip": "Yi Oda Tafiya",
+    "scheduleTrip": "Tsara don Daga Baya"
   },
   "send": {
     "sendPackage": "Aika Fakiti",

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
-  TextInput, Dimensions, Alert, RefreshControl,
+  TextInput, Dimensions, Alert, RefreshControl, Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +19,7 @@ import { deliveriesApi, paymentsApi } from '@/services/api';
 import {
   AlignLeft, MapPin, Package, Car, Clock, Search,
   Wallet, Bell, TrendingUp, ChevronRight, Plus,
-  Newspaper, Truck,
+  Newspaper, Truck, Calendar, X,
 } from 'lucide-react-native';
 
 const { width: W } = Dimensions.get('window');
@@ -47,10 +47,10 @@ export default function CustomerHomeScreen() {
 
   const firstName  = user?.name?.split(' ')[0] ?? 'there';
 
+  const insets = useSafeAreaInsets();
   const [activeTab,     setActiveTab]     = useState<TripTab>('in_progress');
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [sendPressed,   setSendPressed]   = useState(false);
-  const [ridePressed,   setRidePressed]   = useState(false);
+  const [chooserOpen,   setChooserOpen]   = useState(false);
   const [balance,       setBalance]       = useState(0);
   const [trips,         setTrips]         = useState<Array<{
     id: string; status: string; date: string; dropoffAddress: string; price: number; distance: string;
@@ -100,7 +100,7 @@ export default function CustomerHomeScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 96 + insets.bottom }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
       >
 
@@ -321,56 +321,74 @@ export default function CustomerHomeScreen() {
 
       </ScrollView>
 
-      {/* ── Action buttons (fixed bottom) ──────────────────────────────────
-          Two-state design: tinted+bordered when idle (so both options are
-          legible and don't fight each other in dark mode), full-saturated
-          fill with white text when pressed (clear tactile feedback). Same
-          pattern Wise / Revolut / Kuda use for primary actions.
+      {/* ── Primary CTA (fixed bottom) ─────────────────────────────────────
+          Single-button design — opens a chooser sheet with Send Package /
+          Request Ride / Schedule. Pinned to the bottom with dynamic
+          paddingBottom so it never clips into the gesture bar.
 
-          Uses local state via onPressIn/onPressOut instead of Pressable's
-          function-child syntax, which has a "forEach of null" crash bug
-          on this RN version when style is also a function. */}
-      <View style={[styles.actionWrap, { backgroundColor: theme.surface }, Shadows.lg]}>
+          Replaces the prior dual-button row which was cramped, redundant
+          with the top search bar, and harder to extend with a 3rd option
+          (Schedule). */}
+      <View style={[styles.ctaWrap, {
+        backgroundColor: theme.surface,
+        paddingBottom: 16 + insets.bottom,
+      }, Shadows.lg]}>
         <Pressable
-          onPress={() => router.push('/(customer)/send' as any)}
-          onPressIn={() => setSendPressed(true)}
-          onPressOut={() => setSendPressed(false)}
+          onPress={() => setChooserOpen(true)}
           accessibilityRole="button"
-          accessibilityLabel="Send a package"
-          style={[
-            styles.actionBtn,
-            {
-              backgroundColor: sendPressed ? theme.primary : theme.primary + '20',
-              borderColor:     theme.primary,
-            },
+          accessibilityLabel={t('home.bookTrip')}
+          style={({ pressed }) => [
+            styles.ctaBtn,
+            { backgroundColor: pressed ? theme.primary : theme.primary },
+            pressed && { opacity: 0.85 },
           ]}
         >
-          <Package size={18} color={sendPressed ? '#FFFFFF' : theme.primary} strokeWidth={2} />
-          <Text style={[styles.actionBtnText, { color: sendPressed ? '#FFFFFF' : theme.primary }]}>
-            Send a Package
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push('/(customer)/request' as any)}
-          onPressIn={() => setRidePressed(true)}
-          onPressOut={() => setRidePressed(false)}
-          accessibilityRole="button"
-          accessibilityLabel="Request a ride"
-          style={[
-            styles.actionBtn,
-            {
-              backgroundColor: ridePressed ? theme.accent : theme.accent + '20',
-              borderColor:     theme.accent,
-            },
-          ]}
-        >
-          <Car size={18} color={ridePressed ? '#FFFFFF' : theme.accent} strokeWidth={2} />
-          <Text style={[styles.actionBtnText, { color: ridePressed ? '#FFFFFF' : theme.accent }]}>
-            Request a Ride
-          </Text>
+          <Plus size={20} color="#fff" strokeWidth={2.5} />
+          <Text style={styles.ctaBtnText}>{t('home.bookTrip')}</Text>
         </Pressable>
       </View>
+
+      {/* ── Book a Trip chooser sheet ──────────────────────────────────── */}
+      <Modal
+        visible={chooserOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setChooserOpen(false)}
+      >
+        <Pressable style={styles.sheetBackdrop} onPress={() => setChooserOpen(false)} />
+        <View style={[styles.sheet, { backgroundColor: theme.surface, paddingBottom: 16 + insets.bottom }]}>
+          <View style={styles.sheetHandle} />
+          <View style={styles.sheetHeader}>
+            <Text style={[styles.sheetTitle, { color: theme.text }]}>{t('home.bookTrip')}</Text>
+            <Pressable onPress={() => setChooserOpen(false)} hitSlop={12}>
+              <X size={20} color={theme.textSecond} />
+            </Pressable>
+          </View>
+
+          {[
+            { Icon: Package,  key: 'sendPackage',  color: theme.primary, route: '/(customer)/send' },
+            { Icon: Car,      key: 'requestRide',  color: theme.accent,  route: '/(customer)/request' },
+            { Icon: Calendar, key: 'scheduleTrip', color: '#16A34A',     route: '/(customer)/schedule' },
+          ].map(opt => (
+            <Pressable
+              key={opt.key}
+              style={({ pressed }) => [
+                styles.sheetOption,
+                { borderColor: theme.border, backgroundColor: pressed ? theme.surfaceSecond : theme.surface },
+              ]}
+              onPress={() => { setChooserOpen(false); router.push(opt.route as any); }}
+            >
+              <View style={[styles.sheetIconWrap, { backgroundColor: opt.color + '20' }]}>
+                <opt.Icon size={22} color={opt.color} strokeWidth={2} />
+              </View>
+              <Text style={[styles.sheetOptionLabel, { color: theme.text }]}>
+                {t(`home.${opt.key}`)}
+              </Text>
+              <ChevronRight size={18} color={theme.textThird} strokeWidth={2} />
+            </Pressable>
+          ))}
+        </View>
+      </Modal>
 
       {/* ── Hamburger Drawer ────────────────────────────────────────────── */}
       <Drawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />
@@ -447,19 +465,41 @@ const styles = StyleSheet.create({
   emptyBtn:   { marginTop: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: 12, borderRadius: Radius.full },
   emptyBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 
-  // Bottom action buttons (Send a Package / Request a Ride)
-  actionWrap: {
+  // Bottom CTA + chooser sheet
+  ctaWrap: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: 28,
+    paddingHorizontal: Spacing.md, paddingTop: Spacing.md,
     borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl,
   },
-  actionBtn: {
-    flex: 1, height: 56, borderRadius: Radius.full,
+  ctaBtn: {
+    height: 52, borderRadius: Radius.full,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: Spacing.sm, borderWidth: 1.5,
+    gap: Spacing.sm,
   },
-  actionBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  ctaBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold, letterSpacing: 0.3 },
+
+  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  sheet: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl,
+    paddingHorizontal: Spacing.md, paddingTop: Spacing.sm,
+  },
+  sheetHandle: {
+    width: 44, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB',
+    alignSelf: 'center', marginBottom: Spacing.sm,
+  },
+  sheetHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: Spacing.sm, marginBottom: Spacing.sm,
+  },
+  sheetTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  sheetOption: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+    paddingVertical: Spacing.md, paddingHorizontal: Spacing.md,
+    borderRadius: Radius.lg, borderWidth: 1, marginBottom: Spacing.sm,
+  },
+  sheetIconWrap: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  sheetOptionLabel: { flex: 1, fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 
   // Drawer
   drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', flexDirection: 'row' },

@@ -72,7 +72,9 @@
     "bookDelivery": "Tẹ ìfiránṣẹ lati bẹ̀rẹ̀",
     "historyHere": "Ìtàn ìfiránṣẹ rẹ yóò farahàn níbí",
     "sendPackage": "Firanṣẹ Idii",
-    "requestRide": "Béèrè Ìrìn"
+    "requestRide": "Béèrè Ìrìn",
+    "bookTrip": "Tẹ Ìrìn Bú",
+    "scheduleTrip": "Ètò fún Lẹ́yìn"
   },
   "send": {
     "sendPackage": "Firanṣẹ Idii",

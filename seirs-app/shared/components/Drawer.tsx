@@ -110,6 +110,9 @@ export function Drawer({
             transform: [{ translateX }],
             backgroundColor: theme.surface,
             paddingTop: insets.top,
+            // Bottom inset so Sign Out button doesn't hide under the Android
+            // gesture bar / nav bar when edgeToEdgeEnabled is true.
+            paddingBottom: insets.bottom,
             width: DRAWER_WIDTH,
           },
         ]}
