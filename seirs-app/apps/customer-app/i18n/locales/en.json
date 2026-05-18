@@ -103,6 +103,8 @@
     "fareBreakdown": "Fare Breakdown",
     "baseFare": "Base fare",
     "distanceCharge": "Distance charge",
+    "distanceLabour": "Distance (labour)",
+    "distanceFuel": "Distance (fuel)",
     "weightSurcharge": "Weight surcharge",
     "handlingFee": "Loading & unloading",
     "categorySurcharge": "Category surcharge",

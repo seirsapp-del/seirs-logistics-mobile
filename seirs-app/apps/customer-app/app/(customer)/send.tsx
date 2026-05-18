@@ -771,7 +771,8 @@ export default function SendScreen() {
                 <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.fareBreakdown')}</Text>
                 {([
                   [t('send.baseFare'),                                       fare.base             ],
-                  [t('send.distanceCharge'),                                 fare.dist             ],
+                  [t('send.distanceLabour'),                                 fare.dist             ],
+                  [t('send.distanceFuel'),                                   fare.distFuel         ],
                   [t('send.weightSurcharge'),                                fare.weight           ],
                   [t('send.handlingFee'),                                    fare.handling         ],
                   [t('send.categorySurcharge'),                              fare.categorySurcharge],

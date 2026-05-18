@@ -27,6 +27,8 @@ import {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+export type FuelType = 'petrol' | 'diesel' | 'none';
+
 export interface RideVehicleRate {
   id:            string;
   label:         string;
@@ -34,8 +36,14 @@ export interface RideVehicleRate {
   subKey:        string;        // i18n key under request2.*
   description:   string;
   eta:           string;
-  base:          number;        // flat fare in NGN
-  perKm:         number;        // NGN per km of route distance
+  /** Labour ₦ fee per booking (was: combined base). */
+  base:          number;
+  /** Labour ₦ per km of route distance (was: combined). Fuel is added via fuelType+kmPerLitre. */
+  perKm:         number;
+  /** Fuel type for this vehicle — used by fuelPerKm() to add pump-price pass-through. */
+  fuelType:      FuelType;
+  /** Vehicle efficiency in km per litre. ∞ for bicycles. */
+  kmPerLitre:    number;
   capacityKey:   string;
   capacityCount: number;
   features:      readonly string[];
@@ -43,12 +51,20 @@ export interface RideVehicleRate {
 }
 
 export interface PackageVehicleRate {
-  id:        string;
-  labelKey:  string;
-  noteKey:   string;
-  maxKg:     number;
-  base:      number;
-  perKm:     number;
+  id:         string;
+  labelKey:   string;
+  noteKey:    string;
+  maxKg:      number;
+  base:       number;          // labour ₦
+  perKm:      number;          // labour ₦/km
+  fuelType:   FuelType;
+  kmPerLitre: number;
+}
+
+/** Today's pump prices — admin updates and every km rate recomputes the same day. */
+export interface FuelPrices {
+  petrolNgn: number;
+  dieselNgn: number;
 }
 
 export interface WeightTier {
@@ -195,6 +211,7 @@ export interface RateCard {
   version:       string;
   effectiveFrom: string;
   vatPct:        number;       // 0.075 — applied on subtotal-after-everything
+  fuelPrices:    FuelPrices;   // baseline pump prices; per-region overrides under regions.zoneOverrides
 
   ride: {
     vehicles:         readonly RideVehicleRate[];
@@ -236,16 +253,28 @@ export interface RateCard {
 // ─── Default card (matches admin defaults; admin can override per env) ─────
 
 export const DEFAULT_RATE_CARD: RateCard = {
-  version:       '2026-05-18.002',
+  version:       '2026-05-18.003',
   effectiveFrom: '2026-05-18',
   vatPct:        0.075,
 
+  // Baseline pump prices. Admin updates the moment NNPC announces a
+  // change and every km rate recomputes — no deploy needed. Per-region
+  // overrides (e.g. SS delta) live under regions.zoneOverrides.*.fuelPrices.
+  fuelPrices: {
+    petrolNgn: 950,
+    dieselNgn: 1250,
+  },
+
   ride: {
     vehicles: [
-      { id: 'okada', label: 'Okada', icon: 'bicycle-outline',   subKey: 'okadaSub', description: 'Fastest in traffic',    eta: '2 min', base:  600, perKm:  60, capacityKey: 'capacityRider',  capacityCount:  1, features: ['Fast', 'Cheap'],         shareable: false },
-      { id: 'keke',  label: 'Keke',  icon: 'car-outline',       subKey: 'kekeSub',  description: 'Affordable shaded ride', eta: '3 min', base:  900, perKm:  90, capacityKey: 'capacityRiders', capacityCount:  3, features: ['Shaded', 'Affordable'], shareable: false },
-      { id: 'car',   label: 'Car',   icon: 'car-sport-outline', subKey: 'carSub',   description: 'Comfortable AC ride',    eta: '4 min', base: 1500, perKm: 180, capacityKey: 'capacityRiders', capacityCount:  4, features: ['AC', 'Comfort'],        shareable: true  },
-      { id: 'danfo', label: 'Danfo', icon: 'bus-outline',       subKey: 'danfoSub', description: 'Group / shared bus',     eta: '8 min', base: 3500, perKm: 300, capacityKey: 'capacityRiders', capacityCount: 14, features: ['Large', 'Group'],       shareable: true  },
+      // Labour ₦ per km is the stable portion; fuel passes through at
+      // pump_price ÷ km/L so an NNPC announcement updates one number and
+      // every km rate adjusts. Numbers tuned so default totals match
+      // pre-refactor figures at baseline petrol price of ₦950/L.
+      { id: 'okada', label: 'Okada', icon: 'bicycle-outline',   subKey: 'okadaSub', description: 'Fastest in traffic',    eta: '2 min', base:  450, perKm:  40, fuelType: 'petrol', kmPerLitre: 45, capacityKey: 'capacityRider',  capacityCount:  1, features: ['Fast', 'Cheap'],         shareable: false },
+      { id: 'keke',  label: 'Keke',  icon: 'car-outline',       subKey: 'kekeSub',  description: 'Affordable shaded ride', eta: '3 min', base:  650, perKm:  55, fuelType: 'petrol', kmPerLitre: 25, capacityKey: 'capacityRiders', capacityCount:  3, features: ['Shaded', 'Affordable'], shareable: false },
+      { id: 'car',   label: 'Car',   icon: 'car-sport-outline', subKey: 'carSub',   description: 'Comfortable AC ride',    eta: '4 min', base: 1100, perKm: 100, fuelType: 'petrol', kmPerLitre: 12, capacityKey: 'capacityRiders', capacityCount:  4, features: ['AC', 'Comfort'],        shareable: true  },
+      { id: 'danfo', label: 'Danfo', icon: 'bus-outline',       subKey: 'danfoSub', description: 'Group / shared bus',     eta: '8 min', base: 2800, perKm: 180, fuelType: 'petrol', kmPerLitre:  8, capacityKey: 'capacityRiders', capacityCount: 14, features: ['Large', 'Group'],       shareable: true  },
     ],
     serviceFeePct:    0.15,
     shareDiscountPct: 0.20,
@@ -253,13 +282,13 @@ export const DEFAULT_RATE_CARD: RateCard = {
 
   package: {
     vehicles: [
-      { id: 'bicycle',    labelKey: 'vehBicycle',    noteKey: 'vehBicycleNote',    maxKg: 5,    base: 500,   perKm: 50   },
-      { id: 'motorcycle', labelKey: 'vehMotorcycle', noteKey: 'vehMotorcycleNote', maxKg: 20,   base: 800,   perKm: 150  },
-      { id: 'keke',       labelKey: 'vehKeke',       noteKey: 'vehKekeNote',       maxKg: 100,  base: 1200,  perKm: 200  },
-      { id: 'car',        labelKey: 'vehCar',        noteKey: 'vehCarNote',        maxKg: 200,  base: 2000,  perKm: 300  },
-      { id: 'van',        labelKey: 'vehVan',        noteKey: 'vehVanNote',        maxKg: 800,  base: 5000,  perKm: 500  },
-      { id: 'truck_sm',   labelKey: 'vehTruckSm',    noteKey: 'vehTruckSmNote',    maxKg: 3000, base: 15000, perKm: 1000 },
-      { id: 'truck_lg',   labelKey: 'vehTruckLg',    noteKey: 'vehTruckLgNote',    maxKg: 9999, base: 40000, perKm: 2000 },
+      { id: 'bicycle',    labelKey: 'vehBicycle',    noteKey: 'vehBicycleNote',    maxKg: 5,    base: 500,   perKm:   50, fuelType: 'none',   kmPerLitre: Infinity },
+      { id: 'motorcycle', labelKey: 'vehMotorcycle', noteKey: 'vehMotorcycleNote', maxKg: 20,   base: 700,   perKm:  100, fuelType: 'petrol', kmPerLitre: 45 },
+      { id: 'keke',       labelKey: 'vehKeke',       noteKey: 'vehKekeNote',       maxKg: 100,  base: 1000,  perKm:  130, fuelType: 'petrol', kmPerLitre: 25 },
+      { id: 'car',        labelKey: 'vehCar',        noteKey: 'vehCarNote',        maxKg: 200,  base: 1800,  perKm:  190, fuelType: 'petrol', kmPerLitre: 12 },
+      { id: 'van',        labelKey: 'vehVan',        noteKey: 'vehVanNote',        maxKg: 800,  base: 4400,  perKm:  350, fuelType: 'petrol', kmPerLitre:  8 },
+      { id: 'truck_sm',   labelKey: 'vehTruckSm',    noteKey: 'vehTruckSmNote',    maxKg: 3000, base: 14000, perKm:  700, fuelType: 'diesel', kmPerLitre:  5 },
+      { id: 'truck_lg',   labelKey: 'vehTruckLg',    noteKey: 'vehTruckLgNote',    maxKg: 9999, base: 37000, perKm: 1500, fuelType: 'diesel', kmPerLitre:  3 },
     ],
     weightTiers: [
       { upToKg:        5, surchargePerBlockKg:   5, surchargePerBlockNgn:    0, handlingFlatNgn:     0 },
@@ -509,6 +538,23 @@ function applyRegionalVehicle<T extends { id: string; base: number; perKm: numbe
 }
 
 /**
+ * Fuel pass-through ₦/km for a vehicle at today's pump price. Per-region
+ * fuel-price overrides (e.g. SS delta) take precedence over baseline.
+ * Returns 0 for bicycle / electric.
+ */
+export function fuelPerKm(
+  card:      RateCard,
+  v:        { fuelType: FuelType; kmPerLitre: number },
+  region?:  RegionalOverrides,
+): number {
+  if (v.fuelType === 'none' || !v.kmPerLitre || !Number.isFinite(v.kmPerLitre)) return 0;
+  const petrol = region?.fuelPrices?.petrolNgn ?? card.fuelPrices.petrolNgn;
+  const diesel = region?.fuelPrices?.dieselNgn ?? card.fuelPrices.dieselNgn;
+  const price  = v.fuelType === 'petrol' ? petrol : diesel;
+  return price / v.kmPerLitre;
+}
+
+/**
  * State-aware zone surcharge. Replaces the old "long-distance %" with a
  * tier that knows whether you're staying in one state, crossing to a
  * neighbour, going across zones, or entering a restricted sub-zone.
@@ -660,7 +706,10 @@ export interface Coords { latitude: number; longitude: number }
 
 export interface RideFareResult {
   base:              number;
+  /** Distance LABOUR portion (₦). */
   dist:              number;
+  /** Distance FUEL pass-through (₦) — recomputes when admin updates pump price. */
+  distFuel:          number;
   categorySurcharge: number;
   timeSurcharge:     number;
   zoneSurcharge:     number;
@@ -673,14 +722,16 @@ export interface RideFareResult {
   vehicle:           RideVehicleRate;
   timeLabels:        string[];
   zoneLabels:        string[];
-  /** Region context used for this fare — non-null when coords provided. */
   pickupState:       StateCode | null;
   dropoffState:      StateCode | null;
 }
 
 export interface PackageFareResult {
   base:              number;
+  /** Distance LABOUR portion (₦). */
   dist:              number;
+  /** Distance FUEL pass-through (₦). */
+  distFuel:          number;
   weight:            number;
   handling:          number;
   categorySurcharge: number;
@@ -734,7 +785,8 @@ export function calcRideFare(
   const adjusted = applyRegionalVehicle(v0, region);
   const base     = adjusted.base;
   const dist     = Math.round(safeKm * adjusted.perKm);
-  let   running  = base + dist;
+  const distFuel = Math.round(safeKm * fuelPerKm(card, v0, region));
+  let   running  = base + dist + distFuel;
 
   const categorySurcharge = 0;   // ride flow has no category concept today
   running += categorySurcharge;
@@ -766,7 +818,7 @@ export function calcRideFare(
   const total = running + vat;
 
   return {
-    base, dist, categorySurcharge,
+    base, dist, distFuel, categorySurcharge,
     timeSurcharge, zoneSurcharge, zoneFlat: zone.flat,
     service, shareDiscount, discounts, vat, total,
     vehicle: v0,
@@ -813,8 +865,9 @@ export function calcPackageFare(
   const adjusted = applyRegionalVehicle(v0, region);
   const base     = adjusted.base;
   const dist     = Math.round(safeKm * adjusted.perKm);
+  const distFuel = Math.round(safeKm * fuelPerKm(card, v0, region));
   const { surcharge: weight, handling } = weightSurchargeNgn(card, safeKg);
-  let running    = base + dist + weight + handling;
+  let running    = base + dist + distFuel + weight + handling;
 
   const cat = opts.categoryId ? card.categories[opts.categoryId] : undefined;
   const categorySurcharge = cat ? Math.round(running * cat.pct) : 0;
@@ -864,7 +917,7 @@ export function calcPackageFare(
   const total = running + vat;
 
   return {
-    base, dist, weight, handling, categorySurcharge,
+    base, dist, distFuel, weight, handling, categorySurcharge,
     timeSurcharge, zoneSurcharge, zoneFlat: zone.flat,
     perStopBonus, codFee, insurance, timeGuarantee,
     service, discounts, vat, total,

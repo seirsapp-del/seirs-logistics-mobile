@@ -62,7 +62,7 @@ export const MOCK_DRIVERS = [
 // `import { RIDE_VEHICLES, calcRideFare } from '@/constants/mockData'`
 // callers keep working.
 import { DEFAULT_RATE_CARD, calcRideFare as _calcRideFare, calcPackageFare as _calcPackageFare } from './rateCard';
-export { RIDE_VEHICLES, PACKAGE_VEHICLES, codHandlingFee, insurancePremium, timeGuaranteePremium, dwellFee, cancellationFee, computeDiscounts, activeTimeSurcharges, resolveRegionalOverrides } from './rateCard';
+export { RIDE_VEHICLES, PACKAGE_VEHICLES, codHandlingFee, insurancePremium, timeGuaranteePremium, dwellFee, cancellationFee, computeDiscounts, activeTimeSurcharges, resolveRegionalOverrides, fuelPerKm } from './rateCard';
 export type { Coords, RideFareResult, PackageFareResult, RegionalOverrides, DiscountOpts, DiscountResult } from './rateCard';
 export const calcRideFare    = (vehicleId: string, distKm: number, shared: boolean, opts: Parameters<typeof _calcRideFare>[4]    = {}) => _calcRideFare(DEFAULT_RATE_CARD, vehicleId, distKm, shared, opts);
 export const calcPackageFare = (vehicleId: string, distKm: number, kg: number,      opts: Parameters<typeof _calcPackageFare>[4] = {}) => _calcPackageFare(DEFAULT_RATE_CARD, vehicleId, distKm, kg, opts);
