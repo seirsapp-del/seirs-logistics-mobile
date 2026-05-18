@@ -172,6 +172,9 @@ export interface CODRule {
  * Opt-in insurance for declared-value cargo. Premium = max(minNgn, % of
  * declared value above threshold). When opted in, recipient handover
  * REQUIRES typed-name verification + photo (enforced in driver app).
+ *
+ * DEFAULTED OFF until the claims-handling pipeline is operational —
+ * accepting premium without a claims process is a refund magnet.
  */
 export interface InsuranceRule {
   enabled:           boolean;
@@ -181,30 +184,29 @@ export interface InsuranceRule {
   maxCoverageNgn:    number;   // hard ceiling on coverage (and therefore claims)
 }
 
-/**
- * Time-guaranteed delivery — customer pays a premium and gets a refund
- * if the package arrives more than `refundIfLateByMin` minutes past the
- * promised time. Different from "scheduled" (which is just a pickup time)
- * — guaranteed promises an arrival window.
- */
-export interface TimeGuaranteeRule {
-  enabled:           boolean;
-  premiumPct:        number;   // 0.25 = +25% surcharge for the guarantee
-  refundIfLateByMin: number;   // if late by ≥ this many min, full refund of premium
-  maxPromiseMin:     number;   // can't promise faster than this from booking time
-}
+// Time-guaranteed delivery REMOVED — Nigerian road conditions (traffic,
+// roadworks, NEPA outage at recipient address, market crowds) make any
+// promise of arrival time a refund magnet. Customers can use "Scheduled"
+// for pickup time but we don't promise arrival windows.
 
 /**
  * Discounts the customer can earn / opt into. All admin-tunable so
  * promotional pushes (welcome bumps, loyalty rebalances) don't need code.
+ *
+ * `maxTotalPct` is a hard ceiling on the SUM of all discounts as a %
+ * of pre-discount subtotal. Protects margin when admin (or marketing)
+ * gets enthusiastic and stacks discounts. SEIRS service fee is 15-18% so
+ * letting discounts compound past ~20% means losing money on the booking.
  */
 export interface DiscountsRule {
-  bulkUploadOffPct:       number;   // CSV bulk upload (≥ minPackages)
+  bulkUploadOffPct:       number;
   bulkUploadMinPackages:  number;
-  recurringOffPct:        number;   // recurring schedule
-  welcomeOffPct:          number;   // first-booking
+  recurringOffPct:        number;
+  welcomeOffPct:          number;
   welcomeMaxNgn:          number;   // cap on welcome discount
   loyaltyPointValueNgn:   number;   // ₦ per 1 redeemed loyalty point
+  loyaltyMaxPointsPerBooking: number; // can't redeem more than this in one trip
+  maxTotalPct:            number;   // 0.25 = total discounts can't exceed 25% of subtotal
 }
 
 export interface RateCard {
@@ -241,7 +243,6 @@ export interface RateCard {
   returnTrip:     ReturnTripRule;
   cod:            CODRule;
   insurance:      InsuranceRule;
-  timeGuarantee:  TimeGuaranteeRule;
   discounts:      DiscountsRule;
 
   /** Per-geopolitical-zone overrides (NW/NE/NC/SW/SE/SS). */
@@ -350,7 +351,10 @@ export const DEFAULT_RATE_CARD: RateCard = {
   },
 
   cancellation: {
-    preAssignNgn:    0,
+    // Pre-assign isn't free — small ₦50 token to deter joyride bookings
+    // (open + cancel + open again to test prices). Admin can drop to 0
+    // for a launch promo without code.
+    preAssignNgn:    50,
     postAssignNgn:   300,
     midRouteFlatNgn: 500,
     noShowFlatNgn:   300,
@@ -372,27 +376,28 @@ export const DEFAULT_RATE_CARD: RateCard = {
   },
 
   insurance: {
-    enabled:                   true,
+    // DEFAULTED OFF — accepting premium without a claims pipeline is a
+    // refund magnet. Admin flips to true when claims handling + the
+    // photo-at-pickup + typed-name-handover process is live.
+    enabled:                   false,
     premiumPct:                0.02,
     minPremiumNgn:             500,
     declaredValueThresholdNgn: 50000,
-    maxCoverageNgn:            2000000,   // ₦2 M ceiling per shipment
+    maxCoverageNgn:            2000000,
   },
 
-  timeGuarantee: {
-    enabled:           true,
-    premiumPct:        0.25,
-    refundIfLateByMin: 15,
-    maxPromiseMin:     30,
-  },
-
+  // Discounts tightened for a bootstrapped launch. SEIRS service fee is
+  // 15-18%, so total stacked discount above ~20% means losing money on
+  // the booking. maxTotalPct enforces that wall.
   discounts: {
-    bulkUploadOffPct:      0.10,
-    bulkUploadMinPackages: 25,
-    recurringOffPct:       0.05,
-    welcomeOffPct:         0.15,
-    welcomeMaxNgn:         500,
-    loyaltyPointValueNgn:  1,
+    bulkUploadOffPct:           0.05,   // was 10% — only volume customers
+    bulkUploadMinPackages:      50,     // was 25 — protects small batches
+    recurringOffPct:            0.03,   // was 5% — token loyalty perk
+    welcomeOffPct:              0.10,   // was 15%
+    welcomeMaxNgn:              300,    // was ₦500
+    loyaltyPointValueNgn:       1,
+    loyaltyMaxPointsPerBooking: 100,    // hard cap on single-redemption damage
+    maxTotalPct:                0.20,   // 20% absolute ceiling on stacked discounts
   },
 
   // ── Per-geopolitical-zone overrides ────────────────────────────────────
@@ -620,12 +625,6 @@ export function insurancePremium(card: RateCard, optedIn: boolean, declaredValue
   return raw;
 }
 
-/** Time-guarantee premium = guaranteedDeliveryPct × pre-premium subtotal. */
-export function timeGuaranteePremium(card: RateCard, optedIn: boolean, runningSubtotal: number): number {
-  if (!optedIn || !card.timeGuarantee.enabled) return 0;
-  return Math.round(runningSubtotal * card.timeGuarantee.premiumPct);
-}
-
 /** Dwell-fee (post-trip) — for trip-progress integration. */
 export function dwellFee(card: RateCard, waitMinutes: number): number {
   const billable = Math.max(0, Math.min(card.dwell.capMinutes, waitMinutes) - card.dwell.freeMinutes);
@@ -670,11 +669,21 @@ export function computeDiscounts(
   const welcomeRaw = opts.isWelcome ? Math.round(safeSubtotal * d.welcomeOffPct) : 0;
   const welcome    = Math.min(welcomeRaw, d.welcomeMaxNgn);
 
-  const loyalty = Math.max(0, (opts.loyaltyPointsToRedeem ?? 0) * d.loyaltyPointValueNgn);
+  // Loyalty redemption capped per booking — protects against draining a
+  // big balance on one trip and leaving us with thin margin.
+  const loyaltyPoints = Math.min(Math.max(0, opts.loyaltyPointsToRedeem ?? 0), d.loyaltyMaxPointsPerBooking);
+  const loyalty       = loyaltyPoints * d.loyaltyPointValueNgn;
 
   const requested = bulk + recurring + welcome + loyalty;
-  const capped    = Math.min(requested, safeSubtotal);
-  // Scale each line proportionally if the cap kicked in, so the
+
+  // Hard ceilings — first the absolute % cap, then the subtotal itself.
+  // SEIRS service fee is 15-18%, so letting total discount exceed ~20%
+  // means losing money on the booking. Admin can raise maxTotalPct
+  // temporarily for promotional periods if they truly want to.
+  const pctCap   = Math.round(safeSubtotal * d.maxTotalPct);
+  const capped   = Math.min(requested, pctCap, safeSubtotal);
+
+  // Scale each line proportionally when a cap clamped the total so the
   // breakdown shown to the user always sums to `total`.
   const factor = requested > 0 && capped < requested ? capped / requested : 1;
   return {
@@ -741,7 +750,6 @@ export interface PackageFareResult {
   perStopBonus:      number;
   codFee:            number;
   insurance:         number;
-  timeGuarantee:     number;
   service:           number;
   discounts:         DiscountResult;   // per-line + total
   vat:               number;
@@ -849,9 +857,8 @@ export function calcPackageFare(
     isRecurring?:          boolean;
     isWelcome?:            boolean;
     loyaltyPointsToRedeem?: number;
-    // Insurance + Time-guarantee opt-in (Phase 7 scenarios).
+    // Insurance opt-in (Phase 7).
     insureDeclaredValueNgn?: number;   // if > 0, opt-in. Premium computed against this.
-    timeGuaranteed?:         boolean;
   } = {},
 ): PackageFareResult {
   const v0       = card.package.vehicles.find(x => x.id === vehicleId) ?? card.package.vehicles[0];
@@ -887,15 +894,11 @@ export function calcPackageFare(
   const codFee = codHandlingFee(card, opts.codAmountNgn ?? 0);
   running += codFee;
 
-  // Insurance premium (opt-in by declared value above threshold).
+  // Insurance premium (opt-in by declared value above threshold). The
+  // premium covers admin liability when cargo is lost/damaged — claims
+  // pipeline + photo evidence required before any payout.
   const insurance = insurancePremium(card, (opts.insureDeclaredValueNgn ?? 0) > 0, opts.insureDeclaredValueNgn ?? 0);
   running += insurance;
-
-  // Time-guarantee premium (opt-in for time-critical deliveries — wedding
-  // cake, medical, official documents). Applied on the running subtotal
-  // so it scales with the trip's actual cost.
-  const timeGuarantee = timeGuaranteePremium(card, !!opts.timeGuaranteed, running);
-  running += timeGuarantee;
 
   const serviceFeePct = region.serviceFeePackageOverride ?? card.package.serviceFeePct;
   const service       = Math.round(running * serviceFeePct);
@@ -919,7 +922,7 @@ export function calcPackageFare(
   return {
     base, dist, distFuel, weight, handling, categorySurcharge,
     timeSurcharge, zoneSurcharge, zoneFlat: zone.flat,
-    perStopBonus, codFee, insurance, timeGuarantee,
+    perStopBonus, codFee, insurance,
     service, discounts, vat, total,
     vehicle: v0,
     timeLabels: time.labels,

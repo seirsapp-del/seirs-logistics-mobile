@@ -782,7 +782,6 @@ export default function SendScreen() {
                   [t('send.overnightFee'),                                   fare.zoneFlat         ],
                   [t('send.codFee'),                                         fare.codFee           ],
                   [t('send.insurancePremium'),                               fare.insurance        ],
-                  [t('send.timeGuaranteeFee'),                               fare.timeGuarantee    ],
                   [t('send.serviceFee'),                                     fare.service          ],
                   [t('send.discountBulk'),                                  -fare.discounts.bulk   ],
                   [t('send.discountRecurring'),                             -fare.discounts.recurring],
