@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Camera, User, Phone, Mail, Save } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
@@ -21,6 +22,7 @@ export default function EditProfileScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const { user, refresh } = useAuth() as any;
+  const { t }  = useTranslation();
 
   const [name,         setName]         = useState('');
   const [phone,        setPhone]        = useState('');
@@ -36,7 +38,7 @@ export default function EditProfileScreen() {
 
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission required'); return; }
+    if (status !== 'granted') { Alert.alert(t('editProfile.permissionRequired')); return; }
     const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: true, aspect: [1, 1] });
     if (r.canceled) return;
     setUploading(true);
@@ -44,21 +46,21 @@ export default function EditProfileScreen() {
       const uploaded = await uploadApi.file(r.assets[0].uri);
       setProfilePhoto(uploaded.url);
     } catch (e: any) {
-      Alert.alert('Upload failed', e?.message ?? 'Try again.');
+      Alert.alert(t('editProfile.uploadFailed'), e?.message ?? t('editProfile.tryAgain'));
     } finally {
       setUploading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!name.trim()) { Alert.alert('Name required'); return; }
+    if (!name.trim()) { Alert.alert(t('editProfile.nameRequired')); return; }
     setSaving(true);
     try {
       await usersApi.updateProfile({ name: name.trim(), phone: phone.trim(), profilePhoto });
       try { await refresh?.(); } catch { /* refresh is best-effort */ }
-      Alert.alert('Saved', 'Profile updated.', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert(t('editProfile.saved'), t('editProfile.saved'), [{ text: t('common.ok'), onPress: () => router.back() }]);
     } catch (e: any) {
-      Alert.alert('Save failed', e?.message ?? 'Try again.');
+      Alert.alert(t('editProfile.saveFailed'), e?.message ?? t('editProfile.tryAgain'));
     } finally {
       setSaving(false);
     }
@@ -70,7 +72,7 @@ export default function EditProfileScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Edit Profile</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('editProfile.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -91,17 +93,17 @@ export default function EditProfileScreen() {
                 {uploading ? <ActivityIndicator color="#fff" size="small" /> : <Camera size={14} color="#fff" />}
               </View>
             </Pressable>
-            <Text style={[styles.tapHint, { color: theme.textSecond }]}>Tap to change photo</Text>
+            <Text style={[styles.tapHint, { color: theme.textSecond }]}>{t('editProfile.changePhoto')}</Text>
           </View>
 
           {/* Email read-only */}
-          <Field label="Email" value={user?.email ?? ''} editable={false} icon={<Mail size={15} color={theme.textThird} />} theme={theme} />
+          <Field label={t('auth.emailAddress')} value={user?.email ?? ''} editable={false} icon={<Mail size={15} color={theme.textThird} />} theme={theme} />
 
           {/* Name */}
-          <Field label="Full name" value={name} onChange={setName} icon={<User size={15} color={theme.textThird} />} theme={theme} />
+          <Field label={t('editProfile.fullName')} value={name} onChange={setName} icon={<User size={15} color={theme.textThird} />} theme={theme} />
 
           {/* Phone */}
-          <Field label="Phone" value={phone} onChange={setPhone} keyboardType="phone-pad" icon={<Phone size={15} color={theme.textThird} />} theme={theme} />
+          <Field label={t('auth.phone')} value={phone} onChange={setPhone} keyboardType="phone-pad" icon={<Phone size={15} color={theme.textThird} />} theme={theme} />
 
           <Pressable
             disabled={saving}
@@ -111,7 +113,7 @@ export default function EditProfileScreen() {
             {saving ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Save size={16} color="#fff" />
-                <Text style={styles.primaryBtnText}>Save changes</Text>
+                <Text style={styles.primaryBtnText}>{t('editProfile.save')}</Text>
               </>
             )}
           </Pressable>

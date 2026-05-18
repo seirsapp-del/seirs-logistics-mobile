@@ -275,7 +275,8 @@
   },
   "editProfile": {
     "title": "Dezie Profaịlụ",
-    "changePhoto": "Gbanwee Foto",
+    "changePhoto": "Pịa iji gbanwee foto",
+    "fullName": "Aha zuru ezu",
     "save": "Chekwaa Mgbanwe",
     "saved": "Echekwala profaịlụ",
     "saveFailed": "Enweghị ike ichekwa",

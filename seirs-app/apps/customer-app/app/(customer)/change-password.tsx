@@ -51,7 +51,7 @@ export default function ChangePasswordScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Change Password</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('changePassword.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -65,16 +65,16 @@ export default function ChangePasswordScreen() {
             </Text>
           </View>
 
-          <Field label="Current password" theme={theme}>
-            <PasswordInput value={current} onChangeText={setCurrent} placeholder="Enter current" />
+          <Field label={t('changePassword.currentPassword')} theme={theme}>
+            <PasswordInput value={current} onChangeText={setCurrent} placeholder={t('changePassword.currentPassword')} />
           </Field>
 
-          <Field label="New password" theme={theme}>
-            <PasswordInput value={next} onChangeText={setNext} placeholder="At least 8 chars, mixed case, digit/symbol" />
+          <Field label={t('changePassword.newPassword')} theme={theme}>
+            <PasswordInput value={next} onChangeText={setNext} placeholder={t('changePassword.newPassword')} />
           </Field>
 
-          <Field label="Confirm new password" theme={theme}>
-            <PasswordInput value={confirm} onChangeText={setConfirm} placeholder="Re-enter new password" />
+          <Field label={t('changePassword.confirmNewPassword')} theme={theme}>
+            <PasswordInput value={confirm} onChangeText={setConfirm} placeholder={t('changePassword.confirmNewPassword')} />
           </Field>
 
           <Pressable
@@ -82,7 +82,7 @@ export default function ChangePasswordScreen() {
             onPress={handleSubmit}
             style={[styles.primaryBtn, { backgroundColor: (current && next && confirm) ? theme.primary : theme.surfaceSecond }]}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Change password</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{t('changePassword.save')}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

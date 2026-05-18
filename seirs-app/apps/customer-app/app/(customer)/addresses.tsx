@@ -88,8 +88,8 @@ export default function AddressesScreen() {
     ]);
   };
 
-  const Icon = (t: SavedAddress['type']) =>
-    t === 'home' ? Home : t === 'work' ? Briefcase : MapPin;
+  const Icon = (type: SavedAddress['type']) =>
+    type === 'home' ? Home : type === 'work' ? Briefcase : MapPin;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
@@ -97,7 +97,7 @@ export default function AddressesScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Saved Addresses</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('addresses.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -109,9 +109,9 @@ export default function AddressesScreen() {
           ) : items.length === 0 && !adding ? (
             <View style={styles.empty}>
               <MapPin size={36} color={theme.textThird} />
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>No saved addresses yet</Text>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('addresses.empty')}</Text>
               <Text style={[styles.emptySub, { color: theme.textSecond }]}>
-                Save your home, office, or frequent drop-off points so you can pick them with one tap during booking.
+                {t('addresses.label')}
               </Text>
             </View>
           ) : (
@@ -138,35 +138,35 @@ export default function AddressesScreen() {
             <View style={[styles.addressCard, { backgroundColor: theme.surface, borderColor: theme.primary, flexDirection: 'column', alignItems: 'stretch', padding: Spacing.md, gap: Spacing.sm }]}>
               <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>TYPE</Text>
               <View style={styles.row}>
-                {(['home','work','other'] as const).map(t => {
-                  const I = Icon(t);
+                {(['home','work','other'] as const).map(type => {
+                  const I = Icon(type);
                   return (
                     <Pressable
-                      key={t}
-                      onPress={() => setDraftType(t)}
-                      style={[styles.typeChip, { borderColor: draftType === t ? theme.primary : theme.border, backgroundColor: draftType === t ? theme.primary + '15' : theme.surface }]}
+                      key={type}
+                      onPress={() => setDraftType(type)}
+                      style={[styles.typeChip, { borderColor: draftType === type ? theme.primary : theme.border, backgroundColor: draftType === type ? theme.primary + '15' : theme.surface }]}
                     >
-                      <I size={14} color={draftType === t ? theme.primary : theme.textSecond} />
-                      <Text style={{ color: draftType === t ? theme.primary : theme.textSecond, fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textTransform: 'capitalize' }}>{t}</Text>
+                      <I size={14} color={draftType === type ? theme.primary : theme.textSecond} />
+                      <Text style={{ color: draftType === type ? theme.primary : theme.textSecond, fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textTransform: 'capitalize' }}>{type}</Text>
                     </Pressable>
                   );
                 })}
               </View>
 
-              <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>LABEL</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addresses.label').toUpperCase()}</Text>
               <TextInput
                 value={draftLabel}
                 onChangeText={setDraftLabel}
-                placeholder="Mum's place, Office, Lekki gymâ€¦"
+                placeholder={t('addresses.label')}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>FULL ADDRESS</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addresses.address').toUpperCase()}</Text>
               <TextInput
                 value={draftText}
                 onChangeText={setDraftText}
-                placeholder="House number, street, area, city"
+                placeholder={t('addresses.address')}
                 placeholderTextColor={theme.textThird}
                 multiline
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background, minHeight: 60, textAlignVertical: 'top' }]}
@@ -177,11 +177,11 @@ export default function AddressesScreen() {
                   onPress={() => { setAdding(false); setDraftLabel(''); setDraftText(''); }}
                   style={[styles.cancelBtn, { borderColor: theme.border }]}
                 >
-                  <Text style={[styles.cancelBtnText, { color: theme.textSecond }]}>Cancel</Text>
+                  <Text style={[styles.cancelBtnText, { color: theme.textSecond }]}>{t('common.cancel')}</Text>
                 </Pressable>
                 <Pressable onPress={addAddress} style={[styles.saveBtn, { backgroundColor: theme.primary }]}>
                   <Check size={14} color="#fff" />
-                  <Text style={styles.saveBtnText}>Save</Text>
+                  <Text style={styles.saveBtnText}>{t('common.save')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -190,7 +190,7 @@ export default function AddressesScreen() {
           {!adding && (
             <Pressable onPress={() => setAdding(true)} style={[styles.addBtn, { borderColor: theme.primary }]}>
               <Plus size={16} color={theme.primary} />
-              <Text style={[styles.addBtnText, { color: theme.primary }]}>Add new address</Text>
+              <Text style={[styles.addBtnText, { color: theme.primary }]}>{t('addresses.addNew')}</Text>
             </Pressable>
           )}
 

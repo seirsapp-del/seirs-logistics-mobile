@@ -111,9 +111,9 @@ export default function PaymentMethodsScreen() {
           <View style={[styles.iconWrap, { backgroundColor: theme.surfaceSecond }]}>
             <Ionicons name="card-outline" size={36} color={theme.primary} />
           </View>
-          <Text style={[styles.emptyHeading, { color: theme.text }]}>No saved cards yet</Text>
+          <Text style={[styles.emptyHeading, { color: theme.text }]}>{t('paymentMethods.empty')}</Text>
           <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
-            Pay for a delivery with your card and tick "Save this card" — it will appear here for one-tap reuse next time.
+            {t('paymentMethods.emptyDesc')}
           </Text>
           <Text style={[styles.emptyFootnote, { color: theme.textThird }]}>
             We never store your card number. Flutterwave handles tokenization securely.
@@ -147,11 +147,11 @@ export default function PaymentMethodsScreen() {
 
               {card.isDefault ? (
                 <View style={[styles.defaultBadge, { backgroundColor: theme.primary }]}>
-                  <Text style={styles.defaultBadgeText}>Default</Text>
+                  <Text style={styles.defaultBadgeText}>{t('paymentMethods.default')}</Text>
                 </View>
               ) : (
                 <Pressable onPress={() => handleSetDefault(card.id)} hitSlop={8}>
-                  <Text style={[styles.actionLink, { color: theme.primary }]}>Set default</Text>
+                  <Text style={[styles.actionLink, { color: theme.primary }]}>{t('paymentMethods.setDefault')}</Text>
                 </Pressable>
               )}
 

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +18,7 @@ export default function AddPaymentScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
 
   const [mode,    setMode]    = useState<Mode>('card');
   const [number,  setNumber]  = useState('');
@@ -60,7 +62,7 @@ export default function AddPaymentScreen() {
           <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
-          <Text style={[styles.title, { color: theme.text }]}>Add Payment Method</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('addPayment.title')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -90,7 +92,7 @@ export default function AddPaymentScreen() {
             <View style={styles.form}>
               {/* Card number */}
               <View style={styles.fieldWrap}>
-                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Card Number</Text>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addPayment.cardNumber')}</Text>
                 <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                   <Ionicons name="card-outline" size={18} color={theme.textThird} />
                   <TextInput
@@ -99,7 +101,7 @@ export default function AddPaymentScreen() {
                     placeholderTextColor={theme.textThird}
                     keyboardType="number-pad"
                     value={number}
-                    onChangeText={t => setNumber(formatCard(t))}
+                    onChangeText={v => setNumber(formatCard(v))}
                     maxLength={19}
                   />
                 </View>
@@ -108,7 +110,7 @@ export default function AddPaymentScreen() {
               {/* Expiry + CVV */}
               <View style={styles.row}>
                 <View style={[styles.fieldWrap, { flex: 1 }]}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Expiry Date</Text>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addPayment.expiryDate')}</Text>
                   <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                     <Ionicons name="calendar-outline" size={18} color={theme.textThird} />
                     <TextInput
@@ -117,13 +119,13 @@ export default function AddPaymentScreen() {
                       placeholderTextColor={theme.textThird}
                       keyboardType="number-pad"
                       value={expiry}
-                      onChangeText={t => setExpiry(formatExpiry(t))}
+                      onChangeText={v => setExpiry(formatExpiry(v))}
                       maxLength={5}
                     />
                   </View>
                 </View>
                 <View style={[styles.fieldWrap, { flex: 1 }]}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>CVV</Text>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addPayment.cvv')}</Text>
                   <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                     <Ionicons name="lock-closed-outline" size={18} color={theme.textThird} />
                     <TextInput
@@ -133,7 +135,7 @@ export default function AddPaymentScreen() {
                       keyboardType="number-pad"
                       secureTextEntry
                       value={cvv}
-                      onChangeText={t => setCvv(t.replace(/\D/g, '').slice(0, 4))}
+                      onChangeText={v => setCvv(v.replace(/\D/g, '').slice(0, 4))}
                       maxLength={4}
                     />
                   </View>
@@ -142,7 +144,7 @@ export default function AddPaymentScreen() {
 
               {/* Cardholder name */}
               <View style={styles.fieldWrap}>
-                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Cardholder Name</Text>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addPayment.cardholderName')}</Text>
                 <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                   <Ionicons name="person-outline" size={18} color={theme.textThird} />
                   <TextInput

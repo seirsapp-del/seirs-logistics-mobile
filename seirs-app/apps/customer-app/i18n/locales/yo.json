@@ -275,7 +275,8 @@
   },
   "editProfile": {
     "title": "Ṣàtúnṣe Profáìlì",
-    "changePhoto": "Yí Fọtò padà",
+    "changePhoto": "Tẹ láti yí fọtò padà",
+    "fullName": "Orúkọ kíkún",
     "save": "Fipamọ́ Àyípadà",
     "saved": "A ti fipamọ́ profáìlì",
     "saveFailed": "Kò lè fipamọ́",

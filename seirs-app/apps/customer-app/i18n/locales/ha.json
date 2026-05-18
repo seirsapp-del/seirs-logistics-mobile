@@ -275,7 +275,8 @@
   },
   "editProfile": {
     "title": "Gyara Bayanai",
-    "changePhoto": "Canza Hoto",
+    "changePhoto": "Danna don canza hoto",
+    "fullName": "Cikakken suna",
     "save": "Adana Canje-canje",
     "saved": "An adana bayanai",
     "saveFailed": "Ba a iya adanawa ba",

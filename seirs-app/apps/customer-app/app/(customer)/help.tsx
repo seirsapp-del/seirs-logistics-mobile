@@ -5,16 +5,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { HELP_FAQS } from '@/constants/mockData';
 
+// Labels resolved via t() at render so language switches reflect live.
 const TOPICS = [
-  { icon: 'car-outline',          label: 'Trips',      filter: (q: string) => q.toLowerCase().includes('cancel') || q.toLowerCase().includes('driver') },
-  { icon: 'wallet-outline',       label: 'Payments',   filter: (q: string) => q.toLowerCase().includes('top up') || q.toLowerCase().includes('payment') },
-  { icon: 'star-outline',         label: 'Rewards',    filter: (q: string) => q.toLowerCase().includes('reward') || q.toLowerCase().includes('point') },
-  { icon: 'shield-outline',       label: 'Safety',     filter: (q: string) => false },
-  { icon: 'person-outline',       label: 'Account',    filter: (q: string) => q.toLowerCase().includes('account') || q.toLowerCase().includes('profile') },
+  { icon: 'car-outline',          labelKey: 'trips',    filter: (q: string) => q.toLowerCase().includes('cancel') || q.toLowerCase().includes('driver') },
+  { icon: 'wallet-outline',       labelKey: 'payments', filter: (q: string) => q.toLowerCase().includes('top up') || q.toLowerCase().includes('payment') },
+  { icon: 'star-outline',         labelKey: 'rewards',  filter: (q: string) => q.toLowerCase().includes('reward') || q.toLowerCase().includes('point') },
+  { icon: 'shield-outline',       labelKey: 'safety',   filter: (q: string) => false },
+  { icon: 'person-outline',       labelKey: 'account',  filter: (q: string) => q.toLowerCase().includes('account') || q.toLowerCase().includes('profile') },
 ];
 
 export default function HelpScreen() {
@@ -22,6 +24,7 @@ export default function HelpScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { t }   = useTranslation();
 
   const [query,      setQuery]      = useState('');
   const [expanded,   setExpanded]   = useState<number | null>(null);
@@ -40,7 +43,7 @@ export default function HelpScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Help Center</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('help2.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -51,7 +54,7 @@ export default function HelpScreen() {
           <Ionicons name="search-outline" size={18} color={theme.textThird} />
           <TextInput
             style={[styles.searchInput, { color: theme.text }]}
-            placeholder="Search for help…"
+            placeholder={t('help2.searchPlaceholder')}
             placeholderTextColor={theme.textThird}
             value={query}
             onChangeText={setQuery}
@@ -90,22 +93,25 @@ export default function HelpScreen() {
         {/* Topic chips */}
         {!query && (
           <>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Browse by Topic</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('help2.browseByCategory')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topicRow}>
-              {TOPICS.map(t => (
-                <Pressable
-                  key={t.label}
-                  style={[
-                    styles.topicChip,
-                    { borderColor: topic === t.label ? theme.primary : theme.border },
-                    topic === t.label && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
-                  ]}
-                  onPress={() => setTopic(prev => prev === t.label ? null : t.label)}
-                >
-                  <Ionicons name={t.icon as any} size={14} color={topic === t.label ? theme.primary : theme.textSecond} />
-                  <Text style={[styles.topicText, { color: topic === t.label ? theme.primary : theme.textSecond }]}>{t.label}</Text>
-                </Pressable>
-              ))}
+              {TOPICS.map(topicItem => {
+                const label = t(`help2.${topicItem.labelKey}`);
+                return (
+                  <Pressable
+                    key={topicItem.labelKey}
+                    style={[
+                      styles.topicChip,
+                      { borderColor: topic === label ? theme.primary : theme.border },
+                      topic === label && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
+                    ]}
+                    onPress={() => setTopic(prev => prev === label ? null : label)}
+                  >
+                    <Ionicons name={topicItem.icon as any} size={14} color={topic === label ? theme.primary : theme.textSecond} />
+                    <Text style={[styles.topicText, { color: topic === label ? theme.primary : theme.textSecond }]}>{label}</Text>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           </>
         )}
