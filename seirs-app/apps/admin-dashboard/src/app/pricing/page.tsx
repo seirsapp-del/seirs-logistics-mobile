@@ -19,13 +19,33 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
-import { Save, RefreshCw, AlertCircle, History, TrendingUp, Loader2 } from 'lucide-react';
+import { Save, RefreshCw, AlertCircle, History, TrendingUp, Loader2, Plus, Trash2 } from 'lucide-react';
+import {
+  NIGERIAN_STATES,
+  GEOPOLITICAL_ZONES,
+  statesInZone,
+  newSubZoneId,
+  type GeopoliticalZone,
+  type StateCode,
+} from '@/lib/nigerianStates';
 
 const VEHICLE_ORDER = ['bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'] as const;
 const VEHICLE_LABEL: Record<string, string> = {
   bicycle: 'Bicycle', motorcycle: 'Motorcycle', tricycle: 'Tricycle',
   car: 'Car', van: 'Van', truck_small: 'Small Truck', truck_large: 'Large Truck',
 };
+
+const ZONE_ORDER: GeopoliticalZone[] = ['NW', 'NE', 'NC', 'SW', 'SE', 'SS'];
+
+// Shape of a manually-added restricted sub-zone row.
+interface SubZone {
+  id:           string;
+  name:         string;
+  stateCode:    StateCode | '';
+  surchargePct: number;
+  reason:       string;
+  active:       boolean;
+}
 
 type RateCard = any;
 
@@ -58,13 +78,19 @@ export default function PricingPage() {
   useEffect(() => { reload(); }, []);
 
   // Generic patch helper — keeps nested keys editable via dot-path.
+  // Auto-creates intermediate objects so new sections (regions, etc.) work
+  // even when the loaded RateCard doesn't yet contain them.
   const patchPath = (path: string, value: any) => {
     setCard((prev: any) => {
       if (!prev) return prev;
       const next = structuredClone(prev);
       const keys = path.split('.');
       let cur: any = next;
-      for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]];
+      for (let i = 0; i < keys.length - 1; i++) {
+        const k = keys[i];
+        if (cur[k] == null || typeof cur[k] !== 'object') cur[k] = {};
+        cur = cur[k];
+      }
       cur[keys[keys.length - 1]] = value;
       return next;
     });
@@ -372,32 +398,112 @@ export default function PricingPage() {
         </Row>
       </Card>
 
-      <Card title="Zone surcharges">
+      <Card title="Zone surcharges" hint="Tiered by how far the trip goes — stays in one state, crosses to a neighbour, or crosses to a different geopolitical zone.">
         <Row>
-          <FieldNumber label="Intra-state %"
-            value={card.zoneSurcharges.intraStatePercent}
-            onChange={(v) => patchPath('zoneSurcharges.intraStatePercent', v)} />
-          <FieldNumber label="Inter-state %"
-            value={card.zoneSurcharges.interStatePercent}
-            onChange={(v) => patchPath('zoneSurcharges.interStatePercent', v)} />
+          <FieldNumber label="Intra-state long-haul threshold (km)"
+            value={card.zoneSurcharges?.intraStateLongHaulKm ?? 100}
+            onChange={(v) => patchPath('zoneSurcharges.intraStateLongHaulKm', v)}
+            hint="Trips within one state above this kilometre count add the surcharge below." />
+          <FieldNumber label="Intra-state long-haul %"
+            value={pctVal(card.zoneSurcharges?.intraStateLongHaulPct, 0.15)}
+            step={1}
+            onChange={(v) => patchPath('zoneSurcharges.intraStateLongHaulPct', v / 100)} />
         </Row>
         <Row>
-          <FieldNumber label="Long-distance %"
-            value={card.zoneSurcharges.longDistancePercent}
-            onChange={(v) => patchPath('zoneSurcharges.longDistancePercent', v)} />
-          <FieldNumber label="Long-distance threshold (km)"
-            value={card.zoneSurcharges.longDistanceThresholdKm}
-            onChange={(v) => patchPath('zoneSurcharges.longDistanceThresholdKm', v)} />
+          <FieldNumber label="Inter-state (adjacent) %"
+            value={pctVal(card.zoneSurcharges?.interStateAdjacentPct, 0.20)}
+            step={1}
+            onChange={(v) => patchPath('zoneSurcharges.interStateAdjacentPct', v / 100)}
+            hint="Crossing into a neighbour state (Lagos ↔ Ogun)." />
+          <FieldNumber label="Inter-state (distant) %"
+            value={pctVal(card.zoneSurcharges?.interStateDistantPct, 0.30)}
+            step={1}
+            onChange={(v) => patchPath('zoneSurcharges.interStateDistantPct', v / 100)}
+            hint="Non-adjacent state crossing within the same geopolitical zone." />
+        </Row>
+        <Row>
+          <FieldNumber label="Cross-zone %"
+            value={pctVal(card.zoneSurcharges?.crossZonePct, 0.40)}
+            step={1}
+            onChange={(v) => patchPath('zoneSurcharges.crossZonePct', v / 100)}
+            hint="Trip crosses a geopolitical zone (NW↔SS, etc.) — usually long-distance." />
+          <FieldNumber label="Restricted sub-zone default %"
+            value={pctVal(card.zoneSurcharges?.restrictedZoneDefaultPct, 0.50)}
+            step={1}
+            onChange={(v) => patchPath('zoneSurcharges.restrictedZoneDefaultPct', v / 100)}
+            hint="Fallback % when an admin-added sub-zone has no explicit surcharge." />
         </Row>
         <Row>
           <FieldNumber label="Overnight fee ₦"
-            value={card.zoneSurcharges.overnightFeeNgn}
+            value={card.zoneSurcharges?.overnightFeeNgn ?? 5000}
             onChange={(v) => patchPath('zoneSurcharges.overnightFeeNgn', v)}
-            hint="Flat fee for trips beyond the threshold below." />
+            hint="Flat fee added when trip distance exceeds the threshold below." />
           <FieldNumber label="Overnight threshold (km)"
-            value={card.zoneSurcharges.overnightThresholdKm}
-            onChange={(v) => patchPath('zoneSurcharges.overnightThresholdKm', v)} />
+            value={card.zoneSurcharges?.overnightFeeKm ?? 500}
+            onChange={(v) => patchPath('zoneSurcharges.overnightFeeKm', v)} />
         </Row>
+      </Card>
+
+      {/* ── Geopolitical Zone Overrides ──────────────────────────── */}
+      <Card title="Geopolitical zone overrides" hint="6 zones × 1 multiplier each. Multiplies vehicle base + per-km rates for any pickup in that zone. State overrides win over zone overrides.">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-gray-500 text-left border-b border-gray-200">
+              <th className="py-2 pr-3">Zone</th>
+              <th className="px-2">Multiplier (× rates)</th>
+              <th className="px-2">Petrol override ₦/L</th>
+              <th className="px-2">Diesel override ₦/L</th>
+              <th className="px-2">Dwell buffer (min)</th>
+              <th className="px-2">Reason / note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ZONE_ORDER.map((zoneCode) => {
+              const path = `regions.zoneOverrides.${zoneCode}`;
+              const ov   = card.regions?.zoneOverrides?.[zoneCode] ?? {};
+              return (
+                <tr key={zoneCode} className="border-b border-gray-100">
+                  <td className="py-2 pr-3">
+                    <div className="font-semibold text-gray-900">{zoneCode} · {GEOPOLITICAL_ZONES[zoneCode].name}</div>
+                    <div className="text-xs text-gray-500">{GEOPOLITICAL_ZONES[zoneCode].description}</div>
+                  </td>
+                  <td className="px-1"><InlineNum value={ov.rateMultiplier ?? 1.0} step={0.01} onChange={(v) => patchPath(`${path}.rateMultiplier`, v)} /></td>
+                  <td className="px-1"><InlineNum value={ov.fuelPrices?.petrolNgn ?? null} placeholder="—" onChange={(v) => patchPath(`${path}.fuelPrices.petrolNgn`, v)} /></td>
+                  <td className="px-1"><InlineNum value={ov.fuelPrices?.dieselNgn ?? null} placeholder="—" onChange={(v) => patchPath(`${path}.fuelPrices.dieselNgn`, v)} /></td>
+                  <td className="px-1"><InlineNum value={ov.dwellBufferMin ?? 0} onChange={(v) => patchPath(`${path}.dwellBufferMin`, v)} /></td>
+                  <td className="px-1">
+                    <input
+                      type="text"
+                      value={ov.reason ?? ''}
+                      placeholder="Why this zone differs"
+                      onChange={(e) => patchPath(`${path}.reason`, e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
+
+      {/* ── State Overrides ──────────────────────────────────────── */}
+      <Card
+        title="State overrides"
+        hint="37 federating units (36 states + FCT). Set a multiplier here only when a state differs from its zone's default. Leaving multiplier = 1.0 means 'inherit zone'."
+      >
+        <StateOverridesTable
+          card={card}
+          patchPath={patchPath}
+        />
+      </Card>
+
+      {/* ── Restricted Sub-Zones — admin-addable ─────────────────── */}
+      <Card
+        title="Restricted sub-zones"
+        hint="Manually-added zones (curfew areas, flood-affected LGAs, conflict corridors). Each row carries its own surcharge — backend matches by name + state when pricing a booking. Disable with the toggle to pause without deleting."
+      >
+        <SubZonesEditor card={card} patchPath={patchPath} />
       </Card>
 
       {/* ── Discounts ─────────────────────────────────────────────── */}
@@ -579,12 +685,24 @@ function FieldNumber({
   );
 }
 
-function InlineNum({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function InlineNum({
+  value, onChange, step = 1, placeholder,
+}: {
+  value: number | null;
+  onChange: (v: number | null) => void;
+  step?: number;
+  placeholder?: string;
+}) {
   return (
     <input
       type="number"
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
+      step={step}
+      value={value ?? ''}
+      placeholder={placeholder}
+      onChange={(e) => {
+        const raw = e.target.value.trim();
+        onChange(raw === '' ? null : Number(raw));
+      }}
       className="w-24 px-2 py-1 border border-gray-300 rounded text-sm tabular-nums focus:outline-none focus:border-blue-500"
     />
   );
@@ -592,4 +710,229 @@ function InlineNum({ value, onChange }: { value: number; onChange: (v: number) =
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+/** Display value for a decimal % (0.15) shown as 15. Falls back to default × 100. */
+function pctVal(v: number | undefined, fallback: number): number {
+  return Math.round(((v ?? fallback) * 100) * 10) / 10;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// State overrides — table with collapse + filter
+
+function StateOverridesTable({
+  card, patchPath,
+}: {
+  card:      any;
+  patchPath: (path: string, value: any) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const overrides = card.regions?.stateOverrides ?? {};
+  const overriddenCodes = Object.keys(overrides);
+  const visibleStates = showAll
+    ? NIGERIAN_STATES
+    : NIGERIAN_STATES.filter(s => overriddenCodes.includes(s.code));
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm text-gray-600">
+          {overriddenCodes.length} of 37 states have overrides.
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowAll(!showAll)}
+          className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+        >
+          {showAll ? `Show only overridden (${overriddenCodes.length})` : `Show all 37`}
+        </button>
+      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-gray-500 text-left border-b border-gray-200">
+            <th className="py-2 pr-3">State</th>
+            <th className="px-2">Zone</th>
+            <th className="px-2">Multiplier (× zone × baseline)</th>
+            <th className="px-2">Reason / note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visibleStates.length === 0 && (
+            <tr>
+              <td colSpan={4} className="py-4 text-center text-gray-500 text-sm">
+                No state overrides yet. Click <b>Show all 37</b> to add one.
+              </td>
+            </tr>
+          )}
+          {visibleStates.map((s) => {
+            const ov   = overrides[s.code] ?? {};
+            const path = `regions.stateOverrides.${s.code}`;
+            const hasOverride = overriddenCodes.includes(s.code);
+            return (
+              <tr key={s.code} className={`border-b border-gray-100 ${hasOverride ? 'bg-amber-50/40' : ''}`}>
+                <td className="py-2 pr-3">
+                  <div className="font-medium text-gray-900">{s.name}</div>
+                  <div className="text-xs text-gray-500">{s.code} · {s.capital}</div>
+                </td>
+                <td className="px-2 text-xs text-gray-500">{s.zone}</td>
+                <td className="px-1">
+                  <InlineNum
+                    value={ov.rateMultiplier ?? null}
+                    placeholder="1.00"
+                    step={0.01}
+                    onChange={(v) => patchPath(`${path}.rateMultiplier`, v)}
+                  />
+                </td>
+                <td className="px-1">
+                  <input
+                    type="text"
+                    value={ov.reason ?? ''}
+                    placeholder={hasOverride ? 'Why this state differs' : '— inherits zone —'}
+                    onChange={(e) => patchPath(`${path}.reason`, e.target.value)}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                  />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Restricted sub-zones — admin can add/remove/disable rows manually
+
+function SubZonesEditor({
+  card, patchPath,
+}: {
+  card:      any;
+  patchPath: (path: string, value: any) => void;
+}) {
+  const subZones: SubZone[] = card.regions?.restrictedSubZones ?? [];
+
+  const setSubZones = (next: SubZone[]) => patchPath('regions.restrictedSubZones', next);
+
+  const addSubZone = () => {
+    const row: SubZone = {
+      id:           newSubZoneId(),
+      name:         '',
+      stateCode:    '',
+      surchargePct: 50,
+      reason:       '',
+      active:       true,
+    };
+    setSubZones([...subZones, row]);
+  };
+
+  const patchSubZone = <K extends keyof SubZone>(idx: number, key: K, value: SubZone[K]) => {
+    const next = subZones.slice();
+    next[idx]  = { ...next[idx], [key]: value };
+    setSubZones(next);
+  };
+
+  const removeSubZone = (idx: number) => {
+    const row = subZones[idx];
+    if (!confirm(`Delete restricted sub-zone "${row.name || '(unnamed)'}"? This can't be undone after publishing.`)) return;
+    setSubZones(subZones.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div>
+      {subZones.length === 0 && (
+        <div className="text-sm text-gray-500 italic mb-4 p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
+          No restricted sub-zones yet. Use the button below to add one.
+        </div>
+      )}
+
+      {subZones.length > 0 && (
+        <table className="w-full text-sm mb-4">
+          <thead>
+            <tr className="text-gray-500 text-left border-b border-gray-200">
+              <th className="py-2 pr-2">Name</th>
+              <th className="px-2">State</th>
+              <th className="px-2">Surcharge %</th>
+              <th className="px-2">Reason</th>
+              <th className="px-2 w-20">Active</th>
+              <th className="px-2 w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {subZones.map((sz, idx) => (
+              <tr key={sz.id} className={`border-b border-gray-100 ${sz.active ? '' : 'opacity-50'}`}>
+                <td className="py-2 pr-1">
+                  <input
+                    type="text"
+                    value={sz.name}
+                    placeholder="e.g. Sambisa forest corridor"
+                    onChange={(e) => patchSubZone(idx, 'name', e.target.value)}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                  />
+                </td>
+                <td className="px-1">
+                  <select
+                    value={sz.stateCode}
+                    onChange={(e) => patchSubZone(idx, 'stateCode', e.target.value as StateCode)}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">Select…</option>
+                    {ZONE_ORDER.map(zone => (
+                      <optgroup key={zone} label={`${zone} — ${GEOPOLITICAL_ZONES[zone].name}`}>
+                        {statesInZone(zone).map(s => (
+                          <option key={s.code} value={s.code}>{s.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-1">
+                  <InlineNum
+                    value={sz.surchargePct}
+                    step={1}
+                    onChange={(v) => patchSubZone(idx, 'surchargePct', v ?? 0)}
+                  />
+                </td>
+                <td className="px-1">
+                  <input
+                    type="text"
+                    value={sz.reason}
+                    placeholder="e.g. Active security advisory"
+                    onChange={(e) => patchSubZone(idx, 'reason', e.target.value)}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                  />
+                </td>
+                <td className="px-1 text-center">
+                  <input
+                    type="checkbox"
+                    checked={sz.active}
+                    onChange={(e) => patchSubZone(idx, 'active', e.target.checked)}
+                    className="w-4 h-4 accent-blue-600 cursor-pointer"
+                  />
+                </td>
+                <td className="px-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => removeSubZone(idx)}
+                    className="text-red-600 hover:bg-red-50 rounded p-1"
+                    title="Delete sub-zone"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <button
+        type="button"
+        onClick={addSubZone}
+        className="px-4 py-2 bg-[#0F2B4C] text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#1a3e6b]"
+      >
+        <Plus className="w-4 h-4" /> Add new restricted sub-zone
+      </button>
+    </div>
+  );
 }
