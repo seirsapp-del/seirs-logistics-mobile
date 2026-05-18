@@ -336,6 +336,161 @@
     "safety": "Safety",
     "noResults": "No matching articles"
   },
+  "deleteAccount": {
+    "title": "Delete Account",
+    "warning": "This will permanently delete your account, trip history, and wallet balance. This action cannot be undone.",
+    "exportFirst": "Export my data first",
+    "exportFailed": "Export failed",
+    "exportingMsg": "Your data is being prepared. You will receive an email with the download link within 24 hours.",
+    "confirmType": "Type DELETE to confirm",
+    "deleteForever": "Delete Forever",
+    "couldNotDelete": "Could not delete",
+    "tryAgain": "Try again"
+  },
+  "schedule2": {
+    "title": "Schedule Delivery",
+    "pickDate": "Pick a date",
+    "pickTime": "Pick a time",
+    "package": "Package",
+    "small": "Small",
+    "medium": "Medium",
+    "large": "Large",
+    "weightKg": "Weight (kg)",
+    "confirm": "Schedule",
+    "scheduledFor": "Scheduled for {{when}}"
+  },
+  "multiStop2": {
+    "title": "Multi-Stop Delivery",
+    "addStop": "Add Stop",
+    "pickup": "Pickup",
+    "stop": "Stop {{n}}",
+    "dropoff": "Drop-off",
+    "addressPlaceholder": "Search address…",
+    "removeStop": "Remove Stop",
+    "max5": "Max 5 stops per delivery"
+  },
+  "dropAtStore": {
+    "title": "Drop at Store",
+    "selectStore": "Select a partner store",
+    "plenty": "Plenty of space",
+    "limited": "Limited space",
+    "full": "Full",
+    "openHours": "Open {{open}} – {{close}}",
+    "distance": "{{km}} km away",
+    "instructions": "Walk in and show the QR code at the counter.",
+    "generateCode": "Generate Drop-off Code",
+    "dropCode": "Drop-off Code"
+  },
+  "shareTrip": {
+    "title": "Share My Trip",
+    "subtitle": "Send a live link to friends or family so they can track your trip.",
+    "whatsapp": "WhatsApp",
+    "sms": "SMS",
+    "copyLink": "Copy Link",
+    "linkCopied": "Link copied"
+  },
+  "recipientId": {
+    "title": "Collect a Package",
+    "subtitle": "Show the partner staff your SEIRS ID to collect your package.",
+    "registeredName": "REGISTERED NAME",
+    "yourQr": "Your QR Code",
+    "yourId": "Your ID",
+    "sendCode": "Send Pickup Code",
+    "enterCode": "Enter Pickup Code",
+    "couldNotSendCode": "Could not send code"
+  },
+  "transactionDetail": {
+    "title": "Transaction Detail",
+    "successful": "Successful",
+    "pending": "Pending",
+    "failed": "Failed",
+    "ref": "Reference",
+    "method": "Method",
+    "amount": "Amount",
+    "date": "Date",
+    "shareReceipt": "Share Receipt"
+  },
+  "fareBreakdown2": {
+    "title": "Fare Breakdown",
+    "baseFare": "Base fare",
+    "distanceFee": "Distance fee",
+    "timeFee": "Time fee",
+    "serviceFee": "Service fee",
+    "discount": "Discount",
+    "total": "Total"
+  },
+  "vehicleSelect2": {
+    "title": "Choose Ride",
+    "availableVehicles": "Available vehicles",
+    "selected": "Selected",
+    "continue": "Continue"
+  },
+  "tripProgress2": {
+    "title": "Your Trip",
+    "stepAssigned": "Rider assigned",
+    "stepPickedUp": "Pickup complete",
+    "stepInTransit": "On the way",
+    "stepDelivered": "Delivered",
+    "callRider": "Call rider",
+    "messageRider": "Message rider",
+    "sosBtn": "SOS"
+  },
+  "request2": {
+    "title": "Request a Ride",
+    "okada": "Okada",
+    "keke": "Keke",
+    "car": "Car",
+    "danfo": "Danfo",
+    "okadaSub": "Motorbike",
+    "kekeSub": "Tricycle",
+    "carSub": "Sedan",
+    "danfoSub": "Mini-bus",
+    "etaMin": "{{n}} min",
+    "capacityRider": "{{n}} rider",
+    "capacityRiders": "{{n}} riders",
+    "selectRide": "Select a ride"
+  },
+  "promo2": {
+    "title": "Promo Code",
+    "placeholder": "Enter promo code",
+    "apply": "Apply",
+    "applied": "Promo applied! Discount will show at checkout.",
+    "invalidCode": "Invalid promo code"
+  },
+  "notifications2": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "empty": "No notifications yet",
+    "emptyDesc": "Alerts and updates will appear here."
+  },
+  "notFound2": {
+    "title": "Screen not found",
+    "subtitle": "The page you were looking for doesn't exist.",
+    "goHome": "Go Home"
+  },
+  "resetPassword2": {
+    "title": "Password Reset",
+    "subtitle": "Your password has been reset successfully.",
+    "invalidLink": "Invalid Link",
+    "invalidLinkDesc": "This reset link has expired or is invalid. Request a new one from the Forgot Password screen.",
+    "backToSignIn": "Back to Sign In"
+  },
+  "seirsId2": {
+    "title": "My SEIRS ID",
+    "registeredName": "REGISTERED NAME",
+    "howWorks": "How handoff verification works",
+    "step1": "Show your QR to the partner staff or driver",
+    "step2": "They scan or type the alphanumeric code",
+    "step3": "Confirm your full name verbally to complete handoff"
+  },
+  "poolPrefs2": {
+    "title": "Pool Preferences",
+    "acceptPool": "Accept pool rides",
+    "whatToAccept": "WHAT TO ACCEPT",
+    "packagesOnly": "Packages only",
+    "ridesOnly": "Rides only",
+    "both": "Both"
+  },
   "tabs": {
     "home": "Home",
     "bookings": "Bookings",
