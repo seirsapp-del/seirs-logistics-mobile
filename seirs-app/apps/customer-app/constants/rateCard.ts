@@ -33,6 +33,10 @@ export interface RideVehicleRate {
   id:            string;
   label:         string;
   icon:          string;
+  /** Square photo URL for the picker thumbnail. Brings the app to life
+   *  vs outline icons. Placeholders for now; swap to branded SEIRS assets
+   *  per feedback_app_visual_aliveness.md when illustrator delivers. */
+  photoUrl?:     string;
   subKey:        string;        // i18n key under request2.*
   description:   string;
   eta:           string;
@@ -308,10 +312,10 @@ export const DEFAULT_RATE_CARD: RateCard = {
       // pump_price ÷ km/L so an NNPC announcement updates one number and
       // every km rate adjusts. Numbers tuned so default totals match
       // pre-refactor figures at baseline petrol price of ₦950/L.
-      { id: 'okada', label: 'Okada', icon: 'bicycle-outline',   subKey: 'okadaSub', description: 'Fastest in traffic',    eta: '2 min', base:  450, perKm:  40, fuelType: 'petrol', kmPerLitre: 45, capacityKey: 'capacityRider',  capacityCount:  1, features: ['Fast', 'Cheap'],         shareable: false },
-      { id: 'keke',  label: 'Keke',  icon: 'car-outline',       subKey: 'kekeSub',  description: 'Affordable shaded ride', eta: '3 min', base:  650, perKm:  55, fuelType: 'petrol', kmPerLitre: 25, capacityKey: 'capacityRiders', capacityCount:  3, features: ['Shaded', 'Affordable'], shareable: false },
-      { id: 'car',   label: 'Car',   icon: 'car-sport-outline', subKey: 'carSub',   description: 'Comfortable AC ride',    eta: '4 min', base: 1100, perKm: 100, fuelType: 'petrol', kmPerLitre: 12, capacityKey: 'capacityRiders', capacityCount:  4, features: ['AC', 'Comfort'],        shareable: true  },
-      { id: 'danfo', label: 'Danfo', icon: 'bus-outline',       subKey: 'danfoSub', description: 'Group / shared bus',     eta: '8 min', base: 2800, perKm: 180, fuelType: 'petrol', kmPerLitre:  8, capacityKey: 'capacityRiders', capacityCount: 14, features: ['Large', 'Group'],       shareable: true  },
+      { id: 'okada', label: 'Okada', icon: 'bicycle-outline',   photoUrl: 'https://images.unsplash.com/photo-1568708167756-aac17a8d9e9b?w=240&h=240&fit=crop', subKey: 'okadaSub', description: 'Fastest in traffic',    eta: '2 min', base:  450, perKm:  40, fuelType: 'petrol', kmPerLitre: 45, capacityKey: 'capacityRider',  capacityCount:  1, features: ['Fast', 'Cheap'],         shareable: false },
+      { id: 'keke',  label: 'Keke',  icon: 'car-outline',       photoUrl: 'https://images.unsplash.com/photo-1622493213862-eaccb20c1f70?w=240&h=240&fit=crop', subKey: 'kekeSub',  description: 'Affordable shaded ride', eta: '3 min', base:  650, perKm:  55, fuelType: 'petrol', kmPerLitre: 25, capacityKey: 'capacityRiders', capacityCount:  3, features: ['Shaded', 'Affordable'], shareable: false },
+      { id: 'car',   label: 'Car',   icon: 'car-sport-outline', photoUrl: 'https://images.unsplash.com/photo-1542362567-b07e54358753?w=240&h=240&fit=crop',  subKey: 'carSub',   description: 'Comfortable AC ride',    eta: '4 min', base: 1100, perKm: 100, fuelType: 'petrol', kmPerLitre: 12, capacityKey: 'capacityRiders', capacityCount:  4, features: ['AC', 'Comfort'],        shareable: true  },
+      { id: 'danfo', label: 'Danfo', icon: 'bus-outline',       photoUrl: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=240&h=240&fit=crop', subKey: 'danfoSub', description: 'Group / shared bus',     eta: '8 min', base: 2800, perKm: 180, fuelType: 'petrol', kmPerLitre:  8, capacityKey: 'capacityRiders', capacityCount: 14, features: ['Large', 'Group'],       shareable: true  },
     ],
     serviceFeePct:    0.15,
     shareDiscountPct: 0.20,

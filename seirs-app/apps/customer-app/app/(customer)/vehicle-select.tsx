@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar,
+  View, Text, Pressable, StyleSheet, StatusBar, Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -44,6 +44,7 @@ export default function VehicleSelectScreen() {
         id:          v.id,
         label:       v.label,
         icon:        v.icon,
+        photoUrl:    v.photoUrl,
         description: v.description,
         eta:         v.eta,
         features:    [...v.features],
@@ -54,6 +55,7 @@ export default function VehicleSelectScreen() {
         id:          v.id,
         label:       v.label,
         icon:        v.icon,
+        photoUrl:    undefined as string | undefined,
         description: v.description,
         eta:         v.eta,
         features:    [...v.features],
@@ -146,8 +148,12 @@ export default function VehicleSelectScreen() {
                 ]}
                 onPress={() => setSelected(v.id)}
               >
-                <View style={[styles.iconWrap, { backgroundColor: isSelected ? (isDark ? '#1A0C00' : '#DBEAFE') : theme.surfaceSecond }]}>
-                  <Ionicons name={v.icon as any} size={28} color={isSelected ? theme.primary : theme.textSecond} />
+                <View style={[styles.iconWrap, { backgroundColor: isSelected ? (isDark ? '#1A0C00' : '#DBEAFE') : theme.surfaceSecond, overflow: 'hidden' }]}>
+                  {v.photoUrl ? (
+                    <Image source={{ uri: v.photoUrl }} style={styles.iconImage} />
+                  ) : (
+                    <Ionicons name={v.icon as any} size={28} color={isSelected ? theme.primary : theme.textSecond} />
+                  )}
                 </View>
 
                 <View style={styles.cardInfo}>
@@ -246,6 +252,7 @@ const styles = StyleSheet.create({
 
   card:        { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5 },
   iconWrap:    { width: 60, height: 60, borderRadius: Radius.lg, justifyContent: 'center', alignItems: 'center' },
+  iconImage:   { width: 60, height: 60 },
   cardInfo:    { flex: 1, gap: 3 },
   cardLabel:   { fontSize: FontSize.md, fontWeight: FontWeight.bold },
   cardDesc:    { fontSize: FontSize.xs },
