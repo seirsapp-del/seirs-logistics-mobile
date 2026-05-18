@@ -154,6 +154,39 @@ export interface CancellationRule {
   noShowWaitMin:     number;
 }
 
+/**
+ * Anti-fraud velocity limits — daily caps per customer / driver. New
+ * accounts (< 30 days) get tighter limits to bound exposure while we
+ * build a trust signal. Per payments-spec §8.
+ */
+export interface VelocityLimitsRule {
+  newDeliveriesPerDay:        number;
+  newCustomerSpendPerDayNgn:  number;
+  newDriverPayoutPerDayNgn:   number;
+  estDeliveriesPerDay:        number;
+  estCustomerSpendPerDayNgn:  number;
+  estDriverPayoutPerDayNgn:   number;
+  failedPaymentsBeforeLockoutNew: number;
+  failedPaymentsBeforeLockoutEst: number;
+}
+
+/**
+ * Driver payout policy. Per payments-spec §6: minimum payout to reduce
+ * Flutterwave transfer-fee waste, and a holdback on new drivers to
+ * absorb early-tenure fraud risk.
+ */
+export interface PayoutRule {
+  minimumPayoutNgn:           number;   // below this, accumulate to next cycle
+  newDriverHoldbackPct:       number;   // 0.10 = 10% withheld on first 30 days
+  newDriverHoldbackDays:      number;   // 30
+  transferFeeFlatNgn:         number;   // Flutterwave per-transfer fee, informational
+}
+
+/** Chargeback / dispute costs that hit SEIRS when a card transaction is reversed. */
+export interface ChargebackRule {
+  chargebackFlatFeeNgn: number;   // ~₦4,000 per Flutterwave
+}
+
 export interface ReturnTripRule {
   callAttempts:      number;
   callIntervalMin:   number;
@@ -244,6 +277,9 @@ export interface RateCard {
   cod:            CODRule;
   insurance:      InsuranceRule;
   discounts:      DiscountsRule;
+  velocityLimits: VelocityLimitsRule;
+  payout:         PayoutRule;
+  chargeback:     ChargebackRule;
 
   /** Per-geopolitical-zone overrides (NW/NE/NC/SW/SE/SS). */
   zoneOverrides:  Partial<Record<GeopoliticalZone, RegionalOverrides>>;
@@ -398,6 +434,37 @@ export const DEFAULT_RATE_CARD: RateCard = {
     loyaltyPointValueNgn:       1,
     loyaltyMaxPointsPerBooking: 100,    // hard cap on single-redemption damage
     maxTotalPct:                0.20,   // 20% absolute ceiling on stacked discounts
+  },
+
+  // Anti-fraud caps. New-account limits tighter than established. Per
+  // payments-spec §8 but the "established" spend cap is lowered from
+  // ₦500k to ₦200k for bootstrapped launch — a fraudulent ₦500k
+  // transaction is unrecoverable for us.
+  velocityLimits: {
+    newDeliveriesPerDay:           5,
+    newCustomerSpendPerDayNgn:     50000,
+    newDriverPayoutPerDayNgn:      50000,
+    estDeliveriesPerDay:           20,
+    estCustomerSpendPerDayNgn:     200000,
+    estDriverPayoutPerDayNgn:      200000,
+    failedPaymentsBeforeLockoutNew: 3,
+    failedPaymentsBeforeLockoutEst: 5,
+  },
+
+  // Driver payout policy — reduces transfer-fee waste (Flutterwave charges
+  // ₦10-50 per Transfer regardless of amount, so tiny payouts are money
+  // shredded), absorbs early-tenure fraud risk via holdback.
+  payout: {
+    minimumPayoutNgn:      1000,
+    newDriverHoldbackPct:  0.10,
+    newDriverHoldbackDays: 30,
+    transferFeeFlatNgn:    50,
+  },
+
+  // Informational only — admin should track exposure. Every chargeback
+  // costs SEIRS this much on top of the refunded amount.
+  chargeback: {
+    chargebackFlatFeeNgn: 4000,
   },
 
   // ── Per-geopolitical-zone overrides ────────────────────────────────────
