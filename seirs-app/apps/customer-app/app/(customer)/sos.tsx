@@ -7,21 +7,24 @@ import { useState, useEffect, useRef } from 'react';
 import { Animated, Easing } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { sosApi } from '@/services/api';
-
-const EMERGENCY_CONTACTS = [
-  { label: 'Police',       number: '199', icon: 'shield-outline' },
-  { label: 'Ambulance',    number: '112', icon: 'medkit-outline' },
-  { label: 'Fire Service', number: '01-7944929', icon: 'flame-outline' },
-];
 
 export default function SOSScreen() {
   const router  = useRouter();
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { t }   = useTranslation();
+
+  // Translated each render so language switches reflect live.
+  const EMERGENCY_CONTACTS = [
+    { labelKey: 'police',      label: t('sos.police'),      number: '199',         icon: 'shield-outline' },
+    { labelKey: 'ambulance',   label: t('sos.ambulance'),   number: '112',         icon: 'medkit-outline' },
+    { labelKey: 'fireService', label: t('sos.fireService'), number: '01-7944929',  icon: 'flame-outline' },
+  ];
   // Optional ?deliveryId= param when SOS is opened from the trip-progress
   // screen — lets the backend notify the assigned driver too.
   const params  = useLocalSearchParams<{ deliveryId?: string }>();
@@ -86,8 +89,8 @@ export default function SOSScreen() {
       setAlertId(created.id);
     } catch (e: any) {
       // Surface the failure but stay in activated state — user can retry.
-      Alert.alert('Could not reach SEIRS support',
-        e?.message ?? 'Network error. Try again or call 199 directly.');
+      Alert.alert(t('sos.cannotReach'),
+        e?.message ?? t('sos.cannotReachMsg'));
     } finally {
       setSubmitting(false);
     }
@@ -95,11 +98,11 @@ export default function SOSScreen() {
 
   const handleSOS = () => {
     Alert.alert(
-      'Send SOS?',
-      'This will alert SEIRS support, share your live location, and notify your driver if you are on a trip.',
+      t('sos.confirmSendTitle'),
+      t('sos.confirmSendMsg'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Send SOS', style: 'destructive', onPress: fireSOS },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('sos.sendBtn'), style: 'destructive', onPress: fireSOS },
       ]
     );
   };
@@ -124,7 +127,7 @@ export default function SOSScreen() {
           <Pressable style={[styles.backBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </Pressable>
-          <Text style={styles.headerTitle}>SOS Emergency</Text>
+          <Text style={styles.headerTitle}>{t('sos.headerTitle')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -146,37 +149,35 @@ export default function SOSScreen() {
           {activated ? (
             <View style={styles.activeState}>
               <Text style={styles.activeTitle}>
-                {countdown > 0 ? `SOS in ${countdown}s…` : 'SOS Activated!'}
+                {countdown > 0 ? t('sos.activatingIn', { seconds: countdown }) : t('sos.activated')}
               </Text>
               <Text style={styles.activeDesc}>
-                {countdown > 0
-                  ? 'Your location is being shared. Emergency contacts notified.'
-                  : 'Help is on the way. Stay calm and stay on the line.'}
+                {countdown > 0 ? t('sos.sharingNow') : t('sos.activatedMsg')}
               </Text>
               {countdown > 0 && (
                 <Pressable style={styles.cancelBtn} onPress={cancelSOS}>
-                  <Text style={styles.cancelBtnText}>Cancel SOS</Text>
+                  <Text style={styles.cancelBtnText}>{t('sos.cancelSos')}</Text>
                 </Pressable>
               )}
             </View>
           ) : (
             <View style={styles.idleState}>
-              <Text style={styles.idleTitle}>Press & hold SOS button in an emergency</Text>
+              <Text style={styles.idleTitle}>{t('sos.idleTitle')}</Text>
               <Text style={styles.idleDesc}>
-                Your live location will be shared with SEIRS support and your emergency contacts.
+                {t('sos.idleDesc')}
               </Text>
             </View>
           )}
 
           {/* Emergency numbers */}
           <View style={styles.emergencySection}>
-            <Text style={styles.emergencySectionTitle}>Quick Dial</Text>
+            <Text style={styles.emergencySectionTitle}>{t('sos.quickDial')}</Text>
             <View style={styles.emergencyRow}>
               {EMERGENCY_CONTACTS.map(ec => (
                 <Pressable
-                  key={ec.label}
+                  key={ec.labelKey}
                   style={styles.emergencyCard}
-                  onPress={() => Alert.alert('Call', `Calling ${ec.label} (${ec.number})…`)}
+                  onPress={() => Alert.alert(t('sos.callDialog'), t('sos.callingMsg', { label: ec.label, number: ec.number }))}
                 >
                   <View style={styles.emergencyIcon}>
                     <Ionicons name={ec.icon as any} size={22} color="#EF4444" />
@@ -194,7 +195,7 @@ export default function SOSScreen() {
             onPress={() => router.push('/(customer)/share-trip')}
           >
             <Ionicons name="share-social-outline" size={18} color="#fff" />
-            <Text style={styles.shareBtnText}>Share My Live Location</Text>
+            <Text style={styles.shareBtnText}>{t('sos.shareLocationBtn')}</Text>
           </Pressable>
 
         </View>

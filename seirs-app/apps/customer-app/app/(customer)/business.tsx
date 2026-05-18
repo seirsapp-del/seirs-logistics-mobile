@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
@@ -54,6 +55,7 @@ export default function SendMultipleScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
 
   // Single pickup shared by all recipients
   const [pickupAddress, setPickupAddress] = useState('');
@@ -84,7 +86,7 @@ export default function SendMultipleScreen() {
 
   const submit = async () => {
     if (!canSubmit) {
-      Alert.alert('Missing info', 'Add a pickup address and complete every recipient before sending.');
+      Alert.alert(t('common.error'), t('sendMultiple.pickupHint'));
       return;
     }
     setSubmitting(true);
@@ -123,15 +125,15 @@ export default function SendMultipleScreen() {
             <Ionicons name="checkmark-circle" size={56} color="#16A34A" />
           </View>
           <Text style={[styles.successTitle, { color: theme.text }]}>
-            {result.tracking.length} delivery{result.tracking.length === 1 ? '' : 'ies'} booked
+            {t('sendMultiple.success')}
           </Text>
           {result.failed > 0 && (
             <Text style={[styles.successFail, { color: '#DC2626' }]}>
-              {result.failed} could not be created. Try those individually from Send a Package.
+              {t('sendMultiple.successMsg', { count: result.tracking.length })}
             </Text>
           )}
           <View style={[styles.codesCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.codesLabel, { color: theme.textSecond }]}>Tracking codes</Text>
+            <Text style={[styles.codesLabel, { color: theme.textSecond }]}>{t('home.recentTrips')}</Text>
             {result.tracking.map(code => (
               <Text key={code} style={[styles.codeRow, { color: theme.text }]}>{code}</Text>
             ))}
@@ -141,13 +143,13 @@ export default function SendMultipleScreen() {
               style={[styles.secondaryBtn, { borderColor: theme.border }]}
               onPress={() => { setResult(null); setRecipients([makeRecipient(), makeRecipient()]); }}
             >
-              <Text style={[styles.secondaryBtnText, { color: theme.text }]}>Send another batch</Text>
+              <Text style={[styles.secondaryBtnText, { color: theme.text }]}>{t('sendMultiple.bookAll')}</Text>
             </Pressable>
             <Pressable
               style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
               onPress={() => router.replace('/(customer)/(tabs)' as any)}
             >
-              <Text style={styles.primaryBtnText}>Done</Text>
+              <Text style={styles.primaryBtnText}>{t('tabs.home')}</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -163,7 +165,7 @@ export default function SendMultipleScreen() {
           <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
-          <Text style={[styles.title, { color: theme.text }]}>Send Multiple</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('sendMultiple.title')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -177,18 +179,18 @@ export default function SendMultipleScreen() {
           <View style={[styles.heroCard, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
             <Ionicons name="git-branch-outline" size={24} color={theme.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.heroTitle, { color: theme.text }]}>One pickup, multiple recipients</Text>
+              <Text style={[styles.heroTitle, { color: theme.text }]}>{t('sendMultiple.subtitle')}</Text>
               <Text style={[styles.heroBody, { color: theme.textSecond }]}>
-                Up to {MAX_RECIPIENTS} addresses in one go. Each gets its own driver + tracking code.
+                {t('sendMultiple.pickupHint')}
               </Text>
             </View>
           </View>
 
           {/* Pickup */}
-          <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>Pickup</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>{t('sendMultiple.pickup')}</Text>
           <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
             <InlineAddressPicker
-              label="Pickup address"
+              label={t('sendMultiple.pickup')}
               dotColor="#22C55E"
               value={pickupAddress}
               onSelect={(p) => { setPickupAddress(p.address); setPickupLat(p.lat); setPickupLng(p.lng); }}
@@ -199,12 +201,12 @@ export default function SendMultipleScreen() {
           {/* Recipients */}
           <View style={styles.recipientsHeader}>
             <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>
-              Recipients ({recipients.length}/{MAX_RECIPIENTS})
+              {t('sendMultiple.recipients')} ({recipients.length}/{MAX_RECIPIENTS})
             </Text>
             {recipients.length < MAX_RECIPIENTS && (
               <Pressable onPress={add} style={styles.addBtn}>
                 <Ionicons name="add" size={16} color={theme.primary} />
-                <Text style={[styles.addBtnText, { color: theme.primary }]}>Add recipient</Text>
+                <Text style={[styles.addBtnText, { color: theme.primary }]}>{t('sendMultiple.addRecipient')}</Text>
               </Pressable>
             )}
           </View>
@@ -215,7 +217,7 @@ export default function SendMultipleScreen() {
               style={[styles.recipientCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
             >
               <View style={styles.recipientHeader}>
-                <Text style={[styles.recipientNum, { color: theme.text }]}>Recipient {idx + 1}</Text>
+                <Text style={[styles.recipientNum, { color: theme.text }]}>{t('sendMultiple.recipientName')} {idx + 1}</Text>
                 {recipients.length > 1 && (
                   <Pressable onPress={() => remove(r.id)} hitSlop={10}>
                     <Ionicons name="close-circle" size={20} color={theme.textThird} />
@@ -224,7 +226,7 @@ export default function SendMultipleScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Recipient name</Text>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('sendMultiple.recipientName')}</Text>
                 <TextInput
                   value={r.name}
                   onChangeText={(v) => update(r.id, { name: v })}
@@ -235,7 +237,7 @@ export default function SendMultipleScreen() {
               </View>
 
               <InlineAddressPicker
-                label="Delivery address"
+                label={t('sendMultiple.recipientAddress')}
                 dotColor="#EF4444"
                 value={r.address}
                 onSelect={(p) => update(r.id, { address: p.address, lat: p.lat, lng: p.lng })}
@@ -243,7 +245,7 @@ export default function SendMultipleScreen() {
               />
 
               <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>What's in this package?</Text>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('sendMultiple.packageDesc')}</Text>
                 <TextInput
                   value={r.description}
                   onChangeText={(v) => update(r.id, { description: v })}
@@ -265,13 +267,13 @@ export default function SendMultipleScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={[styles.submitBtnText, { color: canSubmit ? '#fff' : theme.textThird }]}>
-                Book {recipients.length} deliver{recipients.length === 1 ? 'y' : 'ies'}
+                {t('sendMultiple.bookAll')}
               </Text>
             )}
           </Pressable>
 
           <Text style={[styles.note, { color: theme.textThird }]}>
-            Each recipient is a separate trip — you'll pay for each individually at checkout. Need 10+ packages? The SEIRS Business app handles bulk dispatch with one wallet.
+            {t('sendMultiple.pickupHint')}
           </Text>
 
         </ScrollView>

@@ -5,26 +5,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { ticketsApi } from '@/services/api';
-
-const CATEGORIES = [
-  { id: 'lost_item',     icon: 'bag-outline',       label: 'Lost Item',         desc: 'Left something in the vehicle' },
-  { id: 'driver',        icon: 'person-outline',    label: 'Driver Behaviour',  desc: 'Rude, dangerous or unprofessional' },
-  { id: 'overcharge',    icon: 'cash-outline',       label: 'Overcharged',       desc: 'Charged more than the quoted fare' },
-  { id: 'route',         icon: 'navigate-outline',   label: 'Wrong Route',       desc: 'Driver took an unexpected route' },
-  { id: 'vehicle',       icon: 'car-outline',        label: 'Vehicle Condition', desc: 'Dirty or unsafe vehicle' },
-  { id: 'other',         icon: 'ellipsis-horizontal-outline', label: 'Other',   desc: 'Something else happened' },
-];
 
 export default function ReportScreen() {
   const router   = useRouter();
   const cs       = useColorScheme();
   const theme    = Colors[cs ?? 'light'];
   const isDark   = cs === 'dark';
+  const { t }    = useTranslation();
   const { tripId } = useLocalSearchParams<{ tripId?: string }>();
+
+  // Translated each render so language switches reflect live.
+  const CATEGORIES = [
+    { id: 'lost_item',  icon: 'bag-outline',                  label: t('report.lostItem'),       desc: 'Left something in the vehicle' },
+    { id: 'driver',     icon: 'person-outline',               label: t('report.driverBehaviour'), desc: 'Rude, dangerous or unprofessional' },
+    { id: 'overcharge', icon: 'cash-outline',                 label: t('report.paymentIssue'),    desc: 'Charged more than the quoted fare' },
+    { id: 'route',      icon: 'navigate-outline',             label: t('report.wrongAddress'),    desc: 'Driver took an unexpected route' },
+    { id: 'vehicle',    icon: 'car-outline',                  label: t('report.damagedPackage'),  desc: 'Dirty or unsafe vehicle' },
+    { id: 'other',      icon: 'ellipsis-horizontal-outline',  label: t('report.other'),           desc: 'Something else happened' },
+  ];
 
   const [category, setCategory] = useState<string | null>(null);
   const [detail,   setDetail]   = useState('');
@@ -44,7 +47,7 @@ export default function ReportScreen() {
       });
       setDone(true);
     } catch (e: any) {
-      Alert.alert('Could not submit', e?.message ?? 'Please try again later.');
+      Alert.alert(t('rateDriver.couldNotSubmit'), e?.message ?? t('rateDriver.tryAgain'));
     } finally {
       setLoading(false);
     }
@@ -57,11 +60,11 @@ export default function ReportScreen() {
           <View style={[styles.successIcon, { backgroundColor: '#F0FDF4' }]}>
             <Ionicons name="checkmark-circle" size={56} color="#22C55E" />
           </View>
-          <Text style={[styles.successTitle, { color: theme.text }]}>Report Submitted</Text>
+          <Text style={[styles.successTitle, { color: theme.text }]}>{t('report.submitted')}</Text>
           <Text style={[styles.successDesc, { color: theme.textSecond }]}>
-            Our support team will review your report and get back to you within 24 hours.
+            {t('report.submittedMsg', { ref: tripId ?? '—' })}
           </Text>
-          <Button label="Back to Home" onPress={() => router.replace('/(customer)/(tabs)' as any)} fullWidth />
+          <Button label={t('tabs.home')} onPress={() => router.replace('/(customer)/(tabs)' as any)} fullWidth />
         </View>
       </SafeAreaView>
     );
@@ -77,7 +80,7 @@ export default function ReportScreen() {
           <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
-          <Text style={[styles.title, { color: theme.text }]}>Report an Issue</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('report.title')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -90,7 +93,7 @@ export default function ReportScreen() {
             </View>
           )}
 
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>What happened?</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('report.description')}</Text>
 
           {CATEGORIES.map(cat => (
             <Pressable
@@ -116,11 +119,11 @@ export default function ReportScreen() {
 
           {category && (
             <View style={styles.detailSection}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Additional details</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('report.description')}</Text>
               <View style={[styles.textareaWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                 <TextInput
                   style={[styles.textarea, { color: theme.text }]}
-                  placeholder="Describe what happened in detail…"
+                  placeholder={t('report.descriptionPlaceholder')}
                   placeholderTextColor={theme.textThird}
                   multiline
                   maxLength={500}
@@ -136,7 +139,7 @@ export default function ReportScreen() {
 
         <View style={[styles.cta, { borderTopColor: theme.border, backgroundColor: theme.surface }]}>
           <Button
-            label="Submit Report"
+            label={t('report.submit')}
             onPress={handleSubmit}
             loading={loading}
             disabled={!category}
