@@ -231,6 +231,111 @@
     "slide3Title": "Tọpa ní àkókò tààrà",
     "slide3Sub": "Títọpa àpẹrẹ tààrà. Mọ̀ ibi tí idii rẹ wà ní gbogbo ìgbà."
   },
+  "editProfile": {
+    "title": "Ṣàtúnṣe Profáìlì",
+    "changePhoto": "Yí Fọtò padà",
+    "save": "Fipamọ́ Àyípadà",
+    "saved": "A ti fipamọ́ profáìlì",
+    "saveFailed": "Kò lè fipamọ́",
+    "uploadFailed": "Ìfilelẹ̀ kùnà",
+    "permissionRequired": "A nílò àṣẹ",
+    "nameRequired": "Orúkọ nílò",
+    "tryAgain": "Gbiyanju lẹ́ẹ̀kanṣì"
+  },
+  "changePassword": {
+    "title": "Yí Ọ̀rọ̀ Ìwọlé padà",
+    "currentPassword": "Ọ̀rọ̀ ìwọlé lọwọ́",
+    "newPassword": "Ọ̀rọ̀ ìwọlé tuntun",
+    "confirmNewPassword": "Jẹ́rìísí ọ̀rọ̀ ìwọlé tuntun",
+    "save": "Yí Ọ̀rọ̀ Ìwọlé padà",
+    "currentRequired": "A nílò ọ̀rọ̀ ìwọlé lọwọ́",
+    "weakPassword": "Ọ̀rọ̀ ìwọlé aláìlágbára",
+    "passwordsDoNotMatch": "Àwọn ọ̀rọ̀ ìwọlé kò bá ara wọn mu",
+    "passwordChanged": "A ti yí ọ̀rọ̀ ìwọlé padà",
+    "passwordChangedMsg": "Lò ọ̀rọ̀ ìwọlé tuntun ní ìgbà tókàn tí o bá wọlé.",
+    "couldNotChange": "Kò lè yí ọ̀rọ̀ ìwọlé padà"
+  },
+  "addresses": {
+    "title": "Àwọn Adirẹsì Tí A Tọ́jú",
+    "addNew": "Fi Adirẹsì Tuntun kún",
+    "label": "Àmì (e.g. Ilé, Ọ́fíìsì)",
+    "address": "Adirẹsì kíkún",
+    "save": "Fipamọ́ Adirẹsì",
+    "labelAndAddressRequired": "Àmì àti adirẹsì wúlò ní pàtàkì",
+    "couldNotSave": "Kò lè fipamọ́",
+    "removeTitle": "Yọ adirẹsì kúrò",
+    "removeMsg": "Pa adirẹsì tí a tọ́jú yìí rẹ́?",
+    "remove": "Yọ kúrò",
+    "empty": "Kò sí adirẹsì tí a tọ́jú"
+  },
+  "paymentMethods": {
+    "title": "Àwọn Ọ̀nà Ìsan Owó",
+    "addCard": "Fi Káàdì kún",
+    "setDefault": "Ṣe àkọ́kọ́",
+    "remove": "Yọ kúrò",
+    "default": "Àkọ́kọ́",
+    "couldNotSetDefault": "Kò lè ṣe àkọ́kọ́",
+    "couldNotRemove": "Kò lè yọ kúrò",
+    "empty": "Kò sí ọ̀nà ìsan owó tí a tọ́jú",
+    "emptyDesc": "Fi káàdì kún láti foju ìtẹtẹ aláyé sílẹ̀ nígbà gbogbo tí o san."
+  },
+  "addPayment": {
+    "title": "Fi Ọ̀nà Ìsan Owó kún",
+    "cardNumber": "Nọ́mbà Káàdì",
+    "expiryDate": "Ọjọ́ Ìparí",
+    "cvv": "CVV",
+    "cardholderName": "Orúkọ Onílù Káàdì",
+    "saveCard": "Fipamọ́ Káàdì",
+    "secureBadge": "Ààbò — Flutterwave ń tọ́jú rẹ̀",
+    "added": "A ti fi káàdì kún"
+  },
+  "promotions2": {
+    "title": "Àwọn Ìpolówó",
+    "bannerTitle": "Fipamọ́ owó ní gbogbo ìrìn",
+    "bannerDesc": "Lo kóòdù ìpolówó nígbà ìsan láti gba ẹ̀dínkún lẹsẹ̀kẹsẹ̀.",
+    "active": "Ń ṣiṣẹ́",
+    "expired": "Ti parí",
+    "noPromos": "Kò sí ìpolówó tí ó ń ṣiṣẹ́"
+  },
+  "rewards2": {
+    "title": "Ẹ̀bùn",
+    "yourPoints": "Pọ́ìńtì Rẹ",
+    "membershipTiers": "Àwọn Ipele Ọmọ Ẹgbẹ́",
+    "earnMore": "Jèrè púpọ̀ síi pọ́ìńtì",
+    "redeem": "Lo"
+  },
+  "referral2": {
+    "title": "Pe Ọ̀rẹ́, Jèrè",
+    "heroTitle": "Pe àwọn ọ̀rẹ́, jèrè owó",
+    "heroDesc": "Gba ₦1,000 fún gbogbo ọ̀rẹ́ tí ó dara pọ̀ mọ́ SEIRS pẹ̀lú kóòdù rẹ tí ó sì parí ìfiránṣẹ akọ́kọ́ wọn.",
+    "yourCode": "Kóòdù Ìpè Rẹ",
+    "copy": "Daako",
+    "copied": "A ti daako",
+    "share": "Pin Ìjápọ̀ Ìpè",
+    "totalEarned": "Lapapọ Tí A Jèrè",
+    "totalReferred": "Lapapọ Tí A Pe"
+  },
+  "loyalty2": {
+    "title": "Ẹ̀bùn Ìfẹ́ní",
+    "redeemFor": "Lo fún",
+    "freeDelivery": "Ìfiránṣẹ ọ̀fẹ́",
+    "freeDeliveryDesc": "Ìfiránṣẹ ìpilẹ̀ títí dé 5 km, ọ̀fẹ́",
+    "priority": "Iṣẹ́ àkọ́kọ́",
+    "priorityDesc": "Fọ́ ìlà jí ní ìfiránṣẹ rẹ tókàn",
+    "insurance": "Ìmúlò ààbò",
+    "insuranceDesc": "Ààbò ₦50,000 fún ìfiránṣẹ kan"
+  },
+  "help2": {
+    "title": "Ilé Ìrànlọ́wọ́",
+    "searchPlaceholder": "Wá àwọn àpilẹ̀kọ ìrànlọ́wọ́…",
+    "browseByCategory": "Yan láti àwọn ẹ̀ka",
+    "trips": "Ìrìn",
+    "payments": "Ìsan owó",
+    "rewards": "Ẹ̀bùn",
+    "account": "Àkọọlẹ",
+    "safety": "Àìléwu",
+    "noResults": "Kò sí àpilẹ̀kọ tí ó bá a mu"
+  },
   "tabs": {
     "home": "Ilé",
     "bookings": "Àwọn Ìfiránṣẹ",

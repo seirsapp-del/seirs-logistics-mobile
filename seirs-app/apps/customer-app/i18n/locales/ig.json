@@ -231,6 +231,111 @@
     "slide3Title": "Soro n'oge ozugbo",
     "slide3Sub": "Nsochi map ozugbo. Mara ebe ngwugwu gị nọ mgbe niile."
   },
+  "editProfile": {
+    "title": "Dezie Profaịlụ",
+    "changePhoto": "Gbanwee Foto",
+    "save": "Chekwaa Mgbanwe",
+    "saved": "Echekwala profaịlụ",
+    "saveFailed": "Enweghị ike ichekwa",
+    "uploadFailed": "Nbulite dara",
+    "permissionRequired": "Achọrọ ikike",
+    "nameRequired": "Achọrọ aha",
+    "tryAgain": "Nwaa ọzọ"
+  },
+  "changePassword": {
+    "title": "Gbanwee Paswọọdụ",
+    "currentPassword": "Paswọọdụ ugbu a",
+    "newPassword": "Paswọọdụ ọhụrụ",
+    "confirmNewPassword": "Kwenye paswọọdụ ọhụrụ",
+    "save": "Melite Paswọọdụ",
+    "currentRequired": "Achọrọ paswọọdụ ugbu a",
+    "weakPassword": "Paswọọdụ adịghị ike",
+    "passwordsDoNotMatch": "Paswọọdụ adịghị adaba",
+    "passwordChanged": "Agbanwere paswọọdụ",
+    "passwordChangedMsg": "Jiri paswọọdụ ọhụrụ ahụ na mbanye gị na-esote.",
+    "couldNotChange": "Enweghị ike igbanwe paswọọdụ"
+  },
+  "addresses": {
+    "title": "Adreesị Echekwara",
+    "addNew": "Tinye Adreesị Ọhụrụ",
+    "label": "Akara (dịka Ụlọ, Ọfịs)",
+    "address": "Adreesị zuru ezu",
+    "save": "Chekwaa Adreesị",
+    "labelAndAddressRequired": "A chọrọ akara na adreesị abụọ",
+    "couldNotSave": "Enweghị ike ichekwa",
+    "removeTitle": "Wepu adreesị",
+    "removeMsg": "Hichapụ adreesị a echekwara?",
+    "remove": "Wepu",
+    "empty": "Enweghị adreesị echekwara"
+  },
+  "paymentMethods": {
+    "title": "Ụzọ Ịkwụ Ụgwọ",
+    "addCard": "Tinye Kaadị",
+    "setDefault": "Setịpụ dị ka ndabara",
+    "remove": "Wepu",
+    "default": "Ndabara",
+    "couldNotSetDefault": "Enweghị ike isetịpụ ndabara",
+    "couldNotRemove": "Enweghị ike iwepu",
+    "empty": "Enweghị ụzọ ịkwụ ụgwọ echekwara",
+    "emptyDesc": "Tinye kaadị iji wụgharị ịtinye nkọwa mgbe niile ị na-akwụ ụgwọ."
+  },
+  "addPayment": {
+    "title": "Tinye Ụzọ Ịkwụ Ụgwọ",
+    "cardNumber": "Nọmba Kaadị",
+    "expiryDate": "Ụbọchị Mmechi",
+    "cvv": "CVV",
+    "cardholderName": "Aha Onye Nwe Kaadị",
+    "saveCard": "Chekwaa Kaadị",
+    "secureBadge": "Echekwara — Flutterwave na-elekọta",
+    "added": "Etinyere kaadị"
+  },
+  "promotions2": {
+    "title": "Mgbasa Ozi",
+    "bannerTitle": "Chekwaa ego na njem ọ bụla",
+    "bannerDesc": "Tinye koodu mgbasa ozi na nkwụ ụgwọ maka mbelata ozugbo.",
+    "active": "Na-arụ ọrụ",
+    "expired": "Agwụla",
+    "noPromos": "Enweghị mgbasa ozi na-arụ ọrụ"
+  },
+  "rewards2": {
+    "title": "Ụgwọ Ọrụ",
+    "yourPoints": "Akara Gị",
+    "membershipTiers": "Ọkwa Ndị Otu",
+    "earnMore": "Nweta akara ndị ọzọ",
+    "redeem": "Jiri"
+  },
+  "referral2": {
+    "title": "Kpọọ & Nweta Ego",
+    "heroTitle": "Kpọọ ndị enyi, nweta ego",
+    "heroDesc": "Nweta ₦1,000 maka onye enyi ọ bụla sonyere SEIRS site na koodu gị ma mechaa nnyefe mbụ ya.",
+    "yourCode": "Koodu Nrute Gị",
+    "copy": "Mịrị",
+    "copied": "Emịchara",
+    "share": "Kekọrịta Njikọ Nrute",
+    "totalEarned": "Mkpokọta Nwetara",
+    "totalReferred": "Mkpokọta Akpọrọ"
+  },
+  "loyalty2": {
+    "title": "Ụgwọ Ọrụ Ntụkwasị Obi",
+    "redeemFor": "Jiri maka",
+    "freeDelivery": "Nnyefe efu",
+    "freeDeliveryDesc": "Nnyefe ọkọlọtọ ruo 5 km, efu",
+    "priority": "Mbubata ngwa ngwa",
+    "priorityDesc": "Wụgharị ahịrị na nnyefe gị na-esote",
+    "insurance": "Nkwalite mkpuchi",
+    "insuranceDesc": "Mkpuchi ₦50,000 maka otu nnyefe"
+  },
+  "help2": {
+    "title": "Ebe Nnyemaka",
+    "searchPlaceholder": "Chọọ akụkọ enyemaka…",
+    "browseByCategory": "Chọgharịa site na ụdị",
+    "trips": "Njem",
+    "payments": "Ịkwụ Ụgwọ",
+    "rewards": "Ụgwọ Ọrụ",
+    "account": "Akaụntụ",
+    "safety": "Nchekwa",
+    "noResults": "Enweghị akụkọ dakọrọ"
+  },
   "tabs": {
     "home": "Ụlọ",
     "bookings": "Ndokwa",

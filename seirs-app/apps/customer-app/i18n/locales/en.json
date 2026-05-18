@@ -231,6 +231,111 @@
     "slide3Title": "Track in real time",
     "slide3Sub": "Real-time map tracking. Know exactly where your package is at all times."
   },
+  "editProfile": {
+    "title": "Edit Profile",
+    "changePhoto": "Change Photo",
+    "save": "Save Changes",
+    "saved": "Profile saved",
+    "saveFailed": "Could not save",
+    "uploadFailed": "Upload failed",
+    "permissionRequired": "Permission required",
+    "nameRequired": "Name required",
+    "tryAgain": "Try again"
+  },
+  "changePassword": {
+    "title": "Change Password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "save": "Update Password",
+    "currentRequired": "Current password required",
+    "weakPassword": "Weak password",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "passwordChanged": "Password changed",
+    "passwordChangedMsg": "Use the new password on your next sign-in.",
+    "couldNotChange": "Could not change password"
+  },
+  "addresses": {
+    "title": "Saved Addresses",
+    "addNew": "Add New Address",
+    "label": "Label (e.g. Home, Office)",
+    "address": "Full address",
+    "save": "Save Address",
+    "labelAndAddressRequired": "Both label and address are required",
+    "couldNotSave": "Could not save",
+    "removeTitle": "Remove address",
+    "removeMsg": "Delete this saved address?",
+    "remove": "Remove",
+    "empty": "No saved addresses yet"
+  },
+  "paymentMethods": {
+    "title": "Payment Methods",
+    "addCard": "Add Card",
+    "setDefault": "Set as default",
+    "remove": "Remove",
+    "default": "Default",
+    "couldNotSetDefault": "Could not set default",
+    "couldNotRemove": "Could not remove",
+    "empty": "No payment methods saved",
+    "emptyDesc": "Add a card to skip entering details every time you pay."
+  },
+  "addPayment": {
+    "title": "Add Payment Method",
+    "cardNumber": "Card Number",
+    "expiryDate": "Expiry Date",
+    "cvv": "CVV",
+    "cardholderName": "Cardholder Name",
+    "saveCard": "Save Card",
+    "secureBadge": "Secure — handled by Flutterwave",
+    "added": "Card added"
+  },
+  "promotions2": {
+    "title": "Promotions",
+    "bannerTitle": "Save on every ride",
+    "bannerDesc": "Apply promo codes at checkout for instant discounts.",
+    "active": "Active",
+    "expired": "Expired",
+    "noPromos": "No active promos"
+  },
+  "rewards2": {
+    "title": "Rewards",
+    "yourPoints": "Your Points",
+    "membershipTiers": "Membership Tiers",
+    "earnMore": "Earn more points",
+    "redeem": "Redeem"
+  },
+  "referral2": {
+    "title": "Refer & Earn",
+    "heroTitle": "Invite friends, earn cash",
+    "heroDesc": "Get ₦1,000 for every friend who joins SEIRS using your code and completes their first delivery.",
+    "yourCode": "Your Referral Code",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share Invite Link",
+    "totalEarned": "Total Earned",
+    "totalReferred": "Total Referred"
+  },
+  "loyalty2": {
+    "title": "Loyalty Rewards",
+    "redeemFor": "Redeem for",
+    "freeDelivery": "Free delivery",
+    "freeDeliveryDesc": "Standard delivery up to 5 km, free",
+    "priority": "Priority dispatch",
+    "priorityDesc": "Skip the queue on your next delivery",
+    "insurance": "Insurance upgrade",
+    "insuranceDesc": "₦50,000 cover for one delivery"
+  },
+  "help2": {
+    "title": "Help Center",
+    "searchPlaceholder": "Search help articles…",
+    "browseByCategory": "Browse by category",
+    "trips": "Trips",
+    "payments": "Payments",
+    "rewards": "Rewards",
+    "account": "Account",
+    "safety": "Safety",
+    "noResults": "No matching articles"
+  },
   "tabs": {
     "home": "Home",
     "bookings": "Bookings",

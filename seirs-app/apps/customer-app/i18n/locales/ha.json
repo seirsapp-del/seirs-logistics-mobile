@@ -231,6 +231,111 @@
     "slide3Title": "Biyo a ainihin lokaci",
     "slide3Sub": "Biyo taswira a ainihin lokaci. San inda fakitin ka yake a kowane lokaci."
   },
+  "editProfile": {
+    "title": "Gyara Bayanai",
+    "changePhoto": "Canza Hoto",
+    "save": "Adana Canje-canje",
+    "saved": "An adana bayanai",
+    "saveFailed": "Ba a iya adanawa ba",
+    "uploadFailed": "Loda ya kasa",
+    "permissionRequired": "Ana buƙatar izini",
+    "nameRequired": "Ana buƙatar suna",
+    "tryAgain": "Sake gwadawa"
+  },
+  "changePassword": {
+    "title": "Canza Kalmar Sirri",
+    "currentPassword": "Kalmar sirri ta yanzu",
+    "newPassword": "Sabuwar kalmar sirri",
+    "confirmNewPassword": "Tabbatar da sabuwar kalmar sirri",
+    "save": "Sabunta Kalmar Sirri",
+    "currentRequired": "Ana buƙatar kalmar sirri ta yanzu",
+    "weakPassword": "Kalmar sirri mara ƙarfi",
+    "passwordsDoNotMatch": "Kalmomin sirri ba su daidaita ba",
+    "passwordChanged": "An canza kalmar sirri",
+    "passwordChangedMsg": "Yi amfani da sabuwar kalmar sirri a shiga ta gaba.",
+    "couldNotChange": "Ba a iya canza kalmar sirri ba"
+  },
+  "addresses": {
+    "title": "Adireshin da Aka Adana",
+    "addNew": "Ƙara Sabon Adireshi",
+    "label": "Take (misali Gida, Ofis)",
+    "address": "Cikakken adireshi",
+    "save": "Adana Adireshi",
+    "labelAndAddressRequired": "Take da adireshi duka ana buƙata",
+    "couldNotSave": "Ba a iya adanawa ba",
+    "removeTitle": "Cire adireshi",
+    "removeMsg": "Goge wannan adireshin da aka adana?",
+    "remove": "Cire",
+    "empty": "Babu adireshin da aka adana"
+  },
+  "paymentMethods": {
+    "title": "Hanyoyin Biyan Kuɗi",
+    "addCard": "Ƙara Kati",
+    "setDefault": "Saita azaman tsoho",
+    "remove": "Cire",
+    "default": "Tsoho",
+    "couldNotSetDefault": "Ba a iya saita tsoho ba",
+    "couldNotRemove": "Ba a iya cirewa ba",
+    "empty": "Babu hanyar biyan da aka adana",
+    "emptyDesc": "Ƙara kati don tsallake shigar da bayanai duk lokacin da kuke biya."
+  },
+  "addPayment": {
+    "title": "Ƙara Hanyar Biyan Kuɗi",
+    "cardNumber": "Lambar Kati",
+    "expiryDate": "Ranar Ƙarewa",
+    "cvv": "CVV",
+    "cardholderName": "Sunan Mai Kati",
+    "saveCard": "Adana Kati",
+    "secureBadge": "Tsare — Flutterwave ke kula da shi",
+    "added": "An ƙara kati"
+  },
+  "promotions2": {
+    "title": "Tallace-tallace",
+    "bannerTitle": "Adana akan kowane tafiya",
+    "bannerDesc": "Yi amfani da lambobin talla a kallon kuɗi don rangwame kai tsaye.",
+    "active": "Mai aiki",
+    "expired": "Ya ƙare",
+    "noPromos": "Babu tallace-tallace masu aiki"
+  },
+  "rewards2": {
+    "title": "Lambobi",
+    "yourPoints": "Puntocin Ka",
+    "membershipTiers": "Matsayin Membobi",
+    "earnMore": "Sami ƙarin puntoci",
+    "redeem": "Yi amfani"
+  },
+  "referral2": {
+    "title": "Gayyaci & Sami Lada",
+    "heroTitle": "Gayyaci abokai, sami kuɗi",
+    "heroDesc": "Sami ₦1,000 ga kowane aboki da ya shiga SEIRS ta amfani da lambar ka kuma ya kammala bayarwa ta farko.",
+    "yourCode": "Lambar Shawararku",
+    "copy": "Kwafi",
+    "copied": "An kwafa",
+    "share": "Raba Hanyar Gayyata",
+    "totalEarned": "Jimillar Da Aka Samu",
+    "totalReferred": "Jimillar Da Aka Gayyata"
+  },
+  "loyalty2": {
+    "title": "Ladar Aminci",
+    "redeemFor": "Yi amfani don",
+    "freeDelivery": "Bayarwa kyauta",
+    "freeDeliveryDesc": "Bayarwa ta yau da kullum har zuwa 5 km, kyauta",
+    "priority": "Aikawa cikin gaggawa",
+    "priorityDesc": "Tsallake jerin gwano akan bayarwarka ta gaba",
+    "insurance": "Inganta inshora",
+    "insuranceDesc": "Tsaron ₦50,000 don bayarwa ɗaya"
+  },
+  "help2": {
+    "title": "Cibiyar Taimako",
+    "searchPlaceholder": "Nemo labaran taimako…",
+    "browseByCategory": "Bincika ta hanyar rukuni",
+    "trips": "Tafiyoyi",
+    "payments": "Biya",
+    "rewards": "Lambobi",
+    "account": "Asusu",
+    "safety": "Tsaro",
+    "noResults": "Babu labaran da suka dace"
+  },
   "tabs": {
     "home": "Gida",
     "bookings": "Yin Oda",
