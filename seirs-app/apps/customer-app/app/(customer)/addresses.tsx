@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, MapPin, Plus, Home, Briefcase, Trash2, Check } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
@@ -24,6 +25,7 @@ export default function AddressesScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
+  const { t }  = useTranslation();
 
   const [items, setItems]     = useState<SavedAddress[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,7 @@ export default function AddressesScreen() {
 
   const addAddress = async () => {
     if (!draftLabel.trim() || !draftText.trim()) {
-      Alert.alert('Both label and address are required');
+      Alert.alert(t('addresses.labelAndAddressRequired'));
       return;
     }
     try {
@@ -69,15 +71,15 @@ export default function AddressesScreen() {
       setDraftLabel(''); setDraftText(''); setDraftType('home');
       setAdding(false);
     } catch (e: any) {
-      Alert.alert('Could not save', e?.message ?? 'Please try again.');
+      Alert.alert(t('addresses.couldNotSave'), e?.message ?? t('editProfile.tryAgain'));
     }
   };
 
   const removeAddress = (id: string) => {
-    Alert.alert('Remove address', 'Delete this saved address?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('addresses.removeTitle'), t('addresses.removeMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive',
+        text: t('common.delete'), style: 'destructive',
         onPress: async () => {
           try { await addressesApi.remove(id); } catch {}
           await cache(items.filter(a => a.id !== id));

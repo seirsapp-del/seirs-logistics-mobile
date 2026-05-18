@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
@@ -34,6 +35,7 @@ export default function TripDetailsScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [raw, setRaw] = useState<any | null>(null);
@@ -255,7 +257,7 @@ export default function TripDetailsScreen() {
           <View style={styles.actions}>
             {isActive && (
               <Button
-                label="Track Live"
+                label={t('tripDetail.trackPackage')}
                 onPress={() => router.push({ pathname: '/(customer)/trip-progress', params: { id: trip.id, driverId: trip.driver?.id ?? 'd1' } })}
                 leftIcon={<Ionicons name="navigate" size={16} color="#fff" />}
                 fullWidth
@@ -263,7 +265,7 @@ export default function TripDetailsScreen() {
             )}
             {isCompleted && !trip.rating && (
               <Button
-                label="Rate Trip"
+                label={t('rateDriver.title')}
                 onPress={() => router.push({ pathname: '/(customer)/rate/[driverId]', params: { driverId: trip.driver?.id ?? 'd1', tripId: trip.id } })}
                 leftIcon={<Ionicons name="star-outline" size={16} color="#fff" />}
                 fullWidth
@@ -271,7 +273,7 @@ export default function TripDetailsScreen() {
             )}
             {isCompleted && (
               <Button
-                label="View Receipt"
+                label={t('tripDetail.viewReceipt')}
                 variant="outline"
                 onPress={() => router.push({ pathname: '/(customer)/receipt/[id]', params: { id: trip.id } })}
                 leftIcon={<Ionicons name="receipt-outline" size={16} color={theme.primary} />}
@@ -279,7 +281,7 @@ export default function TripDetailsScreen() {
               />
             )}
             <Button
-              label="Report Issue"
+              label={t('tripDetail.reportIssue')}
               variant="ghost"
               onPress={() => router.push({ pathname: '/(customer)/report', params: { tripId: trip.id } })}
               leftIcon={<Ionicons name="flag-outline" size={16} color={theme.text} />}

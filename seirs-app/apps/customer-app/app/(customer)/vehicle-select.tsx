@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +16,7 @@ export default function VehicleSelectScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { t }   = useTranslation();
   const params  = useLocalSearchParams<{ pickup: string; dropoff: string; preselect?: string }>();
 
   const [selected, setSelected] = useState(params.preselect ?? 'economy');
@@ -30,7 +32,7 @@ export default function VehicleSelectScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surface }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Choose Ride</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('vehicleSelect2.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -48,7 +50,7 @@ export default function VehicleSelectScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-        <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Available vehicles</Text>
+        <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('vehicleSelect2.availableVehicles')}</Text>
 
         {MOCK_VEHICLES.map((v) => {
           const isSelected = selected === v.id;
@@ -111,11 +113,11 @@ export default function VehicleSelectScreen() {
       {/* Fixed CTA */}
       <View style={[styles.cta, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <View style={styles.ctaSummary}>
-          <Text style={[styles.ctaLabel, { color: theme.textSecond }]}>Selected</Text>
+          <Text style={[styles.ctaLabel, { color: theme.textSecond }]}>{t('vehicleSelect2.selected')}</Text>
           <Text style={[styles.ctaValue, { color: theme.text }]}>{selectedVehicle.label} · {selectedVehicle.priceLabel}</Text>
         </View>
         <Button
-          label="See Fare Breakdown"
+          label={t('fareBreakdown2.title')}
           onPress={() => router.push({
             pathname: '/(customer)/fare-breakdown',
             params: { pickup: params.pickup, dropoff: params.dropoff, vehicleId: selected },

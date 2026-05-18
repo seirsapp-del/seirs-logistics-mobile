@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, AlertTriangle, Trash2, Download } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -23,6 +24,7 @@ export default function DeleteAccountScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const { logout } = useAuth() as any;
+  const { t } = useTranslation();
 
   const [password,    setPassword]    = useState('');
   const [confirmText, setConfirmText] = useState('');
@@ -42,7 +44,7 @@ export default function DeleteAccountScreen() {
         `Your data export (${(json.length / 1024).toFixed(1)} KB) has been copied. Paste it into a notes app or email to yourself, then save the file somewhere safe.`,
       );
     } catch (e: any) {
-      Alert.alert('Export failed', e?.message ?? 'Try again.');
+      Alert.alert(t('deleteAccount.exportFailed'), e?.message ?? t('deleteAccount.tryAgain'));
     } finally {
       setExporting(false);
     }
@@ -54,27 +56,27 @@ export default function DeleteAccountScreen() {
 
   const handleSubmit = () => {
     Alert.alert(
-      'Delete account',
-      'Are you absolutely sure? You can sign in within 30 days to cancel — after that, deletion is permanent.',
+      t('deleteAccount.title'),
+      t('deleteAccount.warning'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             setLoading(true);
             try {
               await usersApi.deleteAccount(password);
               Alert.alert(
-                'Account deleted',
-                'Your account is scheduled for deletion. Sign in within 30 days to cancel.',
-                [{ text: 'OK', onPress: async () => {
+                t('deleteAccount.title'),
+                t('deleteAccount.warning'),
+                [{ text: t('common.ok'), onPress: async () => {
                   try { await logout?.(); } catch { /* best-effort */ }
                   router.replace('/(auth)/login' as any);
                 }}],
               );
             } catch (e: any) {
-              Alert.alert('Could not delete', e?.message ?? 'Try again.');
+              Alert.alert(t('deleteAccount.couldNotDelete'), e?.message ?? t('deleteAccount.tryAgain'));
             } finally {
               setLoading(false);
             }

@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { io, Socket } from 'socket.io-client';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
@@ -27,9 +28,10 @@ export default function TripProgressScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { t }   = useTranslation();
   const params  = useLocalSearchParams<{ id: string; driverId?: string }>();
 
-  const trip   = MOCK_TRIPS.find(t => t.id === params.id) ?? MOCK_TRIPS[2];
+  const trip   = MOCK_TRIPS.find(tr => tr.id === params.id) ?? MOCK_TRIPS[2];
   const driver = MOCK_DRIVERS.find(d => d.id === params.driverId) ?? MOCK_DRIVERS[0];
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -274,7 +276,7 @@ export default function TripProgressScreen() {
 
           {currentStep >= 3 && (
             <Button
-              label="Rate Your Ride"
+              label={t('rateDriver.title')}
               onPress={handleRate}
               style={{ flex: 1 }}
               leftIcon={<Ionicons name="star-outline" size={16} color="#fff" />}

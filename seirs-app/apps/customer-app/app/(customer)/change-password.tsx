@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Lock } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
@@ -16,6 +17,7 @@ export default function ChangePasswordScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
+  const { t }  = useTranslation();
 
   const [current, setCurrent] = useState('');
   const [next,    setNext]    = useState('');
@@ -23,21 +25,21 @@ export default function ChangePasswordScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!current) { Alert.alert('Current password required'); return; }
+    if (!current) { Alert.alert(t('changePassword.currentRequired')); return; }
     const pwErr = validatePassword(next);
     if (pwErr) {
-      Alert.alert('Weak password', pwErr);
+      Alert.alert(t('changePassword.weakPassword'), pwErr);
       return;
     }
-    if (next !== confirm) { Alert.alert('Passwords do not match'); return; }
+    if (next !== confirm) { Alert.alert(t('changePassword.passwordsDoNotMatch')); return; }
     setLoading(true);
     try {
       await authApi.changePassword(current, next);
-      Alert.alert('Password changed', 'Use your new password next time you sign in.', [
-        { text: 'OK', onPress: () => router.back() },
+      Alert.alert(t('changePassword.passwordChanged'), t('changePassword.passwordChangedMsg'), [
+        { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } catch (e: any) {
-      Alert.alert('Could not change password', e?.message ?? 'Try again.');
+      Alert.alert(t('changePassword.couldNotChange'), e?.message ?? t('editProfile.tryAgain'));
     } finally {
       setLoading(false);
     }

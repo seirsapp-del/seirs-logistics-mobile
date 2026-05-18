@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Users, Package, Clock, Percent } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 
 // Spec V8 §1.15 — opt-in/out of corridor pooling. When pool acceptance
@@ -38,6 +39,7 @@ export default function PoolPreferencesScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
+  const { t }  = useTranslation();
 
   const [prefs, setPrefs]   = useState<Prefs>(DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -60,11 +62,11 @@ export default function PoolPreferencesScreen() {
   const togglePool = (next: boolean) => {
     if (!next) {
       Alert.alert(
-        'Turn off pooling?',
-        'You\'ll always get a private trip but pay the full solo price. You can re-enable pooling any time.',
+        t('poolPrefs2.acceptPool'),
+        t('poolPrefs2.title'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Turn off', onPress: () => persist({ ...prefs, poolEnabled: false }) },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('common.ok'), onPress: () => persist({ ...prefs, poolEnabled: false }) },
         ],
       );
     } else {

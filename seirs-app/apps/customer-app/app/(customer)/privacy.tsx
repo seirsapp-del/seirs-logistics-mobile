@@ -54,12 +54,12 @@ export default function PrivacyScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account, trip history, and wallet balance. This action cannot be undone.',
+      t('deleteAccount.title'),
+      t('deleteAccount.warning'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Continue', style: 'destructive',
+          text: t('common.continue'), style: 'destructive',
           onPress: () => router.push('/(customer)/delete-account' as any),
         },
       ]
@@ -74,7 +74,7 @@ export default function PrivacyScreen() {
         'Your data is being prepared. You will receive an email with the download link within 24 hours.',
       );
     } catch {
-      Alert.alert('Export failed', 'Please try again later or contact support@seirs.co');
+      Alert.alert(t('deleteAccount.exportFailed'), 'support@seirs.co');
     }
   };
 
@@ -112,45 +112,45 @@ export default function PrivacyScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
         {/* Location */}
-        <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>Location Access</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>{t('settings.locationAccess')}</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           <ToggleRow
             icon="location"
-            label="Always Allow"
-            sub="Location tracked even when app is closed"
+            label={t('settings.alwaysAllow')}
+            sub={t('settings.alwaysAllowDesc')}
             value={locationAlways}
             onChange={setLocationAlways}
           />
           <ToggleRow
             icon="locate-outline"
-            label="While Using App"
-            sub="Location used only when app is open"
+            label={t('settings.whileUsingApp')}
+            sub={t('settings.whileUsingAppDesc')}
             value={locationInUse}
             onChange={setLocationInUse}
           />
         </View>
 
         {/* Data sharing */}
-        <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>Data & Analytics</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>{t('settings.dataAnalytics')}</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           <ToggleRow
             icon="analytics-outline"
-            label="Usage Analytics"
-            sub="Help improve the app by sharing usage data"
+            label={t('settings.usageAnalytics')}
+            sub={t('settings.usageAnalyticsDesc')}
             value={analyticsShare}
             onChange={onToggleAnalytics}
           />
           <ToggleRow
             icon="megaphone-outline"
-            label="Personalised Ads"
-            sub="Ads tailored to your interests"
+            label={t('settings.personalisedAds')}
+            sub={t('settings.personalisedAdsDesc')}
             value={personalisedAds}
             onChange={onTogglePersonalised}
           />
           <ToggleRow
             icon="share-outline"
-            label="Data Sharing with Partners"
-            sub="Share anonymised trip data for traffic insights"
+            label={t('settings.dataSharing')}
+            sub={t('settings.dataSharingDesc')}
             value={dataSharing}
             onChange={onToggleDataSharing}
           />

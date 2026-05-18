@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { paymentsApi, type SavedCard } from '@/services/api';
@@ -24,6 +25,7 @@ export default function PaymentMethodsScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
 
   const [cards,     setCards]     = useState<SavedCard[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -52,24 +54,24 @@ export default function PaymentMethodsScreen() {
       await paymentsApi.setDefaultCard(id);
       setCards(cards.map(c => ({ ...c, isDefault: c.id === id })));
     } catch (e: any) {
-      Alert.alert('Could not set default', e?.message ?? 'Try again');
+      Alert.alert(t('paymentMethods.couldNotSetDefault'), e?.message ?? t('editProfile.tryAgain'));
     }
   };
 
   const handleDelete = (card: SavedCard) => {
     Alert.alert(
-      `Remove ${card.brand.toUpperCase()} ****${card.last4}?`,
-      'You can save this card again on your next payment.',
+      `${t('paymentMethods.remove')} ${card.brand.toUpperCase()} ****${card.last4}`,
+      t('paymentMethods.emptyDesc'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove', style: 'destructive',
+          text: t('paymentMethods.remove'), style: 'destructive',
           onPress: async () => {
             try {
               await paymentsApi.deleteSavedCard(card.id);
               setCards(cards.filter(c => c.id !== card.id));
             } catch (e: any) {
-              Alert.alert('Could not remove', e?.message ?? 'Try again');
+              Alert.alert(t('paymentMethods.couldNotRemove'), e?.message ?? t('editProfile.tryAgain'));
             }
           },
         },
@@ -86,7 +88,7 @@ export default function PaymentMethodsScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Payment Methods</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('paymentMethods.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 

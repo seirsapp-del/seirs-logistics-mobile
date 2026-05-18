@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { loyaltyApi, type LoyaltyEntry, type LoyaltyTier } from '@/services/api';
 
@@ -56,6 +57,7 @@ export default function LoyaltyScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
 
   const [balance,  setBalance]  = useState(0);
   const [tier,     setTier]     = useState<LoyaltyTier>('bronze');
@@ -88,12 +90,12 @@ export default function LoyaltyScreen() {
       return;
     }
     Alert.alert(
-      `Redeem ${r.title}?`,
+      `${t('rewards2.redeem')} ${r.title}?`,
       `${r.desc}. Costs ${r.cost} points. Will be available on your next delivery.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Redeem', style: 'default',
+          text: t('rewards2.redeem'), style: 'default',
           onPress: async () => {
             setRedeeming(r.id);
             try {

@@ -4,6 +4,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +16,7 @@ export default function FareBreakdownScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { t }   = useTranslation();
   const params  = useLocalSearchParams<{ pickup: string; dropoff: string; vehicleId: string }>();
 
   const vehicle = MOCK_VEHICLES.find(v => v.id === params.vehicleId) ?? MOCK_VEHICLES[0];
@@ -136,7 +138,7 @@ export default function FareBreakdownScreen() {
       {/* Fixed CTA */}
       <View style={[styles.cta, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <Button
-          label="Continue to Confirm"
+          label={t('common.continue')}
           onPress={() => router.push({
             pathname: '/(customer)/confirm-ride',
             params: { pickup: params.pickup, dropoff: params.dropoff, vehicleId: params.vehicleId },

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
@@ -22,6 +23,7 @@ export default function MultiStopScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { t }   = useTranslation();
 
   const [stops, setStops] = useState<Stop[]>(INITIAL_STOPS);
 
@@ -163,7 +165,7 @@ export default function MultiStopScreen() {
       {/* CTA */}
       <View style={[styles.cta, { borderTopColor: theme.border, backgroundColor: theme.surface }]}>
         <Button
-          label="Choose Vehicle"
+          label={t('vehicleSelect2.title')}
           onPress={handleContinue}
           disabled={!canContinue}
           size="lg"
