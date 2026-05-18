@@ -45,7 +45,7 @@ const PACKAGE_CATEGORIES = [
 ] as const;
 type CategoryId = typeof PACKAGE_CATEGORIES[number]['id'];
 
-import { PACKAGE_VEHICLES, calcPackageFare } from '@/constants/rateCard';
+import { PACKAGE_VEHICLES, calcPackageFare } from '@/constants/mockData';
 
 const VEHICLES = PACKAGE_VEHICLES;
 type VehicleId = typeof PACKAGE_VEHICLES[number]['id'];
