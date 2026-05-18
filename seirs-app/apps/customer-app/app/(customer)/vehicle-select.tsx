@@ -44,6 +44,7 @@ export default function VehicleSelectScreen() {
         id:          v.id,
         label:       v.label,
         icon:        v.icon,
+        accentColor: v.accentColor,
         photoUrl:    v.photoUrl,
         description: v.description,
         eta:         v.eta,
@@ -55,6 +56,7 @@ export default function VehicleSelectScreen() {
         id:          v.id,
         label:       v.label,
         icon:        v.icon,
+        accentColor: theme.primary,
         photoUrl:    undefined as string | undefined,
         description: v.description,
         eta:         v.eta,
@@ -148,11 +150,28 @@ export default function VehicleSelectScreen() {
                 ]}
                 onPress={() => setSelected(v.id)}
               >
-                <View style={[styles.iconWrap, { backgroundColor: isSelected ? (isDark ? '#1A0C00' : '#DBEAFE') : theme.surfaceSecond, overflow: 'hidden' }]}>
+                {/* Uber-style: vehicle-coloured tinted square, bigger filled
+                    icon when selected, slightly subtler when not. Photos
+                    (v.photoUrl) take precedence when set — currently never. */}
+                <View style={[
+                  styles.iconWrap,
+                  {
+                    backgroundColor: isSelected
+                      ? v.accentColor + '22'   // 13% opacity of accent
+                      : (isDark ? '#1A1A1A' : '#F3F4F6'),
+                    borderWidth: isSelected ? 2 : 0,
+                    borderColor: isSelected ? v.accentColor : 'transparent',
+                    overflow: 'hidden',
+                  },
+                ]}>
                   {v.photoUrl ? (
                     <Image source={{ uri: v.photoUrl }} style={styles.iconImage} />
                   ) : (
-                    <Ionicons name={v.icon as any} size={28} color={isSelected ? theme.primary : theme.textSecond} />
+                    <Ionicons
+                      name={v.icon as any}
+                      size={36}
+                      color={isSelected ? v.accentColor : theme.textSecond}
+                    />
                   )}
                 </View>
 
@@ -251,8 +270,8 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: Spacing.xs },
 
   card:        { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5 },
-  iconWrap:    { width: 60, height: 60, borderRadius: Radius.lg, justifyContent: 'center', alignItems: 'center' },
-  iconImage:   { width: 60, height: 60 },
+  iconWrap:    { width: 64, height: 64, borderRadius: Radius.lg, justifyContent: 'center', alignItems: 'center' },
+  iconImage:   { width: 64, height: 64 },
   cardInfo:    { flex: 1, gap: 3 },
   cardLabel:   { fontSize: FontSize.md, fontWeight: FontWeight.bold },
   cardDesc:    { fontSize: FontSize.xs },
