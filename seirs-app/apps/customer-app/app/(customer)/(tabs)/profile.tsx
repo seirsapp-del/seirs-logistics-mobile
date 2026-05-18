@@ -107,12 +107,13 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Stats row */}
+          {/* Stats row — drivers get rated, customers don't. Wallet balance is
+              a more relevant stat for the customer to see at a glance. */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
             {[
               { label: t('profile.statTrips'),  value: `${completedTrips}` },
               { label: t('profile.statPoints'), value: MOCK_USER.points.toLocaleString() },
-              { label: t('profile.statRating'), value: '4.9 ★' },
+              { label: t('profile.statWallet'), value: `₦${MOCK_USER.walletBalance.toLocaleString()}` },
             ].map((s, i) => (
               <View key={s.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
                 <Text style={[styles.statValue, { color: theme.text }]}>{s.value}</Text>
