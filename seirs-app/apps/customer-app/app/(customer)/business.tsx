@@ -15,20 +15,44 @@
  * for irreplaceable items.
  */
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
+  View, Text, TextInput, Pressable, StyleSheet, Image,
   ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
-import { deliveriesApi } from '@/services/api';
+import { deliveriesApi, uploadApi } from '@/services/api';
 
-const MAX_RECIPIENTS = 5;
+const MAX_RECIPIENTS  = 5;
+const MAX_PHOTOS      = 5;   // matches /send single-package flow
+
+// 16 categories matching /send single-package — keeps surcharge maths
+// + safety hard-stops consistent across both flows.
+const PACKAGE_CATEGORIES = [
+  { id: 'documents',         labelKey: 'categoryDocuments'       },
+  { id: 'small_parcel',      labelKey: 'categorySmallParcel'     },
+  { id: 'standard_parcel',   labelKey: 'categoryStandardParcel'  },
+  { id: 'fragile',           labelKey: 'categoryFragile'         },
+  { id: 'food_hot',          labelKey: 'categoryFoodHot'         },
+  { id: 'food_cold',         labelKey: 'categoryFoodCold'        },
+  { id: 'medical',           labelKey: 'categoryMedical'         },
+  { id: 'bulk_goods',        labelKey: 'categoryBulkGoods'       },
+  { id: 'agricultural',      labelKey: 'categoryAgricultural'    },
+  { id: 'building',          labelKey: 'categoryBuilding'        },
+  { id: 'lumber',            labelKey: 'categoryLumber'          },
+  { id: 'house_move_single', labelKey: 'categoryHouseMoveSingle' },
+  { id: 'house_move_full',   labelKey: 'categoryHouseMoveFull'   },
+  { id: 'live_animals',      labelKey: 'categoryLiveAnimals'     },
+  { id: 'industrial',        labelKey: 'categoryIndustrial'      },
+  { id: 'other',             labelKey: 'categoryOther'           },
+] as const;
+type CategoryId = typeof PACKAGE_CATEGORIES[number]['id'];
 
 interface Recipient {
   id:          string;            // local React key
@@ -37,6 +61,9 @@ interface Recipient {
   lat:         number | null;
   lng:         number | null;
   description: string;
+  category:    CategoryId | null;
+  weightKg:    string;             // free-text in NGN-style "1.5"
+  photos:      string[];           // local URIs; uploaded on submit
 }
 
 function makeRecipient(): Recipient {
@@ -47,6 +74,9 @@ function makeRecipient(): Recipient {
     lat:         null,
     lng:         null,
     description: '',
+    category:    null,
+    weightKg:    '',
+    photos:      [],
   };
 }
 
@@ -82,7 +112,30 @@ export default function SendMultipleScreen() {
 
   const canSubmit =
     pickupLat != null && pickupLng != null && pickupAddress.length > 0 &&
-    recipients.every(r => r.name && r.address && r.lat != null && r.lng != null && r.description);
+    recipients.every(r =>
+      r.name && r.address && r.lat != null && r.lng != null && r.description &&
+      r.category && r.photos.length > 0 && parseFloat(r.weightKg) > 0,
+    );
+
+  // Per-recipient photo helpers
+  const addPhoto = async (id: string) => {
+    const target = recipients.find(r => r.id === id);
+    if (!target || target.photos.length >= MAX_PHOTOS) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== 'granted') {
+      Alert.alert(t('send.alertPermissionTitle'), t('send.alertPermissionBody'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+    if (!result.canceled && result.assets[0]) {
+      update(id, { photos: [...target.photos, result.assets[0].uri] });
+    }
+  };
+  const removePhoto = (id: string, idx: number) => {
+    const target = recipients.find(r => r.id === id);
+    if (!target) return;
+    update(id, { photos: target.photos.filter((_, i) => i !== idx) });
+  };
 
   const submit = async () => {
     if (!canSubmit) {
@@ -91,23 +144,31 @@ export default function SendMultipleScreen() {
     }
     setSubmitting(true);
     setResult(null);
-    // Fire each delivery in parallel; the matching service handles them
-    // independently so multi-driver dispatch is implicit.
+    // Upload each recipient's photos first (in parallel), then fire each
+    // delivery in parallel. Matching service handles dispatch independently.
     const results = await Promise.allSettled(
-      recipients.map(r =>
-        deliveriesApi.create({
+      recipients.map(async (r) => {
+        const photoUrls: string[] = [];
+        for (const uri of r.photos) {
+          const { url } = await uploadApi.file(uri);
+          photoUrls.push(url);
+        }
+        return deliveriesApi.create({
           pickupAddress,
-          pickupLat:        pickupLat!,
-          pickupLng:        pickupLng!,
-          dropoffAddress:   r.address,
-          dropoffLat:       r.lat!,
-          dropoffLng:       r.lng!,
+          pickupLat:          pickupLat!,
+          pickupLng:          pickupLng!,
+          dropoffAddress:     r.address,
+          dropoffLat:         r.lat!,
+          dropoffLng:         r.lng!,
+          packageCategory:    r.category!,
           packageDescription: `${r.description} (for ${r.name})`,
-          packageSize:      'medium',
-          isFragile:        false,
-          urgency:          'standard',
-        }),
-      ),
+          packageSize:        'medium',
+          weightKg:           parseFloat(r.weightKg) || undefined,
+          packagePhotos:      photoUrls,
+          isFragile:          r.category === 'fragile',
+          urgency:            'standard',
+        } as any);
+      }),
     );
     const tracking = results
       .filter(r => r.status === 'fulfilled')
@@ -254,6 +315,81 @@ export default function SendMultipleScreen() {
                   style={[styles.fieldInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
                 />
               </View>
+
+              {/* Photos per recipient — matches /send single-package flow */}
+              <View style={styles.field}>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>
+                  {t('send.packagePhotos')} <Text style={{ color: theme.error }}>*</Text>
+                  <Text style={{ color: theme.textThird }}> {t('send.minOnePhoto')}</Text>
+                </Text>
+                <View style={styles.photosRow}>
+                  {r.photos.map((uri, i) => (
+                    <View key={i} style={styles.photoWrap}>
+                      <Image source={{ uri }} style={styles.photo} />
+                      <Pressable
+                        style={[styles.photoRemove, { backgroundColor: theme.error }]}
+                        onPress={() => removePhoto(r.id, i)}
+                        hitSlop={6}
+                      >
+                        <Ionicons name="close" size={12} color="#fff" />
+                      </Pressable>
+                    </View>
+                  ))}
+                  {r.photos.length < MAX_PHOTOS && (
+                    <Pressable
+                      style={[styles.photoAdd, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}
+                      onPress={() => addPhoto(r.id)}
+                    >
+                      <Ionicons name="camera-outline" size={22} color={theme.primary} />
+                      <Text style={[styles.photoAddText, { color: theme.textSecond }]}>{t('send.addPhoto')}</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+
+              {/* Category — same 16 options as /send, drives surcharge + vehicle fit */}
+              <View style={styles.field}>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>
+                  {t('send.category')} <Text style={{ color: theme.error }}>*</Text>
+                </Text>
+                <View style={styles.categoryGrid}>
+                  {PACKAGE_CATEGORIES.map(cat => {
+                    const selected = r.category === cat.id;
+                    return (
+                      <Pressable
+                        key={cat.id}
+                        style={[
+                          styles.categoryChip,
+                          {
+                            backgroundColor: selected ? (isDark ? '#1A2E44' : '#EBF5FF') : theme.background,
+                            borderColor:     selected ? theme.primary : theme.border,
+                          },
+                        ]}
+                        onPress={() => update(r.id, { category: cat.id })}
+                      >
+                        <Text style={[styles.categoryText, { color: selected ? theme.primary : theme.text }]}>
+                          {t(`send.${cat.labelKey}`)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Weight */}
+              <View style={styles.field}>
+                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>
+                  {t('send.weightKg')} <Text style={{ color: theme.error }}>*</Text>
+                </Text>
+                <TextInput
+                  value={r.weightKg}
+                  onChangeText={(v) => update(r.id, { weightKg: v })}
+                  placeholder={t('send.weightPlaceholder')}
+                  placeholderTextColor={theme.textThird}
+                  keyboardType="decimal-pad"
+                  style={[styles.fieldInput, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
+                />
+              </View>
             </View>
           ))}
 
@@ -308,6 +444,19 @@ const styles = StyleSheet.create({
   field:       { gap: 6 },
   fieldLabel:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
   fieldInput:  { height: 46, borderRadius: Radius.md, borderWidth: 1, paddingHorizontal: Spacing.md, fontSize: FontSize.base },
+
+  // Photos
+  photosRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  photoWrap:    { width: 72, height: 72, borderRadius: Radius.md, position: 'relative' },
+  photo:        { width: 72, height: 72, borderRadius: Radius.md },
+  photoRemove:  { position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  photoAdd:     { width: 72, height: 72, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', gap: 2 },
+  photoAddText: { fontSize: 10, fontWeight: FontWeight.medium },
+
+  // Category grid
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
+  categoryChip: { paddingHorizontal: Spacing.sm, paddingVertical: 6, borderRadius: Radius.full, borderWidth: 1.5 },
+  categoryText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
 
   submitBtn:     { height: 54, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.sm },
   submitBtnText: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
