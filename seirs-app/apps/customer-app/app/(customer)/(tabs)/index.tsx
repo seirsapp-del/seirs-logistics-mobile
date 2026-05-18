@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
-  TextInput, Dimensions, Alert, RefreshControl, Modal,
+  TextInput, Dimensions, Alert, RefreshControl, Animated, Easing,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,7 +19,7 @@ import { deliveriesApi, paymentsApi } from '@/services/api';
 import {
   AlignLeft, MapPin, Package, Car, Clock, Search,
   Wallet, Bell, TrendingUp, ChevronRight, Plus,
-  Newspaper, Truck, Calendar, X,
+  Newspaper, Truck,
 } from 'lucide-react-native';
 
 const { width: W } = Dimensions.get('window');
@@ -50,8 +50,44 @@ export default function CustomerHomeScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab,     setActiveTab]     = useState<TripTab>('in_progress');
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [chooserOpen,   setChooserOpen]   = useState(false);
   const [balance,       setBalance]       = useState(0);
+
+  // Floating action buttons (Send + Ride) — auto-hide on scroll-down,
+  // show on scroll-up. Each button expands its label briefly on press
+  // for a satisfying tap-to-action animation.
+  const fabTranslate = useRef(new Animated.Value(0)).current;
+  const lastScrollY  = useRef(0);
+  const fabHidden    = useRef(false);
+  const sendWidth    = useRef(new Animated.Value(56)).current;
+  const rideWidth    = useRef(new Animated.Value(56)).current;
+
+  const showFabs = useCallback(() => {
+    if (!fabHidden.current) return;
+    fabHidden.current = false;
+    Animated.timing(fabTranslate, { toValue: 0, duration: 200, useNativeDriver: true, easing: Easing.out(Easing.cubic) }).start();
+  }, [fabTranslate]);
+
+  const hideFabs = useCallback(() => {
+    if (fabHidden.current) return;
+    fabHidden.current = true;
+    Animated.timing(fabTranslate, { toValue: 140, duration: 200, useNativeDriver: true, easing: Easing.in(Easing.cubic) }).start();
+  }, [fabTranslate]);
+
+  const onScrollEvent = (e: any) => {
+    const y = e.nativeEvent.contentOffset.y;
+    if (y > lastScrollY.current + 8) hideFabs();
+    else if (y < lastScrollY.current - 8) showFabs();
+    lastScrollY.current = y;
+  };
+
+  const animateAndGo = (which: 'send' | 'ride') => {
+    const widthRef = which === 'send' ? sendWidth : rideWidth;
+    Animated.sequence([
+      Animated.timing(widthRef, { toValue: 180, duration: 180, useNativeDriver: false, easing: Easing.out(Easing.cubic) }),
+      Animated.timing(widthRef, { toValue: 56,  duration: 180, useNativeDriver: false, easing: Easing.in(Easing.cubic), delay: 80 }),
+    ]).start();
+    setTimeout(() => router.push((which === 'send' ? '/(customer)/send' : '/(customer)/request') as any), 220);
+  };
   const [trips,         setTrips]         = useState<Array<{
     id: string; status: string; date: string; dropoffAddress: string; price: number; distance: string;
   }>>([]);
@@ -100,8 +136,10 @@ export default function CustomerHomeScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 96 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+        onScroll={onScrollEvent}
+        scrollEventThrottle={16}
       >
 
         {/* ── Top bar ─────────────────────────────────────────────────────── */}
@@ -321,74 +359,64 @@ export default function CustomerHomeScreen() {
 
       </ScrollView>
 
-      {/* ── Primary CTA (fixed bottom) ─────────────────────────────────────
-          Single-button design — opens a chooser sheet with Send Package /
-          Request Ride / Schedule. Pinned to the bottom with dynamic
-          paddingBottom so it never clips into the gesture bar.
-
-          Replaces the prior dual-button row which was cramped, redundant
-          with the top search bar, and harder to extend with a 3rd option
-          (Schedule). */}
-      <View style={[styles.ctaWrap, {
-        backgroundColor: theme.surface,
-        paddingBottom: 16 + insets.bottom,
-      }, Shadows.lg]}>
-        <Pressable
-          onPress={() => setChooserOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel={t('home.bookTrip')}
-          style={({ pressed }) => [
-            styles.ctaBtn,
-            { backgroundColor: pressed ? theme.primary : theme.primary },
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          <Plus size={20} color="#fff" strokeWidth={2.5} />
-          <Text style={styles.ctaBtnText}>{t('home.bookTrip')}</Text>
-        </Pressable>
-      </View>
-
-      {/* ── Book a Trip chooser sheet ──────────────────────────────────── */}
-      <Modal
-        visible={chooserOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setChooserOpen(false)}
+      {/* ── Floating Action Buttons (Send + Ride) ──────────────────────────
+          Bottom-right corner, two stacked compact pills. Icon-only at
+          rest. On tap, each expands leftward to show its label briefly
+          while we navigate — satisfying tap feedback. The whole pair
+          slides off-screen when the user scrolls DOWN through the recent
+          trips, and slides back in on scroll-up. No full-width bar means
+          the trip list is never blocked. */}
+      <Animated.View
+        pointerEvents="box-none"
+        style={[
+          styles.fabPair,
+          { bottom: 16 + insets.bottom, transform: [{ translateX: fabTranslate }] },
+        ]}
       >
-        <Pressable style={styles.sheetBackdrop} onPress={() => setChooserOpen(false)} />
-        <View style={[styles.sheet, { backgroundColor: theme.surface, paddingBottom: 16 + insets.bottom }]}>
-          <View style={styles.sheetHandle} />
-          <View style={styles.sheetHeader}>
-            <Text style={[styles.sheetTitle, { color: theme.text }]}>{t('home.bookTrip')}</Text>
-            <Pressable onPress={() => setChooserOpen(false)} hitSlop={12}>
-              <X size={20} color={theme.textSecond} />
-            </Pressable>
-          </View>
-
-          {[
-            { Icon: Package,  key: 'sendPackage',  color: theme.primary, route: '/(customer)/send' },
-            { Icon: Car,      key: 'requestRide',  color: theme.accent,  route: '/(customer)/request' },
-            { Icon: Calendar, key: 'scheduleTrip', color: '#16A34A',     route: '/(customer)/schedule' },
-          ].map(opt => (
-            <Pressable
-              key={opt.key}
-              style={({ pressed }) => [
-                styles.sheetOption,
-                { borderColor: theme.border, backgroundColor: pressed ? theme.surfaceSecond : theme.surface },
+        <Animated.View style={[styles.fabRow, { width: sendWidth, backgroundColor: theme.primary }, Shadows.md]}>
+          <Pressable
+            style={styles.fabPressable}
+            onPress={() => animateAndGo('send')}
+            accessibilityRole="button"
+            accessibilityLabel={t('home.sendPackage')}
+          >
+            <Package size={22} color="#fff" strokeWidth={2.25} />
+            <Animated.Text
+              numberOfLines={1}
+              style={[
+                styles.fabLabel,
+                {
+                  opacity: sendWidth.interpolate({ inputRange: [56, 120, 180], outputRange: [0, 0.4, 1] }),
+                },
               ]}
-              onPress={() => { setChooserOpen(false); router.push(opt.route as any); }}
             >
-              <View style={[styles.sheetIconWrap, { backgroundColor: opt.color + '20' }]}>
-                <opt.Icon size={22} color={opt.color} strokeWidth={2} />
-              </View>
-              <Text style={[styles.sheetOptionLabel, { color: theme.text }]}>
-                {t(`home.${opt.key}`)}
-              </Text>
-              <ChevronRight size={18} color={theme.textThird} strokeWidth={2} />
-            </Pressable>
-          ))}
-        </View>
-      </Modal>
+              {t('home.sendPackage')}
+            </Animated.Text>
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View style={[styles.fabRow, { width: rideWidth, backgroundColor: theme.accent }, Shadows.md]}>
+          <Pressable
+            style={styles.fabPressable}
+            onPress={() => animateAndGo('ride')}
+            accessibilityRole="button"
+            accessibilityLabel={t('home.requestRide')}
+          >
+            <Car size={22} color="#fff" strokeWidth={2.25} />
+            <Animated.Text
+              numberOfLines={1}
+              style={[
+                styles.fabLabel,
+                {
+                  opacity: rideWidth.interpolate({ inputRange: [56, 120, 180], outputRange: [0, 0.4, 1] }),
+                },
+              ]}
+            >
+              {t('home.requestRide')}
+            </Animated.Text>
+          </Pressable>
+        </Animated.View>
+      </Animated.View>
 
       {/* ── Hamburger Drawer ────────────────────────────────────────────── */}
       <Drawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />
@@ -465,41 +493,23 @@ const styles = StyleSheet.create({
   emptyBtn:   { marginTop: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: 12, borderRadius: Radius.full },
   emptyBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 
-  // Bottom CTA + chooser sheet
-  ctaWrap: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    paddingHorizontal: Spacing.md, paddingTop: Spacing.md,
-    borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl,
+  // Floating Action Buttons (Send + Ride) — bottom-right corner.
+  fabPair: {
+    position: 'absolute', right: 16, gap: 12,
   },
-  ctaBtn: {
-    height: 52, borderRadius: Radius.full,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: Spacing.sm,
+  fabRow: {
+    height: 56, borderRadius: 28, overflow: 'hidden',
+    justifyContent: 'center',
+    alignSelf: 'flex-end',
   },
-  ctaBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold, letterSpacing: 0.3 },
-
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl,
-    paddingHorizontal: Spacing.md, paddingTop: Spacing.sm,
+  fabPressable: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 17, gap: 10,
   },
-  sheetHandle: {
-    width: 44, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB',
-    alignSelf: 'center', marginBottom: Spacing.sm,
+  fabLabel: {
+    color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold,
+    letterSpacing: 0.3,
   },
-  sheetHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: Spacing.sm, marginBottom: Spacing.sm,
-  },
-  sheetTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  sheetOption: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    paddingVertical: Spacing.md, paddingHorizontal: Spacing.md,
-    borderRadius: Radius.lg, borderWidth: 1, marginBottom: Spacing.sm,
-  },
-  sheetIconWrap: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  sheetOptionLabel: { flex: 1, fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 
   // Drawer
   drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', flexDirection: 'row' },
