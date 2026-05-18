@@ -104,17 +104,77 @@ export class RateCard {
     weekend: { customerPercent: number; driverSharePercent: number };
   };
 
-  /** Zone (geographic) surcharges. */
+  /**
+   * Zone (geographic) surcharges. New shape uses state-aware tiers since
+   * v2 of the rate card (May 2026). Legacy fields (intraStatePercent,
+   * interStatePercent, longDistancePercent, longDistanceThresholdKm,
+   * restrictedZones) are retained as `?` so historical rate cards keep
+   * pricing correctly and the upgrade path is non-breaking.
+   */
   @Column({ type: 'jsonb' })
   zoneSurcharges: {
-    intraStatePercent:    number;   // default 0
-    interStatePercent:    number;
-    longDistancePercent:  number;   // > longDistanceThresholdKm
-    longDistanceThresholdKm: number;
-    overnightFeeNgn:      number;   // for very long trips
-    overnightThresholdKm: number;
-    restrictedZones:      Array<{ state: string; surchargePercent: number; reason: string }>;
+    // ── New (v2+) state-aware tier ─────────────────────────────────────
+    intraStateLongHaulKm?:    number;   // km threshold within one state
+    intraStateLongHaulPct?:   number;   // % above threshold
+    interStateAdjacentPct?:   number;   // crossing into a neighbour state
+    interStateDistantPct?:    number;   // non-adjacent in same geopolitical zone
+    crossZonePct?:            number;   // crossing geopolitical zones (NW↔SS etc.)
+    restrictedZoneDefaultPct?: number;  // fallback % for sub-zones without an explicit %
+    overnightFeeKm?:          number;   // new name; alias of overnightThresholdKm
+
+    // ── Always present ────────────────────────────────────────────────
+    overnightFeeNgn:          number;
+
+    // ── Legacy (v1) — read only when new fields are missing ───────────
+    intraStatePercent?:       number;
+    interStatePercent?:       number;
+    longDistancePercent?:     number;
+    longDistanceThresholdKm?: number;
+    overnightThresholdKm?:    number;
+
+    /** @deprecated Use `regions.restrictedSubZones` (richer schema). */
+    restrictedZones?:         Array<{ state: string; surchargePercent: number; reason: string }>;
   };
+
+  /**
+   * Regional pricing — per-zone and per-state overrides, plus admin-
+   * addable restricted sub-zones. New in v2 (May 2026). Nullable so
+   * v1 rate cards keep working; resolveRegionalOverrides() returns {}
+   * when missing.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  regions: {
+    /** 6 geopolitical zones (NW/NE/NC/SW/SE/SS). Multiplier × baseline rates. */
+    zoneOverrides?: Partial<Record<string, {
+      rateMultiplier?:        number;
+      vehicleOverrides?:      Record<string, { base?: number; perKm?: number }>;
+      fuelPrices?:            { petrolNgn?: number; dieselNgn?: number };
+      serviceFeeRideOverride?:    number;
+      serviceFeePackageOverride?: number;
+      dwellBufferMin?:        number;
+      reason?:                string;
+    }>>;
+    /** State-level overrides win over zone-level. Key = ISO 3166-2 NG code. */
+    stateOverrides?: Partial<Record<string, {
+      rateMultiplier?:           number;
+      vehicleOverrides?:         Record<string, { base?: number; perKm?: number }>;
+      fuelPrices?:               { petrolNgn?: number; dieselNgn?: number };
+      serviceFeeRideOverride?:    number;
+      serviceFeePackageOverride?: number;
+      dwellBufferMin?:           number;
+      restrictedSubZones?:       Array<{ name: string; surchargePct: number; reason: string }>;
+      reason?:                   string;
+    }>>;
+    /** Manually-added restricted areas (curfew, flood, conflict, etc.) — admin-editable. */
+    restrictedSubZones?: Array<{
+      id:           string;
+      name:         string;
+      stateCode:    string;   // ISO 3166-2 NG code
+      surchargePct: number;
+      reason:       string;
+      active:       boolean;
+    }>;
+  } | null;
 
   /** Discounts. */
   @Column({ type: 'jsonb' })

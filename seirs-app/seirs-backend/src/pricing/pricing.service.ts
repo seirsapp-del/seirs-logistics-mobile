@@ -6,6 +6,10 @@ import { Repository } from 'typeorm';
 import { RateCard } from './rate-card.entity';
 import { ServiceCategory } from './service-category.entity';
 import { DEFAULT_RATE_CARD, DEFAULT_SERVICE_CATEGORIES } from './pricing.seed';
+import {
+  detectStateFromCoords, areStatesAdjacent, getStateZone,
+  type StateCode, type GeopoliticalZone,
+} from './regions';
 
 /**
  * Shape of the price breakdown stored on each Delivery + returned to
@@ -63,13 +67,47 @@ export interface PricingInput {
   /** Estimated minutes the driver will spend not driving across all stops. */
   estimatedDwellMinutes: number;
   scheduledAt?:  Date;             // if undefined, treated as "now"
-  isInterState?: boolean;
-  isLongDistance?: boolean;        // > rateCard.longDistanceThresholdKm
-  isRestrictedZone?: { state: string }; // optional restricted-zone flag
-  isBulk?:       boolean;          // CSV upload bulk discount
-  isRecurring?:  boolean;          // recurring schedule discount
+
+  /**
+   * Preferred — provide coords and the service detects pickup/dropoff
+   * states + applies the correct zone-surcharge tier + regional rate
+   * multiplier. Fall back to the legacy flags below when coords aren't
+   * available (e.g. CSV bulk upload with address-only rows).
+   */
+  pickupCoords?:  { latitude: number; longitude: number };
+  dropoffCoords?: { latitude: number; longitude: number };
+
+  /**
+   * Override the auto-detected state codes. Mostly for tests + cases
+   * where the bbox returns null (offshore, edge cases) but the address
+   * geocoder has already resolved the state name.
+   */
+  pickupStateCode?:  StateCode;
+  dropoffStateCode?: StateCode;
+
+  // ── Legacy flags (still honoured when neither coords nor stateCodes provided) ──
+  isInterState?:     boolean;
+  isLongDistance?:   boolean;
+  isRestrictedZone?: { state: string };
+
+  // ── Discounts (unchanged) ──
+  isBulk?:               boolean;
+  isRecurring?:          boolean;
   loyaltyPointsToRedeem?: number;
-  isWelcome?:    boolean;          // first-booking discount
+  isWelcome?:            boolean;
+}
+
+/**
+ * Merged regional overrides — baseline ↘ geopolitical zone ↘ state.
+ * State-level wins over zone-level.
+ */
+interface ResolvedRegion {
+  rateMultiplier:   number;
+  fuelPrices?:      { petrolNgn?: number; dieselNgn?: number };
+  serviceFeeRideOverride?:    number;
+  serviceFeePackageOverride?: number;
+  dwellBufferMin?:  number;
+  vehicleOverrides?: Record<string, { base?: number; perKm?: number }>;
 }
 
 @Injectable()
@@ -156,14 +194,108 @@ export class PricingService implements OnModuleInit {
 
   /**
    * Compute fuel cost per km for the given vehicle at today's pump price.
+   * Uses regional fuel-price override when the pickup state's region has
+   * one (e.g. SS zone's higher pump prices), else baseline.
    */
-  fuelPerKm(card: RateCard, vehicleType: string): number {
+  fuelPerKm(card: RateCard, vehicleType: string, region?: ResolvedRegion): number {
     const v = card.vehicleRates[vehicleType];
     if (!v || v.fuelType === 'none' || v.kmPerLitre <= 0) return 0;
+    const override = region?.fuelPrices;
     const price = v.fuelType === 'petrol'
-      ? card.fuelPrices.petrolPerLitreNgn
-      : card.fuelPrices.dieselPerLitreNgn;
+      ? (override?.petrolNgn ?? card.fuelPrices.petrolPerLitreNgn)
+      : (override?.dieselNgn ?? card.fuelPrices.dieselPerLitreNgn);
     return price / v.kmPerLitre;
+  }
+
+  /**
+   * Merge baseline ↘ zone override ↘ state override (state wins on conflict).
+   * Returns a flat, fully-resolved view ready to apply to a quote.
+   */
+  resolveRegion(card: RateCard, stateCode: StateCode | null): ResolvedRegion {
+    if (!stateCode || !card.regions) return { rateMultiplier: 1 };
+    const zone = getStateZone(stateCode);
+    const fromZ = (zone && card.regions.zoneOverrides?.[zone]) ?? {};
+    const fromS = card.regions.stateOverrides?.[stateCode] ?? {};
+    return {
+      rateMultiplier:           fromS.rateMultiplier ?? fromZ.rateMultiplier ?? 1,
+      fuelPrices:               { ...(fromZ.fuelPrices ?? {}), ...(fromS.fuelPrices ?? {}) },
+      serviceFeeRideOverride:   fromS.serviceFeeRideOverride    ?? fromZ.serviceFeeRideOverride,
+      serviceFeePackageOverride: fromS.serviceFeePackageOverride ?? fromZ.serviceFeePackageOverride,
+      dwellBufferMin:           fromS.dwellBufferMin ?? fromZ.dwellBufferMin,
+      vehicleOverrides:         { ...(fromZ.vehicleOverrides ?? {}), ...(fromS.vehicleOverrides ?? {}) },
+    };
+  }
+
+  /**
+   * State-aware zone-surcharge tier. New in v2 — falls back to v1 flags
+   * (input.isInterState / input.isLongDistance / input.isRestrictedZone)
+   * when neither coords nor explicit state codes are provided.
+   */
+  zoneSurchargeForBooking(
+    card: RateCard,
+    input: PricingInput,
+    pickupState: StateCode | null,
+    dropoffState: StateCode | null,
+  ): { pct: number; flat: number; restrictedPct: number; labels: string[] } {
+    const z = card.zoneSurcharges;
+    const labels: string[] = [];
+    let pct = 0;
+
+    const hasV2 = z.interStateAdjacentPct != null || z.crossZonePct != null;
+
+    if (pickupState && dropoffState && hasV2) {
+      // ── New v2 tier ───────────────────────────────────────────────
+      if (pickupState === dropoffState) {
+        if (input.km > (z.intraStateLongHaulKm ?? 100)) {
+          pct += pctValue(z.intraStateLongHaulPct, 15);
+          labels.push('intraStateLongHaul');
+        }
+      } else {
+        const sameZone = getStateZone(pickupState) === getStateZone(dropoffState);
+        if (!sameZone) {
+          pct += pctValue(z.crossZonePct, 40);
+          labels.push('crossZone');
+        } else if (areStatesAdjacent(pickupState, dropoffState)) {
+          pct += pctValue(z.interStateAdjacentPct, 20);
+          labels.push('interStateAdjacent');
+        } else {
+          pct += pctValue(z.interStateDistantPct, 30);
+          labels.push('interStateDistant');
+        }
+      }
+    } else {
+      // ── v1 legacy fallback ────────────────────────────────────────
+      if (input.isInterState) {
+        pct += pctValue(z.interStatePercent, 20);
+        labels.push('interState');
+      }
+      if (input.isLongDistance) {
+        pct += pctValue(z.longDistancePercent, 30);
+        labels.push('longDistance');
+      }
+    }
+
+    const overnightKm = z.overnightFeeKm ?? z.overnightThresholdKm ?? 500;
+    const flat = input.km >= overnightKm ? (z.overnightFeeNgn ?? 0) : 0;
+    if (flat > 0) labels.push('overnight');
+
+    // Restricted: prefer richer v2 sub-zones (admin-addable), fall back to v1 array.
+    let restrictedPct = 0;
+    const subZone = card.regions?.restrictedSubZones?.find(
+      sz => sz.active && (sz.stateCode === pickupState || sz.stateCode === dropoffState),
+    );
+    if (subZone) {
+      restrictedPct = subZone.surchargePct;
+      labels.push(`restricted:${subZone.name}`);
+    } else if (input.isRestrictedZone) {
+      const legacy = z.restrictedZones?.find(r => r.state === input.isRestrictedZone!.state);
+      if (legacy) {
+        restrictedPct = legacy.surchargePercent;
+        labels.push('restricted');
+      }
+    }
+
+    return { pct, flat, restrictedPct, labels };
   }
 
   /**
@@ -195,11 +327,26 @@ export class PricingService implements OnModuleInit {
       );
     }
 
-    const fuelKm = this.fuelPerKm(card, input.vehicleType);
+    // ── Regional context ─────────────────────────────────────────
+    // Detect pickup/dropoff state from coords if supplied; honour explicit
+    // overrides for tests / address-only flows; otherwise null (legacy path).
+    const pickupState: StateCode | null =
+      input.pickupStateCode ??
+      (input.pickupCoords ? detectStateFromCoords(input.pickupCoords.latitude, input.pickupCoords.longitude) : null);
+    const dropoffState: StateCode | null =
+      input.dropoffStateCode ??
+      (input.dropoffCoords ? detectStateFromCoords(input.dropoffCoords.latitude, input.dropoffCoords.longitude) : null);
+
+    const region = this.resolveRegion(card, pickupState);
+    const mult   = region.rateMultiplier;
+    const fuelKm = this.fuelPerKm(card, input.vehicleType, region);
+
+    // Per-vehicle override (e.g. SS region might override van base only).
+    const vehicleOv = region.vehicleOverrides?.[input.vehicleType] ?? {};
 
     // ── Customer side ──
-    const base           = v.baseFareCustomer;
-    const distanceLabour = v.labourPerKmCustomer * input.km;
+    const base           = (vehicleOv.base  ?? v.baseFareCustomer)    * mult;
+    const distanceLabour = (vehicleOv.perKm ?? v.labourPerKmCustomer) * mult * input.km;
     const distanceFuel   = fuelKm * input.km;
     // For single-stop bookings, the "stop bonus" is zero (the first stop
     // is the only drop). Bonuses kick in from stop #2 onward.
@@ -227,13 +374,21 @@ export class PricingService implements OnModuleInit {
     const weekendSur = isWeekend ? subtotalPreTime * (t.weekend.customerPercent / 100) : 0;
 
     const subtotalPreZone = subtotalPreTime + nightSur + peakSur + weekendSur;
-    const z = card.zoneSurcharges;
-    const interStateSur   = input.isInterState   ? subtotalPreZone * (z.interStatePercent   / 100) : 0;
-    const longDistanceSur = input.isLongDistance ? subtotalPreZone * (z.longDistancePercent / 100) : 0;
-    const overnightSur    = (input.isLongDistance && input.km >= z.overnightThresholdKm) ? z.overnightFeeNgn : 0;
-    const restrictedSur   = input.isRestrictedZone
-      ? subtotalPreZone * ((z.restrictedZones.find(r => r.state === input.isRestrictedZone!.state)?.surchargePercent ?? 0) / 100)
-      : 0;
+
+    // State-aware zone surcharge — replaces the flat interState/longDistance
+    // flags with a real tier (intra-state long-haul / inter-state adjacent /
+    // inter-state distant / cross-zone) detected from pickup+dropoff states.
+    const zr = this.zoneSurchargeForBooking(card, input, pickupState, dropoffState);
+    const tierSur       = subtotalPreZone * zr.pct;
+    const restrictedSur = subtotalPreZone * (zr.restrictedPct / 100);
+    const overnightSur  = zr.flat;
+    // Keep the breakdown shape stable for the booking UI — bucket the
+    // tier surcharge into the most appropriate legacy field.
+    const labelOfTier = zr.labels.find(l =>
+      ['interState','interStateAdjacent','interStateDistant','crossZone','intraStateLongHaul'].includes(l)
+    );
+    const interStateSur   = labelOfTier && labelOfTier.startsWith('interState') ? tierSur : 0;
+    const longDistanceSur = labelOfTier === 'crossZone' || labelOfTier === 'intraStateLongHaul' ? tierSur : 0;
 
     const subtotalPreDiscount =
       subtotalPreZone + interStateSur + longDistanceSur + overnightSur + restrictedSur;
@@ -253,9 +408,9 @@ export class PricingService implements OnModuleInit {
     const vat   = subtotalVatBase * Number(card.vatRate);
     const total = subtotalVatBase + vat;
 
-    // ── Driver side ──
-    const dBase           = v.baseFareDriver;
-    const dDistanceLabour = v.labourPerKmDriver * input.km;
+    // ── Driver side ── (same regional multiplier, full fuel pass-through)
+    const dBase           = (vehicleOv.base  ?? v.baseFareDriver)    * mult;
+    const dDistanceLabour = (vehicleOv.perKm ?? v.labourPerKmDriver) * mult * input.km;
     const dDistanceFuel   = fuelKm * input.km;          // full pass-through
     const dStopBonuses    = card.stopAndDwell.perStopBonusDriver * extraStops;
     const dDwellOver      = 0;
@@ -316,4 +471,15 @@ function toMinutes(hhmm: string): number {
 function isWeekday(d: Date): boolean {
   const day = d.getDay();   // 0=Sun..6=Sat
   return day >= 1 && day <= 5;
+}
+
+/**
+ * Resolve a zoneSurcharges percentage that might be stored as either:
+ *  - the new v2 decimal form (0.20 = 20%)
+ *  - the seed's integer % form (20 = 20%)
+ *  - missing → use fallback
+ */
+function pctValue(stored: number | undefined, fallbackPct: number): number {
+  if (stored == null) return fallbackPct / 100;
+  return stored > 1 ? stored / 100 : stored;
 }

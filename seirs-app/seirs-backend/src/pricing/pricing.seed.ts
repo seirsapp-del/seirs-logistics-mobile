@@ -94,14 +94,55 @@ export const DEFAULT_RATE_CARD = {
     weekend: { customerPercent: 10, driverSharePercent: 70 },
   },
 
+  // New state-aware zone tier. Legacy fields kept for backwards-compat
+  // with v1 rate cards still in pricing.service fallback logic.
   zoneSurcharges: {
-    intraStatePercent: 0,
-    interStatePercent: 20,
-    longDistancePercent: 30,
-    longDistanceThresholdKm: 100,
-    overnightFeeNgn: 5000,
-    overnightThresholdKm: 500,
-    restrictedZones: [],
+    intraStateLongHaulKm:     100,
+    intraStateLongHaulPct:    15,
+    interStateAdjacentPct:    20,
+    interStateDistantPct:     30,
+    crossZonePct:             40,
+    restrictedZoneDefaultPct: 50,
+    overnightFeeKm:           500,
+    overnightFeeNgn:          5000,
+    // Legacy (still consumed by v1 fallback)
+    intraStatePercent:        0,
+    interStatePercent:        20,
+    longDistancePercent:      30,
+    longDistanceThresholdKm:  100,
+    overnightThresholdKm:     500,
+    restrictedZones:          [],
+  },
+
+  // Regional pricing — six geopolitical zones + per-state overrides +
+  // admin-addable sub-zones. Matches customer-app's DEFAULT_RATE_CARD
+  // (constants/rateCard.ts) so locally-computed quotes equal backend.
+  regions: {
+    zoneOverrides: {
+      SW: { rateMultiplier: 1.00, reason: 'Baseline — calibrated for SW urban (Lagos/Ibadan/Abeokuta).' },
+      SE: { rateMultiplier: 0.95, reason: 'Lower wages + denser urban network.' },
+      SS: { rateMultiplier: 1.10, fuelPrices: { petrolNgn: 1050, dieselNgn: 1350 }, reason: 'Oil delta — security + fuel supply quirks.' },
+      NC: { rateMultiplier: 1.05, reason: 'FCT premium + longer rural routes.' },
+      NW: { rateMultiplier: 0.90, reason: 'Lower wage base + cheaper fuel access (Kano hub).' },
+      NE: { rateMultiplier: 1.15, dwellBufferMin: 3, reason: 'Security premium (parts of Borno/Yobe/Adamawa).' },
+    },
+    stateOverrides: {
+      LA: { rateMultiplier: 1.10, reason: 'Lagos — traffic + higher cost of living.' },
+      FC: { rateMultiplier: 1.10, reason: 'FCT — institutional demand premium.' },
+      RI: { rateMultiplier: 1.15, reason: 'Port Harcourt — refinery/oil traffic + security.' },
+      BO: { rateMultiplier: 1.30, reason: 'Borno — heightened security across most LGAs.' },
+      KN: { rateMultiplier: 0.85, reason: 'Kano metro — cheaper than SW baseline.' },
+    },
+    restrictedSubZones: [
+      {
+        id:           'seed_bo_ne_corridor',
+        name:         'NE corridor (security advisory)',
+        stateCode:    'BO',
+        surchargePct: 50,
+        reason:       'Active security advisory; admin can refine to specific LGAs.',
+        active:       true,
+      },
+    ],
   },
 
   discounts: {
