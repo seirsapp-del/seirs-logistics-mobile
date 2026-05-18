@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { authApi } from '@/services/api';
@@ -14,6 +15,7 @@ export default function ForgotPasswordScreen() {
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
   const isDark      = colorScheme === 'dark';
+  const { t }       = useTranslation();
 
   const [email,   setEmail]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,14 +23,14 @@ export default function ForgotPasswordScreen() {
   const [error,   setError]   = useState('');
 
   const handleSubmit = async () => {
-    if (!email.trim()) { setError('Please enter your email address.'); return; }
+    if (!email.trim()) { setError(t('auth.enterEmail')); return; }
     setError('');
     setLoading(true);
     try {
       await authApi.forgotPassword(email.trim().toLowerCase());
       setSent(true);
     } catch (e: any) {
-      setError(e.message ?? 'Something went wrong. Please try again.');
+      setError(e.message ?? t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -48,13 +50,12 @@ export default function ForgotPasswordScreen() {
             <View style={[styles.sentIconWrap, { backgroundColor: '#22C55E18' }]}>
               <Ionicons name="mail-open-outline" size={52} color="#22C55E" />
             </View>
-            <Text style={[styles.sentTitle, { color: theme.text }]}>Check your inbox</Text>
+            <Text style={[styles.sentTitle, { color: theme.text }]}>{t('auth.checkInbox')}</Text>
             <Text style={[styles.sentDesc, { color: theme.textSecond }]}>
-              If <Text style={{ fontWeight: FontWeight.semibold, color: theme.text }}>{email}</Text> is registered,
-              you'll receive a reset link within a few minutes.
+              {t('auth.checkInboxDesc')}
             </Text>
             <Text style={[styles.sentHint, { color: theme.textThird }]}>
-              Check your spam folder if you don't see it.
+              {t('auth.checkSpam')}
             </Text>
           </View>
           <Pressable
@@ -62,7 +63,7 @@ export default function ForgotPasswordScreen() {
             onPress={() => router.back()}
           >
             <Ionicons name="arrow-back" size={18} color="#fff" />
-            <Text style={styles.btnText}>Back to Sign In</Text>
+            <Text style={styles.btnText}>{t('auth.backToSignIn')}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -93,9 +94,9 @@ export default function ForgotPasswordScreen() {
             <Ionicons name="cube" size={24} color={theme.primary} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
           </View>
-          <Text style={[styles.title, { color: theme.text }]}>Forgot password?</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('auth.forgotTitle')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            Enter your email and we'll send you a link to reset your password.
+            {t('auth.forgotDesc')}
           </Text>
         </View>
 
@@ -109,7 +110,7 @@ export default function ForgotPasswordScreen() {
           ) : null}
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Email address</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.emailAddress')}</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Ionicons name="mail-outline" size={18} color={theme.textThird} style={styles.inputIcon} />
               <TextInput
@@ -132,7 +133,7 @@ export default function ForgotPasswordScreen() {
           >
             {loading ? <ActivityIndicator color="#fff" /> : (
               <View style={styles.btnRow}>
-                <Text style={styles.btnText}>Send Reset Link</Text>
+                <Text style={styles.btnText}>{t('auth.sendResetLink')}</Text>
                 <Ionicons name="arrow-forward" size={18} color="#fff" />
               </View>
             )}
@@ -141,9 +142,9 @@ export default function ForgotPasswordScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>Remember your password?</Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>{t('auth.rememberPassword')}</Text>
           <Pressable onPress={() => router.back()}>
-            <Text style={[styles.footerLink, { color: theme.primary }]}> Sign In</Text>
+            <Text style={[styles.footerLink, { color: theme.primary }]}> {t('auth.signIn')}</Text>
           </Pressable>
         </View>
       </ScrollView>

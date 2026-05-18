@@ -9,6 +9,7 @@ import {
 const TERMS_URL   = 'https://seirs.co/terms-of-service';
 const PRIVACY_URL = 'https://seirs.co/privacy-policy';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { authApi } from '@/services/api';
@@ -49,6 +50,7 @@ export default function RegisterScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
 
   // Captured from deep-link query (e.g. seirscustomer://(auth)/register?ref=CUST-XXXXX)
   const { ref: refParam } = useLocalSearchParams<{ ref?: string }>();
@@ -137,8 +139,8 @@ export default function RegisterScreen() {
             <Truck size={22} color={theme.primary} strokeWidth={2} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
           </View>
-          <Text style={[styles.title, { color: theme.text }]}>Create account</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecond }]}>Start sending packages today</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('auth.createAccount')}</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecond }]}>{t('auth.startSending')}</Text>
         </View>
 
         {/* Form */}
@@ -152,7 +154,7 @@ export default function RegisterScreen() {
           {/* Name row: First + Last */}
           <View style={styles.nameRow}>
             <View style={[styles.field, { flex: 1 }]}>
-              <Text style={[styles.label, { color: theme.textSecond }]}>First name</Text>
+              <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.firstName')}</Text>
               <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                 <User size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
                 <TextInput
@@ -167,7 +169,7 @@ export default function RegisterScreen() {
               </View>
             </View>
             <View style={[styles.field, { flex: 1 }]}>
-              <Text style={[styles.label, { color: theme.textSecond }]}>Last name</Text>
+              <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.lastName')}</Text>
               <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                 <TextInput
                   style={[styles.input, { color: theme.text, paddingLeft: Spacing.md }]}
@@ -185,7 +187,7 @@ export default function RegisterScreen() {
           {/* Middle name */}
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>
-              Middle name <Text style={{ fontWeight: FontWeight.regular, color: theme.textThird }}>(optional)</Text>
+              {t('auth.middleName')} <Text style={{ fontWeight: FontWeight.regular, color: theme.textThird }}>{t('auth.middleNameOptional')}</Text>
             </Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <User size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
@@ -202,7 +204,7 @@ export default function RegisterScreen() {
 
           {/* Email */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Email address</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.emailAddress')}</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Mail size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
               <TextInput
@@ -220,7 +222,7 @@ export default function RegisterScreen() {
 
           {/* Phone — +234 locked prefix */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Phone number</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.phone')}</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Phone size={15} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon as any} />
               <View style={[styles.prefixWrap, { borderRightColor: theme.border }]}>
@@ -238,13 +240,13 @@ export default function RegisterScreen() {
               />
             </View>
             <Text style={[styles.fieldHint, { color: theme.textThird }]}>
-              Nigerian numbers only: 080x / 081x / 070x / 090x / 091x
+              {t('auth.phoneHint')}
             </Text>
           </View>
 
           {/* Password */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Password</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.password')}</Text>
             <PasswordInput
               placeholder="Min. 8 chars, upper + lower + number/symbol"
               placeholderTextColor={theme.textThird}
@@ -258,9 +260,9 @@ export default function RegisterScreen() {
 
           {/* Confirm Password */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Confirm password</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.confirmPassword')}</Text>
             <PasswordInput
-              placeholder="Repeat your password"
+              placeholder={t('auth.confirmPassword')}
               placeholderTextColor={theme.textThird}
               autoComplete="new-password"
               backgroundColor={theme.surfaceSecond}
@@ -275,7 +277,7 @@ export default function RegisterScreen() {
             <Checkbox
               checked={ageConfirmed}
               onToggle={() => setAgeConfirmed(v => !v)}
-              label="I confirm I am 18 years of age or older"
+              label={t('auth.ageConfirm')}
             />
           </View>
 
@@ -298,7 +300,7 @@ export default function RegisterScreen() {
                   >Privacy Policy</Text>
                 </Text>
               }
-              sublabel="Your acceptance will be recorded with a timestamp."
+              sublabel={t('auth.termsNote')}
             />
           </View>
 
@@ -311,22 +313,22 @@ export default function RegisterScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <View style={styles.submitRow}>
-                <Text style={styles.submitText}>Create Account</Text>
+                <Text style={styles.submitText}>{t('auth.createAccountBtn')}</Text>
                 <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
               </View>
             )}
           </Pressable>
 
           <Text style={[styles.otpNote, { color: theme.textThird }]}>
-            A 6-digit verification code will be sent to your email address.
+            {t('auth.otpNote')}
           </Text>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecond }]}>Already have an account?</Text>
+          <Text style={[styles.footerText, { color: theme.textSecond }]}>{t('auth.alreadyAccount')}</Text>
           <Pressable onPress={() => router.push('/(auth)/login' as any)}>
-            <Text style={[styles.footerLink, { color: theme.accent }]}> Sign In</Text>
+            <Text style={[styles.footerLink, { color: theme.accent }]}> {t('auth.signIn')}</Text>
           </Pressable>
         </View>
       </ScrollView>

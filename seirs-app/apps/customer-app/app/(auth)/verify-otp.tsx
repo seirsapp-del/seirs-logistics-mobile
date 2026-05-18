@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +22,7 @@ export default function VerifyOtpScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
   const { login } = useAuth();
+  const { t }     = useTranslation();
 
   const [otp,        setOtp]        = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [loading,    setLoading]    = useState(false);
@@ -120,12 +122,12 @@ export default function VerifyOtpScreen() {
             <Mail size={36} color={theme.accent} strokeWidth={1.5} />
           </View>
 
-          <Text style={[styles.title, { color: theme.text }]}>Verify your email</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('auth.verifyEmail')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            We sent a 6-digit code to{'\n'}
+            {t('auth.otpSentTo')}{'\n'}
             <Text style={{ color: theme.text, fontWeight: FontWeight.semibold }}>{maskedEmail}</Text>
           </Text>
-          <Text style={[styles.expiry, { color: theme.textThird }]}>Code expires in 15 minutes.</Text>
+          <Text style={[styles.expiry, { color: theme.textThird }]}>{t('auth.codeExpires')}</Text>
         </View>
 
         {/* OTP inputs */}
@@ -151,7 +153,7 @@ export default function VerifyOtpScreen() {
                   Shadows.xs,
                 ]}
                 value={digit}
-                onChangeText={t => handleChange(t, i)}
+                onChangeText={(text) => handleChange(text, i)}
                 onKeyPress={e => handleKeyPress(e, i)}
                 keyboardType="number-pad"
                 maxLength={1}
@@ -169,13 +171,13 @@ export default function VerifyOtpScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.submitText}>Verify Email</Text>
+              <Text style={styles.submitText}>{t('auth.verifyBtn')}</Text>
             )}
           </Pressable>
 
           {/* Resend */}
           <View style={styles.resendRow}>
-            <Text style={[styles.resendLabel, { color: theme.textSecond }]}>Didn't receive it?</Text>
+            <Text style={[styles.resendLabel, { color: theme.textSecond }]}>{t('auth.didntReceive')}</Text>
             <Pressable
               style={styles.resendBtn}
               onPress={handleResend}
@@ -190,7 +192,7 @@ export default function VerifyOtpScreen() {
                     styles.resendText,
                     { color: cooldown > 0 ? theme.textThird : theme.accent },
                   ]}>
-                    {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
+                    {cooldown > 0 ? t('auth.resendIn', { seconds: cooldown }) : t('auth.resendCode')}
                   </Text>
                 </View>
               )}

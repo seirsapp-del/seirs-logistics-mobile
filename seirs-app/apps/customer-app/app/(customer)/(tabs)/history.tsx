@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Badge } from '@/components/ui/Badge';
@@ -12,15 +13,16 @@ import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
 import { deliveriesApi } from '@/services/api';
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  pending:     { label: 'Pending',     color: '#3A86FF', icon: 'time-outline' },
-  assigned:    { label: 'Assigned',    color: '#3A86FF', icon: 'navigate-outline' },
-  picked_up:   { label: 'Picked Up',   color: '#FF6B00', icon: 'cube-outline' },
-  in_transit:  { label: 'In Transit',  color: '#8B5CF6', icon: 'navigate' },
-  in_progress: { label: 'In Progress', color: '#FF6B00', icon: 'car-outline' },
-  completed:   { label: 'Completed',   color: '#22C55E', icon: 'checkmark-circle' },
-  cancelled:   { label: 'Cancelled',   color: '#6B7280', icon: 'close-circle-outline' },
-  failed:      { label: 'Failed',      color: '#EF4444', icon: 'alert-circle-outline' },
+// Display config minus the label (label is looked up via t('status.<key>')).
+const STATUS_CONFIG: Record<string, { color: string; icon: string }> = {
+  pending:     { color: '#3A86FF', icon: 'time-outline' },
+  assigned:    { color: '#3A86FF', icon: 'navigate-outline' },
+  picked_up:   { color: '#FF6B00', icon: 'cube-outline' },
+  in_transit:  { color: '#8B5CF6', icon: 'navigate' },
+  in_progress: { color: '#FF6B00', icon: 'car-outline' },
+  completed:   { color: '#22C55E', icon: 'checkmark-circle' },
+  cancelled:   { color: '#6B7280', icon: 'close-circle-outline' },
+  failed:      { color: '#EF4444', icon: 'alert-circle-outline' },
 };
 
 const FILTER_TABS = ['All', 'Active', 'Completed', 'Cancelled'] as const;
@@ -70,6 +72,7 @@ export default function HistoryScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { t }   = useTranslation();
 
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [trips, setTrips]         = useState<Trip[]>([]);
@@ -114,7 +117,7 @@ export default function HistoryScreen() {
       <View style={[styles.header, { borderBottomColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
         <HamburgerButton />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: theme.text }]}>My Trips</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('history.title')}</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
             {filtered.length} trip{filtered.length !== 1 ? 's' : ''}
           </Text>
@@ -150,7 +153,7 @@ export default function HistoryScreen() {
               <View style={[styles.emptyIcon, { backgroundColor: theme.surfaceSecond }]}>
                 <Ionicons name="car-outline" size={48} color={theme.textThird} />
               </View>
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>No trips here</Text>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('history.empty')}</Text>
               <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
                 {activeTab === 'All' ? 'Request your first ride to see it here.' : `No ${activeTab.toLowerCase()} trips.`}
               </Text>
@@ -164,7 +167,8 @@ export default function HistoryScreen() {
           )
         }
         renderItem={({ item: trip }) => {
-          const status = STATUS_CONFIG[trip.status] ?? { label: trip.status, color: '#A1A1AA', icon: 'ellipse-outline' };
+          const status = STATUS_CONFIG[trip.status] ?? { color: '#A1A1AA', icon: 'ellipse-outline' };
+          const statusLabel = t(`status.${trip.status}`, { defaultValue: trip.status });
           const isActive = ACTIVE_STATUSES.has(trip.status);
           return (
             <Pressable
@@ -175,7 +179,7 @@ export default function HistoryScreen() {
               <View style={styles.cardTop}>
                 <View style={[styles.statusBadge, { backgroundColor: status.color + '18' }]}>
                   <Ionicons name={status.icon as any} size={12} color={status.color} />
-                  <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+                  <Text style={[styles.statusText, { color: status.color }]}>{statusLabel}</Text>
                 </View>
                 <Text style={[styles.dateText, { color: theme.textThird }]}>{formatDate(trip.date)}</Text>
               </View>

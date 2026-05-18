@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   Colors, Spacing, Radius, FontSize, FontWeight, Shadows,
@@ -23,11 +24,11 @@ import {
 
 const { width: W } = Dimensions.get('window');
 
-function getGreeting() {
+function getGreetingKey() {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return 'home.goodMorning';
+  if (h < 17) return 'home.goodAfternoon';
+  return 'home.goodEvening';
 }
 
 type TripTab = 'in_progress' | 'delivered' | 'featured';
@@ -42,6 +43,7 @@ export default function CustomerHomeScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
   const { user } = useAuth();
+  const { t }    = useTranslation();
 
   const firstName  = user?.name?.split(' ')[0] ?? 'there';
 
@@ -112,7 +114,7 @@ export default function CustomerHomeScreen() {
           </Pressable>
 
           <Text style={[styles.greeting, { color: theme.text }]}>
-            {getGreeting()}, {firstName}
+            {t(getGreetingKey())}, {firstName}
           </Text>
 
           <Pressable onPress={() => router.push('/(customer)/profile' as any)}>
@@ -127,7 +129,7 @@ export default function CustomerHomeScreen() {
         >
           <MapPin size={18} color={theme.accent} strokeWidth={1.75} />
           <Text style={[styles.searchPlaceholder, { color: theme.textThird }]}>
-            Where are you sending to?
+            {t('home.whereToSend')}
           </Text>
           <Search size={16} color={theme.textThird} strokeWidth={1.75} />
         </Pressable>
@@ -140,7 +142,7 @@ export default function CustomerHomeScreen() {
           >
             <View style={[styles.activeDot, { backgroundColor: theme.success }]} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.activeBannerTitle, { color: theme.text }]}>Delivery in progress</Text>
+              <Text style={[styles.activeBannerTitle, { color: theme.text }]}>{t('home.deliveryInProgress')}</Text>
               <Text style={[styles.activeBannerSub, { color: theme.textSecond }]} numberOfLines={1}>
                 To {activeTrip.dropoffAddress}
               </Text>
@@ -158,10 +160,10 @@ export default function CustomerHomeScreen() {
           {/* Customer Stories — always visible */}
           <Pressable
             style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
-            onPress={() => Alert.alert('Coming soon', 'Customer success stories are launching with our public launch.')}
+            onPress={() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))}
           >
             <Newspaper size={20} color={theme.accent} strokeWidth={1.75} />
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Stories</Text>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{t('home.stories')}</Text>
           </Pressable>
 
           {/* Wallet Balance */}
@@ -171,7 +173,7 @@ export default function CustomerHomeScreen() {
           >
             <View style={styles.widgetRow}>
               <Wallet size={16} color="rgba(255,255,255,0.8)" strokeWidth={1.75} />
-              <Text style={styles.widgetLabelWhite}>Wallet</Text>
+              <Text style={styles.widgetLabelWhite}>{t('home.wallet')}</Text>
             </View>
             <Text style={styles.widgetAmount}>
               ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 0 })}
@@ -184,16 +186,16 @@ export default function CustomerHomeScreen() {
             onPress={() => router.push('/notifications' as any)}
           >
             <Bell size={20} color={theme.accent} strokeWidth={1.75} />
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Alerts</Text>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{t('home.alerts')}</Text>
           </Pressable>
 
           {/* Suggestions */}
           <Pressable
             style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
-            onPress={() => Alert.alert('Coming soon', 'Personalised suggestions ship after we have enough trip data to learn from.')}
+            onPress={() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))}
           >
             <TrendingUp size={20} color={theme.accent} strokeWidth={1.75} />
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Suggestions</Text>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{t('home.suggestions')}</Text>
           </Pressable>
         </ScrollView>
 
@@ -205,7 +207,7 @@ export default function CustomerHomeScreen() {
             style={[styles.walletCard, Shadows.navy]}
           >
             <View style={styles.walletTop}>
-              <Text style={styles.walletLabel}>Wallet Balance</Text>
+              <Text style={styles.walletLabel}>{t('home.walletBalance')}</Text>
               <Pressable
                 style={styles.walletTopUpBtn}
                 onPress={() => router.push('/(customer)/wallet' as any)}
@@ -216,15 +218,19 @@ export default function CustomerHomeScreen() {
             <Text style={styles.walletAmount}>
               ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </Text>
-            <Text style={styles.walletSub}>Available balance</Text>
+            <Text style={styles.walletSub}>{t('home.availableBalance')}</Text>
             <View style={styles.walletActions}>
-              {(['Top Up', 'Send', 'History'] as const).map((lbl) => (
+              {([
+                { key: 'topUp',   label: t('home.topUp') },
+                { key: 'send',    label: t('home.send') },
+                { key: 'history', label: t('home.history') },
+              ]).map(({ key, label }) => (
                 <Pressable
-                  key={lbl}
+                  key={key}
                   style={styles.walletActionBtn}
                   onPress={() => router.push('/(customer)/wallet' as any)}
                 >
-                  <Text style={styles.walletActionText}>{lbl}</Text>
+                  <Text style={styles.walletActionText}>{label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -234,18 +240,18 @@ export default function CustomerHomeScreen() {
         {/* ── Recent Trips (3 tabs) ────────────────────────────────────────── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Trips</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('home.recentTrips')}</Text>
             <Pressable onPress={() => router.push('/(customer)/history' as any)}>
-              <Text style={[styles.seeAll, { color: theme.accent }]}>See all</Text>
+              <Text style={[styles.seeAll, { color: theme.accent }]}>{t('home.seeAll')}</Text>
             </Pressable>
           </View>
 
           {/* Tab bar */}
           <View style={[styles.tabBar, { backgroundColor: theme.surfaceSecond }]}>
             {([
-              { key: 'in_progress', label: 'In Progress' },
-              { key: 'delivered',   label: 'Delivered'   },
-              { key: 'featured',    label: 'Features'    },
+              { key: 'in_progress', label: t('home.inProgress') },
+              { key: 'delivered',   label: t('home.delivered')  },
+              { key: 'featured',    label: t('home.features')   },
             ] as { key: TripTab; label: string }[]).map(tab => (
               <Pressable
                 key={tab.key}
@@ -280,7 +286,7 @@ export default function CustomerHomeScreen() {
                 style={[styles.emptyBtn, { backgroundColor: theme.primary }]}
                 onPress={() => router.push('/(customer)/send' as any)}
               >
-                <Text style={styles.emptyBtnText}>Send a Package</Text>
+                <Text style={styles.emptyBtnText}>{t('home.sendPackage')}</Text>
               </Pressable>
             </View>
           ) : (

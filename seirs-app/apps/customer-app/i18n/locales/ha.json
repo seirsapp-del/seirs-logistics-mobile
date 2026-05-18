@@ -36,7 +36,16 @@
     "verifyBtn": "Tabbatar da Imel",
     "didntReceive": "Ba ka samu ba?",
     "resendIn": "Sake aika a cikin {{seconds}}s",
-    "resendCode": "Sake aika lambar"
+    "resendCode": "Sake aika lambar",
+    "forgotTitle": "Ka manta da kalmar sirri?",
+    "forgotDesc": "Shigar da imel ɗinka kuma za mu aiko maka da hanyar haɗi don sake saita kalmar sirrinka.",
+    "sendResetLink": "Aika Hanyar Haɗin Sake Saiti",
+    "rememberPassword": "Ka tuna kalmar sirrinka?",
+    "checkInbox": "Duba akwatin saƙon ka",
+    "checkInboxDesc": "Idan imel ɗinka yana cikin tsarinmu, za ka karɓi hanyar haɗin sake saiti cikin 'yan mintuna.",
+    "checkSpam": "Duba babban akwatin spam ɗinka idan ba ka gan shi ba.",
+    "backToSignIn": "Koma zuwa Shiga",
+    "enterEmail": "Da fatan za ka shigar da imel ɗinka."
   },
   "home": {
     "goodMorning": "Barka da safe",
@@ -148,6 +157,27 @@
     "lightMode": "Haske",
     "darkMode": "Duhu",
     "signOut": "Fita"
+  },
+  "status": {
+    "pending": "Ana jira",
+    "assigned": "An sanya",
+    "picked_up": "An ɗauka",
+    "in_transit": "Kan hanya",
+    "in_progress": "Ana ci gaba",
+    "completed": "An gama",
+    "cancelled": "An soke",
+    "failed": "Ya kasa",
+    "delivered": "An kawo"
+  },
+  "history": {
+    "title": "Tafiyoyina",
+    "empty": "Babu tafiya a nan",
+    "emptyDesc": "Tafiyoyin da kuka yi za su fito a nan lokacin da direba ya karɓi."
+  },
+  "messages": {
+    "title": "Saƙonni",
+    "empty": "Babu saƙonni har yanzu",
+    "emptyDesc": "Saƙonni daga direbobin ka za su bayyana a nan yayin tafiya da bayan sa."
   },
   "tabs": {
     "home": "Gida",

@@ -36,7 +36,16 @@
     "verifyBtn": "Nwalee Ozi-e",
     "didntReceive": "Ị natạghị ya?",
     "resendIn": "Ziwa ọzọ na {{seconds}}s",
-    "resendCode": "Ziwa koodu ọzọ"
+    "resendCode": "Ziwa koodu ọzọ",
+    "forgotTitle": "Echefuru paswọọdụ?",
+    "forgotDesc": "Tinye email gị, anyị ga-eziga gị njikọ iji weghachi paswọọdụ gị.",
+    "sendResetLink": "Zipu Njikọ Mweghachi",
+    "rememberPassword": "Ị chetara paswọọdụ gị?",
+    "checkInbox": "Lelee igbe ozi gị",
+    "checkInboxDesc": "Ọ bụrụ na edebanyere email gị, ị ga-enweta njikọ mweghachi n'ime nkeji ole na ole.",
+    "checkSpam": "Lelee folda spam gị ma ọ bụrụ na ị hụghị ya.",
+    "backToSignIn": "Laghachi azụ na Banye",
+    "enterEmail": "Biko tinye email gị."
   },
   "home": {
     "goodMorning": "Ụtụtụ ọma",
@@ -148,6 +157,27 @@
     "lightMode": "Ọcha",
     "darkMode": "Oji",
     "signOut": "Pụọ"
+  },
+  "status": {
+    "pending": "Na-eche",
+    "assigned": "Enyere",
+    "picked_up": "Ewere",
+    "in_transit": "N'ụzọ",
+    "in_progress": "Na-aga",
+    "completed": "Emechara",
+    "cancelled": "Akagburu",
+    "failed": "Dara",
+    "delivered": "Enyere"
+  },
+  "history": {
+    "title": "Njem M",
+    "empty": "Enweghị njem ebe a",
+    "emptyDesc": "Njem ndị ị debere ga-egosi ebe a mgbe onye nkwọ nabatara."
+  },
+  "messages": {
+    "title": "Ozi",
+    "empty": "Enweghị ozi ọ bụla",
+    "emptyDesc": "Ozi sitere n'aka ndị nkwọ gị ga-apụta ebe a n'oge njem na mgbe e mechara."
   },
   "tabs": {
     "home": "Ụlọ",

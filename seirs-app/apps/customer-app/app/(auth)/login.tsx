@@ -5,6 +5,7 @@ import {
   BackHandler,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +22,7 @@ export default function LoginScreen() {
   const theme       = Colors[cs ?? 'light'];
   const isDark      = cs === 'dark';
   const { login }   = useAuth();
+  const { t }       = useTranslation();
 
   const [email,      setEmail]      = useState('');
   const [password,   setPassword]   = useState('');
@@ -104,8 +106,8 @@ export default function LoginScreen() {
             <Truck size={22} color={theme.primary} strokeWidth={2} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
           </View>
-          <Text style={[styles.title, { color: theme.text }]}>Welcome back</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecond }]}>Sign in to continue</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('auth.welcomeBack')}</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecond }]}>{t('auth.signInToContinue')}</Text>
         </View>
 
         {/* Form card */}
@@ -117,7 +119,7 @@ export default function LoginScreen() {
           )}
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Email address</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.emailAddress')}</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <Mail size={17} color={theme.textThird} strokeWidth={1.75} style={styles.inputIcon} />
               <TextInput
@@ -134,9 +136,9 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>Password</Text>
+            <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.password')}</Text>
             <PasswordInput
-              placeholder="Your password"
+              placeholder={t('auth.password')}
               placeholderTextColor={theme.textThird}
               autoComplete="password"
               backgroundColor={theme.surfaceSecond}
@@ -160,11 +162,11 @@ export default function LoginScreen() {
                   <Text style={styles.checkmark}>✓</Text>
                 )}
               </View>
-              <Text style={[styles.rememberText, { color: theme.textSecond }]}>Remember me</Text>
+              <Text style={[styles.rememberText, { color: theme.textSecond }]}>{t('auth.rememberMe')}</Text>
             </Pressable>
 
             <Pressable onPress={() => router.push('/(auth)/forgot-password' as any)}>
-              <Text style={[styles.forgotText, { color: theme.accent }]}>Forgot password?</Text>
+              <Text style={[styles.forgotText, { color: theme.accent }]}>{t('auth.forgotPassword')}</Text>
             </Pressable>
           </View>
 
@@ -177,7 +179,7 @@ export default function LoginScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <View style={styles.submitRow}>
-                <Text style={styles.submitText}>Sign In</Text>
+                <Text style={styles.submitText}>{t('auth.signIn')}</Text>
                 <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
               </View>
             )}
@@ -187,7 +189,7 @@ export default function LoginScreen() {
         {/* Divider */}
         <View style={styles.dividerRow}>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <Text style={[styles.dividerText, { color: theme.textThird }]}>or continue with</Text>
+          <Text style={[styles.dividerText, { color: theme.textThird }]}>{t('auth.orContinueWith')}</Text>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
         </View>
 

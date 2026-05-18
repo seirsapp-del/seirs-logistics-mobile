@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
@@ -38,6 +39,7 @@ export default function MessagesScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
 
   const [conversations, setConversations] = useState<ChatConversationDTO[]>([]);
   const [loading,       setLoading]       = useState(true);
@@ -72,7 +74,7 @@ export default function MessagesScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Text style={[styles.title, { color: theme.text }]}>Messages</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('messages.title')}</Text>
         {totalUnread > 0 && (
           <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]}>
             <Text style={styles.unreadBadgeText}>{totalUnread}</Text>
@@ -89,9 +91,9 @@ export default function MessagesScreen() {
           <View style={[styles.emptyIcon, { backgroundColor: theme.surfaceSecond }]}>
             <Ionicons name="chatbubbles-outline" size={48} color={theme.textThird} />
           </View>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>No messages yet</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('messages.empty')}</Text>
           <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
-            Messages from your drivers will appear here during and after trips.
+            {t('messages.emptyDesc')}
           </Text>
         </View>
       ) : (

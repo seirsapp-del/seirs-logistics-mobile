@@ -36,7 +36,16 @@
     "verifyBtn": "Jẹ́rìísí Imeeli",
     "didntReceive": "Ṣé o kò gbà á?",
     "resendIn": "Tún ránṣẹ ní {{seconds}}s",
-    "resendCode": "Tún kóòdù ránṣẹ"
+    "resendCode": "Tún kóòdù ránṣẹ",
+    "forgotTitle": "Ṣé o gbàgbé ọ̀rọ̀ ìwọlé?",
+    "forgotDesc": "Tẹ ímeèlì rẹ, a ó sì ránṣẹ́ ìjápọ̀ láti tún ọ̀rọ̀ ìwọlé rẹ ṣe.",
+    "sendResetLink": "Fi Ìjápọ̀ Àtúnṣe Ránṣẹ́",
+    "rememberPassword": "Ṣé o rántí ọ̀rọ̀ ìwọlé rẹ?",
+    "checkInbox": "Ṣàyẹ̀wò ímeèlì rẹ",
+    "checkInboxDesc": "Tí ímeèlì rẹ bá wà nínú àkójọ wa, ìwọ yóò gba ìjápọ̀ àtúnṣe ní ìṣẹ́jú díẹ̀.",
+    "checkSpam": "Ṣàyẹ̀wò àpótí spam rẹ tí o kò bá rí i.",
+    "backToSignIn": "Padà sí Wọlé",
+    "enterEmail": "Jọ̀wọ́ tẹ ímeèlì rẹ."
   },
   "home": {
     "goodMorning": "Ẹ káàárọ̀",
@@ -148,6 +157,27 @@
     "lightMode": "Ìmọ́lẹ̀",
     "darkMode": "Òkùnkùn",
     "signOut": "Jáde"
+  },
+  "status": {
+    "pending": "Ń dúró",
+    "assigned": "Tí a yàn",
+    "picked_up": "Tí a gbé",
+    "in_transit": "Ń lọ",
+    "in_progress": "Ń ṣiṣẹ́",
+    "completed": "Tí parí",
+    "cancelled": "Tí fagilé",
+    "failed": "Tí kùnà",
+    "delivered": "Tí dé"
+  },
+  "history": {
+    "title": "Àwọn Ìrìn Mi",
+    "empty": "Kò sí ìrìn níbí",
+    "emptyDesc": "Àwọn ìrìn tí o tẹ yóò farahàn níbí nígbà tí awakọ bá gbà."
+  },
+  "messages": {
+    "title": "Àwọn Ìfiránṣẹ́",
+    "empty": "Kò sí ìfiránṣẹ́ kankan",
+    "emptyDesc": "Àwọn ìfiránṣẹ́ láti ọ̀dọ̀ àwọn awakọ rẹ yóò farahàn níbí lákòókò àti lẹ́yìn àwọn ìrìn."
   },
   "tabs": {
     "home": "Ilé",

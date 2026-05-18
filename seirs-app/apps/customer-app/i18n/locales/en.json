@@ -36,7 +36,16 @@
     "verifyBtn": "Verify Email",
     "didntReceive": "Didn't receive it?",
     "resendIn": "Resend in {{seconds}}s",
-    "resendCode": "Resend code"
+    "resendCode": "Resend code",
+    "forgotTitle": "Forgot password?",
+    "forgotDesc": "Enter your email and we'll send you a link to reset your password.",
+    "sendResetLink": "Send Reset Link",
+    "rememberPassword": "Remember your password?",
+    "checkInbox": "Check your inbox",
+    "checkInboxDesc": "If your email is registered, you'll receive a reset link within a few minutes.",
+    "checkSpam": "Check your spam folder if you don't see it.",
+    "backToSignIn": "Back to Sign In",
+    "enterEmail": "Please enter your email address."
   },
   "home": {
     "goodMorning": "Good morning",
@@ -148,6 +157,27 @@
     "lightMode": "Light Mode",
     "darkMode": "Dark Mode",
     "signOut": "Sign Out"
+  },
+  "status": {
+    "pending": "Pending",
+    "assigned": "Assigned",
+    "picked_up": "Picked Up",
+    "in_transit": "In Transit",
+    "in_progress": "In Progress",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "failed": "Failed",
+    "delivered": "Delivered"
+  },
+  "history": {
+    "title": "My Trips",
+    "empty": "No trips here",
+    "emptyDesc": "Trips you book will show up here once a driver accepts."
+  },
+  "messages": {
+    "title": "Messages",
+    "empty": "No messages yet",
+    "emptyDesc": "Messages from your drivers will appear here during and after trips."
   },
   "tabs": {
     "home": "Home",
