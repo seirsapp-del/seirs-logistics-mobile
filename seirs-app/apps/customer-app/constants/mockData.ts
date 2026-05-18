@@ -119,7 +119,7 @@ export const RIDE_VEHICLES = [
 ] as const;
 
 // Ride fare = base + (distance × per-km) + 15% service.
-// Shared ride applies a 40% discount on car / danfo only.
+// Shared ride applies a 20% discount on car / danfo only.
 export function calcRideFare(vehicleId: string, distKm: number, shared: boolean) {
   const v = RIDE_VEHICLES.find(x => x.id === vehicleId) ?? RIDE_VEHICLES[0];
   const safeKm   = Math.max(0, distKm || 0);
@@ -128,7 +128,7 @@ export function calcRideFare(vehicleId: string, distKm: number, shared: boolean)
   const subtotal = base + dist;
   const service  = Math.round(subtotal * 0.15);
   const gross    = subtotal + service;
-  const discount = shared && v.shareable ? Math.round(gross * 0.40) : 0;
+  const discount = shared && v.shareable ? Math.round(gross * 0.20) : 0;
   return { base, dist, service, discount, total: gross - discount, vehicle: v };
 }
 

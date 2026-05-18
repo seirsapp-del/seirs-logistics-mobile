@@ -17,17 +17,9 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { type PickedAddress } from '@/components/AddressPicker';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { LAGOS_COORDS, RIDE_VEHICLES, calcRideFare } from '@/constants/mockData';
+import { LAGOS_COORDS } from '@/constants/mockData';
 
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
-
-// Vehicle list comes from the shared RIDE_VEHICLES constant so /request,
-// /vehicle-select, /fare-breakdown and /confirm-ride all show identical
-// vehicles + prices. Per-vehicle price label on this screen is the
-// "as-shown" estimate for a typical 8 km trip — the real fare is
-// computed against the actual route distance on /fare-breakdown.
-const TYPICAL_KM = 8;
-type VehicleId = typeof RIDE_VEHICLES[number]['id'];
 
 type Field = 'pickup' | 'dropoff';
 
@@ -50,9 +42,6 @@ export default function RequestDriverScreen() {
 
   const [pickup,     setPickup]     = useState<PickedAddress | null>(null);
   const [dropoff,    setDropoff]    = useState<PickedAddress | null>(null);
-  const [vehicle,    setVehicle]    = useState<VehicleId>('car');
-  const [sharedRide, setSharedRide] = useState(false);
-  const allowsSharing = (RIDE_VEHICLES.find(v => v.id === vehicle)?.shareable) ?? false;
 
   // Inline autocomplete state — replaces the old modal AddressPicker.
   const [pickupQuery,  setPickupQuery]  = useState('');
@@ -237,8 +226,6 @@ export default function RequestDriverScreen() {
         dropoff:    dropoff.address,
         dropoffLat: String(dropoff.lat),
         dropoffLng: String(dropoff.lng),
-        preselect:  vehicle,
-        shared:     sharedRide ? '1' : '0',
         distanceKm: String(distKmParsed),
         durationText: durationText ?? '',
       },
@@ -390,73 +377,19 @@ export default function RequestDriverScreen() {
             </Pressable>
           )}
 
-          {/* Vehicle picker — hidden while user is searching (sheet is full of suggestions). */}
+          {/* CTA — slim, addresses-only screen. Vehicle + share-ride
+              live on /vehicle-select so the user picks once. */}
           {!showSuggestions && (
-            <>
-              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('request2.pickYourRide')}</Text>
-              <View style={styles.vehicleRow}>
-                {RIDE_VEHICLES.map((v) => {
-                  const typicalFare = calcRideFare(v.id, TYPICAL_KM, false).total;
-                  return (
-                    <Pressable
-                      key={v.id}
-                      style={[
-                        styles.vehicleChip,
-                        { backgroundColor: theme.surfaceSecond, borderColor: vehicle === v.id ? theme.primary : theme.border },
-                        vehicle === v.id && { backgroundColor: isDark ? '#0A1A2E' : '#EFF6FF' },
-                      ]}
-                      onPress={() => {
-                        setVehicle(v.id);
-                        if (!v.shareable) setSharedRide(false);
-                      }}
-                    >
-                      <Ionicons name={v.icon as any} size={20} color={vehicle === v.id ? theme.primary : theme.textSecond} />
-                      <Text style={[styles.vehicleChipLabel, { color: vehicle === v.id ? theme.primary : theme.text }]}>{v.label}</Text>
-                      <Text style={[styles.vehicleChipSub, { color: theme.textThird }]}>{t(`request2.${v.subKey}`)}</Text>
-                      <Text style={[styles.vehicleChipPrice, { color: theme.textSecond }]}>₦{typicalFare.toLocaleString()}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Pressable
-                onPress={() => allowsSharing && setSharedRide((s) => !s)}
-                style={[
-                  styles.shareRow,
-                  {
-                    backgroundColor: sharedRide ? theme.primary + '15' : theme.surfaceSecond,
-                    borderColor:     sharedRide ? theme.primary : theme.border,
-                    opacity:         allowsSharing ? 1 : 0.5,
-                  },
-                ]}
-              >
-                <View style={[styles.shareIcon, { backgroundColor: sharedRide ? theme.primary : theme.surface }]}>
-                  <Ionicons name="people-outline" size={18} color={sharedRide ? '#fff' : theme.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.shareTitle, { color: theme.text }]}>{t('request2.shareTitle')}</Text>
-                  <Text style={[styles.shareSub, { color: theme.textSecond }]}>
-                    {allowsSharing
-                      ? t('request2.shareDescAvailable')
-                      : t('request2.shareDescUnavailable')}
-                  </Text>
-                </View>
-                <View style={[styles.shareCheck, { borderColor: sharedRide ? theme.primary : theme.border, backgroundColor: sharedRide ? theme.primary : 'transparent' }]}>
-                  {sharedRide ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
-                </View>
-              </Pressable>
-
-              <View style={styles.cta}>
-                <Button
-                  label={canProceed ? t('request2.chooseVehicle') : t('request2.enterLocationsToContinue')}
-                  onPress={handleNext}
-                  disabled={!canProceed}
-                  fullWidth
-                  size="lg"
-                  rightIcon={canProceed ? <Ionicons name="arrow-forward" size={18} color="#fff" /> : undefined}
-                />
-              </View>
-            </>
+            <View style={styles.cta}>
+              <Button
+                label={canProceed ? t('request2.chooseVehicle') : t('request2.enterLocationsToContinue')}
+                onPress={handleNext}
+                disabled={!canProceed}
+                fullWidth
+                size="lg"
+                rightIcon={canProceed ? <Ionicons name="arrow-forward" size={18} color="#fff" /> : undefined}
+              />
+            </View>
           )}
         </BottomSheetScrollView>
       </BottomSheet>
