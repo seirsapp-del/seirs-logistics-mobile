@@ -152,6 +152,45 @@ export interface CODRule {
   handlingCapNgn:  number;
 }
 
+/**
+ * Opt-in insurance for declared-value cargo. Premium = max(minNgn, % of
+ * declared value above threshold). When opted in, recipient handover
+ * REQUIRES typed-name verification + photo (enforced in driver app).
+ */
+export interface InsuranceRule {
+  enabled:           boolean;
+  premiumPct:        number;   // 0.02 = 2% of (declaredValue − thresholdNgn)
+  minPremiumNgn:     number;
+  declaredValueThresholdNgn: number;   // below this, premium = 0 (no need)
+  maxCoverageNgn:    number;   // hard ceiling on coverage (and therefore claims)
+}
+
+/**
+ * Time-guaranteed delivery — customer pays a premium and gets a refund
+ * if the package arrives more than `refundIfLateByMin` minutes past the
+ * promised time. Different from "scheduled" (which is just a pickup time)
+ * — guaranteed promises an arrival window.
+ */
+export interface TimeGuaranteeRule {
+  enabled:           boolean;
+  premiumPct:        number;   // 0.25 = +25% surcharge for the guarantee
+  refundIfLateByMin: number;   // if late by ≥ this many min, full refund of premium
+  maxPromiseMin:     number;   // can't promise faster than this from booking time
+}
+
+/**
+ * Discounts the customer can earn / opt into. All admin-tunable so
+ * promotional pushes (welcome bumps, loyalty rebalances) don't need code.
+ */
+export interface DiscountsRule {
+  bulkUploadOffPct:       number;   // CSV bulk upload (≥ minPackages)
+  bulkUploadMinPackages:  number;
+  recurringOffPct:        number;   // recurring schedule
+  welcomeOffPct:          number;   // first-booking
+  welcomeMaxNgn:          number;   // cap on welcome discount
+  loyaltyPointValueNgn:   number;   // ₦ per 1 redeemed loyalty point
+}
+
 export interface RateCard {
   version:       string;
   effectiveFrom: string;
@@ -184,6 +223,9 @@ export interface RateCard {
   cancellation:   CancellationRule;
   returnTrip:     ReturnTripRule;
   cod:            CODRule;
+  insurance:      InsuranceRule;
+  timeGuarantee:  TimeGuaranteeRule;
+  discounts:      DiscountsRule;
 
   /** Per-geopolitical-zone overrides (NW/NE/NC/SW/SE/SS). */
   zoneOverrides:  Partial<Record<GeopoliticalZone, RegionalOverrides>>;
@@ -230,18 +272,26 @@ export const DEFAULT_RATE_CARD: RateCard = {
     serviceFeePct: 0.18,
   },
 
-  // Categories keyed by send.tsx PACKAGE_CATEGORIES ids.
+  // 16 categories from seirs-pricing-spec.html ②. Each has a surcharge %
+  // and (optionally) forbidden vehicles for safety hard-stops (e.g. cold
+  // food can't go by motorcycle; live animals need a ventilated van/truck).
   categories: {
-    documents:    { pct: 0.00, driverSharePct: 0.50 },
-    small_parcel: { pct: 0.00, driverSharePct: 0.50 },
-    food:         { pct: 0.10, driverSharePct: 0.50 },  // treat as hot food
-    fragile:      { pct: 0.20, driverSharePct: 0.50, forbiddenVehicles: ['bicycle'] },
-    agricultural: { pct: 0.00, driverSharePct: 0.50 },
-    building:     { pct: 0.15, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle'] },
-    furniture:    { pct: 0.25, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle', 'keke'] },
-    moving:       { pct: 0.40, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle', 'keke', 'car'] },
-    market_goods: { pct: 0.00, driverSharePct: 0.50 },
-    heavy:        { pct: 0.15, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle'] },
+    documents:         { pct: 0.00, driverSharePct: 0.50 },
+    small_parcel:      { pct: 0.00, driverSharePct: 0.50 },
+    standard_parcel:   { pct: 0.00, driverSharePct: 0.50 },
+    fragile:           { pct: 0.20, driverSharePct: 0.50, forbiddenVehicles: ['bicycle'] },
+    food_hot:          { pct: 0.10, driverSharePct: 0.50 },
+    food_cold:         { pct: 0.30, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle'] },
+    medical:           { pct: 0.25, driverSharePct: 0.50, forbiddenVehicles: ['bicycle'] },
+    bulk_goods:        { pct: 0.00, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle'] },
+    agricultural:      { pct: 0.00, driverSharePct: 0.50 },
+    building:          { pct: 0.15, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle'] },
+    lumber:            { pct: 0.20, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle', 'keke', 'car', 'van', 'truck_sm'] },
+    house_move_single: { pct: 0.25, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle', 'keke', 'car'] },
+    house_move_full:   { pct: 0.40, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle', 'keke', 'car', 'van', 'truck_sm'] },
+    live_animals:      { pct: 0.30, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle', 'keke', 'car'] },
+    industrial:        { pct: 0.15, driverSharePct: 0.50, forbiddenVehicles: ['bicycle', 'motorcycle'] },
+    other:             { pct: 0.00, driverSharePct: 0.50 },
   },
 
   timeSurcharges: {
@@ -290,6 +340,30 @@ export const DEFAULT_RATE_CARD: RateCard = {
     handlingFlatNgn: 200,
     handlingPct:     0.01,
     handlingCapNgn:  2000,
+  },
+
+  insurance: {
+    enabled:                   true,
+    premiumPct:                0.02,
+    minPremiumNgn:             500,
+    declaredValueThresholdNgn: 50000,
+    maxCoverageNgn:            2000000,   // ₦2 M ceiling per shipment
+  },
+
+  timeGuarantee: {
+    enabled:           true,
+    premiumPct:        0.25,
+    refundIfLateByMin: 15,
+    maxPromiseMin:     30,
+  },
+
+  discounts: {
+    bulkUploadOffPct:      0.10,
+    bulkUploadMinPackages: 25,
+    recurringOffPct:       0.05,
+    welcomeOffPct:         0.15,
+    welcomeMaxNgn:         500,
+    loyaltyPointValueNgn:  1,
   },
 
   // ── Per-geopolitical-zone overrides ────────────────────────────────────
@@ -488,10 +562,82 @@ export function codHandlingFee(card: RateCard, codAmountNgn: number): number {
   return Math.min(card.cod.handlingCapNgn, Math.round(raw));
 }
 
+/**
+ * Insurance premium. Returns 0 when opt-in is off, insurance is globally
+ * disabled, or declaredValueNgn is below the no-need threshold.
+ */
+export function insurancePremium(card: RateCard, optedIn: boolean, declaredValueNgn: number): number {
+  if (!optedIn || !card.insurance.enabled) return 0;
+  const above = Math.max(0, declaredValueNgn - card.insurance.declaredValueThresholdNgn);
+  if (above <= 0) return 0;
+  const raw = Math.max(card.insurance.minPremiumNgn, Math.round(above * card.insurance.premiumPct));
+  return raw;
+}
+
+/** Time-guarantee premium = guaranteedDeliveryPct × pre-premium subtotal. */
+export function timeGuaranteePremium(card: RateCard, optedIn: boolean, runningSubtotal: number): number {
+  if (!optedIn || !card.timeGuarantee.enabled) return 0;
+  return Math.round(runningSubtotal * card.timeGuarantee.premiumPct);
+}
+
 /** Dwell-fee (post-trip) — for trip-progress integration. */
 export function dwellFee(card: RateCard, waitMinutes: number): number {
   const billable = Math.max(0, Math.min(card.dwell.capMinutes, waitMinutes) - card.dwell.freeMinutes);
   return billable * card.dwell.perMinuteNgn;
+}
+
+/**
+ * Compute total discount in NGN for a given subtotal + opted-in flags.
+ * Stacks additively then caps by remaining subtotal so a discount can
+ * never turn a fare negative. Returns per-line breakdown for the UI.
+ */
+export interface DiscountOpts {
+  isBulk?:               boolean;   // bulk CSV upload
+  isRecurring?:          boolean;
+  isWelcome?:            boolean;   // first booking
+  loyaltyPointsToRedeem?: number;
+  bulkPackageCount?:     number;    // honoured only when ≥ minPackages
+}
+
+export interface DiscountResult {
+  bulk:     number;
+  recurring: number;
+  welcome:  number;
+  loyalty:  number;
+  total:    number;
+}
+
+export function computeDiscounts(
+  card:     RateCard,
+  subtotal: number,
+  opts:     DiscountOpts,
+): DiscountResult {
+  const d = card.discounts;
+  const safeSubtotal = Math.max(0, subtotal);
+
+  const bulk = (opts.isBulk && (opts.bulkPackageCount ?? 0) >= d.bulkUploadMinPackages)
+    ? Math.round(safeSubtotal * d.bulkUploadOffPct)
+    : 0;
+
+  const recurring = opts.isRecurring ? Math.round(safeSubtotal * d.recurringOffPct) : 0;
+
+  const welcomeRaw = opts.isWelcome ? Math.round(safeSubtotal * d.welcomeOffPct) : 0;
+  const welcome    = Math.min(welcomeRaw, d.welcomeMaxNgn);
+
+  const loyalty = Math.max(0, (opts.loyaltyPointsToRedeem ?? 0) * d.loyaltyPointValueNgn);
+
+  const requested = bulk + recurring + welcome + loyalty;
+  const capped    = Math.min(requested, safeSubtotal);
+  // Scale each line proportionally if the cap kicked in, so the
+  // breakdown shown to the user always sums to `total`.
+  const factor = requested > 0 && capped < requested ? capped / requested : 1;
+  return {
+    bulk:      Math.round(bulk      * factor),
+    recurring: Math.round(recurring * factor),
+    welcome:   Math.round(welcome   * factor),
+    loyalty:   Math.round(loyalty   * factor),
+    total:     capped,
+  };
 }
 
 /** Cancellation fee by stage. */
@@ -521,6 +667,7 @@ export interface RideFareResult {
   zoneFlat:          number;
   service:           number;
   shareDiscount:     number;
+  discounts:         DiscountResult;
   vat:               number;
   total:             number;
   vehicle:           RideVehicleRate;
@@ -542,7 +689,10 @@ export interface PackageFareResult {
   zoneFlat:          number;
   perStopBonus:      number;
   codFee:            number;
+  insurance:         number;
+  timeGuarantee:     number;
   service:           number;
+  discounts:         DiscountResult;   // per-line + total
   vat:               number;
   total:             number;
   vehicle:           PackageVehicleRate;
@@ -569,6 +719,9 @@ export function calcRideFare(
     now?:           Date;
     pickupCoords?:  Coords | null;
     dropoffCoords?: Coords | null;
+    // Discount opts
+    isWelcome?:            boolean;
+    loyaltyPointsToRedeem?: number;
   } = {},
 ): RideFareResult {
   const v0       = card.ride.vehicles.find(x => x.id === vehicleId) ?? card.ride.vehicles[0];
@@ -601,13 +754,21 @@ export function calcRideFare(
   const shareDiscount = shared && v0.shareable ? Math.round(running * card.ride.shareDiscountPct) : 0;
   running            -= shareDiscount;
 
+  // Welcome + loyalty discount stack on top of the share-ride discount.
+  // Rides don't have bulk/recurring (those are package-flow concepts).
+  const discounts = computeDiscounts(card, running, {
+    isWelcome:             opts.isWelcome,
+    loyaltyPointsToRedeem: opts.loyaltyPointsToRedeem,
+  });
+  running -= discounts.total;
+
   const vat   = Math.round(running * card.vatPct);
   const total = running + vat;
 
   return {
     base, dist, categorySurcharge,
     timeSurcharge, zoneSurcharge, zoneFlat: zone.flat,
-    service, shareDiscount, vat, total,
+    service, shareDiscount, discounts, vat, total,
     vehicle: v0,
     timeLabels: time.labels,
     zoneLabels: zone.labels,
@@ -630,6 +791,15 @@ export function calcPackageFare(
     extraStops?:    number;
     pickupCoords?:  Coords | null;
     dropoffCoords?: Coords | null;
+    // Discount opts — pass directly so admin can adjust % from the card.
+    isBulk?:               boolean;
+    bulkPackageCount?:     number;
+    isRecurring?:          boolean;
+    isWelcome?:            boolean;
+    loyaltyPointsToRedeem?: number;
+    // Insurance + Time-guarantee opt-in (Phase 7 scenarios).
+    insureDeclaredValueNgn?: number;   // if > 0, opt-in. Premium computed against this.
+    timeGuaranteed?:         boolean;
   } = {},
 ): PackageFareResult {
   const v0       = card.package.vehicles.find(x => x.id === vehicleId) ?? card.package.vehicles[0];
@@ -664,9 +834,31 @@ export function calcPackageFare(
   const codFee = codHandlingFee(card, opts.codAmountNgn ?? 0);
   running += codFee;
 
+  // Insurance premium (opt-in by declared value above threshold).
+  const insurance = insurancePremium(card, (opts.insureDeclaredValueNgn ?? 0) > 0, opts.insureDeclaredValueNgn ?? 0);
+  running += insurance;
+
+  // Time-guarantee premium (opt-in for time-critical deliveries — wedding
+  // cake, medical, official documents). Applied on the running subtotal
+  // so it scales with the trip's actual cost.
+  const timeGuarantee = timeGuaranteePremium(card, !!opts.timeGuaranteed, running);
+  running += timeGuarantee;
+
   const serviceFeePct = region.serviceFeePackageOverride ?? card.package.serviceFeePct;
   const service       = Math.round(running * serviceFeePct);
   running            += service;
+
+  // Apply discounts before VAT — matches spec scenario F (bulk -10%
+  // applied before VAT) and ensures the customer pays VAT on the
+  // discounted amount, not the gross.
+  const discounts = computeDiscounts(card, running, {
+    isBulk:                opts.isBulk,
+    bulkPackageCount:      opts.bulkPackageCount,
+    isRecurring:           opts.isRecurring,
+    isWelcome:             opts.isWelcome,
+    loyaltyPointsToRedeem: opts.loyaltyPointsToRedeem,
+  });
+  running -= discounts.total;
 
   const vat   = Math.round(running * card.vatPct);
   const total = running + vat;
@@ -674,7 +866,8 @@ export function calcPackageFare(
   return {
     base, dist, weight, handling, categorySurcharge,
     timeSurcharge, zoneSurcharge, zoneFlat: zone.flat,
-    perStopBonus, codFee, service, vat, total,
+    perStopBonus, codFee, insurance, timeGuarantee,
+    service, discounts, vat, total,
     vehicle: v0,
     timeLabels: time.labels,
     zoneLabels: zone.labels,

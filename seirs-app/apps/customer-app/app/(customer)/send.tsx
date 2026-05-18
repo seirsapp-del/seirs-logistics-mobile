@@ -31,17 +31,25 @@ const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 // ─── Data ─────────────────────────────────────────────────────────────────────
 // Category labels are looked up at render via t(`send.${labelKey}`) so
 // language switches reflect live without restarting the form.
+// 16 categories matching seirs-pricing-spec.html. Each maps to a
+// rateCard.categories entry that controls % surcharge + forbidden vehicles.
 const PACKAGE_CATEGORIES = [
-  { id: 'documents',    labelKey: 'categoryDocuments'     },
-  { id: 'small_parcel', labelKey: 'categorySmallParcel'   },
-  { id: 'food',         labelKey: 'categoryFood'          },
-  { id: 'fragile',      labelKey: 'categoryFragile'       },
-  { id: 'agricultural', labelKey: 'categoryAgricultural'  },
-  { id: 'building',     labelKey: 'categoryBuilding'      },
-  { id: 'furniture',    labelKey: 'categoryFurniture'     },
-  { id: 'moving',       labelKey: 'categoryMoving'        },
-  { id: 'market_goods', labelKey: 'categoryMarketGoods'   },
-  { id: 'heavy',        labelKey: 'categoryHeavy'         },
+  { id: 'documents',         labelKey: 'categoryDocuments'       },
+  { id: 'small_parcel',      labelKey: 'categorySmallParcel'     },
+  { id: 'standard_parcel',   labelKey: 'categoryStandardParcel'  },
+  { id: 'fragile',           labelKey: 'categoryFragile'         },
+  { id: 'food_hot',          labelKey: 'categoryFoodHot'         },
+  { id: 'food_cold',         labelKey: 'categoryFoodCold'        },
+  { id: 'medical',           labelKey: 'categoryMedical'         },
+  { id: 'bulk_goods',        labelKey: 'categoryBulkGoods'       },
+  { id: 'agricultural',      labelKey: 'categoryAgricultural'    },
+  { id: 'building',          labelKey: 'categoryBuilding'        },
+  { id: 'lumber',            labelKey: 'categoryLumber'          },
+  { id: 'house_move_single', labelKey: 'categoryHouseMoveSingle' },
+  { id: 'house_move_full',   labelKey: 'categoryHouseMoveFull'   },
+  { id: 'live_animals',      labelKey: 'categoryLiveAnimals'     },
+  { id: 'industrial',        labelKey: 'categoryIndustrial'      },
+  { id: 'other',             labelKey: 'categoryOther'           },
 ] as const;
 type CategoryId = typeof PACKAGE_CATEGORIES[number]['id'];
 
@@ -64,10 +72,19 @@ const STEP_KEYS = ['stepPackage', 'stepAddress', 'stepVehicle', 'stepFare', 'ste
 
 function autoRecommend(cat: CategoryId, kg: number): VehicleId {
   if (cat === 'documents') return 'bicycle';
-  if ((cat === 'food' || cat === 'small_parcel') && kg <= 20) return 'motorcycle';
-  if ((cat === 'fragile' || cat === 'market_goods') && kg <= 100) return 'keke';
-  if (cat === 'agricultural' || cat === 'building') return 'truck_sm';
-  if (cat === 'furniture'   || cat === 'moving' || cat === 'heavy') return 'truck_lg';
+  if ((cat === 'food_hot' || cat === 'small_parcel') && kg <= 20) return 'motorcycle';
+  if (cat === 'food_cold' && kg <= 800)               return 'van';      // cold chain — van only
+  if (cat === 'medical')                              return kg <= 200 ? 'car' : 'van';
+  if (cat === 'fragile' && kg <= 100)                 return 'keke';
+  if (cat === 'standard_parcel' && kg <= 100)         return 'keke';
+  if (cat === 'agricultural' || cat === 'building')   return 'truck_sm';
+  if (cat === 'bulk_goods')                           return kg <= 800 ? 'van' : 'truck_sm';
+  if (cat === 'industrial')                           return kg <= 800 ? 'van' : 'truck_sm';
+  if (cat === 'lumber')                               return 'truck_lg';
+  if (cat === 'live_animals')                         return kg <= 800 ? 'van' : 'truck_sm';
+  if (cat === 'house_move_single')                    return kg <= 800 ? 'van' : 'truck_sm';
+  if (cat === 'house_move_full')                      return 'truck_lg';
+  if (cat === 'other') { /* fall through to weight-based */ }
   if (kg <= 5)    return 'bicycle';
   if (kg <= 20)   return 'motorcycle';
   if (kg <= 100)  return 'keke';
@@ -763,9 +780,15 @@ export default function SendScreen() {
                   [t('send.zoneSurcharge'),                                  fare.zoneSurcharge    ],
                   [t('send.overnightFee'),                                   fare.zoneFlat         ],
                   [t('send.codFee'),                                         fare.codFee           ],
+                  [t('send.insurancePremium'),                               fare.insurance        ],
+                  [t('send.timeGuaranteeFee'),                               fare.timeGuarantee    ],
                   [t('send.serviceFee'),                                     fare.service          ],
+                  [t('send.discountBulk'),                                  -fare.discounts.bulk   ],
+                  [t('send.discountRecurring'),                             -fare.discounts.recurring],
+                  [t('send.discountWelcome'),                               -fare.discounts.welcome],
+                  [t('send.discountLoyalty'),                               -fare.discounts.loyalty],
                   [t('send.vat'),                                            fare.vat              ],
-                ] as [string, number][]).filter(([, amt]) => amt > 0).map(([lbl, amt]) => (
+                ] as [string, number][]).filter(([, amt]) => amt !== 0).map(([lbl, amt]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
                     <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
                     <Text style={[styles.fareAmt,   { color: theme.text }]}>₦{amt.toLocaleString()}</Text>
