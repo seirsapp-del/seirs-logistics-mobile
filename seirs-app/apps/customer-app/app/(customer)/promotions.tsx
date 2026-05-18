@@ -1,4 +1,4 @@
-﻿import {
+import {
   View, Text, Pressable, StyleSheet, FlatList, StatusBar, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,7 +14,7 @@ import { promotionsApi, type PromoDTO } from '@/services/api';
 
 // Render the discount value as a chip label per promo type.
 function promoLabel(p: PromoDTO): string {
-  if (p.type === 'flat_discount') return `â‚¦${Number(p.value).toLocaleString()} off`;
+  if (p.type === 'flat_discount') return `₦${Number(p.value).toLocaleString()} off`;
   if (p.type === 'percent')       return `${Number(p.value)}% off`;
   return 'Free delivery';
 }

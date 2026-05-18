@@ -1,4 +1,4 @@
-﻿import {
+import {
   View, Text, Pressable, StyleSheet, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -160,7 +160,7 @@ export default function ConfirmRideScreen() {
       <View style={[styles.cta, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <View style={styles.ctaTotal}>
           <Text style={[styles.ctaTotalLabel, { color: theme.textSecond }]}>{t('confirmRide.total')}</Text>
-          <Text style={[styles.ctaTotalValue, { color: theme.primary }]}>â‚¦{total.toLocaleString()}</Text>
+          <Text style={[styles.ctaTotalValue, { color: theme.primary }]}>₦{total.toLocaleString()}</Text>
         </View>
         <Button
           label={t('confirmRide.confirmRide')}

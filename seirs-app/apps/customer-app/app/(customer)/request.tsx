@@ -267,7 +267,7 @@ export default function RequestDriverScreen() {
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <View style={[styles.topTitle, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <Text style={[styles.topTitleText, { color: theme.text }]}>Request a Ride</Text>
+          <Text style={[styles.topTitleText, { color: theme.text }]}>{t('request2.title')}</Text>
         </View>
       </SafeAreaView>
 
@@ -296,7 +296,7 @@ export default function RequestDriverScreen() {
                 value={pickupQuery}
                 onChangeText={(t) => onChangeQuery('pickup', t)}
                 onFocus={() => { setActiveField('pickup'); sheetRef.current?.snapToIndex(1); }}
-                placeholder="Pickup address"
+                placeholder={t('request2.pickupAddress')}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text }]}
               />
@@ -313,7 +313,7 @@ export default function RequestDriverScreen() {
                 value={dropoffQuery}
                 onChangeText={(t) => onChangeQuery('dropoff', t)}
                 onFocus={() => { setActiveField('dropoff'); sheetRef.current?.snapToIndex(1); }}
-                placeholder="Where to?"
+                placeholder={t('request2.whereTo')}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text }]}
               />
@@ -350,7 +350,7 @@ export default function RequestDriverScreen() {
             <View style={styles.suggestList}>
               <Pressable style={styles.useLocBtn} onPress={() => useMyLocation(activeField)}>
                 <Ionicons name="locate" size={18} color={theme.primary} />
-                <Text style={[styles.useLocText, { color: theme.primary }]}>Use my current location</Text>
+                <Text style={[styles.useLocText, { color: theme.primary }]}>{t('request2.useMyLocation')}</Text>
                 {searching && <ActivityIndicator size="small" color={theme.primary} />}
               </Pressable>
               {predictions.map((p) => (
@@ -378,7 +378,7 @@ export default function RequestDriverScreen() {
           {activeField !== null && predictions.length === 0 && (
             <Pressable style={[styles.useLocBtn, { borderTopColor: theme.border, borderTopWidth: 1 }]} onPress={() => useMyLocation(activeField)}>
               <Ionicons name="locate" size={18} color={theme.primary} />
-              <Text style={[styles.useLocText, { color: theme.primary }]}>Use my current location</Text>
+              <Text style={[styles.useLocText, { color: theme.primary }]}>{t('request2.useMyLocation')}</Text>
               {searching && <ActivityIndicator size="small" color={theme.primary} />}
             </Pressable>
           )}
@@ -386,7 +386,7 @@ export default function RequestDriverScreen() {
           {/* Vehicle picker — hidden while user is searching (sheet is full of suggestions). */}
           {!showSuggestions && (
             <>
-              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Pick your ride</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('request2.pickYourRide')}</Text>
               <View style={styles.vehicleRow}>
                 {VEHICLE_OPTIONS.map((v) => (
                   <Pressable
@@ -424,11 +424,11 @@ export default function RequestDriverScreen() {
                   <Ionicons name="people-outline" size={18} color={sharedRide ? '#fff' : theme.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.shareTitle, { color: theme.text }]}>Share this ride</Text>
+                  <Text style={[styles.shareTitle, { color: theme.text }]}>{t('request2.shareTitle')}</Text>
                   <Text style={[styles.shareSub, { color: theme.textSecond }]}>
                     {allowsSharing
-                      ? 'Match with riders going your way and split the fare up to 40%'
-                      : 'Available for Car and Bus only'}
+                      ? t('request2.shareDescAvailable')
+                      : t('request2.shareDescUnavailable')}
                   </Text>
                 </View>
                 <View style={[styles.shareCheck, { borderColor: sharedRide ? theme.primary : theme.border, backgroundColor: sharedRide ? theme.primary : 'transparent' }]}>
@@ -438,7 +438,7 @@ export default function RequestDriverScreen() {
 
               <View style={styles.cta}>
                 <Button
-                  label={canProceed ? 'Choose Vehicle' : 'Enter locations to continue'}
+                  label={canProceed ? t('request2.chooseVehicle') : t('request2.enterLocationsToContinue')}
                   onPress={handleNext}
                   disabled={!canProceed}
                   fullWidth

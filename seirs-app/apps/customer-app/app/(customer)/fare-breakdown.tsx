@@ -1,4 +1,4 @@
-﻿import {
+import {
   View, Text, Pressable, StyleSheet, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -99,7 +99,7 @@ export default function FareBreakdownScreen() {
                 </View>
                 <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{label}</Text>
               </View>
-              <Text style={[styles.fareValue, { color: theme.text }]}>â‚¦{value.toLocaleString()}</Text>
+              <Text style={[styles.fareValue, { color: theme.text }]}>₦{value.toLocaleString()}</Text>
             </View>
           ))}
 
@@ -112,7 +112,7 @@ export default function FareBreakdownScreen() {
                 </View>
                 <Text style={[styles.fareLabel, { color: '#15803D' }]}>{t('fareBreakdown2.promoDiscount')}</Text>
               </View>
-              <Text style={[styles.fareValue, { color: '#15803D' }]}>-â‚¦{fb.discount.toLocaleString()}</Text>
+              <Text style={[styles.fareValue, { color: '#15803D' }]}>-₦{fb.discount.toLocaleString()}</Text>
             </View>
           )}
 
@@ -120,7 +120,7 @@ export default function FareBreakdownScreen() {
           <View style={[styles.fareTotal, { borderTopColor: theme.border }]}>
             <Text style={[styles.fareTotalLabel, { color: theme.text }]}>{t('fareBreakdown2.total')}</Text>
             <Text style={[styles.fareTotalValue, { color: theme.primary }]}>
-              â‚¦{fb.total.toLocaleString()}
+              ₦{fb.total.toLocaleString()}
             </Text>
           </View>
         </Card>

@@ -46,20 +46,20 @@ const PACKAGE_CATEGORIES = [
 type CategoryId = typeof PACKAGE_CATEGORIES[number]['id'];
 
 const VEHICLES = [
-  { id: 'bicycle',    label: 'Bicycle / Hand',         maxKg: 5,    base: 500,   perKm: 50,   note: 'Community only, <3km' },
-  { id: 'motorcycle', label: 'Motorcycle (Okada)',      maxKg: 20,   base: 800,   perKm: 150,  note: 'Standard parcels, food' },
-  { id: 'keke',       label: 'Tricycle (Keke)',         maxKg: 100,  base: 1200,  perKm: 200,  note: 'Medium packages, fragile' },
-  { id: 'car',        label: 'Car (Sedan)',             maxKg: 200,  base: 2000,  perKm: 300,  note: 'Personal items, medium parcels' },
-  { id: 'van',        label: 'Van / Pickup',            maxKg: 800,  base: 5000,  perKm: 500,  note: 'Large goods, business deliveries' },
-  { id: 'truck_sm',   label: 'Truck (Small)',           maxKg: 3000, base: 15000, perKm: 1000, note: 'Bulk cargo, building materials' },
-  { id: 'truck_lg',   label: 'Truck (Large / Moving)',  maxKg: 9999, base: 40000, perKm: 2000, note: 'Full relocation, industrial' },
+  { id: 'bicycle',    labelKey: 'vehBicycle',    noteKey: 'vehBicycleNote',    maxKg: 5,    base: 500,   perKm: 50   },
+  { id: 'motorcycle', labelKey: 'vehMotorcycle', noteKey: 'vehMotorcycleNote', maxKg: 20,   base: 800,   perKm: 150  },
+  { id: 'keke',       labelKey: 'vehKeke',       noteKey: 'vehKekeNote',       maxKg: 100,  base: 1200,  perKm: 200  },
+  { id: 'car',        labelKey: 'vehCar',        noteKey: 'vehCarNote',        maxKg: 200,  base: 2000,  perKm: 300  },
+  { id: 'van',        labelKey: 'vehVan',        noteKey: 'vehVanNote',        maxKg: 800,  base: 5000,  perKm: 500  },
+  { id: 'truck_sm',   labelKey: 'vehTruckSm',    noteKey: 'vehTruckSmNote',    maxKg: 3000, base: 15000, perKm: 1000 },
+  { id: 'truck_lg',   labelKey: 'vehTruckLg',    noteKey: 'vehTruckLgNote',    maxKg: 9999, base: 40000, perKm: 2000 },
 ] as const;
 type VehicleId = typeof VEHICLES[number]['id'];
 
 const PAYMENT_METHODS = [
-  { id: 'card',          label: 'Debit Card (Flutterwave)' },
-  { id: 'bank_transfer', label: 'Bank Transfer'            },
-  { id: 'wallet',        label: 'Seirs Wallet'             },
+  { id: 'card',          labelKey: 'payCard'         },
+  { id: 'bank_transfer', labelKey: 'payBankTransfer' },
+  { id: 'wallet',        labelKey: 'payWallet'       },
 ] as const;
 type PaymentId = typeof PAYMENT_METHODS[number]['id'];
 
@@ -301,7 +301,7 @@ export default function SendScreen() {
     if (photos.length >= 5) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow photo access to upload package photos.');
+      Alert.alert(t('send.alertPermissionTitle'), t('send.alertPermissionBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
@@ -312,12 +312,12 @@ export default function SendScreen() {
 
   // ── Step navigation ──────────────────────────────────────────────────────
   const next = () => {
-    if (step === 0 && photos.length === 0) { setError('Please upload at least one photo.'); return; }
-    if (step === 0 && !category)           { setError('Please select a package category.'); return; }
-    if (step === 1 && !pickup)  { setError('Please enter a pickup address.'); return; }
-    if (step === 1 && !dropoff) { setError('Please enter a dropoff address.'); return; }
+    if (step === 0 && photos.length === 0) { setError(t('send.errPhotoMissing')); return; }
+    if (step === 0 && !category)           { setError(t('send.errCategoryMissing')); return; }
+    if (step === 1 && !pickup)  { setError(t('send.errPickupMissing')); return; }
+    if (step === 1 && !dropoff) { setError(t('send.errDropoffMissing')); return; }
     if (step === 1 && !scheduleNow && scheduledHour == null) {
-      setError('Please pick a time for your scheduled delivery.');
+      setError(t('send.errScheduleTime'));
       return;
     }
     setError('');
@@ -362,7 +362,7 @@ export default function SendScreen() {
       });
       router.replace('/(customer)/history' as any);
     } catch (e: any) {
-      setError(e.message ?? 'Booking failed. Please try again.');
+      setError(e.message ?? t('send.errBookingFailed'));
     } finally {
       setLoading(false);
     }
@@ -403,7 +403,7 @@ export default function SendScreen() {
           <ArrowLeft size={20} color={theme.text} strokeWidth={2} />
         </Pressable>
         <View style={[styles.topTitle, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <Text style={[styles.topTitleText, { color: theme.text }]}>Send a Package</Text>
+          <Text style={[styles.topTitleText, { color: theme.text }]}>{t('send.sendPackage')}</Text>
           <Text style={[styles.topStep, { color: theme.textSecond }]}>
             {t('send.stepOf', { current: step + 1, total: STEPS.length })} — {t(`send.${STEP_KEYS[step]}`)}
           </Text>
@@ -447,17 +447,17 @@ export default function SendScreen() {
                   <Truck size={18} color={theme.accent} strokeWidth={2} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: theme.text }}>Drop at a store instead</Text>
+                  <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: theme.text }}>{t('send.dropAtStoreCardTitle')}</Text>
                   <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, marginTop: 2 }}>
-                    No driver pickup — walk in, drop, done. Cheapest for non-urgent packages.
+                    {t('send.dropAtStoreCardDesc')}
                   </Text>
                 </View>
                 <ArrowRight size={16} color={theme.accent} />
               </Pressable>
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
-                Package photos <Text style={{ color: theme.error }}>*</Text>
-                <Text style={{ color: theme.textThird }}> (min 1, max 5)</Text>
+                {t('send.packagePhotos')} <Text style={{ color: theme.error }}>*</Text>
+                <Text style={{ color: theme.textThird }}> {t('send.minOnePhoto')}</Text>
               </Text>
               <View style={styles.photosRow}>
                 {photos.map((uri, i) => (
@@ -477,7 +477,7 @@ export default function SendScreen() {
                     onPress={addPhoto}
                   >
                     <Camera size={24} color={theme.accent} strokeWidth={1.75} />
-                    <Text style={[styles.photoAddText, { color: theme.textSecond }]}>Add</Text>
+                    <Text style={[styles.photoAddText, { color: theme.textSecond }]}>{t('send.addPhoto')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -485,7 +485,7 @@ export default function SendScreen() {
               <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.description')}</Text>
               <TextInput
                 style={[styles.textarea, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
-                placeholder="Describe the package contents..."
+                placeholder={t('send.descPlaceholder')}
                 placeholderTextColor={theme.textThird}
                 multiline
                 numberOfLines={3}
@@ -509,7 +509,7 @@ export default function SendScreen() {
               <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.weightKg')}</Text>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
-                placeholder="e.g. 5"
+                placeholder={t('send.weightPlaceholder')}
                 placeholderTextColor={theme.textThird}
                 keyboardType="decimal-pad"
                 value={weightKg}
@@ -528,7 +528,7 @@ export default function SendScreen() {
                     value={pickupQuery}
                     onChangeText={(t) => onChangeQuery('pickup', t)}
                     onFocus={() => { setActiveField('pickup'); sheetRef.current?.snapToIndex(1); }}
-                    placeholder="Pickup address"
+                    placeholder={t('send.pickupAddress')}
                     placeholderTextColor={theme.textThird}
                     style={[styles.inputField, { color: theme.text }]}
                   />
@@ -545,7 +545,7 @@ export default function SendScreen() {
                     value={dropoffQuery}
                     onChangeText={(t) => onChangeQuery('dropoff', t)}
                     onFocus={() => { setActiveField('dropoff'); sheetRef.current?.snapToIndex(1); }}
-                    placeholder="Where to?"
+                    placeholder={t('send.whereTo')}
                     placeholderTextColor={theme.textThird}
                     style={[styles.inputField, { color: theme.text }]}
                   />
@@ -579,7 +579,7 @@ export default function SendScreen() {
                 <View style={styles.suggestList}>
                   <Pressable style={styles.useLocBtn} onPress={() => useMyLocation(activeField)}>
                     <Ionicons name="locate" size={18} color={theme.primary} />
-                    <Text style={[styles.useLocText, { color: theme.primary }]}>Use my current location</Text>
+                    <Text style={[styles.useLocText, { color: theme.primary }]}>{t('send.useMyLocation')}</Text>
                     {searching && <ActivityIndicator size="small" color={theme.primary} />}
                   </Pressable>
                   {predictions.map(p => (
@@ -603,7 +603,7 @@ export default function SendScreen() {
               {activeField !== null && predictions.length === 0 && (
                 <Pressable style={[styles.useLocBtn, { borderTopColor: theme.border, borderTopWidth: 1 }]} onPress={() => useMyLocation(activeField)}>
                   <Ionicons name="locate" size={18} color={theme.primary} />
-                  <Text style={[styles.useLocText, { color: theme.primary }]}>Use my current location</Text>
+                  <Text style={[styles.useLocText, { color: theme.primary }]}>{t('send.useMyLocation')}</Text>
                   {searching && <ActivityIndicator size="small" color={theme.primary} />}
                 </Pressable>
               )}
@@ -612,10 +612,10 @@ export default function SendScreen() {
                   together. Always visible on Step 2 — scroll to reach it
                   if the suggestions list is open above. */}
               <>
-                <Text style={[styles.label, { color: theme.textSecond, marginTop: Spacing.md }]}>When?</Text>
+                <Text style={[styles.label, { color: theme.textSecond, marginTop: Spacing.md }]}>{t('send.whenLabel')}</Text>
                 {[
-                  { now: true,  icon: Zap,      title: 'Send Now',           desc: 'Driver assigned immediately' },
-                  { now: false, icon: Calendar, title: 'Schedule for Later', desc: 'Pick a future date and time' },
+                  { now: true,  icon: Zap,      titleKey: 'sendNow',       descKey: 'sendNowDesc'       },
+                  { now: false, icon: Calendar, titleKey: 'scheduleLater', descKey: 'scheduleLaterDesc' },
                 ].map(opt => {
                     const OptIcon = opt.icon;
                     return (
@@ -626,8 +626,8 @@ export default function SendScreen() {
                       >
                         <OptIcon size={20} color={scheduleNow === opt.now ? theme.accent : theme.textSecond} strokeWidth={1.75} />
                         <View style={{ flex: 1 }}>
-                          <Text style={[styles.scheduleTitle, { color: theme.text }]}>{opt.title}</Text>
-                          <Text style={[styles.scheduleDesc, { color: theme.textSecond }]}>{opt.desc}</Text>
+                          <Text style={[styles.scheduleTitle, { color: theme.text }]}>{t(`send.${opt.titleKey}`)}</Text>
+                          <Text style={[styles.scheduleDesc, { color: theme.textSecond }]}>{t(`send.${opt.descKey}`)}</Text>
                         </View>
                         {scheduleNow === opt.now && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
                       </Pressable>
@@ -666,20 +666,20 @@ export default function SendScreen() {
                       />
 
                       <Text style={[styles.label, { color: theme.textSecond, marginBottom: Spacing.sm }]}>
-                        Time <Text style={{ color: theme.textThird, fontWeight: FontWeight.regular }}>(scheduled hours: 5 AM – 9 PM)</Text>
+                        {t('send.timeLabel')} <Text style={{ color: theme.textThird, fontWeight: FontWeight.regular }}>{t('send.scheduledHoursHint')}</Text>
                       </Text>
                       <View style={styles.chipRow}>
-                        {TIME_SLOTS.map(t => {
-                          const active = scheduledHour === t.hour;
-                          const isPast = scheduledDate === TODAY_ISO && t.hour <= new Date().getHours();
+                        {TIME_SLOTS.map(slot => {
+                          const active = scheduledHour === slot.hour;
+                          const isPast = scheduledDate === TODAY_ISO && slot.hour <= new Date().getHours();
                           if (isPast) return null;
                           return (
                             <Pressable
-                              key={t.hour}
+                              key={slot.hour}
                               style={[styles.timeChip, { backgroundColor: active ? theme.accent : theme.surfaceSecond, borderColor: active ? theme.accent : theme.border }]}
-                              onPress={() => setScheduledHour(t.hour)}
+                              onPress={() => setScheduledHour(slot.hour)}
                             >
-                              <Text style={[styles.timeChipText, { color: active ? '#fff' : theme.text }]}>{t.label}</Text>
+                              <Text style={[styles.timeChipText, { color: active ? '#fff' : theme.text }]}>{slot.label}</Text>
                             </Pressable>
                           );
                         })}
@@ -689,7 +689,7 @@ export default function SendScreen() {
                         <View style={[styles.scheduleSummary, { borderTopColor: theme.border }]}>
                           <Calendar size={16} color={theme.accent} strokeWidth={1.75} />
                           <Text style={[styles.scheduleSummaryText, { color: theme.text }]}>
-                            Scheduled for {buildScheduledFor(scheduledDate, scheduledHour).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                            {t('send.scheduledForPrefix')} {buildScheduledFor(scheduledDate, scheduledHour).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                           </Text>
                         </View>
                       )}
@@ -703,7 +703,7 @@ export default function SendScreen() {
           {step === 2 && (
             <View style={styles.stepGap}>
               <Text style={[styles.hintText, { color: theme.textSecond }]}>
-                We highlighted the recommended vehicle for your package.
+                {t('send.vehicleRecommended')}
               </Text>
               {VEHICLES.map(v => {
                 const f      = calcFare(v.id, distKmRoute, kg);
@@ -718,15 +718,15 @@ export default function SendScreen() {
                     <Truck size={26} color={active ? theme.accent : theme.textSecond} strokeWidth={1.5} />
                     <View style={{ flex: 1 }}>
                       <View style={styles.vehicleNameRow}>
-                        <Text style={[styles.vehicleName, { color: theme.text }]}>{v.label}</Text>
+                        <Text style={[styles.vehicleName, { color: theme.text }]}>{t(`send.${v.labelKey}`)}</Text>
                         {rec && (
                           <View style={[styles.recBadge, { backgroundColor: theme.accent }]}>
-                            <Text style={styles.recText}>Recommended</Text>
+                            <Text style={styles.recText}>{t('send.recommended')}</Text>
                           </View>
                         )}
                       </View>
                       <Text style={[styles.vehicleNote, { color: theme.textSecond }]}>
-                        {v.note} · max {v.maxKg >= 9999 ? '3000+' : v.maxKg}kg
+                        {t(`send.${v.noteKey}`)} · max {v.maxKg >= 9999 ? '3000+' : v.maxKg}kg
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
@@ -746,10 +746,10 @@ export default function SendScreen() {
               <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                 <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.fareBreakdown')}</Text>
                 {([
-                  ['Base fare',         fare.base   ],
-                  ['Distance charge',   fare.dist   ],
-                  ['Weight surcharge',  fare.weight ],
-                  ['Service fee (30%)', fare.service],
+                  [t('send.baseFare'),        fare.base   ],
+                  [t('send.distanceCharge'),  fare.dist   ],
+                  [t('send.weightSurcharge'), fare.weight ],
+                  [t('send.serviceFee'),      fare.service],
                 ] as [string, number][]).map(([lbl, amt]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
                     <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
@@ -762,7 +762,7 @@ export default function SendScreen() {
                 </View>
               </View>
 
-              <Text style={[styles.label, { color: theme.textSecond }]}>Payment method</Text>
+              <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.paymentMethod')}</Text>
               {PAYMENT_METHODS.map(pm => (
                 <Pressable
                   key={pm.id}
@@ -770,7 +770,7 @@ export default function SendScreen() {
                   onPress={() => setPaymentId(pm.id)}
                 >
                   <CreditCard size={18} color={paymentId === pm.id ? theme.accent : theme.textSecond} strokeWidth={1.75} />
-                  <Text style={[styles.payLabel, { color: theme.text }]}>{pm.label}</Text>
+                  <Text style={[styles.payLabel, { color: theme.text }]}>{t(`send.${pm.labelKey}`)}</Text>
                   {paymentId === pm.id && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
                 </Pressable>
               ))}
@@ -783,18 +783,18 @@ export default function SendScreen() {
               <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                 <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.orderSummary')}</Text>
                 {([
-                  ['Pickup',   pickup?.address  ?? '—'],
-                  ['Dropoff',  dropoff?.address ?? '—'],
-                  ['Distance', distanceText ?? `${distKmRoute} km`],
-                  ['Category', t(`send.${PACKAGE_CATEGORIES.find(c => c.id === category)?.labelKey ?? 'category'}`)],
-                  ['Vehicle',  VEHICLES.find(v => v.id === vehicleId)?.label ?? '—'],
-                  ['When',     scheduleNow
-                                 ? 'Send now'
-                                 : (scheduledHour != null
-                                     ? buildScheduledFor(scheduledDate, scheduledHour).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-                                     : '—')],
-                  ['Payment',  PAYMENT_METHODS.find(p => p.id === paymentId)?.label ?? '—'],
-                  ['Total',    `₦${fare.total.toLocaleString()}`],
+                  [t('send.pickup'),         pickup?.address  ?? '—'],
+                  [t('send.dropoff'),        dropoff?.address ?? '—'],
+                  [t('send.summaryDistance'), distanceText ?? `${distKmRoute} km`],
+                  [t('send.category'),       t(`send.${PACKAGE_CATEGORIES.find(c => c.id === category)?.labelKey ?? 'category'}`)],
+                  [t('send.vehicle2'),       (() => { const v = VEHICLES.find(v => v.id === vehicleId); return v ? t(`send.${v.labelKey}`) : '—'; })()],
+                  [t('send.summaryWhen'),    scheduleNow
+                                               ? t('send.summarySendNow')
+                                               : (scheduledHour != null
+                                                   ? buildScheduledFor(scheduledDate, scheduledHour).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                                                   : '—')],
+                  [t('send.payment'),        (() => { const p = PAYMENT_METHODS.find(p => p.id === paymentId); return p ? t(`send.${p.labelKey}`) : '—'; })()],
+                  [t('send.total'),          `₦${fare.total.toLocaleString()}`],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
                     <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
@@ -815,7 +815,7 @@ export default function SendScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <View style={styles.ctaInner}>
-                <Text style={styles.ctaText}>{step === 4 ? 'Book Delivery' : 'Continue'}</Text>
+                <Text style={styles.ctaText}>{step === 4 ? t('send.bookDelivery') : t('common.continue')}</Text>
                 <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
               </View>
             )}

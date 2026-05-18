@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
   TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Share,
@@ -34,10 +34,10 @@ interface NearbyStore {
   full:         boolean;
 }
 
-const BUCKET_STYLE: Record<string, { color: string; label: string }> = {
-  plenty:  { color: '#16A34A', label: 'Plenty of space' },
-  limited: { color: '#D97706', label: 'Limited space'   },
-  full:    { color: '#DC2626', label: 'Full'            },
+const BUCKET_STYLE: Record<string, { color: string; labelKey: string }> = {
+  plenty:  { color: '#16A34A', labelKey: 'plenty'  },
+  limited: { color: '#D97706', labelKey: 'limited' },
+  full:    { color: '#DC2626', labelKey: 'full'    },
 };
 
 export default function DropAtStoreScreen() {
@@ -88,7 +88,7 @@ export default function DropAtStoreScreen() {
         const list = await dropoffApi.listCapacityNearby(lat, lng, 15);
         setStores(list);
       } catch (e: any) {
-        setError(e?.message ?? 'Could not load partner stores. Pull to refresh.');
+        setError(e?.message ?? t('dropAtStore.errLoadStores'));
       } finally {
         setLoading(false);
       }
@@ -99,15 +99,15 @@ export default function DropAtStoreScreen() {
     if (!pickupStore) return;
 
     if (mode === 'store_to_door' && !recipientAddress.trim()) {
-      setError('Recipient address required for door delivery.');
+      setError(t('dropAtStore.errRecipientAddressRequired'));
       return;
     }
     if (mode === 'store_to_store' && !dropoffStore) {
-      setError('Pick a destination partner store.');
+      setError(t('dropAtStore.errPickStore'));
       return;
     }
     if (!recipientName.trim() || !recipientPhone.trim() || !weightKg) {
-      setError('Recipient name, phone, and weight are required.');
+      setError(t('dropAtStore.errRecipientRequired'));
       return;
     }
 
@@ -128,7 +128,7 @@ export default function DropAtStoreScreen() {
       setReceipt(res);
       setStep('done');
     } catch (e: any) {
-      setError(e?.message ?? 'Could not schedule drop-off.');
+      setError(e?.message ?? t('dropAtStore.errSchedule'));
     } finally {
       setLoading(false);
     }
@@ -136,7 +136,7 @@ export default function DropAtStoreScreen() {
 
   const copyCode = async (code: string) => {
     await Clipboard.setStringAsync(code);
-    Alert.alert('Copied', `Code ${code} copied to clipboard.`);
+    Alert.alert(t('dropAtStore.copiedTitle'), t('dropAtStore.copiedBody', { code }));
   };
 
   const shareCode = async () => {
@@ -169,10 +169,10 @@ export default function DropAtStoreScreen() {
         <Text style={[styles.headerTitle, { color: theme.text }]}>{t('dropAtStore.title')}</Text>
         {step !== 'done' && (
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
-            {step === 'pickup'      ? 'Step 1 of 4 â€” Pickup store' :
-             step === 'destination' ? 'Step 2 of 4 â€” Where to?' :
-             step === 'package'     ? 'Step 3 of 4 â€” Package details' :
-                                      'Step 4 of 4 â€” Review'}
+            {step === 'pickup'      ? t('dropAtStore.step1') :
+             step === 'destination' ? t('dropAtStore.step2') :
+             step === 'package'     ? t('dropAtStore.step3') :
+                                      t('dropAtStore.step4')}
           </Text>
         )}
       </View>
@@ -191,11 +191,10 @@ export default function DropAtStoreScreen() {
           <View style={[styles.successBadge, { backgroundColor: '#16A34A18' }]}>
             <Check size={32} color="#16A34A" strokeWidth={2.5} />
           </View>
-          <Text style={[styles.doneTitle, { color: theme.text }]}>Drop-off scheduled</Text>
+          <Text style={[styles.doneTitle, { color: theme.text }]}>{t('dropAtStore.scheduledTitle')}</Text>
           <Text style={[styles.doneSub, { color: theme.textSecond }]}>
-            Take this code with you when you walk into{' '}
-            <Text style={{ fontWeight: '700' }}>{pickupStore?.storeName}</Text>.
-            Show it to the partner staff at the counter.
+            {t('dropAtStore.scheduledSubBefore')}{' '}
+            <Text style={{ fontWeight: '700' }}>{pickupStore?.storeName}</Text>{t('dropAtStore.scheduledSubAfter')}
           </Text>
 
           {/* QR */}
@@ -212,10 +211,10 @@ export default function DropAtStoreScreen() {
             <Text style={[styles.codeBig,   { color: theme.primary }]}>{receipt.dropCode}</Text>
 
             <View style={styles.divider} />
-            <Text style={[styles.codeLabel, { color: theme.textSecond }]}>BACKUP (READ ALOUD)</Text>
+            <Text style={[styles.codeLabel, { color: theme.textSecond }]}>{t('dropAtStore.backupAloud')}</Text>
             <Text style={[styles.codeMed,   { color: theme.text }]}>{receipt.backupCode}</Text>
             <Text style={[styles.codeNote,  { color: theme.textThird }]}>
-              If the QR scan fails, partner staff will type the 6-character backup instead.
+              {t('dropAtStore.qrFailNote')}
             </Text>
           </View>
 
@@ -223,16 +222,16 @@ export default function DropAtStoreScreen() {
           <View style={styles.actionRow}>
             <Pressable style={[styles.secondaryBtn, { borderColor: theme.border }]} onPress={() => copyCode(receipt.dropCode)}>
               <Copy size={16} color={theme.text} />
-              <Text style={[styles.secondaryBtnText, { color: theme.text }]}>Copy code</Text>
+              <Text style={[styles.secondaryBtnText, { color: theme.text }]}>{t('dropAtStore.copyCodeBtn')}</Text>
             </Pressable>
             <Pressable style={[styles.secondaryBtn, { borderColor: theme.border }]} onPress={shareCode}>
               <Share2 size={16} color={theme.text} />
-              <Text style={[styles.secondaryBtnText, { color: theme.text }]}>Share</Text>
+              <Text style={[styles.secondaryBtnText, { color: theme.text }]}>{t('dropAtStore.shareBtn')}</Text>
             </Pressable>
           </View>
 
           <Pressable style={[styles.primaryBtn, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
-            <Text style={styles.primaryBtnText}>Done</Text>
+            <Text style={styles.primaryBtnText}>{t('common.done')}</Text>
           </Pressable>
         </ScrollView>
       </SafeAreaView>
@@ -259,7 +258,7 @@ export default function DropAtStoreScreen() {
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.selectStore').toUpperCase()}</Text>
               {loading && <ActivityIndicator color={theme.primary} style={{ marginVertical: 24 }} />}
               {!loading && stores.length === 0 && (
-                <Text style={[styles.emptyText, { color: theme.textSecond }]}>No partner stores nearby. Try door-to-door delivery instead.</Text>
+                <Text style={[styles.emptyText, { color: theme.textSecond }]}>{t('dropAtStore.noStoresNearby')}</Text>
               )}
               {stores.map(s => {
                 const bucket = BUCKET_STYLE[s.bucket];
@@ -285,7 +284,7 @@ export default function DropAtStoreScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.storeName, { color: theme.text }]}>{s.storeName}</Text>
                       <Text style={[styles.storeAddress, { color: theme.textSecond }]} numberOfLines={1}>{s.storeAddress}</Text>
-                      <Text style={[styles.bucketText, { color: bucket.color }]}>â— {bucket.label}</Text>
+                      <Text style={[styles.bucketText, { color: bucket.color }]}>● {t(`dropAtStore.`+bucket.labelKey)}</Text>
                     </View>
                     {selected && <Check size={18} color={theme.primary} />}
                   </Pressable>
@@ -297,7 +296,7 @@ export default function DropAtStoreScreen() {
                 style={[styles.primaryBtn, { backgroundColor: pickupStore ? theme.primary : theme.surfaceSecond, marginTop: Spacing.lg }]}
                 onPress={() => setStep('destination')}
               >
-                <Text style={styles.primaryBtnText}>Continue</Text>
+                <Text style={styles.primaryBtnText}>{t('common.continue')}</Text>
                 <ArrowRight size={16} color="#fff" />
               </Pressable>
             </>
@@ -306,7 +305,7 @@ export default function DropAtStoreScreen() {
           {/* Step 2 â€” destination mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 'destination' && (
             <>
-              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>WHERE SHOULD IT GO?</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.whereToHeading')}</Text>
 
               <Pressable
                 onPress={() => setMode('store_to_door')}
@@ -319,9 +318,9 @@ export default function DropAtStoreScreen() {
                   <MapPin size={20} color={theme.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.modeTitle, { color: theme.text }]}>Door delivery</Text>
+                  <Text style={[styles.modeTitle, { color: theme.text }]}>{t('dropAtStore.doorDelivery')}</Text>
                   <Text style={[styles.modeSub,   { color: theme.textSecond }]}>
-                    Driver delivers to recipient&apos;s address. Faster, full price.
+                    {t('dropAtStore.doorDeliveryDesc')}
                   </Text>
                 </View>
                 {mode === 'store_to_door' && <Check size={18} color={theme.primary} />}
@@ -338,9 +337,9 @@ export default function DropAtStoreScreen() {
                   <Store size={20} color={theme.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.modeTitle, { color: theme.text }]}>Recipient collects from a store</Text>
+                  <Text style={[styles.modeTitle, { color: theme.text }]}>{t('dropAtStore.collectFromStoreOpt')}</Text>
                   <Text style={[styles.modeSub,   { color: theme.textSecond }]}>
-                    Cheapest. Recipient picks up from a partner store within 24 hours.
+                    {t('dropAtStore.collectFromStoreDesc')}
                   </Text>
                 </View>
                 {mode === 'store_to_store' && <Check size={18} color={theme.primary} />}
@@ -348,11 +347,11 @@ export default function DropAtStoreScreen() {
 
               {mode === 'store_to_door' && (
                 <View style={{ marginTop: Spacing.md }}>
-                  <Text style={[styles.fieldLabel, { color: theme.text }]}>Recipient address</Text>
+                  <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('dropAtStore.recipientAddress')}</Text>
                   <TextInput
                     value={recipientAddress}
                     onChangeText={setRecipientAddress}
-                    placeholder="House number, street, area, city"
+                    placeholder={t('dropAtStore.recipientAddressPlaceholder')}
                     placeholderTextColor={theme.textThird}
                     multiline
                     style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface, minHeight: 60, textAlignVertical: 'top' }]}
@@ -362,7 +361,7 @@ export default function DropAtStoreScreen() {
 
               {mode === 'store_to_store' && (
                 <View style={{ marginTop: Spacing.md }}>
-                  <Text style={[styles.fieldLabel, { color: theme.text }]}>Destination partner store</Text>
+                  <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('dropAtStore.destinationStore')}</Text>
                   {stores.filter(s => s.id !== pickupStore?.id).map(s => {
                     const bucket = BUCKET_STYLE[s.bucket];
                     const selected = dropoffStore?.id === s.id;
@@ -386,7 +385,7 @@ export default function DropAtStoreScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.storeName, { color: theme.text }]}>{s.storeName}</Text>
                           <Text style={[styles.storeAddress, { color: theme.textSecond }]} numberOfLines={1}>{s.storeAddress}</Text>
-                          <Text style={[styles.bucketText, { color: bucket.color }]}>â— {bucket.label}</Text>
+                          <Text style={[styles.bucketText, { color: bucket.color }]}>● {t(`dropAtStore.`+bucket.labelKey)}</Text>
                         </View>
                         {selected && <Check size={18} color={theme.primary} />}
                       </Pressable>
@@ -403,7 +402,7 @@ export default function DropAtStoreScreen() {
                 }]}
                 onPress={() => setStep('package')}
               >
-                <Text style={styles.primaryBtnText}>Continue</Text>
+                <Text style={styles.primaryBtnText}>{t('common.continue')}</Text>
                 <ArrowRight size={16} color="#fff" />
               </Pressable>
             </>
@@ -412,54 +411,54 @@ export default function DropAtStoreScreen() {
           {/* Step 3 â€” package + recipient â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 'package' && (
             <>
-              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>PACKAGE</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.packageHeading')}</Text>
 
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>Weight (kg)</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('dropAtStore.weightLabel')}</Text>
               <TextInput
                 value={weightKg}
                 onChangeText={setWeightKg}
                 keyboardType="decimal-pad"
-                placeholder="0.5"
+                placeholder={t('dropAtStore.weightPlaceholder')}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: Spacing.md }]}>Description (optional)</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: Spacing.md }]}>{t('dropAtStore.descriptionLabel')}</Text>
               <TextInput
                 value={packageDescription}
                 onChangeText={setPackageDescription}
-                placeholder="e.g. clothing, documents, small electronics"
+                placeholder={t('dropAtStore.descriptionPlaceholder')}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: Spacing.md }]}>Declared value â‚¦ (optional)</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: Spacing.md }]}>{t('dropAtStore.declaredValueLabel')}</Text>
               <TextInput
                 value={declaredValue}
                 onChangeText={setDeclaredValue}
                 keyboardType="number-pad"
-                placeholder="If over â‚¦50,000, recipient must show ID"
+                placeholder={t('dropAtStore.declaredValuePlaceholder')}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
               />
 
-              <Text style={[styles.sectionLabel, { color: theme.textSecond, marginTop: Spacing.lg }]}>RECIPIENT</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecond, marginTop: Spacing.lg }]}>{t('dropAtStore.recipientHeading')}</Text>
 
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>Full name</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('dropAtStore.fullName')}</Text>
               <TextInput
                 value={recipientName}
                 onChangeText={setRecipientName}
-                placeholder="As recipient will type when collecting"
+                placeholder={t('dropAtStore.fullNamePlaceholder')}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: Spacing.md }]}>Phone</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: Spacing.md }]}>{t('dropAtStore.phoneLabel')}</Text>
               <TextInput
                 value={recipientPhone}
                 onChangeText={setRecipientPhone}
                 keyboardType="phone-pad"
-                placeholder="08012345678"
+                placeholder={t('dropAtStore.phonePlaceholder')}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
               />
@@ -472,7 +471,7 @@ export default function DropAtStoreScreen() {
                 }]}
                 onPress={() => setStep('review')}
               >
-                <Text style={styles.primaryBtnText}>Review</Text>
+                <Text style={styles.primaryBtnText}>{t('dropAtStore.reviewBtn')}</Text>
                 <ArrowRight size={16} color="#fff" />
               </Pressable>
             </>
@@ -481,7 +480,7 @@ export default function DropAtStoreScreen() {
           {/* Step 4 â€” review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 'review' && pickupStore && (
             <>
-              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>REVIEW</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.reviewHeading')}</Text>
 
               <View style={[styles.reviewCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <View style={styles.reviewRow}>
@@ -489,7 +488,7 @@ export default function DropAtStoreScreen() {
                     <Store size={16} color={theme.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.reviewLabel, { color: theme.textSecond }]}>DROP AT</Text>
+                    <Text style={[styles.reviewLabel, { color: theme.textSecond }]}>{t('dropAtStore.dropAtCap')}</Text>
                     <Text style={[styles.reviewValue, { color: theme.text }]}>{pickupStore.storeName}</Text>
                     <Text style={[styles.reviewSub, { color: theme.textSecond }]}>{pickupStore.storeAddress}</Text>
                   </View>
@@ -504,7 +503,7 @@ export default function DropAtStoreScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.reviewLabel, { color: theme.textSecond }]}>
-                      {mode === 'store_to_door' ? 'DELIVER TO ADDRESS' : 'COLLECT FROM STORE'}
+                      {mode === 'store_to_door' ? t('dropAtStore.deliverToAddressCap') : t('dropAtStore.collectFromStoreCap')}
                     </Text>
                     <Text style={[styles.reviewValue, { color: theme.text }]}>
                       {mode === 'store_to_door' ? recipientAddress : dropoffStore?.storeName}
@@ -520,14 +519,14 @@ export default function DropAtStoreScreen() {
                     <Package size={16} color={theme.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.reviewLabel, { color: theme.textSecond }]}>PACKAGE</Text>
+                    <Text style={[styles.reviewLabel, { color: theme.textSecond }]}>{t('dropAtStore.packageCap')}</Text>
                     <Text style={[styles.reviewValue, { color: theme.text }]}>{weightKg} kg</Text>
                     {packageDescription ? (
                       <Text style={[styles.reviewSub, { color: theme.textSecond }]}>{packageDescription}</Text>
                     ) : null}
                     {declaredValue && Number(declaredValue) >= 50000 && (
                       <Text style={[styles.reviewWarn, { color: '#D97706' }]}>
-                        High value â€” recipient ID required at handoff
+                        {t('dropAtStore.highValueWarning')}
                       </Text>
                     )}
                   </View>
@@ -538,7 +537,7 @@ export default function DropAtStoreScreen() {
                     <User size={16} color={theme.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.reviewLabel, { color: theme.textSecond }]}>RECIPIENT</Text>
+                    <Text style={[styles.reviewLabel, { color: theme.textSecond }]}>{t('dropAtStore.recipientCap')}</Text>
                     <Text style={[styles.reviewValue, { color: theme.text }]}>{recipientName}</Text>
                     <Text style={[styles.reviewSub,   { color: theme.textSecond }]}>{recipientPhone}</Text>
                   </View>
@@ -547,7 +546,7 @@ export default function DropAtStoreScreen() {
 
               <View style={[styles.infoBox, { backgroundColor: '#3A7BD518' }]}>
                 <Text style={[styles.infoText, { color: theme.textSecond }]}>
-                  Walk into {pickupStore.storeName} with your package. Show staff the QR code (or read the 6-char backup) and they&apos;ll receive it. A driver will be dispatched within the SLA window.
+                  {t('dropAtStore.reviewInstruction', { store: pickupStore.storeName })}
                 </Text>
               </View>
 
@@ -558,7 +557,7 @@ export default function DropAtStoreScreen() {
               >
                 {loading
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.primaryBtnText}>Schedule drop-off</Text>}
+                  : <Text style={styles.primaryBtnText}>{t('dropAtStore.scheduleBtn')}</Text>}
               </Pressable>
             </>
           )}
