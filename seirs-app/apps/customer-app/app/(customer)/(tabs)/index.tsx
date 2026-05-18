@@ -15,7 +15,6 @@ import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/Drawer';
-import { StoriesRow } from '@/components/StoriesRow';
 import { deliveriesApi, paymentsApi } from '@/services/api';
 import {
   AlignLeft, MapPin, Package, Car, Clock, Search,
@@ -189,9 +188,6 @@ export default function CustomerHomeScreen() {
             <ChevronRight size={18} color={theme.accent} strokeWidth={2} />
           </Pressable>
         )}
-
-        {/* ── Stories — Instagram-style row, tap to open viewer ──────────── */}
-        <StoriesRow />
 
         {/* ── Widgets row ─────────────────────────────────────────────────── */}
         <ScrollView
