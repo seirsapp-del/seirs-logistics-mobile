@@ -12,32 +12,36 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
 import { deliveriesApi } from '@/services/api';
 
+// Labels looked up via t(`tracking.step${cap}`) at render so language
+// switches reflect live.
 const STATUS_CONFIG: Record<string, {
-  label: string; step: number;
+  labelKey: string; step: number;
   gradient: readonly [string, string];
   icon: string;
 }> = {
-  pending:    { label: 'Finding Rider',    step: 1, gradient: ['#3A86FF', '#1D6AE5'], icon: 'search' },
-  assigned:   { label: 'Rider Assigned',   step: 2, gradient: ['#3A86FF', '#1A56CC'], icon: 'navigate' },
-  picked_up:  { label: 'Package Picked Up',step: 3, gradient: ['#FF6B00', '#C2410C'], icon: 'cube' },
-  in_transit: { label: 'On the Way',       step: 4, gradient: ['#8B5CF6', '#6D28D9'], icon: 'navigate' },
-  delivered:  { label: 'Delivered!',       step: 5, gradient: ['#22C55E', '#15803D'], icon: 'checkmark-circle' },
-  failed:     { label: 'Delivery Failed',  step: 0, gradient: ['#EF4444', '#B91C1C'], icon: 'alert-circle' },
-  cancelled:  { label: 'Cancelled',        step: 0, gradient: ['#6B7280', '#4B5563'], icon: 'close-circle' },
+  pending:    { labelKey: 'tracking.stepPending',   step: 1, gradient: ['#3A86FF', '#1D6AE5'], icon: 'search' },
+  assigned:   { labelKey: 'tracking.stepAssigned',  step: 2, gradient: ['#3A86FF', '#1A56CC'], icon: 'navigate' },
+  picked_up:  { labelKey: 'tracking.stepPickedUp',  step: 3, gradient: ['#FF6B00', '#C2410C'], icon: 'cube' },
+  in_transit: { labelKey: 'tracking.stepInTransit', step: 4, gradient: ['#8B5CF6', '#6D28D9'], icon: 'navigate' },
+  delivered:  { labelKey: 'tracking.stepDelivered', step: 5, gradient: ['#22C55E', '#15803D'], icon: 'checkmark-circle' },
+  failed:     { labelKey: 'tracking.stepFailed',    step: 0, gradient: ['#EF4444', '#B91C1C'], icon: 'alert-circle' },
+  cancelled:  { labelKey: 'tracking.stepCancelled', step: 0, gradient: ['#6B7280', '#4B5563'], icon: 'close-circle' },
 };
 
-const STEPS = ['Finding Rider', 'Assigned', 'Picked Up', 'In Transit', 'Delivered'];
+const STEP_KEYS = ['tracking.shortFinding', 'tracking.shortAssigned', 'tracking.shortPickedUp', 'tracking.shortInTransit', 'tracking.shortDelivered'];
 
 export default function TrackScreen() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
   const params = useLocalSearchParams<{ code?: string }>();
+  const { t } = useTranslation();
 
   const [code,         setCode]         = useState(params.code ?? '');
   const [deliveryId,   setDeliveryId]   = useState<string | null>(null);
@@ -129,7 +133,7 @@ export default function TrackScreen() {
                 <View style={styles.statusIconWrap}>
                   <Ionicons name={statusInfo?.icon as any ?? 'cube'} size={32} color="#fff" />
                 </View>
-                <Text style={styles.statusLabel}>{statusInfo?.label ?? 'Processing'}</Text>
+                <Text style={styles.statusLabel}>{statusInfo ? t(statusInfo.labelKey) : t('common.loading')}</Text>
                 <Text style={styles.trackingCode}>{deliveryData.trackingCode}</Text>
                 {isConnected && (
                   <View style={styles.livePill}>
@@ -142,15 +146,15 @@ export default function TrackScreen() {
 
             {/* Progress steps */}
             <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>Delivery Progress</Text>
-              {STEPS.map((step, i) => {
+              <Text style={[styles.cardTitle, { color: theme.text }]}>{t('tracking.title')}</Text>
+              {STEP_KEYS.map((stepKey, i) => {
                 const stepNum    = i + 1;
                 const currentStep = statusInfo?.step ?? 0;
                 const done       = stepNum < currentStep;
                 const active     = stepNum === currentStep;
                 const pending    = stepNum > currentStep;
                 return (
-                  <View key={step} style={{ position: 'relative' }}>
+                  <View key={stepKey} style={{ position: 'relative' }}>
                     <View style={styles.stepRow}>
                       <View style={[
                         styles.stepDot,
@@ -167,10 +171,10 @@ export default function TrackScreen() {
                         { color: pending ? theme.textSecond : theme.text },
                         active && { fontWeight: FontWeight.bold },
                       ]}>
-                        {step}
+                        {t(stepKey)}
                       </Text>
                     </View>
-                    {i < STEPS.length - 1 && (
+                    {i < STEP_KEYS.length - 1 && (
                       <View style={[styles.stepLine, { backgroundColor: done ? '#22C55E' : theme.border }]} />
                     )}
                   </View>
