@@ -62,9 +62,10 @@ export const MOCK_DRIVERS = [
 // `import { RIDE_VEHICLES, calcRideFare } from '@/constants/mockData'`
 // callers keep working.
 import { DEFAULT_RATE_CARD, calcRideFare as _calcRideFare, calcPackageFare as _calcPackageFare } from './rateCard';
-export { RIDE_VEHICLES, PACKAGE_VEHICLES, codHandlingFee, dwellFee, cancellationFee, activeTimeSurcharges } from './rateCard';
-export const calcRideFare    = (vehicleId: string, distKm: number, shared: boolean,                              opts: Parameters<typeof _calcRideFare>[4] = {}) => _calcRideFare(DEFAULT_RATE_CARD, vehicleId, distKm, shared, opts);
-export const calcPackageFare = (vehicleId: string, distKm: number, kg: number, opts: Parameters<typeof _calcPackageFare>[4] = {}) => _calcPackageFare(DEFAULT_RATE_CARD, vehicleId, distKm, kg, opts);
+export { RIDE_VEHICLES, PACKAGE_VEHICLES, codHandlingFee, dwellFee, cancellationFee, activeTimeSurcharges, resolveRegionalOverrides } from './rateCard';
+export type { Coords, RideFareResult, PackageFareResult, RegionalOverrides } from './rateCard';
+export const calcRideFare    = (vehicleId: string, distKm: number, shared: boolean, opts: Parameters<typeof _calcRideFare>[4]    = {}) => _calcRideFare(DEFAULT_RATE_CARD, vehicleId, distKm, shared, opts);
+export const calcPackageFare = (vehicleId: string, distKm: number, kg: number,      opts: Parameters<typeof _calcPackageFare>[4] = {}) => _calcPackageFare(DEFAULT_RATE_CARD, vehicleId, distKm, kg, opts);
 
 export const MOCK_VEHICLES = [
   {
@@ -275,11 +276,24 @@ export const HELP_FAQS = [
   { q: 'Is my payment secure?', a: 'Yes. All card payments are processed by Flutterwave with 3D Secure. We do not store full card details on our servers.' },
 ];
 
+// Kept for backwards compat with the few screens that still import it,
+// but prefer DEFAULT_MAP_REGION below — it doesn't assume the user is in
+// Lagos. The map zooms to GPS as soon as Location resolves anyway.
 export const LAGOS_COORDS = {
   latitude: 6.5244,
   longitude: 3.3792,
   latitudeDelta: 0.04,
   longitudeDelta: 0.04,
+};
+
+// Country-centre fallback (Nigeria) with wide zoom — used as the initial
+// MapView region until the device GPS resolves or pickup/dropoff is set.
+// Doesn't bias the user to any one region.
+export const DEFAULT_MAP_REGION = {
+  latitude: 9.0820,
+  longitude: 8.6753,
+  latitudeDelta: 8,
+  longitudeDelta: 8,
 };
 
 export const POPULAR_LOCATIONS = [

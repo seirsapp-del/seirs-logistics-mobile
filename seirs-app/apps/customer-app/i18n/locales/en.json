@@ -563,7 +563,12 @@
     "priceNotice": "Final price may vary slightly based on actual distance and traffic.",
     "categorySurcharge": "Category surcharge",
     "timeSurcharge": "Time surcharge ({{labels}})",
-    "zoneSurcharge": "Long-distance surcharge",
+    "zoneSurcharge": "Zone surcharge",
+    "zoneIntraStateLongHaul": "Long-haul (intra-state)",
+    "zoneInterStateAdjacent": "Inter-state (adjacent)",
+    "zoneInterStateDistant": "Inter-state (distant)",
+    "zoneCrossZone": "Cross-region",
+    "zoneRestricted": "Restricted zone",
     "overnightFee": "Overnight fee",
     "vat": "VAT (7.5%)"
   },

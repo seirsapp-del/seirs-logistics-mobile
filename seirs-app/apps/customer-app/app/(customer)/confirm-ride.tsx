@@ -13,7 +13,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { MOCK_VEHICLES, RIDE_VEHICLES, MOCK_DRIVERS, FARE_BREAKDOWN, calcRideFare, LAGOS_COORDS } from '@/constants/mockData';
+import { MOCK_VEHICLES, RIDE_VEHICLES, MOCK_DRIVERS, FARE_BREAKDOWN, calcRideFare, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 
 export default function ConfirmRideScreen() {
   const router   = useRouter();
@@ -106,7 +106,7 @@ export default function ConfirmRideScreen() {
         style={StyleSheet.absoluteFill}
         initialRegion={pickupLat
           ? { latitude: pickupLat, longitude: pickupLng!, latitudeDelta: 0.05, longitudeDelta: 0.05 }
-          : LAGOS_COORDS}
+          : DEFAULT_MAP_REGION}
         customMapStyle={isDark ? DARK_MAP : []}
         onMapReady={() => {
           if (!pickupLat || !dropoffLat) return;

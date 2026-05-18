@@ -20,7 +20,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { deliveriesApi, uploadApi } from '@/services/api';
 import { type PickedAddress } from '@/components/AddressPicker';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { LAGOS_COORDS } from '@/constants/mockData';
+import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 import {
   ArrowLeft, ArrowRight, Truck, Calendar, CreditCard,
   Camera, X, CheckCircle, Zap,
@@ -178,7 +178,12 @@ export default function SendScreen() {
     : 7;
   const kg   = parseFloat(weightKg) || 0;
   const codAmountNgn = codEnabled ? (Number(codAmount) || 0) : 0;
-  const fare = calcFare(vehicleId, distKmRoute, kg, { categoryId: category, codAmountNgn });
+  const pickupCoords  = pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : null;
+  const dropoffCoords = dropoff ? { latitude: dropoff.lat, longitude: dropoff.lng } : null;
+  const fare = calcFare(vehicleId, distKmRoute, kg, {
+    categoryId: category, codAmountNgn,
+    pickupCoords, dropoffCoords,
+  });
 
   // Center on user's GPS once on mount.
   useEffect(() => {
@@ -387,7 +392,7 @@ export default function SendScreen() {
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
-        initialRegion={LAGOS_COORDS}
+        initialRegion={DEFAULT_MAP_REGION}
         customMapStyle={isDark ? DARK_MAP : []}
         showsUserLocation
         showsMyLocationButton={false}

@@ -10,7 +10,20 @@
  * Spec mirrors seirs-pricing-spec.html. Service fee (15%/18%) is a
  * temporary SEIRS margin line; the long-term spec bakes margin into
  * base + perKm so the customer only sees km/surcharges/VAT.
+ *
+ * REGIONAL: rates resolve in three layers — state-level override → zone-
+ * level override → baseline. SEIRS operates in all 37 federating units;
+ * admin tunes per region without code changes.
  */
+
+import {
+  detectStateFromCoords,
+  areStatesAdjacent,
+  getStateZone,
+  haversineKm,
+  type StateCode,
+  type GeopoliticalZone,
+} from './regions';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -66,11 +79,48 @@ export interface TimeSurchargeWindow {
   daysOfWeek?:   readonly number[];
 }
 
+/**
+ * State-aware zone pricing. Replaces the old "long-distance %" with a
+ * tier that knows whether you're staying in one state, crossing to a
+ * neighbour, or going across the country.
+ */
 export interface ZoneRule {
-  longDistanceKm:   number;   // km threshold for long-distance %
-  longDistancePct:  number;   // surcharge % above threshold
-  overnightFeeKm:   number;   // km threshold for flat overnight fee
-  overnightFeeNgn:  number;   // flat fee above threshold
+  /** Intra-state, > this many km → small surcharge. */
+  intraStateLongHaulKm:    number;
+  intraStateLongHaulPct:   number;
+  /** Adjacent-state crossing (Lagos↔Ogun). */
+  interStateAdjacentPct:   number;
+  /** Distant-state crossing (Lagos↔Kano). */
+  interStateDistantPct:    number;
+  /** Cross-zone (different geopolitical zone — usually long-distance). */
+  crossZonePct:            number;
+  /** > this many km → flat overnight fee on top of any %. */
+  overnightFeeKm:          number;
+  overnightFeeNgn:         number;
+  /** Restricted sub-zones (curfew, flood, conflict) — admin lists with %. */
+  restrictedZoneDefaultPct: number;
+}
+
+/**
+ * Per-region overrides — applied on top of the baseline. Any field left
+ * undefined means "inherit". Two levels: state-level wins over zone-level.
+ */
+export interface RegionalOverrides {
+  /** Multiply every base + perKm by this. 1.0 = no change. */
+  rateMultiplier?:    number;
+  /** Specific vehicle overrides. */
+  vehicleOverrides?:  Partial<Record<string, { base?: number; perKm?: number }>>;
+  /** Per-region fuel prices (admin updates when pumps spike). */
+  fuelPrices?:        { petrolNgn?: number; dieselNgn?: number };
+  /** Override service fee %. */
+  serviceFeeRideOverride?:    number;
+  serviceFeePackageOverride?: number;
+  /** Restricted sub-zones in this region (named, with surcharge %). */
+  restrictedSubZones?: { name: string; surchargePct: number; reason: string }[];
+  /** Cultural buffer minutes added to all dwell calcs in this region. */
+  dwellBufferMin?: number;
+  /** Reason this region differs — admin-visible explanation. */
+  reason?:         string;
 }
 
 export interface DwellRule {
@@ -134,6 +184,11 @@ export interface RateCard {
   cancellation:   CancellationRule;
   returnTrip:     ReturnTripRule;
   cod:            CODRule;
+
+  /** Per-geopolitical-zone overrides (NW/NE/NC/SW/SE/SS). */
+  zoneOverrides:  Partial<Record<GeopoliticalZone, RegionalOverrides>>;
+  /** Per-state overrides (37 keys, optional). State-level wins over zone-level. */
+  stateOverrides: Partial<Record<StateCode, RegionalOverrides>>;
 }
 
 // ─── Default card (matches admin defaults; admin can override per env) ─────
@@ -196,10 +251,14 @@ export const DEFAULT_RATE_CARD: RateCard = {
   },
 
   zone: {
-    longDistanceKm:  100,
-    longDistancePct: 0.30,
-    overnightFeeKm:  500,
-    overnightFeeNgn: 5000,
+    intraStateLongHaulKm:     100,
+    intraStateLongHaulPct:    0.15,   // long trip within one state — modest bump
+    interStateAdjacentPct:    0.20,   // crossing into a neighbour state
+    interStateDistantPct:     0.30,   // non-adjacent state crossing
+    crossZonePct:             0.40,   // crossing geopolitical zone (NW↔SS, etc.)
+    overnightFeeKm:           500,
+    overnightFeeNgn:          5000,
+    restrictedZoneDefaultPct: 0.50,
   },
 
   perStopBonus: 300,
@@ -231,6 +290,55 @@ export const DEFAULT_RATE_CARD: RateCard = {
     handlingFlatNgn: 200,
     handlingPct:     0.01,
     handlingCapNgn:  2000,
+  },
+
+  // ── Per-geopolitical-zone overrides ────────────────────────────────────
+  // Sensible starting points; admin tunes each from the dashboard. The
+  // baseline above is calibrated for Lagos / urban SW. Other zones adjust
+  // up or down based on local cost structure, security, fuel scarcity.
+  zoneOverrides: {
+    SW: {
+      rateMultiplier: 1.00,
+      reason: 'Baseline — calibrated for SW urban (Lagos/Ibadan/Abeokuta).',
+    },
+    SE: {
+      rateMultiplier: 0.95,
+      reason: 'Lower wages + denser urban network reduce per-trip cost.',
+    },
+    SS: {
+      rateMultiplier: 1.10,
+      fuelPrices: { petrolNgn: 1050, dieselNgn: 1350 },   // delta region — supply quirks
+      reason: 'Oil delta — security premium + fuel-supply variability.',
+    },
+    NC: {
+      rateMultiplier: 1.05,
+      reason: 'FCT premium + longer rural routes between mid-belt towns.',
+    },
+    NW: {
+      rateMultiplier: 0.90,
+      reason: 'Lower wage base + cheaper fuel access (Kano hub).',
+    },
+    NE: {
+      rateMultiplier: 1.15,
+      dwellBufferMin: 3,         // longer ID checks at security stops
+      reason: 'Security premium (parts of Borno/Yobe/Adamawa).',
+    },
+  },
+
+  // ── Per-state overrides (only states that differ from their zone) ──────
+  // Anything not listed inherits its zone's override (which inherits baseline).
+  stateOverrides: {
+    LA: { rateMultiplier: 1.10, reason: 'Lagos — traffic + higher cost of living.' },
+    FC: { rateMultiplier: 1.10, reason: 'FCT — institutional demand premium.' },
+    RI: { rateMultiplier: 1.15, reason: 'Port Harcourt — refinery/oil traffic + security.' },
+    BO: {
+      rateMultiplier: 1.30,
+      restrictedSubZones: [
+        { name: 'NE corridor (security advisory)', surchargePct: 0.50, reason: 'Active security advisory; admin can refine to specific LGAs.' },
+      ],
+      reason: 'Borno — heightened security across most LGAs.',
+    },
+    KN: { rateMultiplier: 0.85, reason: 'Kano metro — cheaper than SW baseline.' },
   },
 };
 
@@ -286,13 +394,90 @@ function totalTimePct(card: RateCard, now: Date): { pct: number; labels: string[
   };
 }
 
-/** Returns the zone surcharge for a distance. */
-function zoneSurchargeFor(card: RateCard, distKm: number): { pct: number; flat: number; labels: string[] } {
+/**
+ * Resolve effective regional overrides for the given state, merging the
+ * baseline ↘ zone override ↘ state override (state-level wins).
+ */
+export function resolveRegionalOverrides(
+  card: RateCard,
+  stateCode: StateCode | null,
+): RegionalOverrides {
+  if (!stateCode) return {};
+  const zone   = getStateZone(stateCode);
+  const fromZ  = zone ? card.zoneOverrides[zone]  ?? {} : {};
+  const fromS  = card.stateOverrides[stateCode]   ?? {};
+  return {
+    ...fromZ,
+    ...fromS,
+    // Merge vehicle overrides instead of replacing — state can override
+    // a single vehicle while inheriting the zone's other rates.
+    vehicleOverrides: { ...(fromZ.vehicleOverrides ?? {}), ...(fromS.vehicleOverrides ?? {}) },
+    // Same for fuel + restrictedSubZones (concat).
+    fuelPrices:       { ...(fromZ.fuelPrices ?? {}),       ...(fromS.fuelPrices ?? {}) },
+    restrictedSubZones: [
+      ...(fromZ.restrictedSubZones ?? []),
+      ...(fromS.restrictedSubZones ?? []),
+    ],
+  };
+}
+
+/** Apply rate-multiplier + per-vehicle overrides to a vehicle's base + perKm. */
+function applyRegionalVehicle<T extends { id: string; base: number; perKm: number }>(
+  v: T,
+  ov: RegionalOverrides,
+): { base: number; perKm: number } {
+  const mult = ov.rateMultiplier ?? 1;
+  const vehOv = ov.vehicleOverrides?.[v.id];
+  return {
+    base:  Math.round((vehOv?.base  ?? v.base)  * mult),
+    perKm: Math.round((vehOv?.perKm ?? v.perKm) * mult),
+  };
+}
+
+/**
+ * State-aware zone surcharge. Replaces the old "long-distance %" with a
+ * tier that knows whether you're staying in one state, crossing to a
+ * neighbour, going across zones, or entering a restricted sub-zone.
+ *
+ * Returns 0% / 0 NGN when pickup or dropoff coords aren't provided.
+ */
+function zoneSurchargeFor(
+  card: RateCard,
+  distKm: number,
+  pickupState: StateCode | null,
+  dropoffState: StateCode | null,
+): { pct: number; flat: number; labels: string[] } {
   const labels: string[] = [];
-  const pct  = distKm > card.zone.longDistanceKm ? card.zone.longDistancePct : 0;
-  if (pct > 0) labels.push('longDistance');
+  let pct = 0;
+
+  if (pickupState && dropoffState) {
+    if (pickupState === dropoffState) {
+      if (distKm > card.zone.intraStateLongHaulKm) {
+        pct += card.zone.intraStateLongHaulPct;
+        labels.push('intraStateLongHaul');
+      }
+    } else {
+      const sameZone = getStateZone(pickupState) === getStateZone(dropoffState);
+      if (!sameZone) {
+        pct += card.zone.crossZonePct;
+        labels.push('crossZone');
+      } else if (areStatesAdjacent(pickupState, dropoffState)) {
+        pct += card.zone.interStateAdjacentPct;
+        labels.push('interStateAdjacent');
+      } else {
+        pct += card.zone.interStateDistantPct;
+        labels.push('interStateDistant');
+      }
+    }
+  } else if (distKm > card.zone.intraStateLongHaulKm) {
+    // Coords missing — fall back to distance-based heuristic.
+    pct += card.zone.intraStateLongHaulPct;
+    labels.push('longHaul');
+  }
+
   const flat = distKm > card.zone.overnightFeeKm ? card.zone.overnightFeeNgn : 0;
   if (flat > 0) labels.push('overnight');
+
   return { pct, flat, labels };
 }
 
@@ -324,10 +509,13 @@ export function cancellationFee(
 
 // ─── Fare calculators ──────────────────────────────────────────────────────
 
+/** Coordinates pair — supplied by screens that have map context. */
+export interface Coords { latitude: number; longitude: number }
+
 export interface RideFareResult {
   base:              number;
   dist:              number;
-  categorySurcharge: number;   // 0 for rides today
+  categorySurcharge: number;
   timeSurcharge:     number;
   zoneSurcharge:     number;
   zoneFlat:          number;
@@ -338,6 +526,9 @@ export interface RideFareResult {
   vehicle:           RideVehicleRate;
   timeLabels:        string[];
   zoneLabels:        string[];
+  /** Region context used for this fare — non-null when coords provided. */
+  pickupState:       StateCode | null;
+  dropoffState:      StateCode | null;
 }
 
 export interface PackageFareResult {
@@ -357,23 +548,39 @@ export interface PackageFareResult {
   vehicle:           PackageVehicleRate;
   timeLabels:        string[];
   zoneLabels:        string[];
+  pickupState:       StateCode | null;
+  dropoffState:      StateCode | null;
 }
 
 /**
  * Ride fare = base + km×perKm + categorySurcharge + timeSurcharge + zoneSurcharge + overnight + service − shareDiscount + VAT
+ *
  * Surcharges compound on the running subtotal (matches spec scenario E).
+ * When pickup/dropoff coords are provided, base + perKm are adjusted by
+ * the pickup region's rateMultiplier (and any per-vehicle override), and
+ * the zone surcharge tier reflects actual state crossings.
  */
 export function calcRideFare(
-  card: RateCard,
+  card:      RateCard,
   vehicleId: string,
-  distKm: number,
-  shared: boolean,
-  opts: { now?: Date } = {},
+  distKm:    number,
+  shared:    boolean,
+  opts: {
+    now?:           Date;
+    pickupCoords?:  Coords | null;
+    dropoffCoords?: Coords | null;
+  } = {},
 ): RideFareResult {
-  const v        = card.ride.vehicles.find(x => x.id === vehicleId) ?? card.ride.vehicles[0];
+  const v0       = card.ride.vehicles.find(x => x.id === vehicleId) ?? card.ride.vehicles[0];
   const safeKm   = Math.max(0, distKm || 0);
-  const base     = v.base;
-  const dist     = Math.round(safeKm * v.perKm);
+
+  const pickupState  = opts.pickupCoords  ? detectStateFromCoords(opts.pickupCoords.latitude,  opts.pickupCoords.longitude)  : null;
+  const dropoffState = opts.dropoffCoords ? detectStateFromCoords(opts.dropoffCoords.latitude, opts.dropoffCoords.longitude) : null;
+  const region       = resolveRegionalOverrides(card, pickupState);
+
+  const adjusted = applyRegionalVehicle(v0, region);
+  const base     = adjusted.base;
+  const dist     = Math.round(safeKm * adjusted.perKm);
   let   running  = base + dist;
 
   const categorySurcharge = 0;   // ride flow has no category concept today
@@ -383,14 +590,15 @@ export function calcRideFare(
   const timeSurcharge = Math.round(running * time.pct);
   running += timeSurcharge;
 
-  const zone = zoneSurchargeFor(card, safeKm);
+  const zone = zoneSurchargeFor(card, safeKm, pickupState, dropoffState);
   const zoneSurcharge = Math.round(running * zone.pct);
   running += zoneSurcharge + zone.flat;
 
-  const service       = Math.round(running * card.ride.serviceFeePct);
+  const serviceFeePct = region.serviceFeeRideOverride ?? card.ride.serviceFeePct;
+  const service       = Math.round(running * serviceFeePct);
   running            += service;
 
-  const shareDiscount = shared && v.shareable ? Math.round(running * card.ride.shareDiscountPct) : 0;
+  const shareDiscount = shared && v0.shareable ? Math.round(running * card.ride.shareDiscountPct) : 0;
   running            -= shareDiscount;
 
   const vat   = Math.round(running * card.vatPct);
@@ -400,9 +608,10 @@ export function calcRideFare(
     base, dist, categorySurcharge,
     timeSurcharge, zoneSurcharge, zoneFlat: zone.flat,
     service, shareDiscount, vat, total,
-    vehicle: v,
+    vehicle: v0,
     timeLabels: time.labels,
     zoneLabels: zone.labels,
+    pickupState, dropoffState,
   };
 }
 
@@ -410,17 +619,30 @@ export function calcRideFare(
  * Package fare = base + km×perKm + weight + handling + categorySurcharge + timeSurcharge + zoneSurcharge + overnight + perStopBonus + codFee + service + VAT
  */
 export function calcPackageFare(
-  card: RateCard,
+  card:      RateCard,
   vehicleId: string,
-  distKm: number,
-  kg: number,
-  opts: { now?: Date; categoryId?: string | null; codAmountNgn?: number; extraStops?: number } = {},
+  distKm:    number,
+  kg:        number,
+  opts: {
+    now?:           Date;
+    categoryId?:    string | null;
+    codAmountNgn?:  number;
+    extraStops?:    number;
+    pickupCoords?:  Coords | null;
+    dropoffCoords?: Coords | null;
+  } = {},
 ): PackageFareResult {
-  const v        = card.package.vehicles.find(x => x.id === vehicleId) ?? card.package.vehicles[0];
+  const v0       = card.package.vehicles.find(x => x.id === vehicleId) ?? card.package.vehicles[0];
   const safeKm   = Math.max(0, distKm || 0);
   const safeKg   = Math.max(0, kg || 0);
-  const base     = v.base;
-  const dist     = Math.round(safeKm * v.perKm);
+
+  const pickupState  = opts.pickupCoords  ? detectStateFromCoords(opts.pickupCoords.latitude,  opts.pickupCoords.longitude)  : null;
+  const dropoffState = opts.dropoffCoords ? detectStateFromCoords(opts.dropoffCoords.latitude, opts.dropoffCoords.longitude) : null;
+  const region       = resolveRegionalOverrides(card, pickupState);
+
+  const adjusted = applyRegionalVehicle(v0, region);
+  const base     = adjusted.base;
+  const dist     = Math.round(safeKm * adjusted.perKm);
   const { surcharge: weight, handling } = weightSurchargeNgn(card, safeKg);
   let running    = base + dist + weight + handling;
 
@@ -432,7 +654,7 @@ export function calcPackageFare(
   const timeSurcharge = Math.round(running * time.pct);
   running += timeSurcharge;
 
-  const zone = zoneSurchargeFor(card, safeKm);
+  const zone = zoneSurchargeFor(card, safeKm, pickupState, dropoffState);
   const zoneSurcharge = Math.round(running * zone.pct);
   running += zoneSurcharge + zone.flat;
 
@@ -442,8 +664,9 @@ export function calcPackageFare(
   const codFee = codHandlingFee(card, opts.codAmountNgn ?? 0);
   running += codFee;
 
-  const service = Math.round(running * card.package.serviceFeePct);
-  running      += service;
+  const serviceFeePct = region.serviceFeePackageOverride ?? card.package.serviceFeePct;
+  const service       = Math.round(running * serviceFeePct);
+  running            += service;
 
   const vat   = Math.round(running * card.vatPct);
   const total = running + vat;
@@ -452,9 +675,10 @@ export function calcPackageFare(
     base, dist, weight, handling, categorySurcharge,
     timeSurcharge, zoneSurcharge, zoneFlat: zone.flat,
     perStopBonus, codFee, service, vat, total,
-    vehicle: v,
+    vehicle: v0,
     timeLabels: time.labels,
     zoneLabels: zone.labels,
+    pickupState, dropoffState,
   };
 }
 

@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { MOCK_VEHICLES, RIDE_VEHICLES, calcRideFare, FARE_BREAKDOWN, LAGOS_COORDS } from '@/constants/mockData';
+import { MOCK_VEHICLES, RIDE_VEHICLES, calcRideFare, FARE_BREAKDOWN, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 
 export default function FareBreakdownScreen() {
   const router  = useRouter();
@@ -38,9 +38,12 @@ export default function FareBreakdownScreen() {
     ? RIDE_VEHICLES.find(v => v.id === params.vehicleId) ?? RIDE_VEHICLES[0]
     : MOCK_VEHICLES.find(v => v.id === params.vehicleId) ?? MOCK_VEHICLES[0];
 
+  const pickupCoords  = Number(params.pickupLat)  && Number(params.pickupLng)  ? { latitude: Number(params.pickupLat),  longitude: Number(params.pickupLng)  } : null;
+  const dropoffCoords = Number(params.dropoffLat) && Number(params.dropoffLng) ? { latitude: Number(params.dropoffLat), longitude: Number(params.dropoffLng) } : null;
+
   const fb = isRide
     ? (() => {
-        const f = calcRideFare(params.vehicleId, distKm, shared);
+        const f = calcRideFare(params.vehicleId, distKm, shared, { pickupCoords, dropoffCoords });
         return {
           baseFare:          f.base,
           distanceFee:       f.dist,
@@ -96,7 +99,7 @@ export default function FareBreakdownScreen() {
         style={StyleSheet.absoluteFill}
         initialRegion={pickupLat
           ? { latitude: pickupLat, longitude: pickupLng!, latitudeDelta: 0.05, longitudeDelta: 0.05 }
-          : LAGOS_COORDS}
+          : DEFAULT_MAP_REGION}
         customMapStyle={isDark ? DARK_MAP : []}
         onMapReady={() => {
           if (!pickupLat || !dropoffLat) return;

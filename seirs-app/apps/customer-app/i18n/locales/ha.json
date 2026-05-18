@@ -809,7 +809,12 @@
     "priceNotice": "Farashin ƙarshe na iya bambanta kaɗan dangane da ainihin nisa da yawan motoci a hanya.",
     "categorySurcharge": "Kuɗin rukuni",
     "timeSurcharge": "Kuɗin lokaci ({{labels}})",
-    "zoneSurcharge": "Kuɗin nesa-nesa",
+    "zoneSurcharge": "Kuɗin yanki",
+    "zoneIntraStateLongHaul": "Tafiya mai nisa (cikin jiha)",
+    "zoneInterStateAdjacent": "Tsakanin jihohi (maƙwabta)",
+    "zoneInterStateDistant": "Tsakanin jihohi (nesa)",
+    "zoneCrossZone": "Tsakanin yankuna",
+    "zoneRestricted": "Yankin haramtacce",
     "overnightFee": "Kuɗin kwanan dare",
     "vat": "VAT (7.5%)"
   },

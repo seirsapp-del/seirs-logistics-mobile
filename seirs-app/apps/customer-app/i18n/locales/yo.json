@@ -809,7 +809,12 @@
     "priceNotice": "Owó ìpari le yàtọ̀ díẹ̀ ní ìbámu pẹ̀lú ìjìnnà àti ọkọ̀ ní àárín ọ̀nà.",
     "categorySurcharge": "Owó ẹ̀ka",
     "timeSurcharge": "Owó àkókò ({{labels}})",
-    "zoneSurcharge": "Owó ìjìnnà gígùn",
+    "zoneSurcharge": "Owó agbègbè",
+    "zoneIntraStateLongHaul": "Ìrìn gígùn (nínú ìpínlẹ̀)",
+    "zoneInterStateAdjacent": "Ìpínlẹ̀-sí-ìpínlẹ̀ (alábàá)",
+    "zoneInterStateDistant": "Ìpínlẹ̀-sí-ìpínlẹ̀ (jìnnà)",
+    "zoneCrossZone": "Agbègbè ọ̀tọ̀ọ̀tọ̀",
+    "zoneRestricted": "Agbègbè ìdánilójú",
     "overnightFee": "Owó alẹ́",
     "vat": "VAT (7.5%)"
   },

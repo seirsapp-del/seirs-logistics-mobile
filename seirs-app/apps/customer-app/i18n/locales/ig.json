@@ -809,7 +809,12 @@
     "priceNotice": "Ọnụahịa ikpeazụ nwere ike ịdị ntakịrị iche dabere n'ezigbo anya na okporo ụzọ.",
     "categorySurcharge": "Ụgwọ ụdị",
     "timeSurcharge": "Ụgwọ oge ({{labels}})",
-    "zoneSurcharge": "Ụgwọ ogologo njem",
+    "zoneSurcharge": "Ụgwọ mpaghara",
+    "zoneIntraStateLongHaul": "Njem dị anya (n'ime steeti)",
+    "zoneInterStateAdjacent": "N'etiti steeti (agbata)",
+    "zoneInterStateDistant": "N'etiti steeti (anya)",
+    "zoneCrossZone": "Mpaghara dị iche",
+    "zoneRestricted": "Mpaghara nzọchi",
     "overnightFee": "Ụgwọ abalị",
     "vat": "VAT (7.5%)"
   },

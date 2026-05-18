@@ -17,7 +17,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { type PickedAddress } from '@/components/AddressPicker';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { LAGOS_COORDS } from '@/constants/mockData';
+import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 
@@ -244,7 +244,7 @@ export default function RequestDriverScreen() {
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
-        initialRegion={LAGOS_COORDS}
+        initialRegion={DEFAULT_MAP_REGION}
         customMapStyle={isDark ? DARK_MAP_STYLE : []}
         showsUserLocation
         showsMyLocationButton={false}
