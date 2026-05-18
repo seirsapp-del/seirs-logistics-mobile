@@ -1,4 +1,4 @@
-﻿import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
@@ -9,7 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 
-// Spec V8 Â§1.9 + Â§1.17 â€” customer presents this screen when collecting
+// Spec V8 §1.9 + §1.17 — customer presents this screen when collecting
 // at a partner store or as the recipient at the door. Partner staff /
 // driver scans the QR (or types the 6-char backup code) to verify the
 // holder is the booking owner; recipient then says their full name to
@@ -96,7 +96,7 @@ export default function SeirsIdScreen() {
           {[
             { step: '1', text: 'Partner staff (or your driver) scans this QR or types the 6-char code.' },
             { step: '2', text: 'They see your registered name on their screen.' },
-            { step: '3', text: 'Say your full name out loud â€” they type it to confirm the match.' },
+            { step: '3', text: 'Say your full name out loud — they type it to confirm the match.' },
             { step: '4', text: 'The handoff is logged in your delivery audit trail.' },
           ].map(s => (
             <View key={s.step} style={styles.howRow}>
@@ -112,7 +112,7 @@ export default function SeirsIdScreen() {
           style={[styles.alert, { backgroundColor: '#FEF9C3', borderColor: '#FDE68A' }]}
           onPress={() => Alert.alert(
             'Keep this code safe',
-            'Anyone with your SEIRS ID plus your full name could collect a package in your name. Treat it like a debit-card PIN â€” only show it at the moment of pickup.',
+            'Anyone with your SEIRS ID plus your full name could collect a package in your name. Treat it like a debit-card PIN — only show it at the moment of pickup.',
           )}
         >
           <View style={styles.alertRow}>

@@ -97,7 +97,7 @@ export default function RewardsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.tierRowName, { color: theme.text }]}>{tier.name}</Text>
                   <Text style={[styles.tierRange, { color: theme.textSecond }]}>
-                    {tier.min.toLocaleString()} â€“ {tier.max === 99999 ? 'âˆž' : tier.max.toLocaleString()} pts
+                    {tier.min.toLocaleString()} – {tier.max === 99999 ? '∞' : tier.max.toLocaleString()} pts
                   </Text>
                 </View>
                 {isActive && (

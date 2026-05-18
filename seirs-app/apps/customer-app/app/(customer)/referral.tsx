@@ -13,7 +13,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 
-// Universal/web fallback link â€” when the receiver doesn't have the app,
+// Universal/web fallback link — when the receiver doesn't have the app,
 // the page on seirs.app/r/<code> can show download links and forward
 // the code through to the play store / app store via deferred deep linking.
 const WEB_REFERRAL_BASE = 'https://seirs.app/r/';

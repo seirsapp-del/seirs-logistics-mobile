@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
   KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { addressesApi, type SavedAddressDTO } from '@/services/api';
 
-// Spec V8 â€” saved address book synced to backend so the data follows
+// Spec V8 — saved address book synced to backend so the data follows
 // the user across devices + can pre-fill driver routing. AsyncStorage
 // is kept as a warm cache so the list renders before the network round
 // trip on cold starts.

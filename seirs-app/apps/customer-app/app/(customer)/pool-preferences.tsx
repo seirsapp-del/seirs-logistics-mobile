@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, Switch, Alert,
 } from 'react-native';
@@ -10,7 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 
-// Spec V8 Â§1.15 â€” opt-in/out of corridor pooling. When pool acceptance
+// Spec V8 §1.15 — opt-in/out of corridor pooling. When pool acceptance
 // is on, the dispatcher may add additional legs (other passengers or
 // packages) to the same vehicle as long as it stays within +20% of
 // your time and within 1km of your route. In exchange you get a
@@ -185,7 +185,7 @@ export default function PoolPreferencesScreen() {
 
         <View style={[styles.note, { backgroundColor: theme.primary + '08' }]}>
           <Text style={[styles.noteText, { color: theme.textSecond }]}>
-            <Text style={{ fontWeight: '700' as any }}>How it works:</Text> The dispatcher silently pools rides when it would save you money without taking too much extra time. You don&apos;t have to do anything â€” just notice the discount in your fare breakdown.
+            <Text style={{ fontWeight: '700' as any }}>How it works:</Text> The dispatcher silently pools rides when it would save you money without taking too much extra time. You don&apos;t have to do anything — just notice the discount in your fare breakdown.
           </Text>
         </View>
       </ScrollView>

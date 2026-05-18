@@ -1,17 +1,17 @@
-﻿/**
- * Send Multiple â€” single pickup, up to 5 recipients in one go.
+/**
+ * Send Multiple — single pickup, up to 5 recipients in one go.
  *
  * Designed for retail customers with a clustered need (moving day,
  * holiday shipping, sending gifts to several friends at once).
  *
- * Not the same as the Business app's CSV bulk upload â€” that's for
+ * Not the same as the Business app's CSV bulk upload — that's for
  * sustained N-per-day operators. This is a one-off "I have 3 things
  * to send right now" surface.
  *
  * Architecture: spawns N independent deliveries in parallel rather
  * than one multi-stop trip, so each recipient gets their own driver
  * + tracking code. Faster for the last recipient, costs N delivery
- * fees instead of one shared fee â€” which retail customers prefer
+ * fees instead of one shared fee — which retail customers prefer
  * for irreplaceable items.
  */
 import {
@@ -111,7 +111,7 @@ export default function SendMultipleScreen() {
     );
     const tracking = results
       .filter(r => r.status === 'fulfilled')
-      .map((r: any) => r.value?.trackingCode ?? r.value?.delivery?.trackingCode ?? 'â€”');
+      .map((r: any) => r.value?.trackingCode ?? r.value?.delivery?.trackingCode ?? '—');
     const failed = results.filter(r => r.status === 'rejected').length;
     setResult({ tracking, failed });
     setSubmitting(false);

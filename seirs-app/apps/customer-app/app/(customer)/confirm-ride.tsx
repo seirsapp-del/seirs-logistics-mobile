@@ -68,7 +68,7 @@ export default function ConfirmRideScreen() {
               <View style={styles.driverMeta}>
                 <Ionicons name="star" size={12} color="#FFBE0B" />
                 <Text style={[styles.metaText, { color: theme.textSecond }]}>{driver.rating}</Text>
-                <Text style={[styles.metaDot, { color: theme.textThird }]}>Â·</Text>
+                <Text style={[styles.metaDot, { color: theme.textThird }]}>·</Text>
                 <Text style={[styles.metaText, { color: theme.textSecond }]}>{t('confirmRide.trips', { count: driver.trips })}</Text>
               </View>
             </View>

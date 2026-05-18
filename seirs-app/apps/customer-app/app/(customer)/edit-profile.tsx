@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
   KeyboardAvoidingView, Platform, ActivityIndicator, Image,
@@ -13,9 +13,9 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { useAuth } from '@/context/AuthContext';
 import { usersApi, uploadApi } from '@/services/api';
 
-// Spec V8 â€” standalone profile editor. Read-only view lives on the
+// Spec V8 — standalone profile editor. Read-only view lives on the
 // existing profile screen; this is the form for actually changing
-// values. Email is intentionally not editable here â€” that requires a
+// values. Email is intentionally not editable here — that requires a
 // re-verification flow (deferred).
 export default function EditProfileScreen() {
   const router = useRouter();

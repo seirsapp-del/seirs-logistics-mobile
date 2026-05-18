@@ -16,9 +16,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { dropoffApi } from '@/services/api';
 
-// Spec V8 Â§3 â€” async customer entry point. Customer schedules a drop-off,
+// Spec V8 §3 — async customer entry point. Customer schedules a drop-off,
 // gets a printable QR + 6-char backup code, walks into the picked store
-// at their convenience. Partner staff scans â†’ driver picks up â†’ recipient
+// at their convenience. Partner staff scans → driver picks up → recipient
 // collects (door delivery or store pickup).
 //
 // 4 steps + final receipt screen.
@@ -150,7 +150,7 @@ export default function DropAtStoreScreen() {
     } catch { /* user dismissed */ }
   };
 
-  // â”€â”€ Renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Renderers ────────────────────────────────────────────────────────────
 
   const renderHeader = () => (
     <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
@@ -180,7 +180,7 @@ export default function DropAtStoreScreen() {
     </View>
   );
 
-  // â”€â”€ Receipt screen (success) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Receipt screen (success) ─────────────────────────────────────────────
 
   if (step === 'done' && receipt) {
     return (
@@ -238,7 +238,7 @@ export default function DropAtStoreScreen() {
     );
   }
 
-  // â”€â”€ Step screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Step screens ─────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
@@ -252,7 +252,7 @@ export default function DropAtStoreScreen() {
             </View>
           )}
 
-          {/* Step 1 â€” pickup store â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* Step 1 — pickup store ─────────────────────────────────────── */}
           {step === 'pickup' && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.selectStore').toUpperCase()}</Text>
@@ -302,7 +302,7 @@ export default function DropAtStoreScreen() {
             </>
           )}
 
-          {/* Step 2 â€” destination mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* Step 2 — destination mode ─────────────────────────────────── */}
           {step === 'destination' && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.whereToHeading')}</Text>
@@ -408,7 +408,7 @@ export default function DropAtStoreScreen() {
             </>
           )}
 
-          {/* Step 3 â€” package + recipient â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* Step 3 — package + recipient ──────────────────────────────── */}
           {step === 'package' && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.packageHeading')}</Text>
@@ -477,7 +477,7 @@ export default function DropAtStoreScreen() {
             </>
           )}
 
-          {/* Step 4 â€” review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* Step 4 — review ───────────────────────────────────────────── */}
           {step === 'review' && pickupStore && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.reviewHeading')}</Text>

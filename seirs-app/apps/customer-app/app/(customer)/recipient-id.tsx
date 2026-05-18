@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert,
 } from 'react-native';
@@ -15,9 +15,9 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { deliveriesApi, dropoffApi, identityApi } from '@/services/api';
 
-// Spec V8 Â§1.17 â€” recipient-side handoff identity surface. Used when the
+// Spec V8 §1.17 — recipient-side handoff identity surface. Used when the
 // customer is collecting a package (door delivery from driver, or pickup
-// from a partner store). Two methods supported per spec â€” the recipient
+// from a partner store). Two methods supported per spec — the recipient
 // can either show their physical ID + email OTP, or their SEIRS ID +
 // typed-name signature. This screen presents both.
 
@@ -178,7 +178,7 @@ export default function RecipientIdScreen() {
         {/* Active items needing OTP */}
         <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>READY FOR COLLECTION</Text>
         {loading ? (
-          <Text style={[styles.helperCenter, { color: theme.textThird }]}>Loadingâ€¦</Text>
+          <Text style={[styles.helperCenter, { color: theme.textThird }]}>Loading…</Text>
         ) : items.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Package size={28} color={theme.textThird} strokeWidth={1.5} />
@@ -207,7 +207,7 @@ export default function RecipientIdScreen() {
               >
                 <Mail size={14} color={theme.primary} />
                 <Text style={[styles.otpBtnText, { color: theme.primary }]}>
-                  {issuing === it.id ? 'Sendingâ€¦' : 'Email me a verification code'}
+                  {issuing === it.id ? 'Sending…' : 'Email me a verification code'}
                 </Text>
               </Pressable>
             </View>
@@ -221,7 +221,7 @@ export default function RecipientIdScreen() {
           <View style={styles.howSection}>
             <Text style={[styles.howMethod, { color: theme.primary }]}>1. Physical ID + Email Code</Text>
             <Text style={[styles.howText, { color: theme.textSecond }]}>
-              Show staff your National ID, driver&apos;s licence, voter card, NIN slip, or passport â€” plus the 6-digit code we email when you tap above.
+              Show staff your National ID, driver&apos;s licence, voter card, NIN slip, or passport — plus the 6-digit code we email when you tap above.
             </Text>
           </View>
 
