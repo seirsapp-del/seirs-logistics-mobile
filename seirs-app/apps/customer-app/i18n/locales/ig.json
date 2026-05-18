@@ -625,7 +625,11 @@
     "payCashSub": "Kwụọ na mbịa",
     "addPromo": "Tinye koodu mgbasa ozi",
     "total": "Mkpokọta",
-    "confirmRide": "Kwado Njem"
+    "confirmRide": "Kwado Njem",
+    "cancelLink": "Kagbuo njem",
+    "cancelTitle": "Kagbuo idebanye aha a?",
+    "cancelConfirmFree": "Enweghị ụgwọ — enyebeghị onye nkwọ.",
+    "cancelConfirmWithFee": "Ụgwọ nkwụsi ₦{{fee}} ga-emetụta."
   },
   "rateDriver": {
     "title": "Nye Njem Gị Akara",
@@ -854,6 +858,8 @@
     "sosBtn": "SOS",
     "liveTracking": "Nsochi Ndụ",
     "arrived": "Eruola",
-    "minAway": "Nkeji {{n}} fọdụrụ"
+    "minAway": "Nkeji {{n}} fọdụrụ",
+    "waitFeeAccruing": "Ụgwọ nche ₦{{fee}} ({{min}} nkeji)",
+    "waitFreeRemaining": "Nkeji {{min}} efu fọdụrụ"
   }
 }

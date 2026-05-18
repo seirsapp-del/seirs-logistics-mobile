@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar,
+  View, Text, Pressable, StyleSheet, StatusBar, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -13,7 +13,8 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { MOCK_VEHICLES, RIDE_VEHICLES, MOCK_DRIVERS, FARE_BREAKDOWN, calcRideFare, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
+import { MOCK_VEHICLES, RIDE_VEHICLES, MOCK_DRIVERS, FARE_BREAKDOWN, calcRideFare, cancellationFee, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
+import { DEFAULT_RATE_CARD } from '@/constants/rateCard';
 
 export default function ConfirmRideScreen() {
   const router   = useRouter();
@@ -78,6 +79,25 @@ export default function ConfirmRideScreen() {
         },
       });
     }, 1500);
+  };
+
+  // Cancellation fee tier — at /confirm-ride the driver hasn't been
+  // dispatched yet (pre-assign), so the fee is whatever the rate card
+  // says for that stage (defaults to ₦0). Admin can charge here later
+  // for spammy bookings if needed.
+  const cancelFee = cancellationFee(DEFAULT_RATE_CARD, 'preAssign');
+  const handleCancel = () => {
+    const msg = cancelFee > 0
+      ? t('confirmRide.cancelConfirmWithFee', { fee: cancelFee.toLocaleString() })
+      : t('confirmRide.cancelConfirmFree');
+    Alert.alert(
+      t('confirmRide.cancelTitle'),
+      msg,
+      [
+        { text: t('common.no'), style: 'cancel' },
+        { text: t('common.yes'), style: 'destructive', onPress: () => router.back() },
+      ],
+    );
   };
 
   // ── Map background ──────────────────────────────────────────────────────
@@ -263,6 +283,14 @@ export default function ConfirmRideScreen() {
               leftIcon={<Ionicons name="car" size={18} color="#fff" />}
             />
           </View>
+
+          {/* Cancel link — pre-assign cancellation, free at this stage by default. */}
+          <Pressable onPress={handleCancel} style={styles.cancelLink}>
+            <Text style={[styles.cancelLinkText, { color: theme.error ?? '#DC2626' }]}>
+              {t('confirmRide.cancelLink')}
+              {cancelFee > 0 ? ` (₦${cancelFee.toLocaleString()})` : ''}
+            </Text>
+          </Pressable>
         </BottomSheetScrollView>
       </BottomSheet>
     </View>
@@ -312,6 +340,8 @@ const styles = StyleSheet.create({
   promoText: { flex: 1, fontSize: FontSize.base, fontWeight: FontWeight.medium },
 
   ctaRow:        { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingTop: Spacing.sm },
+  cancelLink:    { alignSelf: 'center', paddingVertical: Spacing.sm, marginTop: 4 },
+  cancelLinkText:{ fontSize: FontSize.sm, fontWeight: FontWeight.medium, textDecorationLine: 'underline' },
   ctaTotal:      {},
   ctaTotalLabel: { fontSize: FontSize.xs },
   ctaTotalValue: { fontSize: FontSize.xl, fontWeight: FontWeight.bold },

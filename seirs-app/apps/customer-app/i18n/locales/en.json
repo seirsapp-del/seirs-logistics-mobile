@@ -608,7 +608,9 @@
     "sosBtn": "SOS",
     "liveTracking": "Live Tracking",
     "arrived": "Arrived",
-    "minAway": "{{n}} min away"
+    "minAway": "{{n}} min away",
+    "waitFeeAccruing": "Wait fee ₦{{fee}} ({{min}} min)",
+    "waitFreeRemaining": "{{min}} free min remaining"
   },
   "request2": {
     "title": "Request a Ride",
@@ -830,7 +832,11 @@
     "payCashSub": "Pay on arrival",
     "addPromo": "Add promo code",
     "total": "Total",
-    "confirmRide": "Confirm Ride"
+    "confirmRide": "Confirm Ride",
+    "cancelLink": "Cancel ride",
+    "cancelTitle": "Cancel this booking?",
+    "cancelConfirmFree": "No charge — driver hasn't been assigned yet.",
+    "cancelConfirmWithFee": "A cancellation fee of ₦{{fee}} will apply."
   },
   "rateDriver": {
     "title": "Rate Your Trip",

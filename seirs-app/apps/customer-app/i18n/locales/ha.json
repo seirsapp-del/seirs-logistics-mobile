@@ -625,7 +625,11 @@
     "payCashSub": "Biya akan zuwa",
     "addPromo": "Ƙara lambar talla",
     "total": "Jimla",
-    "confirmRide": "Tabbatar da Tafiya"
+    "confirmRide": "Tabbatar da Tafiya",
+    "cancelLink": "Soke tafiya",
+    "cancelTitle": "Soke wannan ajiyar?",
+    "cancelConfirmFree": "Babu kuɗi — ba a sanya direba ba tukuna.",
+    "cancelConfirmWithFee": "Kuɗin sokewa ₦{{fee}} zai shafa."
   },
   "rateDriver": {
     "title": "Yi Kima ga Tafiya",
@@ -854,6 +858,8 @@
     "sosBtn": "SOS",
     "liveTracking": "Bin Diddigi Kai Tsaye",
     "arrived": "An kawo",
-    "minAway": "Minti {{n}} sauran"
+    "minAway": "Minti {{n}} sauran",
+    "waitFeeAccruing": "Kuɗin jira ₦{{fee}} ({{min}} minti)",
+    "waitFreeRemaining": "Minti {{min}} kyauta sauran"
   }
 }

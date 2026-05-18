@@ -12,7 +12,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { MOCK_TRIPS, MOCK_DRIVERS } from '@/constants/mockData';
+import { MOCK_TRIPS, MOCK_DRIVERS, dwellFee } from '@/constants/mockData';
+import { DEFAULT_RATE_CARD } from '@/constants/rateCard';
 import { SOCKET_URL } from '@/constants/config';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 
@@ -38,6 +39,14 @@ export default function TripProgressScreen() {
   const [eta,         setEta]         = useState(driver.eta);
   const pulse = useRef(new Animated.Value(1)).current;
   const mapRef = useRef<MapView>(null);
+
+  // Wait-fee tracker — driver arrives at pickup (step 1) and the meter
+  // starts. First `freeMinutes` are free per rate card; after that the
+  // sender pays `perMinuteNgn` per minute up to `capMinutes`.
+  const [waitMinutes, setWaitMinutes] = useState(0);
+  const waitArrivedAtRef = useRef<number | null>(null);
+  const waitTimerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const currentWaitFee   = dwellFee(DEFAULT_RATE_CARD, waitMinutes);
 
   // Live driver position from WS — defaults to a point near the pickup so
   // the car icon doesn't sit at (0,0) before the first ping arrives.
@@ -72,6 +81,27 @@ export default function TripProgressScreen() {
     const etaTimer = setInterval(() => setEta(e => Math.max(0, e - 1)), 60000);
     return () => { timers.forEach(clearTimeout); clearInterval(etaTimer); };
   }, []);
+
+  // Wait-fee timer: starts when driver arrives at pickup (step 1),
+  // stops when they leave with the package (step 2+). Cap enforced by
+  // rate card — after capMinutes the meter freezes.
+  useEffect(() => {
+    if (currentStep === 1 && !waitTimerRef.current) {
+      waitArrivedAtRef.current = Date.now();
+      waitTimerRef.current = setInterval(() => {
+        const since = waitArrivedAtRef.current ?? Date.now();
+        const mins  = Math.floor((Date.now() - since) / 60_000);
+        setWaitMinutes(Math.min(mins, DEFAULT_RATE_CARD.dwell.capMinutes));
+      }, 10_000);   // poll every 10 s — minute-accurate without burning battery
+    }
+    if (currentStep > 1 && waitTimerRef.current) {
+      clearInterval(waitTimerRef.current);
+      waitTimerRef.current = null;
+    }
+    return () => {
+      if (waitTimerRef.current) clearInterval(waitTimerRef.current);
+    };
+  }, [currentStep]);
 
   // Subscribe to delivery room and update driver pin on live GPS pings.
   // Backend emits 'driver:location' (WsEvents.DRIVER_LOCATION) when the
@@ -238,6 +268,20 @@ export default function TripProgressScreen() {
             </View>
           )}
         </View>
+
+        {/* Wait-fee chip — visible only while driver is parked at pickup. */}
+        {currentStep === 1 && waitMinutes > 0 && (
+          <View style={[styles.etaRow, { marginTop: Spacing.xs }]}>
+            <View style={[styles.etaBadge, { backgroundColor: currentWaitFee > 0 ? '#FEE2E2' : (isDark ? '#1A1A1A' : '#F3F4F6') }]}>
+              <Ionicons name="hourglass-outline" size={14} color={currentWaitFee > 0 ? '#DC2626' : theme.textSecond} />
+              <Text style={[styles.etaText, { color: currentWaitFee > 0 ? '#DC2626' : theme.text, fontSize: FontSize.sm }]}>
+                {currentWaitFee > 0
+                  ? t('tripProgress2.waitFeeAccruing', { fee: currentWaitFee.toLocaleString(), min: waitMinutes })
+                  : t('tripProgress2.waitFreeRemaining', { min: DEFAULT_RATE_CARD.dwell.freeMinutes - waitMinutes })}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Driver info */}
         <View style={[styles.driverCard, { backgroundColor: theme.surfaceSecond, borderRadius: Radius.lg }]}>

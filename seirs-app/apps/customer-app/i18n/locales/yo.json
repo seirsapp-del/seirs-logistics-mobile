@@ -625,7 +625,11 @@
     "payCashSub": "San nígbà tí o bá dé",
     "addPromo": "Fi kóòdù ìpolówó kún",
     "total": "Lapapọ",
-    "confirmRide": "Jẹ́rìísí Ìrìn"
+    "confirmRide": "Jẹ́rìísí Ìrìn",
+    "cancelLink": "Fagilé ìrìn",
+    "cancelTitle": "Fagilé ìṣe yìí?",
+    "cancelConfirmFree": "Kò sí owó — kò ti yan awakọ.",
+    "cancelConfirmWithFee": "Owó ìfagilé ₦{{fee}} ó wà."
   },
   "rateDriver": {
     "title": "Ṣe Ìdíyelé Ìrìn Rẹ",
@@ -854,6 +858,8 @@
     "sosBtn": "SOS",
     "liveTracking": "Tọpinpin Ààyè",
     "arrived": "Tí dé",
-    "minAway": "Ìṣẹ́jú {{n}} kù"
+    "minAway": "Ìṣẹ́jú {{n}} kù",
+    "waitFeeAccruing": "Owó ìdúró ₦{{fee}} ({{min}} ìṣẹ́jú)",
+    "waitFreeRemaining": "Ìṣẹ́jú {{min}} ọfẹ́ kù"
   }
 }
