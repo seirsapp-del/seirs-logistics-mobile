@@ -1,4 +1,4 @@
-import {
+﻿import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,7 +24,7 @@ export default function VehicleSelectScreen() {
   const selectedVehicle = MOCK_VEHICLES.find(v => v.id === selected) ?? MOCK_VEHICLES[0];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
@@ -68,7 +68,7 @@ export default function VehicleSelectScreen() {
               ]}
               onPress={() => setSelected(v.id)}
             >
-              {/* Left — icon */}
+              {/* Left â€” icon */}
               <View style={[styles.iconWrap, {
                 backgroundColor: isSelected
                   ? (isDark ? '#1A0C00' : '#DBEAFE')
@@ -77,7 +77,7 @@ export default function VehicleSelectScreen() {
                 <Ionicons name={v.icon as any} size={28} color={isSelected ? theme.primary : theme.textSecond} />
               </View>
 
-              {/* Middle — info */}
+              {/* Middle â€” info */}
               <View style={styles.cardInfo}>
                 <Text style={[styles.cardLabel, { color: theme.text }]}>{v.label}</Text>
                 <Text style={[styles.cardDesc, { color: theme.textSecond }]}>{v.description}</Text>
@@ -90,7 +90,7 @@ export default function VehicleSelectScreen() {
                 </View>
               </View>
 
-              {/* Right — price + ETA */}
+              {/* Right â€” price + ETA */}
               <View style={styles.cardRight}>
                 <Text style={[styles.price, { color: isSelected ? theme.primary : theme.text }]}>
                   {v.priceLabel}
@@ -114,7 +114,7 @@ export default function VehicleSelectScreen() {
       <View style={[styles.cta, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <View style={styles.ctaSummary}>
           <Text style={[styles.ctaLabel, { color: theme.textSecond }]}>{t('vehicleSelect2.selected')}</Text>
-          <Text style={[styles.ctaValue, { color: theme.text }]}>{selectedVehicle.label} · {selectedVehicle.priceLabel}</Text>
+          <Text style={[styles.ctaValue, { color: theme.text }]}>{selectedVehicle.label} Â· {selectedVehicle.priceLabel}</Text>
         </View>
         <Button
           label={t('fareBreakdown2.title')}

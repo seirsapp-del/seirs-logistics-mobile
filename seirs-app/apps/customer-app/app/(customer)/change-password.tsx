@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, Alert, ActivityIndicator,
   KeyboardAvoidingView, Platform, ScrollView,
@@ -46,7 +46,7 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />

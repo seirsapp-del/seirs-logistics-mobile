@@ -1,4 +1,4 @@
-import {
+﻿import {
   View, Text, Pressable, StyleSheet, StatusBar, Animated, Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,7 +39,7 @@ export default function TripProgressScreen() {
   const pulse = useRef(new Animated.Value(1)).current;
   const mapRef = useRef<MapView>(null);
 
-  // Live driver position from WS — defaults to a point near the pickup so
+  // Live driver position from WS â€” defaults to a point near the pickup so
   // the car icon doesn't sit at (0,0) before the first ping arrives.
   const [driverPos, setDriverPos] = useState({
     latitude:  trip.pickupLat  ?? 6.5244,
@@ -117,7 +117,7 @@ export default function TripProgressScreen() {
     <View style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" />
 
-      {/* ── Map ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -171,8 +171,8 @@ export default function TripProgressScreen() {
         )}
       </MapView>
 
-      {/* ── Back ──────────────────────────────────────────────────── */}
-      <SafeAreaView edges={['top']} style={styles.topBar}>
+      {/* â”€â”€ Back â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <SafeAreaView edges={['top', 'bottom']} style={styles.topBar}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surface }, Shadows.sm]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
@@ -188,7 +188,7 @@ export default function TripProgressScreen() {
         </Pressable>
       </SafeAreaView>
 
-      {/* ── Bottom Card ───────────────────────────────────────────── */}
+      {/* â”€â”€ Bottom Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.lg]}>
         {/* Progress steps */}
         <View style={styles.stepsRow}>
@@ -219,7 +219,7 @@ export default function TripProgressScreen() {
           {STATUS_STEPS[currentStep]?.label ?? 'Arrived'}
         </Text>
 
-        {/* ETA — driver ETA from simulator + real route distance from Directions API */}
+        {/* ETA â€” driver ETA from simulator + real route distance from Directions API */}
         <View style={styles.etaRow}>
           <View style={[styles.etaBadge, { backgroundColor: isDark ? '#1A0C00' : '#EFF6FF' }]}>
             <Ionicons name="time-outline" size={16} color={theme.primary} />
@@ -231,7 +231,7 @@ export default function TripProgressScreen() {
             <View style={[styles.etaBadge, { backgroundColor: theme.surfaceSecond, marginLeft: Spacing.sm }]}>
               <Ionicons name="navigate-outline" size={14} color={theme.textSecond} />
               <Text style={[styles.etaText, { color: theme.text, fontSize: FontSize.sm }]}>
-                {distanceText}{distanceText && durationText ? ' · ' : ''}{durationText}
+                {distanceText}{distanceText && durationText ? ' Â· ' : ''}{durationText}
               </Text>
             </View>
           )}
@@ -245,7 +245,7 @@ export default function TripProgressScreen() {
             <View style={styles.driverMeta}>
               <Ionicons name="star" size={12} color="#FFBE0B" />
               <Text style={[styles.metaText, { color: theme.textSecond }]}>{driver.rating}</Text>
-              <Text style={[styles.metaDot, { color: theme.border }]}>·</Text>
+              <Text style={[styles.metaDot, { color: theme.border }]}>Â·</Text>
               <Text style={[styles.metaText, { color: theme.textSecond }]}>{driver.plate}</Text>
             </View>
             <Text style={[styles.vehicleText, { color: theme.textSecond }]}>
@@ -260,7 +260,7 @@ export default function TripProgressScreen() {
             >
               <Ionicons name="chatbubble-outline" size={18} color="#2EC4B6" />
             </Pressable>
-            {/* Phone calls disabled per spec §1.12 — chat only */}
+            {/* Phone calls disabled per spec Â§1.12 â€” chat only */}
           </View>
         </View>
 

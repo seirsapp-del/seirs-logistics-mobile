@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
   TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Share,
@@ -15,9 +15,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { dropoffApi } from '@/services/api';
 
-// Spec V8 §3 — async customer entry point. Customer schedules a drop-off,
+// Spec V8 Â§3 â€” async customer entry point. Customer schedules a drop-off,
 // gets a printable QR + 6-char backup code, walks into the picked store
-// at their convenience. Partner staff scans → driver picks up → recipient
+// at their convenience. Partner staff scans â†’ driver picks up â†’ recipient
 // collects (door delivery or store pickup).
 //
 // 4 steps + final receipt screen.
@@ -148,7 +148,7 @@ export default function DropAtStoreScreen() {
     } catch { /* user dismissed */ }
   };
 
-  // ── Renderers ────────────────────────────────────────────────────────────
+  // â”€â”€ Renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const renderHeader = () => (
     <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
@@ -167,10 +167,10 @@ export default function DropAtStoreScreen() {
         <Text style={[styles.headerTitle, { color: theme.text }]}>Drop at Store</Text>
         {step !== 'done' && (
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
-            {step === 'pickup'      ? 'Step 1 of 4 — Pickup store' :
-             step === 'destination' ? 'Step 2 of 4 — Where to?' :
-             step === 'package'     ? 'Step 3 of 4 — Package details' :
-                                      'Step 4 of 4 — Review'}
+            {step === 'pickup'      ? 'Step 1 of 4 â€” Pickup store' :
+             step === 'destination' ? 'Step 2 of 4 â€” Where to?' :
+             step === 'package'     ? 'Step 3 of 4 â€” Package details' :
+                                      'Step 4 of 4 â€” Review'}
           </Text>
         )}
       </View>
@@ -178,11 +178,11 @@ export default function DropAtStoreScreen() {
     </View>
   );
 
-  // ── Receipt screen (success) ─────────────────────────────────────────────
+  // â”€â”€ Receipt screen (success) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (step === 'done' && receipt) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         {renderHeader()}
         <ScrollView contentContainerStyle={styles.doneContent}>
@@ -237,10 +237,10 @@ export default function DropAtStoreScreen() {
     );
   }
 
-  // ── Step screens ─────────────────────────────────────────────────────────
+  // â”€â”€ Step screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       {renderHeader()}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -251,7 +251,7 @@ export default function DropAtStoreScreen() {
             </View>
           )}
 
-          {/* Step 1 — pickup store ─────────────────────────────────────── */}
+          {/* Step 1 â€” pickup store â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 'pickup' && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>NEAREST PARTNER STORES</Text>
@@ -283,7 +283,7 @@ export default function DropAtStoreScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.storeName, { color: theme.text }]}>{s.storeName}</Text>
                       <Text style={[styles.storeAddress, { color: theme.textSecond }]} numberOfLines={1}>{s.storeAddress}</Text>
-                      <Text style={[styles.bucketText, { color: bucket.color }]}>● {bucket.label}</Text>
+                      <Text style={[styles.bucketText, { color: bucket.color }]}>â— {bucket.label}</Text>
                     </View>
                     {selected && <Check size={18} color={theme.primary} />}
                   </Pressable>
@@ -301,7 +301,7 @@ export default function DropAtStoreScreen() {
             </>
           )}
 
-          {/* Step 2 — destination mode ─────────────────────────────────── */}
+          {/* Step 2 â€” destination mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 'destination' && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>WHERE SHOULD IT GO?</Text>
@@ -384,7 +384,7 @@ export default function DropAtStoreScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.storeName, { color: theme.text }]}>{s.storeName}</Text>
                           <Text style={[styles.storeAddress, { color: theme.textSecond }]} numberOfLines={1}>{s.storeAddress}</Text>
-                          <Text style={[styles.bucketText, { color: bucket.color }]}>● {bucket.label}</Text>
+                          <Text style={[styles.bucketText, { color: bucket.color }]}>â— {bucket.label}</Text>
                         </View>
                         {selected && <Check size={18} color={theme.primary} />}
                       </Pressable>
@@ -407,7 +407,7 @@ export default function DropAtStoreScreen() {
             </>
           )}
 
-          {/* Step 3 — package + recipient ──────────────────────────────── */}
+          {/* Step 3 â€” package + recipient â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 'package' && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>PACKAGE</Text>
@@ -431,12 +431,12 @@ export default function DropAtStoreScreen() {
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: Spacing.md }]}>Declared value ₦ (optional)</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text, marginTop: Spacing.md }]}>Declared value â‚¦ (optional)</Text>
               <TextInput
                 value={declaredValue}
                 onChangeText={setDeclaredValue}
                 keyboardType="number-pad"
-                placeholder="If over ₦50,000, recipient must show ID"
+                placeholder="If over â‚¦50,000, recipient must show ID"
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
               />
@@ -476,7 +476,7 @@ export default function DropAtStoreScreen() {
             </>
           )}
 
-          {/* Step 4 — review ───────────────────────────────────────────── */}
+          {/* Step 4 â€” review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           {step === 'review' && pickupStore && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>REVIEW</Text>
@@ -525,7 +525,7 @@ export default function DropAtStoreScreen() {
                     ) : null}
                     {declaredValue && Number(declaredValue) >= 50000 && (
                       <Text style={[styles.reviewWarn, { color: '#D97706' }]}>
-                        High value — recipient ID required at handoff
+                        High value â€” recipient ID required at handoff
                       </Text>
                     )}
                   </View>

@@ -1,4 +1,4 @@
-import {
+﻿import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 
-// Universal/web fallback link — when the receiver doesn't have the app,
+// Universal/web fallback link â€” when the receiver doesn't have the app,
 // the page on seirs.app/r/<code> can show download links and forward
 // the code through to the play store / app store via deferred deep linking.
 const WEB_REFERRAL_BASE = 'https://seirs.app/r/';
@@ -53,7 +53,7 @@ export default function ReferralScreen() {
     try {
       await Share.share({
         message:
-          `Join SEIRS Logistics and get ₦500 off your first ride! Use my code: ${referralCode}\n\n` +
+          `Join SEIRS Logistics and get â‚¦500 off your first ride! Use my code: ${referralCode}\n\n` +
           `Tap to install and apply automatically: ${webLink}\n` +
           `Already have the app? ${deepLink}`,
       });
@@ -61,7 +61,7 @@ export default function ReferralScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
@@ -87,7 +87,7 @@ export default function ReferralScreen() {
           </View>
           <Text style={styles.heroTitle}>Invite friends, earn cash</Text>
           <Text style={styles.heroDesc}>
-            You get ₦1,000 and your friend gets ₦500 off their first ride when they sign up with your code.
+            You get â‚¦1,000 and your friend gets â‚¦500 off their first ride when they sign up with your code.
           </Text>
         </LinearGradient>
 
@@ -115,7 +115,7 @@ export default function ReferralScreen() {
           {[
             { label: 'Total Referred', value: `${REFERRAL_HISTORY.length}`, icon: 'people-outline', color: theme.primary },
             { label: 'Completed',      value: `${REFERRAL_HISTORY.filter(r => r.status === 'completed').length}`, icon: 'checkmark-circle-outline', color: '#22C55E' },
-            { label: 'Total Earned',   value: `₦${totalEarned.toLocaleString()}`, icon: 'cash-outline', color: '#FFBE0B' },
+            { label: 'Total Earned',   value: `â‚¦${totalEarned.toLocaleString()}`, icon: 'cash-outline', color: '#FFBE0B' },
           ].map((stat, i) => (
             <View key={stat.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
               <Ionicons name={stat.icon as any} size={20} color={stat.color} />
@@ -159,7 +159,7 @@ export default function ReferralScreen() {
               </Text>
             </View>
             {ref.status === 'completed' ? (
-              <Text style={styles.refEarned}>+₦{ref.earned.toLocaleString()}</Text>
+              <Text style={styles.refEarned}>+â‚¦{ref.earned.toLocaleString()}</Text>
             ) : (
               <View style={[styles.pendingBadge, { backgroundColor: '#FEF9C3', borderColor: '#FDE68A' }]}>
                 <Text style={styles.pendingBadgeText}>Pending</Text>

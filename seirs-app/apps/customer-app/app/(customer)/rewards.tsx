@@ -1,4 +1,4 @@
-import {
+﻿import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,7 +30,7 @@ export default function RewardsScreen() {
     : 1;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
@@ -95,7 +95,7 @@ export default function RewardsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.tierRowName, { color: theme.text }]}>{tier.name}</Text>
                   <Text style={[styles.tierRange, { color: theme.textSecond }]}>
-                    {tier.min.toLocaleString()} – {tier.max === 99999 ? '∞' : tier.max.toLocaleString()} pts
+                    {tier.min.toLocaleString()} â€“ {tier.max === 99999 ? 'âˆž' : tier.max.toLocaleString()} pts
                   </Text>
                 </View>
                 {isActive && (
@@ -154,7 +154,7 @@ export default function RewardsScreen() {
         <View style={[styles.earnCard, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
           <Text style={[styles.earnTitle, { color: theme.text }]}>How to earn points</Text>
           {[
-            { icon: 'car-outline',    text: '1 point per ₦10 spent on trips' },
+            { icon: 'car-outline',    text: '1 point per â‚¦10 spent on trips' },
             { icon: 'people-outline', text: '500 pts for each friend referred' },
             { icon: 'star-outline',   text: '50 pts for rating a driver' },
           ].map(item => (

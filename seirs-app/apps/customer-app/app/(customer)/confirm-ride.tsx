@@ -1,4 +1,4 @@
-import {
+﻿import {
   View, Text, Pressable, StyleSheet, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -46,7 +46,7 @@ export default function ConfirmRideScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surface }]} onPress={() => router.back()}>
@@ -68,7 +68,7 @@ export default function ConfirmRideScreen() {
               <View style={styles.driverMeta}>
                 <Ionicons name="star" size={12} color="#FFBE0B" />
                 <Text style={[styles.metaText, { color: theme.textSecond }]}>{driver.rating}</Text>
-                <Text style={[styles.metaDot, { color: theme.textThird }]}>·</Text>
+                <Text style={[styles.metaDot, { color: theme.textThird }]}>Â·</Text>
                 <Text style={[styles.metaText, { color: theme.textSecond }]}>{t('confirmRide.trips', { count: driver.trips })}</Text>
               </View>
             </View>
@@ -160,7 +160,7 @@ export default function ConfirmRideScreen() {
       <View style={[styles.cta, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <View style={styles.ctaTotal}>
           <Text style={[styles.ctaTotalLabel, { color: theme.textSecond }]}>{t('confirmRide.total')}</Text>
-          <Text style={[styles.ctaTotalValue, { color: theme.primary }]}>₦{total.toLocaleString()}</Text>
+          <Text style={[styles.ctaTotalValue, { color: theme.primary }]}>â‚¦{total.toLocaleString()}</Text>
         </View>
         <Button
           label={t('confirmRide.confirmRide')}
