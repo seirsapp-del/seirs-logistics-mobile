@@ -9,7 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { MOCK_VEHICLES, FARE_BREAKDOWN } from '@/constants/mockData';
+import { MOCK_VEHICLES, RIDE_VEHICLES, calcRideFare, FARE_BREAKDOWN } from '@/constants/mockData';
 
 export default function FareBreakdownScreen() {
   const router  = useRouter();
@@ -17,17 +17,42 @@ export default function FareBreakdownScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
   const { t }   = useTranslation();
-  const params  = useLocalSearchParams<{ pickup: string; dropoff: string; vehicleId: string }>();
+  const params  = useLocalSearchParams<{
+    mode?: string; pickup: string; dropoff: string; vehicleId: string;
+    shared?: string; distanceKm?: string; durationText?: string;
+  }>();
 
-  const vehicle = MOCK_VEHICLES.find(v => v.id === params.vehicleId) ?? MOCK_VEHICLES[0];
-  const fb      = FARE_BREAKDOWN;
+  const isRide = params.mode === 'ride';
+  const distKm = Number(params.distanceKm ?? '0') || 0;
+  const shared = params.shared === '1';
+
+  // Compute fare per-mode: rides use the live calcRideFare against the
+  // actual route distance + share-ride discount; cargo falls back to
+  // the legacy mock breakdown until the cargo rate-card lands.
+  const vehicle = isRide
+    ? RIDE_VEHICLES.find(v => v.id === params.vehicleId) ?? RIDE_VEHICLES[0]
+    : MOCK_VEHICLES.find(v => v.id === params.vehicleId) ?? MOCK_VEHICLES[0];
+
+  const fb = isRide
+    ? (() => {
+        const f = calcRideFare(params.vehicleId, distKm, shared);
+        return {
+          baseFare:    f.base,
+          distanceFee: f.dist,
+          timeFee:     0,
+          serviceFee:  f.service,
+          discount:    f.discount,
+          total:       f.total,
+        };
+      })()
+    : FARE_BREAKDOWN;
 
   const rows = [
     { label: t('fareBreakdown2.baseFare'),    value: fb.baseFare,    icon: 'flag-outline' },
     { label: t('fareBreakdown2.distanceFee'), value: fb.distanceFee, icon: 'map-outline'  },
     { label: t('fareBreakdown2.timeFee'),     value: fb.timeFee,     icon: 'time-outline' },
     { label: t('fareBreakdown2.serviceFee'),  value: fb.serviceFee,  icon: 'shield-outline' },
-  ];
+  ].filter(r => r.value > 0);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
@@ -74,14 +99,18 @@ export default function FareBreakdownScreen() {
             </View>
           </View>
           <View style={[styles.routeMeta, { borderTopColor: theme.border }]}>
-            <View style={styles.metaItem}>
-              <Ionicons name="navigate-outline" size={14} color={theme.textSecond} />
-              <Text style={[styles.metaText, { color: theme.textSecond }]}>~8.4 km</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={14} color={theme.textSecond} />
-              <Text style={[styles.metaText, { color: theme.textSecond }]}>~22 min</Text>
-            </View>
+            {distKm > 0 && (
+              <View style={styles.metaItem}>
+                <Ionicons name="navigate-outline" size={14} color={theme.textSecond} />
+                <Text style={[styles.metaText, { color: theme.textSecond }]}>~{distKm.toFixed(1)} km</Text>
+              </View>
+            )}
+            {!!params.durationText && (
+              <View style={styles.metaItem}>
+                <Ionicons name="time-outline" size={14} color={theme.textSecond} />
+                <Text style={[styles.metaText, { color: theme.textSecond }]}>~{params.durationText}</Text>
+              </View>
+            )}
           </View>
         </Card>
 
@@ -141,7 +170,16 @@ export default function FareBreakdownScreen() {
           label={t('common.continue')}
           onPress={() => router.push({
             pathname: '/(customer)/confirm-ride',
-            params: { pickup: params.pickup, dropoff: params.dropoff, vehicleId: params.vehicleId },
+            params: {
+              mode:         params.mode ?? 'cargo',
+              pickup:       params.pickup,
+              dropoff:      params.dropoff,
+              vehicleId:    params.vehicleId,
+              shared:       params.shared ?? '0',
+              distanceKm:   String(distKm),
+              durationText: params.durationText ?? '',
+              fareTotal:    String(fb.total),
+            },
           })}
           size="lg"
           fullWidth

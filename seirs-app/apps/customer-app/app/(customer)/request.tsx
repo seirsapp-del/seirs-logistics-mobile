@@ -17,20 +17,17 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { type PickedAddress } from '@/components/AddressPicker';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { LAGOS_COORDS } from '@/constants/mockData';
+import { LAGOS_COORDS, RIDE_VEHICLES, calcRideFare } from '@/constants/mockData';
 
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 
-// Labels resolved via t() at render so language switches reflect live.
-// Vehicle names stay native Nigerian (Okada/Keke/Danfo) per spec —
-// users recognise these terms across languages, no need to translate.
-const VEHICLE_OPTIONS = [
-  { id: 'okada', icon: 'bicycle-outline',   label: 'Okada', subKey: 'okadaSub', price: '₦600',   eta: '2', capacityKey: 'capacityRider',  capacityCount: 1 },
-  { id: 'keke',  icon: 'car-outline',       label: 'Keke',  subKey: 'kekeSub',  price: '₦900',   eta: '3', capacityKey: 'capacityRiders', capacityCount: 3 },
-  { id: 'car',   icon: 'car-sport-outline', label: 'Car',   subKey: 'carSub',   price: '₦1,800', eta: '4', capacityKey: 'capacityRiders', capacityCount: 4 },
-  { id: 'danfo', icon: 'bus-outline',       label: 'Danfo', subKey: 'danfoSub', price: '₦3,500', eta: '8', capacityKey: 'capacityRiders', capacityCount: 14 },
-] as const;
-type VehicleId = typeof VEHICLE_OPTIONS[number]['id'];
+// Vehicle list comes from the shared RIDE_VEHICLES constant so /request,
+// /vehicle-select, /fare-breakdown and /confirm-ride all show identical
+// vehicles + prices. Per-vehicle price label on this screen is the
+// "as-shown" estimate for a typical 8 km trip — the real fare is
+// computed against the actual route distance on /fare-breakdown.
+const TYPICAL_KM = 8;
+type VehicleId = typeof RIDE_VEHICLES[number]['id'];
 
 type Field = 'pickup' | 'dropoff';
 
@@ -55,7 +52,7 @@ export default function RequestDriverScreen() {
   const [dropoff,    setDropoff]    = useState<PickedAddress | null>(null);
   const [vehicle,    setVehicle]    = useState<VehicleId>('car');
   const [sharedRide, setSharedRide] = useState(false);
-  const allowsSharing = vehicle === 'car' || vehicle === 'danfo';
+  const allowsSharing = (RIDE_VEHICLES.find(v => v.id === vehicle)?.shareable) ?? false;
 
   // Inline autocomplete state — replaces the old modal AddressPicker.
   const [pickupQuery,  setPickupQuery]  = useState('');
@@ -221,19 +218,29 @@ export default function RequestDriverScreen() {
     setPredictions([]);
   };
 
+  // Distance in km parsed from the Directions "1.2 km" string, fallback 0
+  // so calcRideFare(...) still returns just the base fare if the route
+  // hasn't resolved yet.
+  const distKmParsed = distanceText
+    ? Number(distanceText.match(/([\d.]+)/)?.[1] ?? '0')
+    : 0;
+
   const handleNext = () => {
     if (!pickup || !dropoff) return;
     router.push({
       pathname: '/(customer)/vehicle-select',
       params: {
-        pickup:    pickup.address,
-        pickupLat: String(pickup.lat),
-        pickupLng: String(pickup.lng),
+        mode:       'ride',
+        pickup:     pickup.address,
+        pickupLat:  String(pickup.lat),
+        pickupLng:  String(pickup.lng),
         dropoff:    dropoff.address,
         dropoffLat: String(dropoff.lat),
         dropoffLng: String(dropoff.lng),
         preselect:  vehicle,
         shared:     sharedRide ? '1' : '0',
+        distanceKm: String(distKmParsed),
+        durationText: durationText ?? '',
       },
     });
   };
@@ -388,25 +395,28 @@ export default function RequestDriverScreen() {
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('request2.pickYourRide')}</Text>
               <View style={styles.vehicleRow}>
-                {VEHICLE_OPTIONS.map((v) => (
-                  <Pressable
-                    key={v.id}
-                    style={[
-                      styles.vehicleChip,
-                      { backgroundColor: theme.surfaceSecond, borderColor: vehicle === v.id ? theme.primary : theme.border },
-                      vehicle === v.id && { backgroundColor: isDark ? '#0A1A2E' : '#EFF6FF' },
-                    ]}
-                    onPress={() => {
-                      setVehicle(v.id);
-                      if (v.id !== 'car' && v.id !== 'danfo') setSharedRide(false);
-                    }}
-                  >
-                    <Ionicons name={v.icon as any} size={20} color={vehicle === v.id ? theme.primary : theme.textSecond} />
-                    <Text style={[styles.vehicleChipLabel, { color: vehicle === v.id ? theme.primary : theme.text }]}>{v.label}</Text>
-                    <Text style={[styles.vehicleChipSub, { color: theme.textThird }]}>{t(`request2.${v.subKey}`)}</Text>
-                    <Text style={[styles.vehicleChipPrice, { color: theme.textSecond }]}>{v.price}</Text>
-                  </Pressable>
-                ))}
+                {RIDE_VEHICLES.map((v) => {
+                  const typicalFare = calcRideFare(v.id, TYPICAL_KM, false).total;
+                  return (
+                    <Pressable
+                      key={v.id}
+                      style={[
+                        styles.vehicleChip,
+                        { backgroundColor: theme.surfaceSecond, borderColor: vehicle === v.id ? theme.primary : theme.border },
+                        vehicle === v.id && { backgroundColor: isDark ? '#0A1A2E' : '#EFF6FF' },
+                      ]}
+                      onPress={() => {
+                        setVehicle(v.id);
+                        if (!v.shareable) setSharedRide(false);
+                      }}
+                    >
+                      <Ionicons name={v.icon as any} size={20} color={vehicle === v.id ? theme.primary : theme.textSecond} />
+                      <Text style={[styles.vehicleChipLabel, { color: vehicle === v.id ? theme.primary : theme.text }]}>{v.label}</Text>
+                      <Text style={[styles.vehicleChipSub, { color: theme.textThird }]}>{t(`request2.${v.subKey}`)}</Text>
+                      <Text style={[styles.vehicleChipPrice, { color: theme.textSecond }]}>₦{typicalFare.toLocaleString()}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
 
               <Pressable

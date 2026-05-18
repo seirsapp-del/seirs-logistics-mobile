@@ -11,7 +11,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
-import { MOCK_VEHICLES, MOCK_DRIVERS, FARE_BREAKDOWN } from '@/constants/mockData';
+import { MOCK_VEHICLES, RIDE_VEHICLES, MOCK_DRIVERS, FARE_BREAKDOWN, calcRideFare } from '@/constants/mockData';
 
 export default function ConfirmRideScreen() {
   const router   = useRouter();
@@ -19,14 +19,40 @@ export default function ConfirmRideScreen() {
   const theme    = Colors[cs ?? 'light'];
   const isDark   = cs === 'dark';
   const { t }    = useTranslation();
-  const params   = useLocalSearchParams<{ pickup: string; dropoff: string; vehicleId: string }>();
+  const params   = useLocalSearchParams<{
+    mode?: string; pickup: string; dropoff: string; vehicleId: string;
+    shared?: string; distanceKm?: string; durationText?: string; fareTotal?: string;
+  }>();
+
+  const isRide = params.mode === 'ride';
+  const distKm = Number(params.distanceKm ?? '0') || 0;
+  const shared = params.shared === '1';
 
   const [payment,    setPayment]    = useState<'wallet' | 'card' | 'cash'>('wallet');
   const [confirming, setConfirming] = useState(false);
 
-  const vehicle = MOCK_VEHICLES.find(v => v.id === params.vehicleId) ?? MOCK_VEHICLES[0];
-  const driver  = MOCK_DRIVERS[0];
-  const total   = FARE_BREAKDOWN.total;
+  const vehicle = isRide
+    ? RIDE_VEHICLES.find(v => v.id === params.vehicleId) ?? RIDE_VEHICLES[0]
+    : MOCK_VEHICLES.find(v => v.id === params.vehicleId) ?? MOCK_VEHICLES[0];
+
+  // Trust fareTotal if it was computed upstream; otherwise recompute /
+  // fall back to FARE_BREAKDOWN for the legacy cargo flow.
+  const total = params.fareTotal
+    ? Number(params.fareTotal)
+    : isRide
+      ? calcRideFare(params.vehicleId, distKm, shared).total
+      : FARE_BREAKDOWN.total;
+
+  // Pick a driver deterministically from the route + vehicle so the
+  // same booking always shows the same driver, but different bookings
+  // see different ones. Will be replaced by the real assignment API.
+  const driverIndex = (() => {
+    let h = 0;
+    const seed = `${params.pickup ?? ''}|${params.dropoff ?? ''}|${params.vehicleId ?? ''}`;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+    return h % MOCK_DRIVERS.length;
+  })();
+  const driver = MOCK_DRIVERS[driverIndex];
 
   const PAYMENT_OPTS = [
     { id: 'wallet' as const, label: t('confirmRide.payWallet'),               icon: 'wallet-outline', sub: t('confirmRide.payWalletSub', { balance: '47,500' }) },
@@ -40,7 +66,12 @@ export default function ConfirmRideScreen() {
       setConfirming(false);
       router.replace({
         pathname: '/(customer)/trip-progress',
-        params: { id: 't3', driverId: driver.id },
+        params: {
+          id:       't3',
+          driverId: driver.id,
+          pickup:   params.pickup,
+          dropoff:  params.dropoff,
+        },
       });
     }, 1500);
   };
@@ -97,18 +128,28 @@ export default function ConfirmRideScreen() {
             <Text style={[styles.summAddr, { color: theme.text }]} numberOfLines={2}>{params.dropoff}</Text>
           </View>
           <View style={[styles.summMeta, { borderTopColor: theme.border }]}>
-            <View style={styles.summMetaItem}>
-              <Ionicons name="navigate-outline" size={13} color={theme.textSecond} />
-              <Text style={[styles.summMetaText, { color: theme.textSecond }]}>{t('confirmRide.kmAway', { km: '8.4' })}</Text>
-            </View>
-            <View style={styles.summMetaItem}>
-              <Ionicons name="time-outline" size={13} color={theme.textSecond} />
-              <Text style={[styles.summMetaText, { color: theme.textSecond }]}>{t('confirmRide.minAway', { min: 22 })}</Text>
-            </View>
+            {distKm > 0 && (
+              <View style={styles.summMetaItem}>
+                <Ionicons name="navigate-outline" size={13} color={theme.textSecond} />
+                <Text style={[styles.summMetaText, { color: theme.textSecond }]}>{t('confirmRide.kmAway', { km: distKm.toFixed(1) })}</Text>
+              </View>
+            )}
+            {!!params.durationText && (
+              <View style={styles.summMetaItem}>
+                <Ionicons name="time-outline" size={13} color={theme.textSecond} />
+                <Text style={[styles.summMetaText, { color: theme.textSecond }]}>~{params.durationText}</Text>
+              </View>
+            )}
             <View style={styles.summMetaItem}>
               <Ionicons name="car-outline" size={13} color={theme.textSecond} />
               <Text style={[styles.summMetaText, { color: theme.textSecond }]}>{vehicle.label}</Text>
             </View>
+            {isRide && shared && (
+              <View style={styles.summMetaItem}>
+                <Ionicons name="people-outline" size={13} color={theme.primary} />
+                <Text style={[styles.summMetaText, { color: theme.primary }]}>{t('request2.shareTitle')}</Text>
+              </View>
+            )}
           </View>
         </Card>
 

@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
-import { MOCK_VEHICLES } from '@/constants/mockData';
+import { MOCK_VEHICLES, RIDE_VEHICLES, calcRideFare } from '@/constants/mockData';
 
 export default function VehicleSelectScreen() {
   const router  = useRouter();
@@ -17,11 +17,45 @@ export default function VehicleSelectScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
   const { t }   = useTranslation();
-  const params  = useLocalSearchParams<{ pickup: string; dropoff: string; preselect?: string }>();
+  const params  = useLocalSearchParams<{
+    mode?: string; pickup: string; dropoff: string; preselect?: string;
+    shared?: string; distanceKm?: string; durationText?: string;
+  }>();
 
-  const [selected, setSelected] = useState(params.preselect ?? 'economy');
+  // 'ride' mode comes from /request (Okada/Keke/Car/Danfo, fare scales with km).
+  // 'cargo' mode comes from /multi-stop (the legacy Economy/Premium/Truck list).
+  const isRide = params.mode === 'ride';
+  const distKm = Number(params.distanceKm ?? '0') || 0;
+  const shared = params.shared === '1';
 
-  const selectedVehicle = MOCK_VEHICLES.find(v => v.id === selected) ?? MOCK_VEHICLES[0];
+  // List of vehicles, with a uniform shape both modes can render.
+  // For ride mode the price comes from calcRideFare against the actual
+  // route distance, so what the user sees here equals the fare-breakdown.
+  const list = isRide
+    ? RIDE_VEHICLES.map(v => ({
+        id:           v.id,
+        label:        v.label,
+        icon:         v.icon,
+        description:  v.description,
+        eta:          v.eta,
+        features:     [...v.features],
+        priceLabel:   `₦${calcRideFare(v.id, distKm, shared).total.toLocaleString()}`,
+      }))
+    : MOCK_VEHICLES.map(v => ({
+        id:           v.id,
+        label:        v.label,
+        icon:         v.icon,
+        description:  v.description,
+        eta:          v.eta,
+        features:     [...v.features],
+        priceLabel:   v.priceLabel,
+      }));
+
+  // Honour preselect when it matches a vehicle in the active list;
+  // otherwise fall back to the first option.
+  const initial = list.find(v => v.id === params.preselect)?.id ?? list[0].id;
+  const [selected, setSelected] = useState(initial);
+  const selectedVehicle = list.find(v => v.id === selected) ?? list[0];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
@@ -52,7 +86,7 @@ export default function VehicleSelectScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
         <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('vehicleSelect2.availableVehicles')}</Text>
 
-        {MOCK_VEHICLES.map((v) => {
+        {list.map((v) => {
           const isSelected = selected === v.id;
           return (
             <Pressable
@@ -115,12 +149,23 @@ export default function VehicleSelectScreen() {
         <View style={styles.ctaSummary}>
           <Text style={[styles.ctaLabel, { color: theme.textSecond }]}>{t('vehicleSelect2.selected')}</Text>
           <Text style={[styles.ctaValue, { color: theme.text }]}>{selectedVehicle.label} · {selectedVehicle.priceLabel}</Text>
+          {isRide && shared && (
+            <Text style={[styles.ctaLabel, { color: theme.primary, fontWeight: FontWeight.semibold }]}>{t('request2.shareTitle')}</Text>
+          )}
         </View>
         <Button
           label={t('fareBreakdown2.title')}
           onPress={() => router.push({
             pathname: '/(customer)/fare-breakdown',
-            params: { pickup: params.pickup, dropoff: params.dropoff, vehicleId: selected },
+            params: {
+              mode:         params.mode ?? 'cargo',
+              pickup:       params.pickup,
+              dropoff:      params.dropoff,
+              vehicleId:    selected,
+              shared:       params.shared ?? '0',
+              distanceKm:   params.distanceKm ?? '0',
+              durationText: params.durationText ?? '',
+            },
           })}
           size="lg"
           rightIcon={<Ionicons name="arrow-forward" size={18} color="#fff" />}
