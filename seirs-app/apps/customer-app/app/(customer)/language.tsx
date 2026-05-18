@@ -38,13 +38,15 @@ export default function LanguageScreen() {
     setSelectedLang(code);
     await changeLanguage(code);
     // Show the beta-translations notice for any non-English pick.
-    // The Alert renders with the NEW language because changeLanguage()
-    // already swapped i18n before this t() call resolves.
+    // The `t` from useTranslation() is a closure captured at this render
+    // and still resolves keys in the PREVIOUS language even after
+    // changeLanguage() ran. Force the new language explicitly via
+    // i18n.t(..., { lng: code }) so the Alert renders correctly.
     if (code !== 'en') {
       Alert.alert(
-        t('languageNotice.title'),
-        t('languageNotice.body'),
-        [{ text: t('languageNotice.ok'), style: 'default' }],
+        i18n.t('languageNotice.title', { lng: code }),
+        i18n.t('languageNotice.body',  { lng: code }),
+        [{ text: i18n.t('languageNotice.ok', { lng: code }), style: 'default' }],
       );
     }
   };
