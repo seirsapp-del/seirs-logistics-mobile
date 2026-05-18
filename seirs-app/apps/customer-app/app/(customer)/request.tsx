@@ -11,6 +11,7 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
@@ -20,11 +21,14 @@ import { LAGOS_COORDS } from '@/constants/mockData';
 
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 
+// Labels resolved via t() at render so language switches reflect live.
+// Vehicle names stay native Nigerian (Okada/Keke/Danfo) per spec —
+// users recognise these terms across languages, no need to translate.
 const VEHICLE_OPTIONS = [
-  { id: 'okada', icon: 'bicycle-outline',   label: 'Okada', sub: 'Motorbike',  price: '₦600',   eta: '2 min', capacity: '1 rider' },
-  { id: 'keke',  icon: 'car-outline',       label: 'Keke',  sub: 'Tricycle',   price: '₦900',   eta: '3 min', capacity: '1-3 riders' },
-  { id: 'car',   icon: 'car-sport-outline', label: 'Car',   sub: 'Sedan',      price: '₦1,800', eta: '4 min', capacity: '1-4 riders' },
-  { id: 'danfo', icon: 'bus-outline',       label: 'Bus',   sub: 'Group ride', price: '₦3,500', eta: '8 min', capacity: '5-14 riders' },
+  { id: 'okada', icon: 'bicycle-outline',   label: 'Okada', subKey: 'okadaSub', price: '₦600',   eta: '2', capacityKey: 'capacityRider',  capacityCount: 1 },
+  { id: 'keke',  icon: 'car-outline',       label: 'Keke',  subKey: 'kekeSub',  price: '₦900',   eta: '3', capacityKey: 'capacityRiders', capacityCount: 3 },
+  { id: 'car',   icon: 'car-sport-outline', label: 'Car',   subKey: 'carSub',   price: '₦1,800', eta: '4', capacityKey: 'capacityRiders', capacityCount: 4 },
+  { id: 'danfo', icon: 'bus-outline',       label: 'Danfo', subKey: 'danfoSub', price: '₦3,500', eta: '8', capacityKey: 'capacityRiders', capacityCount: 14 },
 ] as const;
 type VehicleId = typeof VEHICLE_OPTIONS[number]['id'];
 
@@ -42,6 +46,7 @@ export default function RequestDriverScreen() {
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
   const insets = useSafeAreaInsets();
+  const { t }  = useTranslation();
   // Hard ceiling: status bar (insets.top) + header height (~58) + visible
   // gap so the sheet never even brushes the header pill.
   const sheetTopInset = insets.top + 88;
@@ -398,7 +403,7 @@ export default function RequestDriverScreen() {
                   >
                     <Ionicons name={v.icon as any} size={20} color={vehicle === v.id ? theme.primary : theme.textSecond} />
                     <Text style={[styles.vehicleChipLabel, { color: vehicle === v.id ? theme.primary : theme.text }]}>{v.label}</Text>
-                    <Text style={[styles.vehicleChipSub, { color: theme.textThird }]}>{v.sub}</Text>
+                    <Text style={[styles.vehicleChipSub, { color: theme.textThird }]}>{t(`request2.${v.subKey}`)}</Text>
                     <Text style={[styles.vehicleChipPrice, { color: theme.textSecond }]}>{v.price}</Text>
                   </Pressable>
                 ))}

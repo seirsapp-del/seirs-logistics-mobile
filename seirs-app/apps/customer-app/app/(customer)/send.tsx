@@ -14,6 +14,7 @@ import BottomSheet, {
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi, uploadApi } from '@/services/api';
@@ -28,17 +29,19 @@ import {
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+// Category labels are looked up at render via t(`send.${labelKey}`) so
+// language switches reflect live without restarting the form.
 const PACKAGE_CATEGORIES = [
-  { id: 'documents',    label: 'Documents / Envelope'                       },
-  { id: 'small_parcel', label: 'Small Parcel (electronics, clothing)'        },
-  { id: 'food',         label: 'Food / Perishables'                          },
-  { id: 'fragile',      label: 'Fragile Items'                               },
-  { id: 'agricultural', label: 'Agricultural Produce (crops, yam, maize)'   },
-  { id: 'building',     label: 'Building Materials (wood, roofing, pipes)'   },
-  { id: 'furniture',    label: 'Furniture / Large Items'                     },
-  { id: 'moving',       label: 'Moving / Relocation'                         },
-  { id: 'market_goods', label: 'Market Goods (bulk market purchases)'        },
-  { id: 'heavy',        label: 'Heavy / Industrial'                          },
+  { id: 'documents',    labelKey: 'categoryDocuments'     },
+  { id: 'small_parcel', labelKey: 'categorySmallParcel'   },
+  { id: 'food',         labelKey: 'categoryFood'          },
+  { id: 'fragile',      labelKey: 'categoryFragile'       },
+  { id: 'agricultural', labelKey: 'categoryAgricultural'  },
+  { id: 'building',     labelKey: 'categoryBuilding'      },
+  { id: 'furniture',    labelKey: 'categoryFurniture'     },
+  { id: 'moving',       labelKey: 'categoryMoving'        },
+  { id: 'market_goods', labelKey: 'categoryMarketGoods'   },
+  { id: 'heavy',        labelKey: 'categoryHeavy'         },
 ] as const;
 type CategoryId = typeof PACKAGE_CATEGORIES[number]['id'];
 
@@ -61,7 +64,9 @@ const PAYMENT_METHODS = [
 type PaymentId = typeof PAYMENT_METHODS[number]['id'];
 
 // 5 steps total — Address + Schedule are combined ("when & where" in one screen).
+// Labels resolved via t(`send.step${cap}`) at render.
 const STEPS = ['Package', 'Address', 'Vehicle', 'Fare', 'Confirm'] as const;
+const STEP_KEYS = ['stepPackage', 'stepAddress', 'stepVehicle', 'stepFare', 'stepConfirm'] as const;
 
 function autoRecommend(cat: CategoryId, kg: number): VehicleId {
   if (cat === 'documents') return 'bicycle';
@@ -125,6 +130,7 @@ export default function SendScreen() {
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
   const insets = useSafeAreaInsets();
+  const { t }  = useTranslation();
   // Hard ceiling: status bar (insets.top) + header height (~58) + visible
   // gap so the sheet never even brushes the header pill.
   const sheetTopInset = insets.top + 88;
@@ -399,7 +405,7 @@ export default function SendScreen() {
         <View style={[styles.topTitle, { backgroundColor: theme.surface }, Shadows.sm]}>
           <Text style={[styles.topTitleText, { color: theme.text }]}>Send a Package</Text>
           <Text style={[styles.topStep, { color: theme.textSecond }]}>
-            Step {step + 1} / {STEPS.length} — {STEPS[step]}
+            {t('send.stepOf', { current: step + 1, total: STEPS.length })} — {t(`send.${STEP_KEYS[step]}`)}
           </Text>
         </View>
       </SafeAreaView>
@@ -476,7 +482,7 @@ export default function SendScreen() {
                 )}
               </View>
 
-              <Text style={[styles.label, { color: theme.textSecond }]}>Description</Text>
+              <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.description')}</Text>
               <TextInput
                 style={[styles.textarea, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
                 placeholder="Describe the package contents..."
@@ -487,7 +493,7 @@ export default function SendScreen() {
                 onChangeText={setDescription}
               />
 
-              <Text style={[styles.label, { color: theme.textSecond }]}>Category <Text style={{ color: theme.error }}>*</Text></Text>
+              <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.category')} <Text style={{ color: theme.error }}>*</Text></Text>
               <View style={styles.categoryGrid}>
                 {PACKAGE_CATEGORIES.map(cat => (
                   <Pressable
@@ -495,12 +501,12 @@ export default function SendScreen() {
                     style={[styles.categoryChip, highlight(category === cat.id)]}
                     onPress={() => setCategory(cat.id)}
                   >
-                    <Text style={[styles.categoryText, { color: category === cat.id ? theme.accent : theme.text }]}>{cat.label}</Text>
+                    <Text style={[styles.categoryText, { color: category === cat.id ? theme.accent : theme.text }]}>{t(`send.${cat.labelKey}`)}</Text>
                   </Pressable>
                 ))}
               </View>
 
-              <Text style={[styles.label, { color: theme.textSecond }]}>Weight (kg) — optional</Text>
+              <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.weightKg')}</Text>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
                 placeholder="e.g. 5"
@@ -738,7 +744,7 @@ export default function SendScreen() {
           {step === 3 && (
             <View style={styles.stepGap}>
               <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-                <Text style={[styles.fareTitle, { color: theme.text }]}>Fare Breakdown</Text>
+                <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.fareBreakdown')}</Text>
                 {([
                   ['Base fare',         fare.base   ],
                   ['Distance charge',   fare.dist   ],
@@ -751,7 +757,7 @@ export default function SendScreen() {
                   </View>
                 ))}
                 <View style={styles.fareTotalRow}>
-                  <Text style={[styles.fareTotalLabel, { color: theme.text }]}>Total</Text>
+                  <Text style={[styles.fareTotalLabel, { color: theme.text }]}>{t('send.total')}</Text>
                   <Text style={[styles.fareTotalAmt,   { color: theme.accent }]}>₦{fare.total.toLocaleString()}</Text>
                 </View>
               </View>
@@ -775,12 +781,12 @@ export default function SendScreen() {
           {step === 4 && (
             <View style={styles.stepGap}>
               <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-                <Text style={[styles.fareTitle, { color: theme.text }]}>Order Summary</Text>
+                <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.orderSummary')}</Text>
                 {([
                   ['Pickup',   pickup?.address  ?? '—'],
                   ['Dropoff',  dropoff?.address ?? '—'],
                   ['Distance', distanceText ?? `${distKmRoute} km`],
-                  ['Category', PACKAGE_CATEGORIES.find(c => c.id === category)?.label ?? '—'],
+                  ['Category', t(`send.${PACKAGE_CATEGORIES.find(c => c.id === category)?.labelKey ?? 'category'}`)],
                   ['Vehicle',  VEHICLES.find(v => v.id === vehicleId)?.label ?? '—'],
                   ['When',     scheduleNow
                                  ? 'Send now'
