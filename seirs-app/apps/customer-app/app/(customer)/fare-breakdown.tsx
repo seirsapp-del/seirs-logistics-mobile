@@ -42,21 +42,32 @@ export default function FareBreakdownScreen() {
     ? (() => {
         const f = calcRideFare(params.vehicleId, distKm, shared);
         return {
-          baseFare:    f.base,
-          distanceFee: f.dist,
-          timeFee:     0,
-          serviceFee:  f.service,
-          discount:    f.discount,
-          total:       f.total,
+          baseFare:          f.base,
+          distanceFee:       f.dist,
+          timeFee:           0,
+          categorySurcharge: 0,
+          timeSurcharge:     f.timeSurcharge,
+          timeLabels:        f.timeLabels,
+          zoneSurcharge:     f.zoneSurcharge,
+          zoneFlat:          f.zoneFlat,
+          serviceFee:        f.service,
+          vat:               f.vat,
+          discount:          f.shareDiscount,
+          total:             f.total,
         };
       })()
-    : FARE_BREAKDOWN;
+    : { ...FARE_BREAKDOWN, categorySurcharge: 0, timeSurcharge: 0, timeLabels: [] as string[], zoneSurcharge: 0, zoneFlat: 0, vat: 0 };
 
   const rows = [
-    { label: t('fareBreakdown2.baseFare'),    value: fb.baseFare,    icon: 'flag-outline' },
-    { label: t('fareBreakdown2.distanceFee'), value: fb.distanceFee, icon: 'map-outline'  },
-    { label: t('fareBreakdown2.timeFee'),     value: fb.timeFee,     icon: 'time-outline' },
-    { label: t('fareBreakdown2.serviceFee'),  value: fb.serviceFee,  icon: 'shield-outline' },
+    { label: t('fareBreakdown2.baseFare'),                                             value: fb.baseFare,          icon: 'flag-outline' },
+    { label: t('fareBreakdown2.distanceFee'),                                          value: fb.distanceFee,       icon: 'map-outline'  },
+    { label: t('fareBreakdown2.timeFee'),                                              value: fb.timeFee,           icon: 'time-outline' },
+    { label: t('fareBreakdown2.categorySurcharge'),                                    value: fb.categorySurcharge, icon: 'pricetag-outline'   },
+    { label: t('fareBreakdown2.timeSurcharge', { labels: fb.timeLabels.join(', ') }),  value: fb.timeSurcharge,     icon: 'moon-outline'       },
+    { label: t('fareBreakdown2.zoneSurcharge'),                                        value: fb.zoneSurcharge,     icon: 'globe-outline'      },
+    { label: t('fareBreakdown2.overnightFee'),                                         value: fb.zoneFlat,          icon: 'bed-outline'        },
+    { label: t('fareBreakdown2.serviceFee'),                                           value: fb.serviceFee,        icon: 'shield-outline'     },
+    { label: t('fareBreakdown2.vat'),                                                  value: fb.vat,               icon: 'document-text-outline' },
   ].filter(r => r.value > 0);
 
   // ── Map background ──────────────────────────────────────────────────────

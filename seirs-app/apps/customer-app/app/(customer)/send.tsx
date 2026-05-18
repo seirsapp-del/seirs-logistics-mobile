@@ -103,10 +103,16 @@ const MAX_BOOK_AHEAD  = (() => {
   return d.toISOString().slice(0, 10);
 })();
 
-function calcFare(vid: VehicleId, distKm: number, kg: number) {
+function calcFare(
+  vid: VehicleId,
+  distKm: number,
+  kg: number,
+  opts: { categoryId?: string | null; codAmountNgn?: number } = {},
+) {
   // Delegates to the rate-card calculator so admin can edit prices
-  // without touching screen code. Returns base + dist + weight + handling + service.
-  return calcPackageFare(vid, distKm, kg);
+  // without touching screen code. Returns base + dist + weight + handling
+  // + categorySurcharge + timeSurcharge + zoneSurcharge + codFee + service + VAT.
+  return calcPackageFare(vid, distKm, kg, opts);
 }
 
 type Field = 'pickup' | 'dropoff';
@@ -140,6 +146,11 @@ export default function SendScreen() {
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
 
+  // Cash on delivery — sender opts in; recipient pays cash; we charge a
+  // handling fee for the cash-collection service.
+  const [codEnabled,  setCodEnabled]  = useState(false);
+  const [codAmount,   setCodAmount]   = useState('');
+
   // Inline autocomplete state for the address step (BottomSheetTextInput).
   const [pickupQuery,  setPickupQuery]  = useState('');
   const [dropoffQuery, setDropoffQuery] = useState('');
@@ -166,7 +177,8 @@ export default function SendScreen() {
     ? Number((distanceText.match(/([\d.]+)/)?.[1] ?? '7'))
     : 7;
   const kg   = parseFloat(weightKg) || 0;
-  const fare = calcFare(vehicleId, distKmRoute, kg);
+  const codAmountNgn = codEnabled ? (Number(codAmount) || 0) : 0;
+  const fare = calcFare(vehicleId, distKmRoute, kg, { categoryId: category, codAmountNgn });
 
   // Center on user's GPS once on mount.
   useEffect(() => {
@@ -348,7 +360,8 @@ export default function SendScreen() {
         scheduledFor:    !scheduleNow && scheduledHour != null
                            ? buildScheduledFor(scheduledDate, scheduledHour).toISOString()
                            : undefined,
-      });
+        codAmountNgn:    codAmountNgn || undefined,
+      } as any);
       router.replace('/(customer)/history' as any);
     } catch (e: any) {
       setError(e.message ?? t('send.errBookingFailed'));
@@ -735,11 +748,18 @@ export default function SendScreen() {
               <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                 <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.fareBreakdown')}</Text>
                 {([
-                  [t('send.baseFare'),        fare.base    ],
-                  [t('send.distanceCharge'),  fare.dist    ],
-                  [t('send.weightSurcharge'), fare.weight  ],
-                  [t('send.handlingFee'),     fare.handling],
-                  [t('send.serviceFee'),      fare.service ],
+                  [t('send.baseFare'),                                       fare.base             ],
+                  [t('send.distanceCharge'),                                 fare.dist             ],
+                  [t('send.weightSurcharge'),                                fare.weight           ],
+                  [t('send.handlingFee'),                                    fare.handling         ],
+                  [t('send.categorySurcharge'),                              fare.categorySurcharge],
+                  [t('send.timeSurcharge', { labels: fare.timeLabels.join(', ') || '—' }),
+                                                                              fare.timeSurcharge   ],
+                  [t('send.zoneSurcharge'),                                  fare.zoneSurcharge    ],
+                  [t('send.overnightFee'),                                   fare.zoneFlat         ],
+                  [t('send.codFee'),                                         fare.codFee           ],
+                  [t('send.serviceFee'),                                     fare.service          ],
+                  [t('send.vat'),                                            fare.vat              ],
                 ] as [string, number][]).filter(([, amt]) => amt > 0).map(([lbl, amt]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
                     <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
@@ -764,6 +784,38 @@ export default function SendScreen() {
                   {paymentId === pm.id && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
                 </Pressable>
               ))}
+
+              {/* Cash on delivery */}
+              <Pressable
+                onPress={() => setCodEnabled(v => !v)}
+                style={[
+                  styles.payOption,
+                  {
+                    backgroundColor: codEnabled ? theme.accent + '10' : theme.surface,
+                    borderColor:     codEnabled ? theme.accent       : theme.border,
+                  },
+                ]}
+              >
+                <Ionicons name="cash-outline" size={20} color={codEnabled ? theme.accent : theme.textSecond} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.payLabel, { color: theme.text }]}>{t('send.codTitle')}</Text>
+                  <Text style={[styles.scheduleDesc, { color: theme.textSecond }]}>{t('send.codDesc')}</Text>
+                </View>
+                {codEnabled && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
+              </Pressable>
+              {codEnabled && (
+                <View style={{ marginTop: -Spacing.sm }}>
+                  <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.codAmount')}</Text>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
+                    placeholder={t('send.codAmountPlaceholder')}
+                    placeholderTextColor={theme.textThird}
+                    keyboardType="number-pad"
+                    value={codAmount}
+                    onChangeText={setCodAmount}
+                  />
+                </View>
+              )}
             </View>
           )}
 
