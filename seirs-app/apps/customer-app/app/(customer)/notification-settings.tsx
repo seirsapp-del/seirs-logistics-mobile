@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { usersApi } from '@/services/api';
@@ -14,42 +15,6 @@ type ToggleKey =
   | 'payment_success' | 'payment_failed' | 'wallet_topup'
   | 'promo_alerts' | 'referral_bonus' | 'rewards_update'
   | 'app_updates' | 'safety_alerts' | 'marketing';
-
-const SECTIONS: { title: string; items: { key: ToggleKey; icon: string; label: string; sub: string }[] }[] = [
-  {
-    title: 'Trip Notifications',
-    items: [
-      { key: 'trip_updates',    icon: 'car-outline',            label: 'Trip Updates',          sub: 'Live status changes during your trip' },
-      { key: 'driver_assigned', icon: 'navigate-outline',       label: 'Driver Assigned',       sub: 'When a driver accepts your request' },
-      { key: 'trip_completed',  icon: 'checkmark-circle-outline', label: 'Trip Completed',     sub: 'Confirmation when you arrive' },
-      { key: 'trip_cancelled',  icon: 'close-circle-outline',   label: 'Trip Cancelled',        sub: 'If your trip is cancelled' },
-    ],
-  },
-  {
-    title: 'Payment Notifications',
-    items: [
-      { key: 'payment_success', icon: 'card-outline',          label: 'Payment Successful',     sub: 'Every time a payment goes through' },
-      { key: 'payment_failed',  icon: 'alert-circle-outline',  label: 'Payment Failed',         sub: 'Failed or declined transactions' },
-      { key: 'wallet_topup',    icon: 'wallet-outline',        label: 'Wallet Top-up',          sub: 'When your wallet balance is funded' },
-    ],
-  },
-  {
-    title: 'Rewards & Promos',
-    items: [
-      { key: 'promo_alerts',    icon: 'ticket-outline',        label: 'Promo Alerts',           sub: 'New discount codes & offers' },
-      { key: 'referral_bonus',  icon: 'gift-outline',          label: 'Referral Bonus',         sub: 'When someone uses your code' },
-      { key: 'rewards_update',  icon: 'star-outline',          label: 'Rewards Update',         sub: 'Points earned and tier changes' },
-    ],
-  },
-  {
-    title: 'General',
-    items: [
-      { key: 'app_updates',     icon: 'refresh-outline',       label: 'App Updates',            sub: 'New features and improvements' },
-      { key: 'safety_alerts',   icon: 'shield-outline',        label: 'Safety Alerts',          sub: 'Account security and SOS events' },
-      { key: 'marketing',       icon: 'megaphone-outline',     label: 'Marketing Messages',     sub: 'News, surveys and product updates' },
-    ],
-  },
-];
 
 const DEFAULTS: Record<ToggleKey, boolean> = {
   trip_updates: true, driver_assigned: true, trip_completed: true, trip_cancelled: true,
@@ -63,6 +28,44 @@ export default function NotificationSettingsScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
+
+  // Sections rebuild on each render so language switches translate live.
+  const SECTIONS: { title: string; items: { key: ToggleKey; icon: string; label: string; sub: string }[] }[] = [
+    {
+      title: t('settings.sectionTrip'),
+      items: [
+        { key: 'trip_updates',    icon: 'car-outline',              label: t('settings.tripUpdates'),    sub: t('settings.tripUpdatesSub') },
+        { key: 'driver_assigned', icon: 'navigate-outline',         label: t('settings.driverAssigned'), sub: t('settings.driverAssignedSub') },
+        { key: 'trip_completed',  icon: 'checkmark-circle-outline', label: t('settings.tripCompleted'),  sub: t('settings.tripCompletedSub') },
+        { key: 'trip_cancelled',  icon: 'close-circle-outline',     label: t('settings.tripCancelled'),  sub: t('settings.tripCancelledSub') },
+      ],
+    },
+    {
+      title: t('settings.sectionPayment'),
+      items: [
+        { key: 'payment_success', icon: 'card-outline',         label: t('settings.paymentSuccess'), sub: t('settings.paymentSuccessSub') },
+        { key: 'payment_failed',  icon: 'alert-circle-outline', label: t('settings.paymentFailed'),  sub: t('settings.paymentFailedSub') },
+        { key: 'wallet_topup',    icon: 'wallet-outline',       label: t('settings.walletTopup'),    sub: t('settings.walletTopupSub') },
+      ],
+    },
+    {
+      title: t('settings.sectionRewards'),
+      items: [
+        { key: 'promo_alerts',   icon: 'ticket-outline', label: t('settings.promoAlerts'),   sub: t('settings.promoAlertsSub') },
+        { key: 'referral_bonus', icon: 'gift-outline',   label: t('settings.referralBonus'), sub: t('settings.referralBonusSub') },
+        { key: 'rewards_update', icon: 'star-outline',   label: t('settings.rewardsUpdate'), sub: t('settings.rewardsUpdateSub') },
+      ],
+    },
+    {
+      title: t('settings.sectionGeneral'),
+      items: [
+        { key: 'app_updates',   icon: 'refresh-outline',   label: t('settings.appUpdates'),   sub: t('settings.appUpdatesSub') },
+        { key: 'safety_alerts', icon: 'shield-outline',    label: t('settings.safetyAlerts'), sub: t('settings.safetyAlertsSub') },
+        { key: 'marketing',     icon: 'megaphone-outline', label: t('settings.marketing'),    sub: t('settings.marketingSub') },
+      ],
+    },
+  ];
 
   const [settings, setSettings] = useState<Record<ToggleKey, boolean>>(DEFAULTS);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -111,9 +114,9 @@ export default function NotificationSettingsScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Notifications</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('settings.notifTitle')}</Text>
         <Pressable onPress={toggleAll}>
-          <Text style={[styles.toggleAll, { color: theme.primary }]}>{allOn ? 'Turn off all' : 'Turn on all'}</Text>
+          <Text style={[styles.toggleAll, { color: theme.primary }]}>{allOn ? t('settings.turnOffAll') : t('settings.turnOnAll')}</Text>
         </Pressable>
       </View>
 
@@ -123,9 +126,9 @@ export default function NotificationSettingsScreen() {
         <View style={[styles.pushBanner, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
           <Ionicons name="notifications" size={20} color={theme.primary} />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.pushTitle, { color: theme.text }]}>Push Notifications Enabled</Text>
+            <Text style={[styles.pushTitle, { color: theme.text }]}>{t('settings.pushEnabled')}</Text>
             <Text style={[styles.pushDesc, { color: theme.textSecond }]}>
-              Change this in your device settings if needed.
+              {t('settings.pushNote')}
             </Text>
           </View>
           <View style={[styles.enabledDot, { backgroundColor: '#22C55E' }]} />

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import i18n, { changeLanguage, type LanguageCode } from '@/i18n';
@@ -26,6 +27,7 @@ export default function LanguageScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
 
   const current = (i18n.language?.split('-')[0] ?? 'en') as LanguageCode;
   const [selectedLang, setSelectedLang] = useState<LanguageCode>(current);
@@ -45,14 +47,14 @@ export default function LanguageScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Language & Region</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('settings.languageTitle')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
         {/* Language */}
-        <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>App Language</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>{t('settings.appLanguage')}</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {LANGUAGES.map((lang, i, arr) => (
             <Pressable
@@ -77,7 +79,7 @@ export default function LanguageScreen() {
         </View>
 
         {/* Currency */}
-        <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>Display Currency</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>{t('settings.displayCurrency')}</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {CURRENCIES.map((curr, i, arr) => (
             <Pressable
@@ -108,7 +110,7 @@ export default function LanguageScreen() {
         <View style={[styles.note, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
           <Ionicons name="information-circle-outline" size={16} color={theme.primary} />
           <Text style={[styles.noteText, { color: theme.textSecond }]}>
-            All transactions are processed in Nigerian Naira (NGN). Other currencies are for display purposes only.
+            {t('settings.currencyNote')}
           </Text>
         </View>
 

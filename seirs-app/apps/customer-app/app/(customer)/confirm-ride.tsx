@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
@@ -12,17 +13,12 @@ import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { MOCK_VEHICLES, MOCK_DRIVERS, FARE_BREAKDOWN } from '@/constants/mockData';
 
-const PAYMENT_OPTS = [
-  { id: 'wallet',  label: 'Wallet',         icon: 'wallet-outline',     sub: '₦47,500 available' },
-  { id: 'card',    label: 'Card ****4532',   icon: 'card-outline',       sub: 'Visa · Default'    },
-  { id: 'cash',    label: 'Cash',            icon: 'cash-outline',       sub: 'Pay on arrival'   },
-] as const;
-
 export default function ConfirmRideScreen() {
   const router   = useRouter();
   const cs       = useColorScheme();
   const theme    = Colors[cs ?? 'light'];
   const isDark   = cs === 'dark';
+  const { t }    = useTranslation();
   const params   = useLocalSearchParams<{ pickup: string; dropoff: string; vehicleId: string }>();
 
   const [payment,    setPayment]    = useState<'wallet' | 'card' | 'cash'>('wallet');
@@ -31,6 +27,12 @@ export default function ConfirmRideScreen() {
   const vehicle = MOCK_VEHICLES.find(v => v.id === params.vehicleId) ?? MOCK_VEHICLES[0];
   const driver  = MOCK_DRIVERS[0];
   const total   = FARE_BREAKDOWN.total;
+
+  const PAYMENT_OPTS = [
+    { id: 'wallet' as const, label: t('confirmRide.payWallet'),               icon: 'wallet-outline', sub: t('confirmRide.payWalletSub', { balance: '47,500' }) },
+    { id: 'card'   as const, label: t('confirmRide.payCard', { last4: '4532' }), icon: 'card-outline',   sub: t('confirmRide.payCardSub') },
+    { id: 'cash'   as const, label: t('confirmRide.payCash'),                 icon: 'cash-outline',   sub: t('confirmRide.payCashSub') },
+  ];
 
   const handleConfirm = async () => {
     setConfirming(true);
@@ -50,7 +52,7 @@ export default function ConfirmRideScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surface }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Confirm Ride</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('confirmRide.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -58,7 +60,7 @@ export default function ConfirmRideScreen() {
 
         {/* Driver preview */}
         <Card>
-          <Text style={[styles.cardLabel, { color: theme.textSecond }]}>Your driver</Text>
+          <Text style={[styles.cardLabel, { color: theme.textSecond }]}>{t('confirmRide.yourDriver')}</Text>
           <View style={styles.driverRow}>
             <Avatar name={driver.name} size={52} />
             <View style={{ flex: 1 }}>
@@ -67,7 +69,7 @@ export default function ConfirmRideScreen() {
                 <Ionicons name="star" size={12} color="#FFBE0B" />
                 <Text style={[styles.metaText, { color: theme.textSecond }]}>{driver.rating}</Text>
                 <Text style={[styles.metaDot, { color: theme.textThird }]}>·</Text>
-                <Text style={[styles.metaText, { color: theme.textSecond }]}>{driver.trips} trips</Text>
+                <Text style={[styles.metaText, { color: theme.textSecond }]}>{t('confirmRide.trips', { count: driver.trips })}</Text>
               </View>
             </View>
             <View style={styles.vehiclePill}>
@@ -84,7 +86,7 @@ export default function ConfirmRideScreen() {
 
         {/* Trip summary */}
         <Card>
-          <Text style={[styles.cardLabel, { color: theme.textSecond }]}>Trip summary</Text>
+          <Text style={[styles.cardLabel, { color: theme.textSecond }]}>{t('confirmRide.tripSummary')}</Text>
           <View style={styles.summaryRow}>
             <View style={[styles.summDot, { backgroundColor: '#22C55E' }]} />
             <Text style={[styles.summAddr, { color: theme.text }]} numberOfLines={2}>{params.pickup}</Text>
@@ -97,11 +99,11 @@ export default function ConfirmRideScreen() {
           <View style={[styles.summMeta, { borderTopColor: theme.border }]}>
             <View style={styles.summMetaItem}>
               <Ionicons name="navigate-outline" size={13} color={theme.textSecond} />
-              <Text style={[styles.summMetaText, { color: theme.textSecond }]}>~8.4 km</Text>
+              <Text style={[styles.summMetaText, { color: theme.textSecond }]}>{t('confirmRide.kmAway', { km: '8.4' })}</Text>
             </View>
             <View style={styles.summMetaItem}>
               <Ionicons name="time-outline" size={13} color={theme.textSecond} />
-              <Text style={[styles.summMetaText, { color: theme.textSecond }]}>~22 min</Text>
+              <Text style={[styles.summMetaText, { color: theme.textSecond }]}>{t('confirmRide.minAway', { min: 22 })}</Text>
             </View>
             <View style={styles.summMetaItem}>
               <Ionicons name="car-outline" size={13} color={theme.textSecond} />
@@ -113,9 +115,9 @@ export default function ConfirmRideScreen() {
         {/* Payment method */}
         <Card>
           <View style={styles.payHeader}>
-            <Text style={[styles.cardLabel, { color: theme.textSecond }]}>Payment method</Text>
+            <Text style={[styles.cardLabel, { color: theme.textSecond }]}>{t('confirmRide.paymentMethod')}</Text>
             <Pressable onPress={() => router.push('/(customer)/payment-methods')}>
-              <Text style={[styles.changeText, { color: theme.primary }]}>Change</Text>
+              <Text style={[styles.changeText, { color: theme.primary }]}>{t('confirmRide.change')}</Text>
             </Pressable>
           </View>
           <View style={styles.payOptions}>
@@ -148,7 +150,7 @@ export default function ConfirmRideScreen() {
           onPress={() => router.push('/(customer)/promo')}
         >
           <Ionicons name="pricetag-outline" size={18} color={theme.primary} />
-          <Text style={[styles.promoText, { color: theme.text }]}>Add promo code</Text>
+          <Text style={[styles.promoText, { color: theme.text }]}>{t('confirmRide.addPromo')}</Text>
           <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
         </Pressable>
 
@@ -157,11 +159,11 @@ export default function ConfirmRideScreen() {
       {/* Fixed CTA */}
       <View style={[styles.cta, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         <View style={styles.ctaTotal}>
-          <Text style={[styles.ctaTotalLabel, { color: theme.textSecond }]}>Total</Text>
+          <Text style={[styles.ctaTotalLabel, { color: theme.textSecond }]}>{t('confirmRide.total')}</Text>
           <Text style={[styles.ctaTotalValue, { color: theme.primary }]}>₦{total.toLocaleString()}</Text>
         </View>
         <Button
-          label="Confirm Ride"
+          label={t('confirmRide.confirmRide')}
           onPress={handleConfirm}
           loading={confirming}
           size="lg"

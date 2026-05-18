@@ -4,6 +4,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -20,51 +21,52 @@ export default function ProfileScreen() {
   const theme            = Colors[cs ?? 'light'];
   const isDark           = cs === 'dark';
   const { user, logout } = useAuth();
+  const { t }            = useTranslation();
 
   const displayName = user?.name ?? MOCK_USER.name;
-  const completedTrips = MOCK_TRIPS.filter(t => t.status === 'completed').length;
+  const completedTrips = MOCK_TRIPS.filter(tr => tr.status === 'completed').length;
 
   const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: logout },
+    Alert.alert(t('profile.signOut'), t('profile.signOutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.signOut'), style: 'destructive', onPress: logout },
     ]);
   };
 
   const SECTIONS: MenuSection[] = [
     {
-      title: 'Account',
+      title: t('profile.sectionAccount'),
       items: [
-        { icon: 'person-outline',    label: 'Edit Profile',      sub: 'Name, phone, photo',      onPress: () => router.push('/(customer)/edit-profile') },
-        { icon: 'shield-outline',    label: 'Verify Identity',   sub: 'NIN / BVN verification',  onPress: () => Alert.alert('Coming soon', 'NIN / BVN verification is on our roadmap.') },
-        { icon: 'card-outline',      label: 'Payment Methods',   sub: 'Cards & bank accounts',   onPress: () => router.push('/(customer)/payment-methods') },
-        { icon: 'location-outline',  label: 'Saved Addresses',   sub: 'Home, office & more',     onPress: () => router.push('/(customer)/addresses') },
+        { icon: 'person-outline',    label: t('profile.editProfile'),     sub: t('profile.editProfileSub'),     onPress: () => router.push('/(customer)/edit-profile') },
+        { icon: 'shield-outline',    label: t('profile.verifyIdentity'),  sub: t('profile.verifyIdentitySub'),  onPress: () => Alert.alert(t('common.comingSoon'), t('profile.verifyIdentityComingSoon')) },
+        { icon: 'card-outline',      label: t('profile.paymentMethods'),  sub: t('profile.paymentMethodsSub'),  onPress: () => router.push('/(customer)/payment-methods') },
+        { icon: 'location-outline',  label: t('profile.savedAddresses'),  sub: t('profile.savedAddressesSub'),  onPress: () => router.push('/(customer)/addresses') },
       ],
     },
     {
-      title: 'Activity',
+      title: t('profile.sectionActivity'),
       items: [
-        { icon: 'receipt-outline',   label: 'My Trips',          sub: `${completedTrips} trips completed`, onPress: () => router.push('/(customer)/history') },
-        { icon: 'wallet-outline',    label: 'Wallet',            sub: `₦${MOCK_USER.walletBalance.toLocaleString()} balance`, onPress: () => router.push('/(customer)/wallet') },
-        { icon: 'star-outline',      label: 'Rewards',           sub: `${MOCK_USER.points.toLocaleString()} points · ${MOCK_USER.tier}`, onPress: () => router.push('/(customer)/rewards') },
-        { icon: 'gift-outline',      label: 'Refer & Earn',      sub: 'Invite friends for ₦1,000',  onPress: () => router.push('/(customer)/referral') },
-        { icon: 'ticket-outline',    label: 'Promotions',        sub: '3 active promos',           onPress: () => router.push('/(customer)/promotions') },
+        { icon: 'receipt-outline',   label: t('profile.myTrips'),     sub: t('profile.myTripsSub',  { count: completedTrips }), onPress: () => router.push('/(customer)/history') },
+        { icon: 'wallet-outline',    label: t('profile.wallet'),      sub: t('profile.walletSub',   { balance: MOCK_USER.walletBalance.toLocaleString() }), onPress: () => router.push('/(customer)/wallet') },
+        { icon: 'star-outline',      label: t('profile.rewards'),     sub: t('profile.rewardsSub',  { points: MOCK_USER.points.toLocaleString(), tier: MOCK_USER.tier }), onPress: () => router.push('/(customer)/rewards') },
+        { icon: 'gift-outline',      label: t('profile.referEarn'),   sub: t('profile.referEarnSub'),     onPress: () => router.push('/(customer)/referral') },
+        { icon: 'ticket-outline',    label: t('profile.promotions'),  sub: t('profile.promotionsSub', { count: 3 }), onPress: () => router.push('/(customer)/promotions') },
       ],
     },
     {
-      title: 'Preferences',
+      title: t('profile.sectionPreferences'),
       items: [
-        { icon: 'notifications-outline', label: 'Notifications',    sub: 'Manage alerts',          onPress: () => router.push('/(customer)/notification-settings') },
-        { icon: 'language-outline',      label: 'Language',         sub: 'English (Nigeria)',      onPress: () => router.push('/(customer)/language') },
-        { icon: 'lock-closed-outline',   label: 'Privacy',          sub: 'Data & permissions',    onPress: () => router.push('/(customer)/privacy') },
+        { icon: 'notifications-outline', label: t('profile.notifications'), sub: t('profile.notificationsSub'), onPress: () => router.push('/(customer)/notification-settings') },
+        { icon: 'language-outline',      label: t('profile.language'),      sub: t('profile.languageSub'),      onPress: () => router.push('/(customer)/language') },
+        { icon: 'lock-closed-outline',   label: t('profile.privacy'),       sub: t('profile.privacySub'),       onPress: () => router.push('/(customer)/privacy') },
       ],
     },
     {
-      title: 'Support',
+      title: t('profile.sectionSupport'),
       items: [
-        { icon: 'help-circle-outline',   label: 'Help Center',      sub: 'FAQs & support',        onPress: () => router.push('/(customer)/help') },
-        { icon: 'chatbubble-outline',    label: 'Live Chat',        sub: 'Talk to an agent',      onPress: () => Alert.alert('Coming soon', 'Live chat with our support team is launching shortly.') },
-        { icon: 'document-text-outline', label: 'Terms of Service', sub: 'Legal & privacy policy', onPress: () => Linking.openURL('https://seirs.co/terms').catch(() => Alert.alert('Coming soon', 'Our Terms page goes live with the public launch.')) },
+        { icon: 'help-circle-outline',   label: t('profile.helpCenter'), sub: t('profile.helpCenterSub'), onPress: () => router.push('/(customer)/help') },
+        { icon: 'chatbubble-outline',    label: t('profile.liveChat'),   sub: t('profile.liveChatSub'),   onPress: () => Alert.alert(t('common.comingSoon'), t('profile.liveChatComingSoon')) },
+        { icon: 'document-text-outline', label: t('profile.terms'),      sub: t('profile.termsSub'),      onPress: () => Linking.openURL('https://seirs.co/terms').catch(() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))) },
       ],
     },
   ];
@@ -78,13 +80,13 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <HamburgerButton />
-            <Text style={[styles.title, { color: theme.text }]}>Profile</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('profile.title')}</Text>
           </View>
           <Pressable
             style={[styles.settingsBtn, { backgroundColor: theme.surfaceSecond }]}
             onPress={() => router.push('/(customer)/notification-settings')}
             accessibilityRole="button"
-            accessibilityLabel="Notification settings"
+            accessibilityLabel={t('profile.notificationSettings')}
           >
             <Ionicons name="settings-outline" size={20} color={theme.text} />
           </Pressable>
@@ -108,9 +110,9 @@ export default function ProfileScreen() {
           {/* Stats row */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
             {[
-              { label: 'Trips',   value: `${completedTrips}` },
-              { label: 'Points',  value: MOCK_USER.points.toLocaleString() },
-              { label: 'Rating',  value: '4.9 ★' },
+              { label: t('profile.statTrips'),  value: `${completedTrips}` },
+              { label: t('profile.statPoints'), value: MOCK_USER.points.toLocaleString() },
+              { label: t('profile.statRating'), value: '4.9 ★' },
             ].map((s, i) => (
               <View key={s.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
                 <Text style={[styles.statValue, { color: theme.text }]}>{s.value}</Text>
@@ -127,7 +129,7 @@ export default function ProfileScreen() {
         >
           <Ionicons name="gift-outline" size={18} color={theme.primary} />
           <Text style={[styles.refText, { color: theme.text }]}>
-            Your referral code: <Text style={{ color: theme.primary, fontWeight: FontWeight.bold }}>{MOCK_USER.referralCode}</Text>
+            {t('profile.yourReferralCode')} <Text style={{ color: theme.primary, fontWeight: FontWeight.bold }}>{MOCK_USER.referralCode}</Text>
           </Text>
           <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
         </Pressable>
@@ -160,7 +162,7 @@ export default function ProfileScreen() {
           </View>
         ))}
 
-        <Text style={[styles.version, { color: theme.textThird }]}>SEIRS Logistics v2.0.0 · Build 204</Text>
+        <Text style={[styles.version, { color: theme.textThird }]}>{t('profile.version')}</Text>
 
         {/* Sign out */}
         <Pressable
@@ -168,7 +170,7 @@ export default function ProfileScreen() {
           onPress={handleLogout}
         >
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-          <Text style={styles.logoutText}>Sign Out</Text>
+          <Text style={styles.logoutText}>{t('profile.signOut')}</Text>
         </Pressable>
 
       </ScrollView>

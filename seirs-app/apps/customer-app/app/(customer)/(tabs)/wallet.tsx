@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { paymentsApi } from '@/services/api';
@@ -31,6 +32,7 @@ export default function WalletScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
+  const { t }   = useTranslation();
 
   const [activeTab,    setTab]         = useState<Tab>('all');
   const [withdrawing,  setWithdrawing]  = useState(false);
@@ -111,7 +113,7 @@ export default function WalletScreen() {
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <HamburgerButton />
-            <Text style={[styles.title, { color: theme.text }]}>My Wallet</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('wallet.myWallet')}</Text>
           </View>
           <Pressable
             style={[styles.iconBtn, { backgroundColor: theme.surfaceSecond }]}
@@ -129,7 +131,7 @@ export default function WalletScreen() {
             end={{ x: 1, y: 1 }}
             style={[styles.balanceCard, Shadows.navy]}
           >
-            <Text style={styles.balanceLabel}>Wallet Balance</Text>
+            <Text style={styles.balanceLabel}>{t('wallet.walletBalance')}</Text>
             <Text style={styles.balanceAmount}>
               ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
             </Text>
@@ -137,14 +139,14 @@ export default function WalletScreen() {
             {/* Escrow breakdown */}
             <View style={styles.escrowRow}>
               <View style={styles.escrowItem}>
-                <Text style={styles.escrowLabel}>Available</Text>
+                <Text style={styles.escrowLabel}>{t('wallet.available')}</Text>
                 <Text style={styles.escrowValue}>₦{available.toLocaleString()}</Text>
               </View>
               <View style={[styles.escrowDivider]} />
               <View style={styles.escrowItem}>
                 <View style={styles.escrowTitleRow}>
                   <Clock size={11} color="rgba(255,255,255,0.6)" strokeWidth={2} />
-                  <Text style={styles.escrowLabel}>Pending (escrow)</Text>
+                  <Text style={styles.escrowLabel}>{t('wallet.pendingEscrow')}</Text>
                 </View>
                 <Text style={styles.escrowValue}>₦{escrow.toLocaleString()}</Text>
               </View>
@@ -153,26 +155,10 @@ export default function WalletScreen() {
             {/* Actions */}
             <View style={styles.cardActions}>
               {[
-                {
-                  Icon: Plus,
-                  label: 'Top Up',
-                  onPress: () => router.push('/(customer)/add-payment' as any),
-                },
-                {
-                  Icon: ArrowUp,
-                  label: 'Withdraw',
-                  onPress: handleWithdraw,
-                },
-                {
-                  Icon: CreditCard,
-                  label: 'Cards',
-                  onPress: () => router.push('/(customer)/payment-methods' as any),
-                },
-                {
-                  Icon: QrCode,
-                  label: 'My ID',
-                  onPress: () => router.push('/(customer)/seirs-id' as any),
-                },
+                { Icon: Plus,       label: t('wallet.topUp'),    onPress: () => router.push('/(customer)/add-payment' as any) },
+                { Icon: ArrowUp,    label: t('wallet.withdraw'), onPress: handleWithdraw },
+                { Icon: CreditCard, label: t('wallet.cards'),    onPress: () => router.push('/(customer)/payment-methods' as any) },
+                { Icon: QrCode,     label: t('home.wallet'),     onPress: () => router.push('/(customer)/seirs-id' as any) },
               ].map(({ Icon, label, onPress }) => (
                 <Pressable key={label} style={styles.cardActionBtn} onPress={onPress}>
                   <View style={styles.cardActionIcon}>
@@ -188,9 +174,9 @@ export default function WalletScreen() {
         {/* Stats */}
         <View style={[styles.statsRow, { backgroundColor: theme.surface }, Shadows.sm]}>
           {[
-            { label: 'Total Spent',  value: `₦${transactions.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0).toLocaleString()}` },
-            { label: 'Total Earned', value: `₦${transactions.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0).toLocaleString()}` },
-            { label: 'Transactions', value: `${transactions.length}` },
+            { label: t('wallet.totalSpent'),   value: `₦${transactions.filter(tx => tx.type === 'debit').reduce((s, tx) => s + tx.amount, 0).toLocaleString()}` },
+            { label: t('wallet.totalEarned'),  value: `₦${transactions.filter(tx => tx.type === 'credit').reduce((s, tx) => s + tx.amount, 0).toLocaleString()}` },
+            { label: t('wallet.transactions'), value: `${transactions.length}` },
           ].map((stat, i) => (
             <View key={stat.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
               <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
@@ -201,7 +187,7 @@ export default function WalletScreen() {
 
         {/* Transactions */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Transactions</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('wallet.transactions')}</Text>
 
           <View style={[styles.tabRow, { backgroundColor: theme.surfaceSecond }]}>
             {(['all', 'credit', 'debit'] as Tab[]).map(tab => (
@@ -211,7 +197,7 @@ export default function WalletScreen() {
                 onPress={() => setTab(tab)}
               >
                 <Text style={[styles.tabText, { color: activeTab === tab ? '#fff' : theme.textSecond }]}>
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {t(`wallet.${tab}`)}
                 </Text>
               </Pressable>
             ))}
@@ -220,7 +206,7 @@ export default function WalletScreen() {
           {filtered.length === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: theme.surface }]}>
               <Receipt size={40} color={theme.textThird} strokeWidth={1.5} />
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>No transactions</Text>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('wallet.noTransactions')}</Text>
             </View>
           ) : (
             filtered.map(tx => (

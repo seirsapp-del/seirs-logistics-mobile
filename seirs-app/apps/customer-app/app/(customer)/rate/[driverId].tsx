@@ -5,20 +5,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { deliveriesApi } from '@/services/api';
 
-const TAGS = ['Punctual', 'Professional', 'Safe driver', 'Clean car', 'Great music', 'Friendly'];
-const STAR_LABELS = ['', 'Terrible', 'Bad', 'Okay', 'Good', 'Excellent'];
+const TAG_KEYS = ['tagPunctual', 'tagProfessional', 'tagSafeDriver', 'tagCleanCar', 'tagGreatMusic', 'tagFriendly'];
+const STAR_LABEL_KEYS = ['', 'starTerrible', 'starBad', 'starOkay', 'starGood', 'starExcellent'];
 
 export default function RateDriverScreen() {
   const router   = useRouter();
   const cs       = useColorScheme();
   const theme    = Colors[cs ?? 'light'];
   const isDark   = cs === 'dark';
+  const { t }    = useTranslation();
   const { driverId, tripId } = useLocalSearchParams<{ driverId: string; tripId?: string }>();
 
   const [driver, setDriver] = useState<{ name: string; vehicle: string; color: string; plate: string; profilePhoto?: string }>({
@@ -64,13 +66,11 @@ export default function RateDriverScreen() {
 
   const handleSubmit = async () => {
     if (!tripId) {
-      // Without a tripId we have nothing to attach the rating to. Bounce
-      // the user back to history so they can pick the trip they meant.
-      Alert.alert('No trip linked', 'Please open this from the trip details screen.');
+      Alert.alert(t('rateDriver.noTripLinked'), t('rateDriver.noTripLinkedMsg'));
       return;
     }
     if (!stars) {
-      Alert.alert('Pick a rating', 'Tap the stars to score your trip first.');
+      Alert.alert(t('rateDriver.pickRating'), t('rateDriver.pickRatingMsg'));
       return;
     }
     setLoading(true);
@@ -80,7 +80,7 @@ export default function RateDriverScreen() {
       await deliveriesApi.rate(tripId, stars, noteText || undefined);
       router.replace('/(customer)/(tabs)' as any);
     } catch (e: any) {
-      Alert.alert('Could not submit', e?.message ?? 'Please try again.');
+      Alert.alert(t('rateDriver.couldNotSubmit'), e?.message ?? t('rateDriver.tryAgain'));
     } finally {
       setLoading(false);
     }
@@ -98,9 +98,9 @@ export default function RateDriverScreen() {
           <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
-          <Text style={[styles.title, { color: theme.text }]}>Rate Your Trip</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('rateDriver.title')}</Text>
           <Pressable onPress={() => router.replace('/(customer)/(tabs)' as any)}>
-            <Text style={[styles.skipText, { color: theme.textSecond }]}>Skip</Text>
+            <Text style={[styles.skipText, { color: theme.textSecond }]}>{t('rateDriver.skip')}</Text>
           </Pressable>
         </View>
 
@@ -115,7 +115,7 @@ export default function RateDriverScreen() {
 
           {/* Stars */}
           <View style={styles.starSection}>
-            <Text style={[styles.starPrompt, { color: theme.text }]}>How was your ride?</Text>
+            <Text style={[styles.starPrompt, { color: theme.text }]}>{t('rateDriver.howWasRide')}</Text>
             <View style={styles.stars}>
               {[1, 2, 3, 4, 5].map(s => (
                 <Pressable
@@ -134,7 +134,7 @@ export default function RateDriverScreen() {
             </View>
             {display > 0 && (
               <Text style={[styles.starLabel, { color: display >= 4 ? '#22C55E' : display === 3 ? '#FFBE0B' : '#EF4444' }]}>
-                {STAR_LABELS[display]}
+                {t(`rateDriver.${STAR_LABEL_KEYS[display]}`)}
               </Text>
             )}
           </View>
@@ -142,33 +142,36 @@ export default function RateDriverScreen() {
           {/* Tags */}
           {stars >= 4 && (
             <View style={styles.tagsSection}>
-              <Text style={[styles.tagsTitle, { color: theme.text }]}>What stood out?</Text>
+              <Text style={[styles.tagsTitle, { color: theme.text }]}>{t('rateDriver.whatStoodOut')}</Text>
               <View style={styles.tags}>
-                {TAGS.map(tag => (
-                  <Pressable
-                    key={tag}
-                    style={[
-                      styles.tag,
-                      { borderColor: selected.has(tag) ? theme.primary : theme.border },
-                      selected.has(tag) && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
-                    ]}
-                    onPress={() => toggleTag(tag)}
-                  >
-                    {selected.has(tag) && <Ionicons name="checkmark" size={12} color={theme.primary} />}
-                    <Text style={[styles.tagText, { color: selected.has(tag) ? theme.primary : theme.textSecond }]}>{tag}</Text>
-                  </Pressable>
-                ))}
+                {TAG_KEYS.map(tagKey => {
+                  const label = t(`rateDriver.${tagKey}`);
+                  return (
+                    <Pressable
+                      key={tagKey}
+                      style={[
+                        styles.tag,
+                        { borderColor: selected.has(label) ? theme.primary : theme.border },
+                        selected.has(label) && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
+                      ]}
+                      onPress={() => toggleTag(label)}
+                    >
+                      {selected.has(label) && <Ionicons name="checkmark" size={12} color={theme.primary} />}
+                      <Text style={[styles.tagText, { color: selected.has(label) ? theme.primary : theme.textSecond }]}>{label}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
           )}
 
           {/* Comment */}
           <View style={styles.commentSection}>
-            <Text style={[styles.commentLabel, { color: theme.text }]}>Leave a comment (optional)</Text>
+            <Text style={[styles.commentLabel, { color: theme.text }]}>{t('rateDriver.leaveComment')}</Text>
             <View style={[styles.commentWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.commentInput, { color: theme.text }]}
-                placeholder="Tell us more about your experience…"
+                placeholder={t('rateDriver.commentPlaceholder')}
                 placeholderTextColor={theme.textThird}
                 multiline
                 maxLength={300}
@@ -180,7 +183,7 @@ export default function RateDriverScreen() {
 
           {/* Tip */}
           <View style={styles.tipSection}>
-            <Text style={[styles.tipTitle, { color: theme.text }]}>Add a tip (optional)</Text>
+            <Text style={[styles.tipTitle, { color: theme.text }]}>{t('rateDriver.addTip')}</Text>
             <View style={styles.tipOptions}>
               {TIP_OPTIONS.map(amount => (
                 <Pressable
@@ -205,7 +208,7 @@ export default function RateDriverScreen() {
         {/* CTA */}
         <View style={[styles.cta, { borderTopColor: theme.border, backgroundColor: theme.surface }]}>
           <Button
-            label={`Submit Rating${tipping ? ` + ₦${tipping} tip` : ''}`}
+            label={tipping ? t('rateDriver.submitRatingWithTip', { amount: tipping }) : t('rateDriver.submitRating')}
             onPress={handleSubmit}
             loading={loading}
             disabled={stars === 0}

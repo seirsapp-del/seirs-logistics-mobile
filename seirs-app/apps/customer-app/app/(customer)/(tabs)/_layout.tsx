@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize } from '@/constants/theme';
 
@@ -20,6 +21,7 @@ function TabIcon({ name, color, focused }: { name: IoniconsName; color: string; 
  * Uber, Bolt, DoorDash, etc.
  */
 export default function CustomerTabsLayout() {
+  const { t }  = useTranslation();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const insets = useSafeAreaInsets();
@@ -48,23 +50,23 @@ export default function CustomerTabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Home', tabBarIcon: (p) => <TabIcon name="home" color={p.color} focused={p.focused} /> }}
+        options={{ title: t('tabs.home'), tabBarIcon: (p) => <TabIcon name="home" color={p.color} focused={p.focused} /> }}
       />
       <Tabs.Screen
         name="history"
-        options={{ title: 'Bookings', tabBarIcon: (p) => <TabIcon name="receipt" color={p.color} focused={p.focused} /> }}
+        options={{ title: t('tabs.bookings'), tabBarIcon: (p) => <TabIcon name="receipt" color={p.color} focused={p.focused} /> }}
       />
       <Tabs.Screen
         name="wallet"
-        options={{ title: 'Wallet', tabBarIcon: (p) => <TabIcon name="wallet" color={p.color} focused={p.focused} /> }}
+        options={{ title: t('tabs.wallet'), tabBarIcon: (p) => <TabIcon name="wallet" color={p.color} focused={p.focused} /> }}
       />
       <Tabs.Screen
         name="messages"
-        options={{ title: 'Messages', tabBarIcon: (p) => <TabIcon name="chatbubbles" color={p.color} focused={p.focused} /> }}
+        options={{ title: t('tabs.messages'), tabBarIcon: (p) => <TabIcon name="chatbubbles" color={p.color} focused={p.focused} /> }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profile', tabBarIcon: (p) => <TabIcon name="person" color={p.color} focused={p.focused} /> }}
+        options={{ title: t('tabs.profile'), tabBarIcon: (p) => <TabIcon name="person" color={p.color} focused={p.focused} /> }}
       />
     </Tabs>
   );

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { usersApi } from '@/services/api';
@@ -19,6 +20,7 @@ export default function PrivacyScreen() {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
+  const { t }  = useTranslation();
 
   const [locationAlways,  setLocationAlways]  = useState(false);
   const [locationInUse,   setLocationInUse]   = useState(true);
@@ -103,7 +105,7 @@ export default function PrivacyScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Privacy & Data</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('settings.privacyTitle')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
