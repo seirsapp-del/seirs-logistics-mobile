@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useRateCardSync } from '@/hooks/use-rate-card';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
@@ -105,6 +106,10 @@ function AppContent() {
   // hook silently no-ops until expo-notifications is installed + a
   // native rebuild ships — see shared/hooks/usePushRegistration.ts.
   usePushRegistration(isAuthenticated);
+  // Pull the live RateCard from backend on launch, cache in AsyncStorage,
+  // refresh every 5 min. Until this resolves, fare calcs read the bundled
+  // DEFAULT_RATE_CARD so the app prices correctly from the first frame.
+  useRateCardSync();
   useEffect(() => {
     setReporterUserIdGetter(() => user?.id ?? null);
   }, [user?.id]);

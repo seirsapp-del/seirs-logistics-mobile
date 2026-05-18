@@ -61,11 +61,14 @@ export const MOCK_DRIVERS = [
 // can edit prices without a code change. Re-exported here so existing
 // `import { RIDE_VEHICLES, calcRideFare } from '@/constants/mockData'`
 // callers keep working.
-import { DEFAULT_RATE_CARD, calcRideFare as _calcRideFare, calcPackageFare as _calcPackageFare } from './rateCard';
+import { calcRideFare as _calcRideFare, calcPackageFare as _calcPackageFare } from './rateCard';
+import { getActiveRateCard } from '@/hooks/use-rate-card';
 export { RIDE_VEHICLES, PACKAGE_VEHICLES, codHandlingFee, insurancePremium, dwellFee, cancellationFee, computeDiscounts, activeTimeSurcharges, resolveRegionalOverrides, fuelPerKm } from './rateCard';
 export type { Coords, RideFareResult, PackageFareResult, RegionalOverrides, DiscountOpts, DiscountResult } from './rateCard';
-export const calcRideFare    = (vehicleId: string, distKm: number, shared: boolean, opts: Parameters<typeof _calcRideFare>[4]    = {}) => _calcRideFare(DEFAULT_RATE_CARD, vehicleId, distKm, shared, opts);
-export const calcPackageFare = (vehicleId: string, distKm: number, kg: number,      opts: Parameters<typeof _calcPackageFare>[4] = {}) => _calcPackageFare(DEFAULT_RATE_CARD, vehicleId, distKm, kg, opts);
+// Curried wrappers — read the *live* rate card at call time so admin
+// publishes propagate the next time a screen renders, no app restart.
+export const calcRideFare    = (vehicleId: string, distKm: number, shared: boolean, opts: Parameters<typeof _calcRideFare>[4]    = {}) => _calcRideFare(getActiveRateCard(), vehicleId, distKm, shared, opts);
+export const calcPackageFare = (vehicleId: string, distKm: number, kg: number,      opts: Parameters<typeof _calcPackageFare>[4] = {}) => _calcPackageFare(getActiveRateCard(), vehicleId, distKm, kg, opts);
 
 export const MOCK_VEHICLES = [
   {
