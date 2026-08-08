@@ -144,6 +144,29 @@ export class PaymentsController {
     return this.paymentsService.requestWithdrawal(user.id, body.amountNaira);
   }
 
+  // ── Proactive card save (Bolt/Uber pattern) ──────────────────────────────
+  // POST /api/v1/payments/add-card
+  // Starts a ₦100 card-verification charge on Flutterwave. Returns the
+  // hosted page URL. Client opens it, user completes checkout, returns.
+  @UseGuards(JwtAuthGuard)
+  @Post('add-card')
+  addCardStart(@CurrentUser() user: User) {
+    return this.paymentsService.initiateCardVerification(user);
+  }
+
+  // POST /api/v1/payments/add-card/verify/:txRef
+  // Client calls this after returning from the Flutterwave page. Server
+  // verifies the transaction succeeded, saves the card token, and
+  // immediately refunds the ₦100 verification charge.
+  @UseGuards(JwtAuthGuard)
+  @Post('add-card/verify/:txRef')
+  addCardVerify(
+    @CurrentUser() user: User,
+    @Param('txRef') txRef: string,
+  ) {
+    return this.paymentsService.verifyAndRefundCardCharge(user.id, txRef);
+  }
+
   // PATCH /api/v1/payments/bank-details
   @UseGuards(JwtAuthGuard)
   @Patch('bank-details')

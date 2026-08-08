@@ -40,11 +40,17 @@ export function Drawer({ visible, onClose }: Props) {
   const items: DrawerItem[] = [
     { icon: 'User',       label: t('drawer.profile',       { defaultValue: 'Profile' }),         onPress: () => navigate('/(customer)/profile') },
     { icon: 'CreditCard', label: t('drawer.paymentMethods',{ defaultValue: 'Payment Methods' }), onPress: () => navigate('/(customer)/payment-methods') },
-    { icon: 'Gift',       label: t('drawer.rewards',       { defaultValue: 'Rewards & Points' }),onPress: () => navigate('/(customer)/loyalty') },
+    // Point at the rewritten /rewards catalogue with real API + correct
+    // thresholds. The old /loyalty screen had hardcoded values and misleading
+    // numbers; keeping the drawer aimed there was the biggest UX bug on the
+    // menu. loyalty.tsx now redirects to /rewards so any stale link resolves.
+    { icon: 'Gift',       label: t('drawer.rewards',       { defaultValue: 'Rewards & Points' }),onPress: () => navigate('/(customer)/rewards') },
     { icon: 'QrCode',     label: t('drawer.seirsId',       { defaultValue: 'My SEIRS ID' }),     onPress: () => navigate('/(customer)/seirs-id') },
     { icon: 'Users',      label: t('drawer.poolPrefs',     { defaultValue: 'Ride Pool Preferences' }), onPress: () => navigate('/(customer)/pool-preferences') },
-    { icon: 'Settings',   label: t('drawer.settings',      { defaultValue: 'Settings' }),        onPress: () => navigate('/(customer)/notification-settings') },
-    { icon: 'Bell',       label: t('drawer.notifications', { defaultValue: 'Notifications' }),   onPress: () => navigate('/notifications') },
+    // Label honesty: this only opens the notification settings screen, not
+    // a full settings hub. Renamed so users don't tap expecting language +
+    // privacy + theme in one place.
+    { icon: 'Bell',       label: t('drawer.notificationSettings', { defaultValue: 'Notification Settings' }), onPress: () => navigate('/(customer)/notification-settings') },
     { icon: 'Globe',      label: t('drawer.language',      { defaultValue: 'Language' }),        onPress: () => navigate('/(customer)/language') },
     { icon: 'HelpCircle', label: t('drawer.help',          { defaultValue: 'Help & FAQ' }),      onPress: () => navigate('/(customer)/help') },
     { icon: 'Lock',       label: t('drawer.privacy',       { defaultValue: 'Privacy Policy' }),  onPress: () => navigate('/(customer)/privacy') },

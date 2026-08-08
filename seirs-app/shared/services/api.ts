@@ -293,6 +293,17 @@ export const paymentsApi = {
   setDefaultCard: (id: string) => request<{ ok: boolean }>('PATCH', `/payments/saved-cards/${id}/default`),
   deleteSavedCard: (id: string) => request<{ ok: boolean }>('DELETE', `/payments/saved-cards/${id}`),
 
+  // ── Proactive add card (Bolt/Uber pattern) ──
+  // ₦100 verification charge → immediate refund → card token saved.
+  // Two-step: start returns the Flutterwave hosted URL, verify runs
+  // after the user returns to the app.
+  addCardStart:  () =>
+    request<{ authorizationUrl: string; reference: string }>('POST', '/payments/add-card'),
+  addCardVerify: (txRef: string) =>
+    request<{ saved: boolean; refunded: boolean; last4?: string; brand?: string }>(
+      'POST', `/payments/add-card/verify/${txRef}`,
+    ),
+
   // ── Bank account verify (driver onboarding) ──
   verifyBank: (bankCode: string, accountNumber: string) =>
     request<{ verified: boolean; accountName?: string; message?: string }>(

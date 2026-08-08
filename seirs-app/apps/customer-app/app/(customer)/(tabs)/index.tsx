@@ -239,7 +239,7 @@ export default function CustomerHomeScreen() {
 
           <Pressable
             style={[styles.chip, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() => router.push('/notifications' as any)}
+            onPress={() => router.push('/(customer)/notification-settings' as any)}
           >
             <Bell size={14} color={theme.textSecond} strokeWidth={1.75} />
             <Text style={[styles.chipText, { color: theme.textSecond }]}>{t('home.alerts')}</Text>

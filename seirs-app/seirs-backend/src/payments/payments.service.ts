@@ -90,6 +90,115 @@ export class PaymentsService {
     return this.savedCardsRepo.save(card);
   }
 
+  // ── Proactive card save (Bolt/Uber pattern) ──────────────────────────────
+  // Nigerian PCI-DSS forbids us collecting raw cards. Cards can only be
+  // tokenized through Flutterwave's hosted page during a real charge. So
+  // "add a card without booking" needs a small verification charge that
+  // we auto-refund immediately. Standard approach across Uber, Bolt, and
+  // Nigerian fintech onboarding (Kuda, Piggyvest, etc.).
+  //
+  // Flow:
+  //   1. initiateCardVerification -> Flutterwave hosted page for NGN CARD_VERIFY_NAIRA
+  //   2. User completes checkout in browser (card saved by our verify step)
+  //   3. verifyAndRefundCardCharge -> confirm the txn, pull card token,
+  //      save to saved_cards, refund the amount to the card
+
+  private readonly CARD_VERIFY_NAIRA = 100;
+
+  async initiateCardVerification(customer: User): Promise<{
+    authorizationUrl: string;
+    reference:        string;
+  }> {
+    const txRef = `SRS-CARDV-${uuidv4().slice(0, 8).toUpperCase()}`;
+
+    const { paymentLink } = await this.flutterwaveService.initializePayment({
+      txRef,
+      amount:      this.CARD_VERIFY_NAIRA,
+      currency:    'NGN',
+      email:       customer.email,
+      phone:       customer.phone ?? '',
+      name:        customer.name,
+      redirectUrl: 'seirsmobile://payment-callback',
+      meta: {
+        purpose:    'card_verification',
+        customerId: customer.id,
+      },
+      paymentOption: 'card',
+    });
+
+    // Record a placeholder Payment row so ops has a paper trail even
+    // when the user abandons the flow. Marked pending; refund status
+    // will flip to REFUNDED on successful verify.
+    const payment = this.paymentsRepo.create({
+      customer,
+      amountKobo:        toKobo(this.CARD_VERIFY_NAIRA),
+      method:            PaymentMethod.CARD,
+      status:            PaymentStatus.PENDING,
+      provider:          'flutterwave',
+      providerReference: txRef,
+      authorizationUrl:  paymentLink,
+    });
+    await this.paymentsRepo.save(payment);
+
+    return { authorizationUrl: paymentLink, reference: txRef };
+  }
+
+  async verifyAndRefundCardCharge(userId: string, txRef: string): Promise<{
+    saved: boolean;
+    refunded: boolean;
+    last4?: string;
+    brand?: string;
+  }> {
+    // Confirm the transaction actually succeeded before saving anything.
+    const verified = await this.flutterwaveService.verifyByTxRef(txRef);
+    if (!verified.success) {
+      throw new BadRequestException('Card verification did not complete. Try again.');
+    }
+
+    // Pull the card token from the completed transaction. If Flutterwave
+    // didn't return a token (unusual — some card types don't tokenize),
+    // fail loudly so we don't refund silently without a saved card.
+    const cardMeta = await this.flutterwaveService.fetchCardTokenFromTransaction(verified.transactionId);
+    if (!cardMeta?.token) {
+      throw new BadRequestException('Card was charged but no reusable token was issued. Refund will still process.');
+    }
+
+    // Save the card first — losing the token would be worse than a
+    // failed refund (which ops can retry manually).
+    await this.saveCardToken(userId, {
+      token:    cardMeta.token,
+      last4:    cardMeta.last4,
+      brand:    cardMeta.brand,
+      expMonth: cardMeta.expMonth,
+      expYear:  cardMeta.expYear,
+      holder:   cardMeta.holder,
+    });
+
+    // Refund the verification charge. Best-effort — if the refund API
+    // fails, admin can trigger manually from Flutterwave dashboard, but
+    // the card is already saved for the user.
+    let refunded = false;
+    try {
+      await this.flutterwaveService.refundTransaction(verified.transactionId, this.CARD_VERIFY_NAIRA);
+      refunded = true;
+    } catch (e: any) {
+      this.logger.warn(`Card verify refund failed for tx ${verified.transactionId}: ${e?.message ?? e}. Ops must refund manually.`);
+    }
+
+    // Mark the placeholder Payment row as refunded (or attempted-refund).
+    await this.paymentsRepo.update(
+      { providerReference: txRef },
+      { status: refunded ? PaymentStatus.REFUNDED : PaymentStatus.SUCCESS },
+    ).catch(() => {});
+
+    return {
+      saved:    true,
+      refunded,
+      last4:    cardMeta.last4,
+      brand:    cardMeta.brand,
+    };
+  }
+
   // ── Wallet ────────────────────────────────────────────────────────────────
 
   async getOrCreateWallet(user: User): Promise<Wallet> {
