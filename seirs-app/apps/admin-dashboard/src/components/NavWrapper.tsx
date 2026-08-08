@@ -2,6 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import AdminNav from './AdminNav';
+import TopBar from './TopBar';
 import { ConfirmProvider } from './ConfirmDialog';
 import { clearSession, isSessionExpired, touchActivity } from '@/lib/auth';
 import { refreshAdminTokenIfPresent } from '@/lib/api';
@@ -55,9 +56,12 @@ export default function NavWrapper({ children }: { children: React.ReactNode }) 
     <ConfirmProvider>
       <div className="flex h-screen overflow-hidden">
         <AdminNav />
-        <main className="flex-1 overflow-y-auto bg-[#F5F5F0]">
-          {children}
-        </main>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 overflow-y-auto bg-[#F5F5F0]">
+            {children}
+          </main>
+        </div>
       </div>
     </ConfirmProvider>
   );

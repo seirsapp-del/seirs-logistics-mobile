@@ -320,6 +320,20 @@ export const adminApi = {
       req<any>(`/admin/roles/${roleId}/assign/${userId}`, { method: 'POST' }),
   },
 
+  // Universal top-bar search. Matches users by name/email/phone/SEIRS-ID,
+  // drivers by name/plate, deliveries by tracking code. Returns a flat
+  // list of typed hits so the UI can render mixed results.
+  search: (q: string, limit = 15) =>
+    req<{
+      hits: Array<{
+        type:     'user' | 'driver' | 'delivery';
+        id:       string;
+        label:    string;
+        sublabel: string;
+        href:     string;
+      }>;
+    }>(`/admin/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+
   // Spec V8 identity policy. customer identity verification queue.
   // Distinct from driver KYC (which lives under /admin/drivers).
   identityVerifications: {

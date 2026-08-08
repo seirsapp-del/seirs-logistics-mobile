@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller, Get, Post, Patch, Delete, Param, Body,
   UseGuards, Query, Req, BadRequestException,
 } from '@nestjs/common';
@@ -33,6 +33,15 @@ export class AdminController {
   @Get('stats')
   getStats() { return this.adminService.getDashboardStats(); }
 
+  // GET /api/v1/admin/search?q=<term>&limit=15
+  // Universal search across users, drivers, deliveries. Matches on name,
+  // email, phone, SEIRS ID (accountId), plate number, tracking code.
+  // Powers the admin top-bar quick-search.
+  @Get('search')
+  universalSearch(@Query() q: { q?: string; limit?: number }) {
+    return this.adminService.universalSearch(q.q ?? '', q.limit ?? 15);
+  }
+
   // ── Users ─────────────────────────────────────────────────────────────────
 
   // GET /api/v1/admin/users?page=1&limit=20&role=customer
@@ -54,7 +63,7 @@ export class AdminController {
   }
 
   // GET /api/v1/admin/admins/:id/footprint
-  // Spec V8 — what does this admin own that needs reassigning before
+  // Spec V8. what does this admin own that needs reassigning before
   // we offboard them? Powers the offboarding wizard.
   @Get('admins/:id/footprint')
   getAdminFootprint(@Param('id') id: string) {
@@ -62,7 +71,7 @@ export class AdminController {
   }
 
   // POST /api/v1/admin/admins/:id/offboard
-  // Spec V8 — graceful offboarding. Rejects with the blocker list
+  // Spec V8. graceful offboarding. Rejects with the blocker list
   // unless { force: true } is passed. Audit-logged.
   @Post('admins/:id/offboard')
   offboard(
@@ -133,7 +142,7 @@ export class AdminController {
 
   // ── Partner Store applications (hybrid-account redesign 2026-05-11) ───────
 
-  // GET /api/v1/admin/partner-stores/applications — pending KYC reviews
+  // GET /api/v1/admin/partner-stores/applications. pending KYC reviews
   @Get('partner-stores/applications')
   listPartnerApplications() {
     return this.partnerStoreService.adminListPendingApplications();
@@ -428,7 +437,7 @@ export class AdminController {
     });
   }
 
-  // ── Manual Refund (Spec V8 §3.13 — closes A23) ───────────────────────────
+  // ── Manual Refund (Spec V8 §3.13. closes A23) ───────────────────────────
   // Admin-initiated refund for a delivery whose escrow is still HELD.
   // Body: { reason: string }. Wraps PaymentsService.refundEscrow which
   // talks to Flutterwave (card) or credits the wallet (wallet method).
@@ -448,7 +457,7 @@ export class AdminController {
     });
   }
 
-  // ── NDPR admin tools (Spec V8 §3.13 — A32 + A33) ─────────────────────────
+  // ── NDPR admin tools (Spec V8 §3.13. A32 + A33) ─────────────────────────
 
   // GET /api/v1/admin/users/:id/export
   @Get('users/:id/export')

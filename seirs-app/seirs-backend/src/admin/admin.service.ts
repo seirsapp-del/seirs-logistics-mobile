@@ -23,6 +23,17 @@ import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 const PRICING_SINGLETON_ID = 'singleton';
 
+// Universal-search hit shape. Kept flat so the UI can render a mixed list
+// without switching on type for anything except the leading icon.
+export type SearchHitType = 'user' | 'driver' | 'delivery';
+export interface SearchHit {
+  type:      SearchHitType;
+  id:        string;
+  label:     string;
+  sublabel:  string;
+  href:      string;
+}
+
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
@@ -325,6 +336,91 @@ export class AdminService {
         commissionRate: PLATFORM_COMMISSION,   // exposed so admin UI never hardcodes the "30%" label
       },
     };
+  }
+
+  // ── Universal search ──────────────────────────────────────────────────────
+  // Powers the admin top-bar search. Matches users by name/email/phone/SEIRS-ID,
+  // drivers by name/plate, and deliveries by tracking code or price.
+  // Returns a flat list of typed hits so the UI can render mixed results.
+  async universalSearch(term: string, limit: number) {
+    const q = term.trim();
+    if (q.length < 2) return { hits: [] as SearchHit[] };
+
+    const like = `%${q}%`;
+    const takePerType = Math.max(3, Math.floor(limit / 3));
+
+    // Users: name, email, phone, or accountId (SEIRS ID)
+    const userRows = await this.usersRepo
+      .createQueryBuilder('u')
+      .select(['u.id', 'u.name', 'u.firstName', 'u.lastName', 'u.email', 'u.phone', 'u.role', 'u.accountId'])
+      .where('u.name ILIKE :like', { like })
+      .orWhere('u.firstName ILIKE :like', { like })
+      .orWhere('u.lastName ILIKE :like', { like })
+      .orWhere('u.email ILIKE :like', { like })
+      .orWhere('u.phone ILIKE :like', { like })
+      .orWhere('u.accountId ILIKE :like', { like })
+      .orderBy('u.createdAt', 'DESC')
+      .take(takePerType)
+      .getMany()
+      .catch(() => []);
+
+    // Drivers: join to user for name/email match, or match plateNumber
+    const driverRows = await this.driversRepo
+      .createQueryBuilder('d')
+      .leftJoinAndSelect('d.user', 'u')
+      .where('u.name ILIKE :like', { like })
+      .orWhere('u.firstName ILIKE :like', { like })
+      .orWhere('u.lastName ILIKE :like', { like })
+      .orWhere('u.email ILIKE :like', { like })
+      .orWhere('u.phone ILIKE :like', { like })
+      .orWhere('d.vehiclePlate ILIKE :like', { like })
+      .orderBy('d.createdAt', 'DESC')
+      .take(takePerType)
+      .getMany()
+      .catch(() => []);
+
+    // Deliveries: tracking code prefix match (fast, indexed)
+    const deliveryRows = await this.deliveriesRepo
+      .createQueryBuilder('dv')
+      .where('dv.trackingCode ILIKE :like', { like })
+      .orderBy('dv.createdAt', 'DESC')
+      .take(takePerType)
+      .getMany()
+      .catch(() => []);
+
+    const hits: SearchHit[] = [];
+
+    for (const u of userRows) {
+      const displayName = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.name || '(no name)';
+      hits.push({
+        type:     'user',
+        id:       u.id,
+        label:    displayName,
+        sublabel: `${u.role ?? 'customer'} · ${u.email}${u.accountId ? ` · ${u.accountId}` : ''}`,
+        href:     `/users/${u.id}`,
+      });
+    }
+    for (const d of driverRows) {
+      const displayName = [d.user?.firstName, d.user?.lastName].filter(Boolean).join(' ') || d.user?.name || '(no name)';
+      hits.push({
+        type:     'driver',
+        id:       d.id,
+        label:    displayName,
+        sublabel: `driver · ${d.vehicleType ?? 'unknown'}${d.vehiclePlate ? ` · ${d.vehiclePlate}` : ''}`,
+        href:     `/drivers/${d.id}`,
+      });
+    }
+    for (const dv of deliveryRows) {
+      hits.push({
+        type:     'delivery',
+        id:       dv.id,
+        label:    dv.trackingCode ?? dv.id,
+        sublabel: `${dv.status} · ₦${Number(dv.price ?? 0).toLocaleString()}`,
+        href:     `/deliveries?q=${encodeURIComponent(dv.trackingCode ?? dv.id)}`,
+      });
+    }
+
+    return { hits: hits.slice(0, limit) };
   }
 
   // ── Users ─────────────────────────────────────────────────────────────────

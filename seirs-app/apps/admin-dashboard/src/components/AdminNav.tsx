@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { canAccess, canAccessFromUser, isSuperAdmin, isSuperAdminFromUser, ROLE_COLORS, ROLE_LABELS, NAV_SECTIONS } from '@/lib/rbac';
 import type { AdminRoleType } from '@/lib/rbac';
+import { SeirsMarkBold, SeirsLockup } from './SeirsLogo';
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   LayoutDashboard, Map, Package, Truck, Users, Store, ArrowRightLeft, Briefcase,
@@ -56,20 +57,27 @@ export default function AdminNav() {
     <aside
       className={`${w} shrink-0 bg-[#0F2B4C] text-white flex flex-col h-screen sticky top-0 overflow-hidden transition-all duration-200 z-40`}
     >
-      {/* Logo */}
-      <div className={`flex items-center h-14 border-b border-white/10 px-3 shrink-0 ${collapsed ? 'justify-center' : 'gap-3'}`}>
-        <div className="w-8 h-8 rounded-lg bg-[#3A7BD5] flex items-center justify-center shrink-0">
-          <Package size={15} className="text-white" />
-        </div>
-        {!collapsed && (
+      {/* Brand lockup. Matches the mobile-app okada mark + SEIRS wordmark.
+          Collapsed sidebar shows the mark only; expanded shows mark + wordmark
+          + "Admin Portal" tagline. Hub cutout colour matches the sidebar bg. */}
+      <div className={`flex items-center border-b border-white/10 px-3 shrink-0 ${collapsed ? 'justify-center h-14' : 'gap-3 h-16'}`}>
+        {collapsed ? (
+          <SeirsMarkBold size={28} color="#FFFFFF" hubColor="#0F2B4C" />
+        ) : (
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-black tracking-widest leading-tight">SEIRS</div>
-            <div className="text-[10px] text-white/40 font-medium">Admin Portal</div>
+            <SeirsLockup
+              size={170}
+              color="#FFFFFF"
+              hubColor="#0F2B4C"
+              tagline="Admin Portal"
+              taglineColor="rgba(255,255,255,0.55)"
+            />
           </div>
         )}
         <button
           onClick={toggleCollapse}
-          className="ml-auto w-6 h-6 flex items-center justify-center text-white/40 hover:text-white transition-colors"
+          className="ml-auto w-6 h-6 flex items-center justify-center text-white/40 hover:text-white transition-colors shrink-0"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
