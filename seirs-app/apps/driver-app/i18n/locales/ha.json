@@ -284,5 +284,27 @@
     "required": "ana buƙata",
     "optional": "ba tilas ba",
     "km": "{{value}} km"
+  },
+  "chat": {
+    "online": "A kan layi",
+    "emptyDriver": "Babu saƙo tukuna.",
+    "inputPlaceholder": "Rubuta saƙo…",
+    "quickReplies": {
+      "driver": {
+        "onMyWay": "Ina zuwa",
+        "traffic": "Ina cikin cunkoso, zan ɗan makara",
+        "fiveMin": "Mintuna 5 daga zuwa",
+        "arrived": "Na iso",
+        "delivered": "An isar da kaya"
+      }
+    },
+    "system": {
+      "assigned": "An sanya wa maka wannan isar da kaya.",
+      "picked_up": "Ka ɗauko kayan.",
+      "in_transit": "A kan hanya zuwa wurin sauka.",
+      "delivered": "An kammala isar.",
+      "cancelled": "An soke wannan isar.",
+      "failed": "Ba a iya kammala isar da kaya ba."
+    }
   }
 }

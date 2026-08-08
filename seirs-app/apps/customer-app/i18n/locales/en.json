@@ -1052,5 +1052,27 @@
     "statTier": "Tier",
     "statRating": "Rating",
     "version": "SEIRS Logistics v2.0.0 · Build 204"
+  },
+  "chat": {
+    "online": "Online",
+    "empty": "No messages yet. Say hi to your driver.",
+    "inputPlaceholder": "Type a message…",
+    "quickReplies": {
+      "customer": {
+        "atGate": "I'm at the gate",
+        "ringDoorbell": "Ring the doorbell",
+        "leaveGuard": "Leave with security",
+        "callWhenNear": "Call when you arrive",
+        "thanks": "Thanks!"
+      }
+    },
+    "system": {
+      "assigned": "Driver assigned. They will pick up your package shortly.",
+      "picked_up": "Driver has picked up your package.",
+      "in_transit": "Package is on the way.",
+      "delivered": "Package delivered.",
+      "cancelled": "Delivery was cancelled.",
+      "failed": "Delivery could not be completed."
+    }
   }
 }

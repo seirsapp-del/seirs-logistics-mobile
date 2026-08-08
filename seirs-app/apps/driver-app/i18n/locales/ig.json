@@ -284,5 +284,27 @@
     "required": "achọrọ",
     "optional": "ọ dịghị mkpa",
     "km": "{{value}} km"
+  },
+  "chat": {
+    "online": "Nọ na ntanetị",
+    "emptyDriver": "Enwebeghị ozi ọ bụla.",
+    "inputPlaceholder": "Dee ozi…",
+    "quickReplies": {
+      "driver": {
+        "onMyWay": "M na-abịa",
+        "traffic": "Enwere ọkụkọ ụzọ, m ga-eji obere oge",
+        "fiveMin": "Nkeji ise fọdụrụ",
+        "arrived": "M erutela",
+        "delivered": "Enyere ngwongwo"
+      }
+    },
+    "system": {
+      "assigned": "Enyere gị nnyefe a.",
+      "picked_up": "I mere ka nbughachi zuo oke.",
+      "in_transit": "Na-aga ebe nnyefe.",
+      "delivered": "Nnyefe ejikwara.",
+      "cancelled": "Akagbuola nnyefe a.",
+      "failed": "Enweghị ike ime nnyefe."
+    }
   }
 }

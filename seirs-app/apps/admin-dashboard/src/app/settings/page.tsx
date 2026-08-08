@@ -1,6 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { Settings, Lock, AlertTriangle, RefreshCw, Save } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Settings, Lock, AlertTriangle, RefreshCw, Save, Sparkles, Trash2 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 interface ConfigRow {
@@ -92,6 +92,11 @@ export default function SettingsPage() {
         </div>
       )}
 
+      <FeaturedPromotionCard
+        raw={rows.find(r => r.key === 'featured_promotion')?.value ?? ''}
+        onSaved={load}
+      />
+
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
           <Settings size={15} className="text-[#0F2B4C]" />
@@ -102,7 +107,7 @@ export default function SettingsPage() {
             <div className="p-8 text-center text-sm text-gray-400">Loading…</div>
           ) : rows.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-400">No configuration keys defined yet.</div>
-          ) : rows.map(row => {
+          ) : rows.filter(r => r.key !== 'featured_promotion').map(row => {
             const label = PRETTY_LABEL[row.key] ?? row.key;
             const isEditing = editing === row.key;
             return (
@@ -162,4 +167,204 @@ export default function SettingsPage() {
       </div>
     </div>
   );
+}
+
+/* Featured Promotion widget. Backed by platform_config key
+   `featured_promotion`. Value is a JSON string of shape:
+     { type, label, desc, expiresAt }
+   Customer-app Rewards tab reads via GET /deliveries/featured-promotion,
+   which returns null when unset OR when expiresAt has passed. */
+
+type PromoType = 'discount_500' | 'free_delivery' | 'priority' | 'insurance';
+
+const PROMO_TYPES: { value: PromoType; hint: string }[] = [
+  { value: 'discount_500',  hint: '₦500 off next delivery (500 pts)' },
+  { value: 'free_delivery', hint: 'One free standard delivery (1000 pts)' },
+  { value: 'priority',      hint: 'Priority dispatch on next order (300 pts)' },
+  { value: 'insurance',     hint: 'Package insurance on next order (200 pts)' },
+];
+
+function FeaturedPromotionCard({ raw, onSaved }: { raw: string; onSaved: () => Promise<void> | void }) {
+  const parsed = useMemo(() => {
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return { __invalid: true, raw }; }
+  }, [raw]);
+
+  const [type,     setType]     = useState<PromoType>((parsed?.type as PromoType) ?? 'discount_500');
+  const [label,    setLabel]    = useState<string>(parsed?.label ?? '');
+  const [desc,     setDesc]     = useState<string>(parsed?.desc ?? '');
+  const [expiry,   setExpiry]   = useState<string>(parsed?.expiresAt ? isoToLocalInput(parsed.expiresAt) : '');
+  const [saving,   setSaving]   = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+
+  useEffect(() => {
+    setType((parsed?.type as PromoType) ?? 'discount_500');
+    setLabel(parsed?.label ?? '');
+    setDesc(parsed?.desc ?? '');
+    setExpiry(parsed?.expiresAt ? isoToLocalInput(parsed.expiresAt) : '');
+    setError(null);
+  }, [raw]);
+
+  const active   = !!parsed && !parsed.__invalid;
+  const expired  = active && parsed.expiresAt && new Date(parsed.expiresAt).getTime() < Date.now();
+
+  const save = async () => {
+    setError(null);
+    if (!label.trim() || !desc.trim()) {
+      setError('Label and description are required.');
+      return;
+    }
+    let expiresAt: string | null = null;
+    if (expiry) {
+      const d = new Date(expiry);
+      if (isNaN(d.getTime())) { setError('Expiry date is invalid.'); return; }
+      if (d.getTime() < Date.now()) { setError('Expiry must be in the future.'); return; }
+      expiresAt = d.toISOString();
+    }
+    const payload = JSON.stringify({ type, label: label.trim(), desc: desc.trim(), expiresAt });
+    setSaving(true);
+    try {
+      await adminApi.settings.update('featured_promotion', payload);
+      await onSaved();
+    } catch (e: any) {
+      setError(`Save failed: ${e?.message ?? 'unknown'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const clear = async () => {
+    if (!confirm('Remove the featured promotion? Customers will stop seeing it on the Rewards tab.')) return;
+    setClearing(true);
+    try {
+      await adminApi.settings.update('featured_promotion', '');
+      await onSaved();
+    } catch (e: any) {
+      setError(`Clear failed: ${e?.message ?? 'unknown'}`);
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-amber-50 to-white">
+        <Sparkles size={15} className="text-amber-600" />
+        <span className="text-sm font-semibold text-[#0F2B4C]">Featured Promotion</span>
+        {active && !expired && (
+          <span className="ml-auto text-[10px] uppercase font-bold tracking-wide text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Live</span>
+        )}
+        {active && expired && (
+          <span className="ml-auto text-[10px] uppercase font-bold tracking-wide text-red-700 bg-red-50 px-2 py-0.5 rounded-full">Expired</span>
+        )}
+        {!active && (
+          <span className="ml-auto text-[10px] uppercase font-bold tracking-wide text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Not set</span>
+        )}
+      </div>
+
+      <div className="p-4 space-y-3">
+        <p className="text-xs text-gray-500">
+          Shown on the customer Rewards tab as a hero card. Leave expiry blank for no auto-expiry. Clearing removes the card entirely.
+        </p>
+
+        {parsed?.__invalid && (
+          <div className="text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">
+            Stored value is not valid JSON. Saving here will overwrite it.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="text-xs">
+            <div className="text-gray-600 font-semibold mb-1">Type</div>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as PromoType)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
+            >
+              {PROMO_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.value}</option>
+              ))}
+            </select>
+            <div className="text-[10px] text-gray-500 mt-1">
+              {PROMO_TYPES.find(t => t.value === type)?.hint}
+            </div>
+          </label>
+
+          <label className="text-xs">
+            <div className="text-gray-600 font-semibold mb-1">Expires at (optional)</div>
+            <input
+              type="datetime-local"
+              value={expiry}
+              onChange={(e) => setExpiry(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
+            />
+            <div className="text-[10px] text-gray-500 mt-1">Local time. Blank = no auto-expiry.</div>
+          </label>
+        </div>
+
+        <label className="text-xs block">
+          <div className="text-gray-600 font-semibold mb-1">Headline (Label)</div>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="e.g. ₦500 off your next order"
+            maxLength={60}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
+          />
+          <div className="text-[10px] text-gray-400 mt-1">{label.length}/60</div>
+        </label>
+
+        <label className="text-xs block">
+          <div className="text-gray-600 font-semibold mb-1">Description</div>
+          <textarea
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            placeholder="e.g. Redeem 500 points and save on your next delivery."
+            maxLength={140}
+            rows={2}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
+          />
+          <div className="text-[10px] text-gray-400 mt-1">{desc.length}/140</div>
+        </label>
+
+        {error && (
+          <div className="text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">
+            {error}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            onClick={save}
+            disabled={saving || !label.trim() || !desc.trim()}
+            className="flex items-center gap-1.5 text-xs px-4 py-2 font-semibold bg-[#0F2B4C] text-white rounded-lg hover:bg-[#3A7BD5] disabled:opacity-50"
+          >
+            <Save size={12} />
+            {saving ? 'Saving…' : (active ? 'Update Promotion' : 'Publish Promotion')}
+          </button>
+          {active && (
+            <button
+              onClick={clear}
+              disabled={clearing}
+              className="flex items-center gap-1.5 text-xs px-3 py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50"
+            >
+              <Trash2 size={12} />
+              {clearing ? 'Clearing…' : 'Clear'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Convert an ISO date string to the value accepted by <input type="datetime-local">,
+   which needs `YYYY-MM-DDTHH:mm` in the browser's local zone. */
+function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

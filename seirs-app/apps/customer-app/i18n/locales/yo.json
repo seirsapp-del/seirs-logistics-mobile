@@ -1000,5 +1000,27 @@
     "cancelTitle": "Fagilé ìrìn yìí?",
     "cancelConfirmFree": "Kò sí owó ìfagilé.",
     "cancelConfirmWithFee": "Owó ìfagilé ₦{{fee}} yóò bá lò."
+  },
+  "chat": {
+    "online": "Ori ayelujara",
+    "empty": "Kò sí ìwífún síbẹ̀. Bá awakọ rẹ sọ̀rọ̀.",
+    "inputPlaceholder": "Ko ìwífún…",
+    "quickReplies": {
+      "customer": {
+        "atGate": "Mo wà ní ẹnu-ọ̀nà",
+        "ringDoorbell": "Kan agogo ilẹ̀kùn",
+        "leaveGuard": "Fi sílẹ̀ fún olùṣọ́",
+        "callWhenNear": "Pè mí tí o bá súnmọ́",
+        "thanks": "O ṣé!"
+      }
+    },
+    "system": {
+      "assigned": "A ti yan awakọ. Yóò gba ẹrù rẹ láìpẹ́.",
+      "picked_up": "Awakọ ti gba ẹrù rẹ.",
+      "in_transit": "Ẹrù wà lọ́nà.",
+      "delivered": "A ti fi ẹrù ránṣẹ́.",
+      "cancelled": "A fagilé ìfìsíni náà.",
+      "failed": "A kò lè parí ìfìsíni náà."
+    }
   }
 }

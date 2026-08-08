@@ -19,7 +19,7 @@ export class ChatService {
 
   /**
    * Verify the requesting user is either the customer or the assigned
-   * driver for this delivery. Anyone else is rejected — chats are
+   * driver for this delivery. Anyone else is rejected: chats are
    * scoped to the two parties.
    */
   private async assertParticipant(deliveryId: string, userId: string): Promise<Delivery> {
@@ -60,6 +60,71 @@ export class ChatService {
     return messages.reverse();
   }
 
+  /**
+   * Insert a system message into a delivery's chat. Called by the platform
+   * when significant state changes happen (driver assigned, picked up,
+   * delivered, cancelled) so both parties see the event inline without
+   * switching to a tracking screen. Broadcasts over the same WebSocket
+   * channel so the chat updates in real-time. Best-effort; failures are
+   * logged but never break the state transition that triggered it.
+   *
+   * `systemType` is a stable enum-like slug the client renders via i18n.
+   * `body` is the English fallback so old clients still get readable text.
+   */
+  async insertSystemMessage(
+    deliveryId: string,
+    systemType: string,
+    body: string,
+  ): Promise<ChatMessage | null> {
+    try {
+      const delivery = await this.deliveriesRepo.findOne({ where: { id: deliveryId } });
+      if (!delivery) return null;
+
+      const msg = this.repo.create({
+        delivery,
+        sender: null,
+        body,
+        systemType,
+      } as any);
+      const saved = await this.repo.save(msg as any) as unknown as ChatMessage;
+
+      // Broadcast so any open chat screens immediately show the new
+      // system pill. `senderId: null` is the client's signal to render as
+      // a centered status message rather than a chat bubble.
+      try {
+        this.trackingGateway.broadcastChatMessage(deliveryId, {
+          id:         saved.id,
+          body:       saved.body,
+          senderId:   null,
+          systemType: saved.systemType,
+          createdAt:  saved.createdAt,
+        } as any);
+      } catch { /* ignored: realtime is best-effort */ }
+
+      return saved;
+    } catch {
+      // Never let a chat insertion failure break the delivery state
+      // change that triggered it. Just log via return null.
+      return null;
+    }
+  }
+
+  /**
+   * Explicit mark-as-read. Used by clients that want to flip receipts
+   * without paginating the full message list. Idempotent.
+   */
+  async markRead(deliveryId: string, userId: string): Promise<void> {
+    await this.assertParticipant(deliveryId, userId);
+    await this.repo
+      .createQueryBuilder()
+      .update(ChatMessage)
+      .set({ readAt: new Date() })
+      .where('deliveryId = :deliveryId', { deliveryId })
+      .andWhere('senderId != :userId OR senderId IS NULL', { userId })
+      .andWhere('readAt IS NULL')
+      .execute();
+  }
+
   async send(deliveryId: string, sender: User, body: string) {
     const trimmed = body?.trim();
     if (!trimmed) throw new NotFoundException('Message cannot be empty.');
@@ -83,7 +148,7 @@ export class ChatService {
       createdAt: saved.createdAt,
     });
 
-    // Persistent notification for the recipient — surfaces in their
+    // Persistent notification for the recipient: surfaces in their
     // notification bell + (when FCM is fully wired) fires a push so
     // they see it even if the chat screen isn't open.
     const recipientId =
@@ -91,7 +156,7 @@ export class ChatService {
         ? delivery.driver?.user?.id
         : delivery.customer?.id;
     if (recipientId) {
-      // Fire-and-forget — chat send response shouldn't block on notif persistence.
+      // Fire-and-forget. Chat send response shouldn't block on notif persistence.
       this.notifications
         .create(
           recipientId,
@@ -108,7 +173,7 @@ export class ChatService {
   }
 
   /** Count unread messages across all of a user's deliveries. Used by the
-   *  Messages tab badge. Cheap query — single COUNT with a join. */
+   *  Messages tab badge. Cheap query, single COUNT with a join. */
   async unreadCount(userId: string): Promise<number> {
     return this.repo
       .createQueryBuilder('m')
@@ -121,7 +186,7 @@ export class ChatService {
   }
 
   /**
-   * List the user's chat conversations — one entry per delivery they're
+   * List the user's chat conversations: one entry per delivery they're
    * part of, with the last message + unread count + the other party's
    * display info. Drives the Messages tab list on both customer and
    * driver apps.

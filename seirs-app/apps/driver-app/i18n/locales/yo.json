@@ -284,5 +284,27 @@
     "required": "pọndandan",
     "optional": "kò pọndandan",
     "km": "{{value}} km"
+  },
+  "chat": {
+    "online": "Ori ayelujara",
+    "emptyDriver": "Kò sí ìwífún síbẹ̀.",
+    "inputPlaceholder": "Ko ìwífún…",
+    "quickReplies": {
+      "driver": {
+        "onMyWay": "Mo ń bọ̀",
+        "traffic": "Traffic wà, mo ń pẹ́",
+        "fiveMin": "Ìṣẹ́jú márùn kù",
+        "arrived": "Mo ti dé",
+        "delivered": "A ti fi ẹrù ránṣẹ́"
+      }
+    },
+    "system": {
+      "assigned": "A yàn ọ́ fún ìfìsíni yìí.",
+      "picked_up": "O ti gba ẹrù náà.",
+      "in_transit": "Lọ sí ibi ìfisísí.",
+      "delivered": "Ìfìsíni ti parí.",
+      "cancelled": "A fagilé ìfìsíni yìí.",
+      "failed": "A kò lè parí ìfìsíni náà."
+    }
   }
 }

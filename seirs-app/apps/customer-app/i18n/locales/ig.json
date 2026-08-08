@@ -1000,5 +1000,27 @@
     "cancelTitle": "Kagbuo njem a?",
     "cancelConfirmFree": "Enweghị ụgwọ nkwụsi.",
     "cancelConfirmWithFee": "Ụgwọ nkwụsi ₦{{fee}} ga-emetụta."
+  },
+  "chat": {
+    "online": "Nọ na ntanetị",
+    "empty": "Enwebeghị ozi ọ bụla. Kelee onye nkwọ gị.",
+    "inputPlaceholder": "Dee ozi…",
+    "quickReplies": {
+      "customer": {
+        "atGate": "Anọ m n'ọnụ ụzọ",
+        "ringDoorbell": "Kụọ mgbịrịgba ụlọ",
+        "leaveGuard": "Nyefee onye nche",
+        "callWhenNear": "Kpọọ m mgbe ị ga-eru nso",
+        "thanks": "Daalụ!"
+      }
+    },
+    "system": {
+      "assigned": "Enyere onye nkwọ. Ọ ga-ewere ngwongwo gị obere oge.",
+      "picked_up": "Onye nkwọ ebuwerela ngwongwo gị.",
+      "in_transit": "Ngwongwo nọ n'ụzọ.",
+      "delivered": "Enyere ngwongwo.",
+      "cancelled": "Akagbuola nnyefe.",
+      "failed": "Enweghị ike ime nnyefe."
+    }
   }
 }

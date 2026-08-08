@@ -22,6 +22,8 @@ import { MaintenanceModule } from '../maintenance/maintenance.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { User } from '../users/user.entity';
+import { ChatModule } from '../chat/chat.module';
+import { ChatService } from '../chat/chat.service';
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { User } from '../users/user.entity';
     forwardRef(() => DriversModule),
     MaintenanceModule,
     LoyaltyModule,
+    ChatModule,
   ],
   controllers: [DeliveriesController],
   providers: [DeliveriesService, PricingService],
@@ -51,6 +54,7 @@ export class DeliveriesModule implements OnModuleInit {
     private driversService:       DriversService,
     private loyaltyService:       LoyaltyService,
     @InjectRepository(User) private usersRepo: Repository<User>,
+    private chatService:          ChatService,
   ) {}
 
   onModuleInit() {
@@ -63,6 +67,7 @@ export class DeliveriesModule implements OnModuleInit {
     this.deliveriesService.driversService       = this.driversService;
     this.deliveriesService.loyaltyService       = this.loyaltyService;
     this.deliveriesService.usersRepoRef         = this.usersRepo;
+    this.deliveriesService.chatService          = this.chatService;
 
     // Give NotificationsService a reference to the gateway for WS delivery
     this.notificationsService.trackingGateway = this.trackingGateway;

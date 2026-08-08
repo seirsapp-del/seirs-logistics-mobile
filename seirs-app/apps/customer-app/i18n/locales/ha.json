@@ -1000,5 +1000,27 @@
     "cancelTitle": "Soke wannan tafiya?",
     "cancelConfirmFree": "Babu kuɗin sokewa.",
     "cancelConfirmWithFee": "Kuɗin sokewa ₦{{fee}} zai shafa."
+  },
+  "chat": {
+    "online": "A kan layi",
+    "empty": "Babu saƙo tukuna. Gaisa direbanka.",
+    "inputPlaceholder": "Rubuta saƙo…",
+    "quickReplies": {
+      "customer": {
+        "atGate": "Ina kofa",
+        "ringDoorbell": "Buga ƙararrawar kofa",
+        "leaveGuard": "Bar wa mai gadi",
+        "callWhenNear": "Kira ni idan ka kusa",
+        "thanks": "Na gode!"
+      }
+    },
+    "system": {
+      "assigned": "An sanya direba. Zai zo ya ɗauko kayanku ba da daɗewa ba.",
+      "picked_up": "Direba ya ɗauko kayanku.",
+      "in_transit": "Kaya na kan hanya.",
+      "delivered": "An isar da kaya.",
+      "cancelled": "An soke aikin.",
+      "failed": "Ba a iya kammala isar da kaya ba."
+    }
   }
 }

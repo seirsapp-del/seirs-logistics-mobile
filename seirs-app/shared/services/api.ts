@@ -587,9 +587,14 @@ export const sosApi = {
 export interface ChatMessageDTO {
   id:        string;
   body:      string;
-  senderId:  string;
+  // Null for system messages (driver assigned, picked up, delivered).
+  // Client renders sender-less messages as centered status pills.
+  senderId:  string | null;
   createdAt: string;
   readAt?:   string | null;
+  // Stable enum-like slug that the client maps to an i18n key:
+  //   assigned | picked_up | in_transit | delivered | cancelled | failed
+  systemType?: string | null;
 }
 
 export interface ChatConversationDTO {
@@ -621,6 +626,12 @@ export const chatApi = {
   // the last message + unread count + the other party's display info).
   // Drives the Messages tab list on both customer and driver apps.
   conversations: () => request<ChatConversationDTO[]>('GET', '/chats'),
+
+  // Explicit mark-as-read. Called by clients when the chat screen gains
+  // focus so read receipts flip without needing to paginate the message
+  // list. Idempotent.
+  markRead: (deliveryId: string) =>
+    request<void>('POST', `/chats/${deliveryId}/read`),
 };
 
 // ─── Maintenance status (public. apps poll to show banner) ────────────────

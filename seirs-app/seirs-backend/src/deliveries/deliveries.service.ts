@@ -24,7 +24,7 @@ export class DeliveriesService {
   notificationsService?: any;
   mailService?:          any;
   driversService?:       any;
-  // Spec V8 Tier 3 — when set, status changes fan out to subscribed
+  // Spec V8 Tier 3: when set, status changes fan out to subscribed
   // partner webhooks (POST /api/v1/dev-platform/webhooks subscribers).
   // Wired lazily by DevPlatformModule on app boot to avoid a circular
   // dep with DeliveriesModule.
@@ -33,6 +33,9 @@ export class DeliveriesService {
   // transition to run awardReferralBonusIfEligible for the customer.
   loyaltyService?:       any;
   usersRepoRef?:         any;
+  // Auto-inserts system messages into the delivery's chat on state changes
+  // so customer + driver see status inline without switching screens.
+  chatService?:          any;
 
   constructor(
     @InjectRepository(Delivery) private repo: Repository<Delivery>,
@@ -88,7 +91,7 @@ export class DeliveriesService {
 
     const match = await this.matchingService.findBestDriver(delivery);
     if (!match) {
-      this.logger.warn(`No driver found for delivery ${delivery.id} — triggering fallback`);
+      this.logger.warn(`No driver found for delivery ${delivery.id}, triggering fallback`);
       if (this.fallbackService) {
         await this.fallbackService.handle(delivery, 'no_driver_found');
       }
@@ -273,7 +276,7 @@ export class DeliveriesService {
   private pulseCache: { at: number; data: any } | null = null;
   async communityPulse() {
     const now = Date.now();
-    // Serve from memory cache when fresh (5 min) — this endpoint gets hit
+    // Serve from memory cache when fresh (5 min). This endpoint gets hit
     // on every Rewards tab load so we don't want to run the same query
     // 100 times a minute.
     if (this.pulseCache && (now - this.pulseCache.at) < 5 * 60 * 1000) {
@@ -351,7 +354,27 @@ export class DeliveriesService {
       this.trackingGateway.broadcastStatusChange(id, status);
     }
 
-    // Spec V8 Tier 3 — fan out to partner webhook subscribers
+    // Auto-insert a system message into the chat so both parties see the
+    // state change inline. Cuts down "where is my package?" questions by
+    // making progress visible without switching to a tracking tab. Silent
+    // fail if chatService isn't wired yet (module boot race, never happens
+    // in prod but keeps tests happy).
+    if (this.chatService) {
+      const systemBody: Record<string, string> = {
+        assigned:   'Driver assigned. They will pick up your package shortly.',
+        picked_up:  'Driver has picked up your package.',
+        in_transit: 'Package is on the way.',
+        delivered:  'Package delivered.',
+        cancelled:  'Delivery was cancelled.',
+        failed:     'Delivery could not be completed.',
+      };
+      const label = systemBody[String(status)];
+      if (label) {
+        this.chatService.insertSystemMessage(id, String(status), label).catch(() => {});
+      }
+    }
+
+    // Spec V8 Tier 3: fan out to partner webhook subscribers
     if (this.devPlatformService) {
       const eventMap: Record<string, string> = {
         assigned:   'order.driver_assigned',

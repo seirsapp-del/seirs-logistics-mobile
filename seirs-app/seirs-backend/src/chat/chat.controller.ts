@@ -34,18 +34,29 @@ export class ChatController {
     return this.svc.send(deliveryId, user, body?.body);
   }
 
-  // GET /api/v1/chats/unread-count — used by the Messages tab badge.
+  // GET /api/v1/chats/unread-count. Used by the Messages tab badge.
   @Get('unread-count')
   async unreadCount(@CurrentUser() user: User) {
     const count = await this.svc.unreadCount(user.id);
     return { count };
   }
 
-  // GET /api/v1/chats — list the user's conversations (one per delivery
+  // GET /api/v1/chats. List the user's conversations (one per delivery
   // they're part of, with the last message + unread count + other party).
   // Drives the Messages tab list on both customer and driver apps.
   @Get()
   conversations(@CurrentUser() user: User) {
     return this.svc.listConversations(user.id);
+  }
+
+  // POST /api/v1/chats/:deliveryId/read. Explicit mark-as-read.
+  // Clients hit this when the chat screen gains focus to flip the read
+  // receipt without paginating the message list. Idempotent.
+  @Post(':deliveryId/read')
+  markRead(
+    @Param('deliveryId') deliveryId: string,
+    @CurrentUser()       user:       User,
+  ) {
+    return this.svc.markRead(deliveryId, user.id);
   }
 }

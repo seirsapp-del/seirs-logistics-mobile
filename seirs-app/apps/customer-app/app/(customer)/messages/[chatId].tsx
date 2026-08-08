@@ -1,66 +1,81 @@
 /**
  * Customer ↔ Driver chat screen.
  *
- * Wired to the backend ChatService (Socket.io `chat:<deliveryId>` room +
- * REST `/chats/:deliveryId/messages`). The URL param is named `chatId`
- * for backwards-compatibility with existing router.push() callers, but
- * its value is the *delivery id* — every conversation is scoped to a
- * delivery, there is no separate thread entity.
+ * Real-time chat scoped to one delivery. Includes three features shipped
+ * as part of the pre-launch chat batch:
+ *   1. Quick-reply chips ("I'm at the gate", etc.) so users don't type
+ *      while their driver is on the road.
+ *   2. System messages (driver assigned, picked up, delivered) auto-
+ *      inserted by the backend and rendered as centered status pills.
+ *   3. Read receipts: single check when delivered, double check when read.
  *
- * Driver display info (name, online status) is sourced from MOCK_MESSAGES
- * as a graceful fallback when the user navigates here from the Messages
- * tab list. Once the backend exposes a `GET /chats/:deliveryId` endpoint
- * with driver metadata we can swap that out.
+ * The `chatId` URL param is the *delivery id*. Every conversation is
+ * scoped to a delivery. There is no separate thread entity.
  */
 import {
   View, Text, Pressable, StyleSheet, FlatList, TextInput,
-  KeyboardAvoidingView, Platform, StatusBar, ActivityIndicator,
+  KeyboardAvoidingView, Platform, StatusBar, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/context/AuthContext';
-import { MOCK_MESSAGES } from '@/constants/mockData';
 import { useChat } from '@seirs/shared/hooks/useChat';
+import { chatApi } from '@/services/api';
 import { SOCKET_URL } from '@/constants/config';
+
+// Customer-side canned messages. Kept short so they fit on chips + are
+// actionable. Translated via i18n keys chat.quickReplies.customer.*
+const QUICK_REPLIES = [
+  { key: 'atGate',       fallback: "I'm at the gate" },
+  { key: 'ringDoorbell', fallback: 'Ring the doorbell' },
+  { key: 'leaveGuard',   fallback: 'Leave with security' },
+  { key: 'callWhenNear', fallback: 'Call when you arrive' },
+  { key: 'thanks',       fallback: 'Thanks!' },
+];
 
 export default function ChatScreen() {
   const router  = useRouter();
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
-  const params  = useLocalSearchParams<{ chatId: string }>();
+  const params  = useLocalSearchParams<{ chatId: string; driverName?: string }>();
   const { user } = useAuth();
+  const { t }   = useTranslation();
 
-  // Use the URL param as the delivery id. Falls back to the first mock
-  // conversation only for display lookup (driver name + avatar).
   const deliveryId = params.chatId ?? null;
-  const conversation = MOCK_MESSAGES.find(m => m.id === params.chatId) ?? MOCK_MESSAGES[0];
-  const driver       = conversation.driver;
+  const driverName = params.driverName || 'Driver';
 
   const { messages, loading, sending, send } = useChat(deliveryId, { socketUrl: SOCKET_URL });
 
   const [input, setInput] = useState('');
   const listRef = useRef<FlatList>(null);
 
-  const handleSend = async () => {
-    const body = input.trim();
-    if (!body || sending) return;
+  // Flip read receipts on focus. `useChat.list()` also does this as a
+  // side effect but explicit mark-read handles the case where user
+  // switches away + back without a re-fetch.
+  useEffect(() => {
+    if (!deliveryId) return;
+    chatApi.markRead(deliveryId).catch(() => {});
+  }, [deliveryId, messages.length]);
+
+  const handleSend = async (body: string) => {
+    const trimmed = body.trim();
+    if (!trimmed || sending) return;
     setInput('');
     try {
-      await send(body);
+      await send(trimmed);
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch {
-      // Restore the text so the user can retry.
-      setInput(body);
+      setInput(trimmed);
     }
   };
 
-  // Memoised so the FlatList renderItem stays cheap.
   const myUserId = user?.id ?? '';
   const sortedMessages = useMemo(() => messages, [messages]);
 
@@ -74,25 +89,21 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <Avatar name={driver.name} size={36} />
+          <Avatar name={driverName} size={36} />
           <View>
-            <Text style={[styles.headerName, { color: theme.text }]}>{driver.name}</Text>
-            <Text style={[styles.headerSub, { color: '#22C55E' }]}>Online</Text>
+            <Text style={[styles.headerName, { color: theme.text }]}>{driverName}</Text>
+            <Text style={[styles.headerSub, { color: '#22C55E' }]}>{t('chat.online', { defaultValue: 'Online' })}</Text>
           </View>
         </View>
-        {/* Phone calls disabled per spec §1.12 — chat only */}
       </View>
 
-      {/* Messages */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={90}
       >
         {loading && messages.length === 0 ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator color={theme.primary} />
-          </View>
+          <View style={styles.loadingWrap}><ActivityIndicator color={theme.primary} /></View>
         ) : (
           <FlatList
             ref={listRef}
@@ -104,20 +115,37 @@ export default function ChatScreen() {
               <View style={styles.emptyWrap}>
                 <Ionicons name="chatbubbles-outline" size={48} color={theme.textThird} />
                 <Text style={[styles.emptyText, { color: theme.textSecond }]}>
-                  No messages yet — say hi to your driver.
+                  {t('chat.empty', { defaultValue: 'No messages yet. Say hi to your driver.' })}
                 </Text>
               </View>
             }
             renderItem={({ item, index }) => {
+              // System messages (backend-inserted status events) render as
+              // centered pills with a translated label. senderId is null.
+              if (!item.senderId && (item as any).systemType) {
+                const label = t(
+                  `chat.system.${(item as any).systemType}`,
+                  { defaultValue: item.body },
+                );
+                return (
+                  <View style={styles.systemWrap}>
+                    <View style={[styles.systemPill, { backgroundColor: isDark ? '#1A1A1A' : '#F1F5F9', borderColor: theme.border }]}>
+                      <Ionicons name="information-circle-outline" size={12} color={theme.textSecond} />
+                      <Text style={[styles.systemText, { color: theme.textSecond }]}>{label}</Text>
+                    </View>
+                  </View>
+                );
+              }
+
               const isMe     = item.senderId === myUserId;
               const next     = sortedMessages[index + 1];
-              const showTime = !next || next.senderId !== item.senderId;
+              const showTime = !next || next.senderId !== item.senderId || (!!(next as any).systemType);
               const time     = new Date(item.createdAt).toLocaleTimeString(undefined, {
                 hour: '2-digit', minute: '2-digit',
               });
               return (
                 <View style={[styles.bubbleWrap, isMe && styles.bubbleWrapMe]}>
-                  {!isMe && <Avatar name={driver.name} size={28} />}
+                  {!isMe && <Avatar name={driverName} size={28} />}
                   <View style={styles.bubbleColumn}>
                     <View style={[
                       styles.bubble,
@@ -130,9 +158,17 @@ export default function ChatScreen() {
                       </Text>
                     </View>
                     {showTime && (
-                      <Text style={[styles.bubbleTime, { color: theme.textThird, alignSelf: isMe ? 'flex-end' : 'flex-start' }]}>
-                        {time}
-                      </Text>
+                      <View style={[styles.metaRow, { justifyContent: isMe ? 'flex-end' : 'flex-start' }]}>
+                        <Text style={[styles.bubbleTime, { color: theme.textThird }]}>{time}</Text>
+                        {/* Read receipt on my own messages only. Single check
+                            = delivered to backend. Double check = the other
+                            party has opened the chat since. */}
+                        {isMe && (
+                          item.readAt
+                            ? <Ionicons name="checkmark-done" size={12} color={theme.primary} />
+                            : <Ionicons name="checkmark"      size={12} color={theme.textThird} />
+                        )}
+                      </View>
                     )}
                   </View>
                   {isMe && <View style={{ width: 28 }} />}
@@ -142,25 +178,47 @@ export default function ChatScreen() {
           />
         )}
 
+        {/* Quick-reply chips: horizontal scroll so more can fit + users
+            never have to type while on the move. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickReplyRow}
+          keyboardShouldPersistTaps="handled"
+        >
+          {QUICK_REPLIES.map((qr) => (
+            <Pressable
+              key={qr.key}
+              onPress={() => handleSend(t(`chat.quickReplies.customer.${qr.key}`, { defaultValue: qr.fallback }))}
+              disabled={sending}
+              style={[styles.quickReplyChip, { backgroundColor: theme.surface, borderColor: theme.border, opacity: sending ? 0.5 : 1 }]}
+            >
+              <Text style={[styles.quickReplyText, { color: theme.text }]}>
+                {t(`chat.quickReplies.customer.${qr.key}`, { defaultValue: qr.fallback })}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
         {/* Input bar */}
         <View style={[styles.inputBar, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
           <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <TextInput
               style={[styles.input, { color: theme.text }]}
-              placeholder="Type a message…"
+              placeholder={t('chat.inputPlaceholder', { defaultValue: 'Type a message…' })}
               placeholderTextColor={theme.textThird}
               value={input}
               onChangeText={setInput}
               multiline
               maxLength={500}
               returnKeyType="send"
-              onSubmitEditing={handleSend}
+              onSubmitEditing={() => handleSend(input)}
               editable={!sending}
             />
           </View>
           <Pressable
             style={[styles.sendBtn, { backgroundColor: input.trim() && !sending ? theme.primary : theme.border }]}
-            onPress={handleSend}
+            onPress={() => handleSend(input)}
             disabled={!input.trim() || sending}
           >
             {sending
@@ -196,7 +254,16 @@ const styles = StyleSheet.create({
   bubbleMe:     { borderBottomRightRadius: 4, alignSelf: 'flex-end' },
   bubbleDriver: { borderBottomLeftRadius: 4, alignSelf: 'flex-start' },
   bubbleText:   { fontSize: FontSize.base, lineHeight: 20 },
+  metaRow:      { flexDirection: 'row', alignItems: 'center', gap: 4 },
   bubbleTime:   { fontSize: 10 },
+
+  systemWrap:  { alignItems: 'center', marginVertical: 4 },
+  systemPill:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
+  systemText:  { fontSize: 11, fontWeight: FontWeight.medium },
+
+  quickReplyRow:  { paddingHorizontal: Spacing.md, paddingVertical: 8, gap: 8 },
+  quickReplyChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
+  quickReplyText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
 
   inputBar:  {
     flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm,

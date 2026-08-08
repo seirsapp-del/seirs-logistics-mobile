@@ -284,5 +284,27 @@
     "required": "required",
     "optional": "optional",
     "km": "{{value}} km"
+  },
+  "chat": {
+    "online": "Online",
+    "emptyDriver": "No messages yet.",
+    "inputPlaceholder": "Type a message…",
+    "quickReplies": {
+      "driver": {
+        "onMyWay": "On my way",
+        "traffic": "In traffic, running late",
+        "fiveMin": "5 min out",
+        "arrived": "I've arrived",
+        "delivered": "Package delivered"
+      }
+    },
+    "system": {
+      "assigned": "You were assigned this delivery.",
+      "picked_up": "You marked pickup complete.",
+      "in_transit": "In transit to drop-off.",
+      "delivered": "Delivery marked complete.",
+      "cancelled": "This delivery was cancelled.",
+      "failed": "Delivery could not be completed."
+    }
   }
 }
