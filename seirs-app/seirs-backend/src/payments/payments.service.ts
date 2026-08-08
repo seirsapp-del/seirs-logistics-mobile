@@ -103,6 +103,14 @@ export class PaymentsService {
   //   3. verifyAndRefundCardCharge -> confirm the txn, pull card token,
   //      save to saved_cards, refund the amount to the card
 
+  // TODO(cost-review 2026-08-08): the verify + auto-refund pattern costs
+  // us Flutterwave fees on both legs (~1.4% charge fee + potential flat
+  // refund fee). User accepted this at launch but wants to revisit.
+  // Options if we need to cut this cost:
+  //   - Drop the proactive flow: cards save on first real delivery only
+  //   - Lower this to NGN50 (halves the % fee proportionally)
+  //   - Investigate Flutterwave "authorize without capture" tokenization
+  // See [[project_seirs_addcard_cost]] before changing.
   private readonly CARD_VERIFY_NAIRA = 100;
 
   async initiateCardVerification(customer: User): Promise<{
