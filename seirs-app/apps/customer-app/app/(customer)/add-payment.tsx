@@ -1,216 +1,101 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, TextInput, KeyboardAvoidingView, Platform, Alert,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { Button } from '@/components/ui/Button';
+import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 
-type Mode = 'card' | 'bank';
-
+/**
+ * Payment methods "how to add a card" explainer.
+ *
+ * SEIRS never collects raw card numbers in the app. Cards are tokenized
+ * by Flutterwave's hosted payment page during a real delivery checkout
+ * (see payment/[deliveryId].tsx). The token comes back, backend saves
+ * only { last4, brand, expiry, token } to the saved_cards table.
+ *
+ * This screen used to be a fake RN card form that pretended to save but
+ * did nothing. Replaced with an informational card explaining the correct
+ * flow. Matches Bolt / Uber / Amazon pattern.
+ */
 export default function AddPaymentScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
-  const { t }  = useTranslation();
-
-  const [mode,    setMode]    = useState<Mode>('card');
-  const [number,  setNumber]  = useState('');
-  const [expiry,  setExpiry]  = useState('');
-  const [cvv,     setCvv]     = useState('');
-  const [name,    setName]    = useState('');
-  const [saving,  setSaving]  = useState(false);
-
-  const formatCard = (text: string) => {
-    const digits = text.replace(/\D/g, '').slice(0, 16);
-    return digits.replace(/(\d{4})/g, '$1 ').trim();
-  };
-
-  const formatExpiry = (text: string) => {
-    const digits = text.replace(/\D/g, '').slice(0, 4);
-    if (digits.length > 2) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-    return digits;
-  };
-
-  const handleSave = () => {
-    setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      router.back();
-    }, 1500);
-  };
-
-  const isValid = mode === 'card'
-    ? number.replace(/\s/g, '').length === 16 && expiry.length === 5 && cvv.length >= 3 && name.trim().length > 0
-    : true;
-
-  const inputStyle = [styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }];
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={20} color={theme.text} />
-          </Pressable>
-          <Text style={[styles.title, { color: theme.text }]}>{t('addPayment.title')}</Text>
-          <View style={{ width: 36 }} />
-        </View>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={20} color={theme.text} />
+        </Pressable>
+        <Text style={[styles.title, { color: theme.text }]}>Add payment method</Text>
+        <View style={{ width: 36 }} />
+      </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-          {/* Mode selector */}
-          <View style={[styles.modeRow, { backgroundColor: theme.surfaceSecond }]}>
-            {(['card', 'bank'] as Mode[]).map(m => (
-              <Pressable
-                key={m}
-                style={[styles.modeBtn, mode === m && { backgroundColor: theme.primary }]}
-                onPress={() => setMode(m)}
-              >
-                <Ionicons
-                  name={m === 'card' ? 'card-outline' : 'business-outline'}
-                  size={16}
-                  color={mode === m ? '#fff' : theme.textSecond}
-                />
-                <Text style={[styles.modeBtnText, { color: mode === m ? '#fff' : theme.textSecond }]}>
-                  {m === 'card' ? 'Debit / Credit Card' : 'Bank Transfer'}
-                </Text>
-              </Pressable>
-            ))}
+        {/* Primary explainer card */}
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={[styles.iconWrap, { backgroundColor: theme.primary + '15' }]}>
+            <Ionicons name="shield-checkmark-outline" size={32} color={theme.primary} />
           </View>
-
-          {mode === 'card' ? (
-            <View style={styles.form}>
-              {/* Card number */}
-              <View style={styles.fieldWrap}>
-                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addPayment.cardNumber')}</Text>
-                <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                  <Ionicons name="card-outline" size={18} color={theme.textThird} />
-                  <TextInput
-                    style={[styles.inputInner, { color: theme.text }]}
-                    placeholder="0000 0000 0000 0000"
-                    placeholderTextColor={theme.textThird}
-                    keyboardType="number-pad"
-                    value={number}
-                    onChangeText={v => setNumber(formatCard(v))}
-                    maxLength={19}
-                  />
-                </View>
-              </View>
-
-              {/* Expiry + CVV */}
-              <View style={styles.row}>
-                <View style={[styles.fieldWrap, { flex: 1 }]}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addPayment.expiryDate')}</Text>
-                  <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                    <Ionicons name="calendar-outline" size={18} color={theme.textThird} />
-                    <TextInput
-                      style={[styles.inputInner, { color: theme.text }]}
-                      placeholder="MM/YY"
-                      placeholderTextColor={theme.textThird}
-                      keyboardType="number-pad"
-                      value={expiry}
-                      onChangeText={v => setExpiry(formatExpiry(v))}
-                      maxLength={5}
-                    />
-                  </View>
-                </View>
-                <View style={[styles.fieldWrap, { flex: 1 }]}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addPayment.cvv')}</Text>
-                  <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                    <Ionicons name="lock-closed-outline" size={18} color={theme.textThird} />
-                    <TextInput
-                      style={[styles.inputInner, { color: theme.text }]}
-                      placeholder="•••"
-                      placeholderTextColor={theme.textThird}
-                      keyboardType="number-pad"
-                      secureTextEntry
-                      value={cvv}
-                      onChangeText={v => setCvv(v.replace(/\D/g, '').slice(0, 4))}
-                      maxLength={4}
-                    />
-                  </View>
-                </View>
-              </View>
-
-              {/* Cardholder name */}
-              <View style={styles.fieldWrap}>
-                <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addPayment.cardholderName')}</Text>
-                <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                  <Ionicons name="person-outline" size={18} color={theme.textThird} />
-                  <TextInput
-                    style={[styles.inputInner, { color: theme.text }]}
-                    placeholder="As on card"
-                    placeholderTextColor={theme.textThird}
-                    autoCapitalize="words"
-                    value={name}
-                    onChangeText={setName}
-                  />
-                </View>
-              </View>
-
-              {/* Security note */}
-              <View style={[styles.secNote, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
-                <Ionicons name="shield-checkmark-outline" size={16} color={theme.primary} />
-                <Text style={[styles.secNoteText, { color: theme.textSecond }]}>
-                  Your card details are encrypted and processed securely by Flutterwave. We never store your full card number.
-                </Text>
-              </View>
-            </View>
-          ) : (
-            <View style={[styles.bankInfo, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={[styles.bankTitle, { color: theme.text }]}>Bank Transfer Details</Text>
-              <Text style={[styles.bankDesc, { color: theme.textSecond }]}>
-                Transfer any amount to the account below. Your wallet will be credited automatically within 5 minutes.
-              </Text>
-              {[
-                { label: 'Bank',           value: 'Providus Bank' },
-                { label: 'Account Name',   value: 'SEIRS Logistics Ltd' },
-                { label: 'Account Number', value: '5001234567' },
-              ].map(r => (
-                <View key={r.label} style={[styles.bankRow, { borderTopColor: theme.border }]}>
-                  <Text style={[styles.bankRowLabel, { color: theme.textSecond }]}>{r.label}</Text>
-                  <Text style={[styles.bankRowValue, { color: theme.text }]}>{r.value}</Text>
-                </View>
-              ))}
-              <Pressable
-                onPress={async () => {
-                  await Clipboard.setStringAsync('5001234567');
-                  Alert.alert('Copied', 'Account number copied to clipboard.');
-                }}
-                style={[styles.copyBtn, { borderColor: theme.primary, backgroundColor: isDark ? '#001020' : '#EFF6FF' }]}
-              >
-                <Ionicons name="copy-outline" size={16} color={theme.primary} />
-                <Text style={[styles.copyBtnText, { color: theme.primary }]}>Copy Account Number</Text>
-              </Pressable>
-            </View>
-          )}
-
-        </ScrollView>
-
-        {/* CTA */}
-        <View style={[styles.cta, { borderTopColor: theme.border, backgroundColor: theme.surface }]}>
-          <Button
-            label={mode === 'card' ? 'Add Card' : 'I Have Transferred'}
-            onPress={handleSave}
-            loading={saving}
-            disabled={mode === 'card' && !isValid}
-            size="lg"
-            fullWidth
-            leftIcon={<Ionicons name={mode === 'card' ? 'card' : 'checkmark-circle-outline'} size={18} color="#fff" />}
-          />
+          <Text style={[styles.h1, { color: theme.text }]}>Cards save automatically</Text>
+          <Text style={[styles.p,  { color: theme.textSecond }]}>
+            The first time you pay for a delivery with a card, we ask if you want to save
+            it for next time. Tap yes and the card lands here.
+          </Text>
+          <Text style={[styles.p,  { color: theme.textSecond, marginTop: 8 }]}>
+            SEIRS never sees your full card number. Only Flutterwave (Nigerian PCI-DSS
+            certified processor) touches the card. We store only the last 4 digits, the
+            card brand, and a one-way token that only works with our account.
+          </Text>
         </View>
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+
+        {/* Payment methods available in Nigeria via Flutterwave */}
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.h2, { color: theme.text }]}>Payment options at checkout</Text>
+          {[
+            { icon: 'card-outline',       label: 'Debit or credit card',   sub: 'Visa, Mastercard, Verve' },
+            { icon: 'business-outline',   label: 'Bank transfer',           sub: 'One-time virtual account per delivery' },
+            { icon: 'keypad-outline',     label: 'USSD',                    sub: 'Dial the code from your registered phone number' },
+            { icon: 'globe-outline',      label: 'Pay with bank',           sub: 'Log in to your bank in the Flutterwave modal' },
+          ].map((row) => (
+            <View key={row.label} style={[styles.optionRow, { borderTopColor: theme.border }]}>
+              <View style={[styles.optionIcon, { backgroundColor: theme.surfaceSecond }]}>
+                <Ionicons name={row.icon as any} size={18} color={theme.text} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.optionLabel, { color: theme.text }]}>{row.label}</Text>
+                <Text style={[styles.optionSub,   { color: theme.textSecond }]}>{row.sub}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Primary CTA */}
+        <Pressable
+          onPress={() => router.push('/(customer)/send' as any)}
+          style={[styles.cta, { backgroundColor: theme.primary }]}
+        >
+          <Ionicons name="paper-plane-outline" size={18} color="#fff" />
+          <Text style={styles.ctaText}>Book a delivery</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.back()}
+          style={[styles.secondaryCta]}
+        >
+          <Text style={[styles.secondaryCtaText, { color: theme.textSecond }]}>Back to saved cards</Text>
+        </Pressable>
+
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -219,31 +104,22 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   title:   { fontSize: FontSize.md, fontWeight: FontWeight.bold },
 
-  content: { padding: Spacing.md, gap: Spacing.lg, paddingBottom: Spacing.xl },
+  content: { padding: Spacing.md, gap: Spacing.md, paddingBottom: Spacing.xxl },
 
-  modeRow: { flexDirection: 'row', borderRadius: Radius.full, padding: 4, gap: 4 },
-  modeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: Radius.full },
-  modeBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  card:    { padding: Spacing.lg, borderRadius: Radius.xl, borderWidth: 1, gap: Spacing.sm },
+  iconWrap:{ width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
+  h1:      { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginTop: 4 },
+  h2:      { fontSize: FontSize.md, fontWeight: FontWeight.bold, marginBottom: 4 },
+  p:       { fontSize: FontSize.sm, lineHeight: 22 },
 
-  form:       { gap: Spacing.md },
-  row:        { flexDirection: 'row', gap: Spacing.md },
-  fieldWrap:  { gap: 6 },
-  fieldLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  inputWrap:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md, height: 52 },
-  inputInner: { flex: 1, fontSize: FontSize.base },
-  input:      { borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md, height: 52, fontSize: FontSize.base },
+  optionRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.sm, borderTopWidth: 1 },
+  optionIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  optionLabel:{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  optionSub:  { fontSize: FontSize.xs, marginTop: 2 },
 
-  secNote:     { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1 },
-  secNoteText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
+  cta:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: Spacing.md, borderRadius: Radius.lg },
+  ctaText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },
 
-  bankInfo:      { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
-  bankTitle:     { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-  bankDesc:      { fontSize: FontSize.sm, lineHeight: 20 },
-  bankRow:       { flexDirection: 'row', justifyContent: 'space-between', paddingTop: Spacing.sm, borderTopWidth: 1, marginTop: Spacing.xs },
-  bankRowLabel:  { fontSize: FontSize.sm },
-  bankRowValue:  { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  copyBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: Spacing.sm, borderRadius: Radius.lg, borderWidth: 1.5, marginTop: Spacing.sm },
-  copyBtnText:   { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-
-  cta: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, borderTopWidth: 1 },
+  secondaryCta:    { alignItems: 'center', paddingVertical: Spacing.sm },
+  secondaryCtaText:{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
 });
