@@ -164,6 +164,13 @@ export class AdminController {
   // ── Partner Store applications (hybrid-account redesign 2026-05-11) ───────
 
   // GET /api/v1/admin/partner-stores/applications. pending KYC reviews
+  // GET /api/v1/admin/partner-stores?status=approved|pending_review|suspended|rejected
+  // Lists all partner stores across every status. Powers the /partners page.
+  @Get('partner-stores')
+  listAllPartnerStores(@Query('status') status?: string) {
+    return this.partnerStoreService.adminListAllStores(status);
+  }
+
   @Get('partner-stores/applications')
   listPartnerApplications() {
     return this.partnerStoreService.adminListPendingApplications();

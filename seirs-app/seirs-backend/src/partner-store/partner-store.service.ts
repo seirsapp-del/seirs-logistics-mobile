@@ -720,4 +720,18 @@ export class PartnerStoreService {
       order: { createdAt: 'ASC' },
     });
   }
+
+  /**
+   * Admin lists ALL partner stores across every status. Powers the /partners
+   * page in the admin dashboard. Optional status filter narrows to a single
+   * state (approved, suspended, etc). Ordered by most-recently-updated so
+   * active stores float to the top.
+   */
+  async adminListAllStores(status?: string) {
+    const qb = this.storeRepo
+      .createQueryBuilder('s')
+      .orderBy('s.updatedAt', 'DESC');
+    if (status) qb.where('s.status = :status', { status });
+    return qb.getMany();
+  }
 }

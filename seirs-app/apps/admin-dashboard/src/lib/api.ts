@@ -84,6 +84,11 @@ export const adminApi = {
   setDashboardTargets: (body: { revenueNgn?: number; deliveries?: number }) =>
     req<any>('/admin/dashboard/targets', { method: 'PATCH', body: JSON.stringify(body) }),
 
+  partnerStores: {
+    list: (status?: string) =>
+      req<any[]>(`/admin/partner-stores${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  },
+
   users:      (page = 1, role?: string, search?: string) =>
     req<any>(`/admin/users?page=${page}${role ? `&role=${role}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
   user:       (id: string) => req<any>(`/admin/users/${id}`),
