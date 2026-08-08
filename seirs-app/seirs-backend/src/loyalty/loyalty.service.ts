@@ -364,15 +364,67 @@ export class LoyaltyService {
     reason: Extract<LoyaltyReason, 'redeem_discount' | 'redeem_free_delivery' | 'redeem_priority' | 'redeem_insurance'>;
     deliveryId?: string;
   }): Promise<LoyaltyPoint> {
+    // Deliberate: deliveryId is REQUIRED. A redemption without a delivery
+    // to apply to would just deduct points with no user-visible benefit —
+    // that was the original silent-loss bug. Callers must scope the
+    // redemption to a specific booking.
+    if (!params.deliveryId) {
+      throw new BadRequestException('Redemption requires a delivery. Book a delivery first, then apply the reward.');
+    }
+
+    // Validate the delivery: belongs to user, in a state where redemption
+    // is still meaningful (before the driver has picked up). After pickup
+    // the customer has already committed to the transaction.
+    const delivery = await this.deliveriesRepo.findOne({
+      where: { id: params.deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new BadRequestException('Delivery not found.');
+    if (delivery.customer?.id !== params.userId) {
+      throw new BadRequestException('That delivery belongs to another account.');
+    }
+    if (![DeliveryStatus.PENDING, DeliveryStatus.ASSIGNED].includes(delivery.status)) {
+      throw new BadRequestException(`Rewards can only be applied to pending or assigned deliveries. This one is ${delivery.status}.`);
+    }
+
+    // Idempotency: no double-application of the same reward type to one
+    // delivery. Cheap query on the ledger.
+    const existing = await this.repo.findOne({
+      where: {
+        userId:            params.userId,
+        reason:            params.reason,
+        relatedDeliveryId: params.deliveryId,
+      },
+    });
+    if (existing) {
+      throw new BadRequestException('This reward is already applied to this delivery.');
+    }
+
     const balance = await this.getBalance(params.userId);
     if (balance < params.cost) {
       throw new BadRequestException(`Insufficient points. Balance: ${balance}, required: ${params.cost}.`);
     }
+
+    // Apply the reward to the delivery. Currently only the two NGN-value
+    // redemptions mutate price; priority + insurance are recorded on the
+    // ledger but need dispatcher + insurance-partner wiring to actually
+    // deliver value. Kept as recorded intents until that ships.
+    let newPrice = Number(delivery.price);
+    if (params.reason === 'redeem_discount') {
+      newPrice = Math.max(0, newPrice - 500);
+    } else if (params.reason === 'redeem_free_delivery') {
+      newPrice = 0;
+    }
+    if (newPrice !== Number(delivery.price)) {
+      await this.deliveriesRepo.update(delivery.id, { price: newPrice });
+    }
+
     return this.recordEntry({
       userId:            params.userId,
       delta:             -params.cost,
       reason:            params.reason,
       relatedDeliveryId: params.deliveryId,
+      note:              `Applied to delivery ${delivery.trackingCode}. price ${delivery.price} -> ${newPrice}`,
     });
   }
 

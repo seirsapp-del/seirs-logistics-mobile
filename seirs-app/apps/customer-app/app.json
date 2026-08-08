@@ -32,7 +32,8 @@
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "plugins": [
@@ -52,6 +53,10 @@
       ["expo-image-picker", {
         "photosPermission": "Seirs needs access to your photos.",
         "cameraPermission": "Seirs needs camera access."
+      }],
+      ["expo-notifications", {
+        "icon":  "./assets/images/icon.png",
+        "color": "#0F2B4C"
       }]
     ],
     "experiments": {
