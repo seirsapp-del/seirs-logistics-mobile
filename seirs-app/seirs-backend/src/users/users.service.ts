@@ -54,13 +54,24 @@ export class UsersService implements OnModuleInit {
   // Runs once per deploy; safe because it only touches users where
   // accountId IS NULL. Skips the loop when there are zero to fill.
   async onModuleInit() {
+    // Diagnostic: log the raw env-var value so we can tell what Railway
+    // passed (truthy typos like "True", "TRUE ", or an unset var all fail
+    // the strict `=== 'true'` check and would otherwise be silent).
+    const rawFlag = process.env.ONE_SHOT_ROLE_FIX_2026_08_08;
+    this.logger.warn(
+      `[ONE-SHOT] boot check: ONE_SHOT_ROLE_FIX_2026_08_08 = ${JSON.stringify(rawFlag)} (typeof ${typeof rawFlag})`,
+    );
+
     // One-shot: dev/test account cleanup gated by env var. When set to
     // 'true' on Railway, flips two specific accounts to the correct role
     // + regenerates their SEIRS ID prefix. Runs at most once per deploy;
     // remove the env var after a successful run. Delete this method
     // entirely once the migration has run in production.
-    if (process.env.ONE_SHOT_ROLE_FIX_2026_08_08 === 'true') {
+    if (rawFlag === 'true') {
+      this.logger.warn('[ONE-SHOT] flag matched, executing migration');
       await this.oneShotRoleFix_2026_08_08();
+    } else {
+      this.logger.warn('[ONE-SHOT] flag did not match "true", skipping migration');
     }
 
     try {
