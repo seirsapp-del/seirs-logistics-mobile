@@ -366,6 +366,155 @@ export class AdminService {
     };
   }
 
+  // ── Live ops dashboard ────────────────────────────────────────────────────
+  // Aggregates everything the admin needs to see the platform's current
+  // pulse: driver activity, speed-of-service percentiles, anomalies that
+  // need attention, and a 24-hour timeline. Called on ~30s interval from
+  // the admin dashboard home; keep the total query time under ~500ms.
+  async getLiveDashboard() {
+    const now = new Date();
+    const dayAgo  = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    // ── Currently active drivers ──
+    // Online = driver has isOnline flag. Busy = has an in-flight assigned
+    // delivery. Idle = online minus busy. Stale = online but location not
+    // updated in 10min (app is likely in pocket, count separately so ops
+    // know real capacity is lower than "online" claims).
+    const [onlineTotal, busyDriverCount, staleDriverCount] = await Promise.all([
+      this.driversRepo.count({ where: { isOnline: true } }),
+      this.deliveriesRepo
+        .createQueryBuilder('d')
+        .select('COUNT(DISTINCT d.driverId)', 'c')
+        .where('d.status IN (:...s)', { s: [DeliveryStatus.ASSIGNED, DeliveryStatus.PICKED_UP, DeliveryStatus.IN_TRANSIT] })
+        .andWhere('d.driverId IS NOT NULL')
+        .getRawOne()
+        .then((r) => Number(r?.c ?? 0)),
+      this.driversRepo
+        .createQueryBuilder('d')
+        .where('d.isOnline = true')
+        .andWhere('(d.locationUpdatedAt IS NULL OR d.locationUpdatedAt < :cutoff)', {
+          cutoff: new Date(now.getTime() - 10 * 60 * 1000),
+        })
+        .getCount()
+        .catch(() => 0),
+    ]);
+
+    // ── Speed of service (last 24h, delivered only) ──
+    // Postgres PERCENTILE_CONT on the time deltas. Nulls filtered so a
+    // delivery missing a timestamp doesn't skew the median.
+    const sos = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .select([
+        'PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (d.assignedAt   - d.createdAt)))  AS accept_p50',
+        'PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (d.pickedUpAt   - d.assignedAt))) AS pickup_p50',
+        'PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (d.deliveredAt  - d.pickedUpAt))) AS drop_p50',
+        'COUNT(*) AS sample',
+      ])
+      .where('d.status = :s', { s: DeliveryStatus.DELIVERED })
+      .andWhere('d.createdAt >= :since', { since: dayAgo })
+      .andWhere('d.assignedAt IS NOT NULL AND d.pickedUpAt IS NOT NULL AND d.deliveredAt IS NOT NULL')
+      .getRawOne()
+      .catch(() => ({ accept_p50: null, pickup_p50: null, drop_p50: null, sample: 0 }));
+
+    // ── Anomalies (ops attention panel) ──
+    // Each anomaly returns a count + the top few samples so admin can click
+    // through. Kept intentionally small: 5 per bucket is enough for a
+    // glance-and-act panel.
+    const [stuckPending, stuckAssigned, velocityDrivers] = await Promise.all([
+      // Pending > 15min = no driver has accepted this booking. Real problem.
+      this.deliveriesRepo
+        .createQueryBuilder('d')
+        .leftJoinAndSelect('d.customer', 'c')
+        .where('d.status = :s', { s: DeliveryStatus.PENDING })
+        .andWhere('d.createdAt < :cut', { cut: new Date(now.getTime() - 15 * 60 * 1000) })
+        .orderBy('d.createdAt', 'ASC')
+        .take(5)
+        .getMany()
+        .catch(() => []),
+      // Assigned > 30min = driver accepted but never picked up. Ghost job.
+      this.deliveriesRepo
+        .createQueryBuilder('d')
+        .leftJoinAndSelect('d.driver', 'dr')
+        .leftJoinAndSelect('dr.user', 'du')
+        .where('d.status = :s', { s: DeliveryStatus.ASSIGNED })
+        .andWhere('d.assignedAt < :cut', { cut: new Date(now.getTime() - 30 * 60 * 1000) })
+        .orderBy('d.assignedAt', 'ASC')
+        .take(5)
+        .getMany()
+        .catch(() => []),
+      // Velocity: driver accepted >6 deliveries in the last hour. Scam signal.
+      this.deliveriesRepo
+        .createQueryBuilder('d')
+        .select('d.driverId', 'driverId')
+        .addSelect('COUNT(*)', 'accepted')
+        .where('d.assignedAt >= :since', { since: hourAgo })
+        .andWhere('d.driverId IS NOT NULL')
+        .groupBy('d.driverId')
+        .having('COUNT(*) > 6')
+        .orderBy('accepted', 'DESC')
+        .limit(5)
+        .getRawMany()
+        .catch(() => []),
+    ]);
+
+    // ── Hourly demand vs supply (last 24h) ──
+    // Bookings per hour + drivers who were online (touched location) per hour.
+    const hourlyBookings = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .select("DATE_TRUNC('hour', d.createdAt)", 'hour')
+      .addSelect('COUNT(*)', 'count')
+      .where('d.createdAt >= :since', { since: dayAgo })
+      .groupBy('hour')
+      .orderBy('hour', 'ASC')
+      .getRawMany()
+      .catch(() => []);
+
+    return {
+      generatedAt: now.toISOString(),
+      drivers: {
+        online: onlineTotal,
+        busy:   busyDriverCount,
+        idle:   Math.max(0, onlineTotal - busyDriverCount),
+        stale:  staleDriverCount,
+      },
+      speedOfService: {
+        acceptSec:   sos?.accept_p50 !== null ? Math.round(Number(sos.accept_p50))  : null,
+        pickupSec:   sos?.pickup_p50 !== null ? Math.round(Number(sos.pickup_p50))  : null,
+        dropSec:     sos?.drop_p50   !== null ? Math.round(Number(sos.drop_p50))    : null,
+        sampleSize:  Number(sos?.sample ?? 0),
+      },
+      anomalies: {
+        pendingOver15Min: {
+          count: stuckPending.length,
+          items: stuckPending.map((d) => ({
+            id: d.id, trackingCode: d.trackingCode,
+            customerName: (d as any).customer?.name ?? null,
+            waitingMin: Math.round((now.getTime() - new Date(d.createdAt).getTime()) / 60000),
+          })),
+        },
+        assignedOver30Min: {
+          count: stuckAssigned.length,
+          items: stuckAssigned.map((d: any) => ({
+            id: d.id, trackingCode: d.trackingCode,
+            driverName: d.driver?.user?.name ?? null,
+            waitingMin: d.assignedAt ? Math.round((now.getTime() - new Date(d.assignedAt).getTime()) / 60000) : null,
+          })),
+        },
+        highVelocityDrivers: {
+          count: velocityDrivers.length,
+          items: velocityDrivers.map((r: any) => ({
+            driverId: r.driverId, acceptedLastHour: Number(r.accepted),
+          })),
+        },
+      },
+      hourly: hourlyBookings.map((r: any) => ({
+        hour: r.hour instanceof Date ? r.hour.toISOString() : String(r.hour),
+        deliveries: Number(r.count),
+      })),
+    };
+  }
+
   // ── Universal search ──────────────────────────────────────────────────────
   // Powers the admin top-bar search. Matches users by name/email/phone/SEIRS-ID,
   // drivers by name/plate, and deliveries by tracking code or price.

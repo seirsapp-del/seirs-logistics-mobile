@@ -4,10 +4,11 @@ import { adminApi } from '@/lib/api';
 import {
   Users, Truck, ClipboardList, Zap, Package,
   Clock, TrendingUp, ChevronRight, AlertTriangle,
+  Activity, Timer, Gauge, ShieldAlert,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
 interface Stats {
@@ -29,8 +30,10 @@ const fmtShort = (n: number) => {
 export default function DashboardPage() {
   const [stats,   setStats]   = useState<Stats | null>(null);
   const [revenue, setRevenue] = useState<any[]>([]);
+  const [live,    setLive]    = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
+  const [liveUpdatedAt, setLiveUpdatedAt] = useState<Date | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -46,7 +49,19 @@ export default function DashboardPage() {
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  const loadLive = () => {
+    adminApi.liveDashboard().then((d) => {
+      setLive(d);
+      setLiveUpdatedAt(new Date());
+    }).catch(() => {});
+  };
+
+  useEffect(() => { load(); loadLive(); }, []);
+  // Auto-refresh live panel every 30 seconds while the page is visible
+  useEffect(() => {
+    const id = setInterval(loadLive, 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const cards: { label: string; value: string; sub?: string; Icon: LucideIcon; color: string; bg: string }[] = stats ? [
     {
@@ -101,8 +116,14 @@ export default function DashboardPage() {
               {new Date().toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
-          <div className="text-xs text-[#0F2B4C]/40 bg-white border border-[#0F2B4C]/10 px-3 py-1.5 rounded-lg">
-            Live
+          <div className="flex items-center gap-2 text-xs text-[#0F2B4C]/60 bg-white border border-[#0F2B4C]/10 px-3 py-1.5 rounded-lg">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-semibold">Live</span>
+            {liveUpdatedAt && (
+              <span className="text-[#0F2B4C]/40">
+                · updated {Math.max(1, Math.floor((Date.now() - liveUpdatedAt.getTime()) / 1000))}s ago
+              </span>
+            )}
           </div>
         </div>
 
@@ -142,6 +163,72 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+
+            {/* Currently active drivers strip */}
+            {live?.drivers && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Activity size={16} className="text-emerald-600" />
+                  <h2 className="text-sm font-semibold text-[#0F2B4C]">Driver activity right now</h2>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <ActivityStat label="Online" value={live.drivers.online} color="text-emerald-700" />
+                  <ActivityStat label="On a trip" value={live.drivers.busy}   color="text-[#3A7BD5]" />
+                  <ActivityStat label="Idle"      value={live.drivers.idle}   color="text-[#0F2B4C]" />
+                  <ActivityStat label="Stale (no ping >10min)" value={live.drivers.stale} color={live.drivers.stale > 0 ? 'text-amber-600' : 'text-[#0F2B4C]/40'} />
+                </div>
+              </div>
+            )}
+
+            {/* Speed of service */}
+            {live?.speedOfService && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Gauge size={16} className="text-[#3A7BD5]" />
+                    <h2 className="text-sm font-semibold text-[#0F2B4C]">Speed of service (last 24h, median)</h2>
+                  </div>
+                  <span className="text-xs text-[#0F2B4C]/40">
+                    n = {live.speedOfService.sampleSize}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <SosCard label="Booking → accepted" seconds={live.speedOfService.acceptSec} good={60}    bad={180} />
+                  <SosCard label="Accepted → pickup"  seconds={live.speedOfService.pickupSec} good={600}   bad={1200} />
+                  <SosCard label="Pickup → delivered" seconds={live.speedOfService.dropSec}   good={1800}  bad={3600} />
+                </div>
+              </div>
+            )}
+
+            {/* Anomaly panel */}
+            {live?.anomalies && (
+              <AnomalyPanel anomalies={live.anomalies} />
+            )}
+
+            {/* Hourly demand chart */}
+            {live?.hourly && live.hourly.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Timer size={16} className="text-[#0F2B4C]" />
+                  <h2 className="text-sm font-semibold text-[#0F2B4C]">Bookings by hour (last 24h)</h2>
+                </div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={live.hourly.map((h: any) => ({
+                    hour: new Date(h.hour).toLocaleTimeString('en-NG', { hour: 'numeric', hour12: true }).replace(' ', ''),
+                    deliveries: h.deliveries,
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F5F5F0" />
+                    <XAxis dataKey="hour" tick={{ fill: '#0F2B4C', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#0F2B4C', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#0F2B4C', border: 'none', borderRadius: 8, color: '#fff' }}
+                      cursor={{ fill: 'rgba(58, 123, 213, 0.08)' }}
+                    />
+                    <Bar dataKey="deliveries" fill="#3A7BD5" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
             {/* Revenue chart */}
             {revenue.length > 0 && (
@@ -198,6 +285,100 @@ export default function DashboardPage() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+function ActivityStat({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div>
+      <div className={`text-2xl font-bold ${color}`}>{value}</div>
+      <div className="text-xs text-[#0F2B4C]/50 mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+// Speed-of-service card. Colour thresholds are ops-tuned: green below `good`,
+// amber between good and bad, red above bad. Renders "—" when we have no
+// sample data yet so an empty platform doesn't look broken.
+function SosCard({ label, seconds, good, bad }: { label: string; seconds: number | null; good: number; bad: number }) {
+  const fmtDur = (s: number) => {
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60), r = s % 60;
+    return r === 0 ? `${m}m` : `${m}m ${r}s`;
+  };
+  const colour =
+    seconds == null ? 'text-[#0F2B4C]/30' :
+    seconds <= good ? 'text-emerald-600' :
+    seconds <= bad  ? 'text-amber-600' :
+    'text-red-600';
+  return (
+    <div>
+      <div className={`text-xl font-bold ${colour}`}>
+        {seconds == null ? '—' : fmtDur(seconds)}
+      </div>
+      <div className="text-xs text-[#0F2B4C]/50 mt-1 leading-tight">{label}</div>
+      <div className="text-xs text-[#0F2B4C]/30 mt-0.5">
+        target &lt; {fmtDur(good)}
+      </div>
+    </div>
+  );
+}
+
+// Anomaly panel: three buckets of things that need admin attention. Renders
+// nothing when all counts are zero (clean board = no visual noise).
+function AnomalyPanel({ anomalies }: { anomalies: any }) {
+  const buckets: Array<{ key: string; title: string; count: number; items: any[]; render: (i: any) => string }> = [
+    {
+      key: 'pending', title: 'Pending > 15 min (no driver accepted)',
+      count: anomalies.pendingOver15Min?.count ?? 0,
+      items: anomalies.pendingOver15Min?.items ?? [],
+      render: (i) => `${i.trackingCode} · ${i.customerName ?? 'unknown'} · waiting ${i.waitingMin}min`,
+    },
+    {
+      key: 'assigned', title: 'Assigned > 30 min (driver has not picked up)',
+      count: anomalies.assignedOver30Min?.count ?? 0,
+      items: anomalies.assignedOver30Min?.items ?? [],
+      render: (i) => `${i.trackingCode} · ${i.driverName ?? 'driver'} · ${i.waitingMin}min since accept`,
+    },
+    {
+      key: 'velocity', title: 'Drivers with > 6 accepts in the last hour',
+      count: anomalies.highVelocityDrivers?.count ?? 0,
+      items: anomalies.highVelocityDrivers?.items ?? [],
+      render: (i) => `Driver ${i.driverId} · ${i.acceptedLastHour} accepts`,
+    },
+  ];
+  const anyAnomaly = buckets.some((b) => b.count > 0);
+  if (!anyAnomaly) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <ShieldAlert size={16} className="text-emerald-600" />
+          <h2 className="text-sm font-semibold text-[#0F2B4C]">Attention required</h2>
+        </div>
+        <p className="text-xs text-[#0F2B4C]/50">All clear. No anomalies right now.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-amber-200 p-5 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <ShieldAlert size={16} className="text-amber-600" />
+        <h2 className="text-sm font-semibold text-[#0F2B4C]">Attention required</h2>
+      </div>
+      <div className="space-y-3">
+        {buckets.filter((b) => b.count > 0).map((b) => (
+          <div key={b.key} className="border border-amber-100 bg-amber-50/40 rounded-lg p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-[#78350F]">{b.title}</span>
+              <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">{b.count}</span>
+            </div>
+            <ul className="mt-2 space-y-0.5 text-xs text-[#78350F]/90 font-mono">
+              {b.items.slice(0, 5).map((i, idx) => <li key={idx}>· {b.render(i)}</li>)}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

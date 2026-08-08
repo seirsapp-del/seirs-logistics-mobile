@@ -33,6 +33,13 @@ export class AdminController {
   @Get('stats')
   getStats() { return this.adminService.getDashboardStats(); }
 
+  // GET /api/v1/admin/dashboard/live
+  // Live ops pulse. Powers the anomalies panel, speed-of-service cards,
+  // currently-active drivers strip, and hourly demand chart on the admin
+  // home page. Client polls this every ~30s.
+  @Get('dashboard/live')
+  getLiveDashboard() { return this.adminService.getLiveDashboard(); }
+
   // GET /api/v1/admin/search?q=<term>&limit=15
   // Universal search across users, drivers, deliveries. Matches on name,
   // email, phone, SEIRS ID (accountId), plate number, tracking code.

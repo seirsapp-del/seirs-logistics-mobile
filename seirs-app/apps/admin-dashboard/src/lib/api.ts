@@ -78,6 +78,10 @@ export const adminApi = {
 
   stats: () => req<any>('/admin/stats'),
 
+  // Live ops dashboard: aggregated real-time pulse. Client should poll on
+  // ~30s interval when the dashboard is visible.
+  liveDashboard: () => req<any>('/admin/dashboard/live'),
+
   users:      (page = 1, role?: string, search?: string) =>
     req<any>(`/admin/users?page=${page}${role ? `&role=${role}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
   user:       (id: string) => req<any>(`/admin/users/${id}`),
