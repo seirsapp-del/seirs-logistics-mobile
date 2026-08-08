@@ -545,17 +545,57 @@ export class AdminService {
     return safe;
   }
 
-  async changeUserRole(id: string, role: UserRole, requesterId: string) {
+  // Role allow-list for role-mutation ops. Promotion to admin and any change
+  // touching an existing admin should be super_admin only; peer flips
+  // (customer <-> driver) can also be done by support_agent since they field
+  // "please switch my account" tickets.
+  private readonly ROLE_CHANGE_ROLES: string[] = ['super_admin', 'support_agent'];
+  private readonly ADMIN_PROMOTION_ROLES: string[] = ['super_admin'];
+
+  async changeUserRole(id: string, role: UserRole, admin: any, ip?: string) {
+    const requesterId = admin?.id ?? admin?.sub;
     if (id === requesterId) throw new ConflictException('You cannot change your own role.');
+
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found.');
+
+    // Gate: promotions to admin or changes touching an existing admin need
+    // super_admin. Peer flips (customer <-> driver) accept support_agent too.
+    const touchesAdmin = role === UserRole.ADMIN || user.role === UserRole.ADMIN;
+    const requiredRoles = touchesAdmin ? this.ADMIN_PROMOTION_ROLES : this.ROLE_CHANGE_ROLES;
+    const adminRole = admin?.adminRole ?? null;
+    if (!requiredRoles.includes(adminRole)) {
+      this.logger.warn(
+        `ROLE_CHANGE_DENIED admin=${requesterId} adminRole=${adminRole} target=${id} newRole=${role}`,
+      );
+      throw new ForbiddenException(
+        `This role change requires one of: ${requiredRoles.join(', ')}. Your admin role: ${adminRole ?? 'none'}.`,
+      );
+    }
+
     const previousRole = user.role;
     await this.usersRepo.update(id, { role });
-    const requester = await this.usersRepo.findOne({ where: { id: requesterId } });
-    console.log(
-      `[AUDIT] Role change: ${user.email} ${previousRole} → ${role} ` +
-      `by ${requester?.email ?? requesterId} at ${new Date().toISOString()}`,
-    );
+
+    // Cascade: if we're demoting a driver, suspend the drivers row so they
+    // stop appearing as "approved" on the drivers list + stop receiving
+    // dispatch. Flipping back later re-runs KYC intentionally.
+    if (previousRole === UserRole.DRIVER && role !== UserRole.DRIVER) {
+      try {
+        await this.driversRepo.update(
+          { user: { id } as any },
+          { status: DriverStatus.SUSPENDED, isOnline: false } as any,
+        );
+      } catch (e: any) {
+        this.logger.warn(`Driver row cascade suspend failed for user ${id}: ${e?.message ?? e}`);
+      }
+    }
+
+    await this.logAudit(admin, 'role_change', `user:${id}`, {
+      email: user.email,
+      from:  previousRole,
+      to:    role,
+    }, ip);
+
     return this.usersRepo.findOne({ where: { id } });
   }
 

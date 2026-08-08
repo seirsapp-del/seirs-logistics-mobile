@@ -81,7 +81,7 @@ function DriversContent() {
             <table className="w-full text-sm">
               <thead className="bg-[#F5F5F0] border-b border-[#E5E7EB]">
                 <tr>
-                  {['Driver', 'Vehicle', 'Status', 'Online', 'Rating', 'Deliveries', 'Actions'].map((h) => (
+                  {['Driver', 'SEIRS ID', 'Vehicle', 'Status', 'Online', 'Rating', 'Deliveries', 'Actions'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 font-semibold text-[#0F2B4C]/40 text-xs uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -94,6 +94,13 @@ function DriversContent() {
                       <td className="px-4 py-3">
                         <a href={`/drivers/${d.id}`} className="font-medium text-[#0F2B4C] hover:text-[#3A7BD5] transition-colors">{d.user?.name}</a>
                         <div className="text-xs text-[#0F2B4C]/40">{d.user?.email}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {d.user?.accountId ? (
+                          <span className="text-xs font-mono text-[#0F2B4C]/70">{d.user.accountId}</span>
+                        ) : (
+                          <span className="text-xs text-[#0F2B4C]/30">-</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">

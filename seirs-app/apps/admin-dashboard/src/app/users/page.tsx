@@ -77,7 +77,7 @@ export default function UsersPage() {
             <table className="w-full text-sm">
               <thead className="bg-[#F5F5F0] border-b border-[#E5E7EB]">
                 <tr>
-                  {['User', 'Phone', 'Role', 'Status', 'Joined', 'Actions'].map((h) => (
+                  {['User', 'SEIRS ID', 'Phone', 'Role', 'Status', 'Joined', 'Actions'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 font-semibold text-[#0F2B4C]/40 text-xs uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -88,6 +88,13 @@ export default function UsersPage() {
                     <td className="px-4 py-3">
                       <a href={`/users/${u.id}`} className="font-medium text-[#0F2B4C] hover:text-[#3A7BD5] transition-colors">{u.name}</a>
                       <div className="text-xs text-[#0F2B4C]/40">{u.email}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {u.accountId ? (
+                        <span className="text-xs font-mono text-[#0F2B4C]/70">{u.accountId}</span>
+                      ) : (
+                        <span className="text-xs text-[#0F2B4C]/30">-</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-[#0F2B4C]/60">{u.phone ?? '-'}</td>
                     <td className="px-4 py-3">

@@ -98,14 +98,17 @@ export class AdminController {
     return this.adminService.createAdmin(body);
   }
 
-  // PATCH /api/v1/admin/users/:id/role  { role: 'customer' | 'admin' }
+  // PATCH /api/v1/admin/users/:id/role  { role: 'customer' | 'driver' | 'admin' }
+  // Role-gated: peer flips (customer <-> driver) need support_agent or higher;
+  // anything touching an admin (promote, demote) needs super_admin. Audit-logged.
   @Patch('users/:id/role')
   changeRole(
     @Param('id') id: string,
     @Body('role') role: string,
     @CurrentUser() admin: any,
+    @Req() req: Request,
   ) {
-    return this.adminService.changeUserRole(id, role as any, admin.id);
+    return this.adminService.changeUserRole(id, role as any, admin, req.ip);
   }
 
   // PATCH /api/v1/admin/users/:id  { isActive: false }
