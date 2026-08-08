@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import { saveSession } from '@/lib/auth';
 import { Shield, Lock, Mail, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { SeirsMarkBold, SeirsWordmark } from '@/components/SeirsLogo';
 
 function LoginForm() {
   const router       = useRouter();
@@ -65,13 +66,11 @@ function LoginForm() {
     <div className="min-h-screen bg-[#0F2B4C] flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
 
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#3A7BD5] mb-4">
-            <Shield size={22} className="text-white" />
-          </div>
-          <div className="text-3xl font-black tracking-widest text-white">SEIRS</div>
-          <p className="text-white/40 text-sm mt-1">Admin Dashboard</p>
+        {/* Brand lockup. Matches the sidebar + mobile-app okada logo. */}
+        <div className="flex flex-col items-center mb-8 gap-3">
+          <SeirsMarkBold size={64} color="#FFFFFF" hubColor="#0F2B4C" />
+          <SeirsWordmark size={140} color="#FFFFFF" />
+          <p className="text-white/40 text-sm">Admin Dashboard</p>
         </div>
 
         {reason === 'timeout' && (

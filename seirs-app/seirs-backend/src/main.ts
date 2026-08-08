@@ -76,20 +76,27 @@ async function bootstrap() {
   // through the framework (not reported — see filter for 5xx gating).
   app.useGlobalFilters(new SentryExceptionFilter());
 
-  // Restrict CORS to declared origins — set ALLOWED_ORIGINS as comma-separated list in .env
-  // e.g. ALLOWED_ORIGINS=https://admin.seirs.co,https://app.seirs.co
+  // Restrict CORS to declared origins. Set ALLOWED_ORIGINS as a comma
+  // separated list in .env, e.g. ALLOWED_ORIGINS=https://admin.seirs.co,https://app.seirs.co
+  //
+  // Vercel preview deploys use randomised subdomains like
+  // seirs-admin-xxxxxxx-seirsapp-5350s-projects.vercel.app. Rather than
+  // enumerating every preview URL, we allow any *.vercel.app origin so
+  // preview links from Vercel work end-to-end. Production URLs remain
+  // gated by the explicit ALLOWED_ORIGINS list.
   const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3001,http://localhost:3000')
     .split(',')
     .map(o => o.trim());
 
+  const VERCEL_PREVIEW_RE = /^https:\/\/[a-z0-9-]+\.vercel\.app$/;
+
   app.enableCors({
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, Postman, curl)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS: origin ${origin} not allowed`));
-      }
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (VERCEL_PREVIEW_RE.test(origin)) return callback(null, true);
+      return callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     methods:         ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders:  ['Content-Type', 'Authorization'],
