@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert, RefreshControl,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,24 +8,37 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { paymentsApi, loyaltyApi } from '@/services/api';
-
-interface ApiTx {
-  id:        string;
-  amount:    number;
-  status:    string;
-  type?:     'credit' | 'debit';
-  method?:   string;
-  label?:    string;
-  createdAt: string;
-}
+import { loyaltyApi, deliveriesApi } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 import {
-  CreditCard, ArrowDownCircle, ArrowUpCircle, Receipt,
-  Plus, ArrowUp, Clock, QrCode, Gift, Sparkles,
+  Gift, Plus, Sparkles, QrCode, Flame, Trophy, Users, Zap,
+  Package, Award, ArrowRight, Star,
 } from 'lucide-react-native';
 import { HamburgerButton } from '@/components/HamburgerButton';
 
-type Tab = 'all' | 'credit' | 'debit';
+/**
+ * Rewards tab hub.
+ *
+ * Design: elegant + motivating + personalized + social. Deliberately no
+ * "total spent" or ₦ transaction history — see product decision to avoid
+ * the accountant/guilt framing. Payment history lives on the Bookings tab.
+ *
+ * Sections top → bottom:
+ *   1. Personalized greeting + this-month points (positive framing of activity)
+ *   2. Points hero card (balance + tier + primary actions)
+ *   3. Streak card (weeks-in-a-row)
+ *   4. Featured promotion (admin-editable; hidden when none)
+ *   5. Achievements strip (unlockable badges)
+ *   6. Community pulse (social proof)
+ */
+
+interface Achievement {
+  key:      string;
+  label:    string;
+  icon:     any;
+  color:    string;
+  earned:   boolean;
+}
 
 export default function WalletScreen() {
   const router  = useRouter();
@@ -33,39 +46,34 @@ export default function WalletScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
   const { t }   = useTranslation();
+  const { user } = useAuth();
 
-  const [activeTab,    setTab]         = useState<Tab>('all');
-  const [withdrawing,  setWithdrawing]  = useState(false);
-  const [balance,      setBalance]      = useState(0);
-  const [points,       setPoints]       = useState<number | null>(null);
-  const [tier,         setTier]         = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<ApiTx[]>([]);
-  const [loading,      setLoading]      = useState(false);
+  const [balance,   setBalance]   = useState(0);
+  const [tier,      setTier]      = useState<string | null>(null);
+  const [history,   setHistory]   = useState<any[]>([]);
+  const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [pulse,     setPulse]     = useState<any>(null);
+  const [promo,     setPromo]     = useState<any>(null);
+  const [loading,   setLoading]   = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [w, h, l] = await Promise.all([
-        paymentsApi.wallet().catch(() => null),
-        paymentsApi.history().catch(() => []),
+      const [l, d, p, pr] = await Promise.all([
         loyaltyApi.balance().catch(() => null),
+        deliveriesApi.myDeliveries(1, 60).catch(() => null),
+        deliveriesApi.communityPulse().catch(() => null),
+        deliveriesApi.featuredPromotion().catch(() => null),
       ]);
-      if (w) setBalance(w.balanceNaira ?? 0);
-      setPoints(l?.balance ?? 0);
-      setTier(l?.tier ?? null);
-      // Backend returns Payment rows; we infer credit/debit from amount sign or type.
-      // Method/label fallbacks avoid the word "Wallet" because customers don't hold
-      // NGN with SEIRS; see feedback_wallet_is_rewards.md.
-      const txs = (Array.isArray(h) ? h : []).map((t: any): ApiTx => ({
-        id:        t.id,
-        amount:    Math.abs(Number(t.amount ?? t.amountNaira ?? 0)),
-        status:    t.status,
-        type:      t.type ?? (Number(t.amount ?? 0) >= 0 ? 'credit' : 'debit'),
-        method:    t.method ?? 'SEIRS',
-        label:     t.label ?? t.description ?? (t.deliveryId ? 'Delivery' : 'Activity'),
-        createdAt: t.createdAt ?? new Date().toISOString(),
-      }));
-      setTransactions(txs);
+      if (l) {
+        setBalance(l.balance ?? 0);
+        setTier(l.tier ?? null);
+        setHistory(Array.isArray(l.history) ? l.history : []);
+      }
+      const items: any[] = Array.isArray(d) ? d : Array.isArray((d as any)?.items) ? (d as any).items : [];
+      setDeliveries(items);
+      if (p) setPulse(p);
+      if (pr) setPromo(pr);
     } finally {
       setLoading(false);
     }
@@ -73,39 +81,63 @@ export default function WalletScreen() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Escrow approximation: pending tx amounts. Backend will surface this
-  // explicitly once the wallet endpoint is extended; for now we derive it.
-  const escrow    = transactions
-    .filter(t => t.status === 'pending')
-    .reduce((s, t) => s + (t.type === 'credit' ? t.amount : 0), 0);
-  const available = Math.max(0, balance - escrow);
+  // ── Derived signals (all client-side, no extra backend calls) ────────────
+  const firstName = user?.name?.split(' ')[0] ?? 'there';
 
-  const filtered = transactions.filter(tx =>
-    activeTab === 'all' ? true : tx.type === activeTab,
-  );
+  const monthPoints = useMemo(() => {
+    const monthStart = new Date();
+    monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    return history
+      .filter((h: any) => (h.delta ?? 0) > 0 && new Date(h.createdAt).getTime() >= monthStart.getTime())
+      .reduce((s: number, h: any) => s + (h.delta ?? 0), 0);
+  }, [history]);
 
-  const handleWithdraw = () => {
-    Alert.prompt(
-      'Withdraw Funds',
-      'Enter amount to withdraw (₦). Funds will be sent to your registered bank account.',
-      async (input) => {
-        const amount = parseFloat(input ?? '');
-        if (!amount || amount <= 0) { Alert.alert('Invalid amount'); return; }
-        if (amount > available) { Alert.alert('Insufficient balance', `Available: ₦${available.toLocaleString()}`); return; }
-        setWithdrawing(true);
-        try {
-          await paymentsApi.withdraw(amount);
-          Alert.alert('Withdrawal initiated', `₦${amount.toLocaleString()} will be sent to your bank account within 24 hours.`);
-          refresh();
-        } catch (e: any) {
-          Alert.alert('Withdrawal failed', e.message ?? 'Please try again.');
-        } finally {
-          setWithdrawing(false);
-        }
-      },
-      'plain-text',
+  // Weeks-in-a-row streak. Counts consecutive ISO weeks ending at "this
+  // week" that contain at least one delivery in the user's history.
+  // Broken week resets the streak; that's intentional per the streak
+  // mental model users expect from apps like Duolingo/Snapchat.
+  const streak = useMemo(() => {
+    if (deliveries.length === 0) return 0;
+    const weeks = new Set(
+      deliveries
+        .filter((d: any) => d.status === 'delivered')
+        .map((d: any) => weekKey(new Date(d.createdAt))),
     );
-  };
+    let count = 0;
+    let cursor = new Date();
+    while (weeks.has(weekKey(cursor))) {
+      count++;
+      cursor = new Date(cursor.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+    return count;
+  }, [deliveries]);
+
+  const deliveredCount = deliveries.filter((d: any) => d.status === 'delivered').length;
+
+  const achievements: Achievement[] = useMemo(() => [
+    { key: 'first',    label: 'First delivery',  icon: Sparkles, color: '#3A7BD5', earned: deliveredCount >= 1  },
+    { key: 'regular',  label: 'Regular',         icon: Package,  color: '#3A7BD5', earned: deliveredCount >= 3  },
+    { key: 'champion', label: 'Champion',        icon: Trophy,   color: '#FFBE0B', earned: deliveredCount >= 10 },
+    { key: 'silver',   label: 'Silver tier',     icon: Award,    color: '#C0C0C0', earned: tier === 'silver' || tier === 'gold' || tier === 'platinum' },
+    { key: 'gold',     label: 'Gold tier',       icon: Award,    color: '#FFD700', earned: tier === 'gold' || tier === 'platinum' },
+    { key: 'platinum', label: 'Platinum tier',   icon: Award,    color: '#E5E4E2', earned: tier === 'platinum' },
+    { key: 'streak',   label: '4-week streak',   icon: Flame,    color: '#F97316', earned: streak >= 4 },
+    { key: 'referral', label: 'Referral hero',   icon: Users,    color: '#22C55E', earned: false /* wired via loyaltyApi.myReferrals in a follow-up */ },
+  ], [deliveredCount, tier, streak]);
+  const earnedCount = achievements.filter(a => a.earned).length;
+
+  const monthDelta = useMemo(() => {
+    // Compare to previous month for the "+X% vs last month" copy under
+    // the this-month hero stat. Positive framing of activity.
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prev = history
+      .filter((h: any) => (h.delta ?? 0) > 0 && new Date(h.createdAt) >= prevMonthStart && new Date(h.createdAt) < thisMonthStart)
+      .reduce((s: number, h: any) => s + (h.delta ?? 0), 0);
+    if (prev === 0) return null;
+    return Math.round(((monthPoints - prev) / prev) * 100);
+  }, [history, monthPoints]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
@@ -124,30 +156,43 @@ export default function WalletScreen() {
           </View>
           <Pressable
             style={[styles.iconBtn, { backgroundColor: theme.surfaceSecond }]}
-            onPress={() => router.push('/(customer)/payment-methods' as any)}
+            onPress={() => router.push('/(customer)/seirs-id' as any)}
+            accessibilityLabel="SEIRS ID"
           >
-            <CreditCard size={20} color={theme.text} strokeWidth={1.75} />
+            <QrCode size={20} color={theme.text} strokeWidth={1.75} />
           </Pressable>
         </View>
 
-        {/* ── Points hero (primary) ─────────────────────────────────── */}
+        {/* Personalized greeting + this-month hero */}
+        <View style={[styles.greetCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.greetHi, { color: theme.textSecond }]}>Hi {firstName}</Text>
+          <View style={styles.greetRow}>
+            <Text style={[styles.greetPts, { color: theme.text }]}>
+              {monthPoints.toLocaleString()}
+              <Text style={[styles.greetUnit, { color: theme.textSecond }]}> pts this month</Text>
+            </Text>
+            {monthDelta != null && (
+              <View style={[styles.deltaChip, { backgroundColor: monthDelta >= 0 ? '#DCFCE7' : '#FEE2E2' }]}>
+                <Text style={{ color: monthDelta >= 0 ? '#166534' : '#991B1B', fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
+                  {monthDelta >= 0 ? '+' : ''}{monthDelta}% vs last
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Points hero card */}
         <View style={styles.cardWrap}>
-          {/* Matches the home-screen wallet card so the brand colour is
-              consistent between Home and Rewards. Navy in light mode,
-              near-black in dark. Don't drift from this without updating
-              the home wallet card too. */}
           <LinearGradient
             colors={isDark ? ['#1C2128', '#0D1117'] : ['#0F2B4C', '#1A3A63']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={[styles.balanceCard, Shadows.navy]}
           >
             <View style={styles.heroTopRow}>
               <View>
-                <Text style={styles.balanceLabel}>{t('rewardsTab.pointsLabel')}</Text>
-                <Text style={styles.balanceAmount}>
-                  {points != null ? points.toLocaleString() : '—'}
-                </Text>
+                <Text style={styles.balanceLabel}>Total rewards</Text>
+                <Text style={styles.balanceAmount}>{balance.toLocaleString()}</Text>
+                <Text style={styles.balancePts}>points</Text>
               </View>
               {tier && (
                 <View style={styles.tierPill}>
@@ -156,200 +201,189 @@ export default function WalletScreen() {
                 </View>
               )}
             </View>
-
             <View style={styles.cardActions}>
               <Pressable style={styles.cardActionBtn} onPress={() => router.push('/(customer)/rewards' as any)}>
-                <View style={styles.cardActionIcon}>
-                  <Gift size={20} color="#fff" strokeWidth={2} />
-                </View>
-                <Text style={styles.cardActionLabel}>{t('rewardsTab.redeem')}</Text>
+                <View style={styles.cardActionIcon}><Gift size={20} color="#fff" strokeWidth={2} /></View>
+                <Text style={styles.cardActionLabel}>Redeem</Text>
               </Pressable>
               <Pressable style={styles.cardActionBtn} onPress={() => router.push('/(customer)/referral' as any)}>
-                <View style={styles.cardActionIcon}>
-                  <Plus size={20} color="#fff" strokeWidth={2} />
-                </View>
-                <Text style={styles.cardActionLabel}>{t('rewardsTab.earnMore')}</Text>
-              </Pressable>
-              <Pressable style={styles.cardActionBtn} onPress={() => router.push('/(customer)/payment-methods' as any)}>
-                <View style={styles.cardActionIcon}>
-                  <CreditCard size={20} color="#fff" strokeWidth={2} />
-                </View>
-                <Text style={styles.cardActionLabel}>{t('wallet.cards')}</Text>
-              </Pressable>
-              <Pressable style={styles.cardActionBtn} onPress={() => router.push('/(customer)/seirs-id' as any)}>
-                <View style={styles.cardActionIcon}>
-                  <QrCode size={20} color="#fff" strokeWidth={2} />
-                </View>
-                <Text style={styles.cardActionLabel}>SEIRS ID</Text>
+                <View style={styles.cardActionIcon}><Plus size={20} color="#fff" strokeWidth={2} /></View>
+                <Text style={styles.cardActionLabel}>Earn more</Text>
               </Pressable>
             </View>
           </LinearGradient>
         </View>
 
-        {/* ── Account credit (secondary) ───────────────────────────────────
-            SEIRS can't hold customer NGN per CBN rules (see [[feedback_wallet_is_rewards]]).
-            Only rendered when there's actually something here — a pending
-            refund or promo credit. Hidden entirely when balance === 0 so
-            new customers never see a "wallet" they'd expect to top up. */}
-        {(balance > 0 || escrow > 0) && (
-          <View style={[styles.creditCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
-            <View style={styles.creditHeader}>
-              <Text style={[styles.creditTitle, { color: theme.text }]}>{t('rewardsTab.accountCredit')}</Text>
-              <Text style={[styles.creditAmount, { color: theme.text }]}>₦{balance.toLocaleString()}</Text>
+        {/* Streak card. Elegant single-line stat; only renders when streak >= 1 */}
+        {streak >= 1 && (
+          <View style={[styles.subtleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={[styles.streakIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Flame size={18} color="#F97316" strokeWidth={2} />
             </View>
-            <Text style={[styles.creditNote, { color: theme.textSecond }]}>{t('rewardsTab.accountCreditNote')}</Text>
-            {escrow > 0 && (
-              <View style={[styles.escrowChip, { backgroundColor: theme.surfaceSecond }]}>
-                <Clock size={11} color={theme.textSecond} strokeWidth={2} />
-                <Text style={[styles.escrowChipText, { color: theme.textSecond }]}>
-                  {t('rewardsTab.escrowChip', { amount: escrow.toLocaleString() })}
-                </Text>
-              </View>
-            )}
-            {balance > 0 && (
-              <Pressable onPress={handleWithdraw} disabled={withdrawing} style={styles.creditWithdraw}>
-                <ArrowUp size={14} color={theme.primary} strokeWidth={2} />
-                <Text style={[styles.creditWithdrawText, { color: theme.primary }]}>{t('rewardsTab.withdrawCredit')}</Text>
-              </Pressable>
-            )}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.streakTitle, { color: theme.text }]}>
+                {streak}-week streak
+              </Text>
+              <Text style={[styles.streakSub, { color: theme.textSecond }]}>
+                {streak >= 4
+                  ? "You're on fire. Keep it going!"
+                  : `${4 - streak} more week${4 - streak === 1 ? '' : 's'} to unlock the streak achievement.`}
+              </Text>
+            </View>
           </View>
         )}
 
-        {/* Stats: only render when there's actually a transaction history to
-            summarise. Empty ₦0 rows on a fresh account read as "you have a
-            wallet" which is exactly the wrong message. */}
-        {transactions.length > 0 && (
-          <View style={[styles.statsRow, { backgroundColor: theme.surface }, Shadows.sm]}>
-            {[
-              { label: t('wallet.totalSpent'),   value: `₦${transactions.filter(tx => tx.type === 'debit').reduce((s, tx) => s + tx.amount, 0).toLocaleString()}` },
-              { label: t('wallet.totalEarned'),  value: `₦${transactions.filter(tx => tx.type === 'credit').reduce((s, tx) => s + tx.amount, 0).toLocaleString()}` },
-              { label: t('wallet.transactions'), value: `${transactions.length}` },
-            ].map((stat, i) => (
-              <View key={stat.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
-                <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecond }]}>{stat.label}</Text>
+        {/* Featured promotion. Only renders when admin has set one. Elegant
+            single-tap CTA that goes to the /rewards catalogue. */}
+        {promo && (
+          <Pressable
+            onPress={() => router.push('/(customer)/rewards' as any)}
+            style={[styles.promoCard, { borderColor: theme.primary }]}
+          >
+            <LinearGradient
+              colors={['#3A7BD5', '#5DA0FF']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.promoInner}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.promoTag}>FEATURED</Text>
+                <Text style={styles.promoLabel}>{promo.label}</Text>
+                <Text style={styles.promoDesc}>{promo.desc}</Text>
               </View>
-            ))}
-          </View>
+              <ArrowRight size={22} color="#fff" strokeWidth={2.5} />
+            </LinearGradient>
+          </Pressable>
         )}
 
-        {/* Transactions */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('wallet.transactions')}</Text>
-
-          <View style={[styles.tabRow, { backgroundColor: theme.surfaceSecond }]}>
-            {(['all', 'credit', 'debit'] as Tab[]).map(tab => (
-              <Pressable
-                key={tab}
-                style={[styles.tab, activeTab === tab && { backgroundColor: theme.primary }]}
-                onPress={() => setTab(tab)}
-              >
-                <Text style={[styles.tabText, { color: activeTab === tab ? '#fff' : theme.textSecond }]}>
-                  {t(`wallet.${tab}`)}
-                </Text>
-              </Pressable>
-            ))}
+        {/* Achievements strip */}
+        <View style={[styles.section, { paddingHorizontal: Spacing.md }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Achievements</Text>
+            <Text style={[styles.sectionCount, { color: theme.textSecond }]}>
+              {earnedCount} of {achievements.length}
+            </Text>
           </View>
-
-          {filtered.length === 0 ? (
-            <View style={[styles.emptyCard, { backgroundColor: theme.surface }]}>
-              <Receipt size={40} color={theme.textThird} strokeWidth={1.5} />
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('wallet.noTransactions')}</Text>
-            </View>
-          ) : (
-            filtered.map(tx => (
-              <Pressable
-                key={tx.id}
-                style={[styles.txRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
-                onPress={() => router.push({ pathname: '/(customer)/transaction/[id]', params: { id: tx.id } } as any)}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: Spacing.md }}>
+            {achievements.map((a) => (
+              <View
+                key={a.key}
+                style={[
+                  styles.achievementCard,
+                  { backgroundColor: theme.surface, borderColor: theme.border, opacity: a.earned ? 1 : 0.45 },
+                ]}
               >
-                <View style={[styles.txIcon, { backgroundColor: (tx.type === 'credit' ? theme.success : theme.error) + '18' }]}>
-                  {tx.type === 'credit'
-                    ? <ArrowDownCircle size={20} color={theme.success} strokeWidth={1.75} />
-                    : <ArrowUpCircle   size={20} color={theme.error}   strokeWidth={1.75} />
-                  }
+                <View style={[styles.achievementIcon, { backgroundColor: a.earned ? a.color + '20' : theme.surfaceSecond }]}>
+                  <a.icon size={20} color={a.earned ? a.color : theme.textThird} strokeWidth={2} />
                 </View>
-                <View style={styles.txInfo}>
-                  <Text style={[styles.txLabel, { color: theme.text }]}>{tx.label}</Text>
-                  <Text style={[styles.txMeta,  { color: theme.textSecond }]}>
-                    {new Date(tx.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })} · {tx.method}
-                  </Text>
-                </View>
-                <View style={styles.txRight}>
-                  <Text style={[styles.txAmount, { color: tx.type === 'credit' ? theme.success : theme.error }]}>
-                    {tx.type === 'credit' ? '+' : '−'}₦{tx.amount.toLocaleString()}
-                  </Text>
-                  <View style={[
-                    styles.statusDot,
-                    { backgroundColor: tx.status === 'success' ? theme.success : tx.status === 'pending' ? theme.warning : theme.error },
-                  ]} />
-                </View>
-              </Pressable>
-            ))
-          )}
+                <Text style={[styles.achievementLabel, { color: a.earned ? theme.text : theme.textSecond }]} numberOfLines={2}>
+                  {a.label}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
         </View>
+
+        {/* Community pulse (social proof). Only shows when we have data. */}
+        {pulse && pulse.deliveriesThisWeek > 0 && (
+          <View style={[styles.pulseCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={[styles.pulseIcon, { backgroundColor: theme.primary + '15' }]}>
+              <Users size={18} color={theme.primary} strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.pulseCount, { color: theme.text }]}>
+                {pulse.deliveriesThisWeek.toLocaleString()}
+                <Text style={[styles.pulseCountUnit, { color: theme.textSecond }]}> deliveries this week</Text>
+              </Text>
+              <Text style={[styles.pulseSub, { color: theme.textSecond }]}>
+                By {pulse.activeCustomersThisWeek.toLocaleString()} SEIRS customers across Nigeria.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Empty state when everything is null (fresh account, no deliveries) */}
+        {balance === 0 && deliveredCount === 0 && streak === 0 && !promo && (
+          <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Zap size={28} color={theme.primary} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>Start earning</Text>
+            <Text style={[styles.emptySub, { color: theme.textSecond }]}>
+              Book your first delivery to unlock achievements and start earning SEIRS Rewards points.
+            </Text>
+            <Pressable onPress={() => router.push('/(customer)/send' as any)} style={[styles.emptyCta, { backgroundColor: theme.primary }]}>
+              <Text style={styles.emptyCtaText}>Book a delivery</Text>
+            </Pressable>
+          </View>
+        )}
 
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ISO week key so we can group deliveries by week for streak calc. Format
+// YYYY-Www so week 1 sorts before week 10 alphabetically.
+function weekKey(d: Date): string {
+  const target = new Date(d.getTime());
+  target.setHours(0, 0, 0, 0);
+  target.setDate(target.getDate() + 3 - ((target.getDay() + 6) % 7));
+  const week1 = new Date(target.getFullYear(), 0, 4);
+  const week  = 1 + Math.round(((target.getTime() - week1.getTime()) / (24 * 60 * 60 * 1000) - 3 + ((week1.getDay() + 6) % 7)) / 7);
+  return `${target.getFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
 const styles = StyleSheet.create({
-  header:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.md },
-  title:     { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
-  iconBtn:   { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  header:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.md },
+  title:   { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+
+  greetCard: { marginHorizontal: Spacing.md, marginBottom: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+  greetHi:   { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.6 },
+  greetRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, gap: 8 },
+  greetPts:  { fontSize: FontSize.xl, fontWeight: FontWeight.bold, letterSpacing: -0.5 },
+  greetUnit: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  deltaChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.full },
 
   cardWrap:      { marginHorizontal: Spacing.md, marginBottom: Spacing.md },
   balanceCard:   { borderRadius: Radius.xl, padding: Spacing.lg },
   balanceLabel:  { color: 'rgba(255,255,255,0.7)', fontSize: FontSize.sm, marginBottom: Spacing.xs },
-  balanceAmount: { color: '#fff', fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: -0.5, marginBottom: Spacing.md },
+  balanceAmount: { color: '#fff', fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: -0.5 },
+  balancePts:    { color: 'rgba(255,255,255,0.6)', fontSize: FontSize.xs, marginBottom: Spacing.md },
   heroTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   tierPill:      { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
-  tierPillText:  { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-
-  creditCard:        { marginHorizontal: Spacing.md, marginBottom: Spacing.lg, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1 },
-  creditHeader:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  creditTitle:       { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  creditAmount:      { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  creditNote:        { fontSize: FontSize.xs, marginTop: 4, lineHeight: 17 },
-  escrowChip:        { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Spacing.sm, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full, alignSelf: 'flex-start' },
-  escrowChipText:    { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
-  creditWithdraw:    { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Spacing.sm, alignSelf: 'flex-start' },
-  creditWithdrawText:{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-
-  escrowRow:     { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.lg },
-  escrowItem:    { flex: 1, gap: 4 },
-  escrowTitleRow:{ flexDirection: 'row', alignItems: 'center', gap: 4 },
-  escrowDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: Spacing.md },
-  escrowLabel:   { color: 'rgba(255,255,255,0.6)', fontSize: FontSize.xs },
-  escrowValue:   { color: '#FFFFFF', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
-
-  cardActions:    { flexDirection: 'row' },
-  cardActionBtn:  { flex: 1, alignItems: 'center', gap: 6 },
-  cardActionIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center' },
+  tierPillText:  { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold, textTransform: 'capitalize' },
+  cardActions:   { flexDirection: 'row', marginTop: Spacing.sm },
+  cardActionBtn: { flex: 1, alignItems: 'center', gap: 6 },
+  cardActionIcon:{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center' },
   cardActionLabel:{ color: 'rgba(255,255,255,0.9)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
 
-  statsRow:  { marginHorizontal: Spacing.md, borderRadius: Radius.xl, flexDirection: 'row', marginBottom: Spacing.lg },
-  statItem:  { flex: 1, alignItems: 'center', paddingVertical: Spacing.md },
-  statValue: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-  statLabel: { fontSize: FontSize.xs, marginTop: 2 },
+  subtleCard:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginHorizontal: Spacing.md, marginBottom: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+  streakIcon:  { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  streakTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  streakSub:   { fontSize: FontSize.xs, marginTop: 2, lineHeight: 16 },
 
-  section:      { paddingHorizontal: Spacing.md },
-  sectionTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
+  promoCard:  { marginHorizontal: Spacing.md, marginBottom: Spacing.md, borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden' },
+  promoInner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md },
+  promoTag:   { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 1, marginBottom: 2 },
+  promoLabel: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  promoDesc:  { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.xs, marginTop: 2, lineHeight: 16 },
 
-  tabRow:  { flexDirection: 'row', borderRadius: Radius.full, padding: 3, marginBottom: Spacing.md },
-  tab:     { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: Radius.full },
-  tabText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  section:      { paddingHorizontal: Spacing.md, marginBottom: Spacing.md },
+  sectionHeader:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 },
+  sectionTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  sectionCount: { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
+  achievementCard:{ width: 92, alignItems: 'center', gap: 6, padding: 10, borderRadius: Radius.lg, borderWidth: 1 },
+  achievementIcon:{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  achievementLabel:{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textAlign: 'center', lineHeight: 14 },
 
-  emptyCard:  { alignItems: 'center', gap: Spacing.sm, padding: Spacing.xl, borderRadius: Radius.xl },
-  emptyTitle: { fontSize: FontSize.base, fontWeight: FontWeight.medium },
+  pulseCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginHorizontal: Spacing.md, marginBottom: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+  pulseIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  pulseCount:{ fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  pulseCountUnit:{ fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  pulseSub:  { fontSize: FontSize.xs, marginTop: 2, lineHeight: 15 },
 
-  txRow:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, marginBottom: Spacing.sm },
-  txIcon:    { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  txInfo:    { flex: 1 },
-  txLabel:   { fontSize: FontSize.base, fontWeight: FontWeight.semibold, marginBottom: 2 },
-  txMeta:    { fontSize: FontSize.xs },
-  txRight:   { alignItems: 'flex-end', gap: 4 },
-  txAmount:  { fontSize: FontSize.base, fontWeight: FontWeight.bold },
-  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  emptyCard: { marginHorizontal: Spacing.md, marginTop: Spacing.md, padding: Spacing.lg, borderRadius: Radius.xl, borderWidth: 1, alignItems: 'center', gap: 8 },
+  emptyTitle:{ fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  emptySub:  { fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
+  emptyCta:  { marginTop: Spacing.sm, paddingHorizontal: Spacing.lg, paddingVertical: 12, borderRadius: Radius.lg },
+  emptyCtaText:{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },
 });

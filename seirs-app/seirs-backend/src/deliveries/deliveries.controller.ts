@@ -47,6 +47,24 @@ export class DeliveriesController {
     return this.deliveriesService.frequentAddresses(user.id);
   }
 
+  // GET /api/v1/deliveries/pulse
+  // Aggregate community activity for social-proof "everyone is using it"
+  // display on the Rewards tab. Public counts, no PII. Cached in-memory
+  // for 5 min so a mass refresh doesn't hammer the DB.
+  @Get('pulse')
+  communityPulse() {
+    return this.deliveriesService.communityPulse();
+  }
+
+  // GET /api/v1/deliveries/featured-promotion
+  // Returns the admin-set featured redemption for the Rewards tab, or
+  // null if none active. Admin edits via the platform_config table
+  // (key: featured_promotion). Cheap read; no auth beyond JWT.
+  @Get('featured-promotion')
+  featuredPromotion() {
+    return this.deliveriesService.getFeaturedPromotion();
+  }
+
   // GET /api/v1/deliveries/driver — active deliveries assigned to this driver
   @Get('driver')
   driverDeliveries(@CurrentUser() user: User) {

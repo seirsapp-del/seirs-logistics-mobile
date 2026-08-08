@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThan } from 'typeorm';
 import { Delivery, DeliveryStatus } from './delivery.entity';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
@@ -266,6 +266,65 @@ export class DeliveriesService {
       pickups:  shape(pickups),
       dropoffs: shape(dropoffs),
     };
+  }
+
+  // Community pulse: aggregate counts across all users for the "everyone
+  // is using SEIRS" social-proof card. Cheap group-by, no PII exposed.
+  private pulseCache: { at: number; data: any } | null = null;
+  async communityPulse() {
+    const now = Date.now();
+    // Serve from memory cache when fresh (5 min) — this endpoint gets hit
+    // on every Rewards tab load so we don't want to run the same query
+    // 100 times a minute.
+    if (this.pulseCache && (now - this.pulseCache.at) < 5 * 60 * 1000) {
+      return this.pulseCache.data;
+    }
+
+    const weekAgo  = new Date(now - 7  * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+    const [deliveriesThisWeek, deliveriesThisMonth, activeCustomersThisWeek] = await Promise.all([
+      this.repo.count({ where: { createdAt: MoreThan(weekAgo) as any, status: DeliveryStatus.DELIVERED } }).catch(() => 0),
+      this.repo.count({ where: { createdAt: MoreThan(monthAgo) as any, status: DeliveryStatus.DELIVERED } }).catch(() => 0),
+      this.repo.createQueryBuilder('d')
+        .select('COUNT(DISTINCT d.customerId)', 'c')
+        .where('d.createdAt >= :since', { since: weekAgo })
+        .getRawOne()
+        .then((r: any) => Number(r?.c ?? 0))
+        .catch(() => 0),
+    ]);
+
+    const data = {
+      deliveriesThisWeek,
+      deliveriesThisMonth,
+      activeCustomersThisWeek,
+      generatedAt: new Date(now).toISOString(),
+    };
+    this.pulseCache = { at: now, data };
+    return data;
+  }
+
+  // Admin-set featured promotion for the Rewards tab. Stored in
+  // platform_config with key 'featured_promotion' as a JSON string:
+  //   {"type":"discount_500","label":"₦500 off","desc":"...","expiresAt":"..."}
+  // Returns null when unset OR expired so client falls back to nothing.
+  async getFeaturedPromotion(): Promise<null | {
+    type: string; label: string; desc: string; expiresAt: string | null;
+  }> {
+    try {
+      const rows = await this.repo.manager
+        .createQueryBuilder()
+        .select('value')
+        .from('platform_config', 'c')
+        .where("c.key = 'featured_promotion'")
+        .getRawOne();
+      if (!rows?.value) return null;
+      const parsed = JSON.parse(rows.value);
+      if (parsed?.expiresAt && new Date(parsed.expiresAt).getTime() < Date.now()) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
   }
 
   async findByTracking(trackingCode: string) {

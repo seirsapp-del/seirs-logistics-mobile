@@ -240,6 +240,22 @@ export const deliveriesApi = {
       pickups:  Array<{ address: string; lat: number | null; lng: number | null; count: number; lastUsed: string }>;
       dropoffs: Array<{ address: string; lat: number | null; lng: number | null; count: number; lastUsed: string }>;
     }>('GET', '/deliveries/frequent-addresses'),
+  // Community pulse aggregated across all customers. Powers the social
+  // proof card on the Rewards tab. Cached in-memory by the backend for
+  // 5 minutes.
+  communityPulse: () =>
+    request<{
+      deliveriesThisWeek:     number;
+      deliveriesThisMonth:    number;
+      activeCustomersThisWeek: number;
+      generatedAt:            string;
+    }>('GET', '/deliveries/pulse'),
+  // Admin-set featured promotion for the Rewards tab. Returns null when
+  // no promotion is active.
+  featuredPromotion: () =>
+    request<null | { type: string; label: string; desc: string; expiresAt: string | null }>(
+      'GET', '/deliveries/featured-promotion',
+    ),
   get: (id: string) => request<any>('GET', `/deliveries/${id}`),
   track: (code: string) => request<any>('GET', `/deliveries/track/${code}`, undefined, false),
   updateStatus: (id: string, status: string, proofPhotoUrl?: string) =>
