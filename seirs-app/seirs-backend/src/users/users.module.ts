@@ -5,9 +5,10 @@ import { UsersService } from './users.service';
 import { User } from './user.entity';
 import { ArchivedUser } from './archived-user.entity';
 import { UserProfileAudit } from './user-profile-audit.entity';
+import { SavedAddress } from '../addresses/saved-address.entity';
 
 @Module({
-  imports:     [TypeOrmModule.forFeature([User, ArchivedUser, UserProfileAudit])],
+  imports:     [TypeOrmModule.forFeature([User, ArchivedUser, UserProfileAudit, SavedAddress])],
   controllers: [UsersController],
   providers:   [UsersService],
   exports:     [UsersService],

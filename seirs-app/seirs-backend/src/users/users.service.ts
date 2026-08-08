@@ -8,6 +8,7 @@ import { User, UserRole } from './user.entity';
 import { ArchivedUser } from './archived-user.entity';
 import { UserProfileAudit, ProfileFieldName } from './user-profile-audit.entity';
 import { AccountIdPrefix, generateAccountId } from '../common/utils/auth-codes';
+import { SavedAddress } from '../addresses/saved-address.entity';
 
 const ARCHIVE_GRACE_DAYS = 30;
 
@@ -176,9 +177,10 @@ export class UsersService implements OnModuleInit {
   }
 
   constructor(
-    @InjectRepository(User)              private repo:         Repository<User>,
-    @InjectRepository(ArchivedUser)      private archiveRepo:  Repository<ArchivedUser>,
-    @InjectRepository(UserProfileAudit)  private auditRepo:    Repository<UserProfileAudit>,
+    @InjectRepository(User)              private repo:            Repository<User>,
+    @InjectRepository(ArchivedUser)      private archiveRepo:     Repository<ArchivedUser>,
+    @InjectRepository(UserProfileAudit)  private auditRepo:       Repository<UserProfileAudit>,
+    @InjectRepository(SavedAddress)      private savedAddrRepo:   Repository<SavedAddress>,
   ) {}
 
   findById(id: string) {
@@ -305,6 +307,37 @@ export class UsersService implements OnModuleInit {
     const patch: any = {};
     for (const { field, newValue } of changes) patch[field] = newValue;
     await this.repo.update(userId, patch);
+
+    // Auto-mirror homeAddress onto the SavedAddress "home" entry so it
+    // appears in the pickup/dropoff picker during booking. Never overwrites
+    // an existing "home" entry (user might have set precise coordinates via
+    // the map picker); only creates one when none exists.
+    const homeChange = changes.find((c) => c.field === 'homeAddress' && c.newValue);
+    if (homeChange) {
+      try {
+        const existing = await this.savedAddrRepo.findOne({
+          where: { user: { id: userId }, type: 'home' },
+        });
+        if (!existing) {
+          const addr: any = homeChange.newValue;
+          const composedText = [addr.street, addr.city, addr.state]
+            .filter(Boolean)
+            .join(', ') || addr.label || '';
+          if (composedText) {
+            await this.savedAddrRepo.save(this.savedAddrRepo.create({
+              user:  { id: userId } as User,
+              label: addr.label || 'Home',
+              text:  composedText,
+              type:  'home',
+              lat:   addr.coords?.lat ?? null,
+              lng:   addr.coords?.lng ?? null,
+            }));
+          }
+        }
+      } catch (e: any) {
+        this.logger.warn(`homeAddress → SavedAddress mirror failed: ${e?.message ?? e}`);
+      }
+    }
 
     // Write one audit row per changed field
     await this.auditRepo.save(

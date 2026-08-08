@@ -53,14 +53,16 @@ export default function WalletScreen() {
       if (w) setBalance(w.balanceNaira ?? 0);
       setPoints(l?.balance ?? 0);
       setTier(l?.tier ?? null);
-      // Backend returns Payment rows; we infer credit/debit from amount sign or type
+      // Backend returns Payment rows; we infer credit/debit from amount sign or type.
+      // Method/label fallbacks avoid the word "Wallet" because customers don't hold
+      // NGN with SEIRS; see feedback_wallet_is_rewards.md.
       const txs = (Array.isArray(h) ? h : []).map((t: any): ApiTx => ({
         id:        t.id,
         amount:    Math.abs(Number(t.amount ?? t.amountNaira ?? 0)),
         status:    t.status,
         type:      t.type ?? (Number(t.amount ?? 0) >= 0 ? 'credit' : 'debit'),
-        method:    t.method ?? 'Wallet',
-        label:     t.label ?? t.description ?? (t.deliveryId ? 'Delivery' : 'Wallet activity'),
+        method:    t.method ?? 'SEIRS',
+        label:     t.label ?? t.description ?? (t.deliveryId ? 'Delivery' : 'Activity'),
         createdAt: t.createdAt ?? new Date().toISOString(),
       }));
       setTransactions(txs);
@@ -184,46 +186,52 @@ export default function WalletScreen() {
           </LinearGradient>
         </View>
 
-        {/* ── Account credit (secondary) ───────────────────────────── */}
-        {/* This is NOT a savings account. SEIRS can't hold customer NGN per
-            CBN rules (see seirs-payments-spec.html §1). Anything here is
-            promotional credit or pending refunds — labelled clearly so
-            customer doesn't expect a wallet they can top up. */}
-        <View style={[styles.creditCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
-          <View style={styles.creditHeader}>
-            <Text style={[styles.creditTitle, { color: theme.text }]}>{t('rewardsTab.accountCredit')}</Text>
-            <Text style={[styles.creditAmount, { color: theme.text }]}>₦{balance.toLocaleString()}</Text>
+        {/* ── Account credit (secondary) ───────────────────────────────────
+            SEIRS can't hold customer NGN per CBN rules (see [[feedback_wallet_is_rewards]]).
+            Only rendered when there's actually something here — a pending
+            refund or promo credit. Hidden entirely when balance === 0 so
+            new customers never see a "wallet" they'd expect to top up. */}
+        {(balance > 0 || escrow > 0) && (
+          <View style={[styles.creditCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+            <View style={styles.creditHeader}>
+              <Text style={[styles.creditTitle, { color: theme.text }]}>{t('rewardsTab.accountCredit')}</Text>
+              <Text style={[styles.creditAmount, { color: theme.text }]}>₦{balance.toLocaleString()}</Text>
+            </View>
+            <Text style={[styles.creditNote, { color: theme.textSecond }]}>{t('rewardsTab.accountCreditNote')}</Text>
+            {escrow > 0 && (
+              <View style={[styles.escrowChip, { backgroundColor: theme.surfaceSecond }]}>
+                <Clock size={11} color={theme.textSecond} strokeWidth={2} />
+                <Text style={[styles.escrowChipText, { color: theme.textSecond }]}>
+                  {t('rewardsTab.escrowChip', { amount: escrow.toLocaleString() })}
+                </Text>
+              </View>
+            )}
+            {balance > 0 && (
+              <Pressable onPress={handleWithdraw} disabled={withdrawing} style={styles.creditWithdraw}>
+                <ArrowUp size={14} color={theme.primary} strokeWidth={2} />
+                <Text style={[styles.creditWithdrawText, { color: theme.primary }]}>{t('rewardsTab.withdrawCredit')}</Text>
+              </Pressable>
+            )}
           </View>
-          <Text style={[styles.creditNote, { color: theme.textSecond }]}>{t('rewardsTab.accountCreditNote')}</Text>
-          {escrow > 0 && (
-            <View style={[styles.escrowChip, { backgroundColor: theme.surfaceSecond }]}>
-              <Clock size={11} color={theme.textSecond} strokeWidth={2} />
-              <Text style={[styles.escrowChipText, { color: theme.textSecond }]}>
-                {t('rewardsTab.escrowChip', { amount: escrow.toLocaleString() })}
-              </Text>
-            </View>
-          )}
-          {balance > 0 && (
-            <Pressable onPress={handleWithdraw} disabled={withdrawing} style={styles.creditWithdraw}>
-              <ArrowUp size={14} color={theme.primary} strokeWidth={2} />
-              <Text style={[styles.creditWithdrawText, { color: theme.primary }]}>{t('rewardsTab.withdrawCredit')}</Text>
-            </Pressable>
-          )}
-        </View>
+        )}
 
-        {/* Stats */}
-        <View style={[styles.statsRow, { backgroundColor: theme.surface }, Shadows.sm]}>
-          {[
-            { label: t('wallet.totalSpent'),   value: `₦${transactions.filter(tx => tx.type === 'debit').reduce((s, tx) => s + tx.amount, 0).toLocaleString()}` },
-            { label: t('wallet.totalEarned'),  value: `₦${transactions.filter(tx => tx.type === 'credit').reduce((s, tx) => s + tx.amount, 0).toLocaleString()}` },
-            { label: t('wallet.transactions'), value: `${transactions.length}` },
-          ].map((stat, i) => (
-            <View key={stat.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
-              <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecond }]}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
+        {/* Stats: only render when there's actually a transaction history to
+            summarise. Empty ₦0 rows on a fresh account read as "you have a
+            wallet" which is exactly the wrong message. */}
+        {transactions.length > 0 && (
+          <View style={[styles.statsRow, { backgroundColor: theme.surface }, Shadows.sm]}>
+            {[
+              { label: t('wallet.totalSpent'),   value: `₦${transactions.filter(tx => tx.type === 'debit').reduce((s, tx) => s + tx.amount, 0).toLocaleString()}` },
+              { label: t('wallet.totalEarned'),  value: `₦${transactions.filter(tx => tx.type === 'credit').reduce((s, tx) => s + tx.amount, 0).toLocaleString()}` },
+              { label: t('wallet.transactions'), value: `${transactions.length}` },
+            ].map((stat, i) => (
+              <View key={stat.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
+                <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecond }]}>{stat.label}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Transactions */}
         <View style={styles.section}>
