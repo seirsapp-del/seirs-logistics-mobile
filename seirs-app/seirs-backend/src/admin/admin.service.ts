@@ -95,6 +95,38 @@ export class AdminService {
   // grace window for compliance requests the user has formally
   // escalated. Refuses on admins (use offboard) or on accounts with
   // active deliveries (would orphan a customer's package).
+  // Admin lists all users with a pending deletion (self- or admin-scheduled).
+  // Sorted soonest-purge-first so the recycle-bin page has action items on top.
+  async listPendingDeletions() {
+    return this.usersService.listPendingDeletions();
+  }
+
+  // Admin schedules a soft-delete on behalf of a user. Same 30-day grace as
+  // self-service. Role-gated to compliance roles and audit-logged so the
+  // trail matches hard-delete's paper trail.
+  async adminSoftDeleteUser(targetUserId: string, admin: any, reason: string, ip?: string) {
+    this.ensureNdprAccess(admin, this.NDPR_DELETE_ROLES, 'ndpr_soft_delete');
+    if (!reason || reason.trim().length < 6) {
+      throw new BadRequestException('Reason (min 6 chars) is required.');
+    }
+    const requesterId = admin?.id ?? admin?.sub;
+    const result = await this.usersService.adminScheduleDeletion(targetUserId, requesterId, reason.trim());
+    await this.logAudit(admin, 'soft_delete_scheduled', `user:${targetUserId}`, {
+      reason:      reason.trim().slice(0, 500),
+      scheduledAt: result.scheduledAt,
+    }, ip);
+    return result;
+  }
+
+  // Admin cancels a pending deletion. Also audit-logged so we can prove
+  // who reversed the decision and when.
+  async adminCancelUserDeletion(targetUserId: string, admin: any, ip?: string) {
+    this.ensureNdprAccess(admin, this.NDPR_DELETE_ROLES, 'ndpr_cancel_deletion');
+    const result = await this.usersService.adminCancelDeletion(targetUserId);
+    await this.logAudit(admin, 'deletion_cancelled', `user:${targetUserId}`, {}, ip);
+    return result;
+  }
+
   async adminHardDeleteUser(targetUserId: string, admin: any, reason: string, ip?: string) {
     this.ensureNdprAccess(admin, this.NDPR_DELETE_ROLES, 'ndpr_hard_delete');
     if (!reason || reason.trim().length < 6) {

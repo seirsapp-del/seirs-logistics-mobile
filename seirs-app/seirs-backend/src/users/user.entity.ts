@@ -120,6 +120,30 @@ export class User {
   @Column({ nullable: true })
   deactivationReason: string;
 
+  // ── Soft-delete grace window (NDPR-defensible + Google/AD-style recycle bin) ─
+  // When a user (or admin) triggers account deletion, we schedule a hard-delete
+  // 30 days out instead of purging immediately. During the grace window the
+  // user can log in and cancel the deletion. A daily cron picks up expired
+  // schedules and runs the actual purge into archived_users.
+  // NULL on both = no pending deletion.
+  @Index()
+  @Column({ type: 'timestamptz', nullable: true })
+  deletionRequestedAt: Date | null;
+
+  @Index()
+  @Column({ type: 'timestamptz', nullable: true })
+  deletionScheduledAt: Date | null;
+
+  // 'self' when the user requested it themselves, or 'admin:<adminUserId>'
+  // when an admin scheduled the deletion (e.g. via /admin/users/:id/soft-delete).
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  deletionRequestedBy: string | null;
+
+  // Optional user-supplied reason. Never surfaced to the deleted user;
+  // stored for the audit trail so support can understand attrition patterns.
+  @Column({ type: 'text', nullable: true })
+  deletionReason: string | null;
+
   @Column({ nullable: true, select: false })
   emailVerificationOtp: string;
 

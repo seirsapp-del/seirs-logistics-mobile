@@ -274,11 +274,17 @@ export default function UserDetailPage() {
           </Section>
         )}
 
-        {/* Financial */}
+        {/* Financial — bank fields only for drivers. Customers pay via
+            Flutterwave Inline (card/USSD), never direct debit, so a bank
+            row on a customer is meaningless and leaks unnecessary PII. */}
         <Section title="Financial">
           <Field label="Loyalty balance" value={`${(loyalty?.balance ?? 0).toLocaleString()} pts (${loyalty?.tier ?? 'Bronze'})`} />
-          <Field label="Bank" value={user.bankAccountName ? `${user.bankAccountName} · ${user.bankAccountNumber?.slice(-4) ?? '****'} · ${user.bankCode ?? ''}` : null} />
-          <Field label="Bank verified" value={user.bankVerifiedAt ? fmtDate(user.bankVerifiedAt) : null} />
+          {user.role === 'driver' && (
+            <>
+              <Field label="Bank" value={user.bankAccountName ? `${user.bankAccountName} · ${user.bankAccountNumber?.slice(-4) ?? '****'} · ${user.bankCode ?? ''}` : null} />
+              <Field label="Bank verified" value={user.bankVerifiedAt ? fmtDate(user.bankVerifiedAt) : null} />
+            </>
+          )}
         </Section>
 
         {/* Driver record (if this user has one) */}

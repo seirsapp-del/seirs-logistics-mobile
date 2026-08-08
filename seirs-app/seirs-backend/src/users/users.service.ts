@@ -355,14 +355,84 @@ export class UsersService implements OnModuleInit {
       }
     }
 
+    // Schedule for hard-delete after the grace window. Account stays
+    // active during the window so the user can log in and cancel from
+    // the app if they change their mind. Cron runs daily at 3am and
+    // purges anything past deletionScheduledAt.
+    const now = new Date();
+    const scheduledAt = new Date(now.getTime() + ARCHIVE_GRACE_DAYS * 24 * 60 * 60 * 1000);
     await this.repo.update(userId, {
-      isActive:           false,
-      deactivatedAt:      new Date(),
-      deactivationReason: reason ?? 'self_deleted',
-    });
+      deletionRequestedAt: now,
+      deletionScheduledAt: scheduledAt,
+      deletionRequestedBy: 'self',
+      deletionReason:      reason ?? null,
+    } as any);
     return {
-      message: `Account scheduled for deletion. You have ${ARCHIVE_GRACE_DAYS} days to cancel by signing in again.`,
+      message: `Account scheduled for deletion on ${scheduledAt.toISOString().slice(0, 10)}. Sign in anytime before then and tap Cancel Deletion to keep your account.`,
+      scheduledAt: scheduledAt.toISOString(),
+      graceDays:   ARCHIVE_GRACE_DAYS,
     };
+  }
+
+  // Cancel a pending self-deletion. Called from the customer app banner
+  // "Your account will delete on X — Cancel?". No password re-entry needed
+  // since the JWT already proves identity.
+  async cancelDeletion(userId: string) {
+    const user = await this.repo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Account not found');
+    if (!user.deletionScheduledAt) {
+      return { message: 'No pending deletion to cancel.' };
+    }
+    await this.repo.update(userId, {
+      deletionRequestedAt: null,
+      deletionScheduledAt: null,
+      deletionRequestedBy: null,
+      deletionReason:      null,
+    } as any);
+    return { message: 'Deletion cancelled. Your account is safe.' };
+  }
+
+  // Admin lists all users with a pending deletion. Ordered by
+  // deletionScheduledAt ASC so the ones about to purge are at the top.
+  async listPendingDeletions() {
+    return this.repo.find({
+      where: { deletionScheduledAt: Not(IsNull()) } as any,
+      order: { deletionScheduledAt: 'ASC' },
+      take:  200,
+    });
+  }
+
+  // Admin schedules a soft-delete on behalf of a user. Same 30-day grace
+  // window but attributed to admin so audit can distinguish. Unlike a
+  // hard-delete this is reversible until the cron runs.
+  async adminScheduleDeletion(userId: string, adminId: string, reason: string) {
+    const user = await this.repo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Account not found');
+    if (user.role === 'admin') {
+      throw new BadRequestException('Use offboarding for admin accounts, not soft-delete.');
+    }
+    const now = new Date();
+    const scheduledAt = new Date(now.getTime() + ARCHIVE_GRACE_DAYS * 24 * 60 * 60 * 1000);
+    await this.repo.update(userId, {
+      deletionRequestedAt: now,
+      deletionScheduledAt: scheduledAt,
+      deletionRequestedBy: `admin:${adminId}`,
+      deletionReason:      reason,
+    } as any);
+    return { ok: true, scheduledAt: scheduledAt.toISOString() };
+  }
+
+  // Admin cancels a pending deletion (whether admin- or self-initiated).
+  async adminCancelDeletion(userId: string) {
+    const user = await this.repo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Account not found');
+    await this.repo.update(userId, {
+      deletionRequestedAt: null,
+      deletionScheduledAt: null,
+      deletionRequestedBy: null,
+      deletionReason:      null,
+    } as any);
+    return { ok: true };
   }
 
   // ── Archive cron. runs daily at 3am ──────────────────────────────────
@@ -372,13 +442,13 @@ export class UsersService implements OnModuleInit {
   // already-archived users are gone from `users` after the first pass.
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async archiveExpiredAccounts() {
-    const cutoff = new Date(Date.now() - ARCHIVE_GRACE_DAYS * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    // Query users whose scheduled deletion time has passed. Batched so a
+    // large purge splits across runs. Independent of isActive so ban and
+    // deletion are orthogonal states.
     const expired = await this.repo.find({
-      where: {
-        isActive:      false,
-        deactivatedAt: LessThan(cutoff),
-      },
-      take: 200, // batch. large purges happen across multiple runs
+      where: { deletionScheduledAt: LessThan(now) } as any,
+      take: 200,
     });
 
     if (expired.length === 0) {
@@ -395,9 +465,9 @@ export class UsersService implements OnModuleInit {
           emailHash,
           accountId:         user.accountId ?? null,
           role:              user.role,
-          reason:            user.deactivationReason ?? 'expired',
+          reason:            user.deletionReason ?? user.deactivationReason ?? 'scheduled_deletion',
           originalCreatedAt: user.createdAt,
-          deactivatedAt:     user.deactivatedAt!,
+          deactivatedAt:     user.deletionRequestedAt ?? user.deactivatedAt ?? now,
         }));
         await this.repo.delete(user.id);
         archived++;

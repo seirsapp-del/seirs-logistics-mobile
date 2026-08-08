@@ -237,21 +237,15 @@ export class AuthService {
 
     if (!user) throw new UnauthorizedException('Invalid email or password.');
 
-    // Spec V8 NDPR — soft-deleted accounts within the 30-day grace
-    // window can be restored by signing in. Past the grace window the
-    // archive cron has hard-deleted them and they fall through the
-    // !user check above naturally.
+    // New soft-delete flow leaves isActive=true during the grace window;
+    // the presence of deletionScheduledAt is what signals pending deletion.
+    // Bans set isActive=false without deletionScheduledAt — those still
+    // fail login. Merged accounts fail with a specific message.
     if (!user.isActive) {
-      const ARCHIVE_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
-      const deactivated = user.deactivatedAt ?? null;
-      const isSelfDeleted = !!deactivated && user.deactivationReason === 'self_deleted';
-      const withinGrace = deactivated && (Date.now() - deactivated.getTime()) < ARCHIVE_GRACE_MS;
-
-      if (!isSelfDeleted || !withinGrace) {
-        throw new UnauthorizedException('Account suspended. Contact support.');
+      if (user.mergedIntoUserId) {
+        throw new UnauthorizedException('This account was merged into another. Sign in with the primary account.');
       }
-      // Defer reactivation until after the password matches so we don't
-      // restore an account on a brute-force attempt.
+      throw new UnauthorizedException('Account suspended. Contact support.');
     }
 
     if (!user.emailVerified) {
@@ -277,16 +271,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    // Successful password match — restore the account if it was within
-    // the soft-delete grace window. Cron will skip it next pass.
-    const restorePatch: any = { failedLoginAttempts: 0, lockedUntil: null };
-    if (!user.isActive && user.deactivationReason === 'self_deleted') {
-      restorePatch.isActive           = true;
-      restorePatch.deactivatedAt      = null;
-      restorePatch.deactivationReason = null;
-      user.isActive = true; // local copy for response
-    }
-    await this.usersRepo.update(user.id, restorePatch);
+    // Successful password match — reset failed attempt counter but leave
+    // any pending deletion untouched. The app surfaces the deletion state
+    // via `pendingDeletion` in the auth response and the user cancels
+    // explicitly via /users/me/cancel-deletion.
+    await this.usersRepo.update(user.id, { failedLoginAttempts: 0, lockedUntil: null } as any);
     return this.buildAuthResponse(user);
   }
 
@@ -735,6 +724,15 @@ export class AuthService {
         businessAccountId: user.businessAccountId ?? null,
         partnerStoreId:    user.partnerStoreId ?? null,
       },
+      // Present only when the account is scheduled for hard-delete. The
+      // client surfaces this as a persistent banner with a "Cancel deletion"
+      // action wired to POST /users/me/cancel-deletion. Null when the
+      // account has no pending deletion.
+      pendingDeletion: user.deletionScheduledAt ? {
+        requestedAt: user.deletionRequestedAt?.toISOString?.() ?? null,
+        scheduledAt: user.deletionScheduledAt.toISOString(),
+        requestedBy: user.deletionRequestedBy ?? 'self',
+      } : null,
     };
   }
 }

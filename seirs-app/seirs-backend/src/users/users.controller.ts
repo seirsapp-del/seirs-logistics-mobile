@@ -1,4 +1,4 @@
-﻿import { Body, Controller, Delete, Get, Headers, Ip, Patch, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Delete, Get, Headers, Ip, Patch, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -46,15 +46,22 @@ export class UsersController {
   }
 
   // DELETE /api/v1/users/me  { password, reason? }
-  // NDPR right to erasure. soft-delete with 30-day grace; reactivated
-  // automatically if user logs in within window. Daily archive cron
-  // hard-deletes after the grace expires.
+  // NDPR right to erasure. Schedules a soft-delete 30 days out. The user
+  // can cancel anytime before then via POST /users/me/cancel-deletion.
+  // A daily cron picks up expired schedules and hard-deletes.
   @Delete('me')
   deleteAccount(
     @CurrentUser() user: User,
     @Body() body: { password: string; reason?: string },
   ) {
     return this.usersService.deleteAccount(user.id, body.password, body.reason);
+  }
+
+  // Cancel a pending self-scheduled deletion. Called from the customer app
+  // banner. Returns a no-op message if there is no pending deletion.
+  @Post('me/cancel-deletion')
+  cancelDeletion(@CurrentUser() user: User) {
+    return this.usersService.cancelDeletion(user.id);
   }
 
   // GET /api/v1/users/me/export

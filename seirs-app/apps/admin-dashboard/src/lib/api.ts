@@ -89,6 +89,16 @@ export const adminApi = {
       req<any[]>(`/admin/partner-stores${status ? `?status=${encodeURIComponent(status)}` : ''}`),
   },
 
+  pendingDeletions: {
+    list:   ()             => req<any[]>('/admin/users/pending-deletion'),
+    cancel: (userId: string) =>
+      req<any>(`/admin/users/${userId}/cancel-deletion`, { method: 'POST' }),
+    softDelete: (userId: string, reason: string) =>
+      req<any>(`/admin/users/${userId}/soft-delete`, {
+        method: 'POST', body: JSON.stringify({ reason }),
+      }),
+  },
+
   users:      (page = 1, role?: string, search?: string) =>
     req<any>(`/admin/users?page=${page}${role ? `&role=${role}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
   user:       (id: string) => req<any>(`/admin/users/${id}`),

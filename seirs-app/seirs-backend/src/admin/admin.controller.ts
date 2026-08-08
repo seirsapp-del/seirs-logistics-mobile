@@ -511,6 +511,40 @@ export class AdminController {
     return this.adminService.adminHardDeleteUser(id, admin, body?.reason ?? '', req.ip);
   }
 
+  // GET /api/v1/admin/users/pending-deletion
+  // Lists every user with a pending deletion (self- or admin-scheduled)
+  // ordered by soonest purge first. Powers the /recycle-bin admin page.
+  @Get('users/pending-deletion')
+  listPendingDeletions() {
+    return this.adminService.listPendingDeletions();
+  }
+
+  // POST /api/v1/admin/users/:id/soft-delete  { reason }
+  // Admin schedules a deletion on behalf of a user with the same 30-day
+  // grace as self-service. Reversible via cancel-deletion until the
+  // cron runs. Audit-logged. Role-gated to super_admin + support_agent.
+  @Post('users/:id/soft-delete')
+  softDeleteUser(
+    @Param('id') id: string,
+    @Body() body: { reason: string },
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    return this.adminService.adminSoftDeleteUser(id, admin, body?.reason ?? '', req.ip);
+  }
+
+  // POST /api/v1/admin/users/:id/cancel-deletion
+  // Admin cancels a pending deletion (self- or admin-scheduled). Restores
+  // the user to a normal active state. Audit-logged.
+  @Post('users/:id/cancel-deletion')
+  adminCancelDeletion(
+    @Param('id') id: string,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    return this.adminService.adminCancelUserDeletion(id, admin, req.ip);
+  }
+
   // ── Duplicate accounts (A21) ─────────────────────────────────────────────
   @Get('duplicates')
   listDuplicates(@Query('status') status?: DuplicateStatus) {

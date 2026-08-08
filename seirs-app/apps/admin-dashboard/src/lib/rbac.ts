@@ -135,6 +135,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/fraud',                  label: 'Fraud & Risk',        icon: 'ShieldAlert',    permission: 'fraud',                  badge: 'fraud' },
       { href: '/duplicates',             label: 'Duplicate Accounts',  icon: 'Copy',           permission: 'duplicates'              },
+      { href: '/recycle-bin',            label: 'Recycle Bin',         icon: 'Trash2',         permission: 'users'                   },
       { href: '/kyc',                    label: 'Driver KYC Queue',    icon: 'ClipboardCheck', permission: 'kyc'                     },
       { href: '/identity',               label: 'Customer ID Queue',    icon: 'ShieldCheck',    permission: 'identity'                },
       { href: '/disputes',               label: 'Liability Disputes',  icon: 'ShieldCheck',    permission: 'disputes'                },
