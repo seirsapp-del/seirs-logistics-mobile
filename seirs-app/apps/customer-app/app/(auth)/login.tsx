@@ -47,7 +47,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const res = await authApi.login(email.trim().toLowerCase(), password);
-      await login({ ...res.user, token: res.token, rememberMe });
+      await login({ ...res.user, token: res.token, rememberMe, pendingDeletion: (res as any).pendingDeletion ?? null });
     } catch (e: any) {
       const msg: string = e.message ?? '';
       // Account exists but email not verified — send them to OTP screen with
@@ -66,7 +66,7 @@ export default function LoginScreen() {
     setError('');
     try {
       const res = await authApi.googleLogin();
-      await login({ ...res.user, token: res.token, rememberMe });
+      await login({ ...res.user, token: res.token, rememberMe, pendingDeletion: (res as any).pendingDeletion ?? null });
     } catch (e: any) {
       setError(e.message ?? 'Google sign-in failed.');
     }
@@ -76,7 +76,7 @@ export default function LoginScreen() {
     setError('');
     try {
       const res = await authApi.appleLogin();
-      await login({ ...res.user, token: res.token, rememberMe });
+      await login({ ...res.user, token: res.token, rememberMe, pendingDeletion: (res as any).pendingDeletion ?? null });
     } catch (e: any) {
       setError(e.message ?? 'Apple sign-in failed.');
     }

@@ -10,7 +10,7 @@
  *  - Tap "Use my location"→ uses GPS + reverse geocode (or friendly fallback).
  */
 import {
-  View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet,
+  View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, Alert, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -101,8 +101,25 @@ export default function InlineAddressPicker({ label, dotColor, value, onSelect, 
   const useMyLocation = async () => {
     setSearching(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+      const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        if (!canAskAgain) {
+          Alert.alert(
+            'Location permission denied',
+            'Location is off for SEIRS in your phone Settings. Turn it on to auto-fill your address.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else {
+          Alert.alert(
+            'Location needed',
+            'We need your location to auto-fill your current address. Tap the button again and allow.',
+          );
+        }
+        return;
+      }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const { latitude: lat, longitude: lng } = pos.coords;
 

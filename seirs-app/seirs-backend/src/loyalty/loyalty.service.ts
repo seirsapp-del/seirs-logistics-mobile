@@ -1,9 +1,11 @@
 ﻿import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { Repository, MoreThan, LessThan } from 'typeorm';
 import { LoyaltyPoint, LoyaltyReason } from './loyalty-point.entity';
 import { User } from '../users/user.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
+import { MailService } from '../mail/mail.service';
 
 /**
  * Loyalty Points service.
@@ -54,7 +56,101 @@ export class LoyaltyService {
     private readonly usersRepo: Repository<User>,
     @InjectRepository(Delivery)
     private readonly deliveriesRepo: Repository<Delivery>,
+    private readonly mailService: MailService,
   ) {}
+
+  // ── Tier-drop warning cron ────────────────────────────────────────────────
+  // Runs daily at 6 AM. Finds users whose next-30-days point expirations
+  // would drop them to a lower tier and emails a warning. Only sends one
+  // warning per user per 30-day window (deduped via the note field).
+  @Cron(CronExpression.EVERY_DAY_AT_6AM)
+  async warnTierDrops() {
+    const in30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // Users with any positive points entry that expires in next 30 days.
+    // We only care about users whose tier is at risk, so we join back to
+    // sum the balance minus what's about to expire.
+    const rows = await this.repo
+      .createQueryBuilder('lp')
+      .select('lp.userId', 'userId')
+      .addSelect('SUM(CASE WHEN lp.expiresAt <= :in30 AND lp.delta > 0 THEN lp.delta ELSE 0 END)', 'expiring')
+      .addSelect('SUM(lp.delta)', 'currentBalance')
+      .where('lp.userId IS NOT NULL')
+      .groupBy('lp.userId')
+      .having('SUM(CASE WHEN lp.expiresAt <= :in30 AND lp.delta > 0 THEN lp.delta ELSE 0 END) > 0', { in30 })
+      .setParameter('in30', in30)
+      .getRawMany()
+      .catch(() => [] as any[]);
+
+    if (rows.length === 0) {
+      this.logger.debug('Tier-drop cron: no expiring points');
+      return;
+    }
+
+    let warned = 0;
+    for (const r of rows) {
+      try {
+        const userId  = r.userId as string;
+        const current = Number(r.currentBalance ?? 0);
+        const expiring = Number(r.expiring ?? 0);
+        const projected = current - expiring;
+
+        const currentTier   = this.tierForPoints(current);
+        const projectedTier = this.tierForPoints(projected);
+        if (currentTier === projectedTier) continue;
+
+        // Dedupe: skip if we already warned this user in the last 30 days
+        const alreadyWarned = await this.repo.count({
+          where: {
+            userId,
+            reason: 'tier_warning' as any,
+            createdAt: MoreThan(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)) as any,
+          },
+        }).catch(() => 0);
+        if (alreadyWarned > 0) continue;
+
+        const user = await this.usersRepo.findOne({ where: { id: userId } });
+        if (!user?.email) continue;
+
+        await this.mailService.sendGeneric?.(user.email, user.name, 'Your SEIRS tier is about to drop', `
+          Hi ${user.name},
+
+          Some of your loyalty points expire in the next 30 days. If you don't earn ${expiring - (current - this.tierThreshold(currentTier)) + 1} more points before then, your tier will drop from ${currentTier} to ${projectedTier}.
+
+          Points expiring: ${expiring.toLocaleString()}
+          Current balance: ${current.toLocaleString()}
+          Projected after expiry: ${projected.toLocaleString()}
+
+          Book a delivery to keep your ${currentTier} tier and the earning multiplier that comes with it.
+
+          -- SEIRS
+        `).catch(() => {});
+
+        // Record a zero-delta ledger entry marking the warning so we don't
+        // send it again this cycle. Note field carries the projection.
+        await this.repo.save(this.repo.create({
+          userId,
+          delta:     0,
+          reason:    'tier_warning' as any,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          note:      `warn:${currentTier}->${projectedTier};expiring:${expiring}`,
+        })).catch(() => {});
+
+        warned++;
+      } catch (e: any) {
+        this.logger.warn(`Tier-drop warn failed for ${r.userId}: ${e?.message ?? e}`);
+      }
+    }
+    this.logger.log(`Tier-drop cron: warned ${warned} of ${rows.length} candidates`);
+  }
+
+  private tierForPoints(pts: number): Tier {
+    return TIER_THRESHOLDS.find(t => pts >= t.min)?.tier ?? 'bronze';
+  }
+
+  private tierThreshold(tier: Tier): number {
+    return TIER_THRESHOLDS.find(t => t.tier === tier)?.min ?? 0;
+  }
 
   // ── Earning ──────────────────────────────────────────────────────────────
 

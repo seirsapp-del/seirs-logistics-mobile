@@ -66,10 +66,15 @@ export default function DeleteAccountScreen() {
           onPress: async () => {
             setLoading(true);
             try {
-              await usersApi.deleteAccount(password);
+              const res = await usersApi.deleteAccount(password);
+              // Backend response tells us the exact scheduled date. Fall
+              // back to a generic message if the field is missing.
+              const scheduled = (res as any)?.scheduledAt
+                ? new Date((res as any).scheduledAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+                : 'in 30 days';
               Alert.alert(
-                t('deleteAccount.title'),
-                t('deleteAccount.warning'),
+                'Account deletion scheduled',
+                `Your account will be permanently deleted on ${scheduled}. Sign back in anytime before then and tap "Cancel" in the amber banner at the top to keep your account.`,
                 [{ text: t('common.ok'), onPress: async () => {
                   try { await logout?.(); } catch { /* best-effort */ }
                   router.replace('/(auth)/login' as any);

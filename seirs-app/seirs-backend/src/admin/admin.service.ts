@@ -69,6 +69,10 @@ export class AdminService {
   // guard itself.
   private readonly NDPR_EXPORT_ROLES: string[] = ['super_admin', 'support_agent', 'finance_officer'];
   private readonly NDPR_DELETE_ROLES: string[] = ['super_admin', 'support_agent'];
+  // Identity documents are PII (NIN, licence, passport, PVC photos + selfies).
+  // Only roles with a legitimate business need can reveal them. Every reveal
+  // is audit-logged so ops can prove who saw what and when.
+  private readonly PII_VIEW_ROLES:    string[] = ['super_admin', 'support_agent', 'driver_compliance'];
 
   private ensureNdprAccess(admin: any, allowed: string[], action: string) {
     const role = admin?.adminRole ?? null;
@@ -95,6 +99,36 @@ export class AdminService {
   // grace window for compliance requests the user has formally
   // escalated. Refuses on admins (use offboard) or on accounts with
   // active deliveries (would orphan a customer's package).
+  // Reveal identity documents for a specific user. Called from the admin
+  // dashboard when an admin explicitly requests to view PII (front/back/selfie
+  // photos). Role-gated + audit-logged so we can prove exactly who viewed
+  // whose ID and when. Even super_admins go through this flow so nothing
+  // in the audit trail is missing.
+  async revealIdentityDocs(targetUserId: string, admin: any, ip?: string) {
+    this.ensureNdprAccess(admin, this.PII_VIEW_ROLES, 'pii_view');
+
+    const identity = await this.identityRepo.findOne({
+      where: { userId: targetUserId },
+      order: { submittedAt: 'DESC' },
+    });
+    if (!identity) throw new NotFoundException('No identity verification on file for this user.');
+
+    await this.logAudit(admin, 'pii_view', `user:${targetUserId}`, {
+      identityId: identity.id,
+      docType:    identity.documentType,
+    }, ip);
+
+    return {
+      documentPhotoUrl:     identity.documentPhotoUrl,
+      documentBackPhotoUrl: identity.documentBackPhotoUrl,
+      selfiePhotoUrl:       identity.selfiePhotoUrl,
+      documentExpiryDate:   identity.documentExpiryDate,
+      // Client should treat these URLs as short-lived. Frontend auto-blurs
+      // after 60 seconds and requires another reveal to see again.
+      revealedAt: new Date().toISOString(),
+    };
+  }
+
   // Admin lists all users with a pending deletion (self- or admin-scheduled).
   // Sorted soonest-purge-first so the recycle-bin page has action items on top.
   async listPendingDeletions() {
@@ -845,7 +879,16 @@ export class AdminService {
       totalSpent,
       cancelledCount,
       loyalty:    { balance: loyaltyBalance, tier },
-      identity:   identityLatest,
+      identity:   identityLatest ? {
+        ...identityLatest,
+        // PII redaction: document URLs stripped from the initial detail
+        // response. Admin must hit POST /admin/users/:id/reveal-identity-docs
+        // (role-gated + audit-logged) to actually view the images.
+        documentPhotoUrl:     null,
+        documentBackPhotoUrl: null,
+        selfiePhotoUrl:       null,
+        docsRedacted:         true,
+      } : null,
       referrer,
       referredUsers,
       relatedAccounts,
@@ -995,20 +1038,120 @@ export class AdminService {
     const driver = await this.driversRepo.findOne({ where: { id }, relations: ['user'] });
     if (!driver) throw new NotFoundException('Driver not found');
 
-    const [deliveries, deliveryCount] = await this.deliveriesRepo.findAndCount({
-      where: { driver: { id } },
-      order: { createdAt: 'DESC' },
-      take: 10,
-    });
+    // Batch every sub-query in parallel so a shallow load stays snappy even
+    // as we add signals. Each branch has a safe empty fallback.
+    const userId = driver.user?.id ?? null;
+    const [
+      deliveryPage,
+      earnedRow,
+      cancelledCount,
+      loyaltyBalance,
+      identityLatest,
+      referrer,
+      referredUsers,
+      relatedAccounts,
+      auditRows,
+      fraudFlags,
+    ] = await Promise.all([
+      this.deliveriesRepo.findAndCount({
+        where: { driver: { id } as any },
+        order: { createdAt: 'DESC' },
+        take: 10,
+      }).catch(() => [[], 0] as any),
+      this.deliveriesRepo.createQueryBuilder('d')
+        .select('SUM(d.driverEarnings)', 'total')
+        .where('d.driver.id = :id', { id })
+        .andWhere('d.status = :s', { s: DeliveryStatus.DELIVERED })
+        .getRawOne()
+        .catch(() => ({ total: 0 })),
+      this.deliveriesRepo.count({
+        where: { driver: { id } as any, status: DeliveryStatus.CANCELLED },
+      }).catch(() => 0),
+      userId ? this.loyaltyRepo.createQueryBuilder('lp')
+        .select('COALESCE(SUM(lp.delta), 0)', 'balance')
+        .where('lp.userId = :uid', { uid: userId })
+        .getRawOne()
+        .then((r: any) => Number(r?.balance ?? 0))
+        .catch(() => 0) : Promise.resolve(0),
+      userId ? this.identityRepo.findOne({
+        where: { userId },
+        order: { submittedAt: 'DESC' },
+      }).catch(() => null) : Promise.resolve(null),
+      // Referrer (who invited this driver's user account)
+      userId && driver.user?.referredByCode
+        ? this.usersRepo.findOne({
+            where: { accountId: driver.user.referredByCode },
+            select: ['id', 'name', 'email', 'accountId', 'role'],
+          }).catch(() => null)
+        : Promise.resolve(null),
+      // Users this driver referred
+      driver.user?.accountId ? this.usersRepo.find({
+        where: { referredByCode: driver.user.accountId },
+        select: ['id', 'name', 'email', 'accountId', 'createdAt'],
+        order: { createdAt: 'DESC' },
+        take: 20,
+      }).catch(() => []) : Promise.resolve([]),
+      // Cross-account grouping. Other accounts with same name or phone
+      userId ? this.usersRepo.createQueryBuilder('u')
+        .select(['u.id', 'u.name', 'u.email', 'u.phone', 'u.role', 'u.accountId'])
+        .where('u.id != :uid', { uid: userId })
+        .andWhere('(u.name = :name OR u.phone = :phone)', {
+          name:  driver.user?.name  ?? '__no_name__',
+          phone: driver.user?.phone ?? '__no_phone__',
+        })
+        .orderBy('u.createdAt', 'DESC')
+        .take(10)
+        .getMany()
+        .catch(() => []) : Promise.resolve([]),
+      // Recent audit log entries touching this user
+      userId ? this.auditRepo.createQueryBuilder('a')
+        .where('a.target = :target', { target: `user:${userId}` })
+        .orderBy('a.createdAt', 'DESC')
+        .take(20)
+        .getMany()
+        .catch(() => []) : Promise.resolve([]),
+      // Open fraud flags on the underlying user
+      userId ? this.flagsRepo.find({
+        where: { user: { id: userId } as any },
+        order: { createdAt: 'DESC' },
+        take: 10,
+      }).catch(() => []) : Promise.resolve([]),
+    ]);
 
-    const earned = await this.deliveriesRepo
-      .createQueryBuilder('d')
-      .select('SUM(d.driverEarnings)', 'total')
-      .where('d.driver.id = :id', { id })
-      .andWhere('d.status = :status', { status: DeliveryStatus.DELIVERED })
-      .getRawOne();
+    const [deliveries, deliveryCount] = deliveryPage as [any[], number];
+    const totalEarned = Number((earnedRow as any)?.total ?? 0);
 
-    return { driver, deliveries, deliveryCount, totalEarned: Number(earned?.total ?? 0) };
+    // Identity docs get the same PII treatment as on user detail: URLs
+    // stripped from the initial response, admin must hit the reveal
+    // endpoint to see them.
+    const identity = identityLatest ? {
+      ...identityLatest,
+      documentPhotoUrl:     null,
+      documentBackPhotoUrl: null,
+      selfiePhotoUrl:       null,
+      docsRedacted:         true,
+    } : null;
+
+    const tier =
+      loyaltyBalance >= 20000 ? 'Platinum' :
+      loyaltyBalance >= 5000  ? 'Gold' :
+      loyaltyBalance >= 1000  ? 'Silver' :
+      'Bronze';
+
+    return {
+      driver,
+      deliveries,
+      deliveryCount,
+      totalEarned,
+      cancelledCount,
+      loyalty:    { balance: loyaltyBalance, tier },
+      identity,
+      referrer,
+      referredUsers,
+      relatedAccounts,
+      auditLog:   auditRows,
+      fraudFlags,
+    };
   }
 
   async updateDriverStatus(id: string, status: string, rejectionReason?: string) {

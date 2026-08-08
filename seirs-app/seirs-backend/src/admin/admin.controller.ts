@@ -511,6 +511,20 @@ export class AdminController {
     return this.adminService.adminHardDeleteUser(id, admin, body?.reason ?? '', req.ip);
   }
 
+  // POST /api/v1/admin/users/:id/reveal-identity-docs
+  // Explicit PII-view action. Returns the identity document URLs (front,
+  // back, selfie). Role-gated to super_admin + support_agent +
+  // driver_compliance. Every call writes a pii_view audit row so we can
+  // prove who viewed whose ID and when.
+  @Post('users/:id/reveal-identity-docs')
+  revealIdentityDocs(
+    @Param('id') id: string,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    return this.adminService.revealIdentityDocs(id, admin, req.ip);
+  }
+
   // GET /api/v1/admin/users/pending-deletion
   // Lists every user with a pending deletion (self- or admin-scheduled)
   // ordered by soonest purge first. Powers the /recycle-bin admin page.

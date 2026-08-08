@@ -7,10 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, MapPin, Plus, Home, Briefcase, Trash2, Check } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Plus, Home, Briefcase, Trash2, Check, Sparkles } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { addressesApi, type SavedAddressDTO } from '@/services/api';
+import { addressesApi, deliveriesApi, type SavedAddressDTO } from '@/services/api';
+import InlineAddressPicker from '@/components/InlineAddressPicker';
 
 // Spec V8 — saved address book synced to backend so the data follows
 // the user across devices + can pre-fill driver routing. AsyncStorage
@@ -32,7 +33,12 @@ export default function AddressesScreen() {
   const [adding, setAdding]   = useState(false);
   const [draftLabel, setDraftLabel] = useState('');
   const [draftText,  setDraftText]  = useState('');
+  const [draftLat,   setDraftLat]   = useState<number | null>(null);
+  const [draftLng,   setDraftLng]   = useState<number | null>(null);
   const [draftType,  setDraftType]  = useState<SavedAddress['type']>('home');
+  // Suggested addresses derived from the user's recent delivery history.
+  // Deduped against the saved list so nothing is suggested twice.
+  const [suggestions, setSuggestions] = useState<Array<{ address: string; lat: number | null; lng: number | null; count: number }>>([]);
 
   // Render the cached list immediately, then reconcile with the backend
   // so the list never appears empty on a flaky connection.
@@ -49,6 +55,18 @@ export default function AddressesScreen() {
       } catch {}
       setLoading(false);
     })();
+    // Fetch suggestions in parallel. Combined pickups + dropoffs, ranked by
+    // total usage. Not blocking the main list — appears when it lands.
+    deliveriesApi.frequentAddresses().then((res) => {
+      const combined: Record<string, { address: string; lat: number | null; lng: number | null; count: number }> = {};
+      for (const r of [...(res.pickups ?? []), ...(res.dropoffs ?? [])]) {
+        const key = r.address;
+        if (!combined[key]) combined[key] = { address: r.address, lat: r.lat, lng: r.lng, count: 0 };
+        combined[key].count += r.count;
+      }
+      const list = Object.values(combined).sort((a, b) => b.count - a.count).slice(0, 6);
+      setSuggestions(list);
+    }).catch(() => {});
   }, []);
 
   const cache = async (next: SavedAddress[]) => {
@@ -66,14 +84,32 @@ export default function AddressesScreen() {
         label: draftLabel.trim(),
         text:  draftText.trim(),
         type:  draftType,
+        ...(draftLat != null && draftLng != null ? { lat: draftLat, lng: draftLng } : {}),
       });
       await cache([...items, created]);
-      setDraftLabel(''); setDraftText(''); setDraftType('home');
+      setDraftLabel(''); setDraftText(''); setDraftLat(null); setDraftLng(null); setDraftType('home');
       setAdding(false);
     } catch (e: any) {
       Alert.alert(t('addresses.couldNotSave'), e?.message ?? t('editProfile.tryAgain'));
     }
   };
+
+  // One-tap save from a suggestion chip. Fills the draft form with the
+  // pre-selected coords + address text so the user only needs to pick a
+  // label + type (defaults to "other" so no guesswork).
+  const startFromSuggestion = (s: { address: string; lat: number | null; lng: number | null }) => {
+    setDraftLabel('');
+    setDraftText(s.address);
+    setDraftLat(s.lat);
+    setDraftLng(s.lng);
+    setDraftType('other');
+    setAdding(true);
+  };
+
+  // Hide already-saved addresses from the suggestion strip.
+  const filteredSuggestions = suggestions.filter(
+    (s) => !items.some((i) => i.text.trim().toLowerCase() === s.address.trim().toLowerCase()),
+  );
 
   const removeAddress = (id: string) => {
     Alert.alert(t('addresses.removeTitle'), t('addresses.removeMsg'), [
@@ -103,6 +139,37 @@ export default function AddressesScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+
+          {/* Suggestions strip — most-used addresses from the last 90 days
+              of the user's delivery history. One tap opens the add form
+              pre-filled with the address + coords. */}
+          {filteredSuggestions.length > 0 && !adding && (
+            <View style={{ gap: 6, marginBottom: Spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Sparkles size={12} color={theme.primary} />
+                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, fontWeight: FontWeight.bold, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Suggested from your trips
+                </Text>
+              </View>
+              {filteredSuggestions.map((s) => (
+                <Pressable
+                  key={s.address}
+                  onPress={() => startFromSuggestion(s)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, borderColor: theme.border, borderStyle: 'dashed', backgroundColor: theme.surface }}
+                >
+                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: theme.primary + '15', alignItems: 'center', justifyContent: 'center' }}>
+                    <Plus size={14} color={theme.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: theme.text, fontSize: FontSize.sm }} numberOfLines={2}>{s.address}</Text>
+                    <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginTop: 2 }}>
+                      Used {s.count} time{s.count === 1 ? '' : 's'} recently
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          )}
 
           {loading ? (
             <ActivityIndicator color={theme.primary} style={{ marginTop: 32 }} />
@@ -163,18 +230,25 @@ export default function AddressesScreen() {
               />
 
               <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>{t('addresses.address').toUpperCase()}</Text>
-              <TextInput
+              {/* Real address picker with Google Places autocomplete +
+                  optional "use my location". Sets both the text and the
+                  lat/lng so booking screens can jump straight to the
+                  map picker with a pin already dropped. */}
+              <InlineAddressPicker
+                label=""
+                dotColor={theme.primary}
                 value={draftText}
-                onChangeText={setDraftText}
-                placeholder={t('addresses.address')}
-                placeholderTextColor={theme.textThird}
-                multiline
-                style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background, minHeight: 60, textAlignVertical: 'top' }]}
+                onSelect={(p) => {
+                  setDraftText(p.address);
+                  setDraftLat(p.lat);
+                  setDraftLng(p.lng);
+                }}
+                onClear={() => { setDraftText(''); setDraftLat(null); setDraftLng(null); }}
               />
 
               <View style={styles.row}>
                 <Pressable
-                  onPress={() => { setAdding(false); setDraftLabel(''); setDraftText(''); }}
+                  onPress={() => { setAdding(false); setDraftLabel(''); setDraftText(''); setDraftLat(null); setDraftLng(null); }}
                   style={[styles.cancelBtn, { borderColor: theme.border }]}
                 >
                   <Text style={[styles.cancelBtnText, { color: theme.textSecond }]}>{t('common.cancel')}</Text>
@@ -195,7 +269,7 @@ export default function AddressesScreen() {
           )}
 
           <Text style={[styles.footnote, { color: theme.textThird }]}>
-            Saved on this device only. Backend sync across devices is coming soon.
+            Synced across your SEIRS devices. Coordinates saved so the driver has an exact pickup pin.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

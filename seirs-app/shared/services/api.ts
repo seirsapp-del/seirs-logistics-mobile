@@ -168,9 +168,15 @@ export const usersApi = {
   me: () => request<any>('GET', '/users/me'),
   updateProfile: (data: { name?: string; phone?: string; profilePhoto?: string }) =>
     request<any>('PATCH', '/users/me', data),
-  // NDPR right to erasure. soft-delete + 30-day grace
+  // NDPR right to erasure. Schedules a soft-delete 30 days out; cancel
+  // anytime before then via cancelDeletion(). Daily cron hard-deletes
+  // once the scheduled time passes.
   deleteAccount: (password: string, reason?: string) =>
-    request<{ message: string }>('DELETE', '/users/me', { password, reason }),
+    request<{ message: string; scheduledAt?: string; graceDays?: number }>('DELETE', '/users/me', { password, reason }),
+  // Cancel a pending self-scheduled deletion. Called from the banner
+  // that appears on every screen when the account has pendingDeletion.
+  cancelDeletion: () =>
+    request<{ message: string }>('POST', '/users/me/cancel-deletion'),
   // NDPR Article 24. right to data portability. Returns a JSON dump.
   exportData: () => request<any>('GET', '/users/me/export'),
   // Notification opt-in toggles. Keys mirror what the apps render.
@@ -227,6 +233,13 @@ export const deliveriesApi = {
   create: (body: object) => request<any>('POST', '/deliveries', normalizeBodyVehicle(body as any)),
   myDeliveries: (page = 1, limit = 20) =>
     request<{ items: any[]; total: number; pages: number }>('GET', `/deliveries?page=${page}&limit=${limit}`),
+  // Suggested addresses based on the current user's delivery history
+  // (last 90 days). Ranked by frequency then recency.
+  frequentAddresses: () =>
+    request<{
+      pickups:  Array<{ address: string; lat: number | null; lng: number | null; count: number; lastUsed: string }>;
+      dropoffs: Array<{ address: string; lat: number | null; lng: number | null; count: number; lastUsed: string }>;
+    }>('GET', '/deliveries/frequent-addresses'),
   get: (id: string) => request<any>('GET', `/deliveries/${id}`),
   track: (code: string) => request<any>('GET', `/deliveries/track/${code}`, undefined, false),
   updateStatus: (id: string, status: string, proofPhotoUrl?: string) =>

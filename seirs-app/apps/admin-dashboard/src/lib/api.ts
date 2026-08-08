@@ -187,7 +187,19 @@ export const adminApi = {
   // Spec V8 §3.10. chain of custody for disputes view (reuses public
   // identity endpoint; admin can read any delivery's handoff chain).
   identity: {
+    // Spec V8 §3.10 chain of custody for disputes.
     handoffChain: (deliveryId: string) => req<any[]>(`/identity/handoff/${deliveryId}/chain`),
+    // PII reveal for a user's identity documents. Role-gated (403 for
+    // non-authorized roles) and audit-logged server-side. Client should
+    // treat returned URLs as short-lived and re-blur after 60s.
+    reveal: (userId: string) =>
+      req<{
+        documentPhotoUrl:     string | null;
+        documentBackPhotoUrl: string | null;
+        selfiePhotoUrl:       string | null;
+        documentExpiryDate:   string | null;
+        revealedAt:           string;
+      }>(`/admin/users/${userId}/reveal-identity-docs`, { method: 'POST' }),
   },
 
   // Spec V8 §3.12. Interstate trip board.

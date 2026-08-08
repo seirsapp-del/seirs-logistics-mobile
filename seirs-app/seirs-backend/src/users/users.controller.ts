@@ -1,4 +1,5 @@
-﻿import { Body, Controller, Delete, Get, Headers, Ip, Patch, Post, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Delete, Get, Headers, Ip, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -64,12 +65,36 @@ export class UsersController {
     return this.usersService.cancelDeletion(user.id);
   }
 
-  // GET /api/v1/users/me/export
-  // NDPR Article 24. right to data portability. Returns a JSON
-  // bundle of profile + deliveries + payments + handoff records etc.
+  // GET /api/v1/users/me/export?format=json|html|csv
+  // NDPR Article 24 right to data portability. JSON is the default (machine
+  // readable, meets the letter of the law). HTML is a printable copy the
+  // user can save as a PDF. CSV flattens the deliveries table for anyone
+  // who wants to open it in Excel.
   @Get('me/export')
-  exportData(@CurrentUser() user: User) {
-    return this.usersService.exportUserData(user.id);
+  async exportData(
+    @CurrentUser() user: User,
+    @Query('format') format: string | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const bundle = await this.usersService.exportUserData(user.id);
+    const fmt = (format ?? 'json').toLowerCase();
+
+    if (fmt === 'html') {
+      const html = buildHtmlExport(bundle);
+      res.setHeader('Content-Type',        'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="seirs-export-${user.id}.html"`);
+      return html;
+    }
+
+    if (fmt === 'csv') {
+      const csv = buildCsvDeliveries(bundle);
+      res.setHeader('Content-Type',        'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="seirs-deliveries-${user.id}.csv"`);
+      return csv;
+    }
+
+    // Default: JSON (matches historical clients that don't pass a format).
+    return bundle;
   }
 
   // GET /api/v1/users/me/notification-prefs
@@ -87,4 +112,79 @@ export class UsersController {
   ) {
     return this.usersService.updateNotificationPrefs(user.id, body.prefs);
   }
+}
+
+// ── NDPR export formatters ──────────────────────────────────────────────────
+// Kept out of the service so the service returns the raw bundle (which the
+// admin export endpoint uses too). Format conversion is a presentation
+// concern that belongs at the controller layer.
+
+function escapeHtml(s: any): string {
+  const str = String(s ?? '');
+  return str
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function buildHtmlExport(bundle: any): string {
+  const user = bundle?.user ?? {};
+  const deliveries: any[] = Array.isArray(bundle?.deliveries) ? bundle.deliveries : [];
+  const rows = deliveries.slice(0, 500).map((d) => `
+    <tr>
+      <td>${escapeHtml(d.trackingCode)}</td>
+      <td>${escapeHtml(d.status)}</td>
+      <td>${escapeHtml(d.pickupAddress)}</td>
+      <td>${escapeHtml(d.dropoffAddress)}</td>
+      <td>&#8358;${Number(d.price ?? 0).toLocaleString('en-NG')}</td>
+      <td>${escapeHtml(new Date(d.createdAt).toISOString().slice(0, 10))}</td>
+    </tr>
+  `).join('');
+  return `<!doctype html>
+<html><head><meta charset="utf-8"><title>SEIRS NDPR data export</title>
+<style>
+  body { font-family: system-ui, sans-serif; padding: 24px; color: #111; max-width: 900px; margin: 0 auto; }
+  h1 { color: #0F2B4C; }
+  h2 { color: #0F2B4C; margin-top: 24px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 12px; }
+  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+  th { background: #f5f5f0; }
+  .meta { color: #666; font-size: 12px; }
+</style></head>
+<body>
+  <h1>Your SEIRS data</h1>
+  <p class="meta">Generated on ${escapeHtml(new Date().toISOString())} for NDPR Article 24 (right to data portability).</p>
+  <h2>Profile</h2>
+  <ul>
+    <li><strong>Name:</strong> ${escapeHtml(user.name)}</li>
+    <li><strong>Email:</strong> ${escapeHtml(user.email)}</li>
+    <li><strong>Phone:</strong> ${escapeHtml(user.phone)}</li>
+    <li><strong>SEIRS ID:</strong> ${escapeHtml(user.accountId)}</li>
+    <li><strong>Joined:</strong> ${escapeHtml(user.createdAt)}</li>
+  </ul>
+  <h2>Deliveries (${deliveries.length} total, showing up to 500)</h2>
+  <table>
+    <thead><tr><th>Tracking</th><th>Status</th><th>Pickup</th><th>Dropoff</th><th>Price</th><th>Date</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</body></html>`;
+}
+
+function csvEscape(s: any): string {
+  const str = String(s ?? '');
+  if (/[",\n\r]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
+  return str;
+}
+
+function buildCsvDeliveries(bundle: any): string {
+  const deliveries: any[] = Array.isArray(bundle?.deliveries) ? bundle.deliveries : [];
+  const header = ['trackingCode', 'status', 'pickupAddress', 'dropoffAddress', 'price', 'createdAt'].join(',');
+  const rows = deliveries.map((d) => [
+    csvEscape(d.trackingCode),
+    csvEscape(d.status),
+    csvEscape(d.pickupAddress),
+    csvEscape(d.dropoffAddress),
+    csvEscape(Number(d.price ?? 0)),
+    csvEscape(d.createdAt),
+  ].join(','));
+  return [header, ...rows].join('\r\n');
 }

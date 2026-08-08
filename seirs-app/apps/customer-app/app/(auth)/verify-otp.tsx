@@ -65,7 +65,7 @@ export default function VerifyOtpScreen() {
     setLoading(true);
     try {
       const res = await authApi.verifyOtp(email, finalCode);
-      await login({ ...res.user, token: res.token });
+      await login({ ...res.user, token: res.token, pendingDeletion: (res as any).pendingDeletion ?? null });
     } catch (e: any) {
       setError(e.message ?? 'Invalid or expired code. Please try again.');
       setOtp(Array(OTP_LENGTH).fill(''));

@@ -38,6 +38,15 @@ export class DeliveriesController {
     return this.deliveriesService.findByCustomer(user.id, Math.max(1, page), Math.min(100, Math.max(1, limit)));
   }
 
+  // GET /api/v1/deliveries/frequent-addresses
+  // Returns the customer's most-used pickup + dropoff addresses in the
+  // last 90 days, ranked by frequency. Powers the "suggested addresses"
+  // section on the Saved Addresses screen.
+  @Get('frequent-addresses')
+  frequentAddresses(@CurrentUser() user: User) {
+    return this.deliveriesService.frequentAddresses(user.id);
+  }
+
   // GET /api/v1/deliveries/driver — active deliveries assigned to this driver
   @Get('driver')
   driverDeliveries(@CurrentUser() user: User) {

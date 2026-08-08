@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
 import { AlertTriangle } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -255,7 +256,9 @@ export default function UserDetailPage() {
           <Field label="Home address" value={user.homeAddress ? [user.homeAddress.street, user.homeAddress.city, user.homeAddress.state].filter(Boolean).join(', ') : null} />
         </Section>
 
-        {/* Identity verification */}
+        {/* Identity verification — document URLs are PII-redacted in the
+            initial response. Reveal is a separate role-gated + audit-logged
+            action; see IdentityDocsReveal component below. */}
         {identity && (
           <Section title="Identity verification">
             <Field label="Latest submission" value={identity.status} />
@@ -264,13 +267,9 @@ export default function UserDetailPage() {
             {identity.rejectionReason && <Field label="Rejection reason" value={identity.rejectionReason} />}
             {identity.revokedReason   && <Field label="Revoked reason"   value={identity.revokedReason} />}
             {identity.documentExpiryDate && <Field label="Doc expires"   value={fmtDateShort(identity.documentExpiryDate)} />}
-            {(identity.documentPhotoUrl || identity.documentBackPhotoUrl || identity.selfiePhotoUrl) && (
-              <div className="col-span-2 flex gap-3 mt-3">
-                {identity.documentPhotoUrl     && <IdThumb src={identity.documentPhotoUrl}     label="Front" />}
-                {identity.documentBackPhotoUrl && <IdThumb src={identity.documentBackPhotoUrl} label="Back" />}
-                {identity.selfiePhotoUrl       && <IdThumb src={identity.selfiePhotoUrl}       label="Selfie" />}
-              </div>
-            )}
+            <div className="col-span-2 mt-3">
+              <IdentityDocsReveal userId={id} />
+            </div>
           </Section>
         )}
 
@@ -426,42 +425,8 @@ export default function UserDetailPage() {
   );
 }
 
-// Sectioned detail row: a labeled card with a two-column key/value grid.
-// Used across the user detail page to keep the visual rhythm consistent.
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4">
-      <h3 className="text-sm font-bold text-[#0F2B4C] mb-3">{title}</h3>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// Key/value field. Renders "—" when value is null/undefined/empty string so
-// missing data reads as intentional rather than broken.
-function Field({ label, value }: { label: string; value: any }) {
-  const display = value === null || value === undefined || value === '' ? '—' : String(value);
-  const isEmpty = display === '—';
-  return (
-    <div>
-      <div className="text-xs text-gray-400">{label}</div>
-      <div className={`text-sm ${isEmpty ? 'text-gray-300' : 'text-[#0F2B4C]'}`}>{display}</div>
-    </div>
-  );
-}
-
-// Thumbnail preview for uploaded identity documents. Opens the full image
-// in a new tab on click for admin review.
-function IdThumb({ src, label }: { src: string; label: string }) {
-  return (
-    <a href={src} target="_blank" rel="noopener noreferrer" className="block">
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
-      <img src={src} alt={label} className="w-24 h-32 object-cover rounded border border-gray-200 hover:border-[#3A7BD5] transition-colors" />
-    </a>
-  );
-}
+// Section, Field, IdThumb, and IdentityDocsReveal moved to
+// components/DetailSections.tsx so /drivers/[id] can share them.
 
 // Two-stage NDPR hard-delete confirmation. Stage 1 collects the reason
 // (min 6 chars, required for the legal audit log). Stage 2 is a final

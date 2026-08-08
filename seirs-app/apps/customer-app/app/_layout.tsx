@@ -7,6 +7,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRateCardSync } from '@/hooks/use-rate-card';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { DeletionPendingBanner } from '@/components/DeletionPendingBanner';
+import { View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { API_BASE } from '@/constants/config';
 import { configureApi } from '@/services/api';
@@ -61,22 +63,28 @@ function RootStack() {
   const theme = Colors[colorScheme ?? 'light'];
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <NavigationGuard />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: theme.surface },
-          headerTintColor: theme.text,
-          headerShadowVisible: false,
-          contentStyle: { backgroundColor: theme.background },
-        }}
-      >
-        <Stack.Screen name="(auth)"     options={{ headerShown: false }} />
-        <Stack.Screen name="(customer)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+      {/* Persistent amber banner when the current user has a pending
+          soft-delete. Renders above the stack so it stays visible on every
+          screen until the user cancels or the grace window ends. */}
+      <DeletionPendingBanner />
+      <View style={{ flex: 1 }}>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: theme.surface },
+            headerTintColor: theme.text,
+            headerShadowVisible: false,
+            contentStyle: { backgroundColor: theme.background },
+          }}
+        >
+          <Stack.Screen name="(auth)"     options={{ headerShown: false }} />
+          <Stack.Screen name="(customer)" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </View>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-    </>
+    </View>
   );
 }
 

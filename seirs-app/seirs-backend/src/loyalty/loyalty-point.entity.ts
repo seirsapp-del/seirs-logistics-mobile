@@ -35,7 +35,8 @@ export type LoyaltyReason =
   | 'redeem_insurance'
   | 'admin_adjustment'
   | 'refund_clawback'
-  | 'expired';
+  | 'expired'
+  | 'tier_warning';
 
 @Entity('loyalty_points')
 export class LoyaltyPoint {

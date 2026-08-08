@@ -210,6 +210,64 @@ export class DeliveriesService {
     return q.limit(safeLimit).getMany();
   }
 
+  // Return the customer's most-used pickup + dropoff addresses in the last
+  // 90 days, ranked by frequency then most-recently-used. Includes
+  // coordinates so the client can drop straight into the map picker with
+  // a pre-selected lat/lng. Powers the Saved Addresses suggestions strip.
+  async frequentAddresses(customerId: string) {
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+    const [pickups, dropoffs] = await Promise.all([
+      this.repo.createQueryBuilder('d')
+        .select('d.pickupAddress', 'address')
+        .addSelect('d.pickupLat',  'lat')
+        .addSelect('d.pickupLng',  'lng')
+        .addSelect('COUNT(*)',     'count')
+        .addSelect('MAX(d.createdAt)', 'lastUsed')
+        .where('d.customerId = :uid', { uid: customerId })
+        .andWhere('d.createdAt >= :since', { since: cutoff })
+        .andWhere('d.pickupAddress IS NOT NULL')
+        .groupBy('d.pickupAddress')
+        .addGroupBy('d.pickupLat')
+        .addGroupBy('d.pickupLng')
+        .orderBy('count', 'DESC')
+        .addOrderBy('"lastUsed"', 'DESC')
+        .limit(5)
+        .getRawMany()
+        .catch(() => []),
+      this.repo.createQueryBuilder('d')
+        .select('d.dropoffAddress', 'address')
+        .addSelect('d.dropoffLat',  'lat')
+        .addSelect('d.dropoffLng',  'lng')
+        .addSelect('COUNT(*)',      'count')
+        .addSelect('MAX(d.createdAt)', 'lastUsed')
+        .where('d.customerId = :uid', { uid: customerId })
+        .andWhere('d.createdAt >= :since', { since: cutoff })
+        .andWhere('d.dropoffAddress IS NOT NULL')
+        .groupBy('d.dropoffAddress')
+        .addGroupBy('d.dropoffLat')
+        .addGroupBy('d.dropoffLng')
+        .orderBy('count', 'DESC')
+        .addOrderBy('"lastUsed"', 'DESC')
+        .limit(5)
+        .getRawMany()
+        .catch(() => []),
+    ]);
+
+    const shape = (rows: any[]) => rows.map((r) => ({
+      address:  r.address,
+      lat:      r.lat  != null ? Number(r.lat)  : null,
+      lng:      r.lng  != null ? Number(r.lng)  : null,
+      count:    Number(r.count),
+      lastUsed: r.lastUsed,
+    }));
+
+    return {
+      pickups:  shape(pickups),
+      dropoffs: shape(dropoffs),
+    };
+  }
+
   async findByTracking(trackingCode: string) {
     const delivery = await this.repo.findOne({ where: { trackingCode } });
     if (!delivery) throw new NotFoundException('Delivery not found.');

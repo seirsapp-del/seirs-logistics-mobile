@@ -107,6 +107,20 @@ export class MailService {
     );
   }
 
+  // Generic sender for one-off transactional emails that don't warrant a
+  // dedicated template method (e.g. tier-drop warning, ad-hoc admin
+  // notices). The body is inserted as escaped text inside a minimal
+  // wrapper; pass plain text, not HTML.
+  async sendGeneric(to: string, name: string, subject: string, bodyText: string) {
+    const escaped = String(bodyText)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const html = `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#111">
+      <h2 style="color:#0F2B4C;margin:0 0 12px">${subject}</h2>
+      <pre style="white-space:pre-wrap;font-family:inherit;line-height:1.5">${escaped}</pre>
+    </div>`;
+    return this.send(to, subject, html);
+  }
+
   private async send(to: string, subject: string, html: string) {
     // Default from-address uses Resend's onboarding domain so it works
     // out of the box without any DNS verification. Override with MAIL_FROM

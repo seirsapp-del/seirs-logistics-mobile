@@ -9,7 +9,7 @@
  */
 import {
   View, Text, TextInput, Pressable, FlatList,
-  StyleSheet, ActivityIndicator, Modal, Platform, StatusBar,
+  StyleSheet, ActivityIndicator, Modal, Platform, StatusBar, Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -128,8 +128,28 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
   const useMyLocation = async () => {
     setSearching(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+      const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        // Distinguish between "user tapped Deny" (can still be re-asked)
+        // and "user set Don't ask again" (need to go to system settings).
+        // Either way surface something so the button doesn't look broken.
+        if (!canAskAgain) {
+          Alert.alert(
+            'Location permission denied',
+            'Location is off for SEIRS in your phone Settings. Turn it on to auto-fill your address.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else {
+          Alert.alert(
+            'Location needed',
+            'We need your location to auto-fill your current address. Tap the button again and allow.',
+          );
+        }
+        return;
+      }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const { latitude: lat, longitude: lng } = pos.coords;
 

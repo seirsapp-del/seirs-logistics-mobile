@@ -6,6 +6,12 @@ import { clearPushRegistration } from '@seirs/shared/hooks/usePushRegistration';
 
 export type UserRole = 'customer' | 'driver' | null;
 
+export interface PendingDeletion {
+  requestedAt: string | null;
+  scheduledAt: string;
+  requestedBy: string;
+}
+
 interface AuthUser {
   id: string;
   name: string;
@@ -15,6 +21,7 @@ interface AuthUser {
   accountId?: string;
   profilePhoto?: string;
   token: string;
+  pendingDeletion?: PendingDeletion | null;
 }
 
 interface AuthContextType {
@@ -22,12 +29,16 @@ interface AuthContextType {
   role: UserRole;
   isLoading: boolean;
   isAuthenticated: boolean;
+  pendingDeletion: PendingDeletion | null;
   login: (user: AuthUser) => Promise<void>;
   logout: () => Promise<void>;
   // Re-fetch the current user profile from the API. Call this after edit-
   // profile / change-password / any flow that mutates user fields so the
   // in-memory copy stays in sync without forcing a logout.
   refresh: () => Promise<void>;
+  // Cancel a pending self-scheduled deletion. Clears the pendingDeletion
+  // banner state and hits POST /users/me/cancel-deletion.
+  cancelPendingDeletion: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -35,9 +46,11 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   isLoading: true,
   isAuthenticated: false,
+  pendingDeletion: null,
   login:   async () => {},
   logout:  async () => {},
   refresh: async () => {},
+  cancelPendingDeletion: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -91,6 +104,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const cancelPendingDeletion = async () => {
+    if (!user?.token) return;
+    await usersApi.cancelDeletion();
+    // Clear the banner state locally so the UI reflects the cancellation
+    // immediately without requiring a re-login.
+    const cleared: AuthUser = { ...user, pendingDeletion: null };
+    await AsyncStorage.setItem('seirs_user', JSON.stringify(cleared));
+    setUser(cleared);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -98,9 +121,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: user?.role ?? null,
         isLoading,
         isAuthenticated: !!user,
+        pendingDeletion: user?.pendingDeletion ?? null,
         login,
         logout,
         refresh,
+        cancelPendingDeletion,
       }}
     >
       {children}
