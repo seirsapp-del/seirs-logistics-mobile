@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Platform,
+  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Platform, Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -72,6 +74,7 @@ export default function DriverProfileScreen() {
   const theme            = Colors[cs ?? 'light'];
   const isDark           = cs === 'dark';
   const { user, logout } = useAuth();
+  const [showQrModal, setShowQrModal] = useState(false);
 
   const driver     = MOCK_DRIVER;
   const tierColor  = TIER_COLORS[driver.tier] ?? theme.primary;
@@ -140,24 +143,21 @@ export default function DriverProfileScreen() {
             </View>
           </View>
 
-          {/* SEIRS ID row: tap to copy. Support asks drivers for their ID
-              often (dispatch escalations, payout disputes). Faster than
-              spelling out an email over a noisy phone call. */}
+          {/* SEIRS ID row. Tap opens QR modal so drivers can show it to
+              customers for in-person identity match, or share with support
+              for dispatch escalations + payout disputes. */}
           {(user as any)?.accountId && (
             <Pressable
-              onPress={async () => {
-                await Clipboard.setStringAsync((user as any).accountId);
-                Alert.alert('Copied', 'Your SEIRS ID has been copied. Paste it to support to identify yourself.');
-              }}
+              onPress={() => setShowQrModal(true)}
               style={[styles.seirsIdRow, { borderTopColor: theme.border }]}
             >
               <View style={{ flex: 1 }}>
-                <Text style={[styles.seirsIdLabel, { color: theme.textSecond }]}>SEIRS ID · tap to copy</Text>
+                <Text style={[styles.seirsIdLabel, { color: theme.textSecond }]}>SEIRS ID · tap for QR</Text>
                 <Text style={[styles.seirsIdValue, { color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }]}>
                   {(user as any).accountId}
                 </Text>
               </View>
-              <Ionicons name="copy-outline" size={16} color={theme.textThird} />
+              <Ionicons name="qr-code-outline" size={18} color={theme.textThird} />
             </Pressable>
           )}
 
@@ -237,6 +237,62 @@ export default function DriverProfileScreen() {
 
         <View style={{ height: Spacing.xl }} />
       </ScrollView>
+
+      {/* SEIRS ID QR modal. Shown on tap of the SEIRS ID row. Drivers
+          show this to customers at handoff for in-person identity match. */}
+      <Modal
+        visible={showQrModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowQrModal(false)}
+      >
+        <Pressable
+          onPress={() => setShowQrModal(false)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: Spacing.lg }}
+        >
+          <Pressable
+            onPress={() => { /* absorb tap so modal doesn't close when tapping card */ }}
+            style={{ backgroundColor: theme.surface, borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center', gap: Spacing.md, width: '100%', maxWidth: 340 }}
+          >
+            <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}>Your SEIRS ID</Text>
+            <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, textAlign: 'center' }}>
+              Show this to a customer at handoff to prove you are the assigned driver.
+            </Text>
+
+            <View style={{ padding: Spacing.md, backgroundColor: '#FFFFFF', borderRadius: Radius.lg }}>
+              <QRCode
+                value={String((user as any)?.accountId ?? '')}
+                size={220}
+                color="#0F2B4C"
+                backgroundColor="#FFFFFF"
+              />
+            </View>
+
+            <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', letterSpacing: 2 }}>
+              {(user as any)?.accountId ?? ''}
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: Spacing.sm, width: '100%' }}>
+              <Pressable
+                onPress={async () => {
+                  await Clipboard.setStringAsync((user as any).accountId);
+                  Alert.alert('Copied', 'Your SEIRS ID has been copied.');
+                }}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.border, borderRadius: Radius.lg, paddingVertical: 12 }}
+              >
+                <Ionicons name="copy-outline" size={16} color={theme.text} />
+                <Text style={{ color: theme.text, fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>Copy</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowQrModal(false)}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.primary, borderRadius: Radius.lg, paddingVertical: 12 }}
+              >
+                <Text style={{ color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Done</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

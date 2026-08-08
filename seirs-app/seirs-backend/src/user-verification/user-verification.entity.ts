@@ -28,7 +28,13 @@ export type VerificationDocumentType =
   | 'passport'         // International passport
   | 'pvc';             // Permanent Voter's Card
 
-export type VerificationStatus = 'submitted' | 'approved' | 'rejected' | 'withdrawn';
+export type VerificationStatus =
+  | 'submitted'   // waiting for admin review
+  | 'approved'    // active, user is verified
+  | 'rejected'    // admin rejected at review; user can resubmit
+  | 'withdrawn'   // user withdrew before review
+  | 'revoked'     // admin invalidated an approved verification (fraud, expired doc, etc.)
+  | 'expired';    // automatic cron flip when documentExpiryDate passes; user must resubmit
 
 @Entity('identity_verifications')
 @Index(['status', 'submittedAt'])       // admin queue sorting
@@ -65,6 +71,13 @@ export class IdentityVerification {
   @Column({ type: 'text' })
   selfiePhotoUrl!: string;
 
+  // Document expiry date (optional at submission). Meaningful for licence,
+  // passport, and PVC; NIN slip has no formal expiry. When set, the daily
+  // expiry cron flips status to 'expired' after this date passes AND the
+  // user gets prompted to resubmit with a fresh doc.
+  @Column({ type: 'date', nullable: true })
+  documentExpiryDate!: Date | null;
+
   // Optional user-provided context (e.g. name variation explanation,
   // legal-name-vs-preferred-name note). Not required but reduces
   // admin round-trips.
@@ -94,6 +107,16 @@ export class IdentityVerification {
   // adminNote which the user never sees.
   @Column({ type: 'text', nullable: true })
   rejectionReason!: string | null;
+
+  // Populated when an admin revokes an approved verification. User-facing.
+  @Column({ type: 'text', nullable: true })
+  revokedReason!: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  revokedAt!: Date | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  revokedByUserId!: string | null;
 
   // Internal admin-only free-text (never returned to the user)
   @Column({ type: 'text', nullable: true })

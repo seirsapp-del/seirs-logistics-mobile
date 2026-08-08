@@ -337,7 +337,7 @@ export const adminApi = {
   // Spec V8 identity policy. customer identity verification queue.
   // Distinct from driver KYC (which lives under /admin/drivers).
   identityVerifications: {
-    list:    (status: 'submitted' | 'approved' | 'rejected' | 'withdrawn' = 'submitted') =>
+    list:    (status: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | 'revoked' | 'expired' = 'submitted') =>
       req<any[]>(`/admin/identity-verifications?status=${status}`),
     get:     (id: string) =>
       req<any>(`/admin/identity-verifications/${id}`),
@@ -348,6 +348,11 @@ export const adminApi = {
       }),
     reject:  (id: string, reason: string, adminNote?: string) =>
       req<any>(`/admin/identity-verifications/${id}/reject`, {
+        method: 'POST',
+        body:   JSON.stringify({ reason, adminNote }),
+      }),
+    revoke:  (id: string, reason: string, adminNote?: string) =>
+      req<any>(`/admin/identity-verifications/${id}/revoke`, {
         method: 'POST',
         body:   JSON.stringify({ reason, adminNote }),
       }),

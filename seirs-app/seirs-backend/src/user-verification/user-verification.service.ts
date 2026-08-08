@@ -6,7 +6,8 @@
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { LessThan, Repository } from 'typeorm';
 import { IdentityVerification, VerificationStatus } from './user-verification.entity';
 import { SubmitIdentityDto } from './dto/submit-verification.dto';
 import { User } from '../users/user.entity';
@@ -61,6 +62,22 @@ export class UserVerificationService {
       );
     }
 
+    // Optional documentExpiryDate. Only meaningful for licence/passport/PVC.
+    // Reject anything already-expired at submission time so users don't wait
+    // for admin review only to be rejected for staleness.
+    let expiryDate: Date | null = null;
+    if (dto.documentExpiryDate) {
+      expiryDate = new Date(dto.documentExpiryDate);
+      if (Number.isNaN(expiryDate.getTime())) {
+        throw new BadRequestException('documentExpiryDate is not a valid date');
+      }
+      if (expiryDate.getTime() < Date.now()) {
+        throw new BadRequestException(
+          'This ID has already expired. Please upload a currently valid document.',
+        );
+      }
+    }
+
     const row = this.repo.create({
       userId,
       documentType:         dto.documentType,
@@ -68,6 +85,7 @@ export class UserVerificationService {
       documentBackPhotoUrl: dto.documentBackPhotoUrl,
       selfiePhotoUrl:       dto.selfiePhotoUrl,
       submitterNote:        dto.submitterNote ?? null,
+      documentExpiryDate:   expiryDate,
       status:               'submitted',
     });
     return this.repo.save(row);
@@ -155,5 +173,76 @@ export class UserVerificationService {
 
     this.logger.log(`Identity rejected for user ${row.userId} by admin ${adminUserId}: ${reason}`);
     return this.adminGetOne(id);
+  }
+
+  /**
+   * Revoke an approved verification. Used when an admin discovers a doc
+   * was fake, expired, or the user's status must be reset for any other
+   * reason. Flips the user back to unverified and records who/why so the
+   * customer can see the reason on their profile.
+   */
+  async revoke(id: string, adminUserId: string, reason: string, adminNote?: string) {
+    const row = await this.adminGetOne(id);
+    if (row.status !== 'approved') {
+      throw new BadRequestException(
+        `Only approved verifications can be revoked (current: ${row.status})`,
+      );
+    }
+    row.status           = 'revoked';
+    row.revokedAt        = new Date();
+    row.revokedByUserId  = adminUserId;
+    row.revokedReason    = reason;
+    row.adminNote        = adminNote ?? row.adminNote;
+    await this.repo.save(row);
+
+    // Reset the user record so trust perks stop applying immediately.
+    await this.usersRepo.update(row.userId, {
+      identityVerifiedAt: null,
+      identityDocType:    null,
+    });
+
+    this.logger.warn(`Identity REVOKED for user ${row.userId} by admin ${adminUserId}: ${reason}`);
+    return this.adminGetOne(id);
+  }
+
+  /**
+   * Daily cron: find approved verifications whose documentExpiryDate has
+   * passed and flip them to 'expired'. Also resets the user record so
+   * trust perks stop applying. Runs at 04:00 daily (low-traffic window).
+   *
+   * Users get prompted to resubmit next time they open the verify screen
+   * (the /verify-identity screen's status endpoint returns the latest row).
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async expireOverdueVerifications() {
+    try {
+      const now = new Date();
+      const overdue = await this.repo.find({
+        where: {
+          status:             'approved',
+          documentExpiryDate: LessThan(now) as any,
+        },
+        take: 500, // batch, safe re-run tomorrow if more
+      });
+      if (overdue.length === 0) {
+        this.logger.debug('Expiry cron: no verifications past their doc expiry');
+        return;
+      }
+      for (const row of overdue) {
+        try {
+          row.status = 'expired';
+          await this.repo.save(row);
+          await this.usersRepo.update(row.userId, {
+            identityVerifiedAt: null,
+            identityDocType:    null,
+          });
+        } catch (e: any) {
+          this.logger.error(`Expiry cron failed for ${row.id}: ${e.message}`);
+        }
+      }
+      this.logger.log(`Expiry cron: expired ${overdue.length} verifications`);
+    } catch (e: any) {
+      this.logger.error(`Expiry cron error: ${e.message}`);
+    }
   }
 }

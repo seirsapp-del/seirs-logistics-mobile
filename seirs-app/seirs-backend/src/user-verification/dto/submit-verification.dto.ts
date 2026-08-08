@@ -1,4 +1,4 @@
-﻿import { IsIn, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+﻿import { IsDateString, IsIn, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 
 export const DOC_TYPES = ['nin', 'drivers_licence', 'passport', 'pvc'] as const;
 
@@ -33,4 +33,11 @@ export class SubmitIdentityDto {
   @IsString()
   @MaxLength(500)
   submitterNote?: string;
+
+  // Optional document expiry date (YYYY-MM-DD). Only meaningful for licence,
+  // passport, and PVC. NIN slip callers should omit. Enforced later by the
+  // expiry cron.
+  @IsOptional()
+  @IsDateString({ strict: true }, { message: 'documentExpiryDate must be a valid date (YYYY-MM-DD)' })
+  documentExpiryDate?: string;
 }

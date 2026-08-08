@@ -212,6 +212,9 @@ export const userVerificationApi = {
     documentBackPhotoUrl: string;
     selfiePhotoUrl:       string;
     submitterNote?:       string;
+    /** Optional ISO date (YYYY-MM-DD). Only meaningful for licence,
+     *  passport, and PVC. NIN slip has no formal expiry. */
+    documentExpiryDate?:  string;
   }) => request<any>('POST', '/users/me/identity-verification', payload),
   withdraw: (id: string) => request<any>('DELETE', `/users/me/identity-verification/${id}`),
 };

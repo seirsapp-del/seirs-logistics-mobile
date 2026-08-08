@@ -5,7 +5,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
 import { UserVerificationService } from './user-verification.service';
 import { VerificationStatus } from './user-verification.entity';
-import { RejectIdentityDto, ApproveIdentityDto } from './dto/review-verification.dto';
+import { RejectIdentityDto, ApproveIdentityDto, RevokeIdentityDto } from './dto/review-verification.dto';
 
 /**
  * Admin review queue for identity verifications.
@@ -48,5 +48,17 @@ export class AdminUserVerificationController {
     @Body()       body: RejectIdentityDto,
   ) {
     return this.svc.reject(id, admin.id, body.reason, body.adminNote);
+  }
+
+  // POST /api/v1/admin/identity-verifications/:id/revoke
+  // Invalidate a previously-approved verification (fake doc, expired,
+  // policy change, etc.). Flips user back to unverified immediately.
+  @Post(':id/revoke')
+  revoke(
+    @CurrentUser() admin: User,
+    @Param('id')  id: string,
+    @Body()       body: RevokeIdentityDto,
+  ) {
+    return this.svc.revoke(id, admin.id, body.reason, body.adminNote);
   }
 }

@@ -11,7 +11,7 @@ import { useConfirm } from '@/components/ConfirmDialog';
 // Distinct from /kyc (drivers). See docs/identity-policy.md. SLA is
 // 24 hours to 3 business days, FIFO by default.
 
-type Status = 'submitted' | 'approved' | 'rejected' | 'withdrawn';
+type Status = 'submitted' | 'approved' | 'rejected' | 'withdrawn' | 'revoked' | 'expired';
 
 const DOC_LABEL: Record<string, string> = {
   nin:             'NIN',
@@ -25,22 +25,28 @@ const STATUS_STYLES: Record<Status, string> = {
   approved:  'bg-emerald-100 text-emerald-700',
   rejected:  'bg-red-100 text-red-700',
   withdrawn: 'bg-gray-100 text-gray-500',
+  revoked:   'bg-red-200 text-red-800',
+  expired:   'bg-orange-100 text-orange-700',
 };
 
 interface Row {
-  id:                 string;
-  userId:             string;
-  documentType:       string;
+  id:                   string;
+  userId:               string;
+  documentType:         string;
   documentPhotoUrl:     string;
   documentBackPhotoUrl: string | null;   // required post-2026-08-08; may be null on legacy
   selfiePhotoUrl:       string;
-  submitterNote:      string | null;
-  status:             Status;
-  submittedAt:        string;
-  reviewedAt:         string | null;
-  reviewedByUserId:   string | null;
-  rejectionReason:    string | null;
-  adminNote:          string | null;
+  submitterNote:        string | null;
+  documentExpiryDate:   string | null;   // ISO date; only set for docs with formal expiry
+  status:               Status;
+  submittedAt:          string;
+  reviewedAt:           string | null;
+  reviewedByUserId:     string | null;
+  rejectionReason:      string | null;
+  revokedReason:        string | null;
+  revokedAt:            string | null;
+  revokedByUserId:      string | null;
+  adminNote:            string | null;
   user?: {
     id:    string;
     name:  string;
@@ -103,6 +109,30 @@ export default function IdentityVerificationPage() {
       setSelected(null);
       load();
     } catch (e: any) { alert(e?.message ?? 'Reject failed'); }
+    finally { setBusyId(null); }
+  };
+
+  // Revoke an already-approved verification. Used when we discover the
+  // doc was fake, expired, or the user should be reset for any reason.
+  // Flips user back to unverified so trust perks stop applying immediately.
+  const revoke = async (row: Row) => {
+    const reason = prompt(
+      'Reason for revoking. shown to the user so they know why they lost verified status.\n\nExamples: "Document later found to be fraudulent", "ID expired", "User request", "Policy violation".',
+    );
+    if (!reason || reason.trim().length < 6) return;
+    const ok = await confirm({
+      title:        `Revoke ${row.user?.name ?? 'this verification'}?`,
+      message:      `The user immediately loses their verified badge and any perks tied to it (higher limits, insured deliveries, interstate access, priority support). They will see: "${reason.trim()}"\n\nThis is a serious action. Prefer rejecting a fresh submission instead when possible.`,
+      confirmLabel: 'Revoke verification',
+      danger:       true,
+    });
+    if (!ok) return;
+    setBusyId(row.id);
+    try {
+      await adminApi.identityVerifications.revoke(row.id, reason.trim());
+      setSelected(null);
+      load();
+    } catch (e: any) { alert(e?.message ?? 'Revoke failed'); }
     finally { setBusyId(null); }
   };
 
@@ -210,6 +240,7 @@ export default function IdentityVerificationPage() {
           onClose={() => setSelected(null)}
           onApprove={() => approve(selected)}
           onReject={() => reject(selected)}
+          onRevoke={() => revoke(selected)}
           busy={busyId === selected.id}
         />
       )}
@@ -218,14 +249,20 @@ export default function IdentityVerificationPage() {
 }
 
 function ReviewModal({
-  row, onClose, onApprove, onReject, busy,
+  row, onClose, onApprove, onReject, onRevoke, busy,
 }: {
   row: Row;
-  onClose:  () => void;
+  onClose:   () => void;
   onApprove: () => void;
   onReject:  () => void;
+  onRevoke:  () => void;
   busy: boolean;
 }) {
+  const expiryDate  = row.documentExpiryDate ? new Date(row.documentExpiryDate) : null;
+  const isExpired   = !!expiryDate && expiryDate.getTime() < Date.now();
+  const daysToExpiry = expiryDate
+    ? Math.floor((expiryDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+    : null;
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
@@ -264,6 +301,30 @@ function ReviewModal({
               </span>
             </div>
           </div>
+
+          {/* Document expiry callout. Big amber warning if past expiry,
+              smaller neutral note if valid but expiring soon. */}
+          {expiryDate && (
+            <div className={`p-3 rounded-lg border text-sm ${
+              isExpired
+                ? 'bg-red-50 border-red-300 text-red-800'
+                : (daysToExpiry !== null && daysToExpiry < 30)
+                  ? 'bg-amber-50 border-amber-300 text-amber-900'
+                  : 'bg-gray-50 border-gray-200 text-gray-700'
+            }`}>
+              <p className="text-xs font-bold uppercase tracking-wide mb-1">
+                Document expiry
+              </p>
+              <p>
+                {expiryDate.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                {isExpired
+                  ? '  — EXPIRED. Do not approve.'
+                  : daysToExpiry !== null && daysToExpiry < 30
+                    ? `  — expires in ${daysToExpiry} day${daysToExpiry === 1 ? '' : 's'}`
+                    : ''}
+              </p>
+            </div>
+          )}
 
           {row.submitterNote && (
             <div className="p-3 rounded-lg bg-blue-50 border border-blue-100 text-sm text-[#0F2B4C]">
@@ -309,6 +370,16 @@ function ReviewModal({
             </div>
           )}
 
+          {/* Revocation reason (if approved-then-revoked) */}
+          {row.revokedReason && (
+            <div className="p-3 rounded-lg bg-red-100 border border-red-200 text-sm text-red-900">
+              <p className="text-xs font-bold uppercase tracking-wide mb-1">
+                Revoked{row.revokedAt ? ` on ${new Date(row.revokedAt).toLocaleDateString('en-NG')}` : ''} — reason shown to user
+              </p>
+              {row.revokedReason}
+            </div>
+          )}
+
           {row.adminNote && (
             <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-700">
               <p className="text-xs font-bold uppercase tracking-wide mb-1">Admin note (internal)</p>
@@ -317,7 +388,9 @@ function ReviewModal({
           )}
         </div>
 
-        {/* Footer actions */}
+        {/* Footer actions. Submitted rows get Approve/Reject; approved
+            rows get Revoke. Terminal states (rejected, withdrawn, revoked,
+            expired) show no actions. */}
         {row.status === 'submitted' && (
           <div className="px-6 py-4 border-t border-[#E5E7EB] flex justify-end gap-3">
             <button
@@ -329,10 +402,25 @@ function ReviewModal({
             </button>
             <button
               onClick={onApprove}
-              disabled={busy}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40"
+              disabled={busy || isExpired}
+              title={isExpired ? 'Document is expired. Reject instead.' : ''}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <CheckCircle2 size={15} /> {busy ? 'Approving…' : 'Approve'}
+            </button>
+          </div>
+        )}
+        {row.status === 'approved' && (
+          <div className="px-6 py-4 border-t border-[#E5E7EB] flex items-center justify-between gap-3">
+            <p className="text-xs text-gray-500 flex-1">
+              Only revoke if you have evidence the doc is fake, the account is being taken over, or the user has requested it.
+            </p>
+            <button
+              onClick={onRevoke}
+              disabled={busy}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-40"
+            >
+              <XCircle size={15} /> {busy ? 'Revoking…' : 'Revoke verification'}
             </button>
           </div>
         )}

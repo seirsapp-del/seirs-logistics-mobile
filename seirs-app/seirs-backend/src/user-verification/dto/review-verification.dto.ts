@@ -23,3 +23,17 @@ export class ApproveIdentityDto {
   @MaxLength(1000)
   adminNote?: string;
 }
+
+// Revoke an already-approved verification. Reason is user-facing so the
+// customer knows why they lost their verified status.
+export class RevokeIdentityDto {
+  @IsString()
+  @MinLength(6, { message: 'Reason must be at least 6 characters (users need to know why)' })
+  @MaxLength(300)
+  reason!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  adminNote?: string;
+}

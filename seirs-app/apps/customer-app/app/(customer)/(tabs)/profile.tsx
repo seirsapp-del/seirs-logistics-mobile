@@ -1,7 +1,8 @@
 ﻿import {
-  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Linking, Platform,
+  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Linking, Platform, Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -33,6 +34,7 @@ export default function ProfileScreen() {
   const [completedTrips,  setCompletedTrips]  = useState<number | null>(null);
   const [activePromos,    setActivePromos]    = useState<number | null>(null);
   const [referralCode,    setReferralCode]    = useState<string | null>(null);
+  const [showQrModal,     setShowQrModal]     = useState(false);
 
   // Show only the FIRST name (privacy. never expose full govt name on
   // read-only screens; drivers and other users don't need the full legal
@@ -159,24 +161,21 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          {/* SEIRS ID row. tap to copy. Primary identifier for support
-              flows; helps customers give us the right handle without
-              revealing their email or full name over the phone. */}
+          {/* SEIRS ID row. Tap to open the QR modal (also has copy button).
+              Primary identifier for support flows; the QR is for in-person
+              identification (a driver can scan a customer's QR or vice versa). */}
           {(user as any)?.accountId && (
             <Pressable
-              onPress={async () => {
-                await Clipboard.setStringAsync((user as any).accountId);
-                Alert.alert('Copied', 'Your SEIRS ID has been copied. Paste it to support to identify yourself.');
-              }}
+              onPress={() => setShowQrModal(true)}
               style={[styles.seirsIdRow, { borderTopColor: theme.border }]}
             >
               <View style={{ flex: 1 }}>
-                <Text style={[styles.seirsIdLabel, { color: theme.textSecond }]}>SEIRS ID · tap to copy</Text>
+                <Text style={[styles.seirsIdLabel, { color: theme.textSecond }]}>SEIRS ID · tap for QR</Text>
                 <Text style={[styles.seirsIdValue, { color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }]}>
                   {(user as any).accountId}
                 </Text>
               </View>
-              <Ionicons name="copy-outline" size={16} color={theme.textThird} />
+              <Ionicons name="qr-code-outline" size={18} color={theme.textThird} />
             </Pressable>
           )}
 
@@ -254,6 +253,63 @@ export default function ProfileScreen() {
         </Pressable>
 
       </ScrollView>
+
+      {/* SEIRS ID QR modal. Shown on tap of the SEIRS ID row.
+          Doubles as identity handshake (a driver / support person scans
+          the QR to identify the user) and quick-copy for phone support. */}
+      <Modal
+        visible={showQrModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowQrModal(false)}
+      >
+        <Pressable
+          onPress={() => setShowQrModal(false)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: Spacing.lg }}
+        >
+          <Pressable
+            onPress={() => { /* absorb tap so modal doesn't close when tapping card */ }}
+            style={{ backgroundColor: theme.surface, borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center', gap: Spacing.md, width: '100%', maxWidth: 340 }}
+          >
+            <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}>Your SEIRS ID</Text>
+            <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, textAlign: 'center' }}>
+              Show this to a driver or support agent to identify yourself. No personal info is encoded, just your unique account handle.
+            </Text>
+
+            <View style={{ padding: Spacing.md, backgroundColor: '#FFFFFF', borderRadius: Radius.lg }}>
+              <QRCode
+                value={String((user as any)?.accountId ?? '')}
+                size={220}
+                color="#0F2B4C"
+                backgroundColor="#FFFFFF"
+              />
+            </View>
+
+            <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', letterSpacing: 2 }}>
+              {(user as any)?.accountId ?? ''}
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: Spacing.sm, width: '100%' }}>
+              <Pressable
+                onPress={async () => {
+                  await Clipboard.setStringAsync((user as any).accountId);
+                  Alert.alert('Copied', 'Your SEIRS ID has been copied.');
+                }}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.border, borderRadius: Radius.lg, paddingVertical: 12 }}
+              >
+                <Ionicons name="copy-outline" size={16} color={theme.text} />
+                <Text style={{ color: theme.text, fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>Copy</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowQrModal(false)}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.primary, borderRadius: Radius.lg, paddingVertical: 12 }}
+              >
+                <Text style={{ color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Done</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
