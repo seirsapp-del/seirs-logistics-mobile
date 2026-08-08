@@ -98,6 +98,7 @@ export class UserVerificationService {
       select: [
         'id', 'documentType', 'status', 'submittedAt',
         'reviewedAt', 'rejectionReason', 'submitterNote',
+        'revokedAt', 'revokedReason', 'documentExpiryDate',
       ],
     });
 

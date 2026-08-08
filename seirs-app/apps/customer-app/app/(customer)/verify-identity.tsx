@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Image, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -70,6 +70,8 @@ export default function VerifyIdentityScreen() {
   const [docUrl,       setDocUrl]       = useState('');
   const [docBackUrl,   setDocBackUrl]   = useState('');
   const [selfieUrl,    setSelfieUrl]    = useState('');
+  const [docExpiryDate, setDocExpiryDate] = useState('');   // YYYY-MM-DD, optional
+  const [expiryError,   setExpiryError]   = useState<string | null>(null);
   const [uploadingDoc,     setUploadingDoc]     = useState(false);
   const [uploadingDocBack, setUploadingDocBack] = useState(false);
   const [uploadingSelfie,  setUploadingSelfie]  = useState(false);
@@ -110,6 +112,27 @@ export default function VerifyIdentityScreen() {
 
   const submit = async () => {
     if (!docType || !docUrl || !docBackUrl || !selfieUrl) return;
+
+    // Validate optional expiry date before hitting the server.
+    let expiryPayload: string | undefined;
+    if (docExpiryDate.trim()) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(docExpiryDate.trim())) {
+        setExpiryError('Use YYYY-MM-DD format');
+        return;
+      }
+      const d = new Date(docExpiryDate.trim());
+      if (Number.isNaN(d.getTime())) {
+        setExpiryError('Not a real date');
+        return;
+      }
+      if (d.getTime() < Date.now()) {
+        setExpiryError('This document has already expired');
+        return;
+      }
+      setExpiryError(null);
+      expiryPayload = docExpiryDate.trim();
+    }
+
     setSubmitting(true);
     try {
       await userVerificationApi.submit({
@@ -118,11 +141,12 @@ export default function VerifyIdentityScreen() {
         documentBackPhotoUrl: docBackUrl,
         selfiePhotoUrl:       selfieUrl,
         submitterNote:        note.trim() || undefined,
+        documentExpiryDate:   expiryPayload,
       });
       Alert.alert(
         'Submitted',
         'Thanks, your ID is with our review team. You will get a notification within 24 hours to 3 business days.',
-        [{ text: 'OK', onPress: () => { setStep('pick'); setDocType(null); setDocUrl(''); setDocBackUrl(''); setSelfieUrl(''); setNote(''); loadStatus(); } }],
+        [{ text: 'OK', onPress: () => { setStep('pick'); setDocType(null); setDocUrl(''); setDocBackUrl(''); setSelfieUrl(''); setNote(''); setDocExpiryDate(''); setExpiryError(null); loadStatus(); } }],
       );
     } catch (e: any) {
       Alert.alert('Submission failed', e?.message ?? 'Please try again.');
@@ -134,6 +158,8 @@ export default function VerifyIdentityScreen() {
   const verified   = !!status?.verifiedAt;
   const pending    = status?.latest?.status === 'submitted';
   const rejected   = status?.latest?.status === 'rejected';
+  const revoked    = status?.latest?.status === 'revoked';
+  const expired    = status?.latest?.status === 'expired';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
@@ -195,6 +221,39 @@ export default function VerifyIdentityScreen() {
                 </View>
               )}
 
+              {/* Revoked banner: admin manually reversed a previously-approved verification. */}
+              {revoked && (
+                <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <XCircle size={16} color="#DC2626" />
+                    <Text style={{ color: '#991B1B', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Verification revoked</Text>
+                  </View>
+                  {status?.latest?.revokedReason ? (
+                    <Text style={{ color: '#991B1B', fontSize: FontSize.xs, lineHeight: 18 }}>{status.latest.revokedReason}</Text>
+                  ) : (
+                    <Text style={{ color: '#991B1B', fontSize: FontSize.xs, lineHeight: 18 }}>
+                      Your verified status was reversed by our compliance team.
+                    </Text>
+                  )}
+                  <Text style={{ color: '#991B1B', fontSize: FontSize.xs, opacity: 0.7, marginTop: 2 }}>
+                    You can re-submit below. Contact support if you believe this was in error.
+                  </Text>
+                </View>
+              )}
+
+              {/* Expired banner: document past its expiry date. */}
+              {expired && (
+                <View style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, gap: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Clock size={16} color="#B45309" />
+                    <Text style={{ color: '#78350F', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>Your ID has expired</Text>
+                  </View>
+                  <Text style={{ color: '#78350F', fontSize: FontSize.xs, lineHeight: 18 }}>
+                    Verified status has been paused. Submit a current, unexpired ID below to restore it.
+                  </Text>
+                </View>
+              )}
+
               {/* Step 1: pick doc type */}
               <Text style={[styles.stepLabel, { color: theme.textSecond }]}>1. Pick your ID</Text>
               <View style={{ gap: Spacing.sm }}>
@@ -252,8 +311,39 @@ export default function VerifyIdentityScreen() {
                     onGallery={() => pickAndUpload(setSelfieUrl, setUploadingSelfie, false)}
                   />
 
-                  {/* Optional note */}
-                  {/* Kept simple, no field yet. Advanced users can add via a future edit. */}
+                  {/* Expiry date: only relevant for docs that actually expire.
+                      NIN slip has no expiry, so skip the field entirely. */}
+                  {docType !== 'nin' && (
+                    <>
+                      <Text style={[styles.stepLabel, { color: theme.textSecond }]}>5. Expiry date (optional)</Text>
+                      <TextInput
+                        value={docExpiryDate}
+                        onChangeText={(v) => { setDocExpiryDate(v); if (expiryError) setExpiryError(null); }}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor={theme.textThird}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        keyboardType="numbers-and-punctuation"
+                        style={{
+                          borderWidth: 1,
+                          borderColor: expiryError ? '#DC2626' : theme.border,
+                          backgroundColor: theme.surface,
+                          color: theme.text,
+                          borderRadius: Radius.lg,
+                          paddingHorizontal: Spacing.md,
+                          paddingVertical: 12,
+                          fontSize: FontSize.base,
+                        }}
+                      />
+                      {expiryError ? (
+                        <Text style={{ color: '#DC2626', fontSize: FontSize.xs }}>{expiryError}</Text>
+                      ) : (
+                        <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, lineHeight: 16 }}>
+                          Helps us re-verify you before your ID expires. Leave blank if unsure.
+                        </Text>
+                      )}
+                    </>
+                  )}
 
                   {/* Submit */}
                   <Pressable

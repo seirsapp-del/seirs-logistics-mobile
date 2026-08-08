@@ -59,17 +59,40 @@ export class AdminService {
 
   // ── Spec V8 §3.13. NDPR admin tools (A32 + A33) ──────────────────────────
 
+  // Allow-list for NDPR tooling. Kept narrower than AdminGuard so a generic
+  // admin can't pull PII bundles without an explicit compliance role.
+  // Add roles here when the ops team's shape changes; do NOT widen the
+  // guard itself.
+  private readonly NDPR_EXPORT_ROLES: string[] = ['super_admin', 'support_agent', 'finance_officer'];
+  private readonly NDPR_DELETE_ROLES: string[] = ['super_admin', 'support_agent'];
+
+  private ensureNdprAccess(admin: any, allowed: string[], action: string) {
+    const role = admin?.adminRole ?? null;
+    if (!allowed.includes(role)) {
+      this.logger.warn(`NDPR_ACCESS_DENIED admin=${admin?.id ?? admin?.sub} role=${role} action=${action}`);
+      throw new ForbiddenException(
+        `This action requires one of: ${allowed.join(', ')}. Your role: ${role ?? 'none'}.`,
+      );
+    }
+  }
+
   // A32. export any user's NDPR bundle. Wraps the self-service export
   // for legal / subject-access requests where the user can't pull it.
-  async adminExportUserData(targetUserId: string) {
-    return this.usersService.exportUserData(targetUserId);
+  // Role-gated (compliance roles only) + audited so we can prove who
+  // pulled which user's PII and when.
+  async adminExportUserData(targetUserId: string, admin: any, ip?: string) {
+    this.ensureNdprAccess(admin, this.NDPR_EXPORT_ROLES, 'ndpr_export');
+    const bundle = await this.usersService.exportUserData(targetUserId);
+    await this.logAudit(admin, 'ndpr_export', `user:${targetUserId}`, { fields: Object.keys(bundle ?? {}) }, ip);
+    return bundle;
   }
 
   // A33. admin-triggered immediate hard-delete. Bypasses the 30-day
   // grace window for compliance requests the user has formally
   // escalated. Refuses on admins (use offboard) or on accounts with
   // active deliveries (would orphan a customer's package).
-  async adminHardDeleteUser(targetUserId: string, adminId: string, reason: string) {
+  async adminHardDeleteUser(targetUserId: string, admin: any, reason: string, ip?: string) {
+    this.ensureNdprAccess(admin, this.NDPR_DELETE_ROLES, 'ndpr_hard_delete');
     if (!reason || reason.trim().length < 6) {
       throw new BadRequestException('Reason (min 6 chars) is required.');
     }
@@ -100,7 +123,12 @@ export class AdminService {
       deactivatedAt:     user.deactivatedAt ?? new Date(),
     }));
     await this.usersRepo.delete(user.id);
+    const adminId = admin?.id ?? admin?.sub;
     this.logger.warn(`ADMIN_HARD_DELETE userId=${targetUserId} admin=${adminId} reason="${reason}"`);
+    await this.logAudit(admin, 'ndpr_hard_delete', `user:${targetUserId}`, {
+      reason:    reason.trim().slice(0, 500),
+      accountId: user.accountId ?? null,
+    }, ip);
     return { ok: true, archivedAt: new Date().toISOString() };
   }
 
@@ -530,6 +558,12 @@ export class AdminService {
     );
     return this.usersRepo.findOne({ where: { id } });
   }
+
+  // Note: the previously-planned regenerateAccountId admin endpoint was
+  // removed on compliance grounds. Rotating a SEIRS ID breaks every
+  // historical reference (audit logs, printed QR codes, support tickets).
+  // The only sanctioned way to end up with a wrong-prefix account is:
+  // NDPR hard-delete + fresh signup. See [[project_seirs_account_model]].
 
   // ── Drivers ───────────────────────────────────────────────────────────────
 

@@ -1,9 +1,9 @@
-import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
-import { ArrowLeft, Copy, Shield, CheckCircle, AlertTriangle } from 'lucide-react-native';
-import { useState } from 'react';
+import { ArrowLeft, Copy, Shield, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -18,19 +18,63 @@ export default function SeirsIdScreen() {
   const router   = useRouter();
   const cs       = useColorScheme();
   const theme    = Colors[cs ?? 'light'];
-  const { user } = useAuth();
+  const { user, refresh } = useAuth() as any;
 
-  const [copied, setCopied] = useState(false);
+  const [copied,     setCopied]     = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [triedRefresh, setTriedRefresh] = useState(false);
 
   const seirsId = user?.accountId ?? '';
   const name    = user?.name ?? 'Customer';
 
+  // If the auth session was cached before the account got a SEIRS ID
+  // (backfill ran after login, or a legacy account), the JWT snapshot
+  // is stale. Auto-refetch /users/me once on mount to pick up the
+  // latest accountId before we tell the user to wait.
+  useEffect(() => {
+    if (!seirsId && !triedRefresh) {
+      setTriedRefresh(true);
+      refresh?.().catch(() => { /* best-effort */ });
+    }
+  }, [seirsId, triedRefresh, refresh]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refresh?.(); } catch { /* best-effort */ }
+    finally { setRefreshing(false); }
+  };
+
   if (!seirsId) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl }}>
-        <Text style={{ color: theme.text, fontSize: FontSize.base, textAlign: 'center' }}>
-          Your SEIRS Verified ID is being provisioned. Try again in a few minutes.
-        </Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
+            <ArrowLeft size={20} color={theme.text} strokeWidth={1.75} />
+          </Pressable>
+          <Text style={[styles.title, { color: theme.text }]}>My SEIRS ID</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl, gap: Spacing.md }}>
+          <Shield size={32} color={theme.primary} strokeWidth={1.5} />
+          <Text style={{ color: theme.text, fontSize: FontSize.md, fontWeight: FontWeight.bold, textAlign: 'center' }}>
+            Setting up your SEIRS ID
+          </Text>
+          <Text style={{ color: theme.textSecond, fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 }}>
+            Your ID should be ready. If this message stays, signing out and back in usually clears it.
+          </Text>
+          <Pressable
+            disabled={refreshing}
+            onPress={handleRefresh}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: Spacing.sm, backgroundColor: theme.primary, paddingHorizontal: Spacing.md, paddingVertical: 12, borderRadius: Radius.lg }}
+          >
+            {refreshing
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <RefreshCw size={15} color="#fff" strokeWidth={2} />}
+            <Text style={{ color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
+              {refreshing ? 'Refreshing…' : 'Try again'}
+            </Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     );
   }

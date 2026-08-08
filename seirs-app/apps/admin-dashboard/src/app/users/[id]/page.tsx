@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { AlertTriangle } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-yellow-100 text-yellow-800',
@@ -22,6 +23,7 @@ export default function UserDetailPage() {
   const [data,    setData]    = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
+  const [hardDeleteOpen, setHardDeleteOpen] = useState(false);
   const confirm               = useConfirm();
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function UserDetailPage() {
   const promoteToAdmin = async () => {
     const ok = await confirm({
       title:        `Promote ${data.user.name} to admin?`,
-      message:      'They will gain full platform access — including the ability to ban users, change pricing, and access financial reports. This action is irreversible without another admin demoting them.',
+      message:      'They will gain full platform access, including the ability to ban users, change pricing, and access financial reports. This action is irreversible without another admin demoting them.',
       confirmLabel: 'Promote to Admin',
       danger:       true,
     });
@@ -61,6 +63,27 @@ export default function UserDetailPage() {
     await adminApi.changeRole(id, 'admin');
     setData(await adminApi.user(id));
     setSaving(false);
+  };
+
+  // Change role between customer and driver. Admin promotion still lives
+  // in the dedicated promoteToAdmin flow above so the extra warning shows.
+  const changeRole = async (newRole: 'customer' | 'driver') => {
+    if (data.user.role === newRole) return;
+    const ok = await confirm({
+      title:        `Change role from ${data.user.role} to ${newRole}?`,
+      message:      newRole === 'driver'
+        ? `${data.user.name} will be treated as a driver. They still need driver KYC (licence, vehicle photos) approved before they can accept trips. The SEIRS ID prefix stays at ${data.user.accountId?.split('-')[0] ?? 'original'} for compliance tracking.`
+        : `${data.user.name} will be treated as a customer. Any driver dispatch privileges are removed immediately. The SEIRS ID prefix stays at ${data.user.accountId?.split('-')[0] ?? 'original'} for compliance tracking.`,
+      confirmLabel: `Change to ${newRole}`,
+      danger:       true,
+    });
+    if (!ok) return;
+    setSaving(true);
+    try {
+      await adminApi.changeRole(id, newRole);
+      setData(await adminApi.user(id));
+    } catch (e: any) { alert(e?.message ?? 'Role change failed'); }
+    finally { setSaving(false); }
   };
 
   // Spec V8 §3.13 — NDPR admin tools (A32 + A33)
@@ -77,12 +100,10 @@ export default function UserDetailPage() {
     } catch (e: any) { alert(e?.message ?? 'Export failed'); }
   };
 
-  const hardDelete = async () => {
-    const reason = prompt(
-      `IRREVERSIBLE hard-delete of ${data.user.name}.\n\nThis bypasses the 30-day NDPR grace window. The account is archived (PII reduced) and purged from the live users table immediately.\n\nReason for the legal audit log:`,
-    );
-    if (!reason || reason.trim().length < 6) return;
-    if (!confirm(`Final confirm: hard-delete ${data.user.name}?\n\nReason: ${reason.trim()}\n\nThis cannot be undone.`)) return;
+  // Hard-delete triggers a two-step branded modal (reason input → confirm)
+  // instead of the browser's ugly prompt()/confirm(). See HardDeleteModal
+  // component at the bottom of this file.
+  const runHardDelete = async (reason: string) => {
     try {
       const r = await adminApi.ndpr.hardDeleteUser(id, reason.trim());
       alert(`Account purged. Archived at ${r.archivedAt}.`);
@@ -135,6 +156,17 @@ export default function UserDetailPage() {
             >
               {saving ? '...' : user.isActive !== false ? 'Ban User' : 'Unban User'}
             </button>
+            {/* Customer ↔ Driver toggle. Explicit demote/promote buttons so
+                admin knows exactly which transition they are triggering. */}
+            {user.role !== 'admin' && (
+              <button
+                onClick={() => changeRole(user.role === 'driver' ? 'customer' : 'driver')}
+                disabled={saving}
+                className="text-sm px-4 py-2 rounded-lg font-medium bg-blue-100 text-blue-700 hover:bg-blue-200"
+              >
+                {user.role === 'driver' ? 'Change to Customer' : 'Change to Driver'}
+              </button>
+            )}
             {user.role === 'customer' && (
               <button
                 onClick={promoteToAdmin}
@@ -153,9 +185,9 @@ export default function UserDetailPage() {
             </button>
             {user.role !== 'admin' && (
               <button
-                onClick={hardDelete}
+                onClick={() => setHardDeleteOpen(true)}
                 className="text-sm px-4 py-2 rounded-lg font-medium bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
-                title="NDPR right to erasure — immediate hard-delete"
+                title="NDPR right to erasure. immediate hard-delete"
               >
                 NDPR hard-delete
               </button>
@@ -217,6 +249,127 @@ export default function UserDetailPage() {
           )}
         </div>
       </main>
+
+      {hardDeleteOpen && (
+        <HardDeleteModal
+          userName={user.name}
+          onCancel={() => setHardDeleteOpen(false)}
+          onConfirm={async (reason) => {
+            setHardDeleteOpen(false);
+            await runHardDelete(reason);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Two-stage NDPR hard-delete confirmation. Stage 1 collects the reason
+// (min 6 chars, required for the legal audit log). Stage 2 is a final
+// "type the name to confirm" check to prevent muscle-memory purges.
+function HardDeleteModal({
+  userName,
+  onCancel,
+  onConfirm,
+}: {
+  userName: string;
+  onCancel: () => void;
+  onConfirm: (reason: string) => void | Promise<void>;
+}) {
+  const [stage,        setStage]        = useState<'reason' | 'confirm'>('reason');
+  const [reason,       setReason]       = useState('');
+  const [typedName,    setTypedName]    = useState('');
+  const reasonOk = reason.trim().length >= 6;
+  const nameOk   = typedName.trim() === userName;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] p-6 max-w-md w-full"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <AlertTriangle size={22} className="shrink-0 mt-0.5 text-red-500" />
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-[#0F2B4C] mb-1">
+              NDPR hard-delete: {userName}
+            </h3>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              This bypasses the 30-day grace window. The account is archived (PII reduced) and
+              purged from the live users table immediately. Cannot be undone.
+            </p>
+          </div>
+        </div>
+
+        {stage === 'reason' ? (
+          <>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Reason for the legal audit log
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. NDPR erasure request received 2026-08-08 via support ticket #4821"
+              className="w-full text-sm p-3 border border-gray-200 rounded-lg focus:outline-none focus:border-[#3A7BD5] min-h-[90px]"
+              autoFocus
+            />
+            <p className={`text-xs mt-1 ${reasonOk ? 'text-gray-400' : 'text-red-500'}`}>
+              {reasonOk ? `${reason.trim().length} characters` : `Minimum 6 characters (${reason.trim().length}/6)`}
+            </p>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-[#0F2B4C]/60 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!reasonOk}
+                onClick={() => setStage('confirm')}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Type <span className="font-mono text-red-600">{userName}</span> to confirm
+            </label>
+            <input
+              value={typedName}
+              onChange={(e) => setTypedName(e.target.value)}
+              placeholder={userName}
+              className="w-full text-sm p-3 border border-gray-200 rounded-lg focus:outline-none focus:border-red-500 font-mono"
+              autoFocus
+            />
+            <div className="mt-3 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 leading-relaxed">
+              <span className="font-semibold text-gray-700">Reason logged:</span> {reason.trim()}
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => setStage('reason')}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-[#0F2B4C]/60 hover:bg-gray-100"
+              >
+                Back
+              </button>
+              <button
+                disabled={!nameOk}
+                onClick={() => onConfirm(reason)}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed"
+              >
+                Purge account
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

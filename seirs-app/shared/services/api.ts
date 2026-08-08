@@ -197,13 +197,16 @@ export const userVerificationApi = {
     verifiedAt:      string | null;
     verifiedDocType: string | null;
     latest: null | {
-      id:              string;
-      documentType:    IdentityDocType;
-      status:          'submitted' | 'approved' | 'rejected' | 'withdrawn';
-      submittedAt:     string;
-      reviewedAt:      string | null;
-      rejectionReason: string | null;
-      submitterNote:   string | null;
+      id:                 string;
+      documentType:       IdentityDocType;
+      status:             'submitted' | 'approved' | 'rejected' | 'withdrawn' | 'revoked' | 'expired';
+      submittedAt:        string;
+      reviewedAt:         string | null;
+      rejectionReason:    string | null;
+      revokedReason:      string | null;
+      revokedAt:          string | null;
+      documentExpiryDate: string | null;
+      submitterNote:      string | null;
     };
   }>('GET', '/users/me/identity-verification'),
   submit: (payload: {

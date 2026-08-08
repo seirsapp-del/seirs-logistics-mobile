@@ -29,6 +29,10 @@ export class DeliveriesService {
   // Wired lazily by DevPlatformModule on app boot to avoid a circular
   // dep with DeliveriesModule.
   devPlatformService?:   any;
+  // Wired by DeliveriesModule.onModuleInit. Used only on the DELIVERED
+  // transition to run awardReferralBonusIfEligible for the customer.
+  loyaltyService?:       any;
+  usersRepoRef?:         any;
 
   constructor(
     @InjectRepository(Delivery) private repo: Repository<Delivery>,
@@ -292,6 +296,30 @@ export class DeliveriesService {
           .releaseEscrow(id, updated.driver.user.id)
           .catch((err) => this.logger.error(`Escrow release failed: ${err.message}`));
       }
+    }
+
+    // Referral bonus: on the customer's qualifying DELIVERED, look up their
+    // referredByCode (the referrer's accountId) and award the bonus. The
+    // loyalty service holds all 7 gates (self-referral, dedupe, min-price,
+    // monthly cap, velocity flag), so this call is safe to fire every time.
+    const referredByCode = customer?.referredByCode;
+    const referredUserId = customer?.id;
+    if (
+      status === DeliveryStatus.DELIVERED &&
+      this.loyaltyService && this.usersRepoRef &&
+      referredByCode && referredUserId
+    ) {
+      this.usersRepoRef
+        .findOne({ where: { accountId: referredByCode } })
+        .then((referrer: any) => {
+          if (!referrer) return;
+          return this.loyaltyService.awardReferralBonusIfEligible({
+            referrerUserId:    referrer.id,
+            referredUserId,
+            triggerDeliveryId: id,
+          });
+        })
+        .catch((err: any) => this.logger.error(`Referral bonus check failed: ${err?.message ?? err}`));
     }
 
     // Refund escrow if delivery failed or cancelled

@@ -1,5 +1,6 @@
 import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { DeliveriesController } from './deliveries.controller';
 import { DeliveriesService } from './deliveries.service';
 import { PricingService } from './pricing.service';
@@ -18,10 +19,13 @@ import { FxModule } from '../fx/fx.module';
 import { DriversModule } from '../drivers/drivers.module';
 import { DriversService } from '../drivers/drivers.service';
 import { MaintenanceModule } from '../maintenance/maintenance.module';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { LoyaltyService } from '../loyalty/loyalty.service';
+import { User } from '../users/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Delivery]),
+    TypeOrmModule.forFeature([Delivery, User]),
     MatchingModule,
     TrackingModule,
     forwardRef(() => PaymentsModule),
@@ -29,6 +33,7 @@ import { MaintenanceModule } from '../maintenance/maintenance.module';
     FxModule,
     forwardRef(() => DriversModule),
     MaintenanceModule,
+    LoyaltyModule,
   ],
   controllers: [DeliveriesController],
   providers: [DeliveriesService, PricingService],
@@ -44,6 +49,8 @@ export class DeliveriesModule implements OnModuleInit {
     private notificationsService: NotificationsService,
     private mailService:          MailService,
     private driversService:       DriversService,
+    private loyaltyService:       LoyaltyService,
+    @InjectRepository(User) private usersRepo: Repository<User>,
   ) {}
 
   onModuleInit() {
@@ -54,6 +61,8 @@ export class DeliveriesModule implements OnModuleInit {
     this.deliveriesService.notificationsService = this.notificationsService;
     this.deliveriesService.mailService          = this.mailService;
     this.deliveriesService.driversService       = this.driversService;
+    this.deliveriesService.loyaltyService       = this.loyaltyService;
+    this.deliveriesService.usersRepoRef         = this.usersRepo;
 
     // Give NotificationsService a reference to the gateway for WS delivery
     this.notificationsService.trackingGateway = this.trackingGateway;

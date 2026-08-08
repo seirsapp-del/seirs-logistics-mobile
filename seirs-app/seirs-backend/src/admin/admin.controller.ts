@@ -114,6 +114,9 @@ export class AdminController {
     return this.adminService.updateUser(id, body);
   }
 
+  // Regenerate-account-id endpoint intentionally omitted. See
+  // AdminService comment about SEIRS ID immutability + compliance.
+
   // ── Drivers ───────────────────────────────────────────────────────────────
 
   // GET /api/v1/admin/drivers?status=pending
@@ -460,19 +463,27 @@ export class AdminController {
   // ── NDPR admin tools (Spec V8 §3.13. A32 + A33) ─────────────────────────
 
   // GET /api/v1/admin/users/:id/export
+  // Role-gated to compliance roles (super_admin/support_agent/finance_officer)
+  // and audit-logged. See AdminService.NDPR_EXPORT_ROLES.
   @Get('users/:id/export')
-  exportUserBundle(@Param('id') id: string) {
-    return this.adminService.adminExportUserData(id);
+  exportUserBundle(
+    @Param('id') id: string,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    return this.adminService.adminExportUserData(id, admin, req.ip);
   }
 
   // POST /api/v1/admin/users/:id/hard-delete  { reason }
+  // Role-gated to super_admin + support_agent only. Audit-logged.
   @Post('users/:id/hard-delete')
   hardDeleteUser(
     @Param('id') id: string,
     @Body() body: { reason: string },
     @CurrentUser() admin: any,
+    @Req() req: Request,
   ) {
-    return this.adminService.adminHardDeleteUser(id, admin.id ?? admin.sub, body?.reason ?? '');
+    return this.adminService.adminHardDeleteUser(id, admin, body?.reason ?? '', req.ip);
   }
 
   // ── Duplicate accounts (A21) ─────────────────────────────────────────────
