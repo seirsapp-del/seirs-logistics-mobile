@@ -64,3 +64,6 @@ Thumbs.db
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+
+# Claude Code local session data (not for repo)
+.claude/
