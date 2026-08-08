@@ -1,12 +1,13 @@
-﻿import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Repository, IsNull, Not, LessThan, MoreThan } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
-import { User } from './user.entity';
+import { User, UserRole } from './user.entity';
 import { ArchivedUser } from './archived-user.entity';
 import { UserProfileAudit, ProfileFieldName } from './user-profile-audit.entity';
+import { AccountIdPrefix, generateAccountId } from '../common/utils/auth-codes';
 
 const ARCHIVE_GRACE_DAYS = 30;
 
@@ -45,8 +46,54 @@ interface UpdateContext {
 }
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
   private readonly logger = new Logger(UsersService.name);
+
+  // Backfill accountId (SEIRS ID) for legacy users on service boot.
+  // Runs once per deploy; safe because it only touches users where
+  // accountId IS NULL. Skips the loop when there are zero to fill.
+  async onModuleInit() {
+    try {
+      const pending = await this.repo.count({ where: { accountId: IsNull() } });
+      if (pending === 0) {
+        this.logger.log('SEIRS ID backfill: nothing to do');
+        return;
+      }
+      this.logger.log(`SEIRS ID backfill: ${pending} users to backfill`);
+      // Process in batches to avoid loading the whole users table into memory.
+      const BATCH = 200;
+      let filled = 0;
+      while (true) {
+        const batch = await this.repo.find({
+          where: { accountId: IsNull() },
+          select: ['id', 'role'],
+          take:  BATCH,
+        });
+        if (batch.length === 0) break;
+        for (const u of batch) {
+          const prefix =
+            u.role === UserRole.DRIVER ? AccountIdPrefix.DRIVER
+            : u.role === UserRole.ADMIN ? AccountIdPrefix.ADMIN
+            : AccountIdPrefix.CUSTOMER;   // default: customer + any legacy nulls
+          // Retry a few times on the rare unique-constraint collision.
+          let saved = false;
+          for (let attempt = 0; attempt < 5 && !saved; attempt++) {
+            try {
+              await this.repo.update(u.id, { accountId: generateAccountId(prefix) });
+              saved = true;
+              filled++;
+            } catch (e: any) {
+              if (attempt === 4) this.logger.warn(`Backfill giving up on ${u.id}: ${e.message}`);
+            }
+          }
+        }
+      }
+      this.logger.log(`SEIRS ID backfill: filled ${filled} users`);
+    } catch (e: any) {
+      // Never crash boot on a backfill failure. Log and continue.
+      this.logger.error(`SEIRS ID backfill error: ${e.message}`);
+    }
+  }
 
   constructor(
     @InjectRepository(User)              private repo:         Repository<User>,
@@ -327,8 +374,11 @@ export class UsersService {
   // ── Data export ───────────────────────────────────────────────────────
   // Spec V8 NDPR Article 24. right to data portability. Returns a
   // JSON-serialisable bundle of everything this user owns. Heavy.
-  // typically called once per user when they request export, then
-  // emailed as a downloadable file.
+  // Typically called once per user when they request export.
+  //
+  // Format handling lives in the controller: this method always returns
+  // the raw bundle. The controller converts to HTML (printable) or CSV
+  // when the caller asks. NDPR compliance uses JSON (machine-readable).
   async exportUserData(userId: string) {
     const user = await this.repo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('Account not found');
@@ -391,6 +441,104 @@ export class UsersService {
         'Audit log entries about your account remain in our system for legal compliance.',
       ],
     };
+  }
+
+  // Render an export bundle as printable HTML. Browsers Save-as-PDF this
+  // for a human-readable copy. Deliberately no external dep: keeps the
+  // dependency graph light and avoids PDF-library security bulletins.
+  formatExportAsHtml(bundle: ReturnType<UsersService['exportUserData']> extends Promise<infer T> ? T : never): string {
+    const esc = (s: any) => String(s ?? '').replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>
+    )[c]!);
+    const fmtDate = (d: any) => d ? new Date(d).toLocaleString('en-NG') : '-';
+    const p = bundle.profile;
+    const rowsFrom = (arr: any[]) => arr.length === 0
+      ? '<p class="empty">No records.</p>'
+      : `<table><thead><tr>${Object.keys(arr[0]).map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead><tbody>${
+          arr.map(r => `<tr>${Object.keys(arr[0]).map(k => `<td>${esc(r[k])}</td>`).join('')}</tr>`).join('')
+        }</tbody></table>`;
+
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>SEIRS data export - ${esc(p.name)}</title>
+<style>
+  @page { size: A4; margin: 18mm; }
+  body { font: 12px/1.5 -apple-system, "Segoe UI", Inter, sans-serif; color: #111; max-width: 900px; margin: 24px auto; padding: 0 24px; }
+  h1 { font-size: 24px; margin-bottom: 4px; color: #0F2B4C; }
+  h2 { font-size: 15px; margin-top: 28px; margin-bottom: 8px; color: #0F2B4C; border-bottom: 1px solid #E5E7EB; padding-bottom: 6px; }
+  .meta { color: #6B7280; font-size: 11px; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 12px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #F5F5F0; vertical-align: top; }
+  th { background: #F8F9FB; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6B7280; font-size: 9px; }
+  .empty { color: #9CA3AF; font-style: italic; margin: 8px 0 20px 0; font-size: 11px; }
+  .profile-grid { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin-bottom: 20px; }
+  .profile-grid dt { font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; padding-top: 3px; }
+  .profile-grid dd { margin: 0; }
+  .disclaimer { margin-top: 32px; padding: 12px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; font-size: 10px; color: #78350F; }
+  @media print { body { max-width: none; margin: 0; padding: 0; } }
+</style>
+</head><body>
+<h1>SEIRS Data Export</h1>
+<p class="meta">Generated ${fmtDate(bundle.generatedAt)}. This is your data per NDPR Article 24.</p>
+
+<h2>Profile</h2>
+<dl class="profile-grid">
+  <dt>SEIRS ID</dt><dd>${esc(p.accountId ?? '-')}</dd>
+  <dt>Name</dt><dd>${esc(p.name)}</dd>
+  <dt>Email</dt><dd>${esc(p.email)}${p.emailVerified ? ' (verified)' : ''}</dd>
+  <dt>Phone</dt><dd>${esc(p.phone)}</dd>
+  <dt>Role</dt><dd>${esc(p.role)}</dd>
+  <dt>Joined</dt><dd>${fmtDate(p.createdAt)}</dd>
+  <dt>Last updated</dt><dd>${fmtDate(p.updatedAt)}</dd>
+</dl>
+
+<h2>Deliveries as customer</h2>
+${rowsFrom(bundle.deliveries.asCustomer)}
+
+<h2>Deliveries as driver</h2>
+${rowsFrom(bundle.deliveries.asDriver)}
+
+<h2>Payments</h2>
+${rowsFrom(bundle.payments)}
+
+<h2>Store dropoffs</h2>
+${rowsFrom(bundle.storeDropoffs)}
+
+<h2>Handoff records</h2>
+${rowsFrom(bundle.handoffRecords)}
+
+<div class="disclaimer">
+  ${bundle.notes.map((n: string) => `<div>${esc(n)}</div>`).join('')}
+  <div style="margin-top: 8px;"><strong>To save as PDF:</strong> use your browser's Print menu (Ctrl+P or Cmd+P) and choose "Save as PDF" as the destination.</div>
+</div>
+</body></html>`;
+  }
+
+  // CSV export: each section becomes its own labelled block within one
+  // CSV file so a spreadsheet import shows all of a user's data in one go.
+  // Simpler than multi-file zip; readable in Excel / Sheets / LibreOffice.
+  formatExportAsCsv(bundle: ReturnType<UsersService['exportUserData']> extends Promise<infer T> ? T : never): string {
+    const esc = (v: any) => {
+      const s = v == null ? '' : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const section = (title: string, rows: any[]) => {
+      if (rows.length === 0) return `\n# ${title}\n(none)\n`;
+      const keys = Object.keys(rows[0]);
+      const header = keys.map(esc).join(',');
+      const body = rows.map(r => keys.map(k => esc(r[k])).join(',')).join('\n');
+      return `\n# ${title}\n${header}\n${body}\n`;
+    };
+    const p = bundle.profile;
+    let out = `# SEIRS data export\n# generated,${bundle.generatedAt}\n`;
+    out += `\n# Profile\nfield,value\n`;
+    for (const [k, v] of Object.entries(p)) out += `${esc(k)},${esc(v)}\n`;
+    out += section('Deliveries as customer', bundle.deliveries.asCustomer);
+    out += section('Deliveries as driver',   bundle.deliveries.asDriver);
+    out += section('Payments',               bundle.payments);
+    out += section('Store dropoffs',         bundle.storeDropoffs);
+    out += section('Handoff records',        bundle.handoffRecords);
+    out += `\n# Notes\n${bundle.notes.map((n: string) => esc(n)).join('\n')}\n`;
+    return out;
   }
 }
 

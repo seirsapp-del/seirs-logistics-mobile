@@ -818,7 +818,8 @@ function SubZonesEditor({
   card:      any;
   patchPath: (path: string, value: any) => void;
 }) {
-  const subZones: SubZone[] = card.regions?.restrictedSubZones ?? [];
+  const confirm              = useConfirm();
+  const subZones: SubZone[]  = card.regions?.restrictedSubZones ?? [];
 
   const setSubZones = (next: SubZone[]) => patchPath('regions.restrictedSubZones', next);
 
