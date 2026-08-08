@@ -1,28 +1,28 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Share,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Share, ActivityIndicator,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { loyaltyApi, type ReferralHistoryItem } from '@/services/api';
 
 // Universal/web fallback link — when the receiver doesn't have the app,
 // the page on seirs.app/r/<code> can show download links and forward
 // the code through to the play store / app store via deferred deep linking.
 const WEB_REFERRAL_BASE = 'https://seirs.app/r/';
 
-const REFERRAL_HISTORY = [
-  { id: 'r1', name: 'Kemi Adeyemo',  status: 'completed', earned: 1000, date: '2026-04-20' },
-  { id: 'r2', name: 'Femi Oladele',  status: 'completed', earned: 1000, date: '2026-04-15' },
-  { id: 'r3', name: 'Aisha Mohammed', status: 'pending', earned: 0, date: '2026-04-28' },
-];
+// Points awarded per successful referral. Must stay in sync with the
+// backend REFERRAL_BONUS constant in loyalty.service.ts. If either
+// changes, both need to update together or the copy will lie.
+const REFERRAL_POINTS = 200;
 
 export default function ReferralScreen() {
   const router  = useRouter();
@@ -41,9 +41,19 @@ export default function ReferralScreen() {
   const deepLink = Linking.createURL('(auth)/register', { queryParams: { ref: referralCode } });
   const webLink  = `${WEB_REFERRAL_BASE}${referralCode}`;
 
-  const [copied, setCopied] = useState(false);
+  const [copied,   setCopied]   = useState(false);
+  const [history,  setHistory]  = useState<ReferralHistoryItem[]>([]);
+  const [loading,  setLoading]  = useState(true);
 
-  const totalEarned = REFERRAL_HISTORY.filter(r => r.status === 'completed').reduce((s, r) => s + r.earned, 0);
+  useEffect(() => {
+    loyaltyApi.myReferrals()
+      .then((data) => setHistory(Array.isArray(data) ? data : []))
+      .catch(() => setHistory([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const completedCount = history.filter(r => r.bonusPaid).length;
+  const pointsEarned   = history.reduce((s, r) => s + (r.bonusPoints ?? 0), 0);
 
   const handleCopy = async () => {
     await Clipboard.setStringAsync(referralCode);
@@ -55,9 +65,10 @@ export default function ReferralScreen() {
     try {
       await Share.share({
         message:
-          `Join SEIRS Logistics and get ₦500 off your first ride! Use my code: ${referralCode}\n\n` +
-          `Tap to install and apply automatically: ${webLink}\n` +
-          `Already have the app? ${deepLink}`,
+          `Join SEIRS Logistics! Use my code ${referralCode} when you sign up. ` +
+          `We both earn SEIRS Rewards points once you complete a delivery.\n\n` +
+          `Get the app: ${webLink}\n` +
+          `Already installed? ${deepLink}`,
       });
     } catch {}
   };
@@ -87,9 +98,10 @@ export default function ReferralScreen() {
           <View style={styles.heroIcon}>
             <Ionicons name="gift" size={36} color="#fff" />
           </View>
-          <Text style={styles.heroTitle}>{t('referral2.heroTitle')}</Text>
+          <Text style={styles.heroTitle}>Invite friends, earn Rewards</Text>
           <Text style={styles.heroDesc}>
-            You get ₦1,000 and your friend gets ₦500 off their first ride when they sign up with your code.
+            You earn {REFERRAL_POINTS} SEIRS Rewards points every time a friend signs up with your code
+            and completes their first paid delivery.
           </Text>
         </LinearGradient>
 
@@ -115,9 +127,9 @@ export default function ReferralScreen() {
         {/* Stats */}
         <View style={[styles.statsRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {[
-            { label: 'Total Referred', value: `${REFERRAL_HISTORY.length}`, icon: 'people-outline', color: theme.primary },
-            { label: 'Completed',      value: `${REFERRAL_HISTORY.filter(r => r.status === 'completed').length}`, icon: 'checkmark-circle-outline', color: '#22C55E' },
-            { label: 'Total Earned',   value: `₦${totalEarned.toLocaleString()}`, icon: 'cash-outline', color: '#FFBE0B' },
+            { label: 'Signups',         value: loading ? '—' : `${history.length}`, icon: 'people-outline', color: theme.primary },
+            { label: 'Bonuses paid',    value: loading ? '—' : `${completedCount}`, icon: 'checkmark-circle-outline', color: '#22C55E' },
+            { label: 'Points earned',   value: loading ? '—' : `${pointsEarned.toLocaleString()}`, icon: 'star-outline', color: '#FFBE0B' },
           ].map((stat, i) => (
             <View key={stat.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
               <Ionicons name={stat.icon as any} size={20} color={stat.color} />
@@ -147,28 +159,43 @@ export default function ReferralScreen() {
         {/* Referral history */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Referral History</Text>
 
-        {REFERRAL_HISTORY.map(ref => (
-          <View key={ref.id} style={[styles.refRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
-            <View style={[styles.refAvatar, { backgroundColor: theme.primary + '20' }]}>
-              <Text style={[styles.refAvatarText, { color: theme.primary }]}>
-                {ref.name.charAt(0)}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.refName, { color: theme.text }]}>{ref.name}</Text>
-              <Text style={[styles.refDate, { color: theme.textSecond }]}>
-                {new Date(ref.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </Text>
-            </View>
-            {ref.status === 'completed' ? (
-              <Text style={styles.refEarned}>+₦{ref.earned.toLocaleString()}</Text>
-            ) : (
-              <View style={[styles.pendingBadge, { backgroundColor: '#FEF9C3', borderColor: '#FDE68A' }]}>
-                <Text style={styles.pendingBadgeText}>Pending</Text>
-              </View>
-            )}
+        {loading ? (
+          <View style={{ padding: Spacing.lg, alignItems: 'center' }}>
+            <ActivityIndicator color={theme.primary} />
           </View>
-        ))}
+        ) : history.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Ionicons name="people-outline" size={32} color={theme.textThird} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No referrals yet</Text>
+            <Text style={[styles.emptySub, { color: theme.textSecond }]}>
+              Share your code with a friend. When they sign up and complete their first delivery,
+              you both start earning points.
+            </Text>
+          </View>
+        ) : (
+          history.map(ref => (
+            <View key={ref.id} style={[styles.refRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+              <View style={[styles.refAvatar, { backgroundColor: theme.primary + '20' }]}>
+                <Text style={[styles.refAvatarText, { color: theme.primary }]}>
+                  {ref.name.charAt(0)?.toUpperCase() ?? '?'}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.refName, { color: theme.text }]}>{ref.name}</Text>
+                <Text style={[styles.refDate, { color: theme.textSecond }]}>
+                  Joined {new Date(ref.joinedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </Text>
+              </View>
+              {ref.bonusPaid ? (
+                <Text style={styles.refEarned}>+{(ref.bonusPoints ?? 0).toLocaleString()} pts</Text>
+              ) : (
+                <View style={[styles.pendingBadge, { backgroundColor: '#FEF9C3', borderColor: '#FDE68A' }]}>
+                  <Text style={styles.pendingBadgeText}>Pending</Text>
+                </View>
+              )}
+            </View>
+          ))
+        )}
 
       </ScrollView>
     </SafeAreaView>
@@ -218,4 +245,7 @@ const styles = StyleSheet.create({
   refEarned:   { color: '#22C55E', fontSize: FontSize.base, fontWeight: FontWeight.bold },
   pendingBadge:{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.md, borderWidth: 1 },
   pendingBadgeText:{ color: '#92400E', fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  emptyCard:   { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.lg, alignItems: 'center', gap: Spacing.sm },
+  emptyTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  emptySub:    { fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
 });

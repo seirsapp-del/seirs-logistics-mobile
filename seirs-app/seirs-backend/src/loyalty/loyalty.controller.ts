@@ -27,6 +27,16 @@ export class LoyaltyController {
     return { balance, tier, history };
   }
 
+  // GET /loyalty/my-referrals
+  // Returns the current user's referral history: everyone they referred plus
+  // whether the referral bonus has been paid. Powers the customer app's
+  // Refer & Earn screen. Points-based; there is no NGN cash bonus.
+  @Get('my-referrals')
+  async myReferrals(@Req() req: any) {
+    const userId = req.user?.sub ?? req.user?.userId;
+    return this.loyalty.getMyReferrals(userId);
+  }
+
   @Post('redeem')
   async redeem(@Req() req: any, @Body() body: { type: 'discount_500' | 'free_delivery' | 'priority' | 'insurance'; deliveryId?: string }) {
     const userId = req.user?.sub ?? req.user?.userId;

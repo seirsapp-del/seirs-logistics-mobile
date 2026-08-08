@@ -527,7 +527,7 @@
   "referral2": {
     "title": "Pe Ọ̀rẹ́, Jèrè",
     "heroTitle": "Pe àwọn ọ̀rẹ́, jèrè owó",
-    "heroDesc": "Gba ₦1,000 fún gbogbo ọ̀rẹ́ tí ó dara pọ̀ mọ́ SEIRS pẹ̀lú kóòdù rẹ tí ó sì parí ìfiránṣẹ akọ́kọ́ wọn.",
+    "heroDesc": "Gba 200 SEIRS Rewards points fún gbogbo ọ̀rẹ́ tí ó dara pọ̀ mọ́ SEIRS pẹ̀lú kóòdù rẹ tí ó sì parí ìfiránṣẹ akọ́kọ́ wọn.",
     "yourCode": "Kóòdù Ìpè Rẹ",
     "copy": "Daako",
     "copied": "A ti daako",
@@ -804,7 +804,7 @@
     "rewards": "Ẹ̀bùn",
     "rewardsSub": "{{points}} pọ́ìńtì · {{tier}}",
     "referEarn": "Pe Ọ̀rẹ́, Jèrè",
-    "referEarnSub": "Pe àwọn ọ̀rẹ́ fún ₦1,000",
+    "referEarnSub": "Pe àwọn ọ̀rẹ́ fún 200 pts",
     "promotions": "Àwọn Ìpolówó",
     "promotionsSub": "Àwọn ìpolówó {{count}} tí ó ń ṣiṣẹ́",
     "notifications": "Àwọn Ìwífún",

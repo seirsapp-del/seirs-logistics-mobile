@@ -527,7 +527,7 @@
   "referral2": {
     "title": "Gayyaci & Sami Lada",
     "heroTitle": "Gayyaci abokai, sami kuɗi",
-    "heroDesc": "Sami ₦1,000 ga kowane aboki da ya shiga SEIRS ta amfani da lambar ka kuma ya kammala bayarwa ta farko.",
+    "heroDesc": "Sami 200 SEIRS Rewards points ga kowane aboki da ya shiga SEIRS ta amfani da lambar ka kuma ya kammala bayarwa ta farko.",
     "yourCode": "Lambar Shawararku",
     "copy": "Kwafi",
     "copied": "An kwafa",
@@ -804,7 +804,7 @@
     "rewards": "Lambobi",
     "rewardsSub": "Puntoci {{points}} · {{tier}}",
     "referEarn": "Gayyaci & Sami Lada",
-    "referEarnSub": "Gayyaci abokai don ₦1,000",
+    "referEarnSub": "Gayyaci abokai don 200 pts",
     "promotions": "Tallace-tallace",
     "promotionsSub": "Tallace-tallace {{count}} masu aiki",
     "notifications": "Sanarwa",

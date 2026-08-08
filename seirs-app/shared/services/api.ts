@@ -284,12 +284,23 @@ export interface LoyaltyEntry {
 
 export type LoyaltyTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 
+export interface ReferralHistoryItem {
+  id:          string;
+  name:        string;
+  accountId:   string | null;
+  joinedAt:    string;
+  bonusPaid:   boolean;
+  bonusPoints: number | null;
+  paidAt:      string | null;
+}
+
 export const loyaltyApi = {
   balance: () => request<{ balance: number; tier: LoyaltyTier; history: LoyaltyEntry[] }>('GET', '/loyalty/balance'),
   redeem: (type: 'discount_500' | 'free_delivery' | 'priority' | 'insurance', deliveryId?: string) =>
     request<{ redeemedPoints: number; newBalance: number; entryId: string }>(
       'POST', '/loyalty/redeem', { type, deliveryId },
     ),
+  myReferrals: () => request<ReferralHistoryItem[]>('GET', '/loyalty/my-referrals'),
 };
 
 // ─── Driver Earnings (driver-facing) ─────────────────────────────────────────

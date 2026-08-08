@@ -334,6 +334,57 @@ export class LoyaltyService {
     });
   }
 
+  /**
+   * Return the current user's referral history: each person they referred
+   * (matched by our accountId in the referredByCode column) plus whether
+   * a referral bonus has actually been paid to us for them (checked via
+   * the LoyaltyPoint note field which stores `referred:<userId>`).
+   */
+  async getMyReferrals(userId: string): Promise<Array<{
+    id: string;
+    name: string;
+    accountId: string | null;
+    joinedAt: Date;
+    bonusPaid: boolean;
+    bonusPoints: number | null;
+    paidAt: Date | null;
+  }>> {
+    const me = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!me?.accountId) return [];
+
+    const [referred, myBonuses] = await Promise.all([
+      this.usersRepo.find({
+        where: { referredByCode: me.accountId },
+        select: ['id', 'name', 'accountId', 'createdAt'],
+        order: { createdAt: 'DESC' },
+        take: 50,
+      }),
+      this.repo.find({
+        where: { userId, reason: 'referral_bonus' },
+        select: ['delta', 'note', 'createdAt'],
+      }),
+    ]);
+
+    const byReferredId = new Map<string, { delta: number; createdAt: Date }>();
+    for (const b of myBonuses) {
+      const match = b.note?.match(/referred:([a-f0-9-]+)/i);
+      if (match) byReferredId.set(match[1], { delta: b.delta, createdAt: b.createdAt });
+    }
+
+    return referred.map((r) => {
+      const bonus = byReferredId.get(r.id);
+      return {
+        id:          r.id,
+        name:        r.name ?? '(no name)',
+        accountId:   r.accountId ?? null,
+        joinedAt:    r.createdAt,
+        bonusPaid:   !!bonus,
+        bonusPoints: bonus?.delta ?? null,
+        paidAt:      bonus?.createdAt ?? null,
+      };
+    });
+  }
+
   // ── Internals ────────────────────────────────────────────────────────────
 
   private async recordEntry(params: {

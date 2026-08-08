@@ -180,7 +180,7 @@ export default function WalletScreen() {
                 <View style={styles.cardActionIcon}>
                   <QrCode size={20} color="#fff" strokeWidth={2} />
                 </View>
-                <Text style={styles.cardActionLabel}>{t('home.wallet')}</Text>
+                <Text style={styles.cardActionLabel}>SEIRS ID</Text>
               </Pressable>
             </View>
           </LinearGradient>
