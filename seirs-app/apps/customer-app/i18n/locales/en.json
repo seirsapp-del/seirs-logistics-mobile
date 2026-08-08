@@ -1048,6 +1048,7 @@
     "statTrips": "Trips",
     "statPoints": "Points",
     "statWallet": "Wallet",
+    "statTier": "Tier",
     "statRating": "Rating",
     "version": "SEIRS Logistics v2.0.0 · Build 204"
   }

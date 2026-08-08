@@ -92,7 +92,9 @@ export default function ProfileScreen() {
       title: t('profile.sectionActivity'),
       items: [
         { icon: 'receipt-outline',   label: t('profile.myTrips'),     sub: t('profile.myTripsSub',  { count: completedTrips ?? 0 }), onPress: () => router.push('/(customer)/history') },
-        { icon: 'wallet-outline',    label: t('profile.wallet'),      sub: t('profile.walletSub',   { balance: (walletBalance ?? 0).toLocaleString() }), onPress: () => router.push('/(customer)/wallet') },
+        // Wallet list item removed: it pointed to the same screen as Rewards
+        // and customers do not hold NGN so "Wallet ₦0 balance" was misleading.
+        // See [[feedback_wallet_is_rewards]].
         { icon: 'star-outline',      label: t('profile.rewards'),     sub: t('profile.rewardsSub',  { points: (loyaltyPoints ?? 0).toLocaleString(), tier: loyaltyTier ?? '-' }), onPress: () => router.push('/(customer)/rewards') },
         { icon: 'gift-outline',      label: t('profile.referEarn'),   sub: t('profile.referEarnSub'),     onPress: () => router.push('/(customer)/referral') },
         { icon: 'ticket-outline',    label: t('profile.promotions'),  sub: t('profile.promotionsSub', { count: activePromos ?? 0 }), onPress: () => router.push('/(customer)/promotions') },
@@ -190,14 +192,16 @@ export default function ProfileScreen() {
             </Pressable>
           )}
 
-          {/* Stats row. drivers get rated, customers don't. Wallet balance is
-              a more relevant stat for the customer to see at a glance.
-              Falls back to 0 / '-' while real data loads. NEVER mock values. */}
+          {/* Stats row. drivers get rated, customers don't. Tier replaces
+              the old "Wallet ₦" cell because customers cannot hold NGN
+              (see [[feedback_wallet_is_rewards]]) — tier is the natural
+              at-a-glance value alongside Trips and Points.
+              Falls back to '-' while real data loads. NEVER mock values. */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
             {[
               { label: t('profile.statTrips'),  value: completedTrips != null ? `${completedTrips}` : '-' },
               { label: t('profile.statPoints'), value: loyaltyPoints  != null ? loyaltyPoints.toLocaleString() : '-' },
-              { label: t('profile.statWallet'), value: walletBalance  != null ? `₦${walletBalance.toLocaleString()}` : '-' },
+              { label: t('profile.statTier'),   value: loyaltyTier ? loyaltyTier.charAt(0).toUpperCase() + loyaltyTier.slice(1) : '-' },
             ].map((s, i) => (
               <View key={s.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
                 <Text style={[styles.statValue, { color: theme.text }]}>{s.value}</Text>

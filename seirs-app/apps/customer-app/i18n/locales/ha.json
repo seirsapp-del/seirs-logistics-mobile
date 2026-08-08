@@ -824,6 +824,7 @@
     "statTrips": "Tafiye",
     "statPoints": "Puntoci",
     "statWallet": "Walat",
+    "statTier": "Matsayi",
     "statRating": "Kima",
     "version": "SEIRS Logistics v2.0.0 · Build 204"
   },
