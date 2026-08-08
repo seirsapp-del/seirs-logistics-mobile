@@ -84,21 +84,15 @@ export default function PaymentMethodsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Header. Right-side + button triggers the add-card flow (Bolt/Uber
-          pattern). Always visible so users can add a card even with an
-          existing list. Empty state also gets a bigger CTA below. */}
+      {/* Header. Add-payment CTA lives in the body (empty state + "Add
+          another" at the bottom of the list) so the header stays uncluttered.
+          Duplicate + button was removed per UX pass. */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <Text style={[styles.title, { color: theme.text }]}>{t('paymentMethods.title')}</Text>
-        <Pressable
-          style={[styles.backBtn, { backgroundColor: theme.primary }]}
-          onPress={() => router.push('/(customer)/add-payment' as any)}
-          accessibilityLabel="Add payment method"
-        >
-          <Ionicons name="add" size={22} color="#fff" />
-        </Pressable>
+        <View style={{ width: 36 }} />
       </View>
 
       {loading ? (
