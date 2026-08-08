@@ -92,13 +92,16 @@ export async function request<T>(
 }
 
 // ─── Upload ───────────────────────────────────────────────────────────────────
-async function _uploadCore(uri: string, mimeType = 'image/jpeg'): Promise<{ url: string }> {
+export type UploadFolder = 'kyc' | 'proof' | 'avatars' | 'cms' | 'chat';
+
+async function _uploadCore(uri: string, mimeType = 'image/jpeg', folder?: UploadFolder): Promise<{ url: string }> {
   const token = await getToken();
   const form  = new FormData();
   const ext   = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
   form.append('file', { uri, name: `upload.${ext}`, type: mimeType } as any);
 
-  const res = await fetch(`${_apiBase}/upload`, {
+  const qs = folder ? `?folder=${encodeURIComponent(folder)}` : '';
+  const res = await fetch(`${_apiBase}/upload${qs}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: form,
@@ -595,6 +598,9 @@ export interface ChatMessageDTO {
   // Stable enum-like slug that the client maps to an i18n key:
   //   assigned | picked_up | in_transit | delivered | cancelled | failed
   systemType?: string | null;
+  // Optional image attachment (public R2 CDN URL). When set, the body
+  // acts as an optional caption and may be an empty string.
+  imageUrl?:   string | null;
 }
 
 export interface ChatConversationDTO {
@@ -616,8 +622,10 @@ export const chatApi = {
     request<ChatMessageDTO[]>('GET', `/chats/${deliveryId}/messages?limit=${limit}`),
 
   // Send a new message. backend broadcasts via WS room `chat:<deliveryId>`.
-  send: (deliveryId: string, body: string) =>
-    request<ChatMessageDTO>('POST', `/chats/${deliveryId}/messages`, { body }),
+  // Either `body` or `imageUrl` must be non-empty. Image-only messages
+  // are allowed (body may be empty when imageUrl is set).
+  send: (deliveryId: string, body: string, imageUrl?: string | null) =>
+    request<ChatMessageDTO>('POST', `/chats/${deliveryId}/messages`, { body, imageUrl: imageUrl ?? undefined }),
 
   // Total unread across all of the user's chats. drives the Messages tab badge.
   unreadCount: () => request<{ count: number }>('GET', '/chats/unread-count'),

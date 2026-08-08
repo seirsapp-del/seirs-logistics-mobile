@@ -305,6 +305,15 @@
       "delivered": "Nnyefe ejikwara.",
       "cancelled": "Akagbuola nnyefe a.",
       "failed": "Enweghị ike ime nnyefe."
+    },
+    "attach": {
+      "title": "Tinye foto",
+      "subtitle": "Họrọ ebe ị ga-esite were foto.",
+      "camera": "Sepụ foto",
+      "gallery": "Site na galarị",
+      "permTitle": "Ikike dị mkpa",
+      "permBody": "Kwe ka kamera ma ọ bụ foto banye na ntọala ekwentị gị.",
+      "errorTitle": "Enweghị ike izipụ foto"
     }
   }
 }

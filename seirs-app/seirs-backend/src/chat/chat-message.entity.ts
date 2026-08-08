@@ -29,6 +29,12 @@ export class ChatMessage {
   @Column('text')
   body: string;
 
+  // Optional image attachment. Stored in Cloudflare R2 under the `chat/`
+  // folder and referenced here as the public CDN URL. When set, the body
+  // acts as an optional caption (and may be an empty string).
+  @Column({ type: 'text', nullable: true })
+  imageUrl: string | null;
+
   // Set when the *other* party loads the conversation. Lets us show the
   // double-tick "read" indicator without a separate receipts table.
   @Column({ type: 'timestamptz', nullable: true })

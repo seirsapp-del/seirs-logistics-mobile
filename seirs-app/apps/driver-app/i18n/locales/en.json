@@ -305,6 +305,15 @@
       "delivered": "Delivery marked complete.",
       "cancelled": "This delivery was cancelled.",
       "failed": "Delivery could not be completed."
+    },
+    "attach": {
+      "title": "Attach photo",
+      "subtitle": "Choose where to attach from.",
+      "camera": "Take photo",
+      "gallery": "From gallery",
+      "permTitle": "Permission needed",
+      "permBody": "Enable camera or photo access in your phone settings.",
+      "errorTitle": "Could not send photo"
     }
   }
 }

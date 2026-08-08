@@ -125,17 +125,23 @@ export class ChatService {
       .execute();
   }
 
-  async send(deliveryId: string, sender: User, body: string) {
-    const trimmed = body?.trim();
-    if (!trimmed) throw new NotFoundException('Message cannot be empty.');
-    if (trimmed.length > 2000) throw new NotFoundException('Message too long.');
+  async send(deliveryId: string, sender: User, body: string, imageUrl?: string | null) {
+    const trimmedBody = (body ?? '').trim();
+    const cleanImage  = (imageUrl ?? '').trim() || null;
+
+    // Reject messages that have neither text nor an image. Image-only is fine.
+    if (!trimmedBody && !cleanImage) {
+      throw new NotFoundException('Message cannot be empty.');
+    }
+    if (trimmedBody.length > 2000) throw new NotFoundException('Message too long.');
 
     const delivery = await this.assertParticipant(deliveryId, sender.id);
 
     const msg = this.repo.create({
       delivery,
       sender,
-      body: trimmed,
+      body:     trimmedBody,
+      imageUrl: cleanImage,
     });
     const saved = await this.repo.save(msg);
 
@@ -145,8 +151,9 @@ export class ChatService {
       id:        saved.id,
       body:      saved.body,
       senderId:  sender.id,
+      imageUrl:  saved.imageUrl,
       createdAt: saved.createdAt,
-    });
+    } as any);
 
     // Persistent notification for the recipient: surfaces in their
     // notification bell + (when FCM is fully wired) fires a push so
@@ -156,12 +163,19 @@ export class ChatService {
         ? delivery.driver?.user?.id
         : delivery.customer?.id;
     if (recipientId) {
+      // Compose a short preview. Prefer the caption text; when the message
+      // is image-only, surface a "Photo" placeholder so the notification
+      // still reads meaningfully.
+      const previewText = trimmedBody
+        ? (trimmedBody.length > 80 ? `${trimmedBody.slice(0, 77)}…` : trimmedBody)
+        : (cleanImage ? 'Sent a photo' : 'New message');
+
       // Fire-and-forget. Chat send response shouldn't block on notif persistence.
       this.notifications
         .create(
           recipientId,
           sender.name ?? 'New message',
-          trimmed.length > 80 ? `${trimmed.slice(0, 77)}…` : trimmed,
+          previewText,
           NotificationType.CHAT_MESSAGE,
           delivery.id,
           delivery.trackingCode,

@@ -4,7 +4,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import { extname } from 'path';
 
-// Cloudflare R2 is S3-compatible — zero egress fees, 10GB free forever.
+// Cloudflare R2 is S3-compatible. Zero egress fees, 10GB free forever.
 // API endpoint format: https://<accountId>.r2.cloudflarestorage.com
 // Used by: Shopify, Discord, many logistics startups for cost-efficient storage.
 
@@ -34,17 +34,17 @@ export class UploadService implements OnModuleInit {
       this.enabled = true;
       this.logger.log('Cloudflare R2 storage enabled');
     } else {
-      this.logger.warn('R2 credentials not set — file uploads will return placeholder URLs (dev only)');
+      this.logger.warn('R2 credentials not set: file uploads will return placeholder URLs (dev only)');
     }
   }
 
   async uploadBuffer(
     buffer: Buffer,
     originalName: string,
-    folder: 'kyc' | 'proof' | 'avatars' | 'cms',
+    folder: 'kyc' | 'proof' | 'avatars' | 'cms' | 'chat',
   ): Promise<string> {
     if (!this.enabled || !this.s3) {
-      // Dev fallback — return a fake URL so the app doesn't crash without R2 set up
+      // Dev fallback: return a fake URL so the app doesn't crash without R2 set up
       this.logger.warn(`[UPLOAD-DEV] Would upload ${originalName} to R2/${folder}`);
       return `https://placeholder.seirs.co/${folder}/${originalName}`;
     }

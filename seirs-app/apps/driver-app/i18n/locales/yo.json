@@ -305,6 +305,15 @@
       "delivered": "Ìfìsíni ti parí.",
       "cancelled": "A fagilé ìfìsíni yìí.",
       "failed": "A kò lè parí ìfìsíni náà."
+    },
+    "attach": {
+      "title": "Fi fọtò kún",
+      "subtitle": "Yan ibi tí o fẹ́ mú fọtò náà wá.",
+      "camera": "Ya fọtò",
+      "gallery": "Láti inú gálárì",
+      "permTitle": "Àṣẹ nílo",
+      "permBody": "Jẹ́ àṣẹ fún kámẹ́rà tàbí fọtò nínú ètò fóònù rẹ.",
+      "errorTitle": "A kò lè fi fọtò ránṣẹ́"
     }
   }
 }

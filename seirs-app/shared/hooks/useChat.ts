@@ -4,7 +4,7 @@ import { io, Socket } from 'socket.io-client';
 import { chatApi, ChatMessageDTO } from '../services/api';
 
 interface UseChatOptions {
-  /** Backend Socket.io URL — pass your app's SOCKET_URL constant. */
+  /** Backend Socket.io URL. Pass your app's SOCKET_URL constant. */
   socketUrl: string;
   /** AsyncStorage key the app stores its session under. */
   storageKey?: string;
@@ -14,7 +14,7 @@ interface UseChatState {
   messages: ChatMessageDTO[];
   loading:  boolean;
   sending:  boolean;
-  send:     (body: string) => Promise<void>;
+  send:     (body: string, imageUrl?: string | null) => Promise<void>;
 }
 
 /**
@@ -36,7 +36,7 @@ export function useChat(deliveryId: string | null, opts: UseChatOptions): UseCha
   const [sending,  setSending]  = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
-  // Initial REST fetch — also marks the other party's messages as read
+  // Initial REST fetch. Also marks the other party's messages as read
   // (backend side-effect of GET /chats/:id/messages).
   useEffect(() => {
     if (!deliveryId) { setMessages([]); return; }
@@ -91,12 +91,16 @@ export function useChat(deliveryId: string | null, opts: UseChatOptions): UseCha
     };
   }, [deliveryId, opts.socketUrl, opts.storageKey]);
 
-  const send = useCallback(async (body: string) => {
-    if (!deliveryId || !body.trim()) return;
+  const send = useCallback(async (body: string, imageUrl?: string | null) => {
+    if (!deliveryId) return;
+    const trimmedBody = body?.trim() ?? '';
+    const cleanImage  = imageUrl?.trim() || null;
+    // Reject only when BOTH are empty. Image-only messages are valid.
+    if (!trimmedBody && !cleanImage) return;
     setSending(true);
     try {
-      await chatApi.send(deliveryId, body);
-      // No local append — WS round-trip delivers it back.
+      await chatApi.send(deliveryId, trimmedBody, cleanImage);
+      // No local append. WS round-trip delivers it back.
     } finally {
       setSending(false);
     }

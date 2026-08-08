@@ -305,6 +305,15 @@
       "delivered": "An kammala isar.",
       "cancelled": "An soke wannan isar.",
       "failed": "Ba a iya kammala isar da kaya ba."
+    },
+    "attach": {
+      "title": "Haɗa hoto",
+      "subtitle": "Zaɓi inda za a ɗauko hoton.",
+      "camera": "Ɗauki hoto",
+      "gallery": "Daga gallery",
+      "permTitle": "Ana buƙatar izini",
+      "permBody": "Ba da izini ga kamara ko hotuna a saitin wayarka.",
+      "errorTitle": "Ba a iya aika hoton ba"
     }
   }
 }

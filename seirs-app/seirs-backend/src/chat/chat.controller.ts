@@ -24,14 +24,15 @@ export class ChatController {
     return this.svc.list(deliveryId, user.id, limit);
   }
 
-  // POST /api/v1/chats/:deliveryId/messages  { body: string }
+  // POST /api/v1/chats/:deliveryId/messages  { body: string, imageUrl?: string }
+  // Body may be empty when imageUrl is set (image-only messages allowed).
   @Post(':deliveryId/messages')
   send(
     @Param('deliveryId') deliveryId: string,
     @CurrentUser()       user:       User,
-    @Body()              body:       { body: string },
+    @Body()              body:       { body?: string; imageUrl?: string },
   ) {
-    return this.svc.send(deliveryId, user, body?.body);
+    return this.svc.send(deliveryId, user, body?.body ?? '', body?.imageUrl ?? null);
   }
 
   // GET /api/v1/chats/unread-count. Used by the Messages tab badge.
