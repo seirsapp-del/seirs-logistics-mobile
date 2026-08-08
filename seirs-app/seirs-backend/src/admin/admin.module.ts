@@ -21,6 +21,8 @@ import { DuplicateAccountCandidate } from './duplicate-account.entity';
 import { ExternalPartner } from './external-partner.entity';
 import { PlatformConfig } from './platform-config.entity';
 import { DriverEarning } from '../earnings/driver-earning.entity';
+import { LoyaltyPoint } from '../loyalty/loyalty-point.entity';
+import { IdentityVerification } from '../user-verification/user-verification.entity';
 
 @Module({
   imports: [
@@ -28,7 +30,7 @@ import { DriverEarning } from '../earnings/driver-earning.entity';
       User, ArchivedUser, Driver, Delivery, FraudFlag,
       CmsItem, SupportTicket, AuditLogEntry, PricingConfig,
       DuplicateAccountCandidate, ExternalPartner,
-      PlatformConfig, DriverEarning,
+      PlatformConfig, DriverEarning, LoyaltyPoint, IdentityVerification,
     ]),
     FraudModule,
     MailModule,

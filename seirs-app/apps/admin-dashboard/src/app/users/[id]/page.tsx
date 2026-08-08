@@ -114,7 +114,14 @@ export default function UserDetailPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>;
   if (!data)   return <div className="min-h-screen flex items-center justify-center text-gray-400">User not found</div>;
 
-  const { user, deliveries, deliveryCount, totalSpent } = data;
+  const {
+    user, deliveries, deliveryCount, totalSpent, cancelledCount,
+    loyalty, identity, referrer, referredUsers, relatedAccounts,
+    auditLog, driverRecord, fraudFlags,
+  } = data;
+
+  const fmtDate = (d: any) => d ? new Date(d).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+  const fmtDateShort = (d: any) => d ? new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -140,7 +147,37 @@ export default function UserDetailPage() {
             </div>
             <p className="text-sm text-gray-500">{user.email}</p>
             <p className="text-sm text-gray-500">{user.phone}</p>
-            <p className="text-xs text-gray-400 mt-1">
+            {user.accountId && (
+              <p className="text-xs text-gray-500 mt-2 font-mono">
+                <span className="text-gray-400">SEIRS ID:</span> {user.accountId}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {user.emailVerified && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">✓ Email verified</span>
+              )}
+              {user.identityVerifiedAt && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ✓ ID verified ({user.identityDocType ?? 'doc'})
+                </span>
+              )}
+              {(user.failedLoginAttempts ?? 0) > 3 && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                  ⚠ {user.failedLoginAttempts} failed logins
+                </span>
+              )}
+              {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                  🔒 Locked until {fmtDateShort(user.lockedUntil)}
+                </span>
+              )}
+              {(fraudFlags?.length ?? 0) > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                  ⚠ {fraudFlags.length} fraud flag{fraudFlags.length === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
               Joined {new Date(user.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
           </div>
@@ -196,11 +233,12 @@ export default function UserDetailPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6">
           {[
-            { label: 'Total Deliveries', value: deliveryCount },
-            { label: 'Total Spent',      value: fmt(totalSpent) },
-            { label: 'FCM Token',        value: user.fcmToken ? '✓ Set' : '✗ None' },
+            { label: 'Total Deliveries',   value: deliveryCount },
+            { label: 'Total Spent',        value: fmt(totalSpent) },
+            { label: 'Cancelled',          value: cancelledCount ?? 0 },
+            { label: `Rewards (${loyalty?.tier ?? 'Bronze'})`, value: (loyalty?.balance ?? 0).toLocaleString() },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
               <div className="text-2xl font-bold text-gray-900">{s.value}</div>
@@ -208,6 +246,124 @@ export default function UserDetailPage() {
             </div>
           ))}
         </div>
+
+        {/* Profile details */}
+        <Section title="Profile">
+          <Field label="Full name" value={[user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ') || user.name} />
+          <Field label="Date of birth" value={user.dateOfBirth ? fmtDateShort(user.dateOfBirth) : null} />
+          <Field label="Emergency contact" value={user.emergencyContactName ? `${user.emergencyContactName} · ${user.emergencyContactPhone ?? 'no phone'}` : null} />
+          <Field label="Home address" value={user.homeAddress ? [user.homeAddress.street, user.homeAddress.city, user.homeAddress.state].filter(Boolean).join(', ') : null} />
+        </Section>
+
+        {/* Identity verification */}
+        {identity && (
+          <Section title="Identity verification">
+            <Field label="Latest submission" value={identity.status} />
+            <Field label="Submitted" value={fmtDate(identity.submittedAt)} />
+            <Field label="Reviewed"  value={fmtDate(identity.reviewedAt)} />
+            {identity.rejectionReason && <Field label="Rejection reason" value={identity.rejectionReason} />}
+            {identity.revokedReason   && <Field label="Revoked reason"   value={identity.revokedReason} />}
+            {identity.documentExpiryDate && <Field label="Doc expires"   value={fmtDateShort(identity.documentExpiryDate)} />}
+            {(identity.documentPhotoUrl || identity.documentBackPhotoUrl || identity.selfiePhotoUrl) && (
+              <div className="col-span-2 flex gap-3 mt-3">
+                {identity.documentPhotoUrl     && <IdThumb src={identity.documentPhotoUrl}     label="Front" />}
+                {identity.documentBackPhotoUrl && <IdThumb src={identity.documentBackPhotoUrl} label="Back" />}
+                {identity.selfiePhotoUrl       && <IdThumb src={identity.selfiePhotoUrl}       label="Selfie" />}
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* Financial */}
+        <Section title="Financial">
+          <Field label="Loyalty balance" value={`${(loyalty?.balance ?? 0).toLocaleString()} pts (${loyalty?.tier ?? 'Bronze'})`} />
+          <Field label="Bank" value={user.bankAccountName ? `${user.bankAccountName} · ${user.bankAccountNumber?.slice(-4) ?? '****'} · ${user.bankCode ?? ''}` : null} />
+          <Field label="Bank verified" value={user.bankVerifiedAt ? fmtDate(user.bankVerifiedAt) : null} />
+        </Section>
+
+        {/* Driver record (if this user has one) */}
+        {driverRecord && (
+          <Section title="Driver record">
+            <Field label="Status" value={driverRecord.status} />
+            <Field label="Vehicle" value={`${driverRecord.vehicleType ?? '—'} · ${driverRecord.vehiclePlate ?? 'no plate'}`} />
+            <Field label="Online" value={driverRecord.isOnline ? 'Yes' : 'No'} />
+            <Field label="Rating" value={driverRecord.rating != null ? `${Number(driverRecord.rating).toFixed(1)} ★` : null} />
+            <Field label="Total deliveries" value={driverRecord.totalDeliveries?.toLocaleString?.() ?? '—'} />
+            <Field label="Last location update" value={fmtDate(driverRecord.locationUpdatedAt)} />
+          </Section>
+        )}
+
+        {/* Referrals */}
+        <Section title="Referrals">
+          <Field label="Their referral code (their SEIRS ID)" value={user.accountId} />
+          <Field label="Referred by" value={
+            referrer ? `${referrer.name} (${referrer.accountId ?? referrer.email})` :
+            user.referredByCode ? `code: ${user.referredByCode} (referrer not found)` : null
+          } />
+          <div className="col-span-2 mt-2">
+            <div className="text-xs font-semibold text-gray-500 mb-1">Users they referred ({referredUsers?.length ?? 0})</div>
+            {(referredUsers?.length ?? 0) === 0 ? (
+              <div className="text-sm text-gray-400">None yet.</div>
+            ) : (
+              <div className="space-y-1">
+                {referredUsers.map((u: any) => (
+                  <a key={u.id} href={`/users/${u.id}`} className="block text-sm text-[#3A7BD5] hover:underline">
+                    {u.name} <span className="text-xs text-gray-400">· {u.accountId} · joined {fmtDateShort(u.createdAt)}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </Section>
+
+        {/* Cross-account grouping */}
+        {(relatedAccounts?.length ?? 0) > 0 && (
+          <Section title={`Other accounts (${relatedAccounts.length}) with matching name or phone`}>
+            <div className="col-span-2 space-y-1">
+              {relatedAccounts.map((a: any) => (
+                <a key={a.id} href={`/users/${a.id}`} className="block text-sm hover:bg-gray-50 rounded p-2 -m-2">
+                  <span className="font-semibold text-[#0F2B4C]">{a.name}</span>
+                  <span className="text-xs text-gray-500 ml-2">· {a.role}</span>
+                  <span className="text-xs text-gray-500 ml-2">· {a.accountId ?? 'no SEIRS ID'}</span>
+                  <div className="text-xs text-gray-400">{a.email} · {a.phone ?? 'no phone'}</div>
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Audit log */}
+        {(auditLog?.length ?? 0) > 0 && (
+          <Section title={`Admin actions on this user (${auditLog.length})`}>
+            <div className="col-span-2 space-y-1">
+              {auditLog.map((a: any) => (
+                <div key={a.id} className="text-xs border-b border-gray-100 py-1.5">
+                  <span className="font-semibold text-[#0F2B4C]">{a.action}</span>
+                  <span className="text-gray-500 ml-2">by {a.adminName}</span>
+                  <span className="text-gray-400 ml-2">· {fmtDate(a.createdAt)}</span>
+                  {a.meta && (
+                    <div className="text-gray-500 font-mono text-xs mt-0.5">{JSON.stringify(a.meta)}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Fraud flags */}
+        {(fraudFlags?.length ?? 0) > 0 && (
+          <Section title={`Fraud flags (${fraudFlags.length})`}>
+            <div className="col-span-2 space-y-1">
+              {fraudFlags.map((f: any) => (
+                <div key={f.id} className="text-xs border-b border-gray-100 py-1.5">
+                  <span className="font-semibold text-red-700">{f.type}</span>
+                  <span className="text-gray-500 ml-2">· {f.status}</span>
+                  <span className="text-gray-400 ml-2">· {fmtDate(f.createdAt)}</span>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
 
         {/* Recent deliveries */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -261,6 +417,43 @@ export default function UserDetailPage() {
         />
       )}
     </div>
+  );
+}
+
+// Sectioned detail row: a labeled card with a two-column key/value grid.
+// Used across the user detail page to keep the visual rhythm consistent.
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4">
+      <h3 className="text-sm font-bold text-[#0F2B4C] mb-3">{title}</h3>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Key/value field. Renders "—" when value is null/undefined/empty string so
+// missing data reads as intentional rather than broken.
+function Field({ label, value }: { label: string; value: any }) {
+  const display = value === null || value === undefined || value === '' ? '—' : String(value);
+  const isEmpty = display === '—';
+  return (
+    <div>
+      <div className="text-xs text-gray-400">{label}</div>
+      <div className={`text-sm ${isEmpty ? 'text-gray-300' : 'text-[#0F2B4C]'}`}>{display}</div>
+    </div>
+  );
+}
+
+// Thumbnail preview for uploaded identity documents. Opens the full image
+// in a new tab on click for admin review.
+function IdThumb({ src, label }: { src: string; label: string }) {
+  return (
+    <a href={src} target="_blank" rel="noopener noreferrer" className="block">
+      <div className="text-xs text-gray-500 mb-1">{label}</div>
+      <img src={src} alt={label} className="w-24 h-32 object-cover rounded border border-gray-200 hover:border-[#3A7BD5] transition-colors" />
+    </a>
   );
 }
 

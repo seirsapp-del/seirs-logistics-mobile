@@ -19,6 +19,8 @@ import { DuplicateAccountCandidate, DuplicateReason, DuplicateStatus } from './d
 import { ExternalPartner, ExternalPartnerStatus, ExternalPartnerType } from './external-partner.entity';
 import { PlatformConfig } from './platform-config.entity';
 import { DriverEarning } from '../earnings/driver-earning.entity';
+import { LoyaltyPoint } from '../loyalty/loyalty-point.entity';
+import { IdentityVerification } from '../user-verification/user-verification.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 const PRICING_SINGLETON_ID = 'singleton';
@@ -52,6 +54,8 @@ export class AdminService {
     @InjectRepository(ExternalPartner)            private partnersRepo:   Repository<ExternalPartner>,
     @InjectRepository(PlatformConfig)             private configRepo:     Repository<PlatformConfig>,
     @InjectRepository(DriverEarning)              private earningsRepo:   Repository<DriverEarning>,
+    @InjectRepository(LoyaltyPoint)               private loyaltyRepo:    Repository<LoyaltyPoint>,
+    @InjectRepository(IdentityVerification)       private identityRepo:   Repository<IdentityVerification>,
     private readonly fraudService: FraudService,
     private readonly mailService:  MailService,
     private readonly usersService: UsersService,
@@ -704,20 +708,119 @@ export class AdminService {
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
 
-    const [deliveries, deliveryCount] = await this.deliveriesRepo.findAndCount({
-      where: { customer: { id } },
-      order: { createdAt: 'DESC' },
-      take: 10,
-    });
+    // Batch every sub-query in parallel so the detail page opens fast even
+    // with 8 aggregations per user. Every branch defaults to a safe empty
+    // shape on failure so a broken sub-query never fails the whole load.
+    const [
+      deliveryPage,
+      spentRow,
+      cancelledCount,
+      loyaltyBalance,
+      identityLatest,
+      referrer,
+      referredUsers,
+      relatedAccounts,
+      auditRows,
+      driverRow,
+      fraudFlags,
+    ] = await Promise.all([
+      this.deliveriesRepo.findAndCount({
+        where: { customer: { id } as any },
+        order: { createdAt: 'DESC' },
+        take: 10,
+      }).catch(() => [[], 0] as any),
+      this.deliveriesRepo.createQueryBuilder('d')
+        .select('SUM(d.price)', 'total')
+        .where('d.customer.id = :id', { id })
+        .andWhere('d.status = :s', { s: DeliveryStatus.DELIVERED })
+        .getRawOne()
+        .catch(() => ({ total: 0 })),
+      this.deliveriesRepo.count({
+        where: { customer: { id } as any, status: DeliveryStatus.CANCELLED },
+      }).catch(() => 0),
+      this.loyaltyRepo.createQueryBuilder('lp')
+        .select('COALESCE(SUM(lp.delta), 0)', 'balance')
+        .where('lp.userId = :id', { id })
+        .getRawOne()
+        .then((r: any) => Number(r?.balance ?? 0))
+        .catch(() => 0),
+      this.identityRepo.findOne({
+        where: { userId: id },
+        order: { submittedAt: 'DESC' },
+      }).catch(() => null),
+      // Referrer: user whose accountId matches this user's referredByCode
+      user.referredByCode
+        ? this.usersRepo.findOne({
+            where: { accountId: user.referredByCode },
+            select: ['id', 'name', 'email', 'accountId', 'role'],
+          }).catch(() => null)
+        : Promise.resolve(null),
+      // Users this user referred
+      this.usersRepo.find({
+        where: { referredByCode: user.accountId ?? '__none__' },
+        select: ['id', 'name', 'email', 'accountId', 'createdAt'],
+        order: { createdAt: 'DESC' },
+        take: 20,
+      }).catch(() => []),
+      // Cross-account grouping: other accounts matching name + phone
+      this.usersRepo.createQueryBuilder('u')
+        .select(['u.id', 'u.name', 'u.email', 'u.phone', 'u.role', 'u.accountId'])
+        .where('u.id != :id', { id })
+        .andWhere('(u.name = :name OR u.phone = :phone)', {
+          name: user.name ?? '__no_name__',
+          phone: user.phone ?? '__no_phone__',
+        })
+        .orderBy('u.createdAt', 'DESC')
+        .take(10)
+        .getMany()
+        .catch(() => []),
+      // Recent audit log entries touching this user
+      this.auditRepo.createQueryBuilder('a')
+        .where('a.target = :target', { target: `user:${id}` })
+        .orderBy('a.createdAt', 'DESC')
+        .take(20)
+        .getMany()
+        .catch(() => []),
+      // Driver record if this user has one (or ever did)
+      this.driversRepo.findOne({
+        where: { user: { id } as any },
+      }).catch(() => null),
+      // Open fraud flags on this user
+      this.flagsRepo.find({
+        where: { user: { id } as any },
+        order: { createdAt: 'DESC' },
+        take: 10,
+      }).catch(() => []),
+    ]);
 
-    const spent = await this.deliveriesRepo
-      .createQueryBuilder('d')
-      .select('SUM(d.price)', 'total')
-      .where('d.customer.id = :id', { id })
-      .andWhere('d.status = :status', { status: DeliveryStatus.DELIVERED })
-      .getRawOne();
+    const [deliveries, deliveryCount] = deliveryPage as [any[], number];
+    const totalSpent = Number((spentRow as any)?.total ?? 0);
+    const deliveredCount = deliveries.filter((d: any) => d.status === DeliveryStatus.DELIVERED).length;
 
-    return { user, deliveries, deliveryCount, totalSpent: Number(spent?.total ?? 0) };
+    // Loyalty tier is a derived value from the tier-thresholds table. Keep
+    // this cheap and inline instead of a config lookup; if the thresholds
+    // change later, adjust here or promote to a helper.
+    const tier =
+      loyaltyBalance >= 20000 ? 'Platinum' :
+      loyaltyBalance >= 5000  ? 'Gold' :
+      loyaltyBalance >= 1000  ? 'Silver' :
+      'Bronze';
+
+    return {
+      user,
+      deliveries,
+      deliveryCount,
+      totalSpent,
+      cancelledCount,
+      loyalty:    { balance: loyaltyBalance, tier },
+      identity:   identityLatest,
+      referrer,
+      referredUsers,
+      relatedAccounts,
+      auditLog:   auditRows,
+      driverRecord: driverRow,
+      fraudFlags,
+    };
   }
 
   async updateUser(id: string, data: Partial<User>) {
