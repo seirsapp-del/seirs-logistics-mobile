@@ -54,26 +54,10 @@ export class UsersService implements OnModuleInit {
   // Runs once per deploy; safe because it only touches users where
   // accountId IS NULL. Skips the loop when there are zero to fill.
   async onModuleInit() {
-    // Diagnostic: log the raw env-var value so we can tell what Railway
-    // passed (truthy typos like "True", "TRUE ", or an unset var all fail
-    // the strict `=== 'true'` check and would otherwise be silent).
-    const rawFlag = process.env.ONE_SHOT_ROLE_FIX_2026_08_08;
-    this.logger.warn(
-      `[ONE-SHOT] boot check: ONE_SHOT_ROLE_FIX_2026_08_08 = ${JSON.stringify(rawFlag)} (typeof ${typeof rawFlag})`,
-    );
-
-    // One-shot: dev/test account cleanup gated by env var. When set to
-    // 'true' on Railway, flips two specific accounts to the correct role
-    // + regenerates their SEIRS ID prefix. Runs at most once per deploy;
-    // remove the env var after a successful run. Delete this method
-    // entirely once the migration has run in production.
-    if (rawFlag === 'true') {
-      this.logger.warn('[ONE-SHOT] flag matched, executing migration');
-      await this.oneShotRoleFix_2026_08_08();
-    } else {
-      this.logger.warn('[ONE-SHOT] flag did not match "true", skipping migration');
-    }
-
+    // Note: the one-shot role/prefix flip for oyadeyio761@gmail.com and
+    // seirs.app@gmail.com ran successfully on 2026-08-08 and was removed
+    // from the codebase to leave no back door. See git history for the
+    // migration if you ever need to audit what it did.
     try {
       const pending = await this.repo.count({ where: { accountId: IsNull() } });
       if (pending === 0) {
@@ -114,77 +98,6 @@ export class UsersService implements OnModuleInit {
       // Never crash boot on a backfill failure. Log and continue.
       this.logger.error(`SEIRS ID backfill error: ${e.message}`);
     }
-  }
-
-  /**
-   * One-shot dev/test cleanup for the 2026-08-08 account model rollout.
-   * Fixes two specific accounts that had wrong roles from earlier testing.
-   * Gated by env var ONE_SHOT_ROLE_FIX_2026_08_08=true so it never runs
-   * on normal boots. Idempotent: re-running with the same targets already
-   * in the desired state is a no-op.
-   *
-   * TARGETS:
-   *   oyadeyio761@gmail.com -> role customer, accountId CUST-*
-   *   seirs.app@gmail.com   -> role driver,   accountId DRV-*
-   *
-   * After a successful run:
-   *   1. remove ONE_SHOT_ROLE_FIX_2026_08_08 from Railway env vars
-   *   2. delete this method from users.service.ts in a follow-up commit
-   */
-  private async oneShotRoleFix_2026_08_08() {
-    const targets = [
-      { email: 'oyadeyio761@gmail.com', role: UserRole.CUSTOMER, prefix: AccountIdPrefix.CUSTOMER },
-      { email: 'seirs.app@gmail.com',   role: UserRole.DRIVER,   prefix: AccountIdPrefix.DRIVER },
-    ] as const;
-
-    for (const t of targets) {
-      try {
-        const u = await this.repo.findOne({ where: { email: t.email } });
-        if (!u) {
-          this.logger.warn(`[ONE-SHOT] ${t.email}: not found, skipping`);
-          continue;
-        }
-        const roleAlreadyRight = u.role === t.role;
-        const prefixAlreadyRight = u.accountId?.startsWith(`${t.prefix}-`);
-        if (roleAlreadyRight && prefixAlreadyRight) {
-          this.logger.log(`[ONE-SHOT] ${t.email}: already correct (${u.role} / ${u.accountId}), no-op`);
-          continue;
-        }
-
-        // Regenerate accountId with the target prefix. Retry a few times
-        // on the rare unique-constraint collision.
-        let newAccountId = u.accountId;
-        for (let attempt = 0; attempt < 5; attempt++) {
-          try {
-            newAccountId = generateAccountId(t.prefix);
-            await this.repo.update(u.id, { role: t.role, accountId: newAccountId });
-            break;
-          } catch (e: any) {
-            if (attempt === 4) throw e;
-          }
-        }
-
-        this.logger.warn(
-          `[ONE-SHOT] ${t.email}: role ${u.role} -> ${t.role}, accountId ${u.accountId} -> ${newAccountId}`,
-        );
-
-        // Sanity check: if this was previously a driver, warn about any
-        // Driver record that still points at this user (might need manual
-        // cleanup depending on the intended semantics of the migration).
-        // We don't auto-delete driver records; that's a call for the operator.
-        if (u.role === UserRole.DRIVER && t.role !== UserRole.DRIVER) {
-          this.logger.warn(
-            `[ONE-SHOT] ${t.email} was previously a driver. Any drivers table row for user ${u.id} may need manual review.`,
-          );
-        }
-      } catch (e: any) {
-        this.logger.error(`[ONE-SHOT] ${t.email}: failed - ${e.message}`);
-      }
-    }
-
-    this.logger.warn(
-      '[ONE-SHOT] Done. Remove ONE_SHOT_ROLE_FIX_2026_08_08 from Railway env vars now, and delete oneShotRoleFix_2026_08_08 in a follow-up commit.',
-    );
   }
 
   constructor(
