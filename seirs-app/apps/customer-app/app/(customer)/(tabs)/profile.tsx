@@ -145,7 +145,18 @@ export default function ProfileScreen() {
           <View style={styles.userCardTop}>
             <Avatar name={displayName} uri={user?.profilePhoto} size={68} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.userName, { color: theme.text }]}>{displayName || '-'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Text style={[styles.userName, { color: theme.text }]}>{displayName || '-'}</Text>
+                {/* Verified badge appears once admin approves the identity
+                    submission (user.identityVerifiedAt is set). Silent when
+                    unverified. see [[project_seirs_identity_policy]]. */}
+                {(user as any)?.identityVerifiedAt && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#10B98118', borderColor: '#10B98140', borderWidth: 1, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <Ionicons name="shield-checkmark" size={11} color="#059669" />
+                    <Text style={{ color: '#065F46', fontSize: 10, fontWeight: '700', letterSpacing: 0.3 }}>Verified</Text>
+                  </View>
+                )}
+              </View>
               <Text style={[styles.userEmail, { color: theme.textSecond }]}>{user?.email ?? '-'}</Text>
               <Text style={[styles.userPhone, { color: theme.textSecond }]}>{user?.phone ?? '-'}</Text>
             </View>

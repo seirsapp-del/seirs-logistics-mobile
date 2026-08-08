@@ -127,7 +127,10 @@ export default function TopBar() {
           )}
         </div>
 
-        {/* Dropdown */}
+        {/* Dropdown. Hits are grouped by lowercased label so when one
+            person has multiple accounts (e.g. customer + driver + business),
+            they cluster under a single name header for fraud investigation.
+            The activeIx still indexes the flat list so keyboard nav works. */}
         {open && q.trim().length >= 2 && (
           <div className="absolute left-0 right-0 mt-1 bg-white border border-[#E5E7EB] rounded-lg shadow-lg max-h-96 overflow-y-auto">
             {hits.length === 0 && !loading && (
@@ -135,32 +138,107 @@ export default function TopBar() {
                 No matches for &ldquo;{q}&rdquo;
               </div>
             )}
-            {hits.map((h, i) => {
-              const Icon = ICON_FOR_TYPE[h.type];
-              const accent = TYPE_ACCENT[h.type];
-              const isActive = i === activeIx;
-              return (
-                <button
-                  key={`${h.type}-${h.id}`}
-                  onClick={() => openHit(h)}
-                  onMouseEnter={() => setActiveIx(i)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
-                    isActive ? 'bg-[#F8F9FB]' : 'bg-white'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
-                    <Icon size={15} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-[#0F2B4C] truncate">{h.label}</div>
-                    <div className="text-xs text-[#0F2B4C]/50 truncate">{h.sublabel}</div>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-[#0F2B4C]/30">
-                    {h.type}
-                  </span>
-                </button>
-              );
-            })}
+            {(() => {
+              // Bucket hits by name (case-insensitive, whitespace-normalised).
+              // Preserves insertion order via a Map. Deliveries stand alone
+              // (their "label" is a tracking code, not a person's name).
+              const groups = new Map<string, Hit[]>();
+              const deliveryHits: Hit[] = [];
+              for (const h of hits) {
+                if (h.type === 'delivery') { deliveryHits.push(h); continue; }
+                const k = h.label.toLowerCase().replace(/\s+/g, ' ').trim();
+                if (!groups.has(k)) groups.set(k, []);
+                groups.get(k)!.push(h);
+              }
+
+              // Flat index for keyboard navigation stays in sync with render order.
+              let flatIx = -1;
+              const nodes: React.ReactNode[] = [];
+
+              for (const [, groupHits] of groups) {
+                const label = groupHits[0].label;
+                const multi = groupHits.length > 1;
+                nodes.push(
+                  <div key={`group-${label}`} className={multi ? 'border-b border-[#E5E7EB]/60 last:border-b-0' : ''}>
+                    {multi && (
+                      <div className="px-3 py-1.5 bg-[#F8F9FB] text-[10px] font-bold uppercase tracking-wide text-[#0F2B4C]/60 flex items-center justify-between">
+                        <span>{label}</span>
+                        <span className="text-[9px] text-[#0F2B4C]/40">{groupHits.length} accounts</span>
+                      </div>
+                    )}
+                    {groupHits.map((h) => {
+                      flatIx += 1;
+                      const idx = flatIx;
+                      const Icon = ICON_FOR_TYPE[h.type];
+                      const accent = TYPE_ACCENT[h.type];
+                      const isActive = idx === activeIx;
+                      return (
+                        <button
+                          key={`${h.type}-${h.id}`}
+                          onClick={() => openHit(h)}
+                          onMouseEnter={() => setActiveIx(idx)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                            isActive ? 'bg-[#F8F9FB]' : 'bg-white'
+                          } ${multi ? 'pl-6' : ''}`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
+                            <Icon size={15} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-[#0F2B4C] truncate">{multi ? h.type : h.label}</div>
+                            <div className="text-xs text-[#0F2B4C]/50 truncate">{h.sublabel}</div>
+                          </div>
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-[#0F2B4C]/30">
+                            {h.type}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>,
+                );
+              }
+
+              // Deliveries at the bottom under their own header
+              if (deliveryHits.length > 0) {
+                if (groups.size > 0) {
+                  nodes.push(
+                    <div key="deliveries-header" className="px-3 py-1.5 bg-[#F8F9FB] text-[10px] font-bold uppercase tracking-wide text-[#0F2B4C]/60 border-t border-[#E5E7EB]/60">
+                      Deliveries
+                    </div>,
+                  );
+                }
+                for (const h of deliveryHits) {
+                  flatIx += 1;
+                  const idx = flatIx;
+                  const Icon = ICON_FOR_TYPE[h.type];
+                  const accent = TYPE_ACCENT[h.type];
+                  const isActive = idx === activeIx;
+                  nodes.push(
+                    <button
+                      key={`${h.type}-${h.id}`}
+                      onClick={() => openHit(h)}
+                      onMouseEnter={() => setActiveIx(idx)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                        isActive ? 'bg-[#F8F9FB]' : 'bg-white'
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
+                        <Icon size={15} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-[#0F2B4C] truncate">{h.label}</div>
+                        <div className="text-xs text-[#0F2B4C]/50 truncate">{h.sublabel}</div>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-[#0F2B4C]/30">
+                        {h.type}
+                      </span>
+                    </button>,
+                  );
+                }
+              }
+
+              return nodes;
+            })()}
           </div>
         )}
       </div>

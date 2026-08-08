@@ -135,10 +135,16 @@ export default function DriverProfileScreen() {
                   <Ionicons name="ribbon-outline" size={11} color={tierColor} />
                   <Text style={[styles.tierText, { color: tierColor }]}>{driver.tier}</Text>
                 </View>
-                <View style={[styles.approvedBadge, { backgroundColor: '#22C55E18' }]}>
-                  <Ionicons name="checkmark-circle" size={11} color="#22C55E" />
-                  <Text style={[styles.approvedText, { color: '#22C55E' }]}>Verified</Text>
-                </View>
+                {/* ID-Verified badge is now tied to user.identityVerifiedAt.
+                    Previously hardcoded to always show, which was misleading.
+                    Driver KYC status is separate (driver.status = approved)
+                    and would need its own badge if we want to expose it. */}
+                {(user as any)?.identityVerifiedAt && (
+                  <View style={[styles.approvedBadge, { backgroundColor: '#22C55E18' }]}>
+                    <Ionicons name="shield-checkmark" size={11} color="#22C55E" />
+                    <Text style={[styles.approvedText, { color: '#22C55E' }]}>ID Verified</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>
