@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Business app API barrel.
- * All endpoints live in @seirs/shared/services/api — this file only:
+ * All endpoints live in @seirs/shared/services/api. this file only:
  *   1. Re-exports the shared API surface
  *   2. Maps `authApi` to the business-specific auth endpoints (login,
  *      register, verify-otp) since business uses a different storage key
@@ -19,6 +19,7 @@ export {
   businessApi,
   partnerApi,
   identityApi,
+  userVerificationApi,
   feesApi,
   configApi,
   pricingApi,
@@ -35,7 +36,7 @@ export type {
 import { businessAuthApi, authApi as sharedAuthApi } from '@seirs/shared/services/api';
 
 /**
- * Business-app authApi — business endpoints for login/register/verify-otp
+ * Business-app authApi. business endpoints for login/register/verify-otp
  * (different routes than customer/driver), shared resendOtp.
  */
 export const authApi = {

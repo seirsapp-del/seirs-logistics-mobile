@@ -4,6 +4,7 @@ import { adminApi } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
 import { Bike, Car, Truck, Star } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 const STATUS_COLORS: Record<string, string> = {
   pending:   'bg-amber-100 text-amber-700',
@@ -23,6 +24,7 @@ function DriversContent() {
   const [data, setData]       = useState<any>(null);
   const [page, setPage]       = useState(1);
   const [loading, setLoading] = useState(true);
+  const confirm               = useConfirm();
 
   const load = (p = 1) => {
     setLoading(true);
@@ -39,7 +41,13 @@ function DriversContent() {
   };
 
   const suspend = async (id: string) => {
-    if (!confirm('Suspend this driver?')) return;
+    const ok = await confirm({
+      title:        'Suspend this driver?',
+      message:      'They will stop receiving new dispatch offers immediately. Any active in-progress trip continues to completion. Reactivate anytime from the driver detail page.',
+      confirmLabel: 'Suspend',
+      danger:       true,
+    });
+    if (!ok) return;
     await adminApi.suspendDriver(id);
     load(page);
   };

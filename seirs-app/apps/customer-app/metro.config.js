@@ -6,6 +6,21 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
+// SVG support — lets us `import Foo from './foo.svg'` and render it as
+// a React component (recolorable via the SVG's own fill or via a prop).
+// Standard pairing: react-native-svg + react-native-svg-transformer.
+// See apps/customer-app/assets/illustrations/README.md for the asset
+// sourcing convention.
+config.transformer = {
+  ...config.transformer,
+  babelTransformerPath: require.resolve('react-native-svg-transformer/expo'),
+};
+config.resolver = {
+  ...config.resolver,
+  assetExts: (config.resolver.assetExts || []).filter((ext) => ext !== 'svg'),
+  sourceExts: [...(config.resolver.sourceExts || []), 'svg'],
+};
+
 // Merge our workspace watch folders with Expo's defaults
 config.watchFolders = [
   workspaceRoot,

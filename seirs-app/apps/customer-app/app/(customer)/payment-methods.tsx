@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { paymentsApi, type SavedCard } from '@/services/api';
+import { Illustration } from '@/components/Illustration';
 
 /**
  * Payment Methods — lists Flutterwave-tokenized cards saved during prior
@@ -108,9 +109,7 @@ export default function PaymentMethodsScreen() {
           contentContainerStyle={styles.emptyWrap}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-          <View style={[styles.iconWrap, { backgroundColor: theme.surfaceSecond }]}>
-            <Ionicons name="card-outline" size={36} color={theme.primary} />
-          </View>
+          <Illustration name="empty-no-cards" size={140} />
           <Text style={[styles.emptyHeading, { color: theme.text }]}>{t('paymentMethods.empty')}</Text>
           <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
             {t('paymentMethods.emptyDesc')}

@@ -130,8 +130,12 @@ export default function WalletScreen() {
 
         {/* ── Points hero (primary) ─────────────────────────────────── */}
         <View style={styles.cardWrap}>
+          {/* Matches the home-screen wallet card so the brand colour is
+              consistent between Home and Rewards. Navy in light mode,
+              near-black in dark. Don't drift from this without updating
+              the home wallet card too. */}
           <LinearGradient
-            colors={isDark ? ['#FF6B00', '#1A0500'] : ['#3A86FF', '#1D6AE5']}
+            colors={isDark ? ['#1C2128', '#0D1117'] : ['#0F2B4C', '#1A3A63']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[styles.balanceCard, Shadows.navy]}

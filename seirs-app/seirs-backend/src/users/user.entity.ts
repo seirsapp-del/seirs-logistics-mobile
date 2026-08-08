@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -31,8 +31,52 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  // Legacy full-name field. Kept for backwards-compat with older accounts
+  // and for admin/audit displays. New code should read firstName + lastName.
+  // Auto-populated on write as `${firstName} ${lastName}` when those are set.
   @Column()
   name: string;
+
+  // Split name (2026-08-08). Nigerian users often have 3+ names + varied
+  // ordering (some cultures put father's given name in the middle slot).
+  // Split lets us:
+  //   • display only firstName to drivers/other users (data minimisation)
+  //   • cross-check first + last against uploaded ID during verification
+  //   • honour the SEIRS ID as the true identifier (see accountId below)
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  firstName: string | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  middleName: string | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  lastName: string | null;
+
+  // Date of birth. locked once set (admin override only). Used for identity
+  // cross-check and age-gated features. Store as DATE (no time component).
+  @Column({ type: 'date', nullable: true })
+  dateOfBirth: Date | null;
+
+  // Emergency contact. safety-critical, no cool-down on edits so users
+  // can react to changes in their support network without a wait.
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  emergencyContactName: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  emergencyContactPhone: string | null;
+
+  // Home address. default pickup for the send flow. JSON blob to avoid
+  // another table for a low-cardinality user-owned record. Structure:
+  //   { label: string, street: string, city: string, state: string,
+  //     coords: { lat: number, lng: number } | null }
+  @Column({ type: 'jsonb', nullable: true })
+  homeAddress: {
+    label:  string;
+    street: string;
+    city:   string;
+    state:  string;
+    coords: { lat: number; lng: number } | null;
+  } | null;
 
   @Index()
   @Column({ unique: true })
@@ -66,7 +110,7 @@ export class User {
   @Column({ default: false })
   emailVerified: boolean;
 
-  // Spec V8 NDPR — soft-delete bookkeeping. Set when user calls
+  // Spec V8 NDPR. soft-delete bookkeeping. Set when user calls
   // DELETE /users/me; cleared if they sign in within 30 days. The
   // daily archive cron uses this + isActive=false to decide who to
   // hard-delete and migrate to archived_users.
@@ -92,7 +136,7 @@ export class User {
   @Column({ nullable: true, unique: true })
   accountId: string;
 
-  // Spec V8 §1.13 — captured from deep-link query at registration.
+  // Spec V8 §1.13. captured from deep-link query at registration.
   // Stored for attribution; reward fulfilment lives in a future referral module.
   @Index()
   @Column({ nullable: true })
@@ -104,13 +148,13 @@ export class User {
   @Column({ nullable: true })
   adminRole: AdminSubRole;
 
-  // Spec V8 — dynamic role assignment. FK into roles table. When set,
+  // Spec V8. dynamic role assignment. FK into roles table. When set,
   // overrides the adminRole enum for permission resolution.
   @Index()
   @Column({ type: 'uuid', nullable: true })
   roleId: string;
 
-  // LEGACY — single-role business gate. Kept for backwards-compat with
+  // LEGACY. single-role business gate. Kept for backwards-compat with
   // existing accounts. New code should read `capabilities` instead.
   // 'sender' | 'partner'
   @Column({ nullable: true })
@@ -123,19 +167,34 @@ export class User {
   partnerStoreId: string;
 
   /**
-   * Hybrid-account capabilities (Spec V8 hybrid-business model — 2026-05-11).
+   * Hybrid-account capabilities (Spec V8 hybrid-business model. 2026-05-11).
    * A single User can be a Business Sender AND a Partner Store at the same
    * time (real Nigerian SME pattern: a shop owner who both ships their own
    * goods AND accepts SEIRS drop-offs from neighbours). Replaces the old
    * `businessRole` single-pick model.
    *
-   *   canSend    — instant on signup, allows bulk dispatch + wallet
-   *   canPartner — gated behind admin approval (PartnerStore.status must be
+   *   canSend   . instant on signup, allows bulk dispatch + wallet
+   *   canPartner. gated behind admin approval (PartnerStore.status must be
    *                APPROVED before this flips true). Triggered via the
    *                "Apply to become a Partner Store" Settings flow.
    */
   @Column({ type: 'jsonb', default: () => `'{"canSend": false, "canPartner": false}'` })
   capabilities: { canSend: boolean; canPartner: boolean };
+
+  // ── Identity verification (Spec V8 identity policy 2026-08-07) ─────────
+  // Optional trust tier. Everyone has full app access without this; verified
+  // users unlock higher wallet/reward limits, interstate delivery, insured
+  // deliveries, priority support. See [[project_seirs_identity_policy]].
+  // Populated on admin approval of an IdentityVerification submission.
+  @Column({ type: 'timestamptz', nullable: true })
+  identityVerifiedAt: Date | null;
+
+  // Which document type was approved (nin | drivers_licence | passport | pvc).
+  // Displayed as a subtle tooltip on the trust badge. some downstream
+  // partners require a specific ID type (banks want NIN, insurers accept
+  // any government-issued).
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  identityDocType: string | null;
 
   @Column({ default: 0 })
   failedLoginAttempts: number;
@@ -143,7 +202,7 @@ export class User {
   @Column({ nullable: true })
   lockedUntil: Date;
 
-  // Spec V8 §3.13 — set when admin merges this account into another
+  // Spec V8 §3.13. set when admin merges this account into another
   // via /admin/duplicates. The merged-out user is deactivated; their
   // login is blocked and the UI surfaces "this account was merged".
   @Index()

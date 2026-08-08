@@ -1,11 +1,12 @@
-'use client';
+﻿'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api';
+import { useConfirm } from '@/components/ConfirmDialog';
 import {
   ShieldCheck, Plus, Save, Trash2, X, Lock, Check, AlertCircle,
 } from 'lucide-react';
 
-// Spec V8 — dynamic role management. Super-admin creates custom job
+// Spec V8. dynamic role management. Super-admin creates custom job
 // titles + bespoke permission sets without a code deploy. System
 // roles (the original 8) are seeded on backend boot and protected
 // from delete/rename.
@@ -52,6 +53,7 @@ export default function RolesPage() {
   const [draftColor,       setDraftColor]       = useState('gray');
   const [saving,           setSaving]           = useState(false);
   const [error,            setError]            = useState('');
+  const confirm                                 = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -148,7 +150,13 @@ export default function RolesPage() {
   };
 
   const remove = async (role: Role) => {
-    if (!confirm(`Delete role "${role.name}"? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title:        `Delete role "${role.name}"?`,
+      message:      'Staff members assigned to this role will lose access to any page it granted (unless they have another role). System roles cannot be deleted. This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger:       true,
+    });
+    if (!ok) return;
     try {
       await adminApi.roles.deleteOne(role.id);
       load();
@@ -236,7 +244,7 @@ export default function RolesPage() {
                 </h2>
                 {editing?.isSystemRole && (
                   <p className="text-xs text-gray-500 mt-1">
-                    System role — name and slug are locked. Permissions can still be adjusted.
+                    System role. name and slug are locked. Permissions can still be adjusted.
                   </p>
                 )}
               </div>

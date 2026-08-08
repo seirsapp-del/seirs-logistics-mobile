@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 import { useEffect, useState } from 'react';
 import { Wallet, Clock, ArrowDownCircle, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 interface PendingPayout {
   id: string;
@@ -45,6 +46,7 @@ export default function WalletPage() {
   const [paid,       setPaid]       = useState<RecentWithdrawal[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [busyId,     setBusyId]     = useState<string | null>(null);
+  const confirm                     = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -65,7 +67,12 @@ export default function WalletPage() {
   useEffect(() => { load(); }, []);
 
   const release = async (id: string) => {
-    if (!confirm('Release this held earning back to "available" so it can be paid out?')) return;
+    const ok = await confirm({
+      title:        'Release this held earning?',
+      message:      'The driver’s earning moves from "held" back to "available" and becomes eligible for payout on the next cycle. The hold reason will remain in the audit log.',
+      confirmLabel: 'Release',
+    });
+    if (!ok) return;
     setBusyId(id);
     try {
       await adminApi.wallet.releaseHeld(id);
@@ -89,7 +96,7 @@ export default function WalletPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-[#0F2B4C]">Wallet & Payouts</h1>
-            <p className="text-sm text-gray-500">Driver earnings ledger — pending payouts, held earnings, recent transfers.</p>
+            <p className="text-sm text-gray-500">Driver earnings ledger. pending payouts, held earnings, recent transfers.</p>
           </div>
         </div>
         <button
@@ -111,7 +118,7 @@ export default function WalletPage() {
       <section className="bg-white rounded-xl border border-gray-200">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
           <AlertCircle size={15} className="text-red-500" />
-          <span className="text-sm font-semibold text-[#0F2B4C]">Held Earnings — needs review</span>
+          <span className="text-sm font-semibold text-[#0F2B4C]">Held Earnings. needs review</span>
           <span className="ml-auto text-xs text-gray-500">{held.length} row{held.length === 1 ? '' : 's'}</span>
         </div>
         <div className="overflow-x-auto">
@@ -133,7 +140,7 @@ export default function WalletPage() {
                   <tr key={h.id}>
                     <td className="px-4 py-3 font-medium text-[#0F2B4C]">{h.driverName}</td>
                     <td className="px-4 py-3 font-semibold text-gray-800">{fmt(h.driverNet)}</td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">{h.holdReason ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{h.holdReason ?? '-'}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(h.updatedAt)}</td>
                     <td className="px-4 py-3">
                       <button
@@ -213,7 +220,7 @@ export default function WalletPage() {
                     <td className="px-4 py-3 font-medium text-[#0F2B4C]">{w.driverName}</td>
                     <td className="px-4 py-3 font-semibold text-gray-800">{fmt(w.driverNet)}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(w.paidAt)}</td>
-                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{w.flutterwaveTransferId ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{w.flutterwaveTransferId ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>

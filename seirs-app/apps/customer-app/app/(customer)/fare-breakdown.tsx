@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { MOCK_VEHICLES, RIDE_VEHICLES, calcRideFare, FARE_BREAKDOWN, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
+import { MOCK_VEHICLES, RIDE_VEHICLES, calcRideFare, calcPackageFare, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 
 export default function FareBreakdownScreen() {
   const router  = useRouter();
@@ -25,15 +25,30 @@ export default function FareBreakdownScreen() {
     mode?: string; pickup: string; dropoff: string; vehicleId: string;
     pickupLat?: string; pickupLng?: string; dropoffLat?: string; dropoffLng?: string;
     shared?: string; distanceKm?: string; durationText?: string;
+    // Cargo extras (forwarded by /send and /multi-stop)
+    weightKg?: string; category?: string; codAmountNgn?: string; extraStops?: string;
+    // Discount opts (when caller knows the customer is welcome / has points)
+    isWelcome?: string; loyaltyPointsToRedeem?: string;
   }>();
 
   const isRide = params.mode === 'ride';
   const distKm = Number(params.distanceKm ?? '0') || 0;
   const shared = params.shared === '1';
 
-  // Compute fare per-mode: rides use the live calcRideFare against the
-  // actual route distance + share-ride discount; cargo falls back to
-  // the legacy mock breakdown until the cargo rate-card lands.
+  // Cargo-only opts
+  const weightKg     = Number(params.weightKg ?? '0') || 0;
+  const codAmountNgn = Number(params.codAmountNgn ?? '0') || 0;
+  const extraStops   = Number(params.extraStops ?? '0') || 0;
+  const category     = params.category || undefined;
+
+  // Discount opts
+  const isWelcome             = params.isWelcome === '1';
+  const loyaltyPointsToRedeem = Number(params.loyaltyPointsToRedeem ?? '0') || 0;
+
+  // Compute fare per-mode against the live rate card. Both flows pass
+  // coords so regional + zone surcharges are reflected, and both surface
+  // the fuel pass-through as its own row so the total always equals the
+  // sum of the displayed lines.
   const vehicle = isRide
     ? RIDE_VEHICLES.find(v => v.id === params.vehicleId) ?? RIDE_VEHICLES[0]
     : MOCK_VEHICLES.find(v => v.id === params.vehicleId) ?? MOCK_VEHICLES[0];
@@ -41,36 +56,88 @@ export default function FareBreakdownScreen() {
   const pickupCoords  = Number(params.pickupLat)  && Number(params.pickupLng)  ? { latitude: Number(params.pickupLat),  longitude: Number(params.pickupLng)  } : null;
   const dropoffCoords = Number(params.dropoffLat) && Number(params.dropoffLng) ? { latitude: Number(params.dropoffLat), longitude: Number(params.dropoffLng) } : null;
 
+  // Translate the raw time-window labels ('night'/'peak'/'weekend') from
+  // the rate card through i18n so non-English speakers see the local term.
+  const translateTimeLabels = (labels: string[]) =>
+    labels.map(l => t(`fareBreakdown2.timeLabel_${l}`, { defaultValue: l })).join(', ');
+
   const fb = isRide
     ? (() => {
-        const f = calcRideFare(params.vehicleId, distKm, shared, { pickupCoords, dropoffCoords });
+        const f = calcRideFare(params.vehicleId, distKm, shared, {
+          pickupCoords, dropoffCoords, isWelcome, loyaltyPointsToRedeem,
+        });
         return {
           baseFare:          f.base,
           distanceFee:       f.dist,
-          timeFee:           0,
+          fuelPassthrough:   f.distFuel,
+          weight:            0,
+          handling:          0,
           categorySurcharge: 0,
           timeSurcharge:     f.timeSurcharge,
           timeLabels:        f.timeLabels,
           zoneSurcharge:     f.zoneSurcharge,
           zoneFlat:          f.zoneFlat,
+          perStopBonus:      0,
+          codFee:            0,
+          insurance:         0,
           serviceFee:        f.service,
+          shareDiscount:     f.shareDiscount,
+          welcomeDiscount:   f.discounts.welcome,
+          loyaltyDiscount:   f.discounts.loyalty,
           vat:               f.vat,
-          discount:          f.shareDiscount,
           total:             f.total,
         };
       })()
-    : { ...FARE_BREAKDOWN, categorySurcharge: 0, timeSurcharge: 0, timeLabels: [] as string[], zoneSurcharge: 0, zoneFlat: 0, vat: 0 };
+    : (() => {
+        const f = calcPackageFare(params.vehicleId, distKm, weightKg, {
+          pickupCoords, dropoffCoords, categoryId: category, codAmountNgn,
+          extraStops, isWelcome, loyaltyPointsToRedeem,
+        });
+        return {
+          baseFare:          f.base,
+          distanceFee:       f.dist,
+          fuelPassthrough:   f.distFuel,
+          weight:            f.weight,
+          handling:          f.handling,
+          categorySurcharge: f.categorySurcharge,
+          timeSurcharge:     f.timeSurcharge,
+          timeLabels:        f.timeLabels,
+          zoneSurcharge:     f.zoneSurcharge,
+          zoneFlat:          f.zoneFlat,
+          perStopBonus:      f.perStopBonus,
+          codFee:            f.codFee,
+          insurance:         f.insurance,
+          serviceFee:        f.service,
+          shareDiscount:     0,
+          welcomeDiscount:   f.discounts.welcome,
+          loyaltyDiscount:   f.discounts.loyalty,
+          vat:               f.vat,
+          total:             f.total,
+        };
+      })();
 
   const rows = [
-    { label: t('fareBreakdown2.baseFare'),                                             value: fb.baseFare,          icon: 'flag-outline' },
-    { label: t('fareBreakdown2.distanceFee'),                                          value: fb.distanceFee,       icon: 'map-outline'  },
-    { label: t('fareBreakdown2.timeFee'),                                              value: fb.timeFee,           icon: 'time-outline' },
-    { label: t('fareBreakdown2.categorySurcharge'),                                    value: fb.categorySurcharge, icon: 'pricetag-outline'   },
-    { label: t('fareBreakdown2.timeSurcharge', { labels: fb.timeLabels.join(', ') }),  value: fb.timeSurcharge,     icon: 'moon-outline'       },
-    { label: t('fareBreakdown2.zoneSurcharge'),                                        value: fb.zoneSurcharge,     icon: 'globe-outline'      },
-    { label: t('fareBreakdown2.overnightFee'),                                         value: fb.zoneFlat,          icon: 'bed-outline'        },
-    { label: t('fareBreakdown2.serviceFee'),                                           value: fb.serviceFee,        icon: 'shield-outline'     },
-    { label: t('fareBreakdown2.vat'),                                                  value: fb.vat,               icon: 'document-text-outline' },
+    { label: t('fareBreakdown2.baseFare'),                                              value: fb.baseFare,          icon: 'flag-outline' },
+    { label: t('fareBreakdown2.distanceFee'),                                           value: fb.distanceFee,       icon: 'map-outline'  },
+    { label: t('fareBreakdown2.fuelPassthrough'),                                       value: fb.fuelPassthrough,   icon: 'water-outline' },
+    { label: t('fareBreakdown2.weightSurcharge'),                                       value: fb.weight,            icon: 'scale-outline' },
+    { label: t('fareBreakdown2.handlingFee'),                                           value: fb.handling,          icon: 'cube-outline'  },
+    { label: t('fareBreakdown2.categorySurcharge'),                                     value: fb.categorySurcharge, icon: 'pricetag-outline' },
+    { label: t('fareBreakdown2.timeSurcharge', { labels: translateTimeLabels(fb.timeLabels) }), value: fb.timeSurcharge, icon: 'moon-outline' },
+    { label: t('fareBreakdown2.zoneSurcharge'),                                         value: fb.zoneSurcharge,     icon: 'globe-outline' },
+    { label: t('fareBreakdown2.overnightFee'),                                          value: fb.zoneFlat,          icon: 'bed-outline'   },
+    { label: t('fareBreakdown2.perStopBonus'),                                          value: fb.perStopBonus,      icon: 'flag-outline'  },
+    { label: t('fareBreakdown2.codFee'),                                                value: fb.codFee,            icon: 'cash-outline'  },
+    { label: t('fareBreakdown2.insurance'),                                             value: fb.insurance,         icon: 'shield-checkmark-outline' },
+    { label: t('fareBreakdown2.serviceFee'),                                            value: fb.serviceFee,        icon: 'shield-outline' },
+    { label: t('fareBreakdown2.vat'),                                                   value: fb.vat,               icon: 'document-text-outline' },
+  ].filter(r => r.value > 0);
+
+  // Discount rows render separately (negative) below the charges.
+  const discountRows = [
+    { label: t('fareBreakdown2.shareDiscount'),   value: fb.shareDiscount   },
+    { label: t('fareBreakdown2.welcomeDiscount'), value: fb.welcomeDiscount },
+    { label: t('fareBreakdown2.loyaltyDiscount'), value: fb.loyaltyDiscount },
   ].filter(r => r.value > 0);
 
   // ── Map background ──────────────────────────────────────────────────────
@@ -87,7 +154,7 @@ export default function FareBreakdownScreen() {
   // ── Bottom sheet ─────────────────────────────────────────────────────────
   const sheetRef = useRef<BottomSheet>(null);
   const sheetTopInset = insets.top + 88;
-  const snapPoints = useMemo(() => [220, '90%'] as const, []);
+  const snapPoints = useMemo<(string | number)[]>(() => [220, '90%'], []);
 
   return (
     <View style={styles.container}>
@@ -192,17 +259,17 @@ export default function FareBreakdownScreen() {
               </View>
             ))}
 
-            {fb.discount > 0 && (
-              <View style={[styles.fareRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+            {discountRows.map((d) => (
+              <View key={d.label} style={[styles.fareRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
                 <View style={styles.fareLeft}>
                   <View style={[styles.fareIcon, { backgroundColor: '#DCFCE7' }]}>
                     <Ionicons name="pricetag-outline" size={14} color="#15803D" />
                   </View>
-                  <Text style={[styles.fareLabel, { color: '#15803D' }]}>{t('fareBreakdown2.promoDiscount')}</Text>
+                  <Text style={[styles.fareLabel, { color: '#15803D' }]}>{d.label}</Text>
                 </View>
-                <Text style={[styles.fareValue, { color: '#15803D' }]}>-₦{fb.discount.toLocaleString()}</Text>
+                <Text style={[styles.fareValue, { color: '#15803D' }]}>-₦{d.value.toLocaleString()}</Text>
               </View>
-            )}
+            ))}
 
             <View style={[styles.fareTotal, { borderTopColor: theme.border }]}>
               <Text style={[styles.fareTotalLabel, { color: theme.text }]}>{t('fareBreakdown2.total')}</Text>
@@ -236,6 +303,14 @@ export default function FareBreakdownScreen() {
                   distanceKm:   String(distKm),
                   durationText: params.durationText ?? '',
                   fareTotal:    String(fb.total),
+                  // Cargo extras forwarded so confirm-ride can post the
+                  // same shape the calc was made against (no double-quote).
+                  weightKg:        params.weightKg ?? '',
+                  category:        params.category ?? '',
+                  codAmountNgn:    params.codAmountNgn ?? '',
+                  extraStops:      params.extraStops ?? '',
+                  isWelcome:       params.isWelcome ?? '',
+                  loyaltyPointsToRedeem: params.loyaltyPointsToRedeem ?? '',
                 },
               })}
               size="lg"

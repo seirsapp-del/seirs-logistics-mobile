@@ -1,4 +1,4 @@
-import { getToken, touchActivity } from './auth';
+﻿import { getToken, touchActivity } from './auth';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 
@@ -20,7 +20,7 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   return res.json();
 }
 
-// Spec V8 §3.6 — sliding 30-min admin session. Backend issues admin
+// Spec V8 §3.6. sliding 30-min admin session. Backend issues admin
 // JWTs with 30m TTL. This helper extends the token while the admin is
 // active by calling /auth/refresh. Called from the dashboard layout
 // every ~5 minutes; no-op when no admin token is in storage.
@@ -63,7 +63,7 @@ export const adminApi = {
       { method: 'POST', body: JSON.stringify({ tempToken, code }) },
     ),
 
-  // Spec V8 — admin password recovery (uses the same shared /auth endpoints
+  // Spec V8. admin password recovery (uses the same shared /auth endpoints
   // as customer/driver; backend branches the email link by user role).
   forgotPassword: (email: string) =>
     req<{ message: string }>(
@@ -99,7 +99,7 @@ export const adminApi = {
     setupTOTP:     (id: string)                => req<any>(`/admin/admins/${id}/totp/setup`, { method: 'POST' }),
     confirmTOTP:   (id: string, code: string)  =>
       req<any>(`/admin/admins/${id}/totp/confirm`, { method: 'POST', body: JSON.stringify({ code }) }),
-    // Spec V8 — offboarding wizard
+    // Spec V8. offboarding wizard
     footprint:     (id: string) => req<{
       adminUserId: string;
       ready: boolean;
@@ -120,7 +120,7 @@ export const adminApi = {
     req<any>(`/admin/drivers/${id}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
   suspendDriver: (id: string) => req<any>(`/admin/drivers/${id}/suspend`, { method: 'PATCH' }),
 
-  // Hybrid-account (Spec V8 2026-05-11) — partner store applications
+  // Hybrid-account (Spec V8 2026-05-11). partner store applications
   partnerApplications: () =>
     req<Array<{
       id: string; userId: string; storeName: string; storeAddress: string;
@@ -153,7 +153,7 @@ export const adminApi = {
     update: (data: any)  => req<any>('/admin/pricing', { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
-  // Spec V8 §3.9 — Fee Catalogue (single source of truth for all fees)
+  // Spec V8 §3.9. Fee Catalogue (single source of truth for all fees)
   fees: {
     list:    ()                                  => req<any[]>('/admin/fees'),
     grouped: ()                                  => req<Record<string, any[]>>('/admin/fees?grouped=true'),
@@ -163,19 +163,19 @@ export const adminApi = {
       req<any>(`/admin/fees/${key}`, { method: 'PATCH', body: JSON.stringify(body) }),
   },
 
-  // Spec V8 §3.10 — chain of custody for disputes view (reuses public
+  // Spec V8 §3.10. chain of custody for disputes view (reuses public
   // identity endpoint; admin can read any delivery's handoff chain).
   identity: {
     handoffChain: (deliveryId: string) => req<any[]>(`/identity/handoff/${deliveryId}/chain`),
   },
 
-  // Spec V8 §3.12 — Interstate trip board.
+  // Spec V8 §3.12. Interstate trip board.
   interstateTrips: {
     list: (status?: 'active' | 'completed' | 'cancelled') =>
       req<any[]>(`/admin/interstate-trips${status ? `?status=${status}` : ''}`),
   },
 
-  // Spec V8 §3.13 — ops broadcast composer.
+  // Spec V8 §3.13. ops broadcast composer.
   notifications: {
     broadcast: (body: {
       audience: 'all_customers' | 'all_drivers' | 'all_partners' | 'specific_zone';
@@ -188,7 +188,7 @@ export const adminApi = {
     }),
   },
 
-  // Spec V8 §3.13 — email template catalogue + override layer.
+  // Spec V8 §3.13. email template catalogue + override layer.
   emailTemplates: {
     list: () => req<Array<{
       key:      string;
@@ -201,7 +201,7 @@ export const adminApi = {
       req<any>(`/admin/email-templates/${key}`, { method: 'PATCH', body: JSON.stringify(body) }),
   },
 
-  // Spec V8 §3.13 — promotions CRUD.
+  // Spec V8 §3.13. promotions CRUD.
   promotions: {
     list:   (status?: string) => req<any[]>(`/admin/promotions${status ? `?status=${status}` : ''}`),
     create: (body: any)       => req<any>('/admin/promotions', { method: 'POST', body: JSON.stringify(body) }),
@@ -209,14 +209,14 @@ export const adminApi = {
     remove: (id: string)      => req<any>(`/admin/promotions/${id}`, { method: 'DELETE' }),
   },
 
-  // Spec V8 §3.13 — suggestions inbox.
+  // Spec V8 §3.13. suggestions inbox.
   suggestions: {
     list:   (status?: string) => req<{ items: any[]; total: number; page: number }>(`/admin/suggestions${status ? `?status=${status}` : ''}`),
     update: (id: string, body: { status?: string; adminReply?: string }) =>
       req<any>(`/admin/suggestions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   },
 
-  // Spec V8 §3.13 — manual refund (closes A23).
+  // Spec V8 §3.13. manual refund (closes A23).
   payments: {
     refund: (deliveryId: string, reason: string) =>
       req<{ ok: true; refundedAtIso: string }>(`/admin/payments/${deliveryId}/refund`, {
@@ -225,7 +225,7 @@ export const adminApi = {
       }),
   },
 
-  // Spec V8 §3.13 — NDPR admin tools (A32 + A33)
+  // Spec V8 §3.13. NDPR admin tools (A32 + A33)
   ndpr: {
     exportUser:      (id: string)                 => req<any>(`/admin/users/${id}/export`),
     hardDeleteUser:  (id: string, reason: string) =>
@@ -234,7 +234,7 @@ export const adminApi = {
       }),
   },
 
-  // Spec V8 §3.13 — duplicate accounts (A21)
+  // Spec V8 §3.13. duplicate accounts (A21)
   duplicates: {
     list:    (status?: string) => req<any[]>(`/admin/duplicates${status ? `?status=${status}` : ''}`),
     scan:    ()                => req<{ scanned: number; newCandidates: number }>('/admin/duplicates/scan', { method: 'POST' }),
@@ -242,7 +242,7 @@ export const adminApi = {
     dismiss: (id: string)      => req<any>(`/admin/duplicates/${id}/dismiss`, { method: 'POST' }),
   },
 
-  // Spec V8 §3.13 — external partners directory (A40 + A41)
+  // Spec V8 §3.13. external partners directory (A40 + A41)
   externalPartners: {
     list:   (type?: 'insurance' | 'specialist') =>
       req<any[]>(`/admin/external-partners${type ? `?type=${type}` : ''}`),
@@ -251,7 +251,7 @@ export const adminApi = {
     remove: (id: string)            => req<any>(`/admin/external-partners/${id}`, { method: 'DELETE' }),
   },
 
-  // Spec V8 — public website CMS (articles + FAQ + changelog + page blocks)
+  // Spec V8. public website CMS (articles + FAQ + changelog + page blocks)
   websiteContent: {
     list:   (type?: string, status?: string) => {
       const params = new URLSearchParams();
@@ -284,12 +284,12 @@ export const adminApi = {
     },
   },
 
-  // Spec V8 Tier 3 — Developer Platform admin oversight
+  // Spec V8 Tier 3. Developer Platform admin oversight
   devPlatform: {
     listAccounts:    () => req<any[]>('/dev-platform/admin/keys'),  // all keys, all owners
     listAllUsage:    () => req<any>('/dev-platform/usage'),
 
-    // A48 — suspend / resume an entire developer account
+    // A48. suspend / resume an entire developer account
     suspendOwner: (ownerUserId: string, reason: string) =>
       req<{ suspended: number }>(`/dev-platform/admin/owners/${ownerUserId}/suspend`, {
         method: 'POST', body: JSON.stringify({ reason }),
@@ -297,7 +297,7 @@ export const adminApi = {
     resumeOwner: (ownerUserId: string) =>
       req<{ resumed: number }>(`/dev-platform/admin/owners/${ownerUserId}/resume`, { method: 'POST' }),
 
-    // A49 — set per-key rate-limit override (null = revert to default)
+    // A49. set per-key rate-limit override (null = revert to default)
     setKeyRateLimit: (keyId: string, limitPerMin: number | null) =>
       req<{ keyId: string; rateLimitOverridePerMin: number | null }>(
         `/dev-platform/admin/keys/${keyId}/rate-limit`,
@@ -305,7 +305,7 @@ export const adminApi = {
       ),
   },
 
-  // Spec V8 — dynamic role management
+  // Spec V8. dynamic role management
   roles: {
     list:      ()                        => req<any[]>('/admin/roles'),
     catalogue: ()                        => req<Array<{ section: string; items: Array<{ slug: string; label: string }> }>>('/admin/roles/catalogue'),
@@ -318,6 +318,25 @@ export const adminApi = {
       req<any>(`/admin/roles/${id}`, { method: 'DELETE' }),
     assign:    (roleId: string, userId: string) =>
       req<any>(`/admin/roles/${roleId}/assign/${userId}`, { method: 'POST' }),
+  },
+
+  // Spec V8 identity policy. customer identity verification queue.
+  // Distinct from driver KYC (which lives under /admin/drivers).
+  identityVerifications: {
+    list:    (status: 'submitted' | 'approved' | 'rejected' | 'withdrawn' = 'submitted') =>
+      req<any[]>(`/admin/identity-verifications?status=${status}`),
+    get:     (id: string) =>
+      req<any>(`/admin/identity-verifications/${id}`),
+    approve: (id: string, adminNote?: string) =>
+      req<any>(`/admin/identity-verifications/${id}/approve`, {
+        method: 'POST',
+        body:   JSON.stringify({ adminNote }),
+      }),
+    reject:  (id: string, reason: string, adminNote?: string) =>
+      req<any>(`/admin/identity-verifications/${id}/reject`, {
+        method: 'POST',
+        body:   JSON.stringify({ reason, adminNote }),
+      }),
   },
 
   analytics: {
@@ -372,7 +391,7 @@ export const adminApi = {
     activeDeliveries: () => req<Array<{ id: string; trackingCode: string; pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number; status: string }>>('/admin/ops-map/deliveries'),
   },
 
-  // Pricing system — admin reads + writes the active RateCard and the
+  // Pricing system. admin reads + writes the active RateCard and the
   // ServiceCategory catalog. /config/* endpoints are public so apps can
   // fetch on boot; /admin/* endpoints are auth'd for publishing changes.
   rateCard: {

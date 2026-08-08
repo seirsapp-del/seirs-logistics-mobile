@@ -3,7 +3,7 @@
 // you almost always want — including from `npx expo run:android` builds
 // on a phone that can't reach your laptop's local IP.
 const USE_LOCAL_BACKEND = false;
-const LOCAL_IP = '192.168.2.113';
+const LOCAL_IP = 'localhost'; // relies on `adb reverse tcp:3000 tcp:3000` for phone→laptop
 const RAILWAY_URL = 'https://seirs-logistics-mobile-production.up.railway.app';
 
 export const API_BASE = __DEV__ && USE_LOCAL_BACKEND

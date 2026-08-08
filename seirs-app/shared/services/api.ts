@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 // Each app calls configureApi() once in its root _layout.tsx
@@ -29,7 +29,7 @@ export function setSessionExpiredHandler(fn: () => void) {
 /**
  * Canonical vehicle taxonomy (matches backend `VehicleType` enum).
  * UI screens may use Nigerian aliases (okada/keke/danfo) or the older
- * truck_sm/truck_lg shortcuts — those get normalised here before the
+ * truck_sm/truck_lg shortcuts. those get normalised here before the
  * payload is sent. Anything else passes through unchanged.
  */
 export type CanonicalVehicleType =
@@ -110,7 +110,7 @@ async function _uploadCore(uri: string, mimeType = 'image/jpeg'): Promise<{ url:
 
 export const uploadApi = {
   file: _uploadCore,
-  // Backward-compat alias — older driver screens (edit-profile, kyc,
+  // Backward-compat alias. older driver screens (edit-profile, kyc,
   // signature, trunk-check) call `uploadApi.uploadFile(uri, prefix?)`.
   // The `prefix` second arg was for an R2 key-prefix that the backend
   // no longer expects; safely ignored. New code should call `.file()`.
@@ -127,7 +127,7 @@ export const authApi = {
     referralCode?: string;
   }) => request<{ message: string; requiresOtp: boolean }>('POST', '/auth/register', {
     ...body,
-    // Driver registers with okada/keke etc on the UI — normalize before
+    // Driver registers with okada/keke etc on the UI. normalize before
     // hitting the backend's @IsEnum(VehicleType) validation.
     ...(body.vehicleType ? { vehicleType: VEHICLE_ALIASES[body.vehicleType] ?? body.vehicleType } : {}),
   }, false),
@@ -138,7 +138,7 @@ export const authApi = {
   resendOtp: (email: string) =>
     request<{ message: string }>('POST', '/auth/resend-otp', { email }, false),
 
-  // Spec V8 — logged-in password change (requires current password)
+  // Spec V8. logged-in password change (requires current password)
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ message: string }>(
       'POST', '/auth/change-password', { currentPassword, newPassword },
@@ -168,16 +168,52 @@ export const usersApi = {
   me: () => request<any>('GET', '/users/me'),
   updateProfile: (data: { name?: string; phone?: string; profilePhoto?: string }) =>
     request<any>('PATCH', '/users/me', data),
-  // NDPR right to erasure — soft-delete + 30-day grace
+  // NDPR right to erasure. soft-delete + 30-day grace
   deleteAccount: (password: string, reason?: string) =>
     request<{ message: string }>('DELETE', '/users/me', { password, reason }),
-  // NDPR Article 24 — right to data portability. Returns a JSON dump.
+  // NDPR Article 24. right to data portability. Returns a JSON dump.
   exportData: () => request<any>('GET', '/users/me/export'),
   // Notification opt-in toggles. Keys mirror what the apps render.
   getNotificationPrefs: () =>
     request<{ prefs: Record<string, boolean> }>('GET', '/users/me/notification-prefs'),
   updateNotificationPrefs: (prefs: Record<string, boolean>) =>
     request<{ prefs: Record<string, boolean> }>('PATCH', '/users/me/notification-prefs', { prefs }),
+  // Profile edit history. NDPR + user reassurance ("was that name change me?")
+  profileChanges: () => request<any[]>('GET', '/users/me/profile-changes'),
+};
+
+// ─── User identity verification (optional trust-tier upgrade) ──────────────
+// Named userVerificationApi (not identityApi) to avoid the collision with the
+// existing identityApi below (handoff-OTP verification, Spec V8 §1.17).
+//
+// See policy: multi-doc (NIN / driver's licence / passport / PVC), manual
+// admin approval within 24hrs–3 business days, unverified users retain
+// full app access. Verified users unlock higher wallet + reward limits,
+// insured deliveries, interstate delivery, priority support.
+export type IdentityDocType = 'nin' | 'drivers_licence' | 'passport' | 'pvc';
+
+export const userVerificationApi = {
+  status: () => request<{
+    verifiedAt:      string | null;
+    verifiedDocType: string | null;
+    latest: null | {
+      id:              string;
+      documentType:    IdentityDocType;
+      status:          'submitted' | 'approved' | 'rejected' | 'withdrawn';
+      submittedAt:     string;
+      reviewedAt:      string | null;
+      rejectionReason: string | null;
+      submitterNote:   string | null;
+    };
+  }>('GET', '/users/me/identity-verification'),
+  submit: (payload: {
+    documentType:         IdentityDocType;
+    documentPhotoUrl:     string;
+    documentBackPhotoUrl: string;
+    selfiePhotoUrl:       string;
+    submitterNote?:       string;
+  }) => request<any>('POST', '/users/me/identity-verification', payload),
+  withdraw: (id: string) => request<any>('DELETE', `/users/me/identity-verification/${id}`),
 };
 
 export const deliveriesApi = {
@@ -199,7 +235,7 @@ export const deliveriesApi = {
 };
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
-// Flutterwave widget tab hint — when set, the hosted page opens
+// Flutterwave widget tab hint. when set, the hosted page opens
 // straight on that tab. Maps from the customer-facing picker (card /
 // bank transfer / USSD) to Flutterwave's internal option names.
 export type FlutterwavePaymentOption = 'card' | 'banktransfer' | 'ussd' | 'mobilemoney';
@@ -302,7 +338,7 @@ export const driversApi = {
   // multi-stop payload the driver app uses to render the trip.
   getDelivery:    (id: string) =>
     request<any>('GET', `/business/deliveries/${id}`),
-  // Stop-level transitions — driver taps these as they walk the route.
+  // Stop-level transitions. driver taps these as they walk the route.
   markStopArrived:   (deliveryId: string, stopId: string) =>
     request<any>('POST', `/business/deliveries/${deliveryId}/stops/${stopId}/arrived`),
   markStopDelivered: (deliveryId: string, stopId: string, body?: {
@@ -333,7 +369,7 @@ export const driversApi = {
     request<{ zones: Array<{ latitude: number; longitude: number; radiusM: number; intensity: number; orderCount: number }> }>(
       'GET', '/drivers/demand-zones',
     ),
-  // Spec V8 — pre-deletion readiness. Driver app calls this on the
+  // Spec V8. pre-deletion readiness. Driver app calls this on the
   // delete-account screen to surface blockers (active deliveries,
   // wallet balance) before the user can attempt deletion.
   deletionReadiness: () =>
@@ -344,12 +380,12 @@ export const driversApi = {
       driverId?: string;
     }>('GET', '/drivers/me/deletion-readiness'),
 
-  // Spec V8 §2.11 — Last Order (wind-down) toggle. One-way until
+  // Spec V8 §2.11. Last Order (wind-down) toggle. One-way until
   // full sign-off; backend throws LAST_ORDER_LOCKED on disable attempt.
   setLastOrderMode: (enabled: boolean) =>
     request<{ lastOrderMode: boolean }>('PATCH', '/drivers/last-order-mode', { enabled }),
 
-  // Spec V8 §2.18 — Interstate trip declarations.
+  // Spec V8 §2.18. Interstate trip declarations.
   declareInterstateTrip: (body: {
     fromCity: string; toCity: string; departAt: string; spareCapacityKg: number;
   }) => request<any>('POST', '/drivers/interstate-trips', body),
@@ -357,7 +393,7 @@ export const driversApi = {
   cancelInterstateTrip: (id: string) =>
     request<any>('PATCH', `/drivers/interstate-trips/${id}/cancel`),
 
-  // Spec V8 §2.14 — three-tap driver status broadcast.
+  // Spec V8 §2.14. three-tap driver status broadcast.
   sendStatusBroadcast: (body: {
     type: 'network_bad' | 'traffic' | 'need_help';
     deliveryId?: string;
@@ -365,7 +401,7 @@ export const driversApi = {
     lng?: number;
   }) => request<any>('POST', '/drivers/status-broadcasts', body),
 
-  // Spec V8 §2.13 — Driver Premium (D35) subscription.
+  // Spec V8 §2.13. Driver Premium (D35) subscription.
   getSubscription: () =>
     request<{
       subscription: any | null;
@@ -379,7 +415,7 @@ export const driversApi = {
   cancelSubscription: () =>
     request<any>('POST', '/drivers/me/subscription/cancel'),
 
-  // Spec V8 §2.9 — yearly earnings aggregate for FIRS filing.
+  // Spec V8 §2.9. yearly earnings aggregate for FIRS filing.
   taxSummary: (year?: number) =>
     request<{
       driverId: string; generatedAt: string;
@@ -517,11 +553,11 @@ export const chatApi = {
   list: (deliveryId: string, limit = 100) =>
     request<ChatMessageDTO[]>('GET', `/chats/${deliveryId}/messages?limit=${limit}`),
 
-  // Send a new message — backend broadcasts via WS room `chat:<deliveryId>`.
+  // Send a new message. backend broadcasts via WS room `chat:<deliveryId>`.
   send: (deliveryId: string, body: string) =>
     request<ChatMessageDTO>('POST', `/chats/${deliveryId}/messages`, { body }),
 
-  // Total unread across all of the user's chats — drives the Messages tab badge.
+  // Total unread across all of the user's chats. drives the Messages tab badge.
   unreadCount: () => request<{ count: number }>('GET', '/chats/unread-count'),
 
   // List the user's conversations (one per delivery they're part of, with
@@ -530,7 +566,7 @@ export const chatApi = {
   conversations: () => request<ChatConversationDTO[]>('GET', '/chats'),
 };
 
-// ─── Maintenance status (public — apps poll to show banner) ────────────────
+// ─── Maintenance status (public. apps poll to show banner) ────────────────
 export const maintenanceApi = {
   status: () =>
     request<{ maintenanceMode: boolean; message: string | null }>(
@@ -565,7 +601,7 @@ export const businessAuthApi = {
     companyName?:     string;
     rcNumber?:        string;
     businessAddress?: string;
-    // Structured address parts — backend stores both the combined string
+    // Structured address parts. backend stores both the combined string
     // (above) and these so dispatch can index by state without re-parsing.
     state?:           string;
     city?:            string;
@@ -658,11 +694,11 @@ export const businessApi = {
   loyalty:       () => request<any>('GET', '/business/loyalty'),
   specialists:   () => request<any>('GET', '/business/specialists'),
 
-  // Spec V8 — B13 Cancel scheduled/pending delivery
+  // Spec V8. B13 Cancel scheduled/pending delivery
   cancelDelivery: (id: string, reason?: string) =>
     request<{ ok: true; status: string }>('POST', `/business/deliveries/${id}/cancel`, { reason }),
 
-  // Spec V8 — B21 Business profile (companyName, RC, structured address)
+  // Spec V8. B21 Business profile (companyName, RC, structured address)
   account: {
     get:    () => request<{
       id: string; companyName: string; rcNumber: string;
@@ -677,7 +713,7 @@ export const businessApi = {
     }) => request<any>('PATCH', '/business/account', body),
   },
 
-  // Spec V8 §4.2 — recurring delivery templates
+  // Spec V8 §4.2. recurring delivery templates
   recurringTemplates: {
     list:   () => request<any[]>('GET', '/business/recurring-templates'),
     create: (body: {
@@ -714,7 +750,7 @@ export const partnerApi = {
   getSettings:    () => request<any>('GET', '/partner/settings'),
   updateSettings: (data: any) => request<any>('PATCH', '/partner/settings', data),
 
-  // Spec V8 §3 — partner-store async drop-off flow (separate from the
+  // Spec V8 §3. partner-store async drop-off flow (separate from the
   // BusinessPackage inventory above which is for partner-as-pickup-point).
   storeDropoffByCode: (code: string) =>
     request<any>('GET', `/partner-store/dropoff/${encodeURIComponent(code)}`),
@@ -740,7 +776,7 @@ export const partnerApi = {
       'PATCH', `/partner-store/store/${storeId}/status`, { status },
     ),
 
-  // Hybrid-account (Spec V8 2026-05-11) — Business Sender users can apply
+  // Hybrid-account (Spec V8 2026-05-11). Business Sender users can apply
   // to additionally operate as a Partner Store. Admin reviews KYC docs.
   applyForPartnerStore: (body: {
     storeName:          string;
@@ -767,7 +803,7 @@ export const partnerApi = {
       hoursInStore: number; storageFeesAccruedNgn: number;
       tier: 'free' | 'tier_1' | 'tier_2' | 'return_eligible';
     }>>('GET', `/partner-store/store/${storeId}/overstays`),
-  // Spec V8 — partner store closing readiness check
+  // Spec V8. partner store closing readiness check
   storeDeletionReadiness: (storeId: string) =>
     request<{
       ready:    boolean;
@@ -775,7 +811,7 @@ export const partnerApi = {
       partnerStoreId: string;
     }>('GET', `/partner-store/store/${storeId}/deletion-readiness`),
 
-  // Spec V8 §4.11 — sponsored placement subscription
+  // Spec V8 §4.11. sponsored placement subscription
   sponsorship: {
     me:       () => request<{
       store: { id: string; businessName: string };
@@ -809,7 +845,7 @@ export const dropoffApi = {
     }>>('GET', `/partner-store/capacity/nearby?${params.toString()}`);
   },
 
-  // Schedule a drop-off — returns the printed dropCode + 6-char backup
+  // Schedule a drop-off. returns the printed dropCode + 6-char backup
   // the customer brings to the store.
   schedule: (body: {
     pickupStoreId:    string;
@@ -834,7 +870,7 @@ export const dropoffApi = {
     request<any[]>('GET', '/partner-store/my-dropoffs'),
 };
 
-// ─── Fees (Spec V8 §3.9 — public read of Fee Catalogue) ────────────────────
+// ─── Fees (Spec V8 §3.9. public read of Fee Catalogue) ────────────────────
 export const feesApi = {
   list: () => request<Array<{
     key: string; name: string; description: string; category: string;
@@ -844,7 +880,7 @@ export const feesApi = {
     request<{ key: string; value: number }>('GET', `/fees/${encodeURIComponent(key)}`, undefined, false),
 };
 
-// ─── Identity (Spec V8 §1.17 — handoff verification) ────────────────────────
+// ─── Identity (Spec V8 §1.17. handoff verification) ────────────────────────
 export const identityApi = {
   lookupBySeirsId: (code: string) =>
     request<{ seirsId: string; name: string; profilePhoto: string | null; verified: boolean }>(
@@ -1010,6 +1046,6 @@ export interface QuoteInput {
 }
 
 export const pricingApi = {
-  /** Live price quote — call when key inputs change in the booking form. */
+  /** Live price quote. call when key inputs change in the booking form. */
   quote: (body: QuoteInput) => request<PriceBreakdown>('POST', '/pricing/quote', body),
 };

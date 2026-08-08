@@ -1,10 +1,10 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar, Animated, Easing,
+  View, Text, Pressable, StyleSheet, StatusBar, Animated, Easing, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { io, Socket } from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
@@ -12,8 +12,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { MOCK_TRIPS, MOCK_DRIVERS, dwellFee } from '@/constants/mockData';
-import { DEFAULT_RATE_CARD } from '@/constants/rateCard';
+import { MOCK_TRIPS, MOCK_DRIVERS, dwellFee, cancellationFee } from '@/constants/mockData';
+import { getActiveRateCard } from '@/hooks/use-rate-card';
 import { SOCKET_URL } from '@/constants/config';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 
@@ -30,9 +30,31 @@ export default function TripProgressScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
   const { t }   = useTranslation();
-  const params  = useLocalSearchParams<{ id: string; driverId?: string }>();
+  const params  = useLocalSearchParams<{
+    id: string; driverId?: string;
+    pickup?: string; dropoff?: string;
+    pickupLat?: string; pickupLng?: string; dropoffLat?: string; dropoffLng?: string;
+    vehicleId?: string;
+  }>();
 
-  const trip   = MOCK_TRIPS.find(tr => tr.id === params.id) ?? MOCK_TRIPS[2];
+  // Prefer real params from confirm-ride; fall back to MOCK_TRIPS only
+  // when a developer opens this screen with a known mock id (e.g. from
+  // /history). For real bookings, params.id is the backend delivery id
+  // and params carry the actual pickup/dropoff coords + addresses.
+  const mockTrip   = MOCK_TRIPS.find(tr => tr.id === params.id);
+  const hasParams  = !!(params.pickupLat && params.dropoffLat);
+  const trip = hasParams
+    ? {
+        id:             params.id,
+        pickupAddress:  params.pickup  ?? '',
+        dropoffAddress: params.dropoff ?? '',
+        pickupLat:      Number(params.pickupLat),
+        pickupLng:      Number(params.pickupLng),
+        dropoffLat:     Number(params.dropoffLat),
+        dropoffLng:     Number(params.dropoffLng),
+      }
+    : mockTrip ?? MOCK_TRIPS[2];
+
   const driver = MOCK_DRIVERS.find(d => d.id === params.driverId) ?? MOCK_DRIVERS[0];
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -40,19 +62,23 @@ export default function TripProgressScreen() {
   const pulse = useRef(new Animated.Value(1)).current;
   const mapRef = useRef<MapView>(null);
 
-  // Wait-fee tracker — driver arrives at pickup (step 1) and the meter
-  // starts. First `freeMinutes` are free per rate card; after that the
-  // sender pays `perMinuteNgn` per minute up to `capMinutes`.
+  // Wait-fee tracker — driver arrives at pickup (currentStep === 1) and the
+  // meter starts. First `freeMinutes` are free per rate card; after that
+  // the sender pays `perMinuteNgn` per minute up to `capMinutes`. Reads
+  // the LIVE rate card so admin price changes propagate without redeploy.
   const [waitMinutes, setWaitMinutes] = useState(0);
   const waitArrivedAtRef = useRef<number | null>(null);
   const waitTimerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const currentWaitFee   = dwellFee(DEFAULT_RATE_CARD, waitMinutes);
+  const rateCard         = getActiveRateCard();
+  const currentWaitFee   = dwellFee(rateCard, waitMinutes);
 
-  // Live driver position from WS — defaults to a point near the pickup so
-  // the car icon doesn't sit at (0,0) before the first ping arrives.
+  // Live driver position from WS — seeds to the pickup so the car icon
+  // doesn't sit at (0,0) before the first ping arrives. No Lagos
+  // fallback; if pickup is missing the marker simply renders at (0,0)
+  // until the first WS ping (an obvious bug signal in dev).
   const [driverPos, setDriverPos] = useState({
-    latitude:  trip.pickupLat  ?? 6.5244,
-    longitude: trip.pickupLng  ?? 3.3792,
+    latitude:  trip.pickupLat  ?? 0,
+    longitude: trip.pickupLng  ?? 0,
   });
   const socketRef = useRef<Socket | null>(null);
 
@@ -73,14 +99,19 @@ export default function TripProgressScreen() {
         Animated.timing(pulse, { toValue: 1,    duration: 800, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
       ])
     ).start();
-    // simulate progress
+    // Auto-progress timers exist only in dev so the screen demos without a
+    // running driver app. In prod the WS `delivery:status` event below is
+    // the single source of truth — customers should never see a fake
+    // "delivered" badge while the driver hasn't moved.
     const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(setTimeout(() => setCurrentStep(1), 5000));
-    timers.push(setTimeout(() => setCurrentStep(2), 12000));
-    timers.push(setTimeout(() => { setCurrentStep(3); setEta(0); }, 20000));
+    if (__DEV__ && !hasParams) {
+      timers.push(setTimeout(() => setCurrentStep(1), 5000));
+      timers.push(setTimeout(() => setCurrentStep(2), 12000));
+      timers.push(setTimeout(() => { setCurrentStep(3); setEta(0); }, 20000));
+    }
     const etaTimer = setInterval(() => setEta(e => Math.max(0, e - 1)), 60000);
     return () => { timers.forEach(clearTimeout); clearInterval(etaTimer); };
-  }, []);
+  }, [hasParams]);
 
   // Wait-fee timer: starts when driver arrives at pickup (step 1),
   // stops when they leave with the package (step 2+). Cap enforced by
@@ -91,7 +122,7 @@ export default function TripProgressScreen() {
       waitTimerRef.current = setInterval(() => {
         const since = waitArrivedAtRef.current ?? Date.now();
         const mins  = Math.floor((Date.now() - since) / 60_000);
-        setWaitMinutes(Math.min(mins, DEFAULT_RATE_CARD.dwell.capMinutes));
+        setWaitMinutes(Math.min(mins, rateCard.dwell.capMinutes));
       }, 10_000);   // poll every 10 s — minute-accurate without burning battery
     }
     if (currentStep > 1 && waitTimerRef.current) {
@@ -101,7 +132,7 @@ export default function TripProgressScreen() {
     return () => {
       if (waitTimerRef.current) clearInterval(waitTimerRef.current);
     };
-  }, [currentStep]);
+  }, [currentStep, rateCard]);
 
   // Subscribe to delivery room and update driver pin on live GPS pings.
   // Backend emits 'driver:location' (WsEvents.DRIVER_LOCATION) when the
@@ -141,6 +172,31 @@ export default function TripProgressScreen() {
 
   const handleRate = () => {
     router.push({ pathname: '/(customer)/rate/[driverId]', params: { driverId: driver.id } });
+  };
+
+  // Cancellation tier — escalates with trip stage so the customer pays
+  // more the further along the booking is. Values come from the live
+  // rate card so admin can tune without a deploy. currentStep:
+  //   0 = assigned, pre-pickup → postAssign fee
+  //   1 = picked_up, en-route to dropoff → midRoute
+  //   2+= in_transit / delivered → no cancel (handled by hiding the link)
+  const cancelStage: 'postAssign' | 'midRoute' = currentStep <= 0 ? 'postAssign' : 'midRoute';
+  const cancelFee   = cancellationFee(rateCard, cancelStage);
+  const canCancel   = currentStep < 2;
+  const handleCancel = () => {
+    Alert.alert(
+      t('tripProgress2.cancelTitle'),
+      cancelFee > 0
+        ? t('tripProgress2.cancelConfirmWithFee', { fee: cancelFee.toLocaleString() })
+        : t('tripProgress2.cancelConfirmFree'),
+      [
+        { text: t('common.no'), style: 'cancel' },
+        {
+          text: t('common.yes'), style: 'destructive',
+          onPress: () => router.replace('/(customer)/(tabs)' as any),
+        },
+      ],
+    );
   };
 
   return (
@@ -253,7 +309,7 @@ export default function TripProgressScreen() {
 
         {/* ETA — driver ETA from simulator + real route distance from Directions API */}
         <View style={styles.etaRow}>
-          <View style={[styles.etaBadge, { backgroundColor: isDark ? '#1A0C00' : '#EFF6FF' }]}>
+          <View style={[styles.etaBadge, { backgroundColor: isDark ? theme.surfaceSecond : '#EFF6FF' }]}>
             <Ionicons name="time-outline" size={16} color={theme.primary} />
             <Text style={[styles.etaText, { color: theme.primary }]}>
               {eta === 0 ? t('tripProgress2.arrived') : t('tripProgress2.minAway', { n: eta })}
@@ -277,7 +333,7 @@ export default function TripProgressScreen() {
               <Text style={[styles.etaText, { color: currentWaitFee > 0 ? '#DC2626' : theme.text, fontSize: FontSize.sm }]}>
                 {currentWaitFee > 0
                   ? t('tripProgress2.waitFeeAccruing', { fee: currentWaitFee.toLocaleString(), min: waitMinutes })
-                  : t('tripProgress2.waitFreeRemaining', { min: DEFAULT_RATE_CARD.dwell.freeMinutes - waitMinutes })}
+                  : t('tripProgress2.waitFreeRemaining', { min: rateCard.dwell.freeMinutes - waitMinutes })}
               </Text>
             </View>
           </View>
@@ -329,6 +385,17 @@ export default function TripProgressScreen() {
             />
           )}
         </View>
+
+        {/* Cancel link — pre-/mid-route only. Once in_transit (step 2+)
+            the trip is already moving so we don't expose a cancel path. */}
+        {canCancel && (
+          <Pressable onPress={handleCancel} style={styles.cancelLink}>
+            <Text style={[styles.cancelLinkText, { color: theme.error ?? '#DC2626' }]}>
+              {t('tripProgress2.cancelLink')}
+              {cancelFee > 0 ? ` (₦${cancelFee.toLocaleString()})` : ''}
+            </Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -381,6 +448,9 @@ const styles = StyleSheet.create({
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   sosBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.md, height: 52, borderRadius: Radius.lg, borderWidth: 1.5 },
   sosBtnText:{ fontSize: FontSize.base, fontWeight: FontWeight.bold },
+
+  cancelLink:     { alignSelf: 'center', paddingVertical: Spacing.sm, marginTop: Spacing.xs },
+  cancelLinkText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, textDecorationLine: 'underline' },
 });
 
 const DARK_MAP = [

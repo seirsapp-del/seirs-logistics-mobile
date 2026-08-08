@@ -1,12 +1,13 @@
-'use client';
+﻿'use client';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Globe, Plus, Search, Loader2, AlertCircle, RefreshCw, X, Trash2,
   ImageIcon, Eye, Save, Calendar,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { useConfirm } from '@/components/ConfirmDialog';
 
-// Spec V8 §3.13 — admin editor for the public marketing website.
+// Spec V8 §3.13. admin editor for the public marketing website.
 // Manages four content types under tabs: articles (news/blog/press),
 // page blocks (inline-editable homepage chunks), FAQ, changelog.
 
@@ -215,6 +216,7 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   const [saving,    setSaving]    = useState(false);
   const [err,       setErr]       = useState<string | null>(null);
   const [showPrev,  setShowPrev]  = useState(false);
+  const confirm                   = useConfirm();
 
   const autoSlug = () => {
     if (!title) return;
@@ -257,7 +259,14 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   };
 
   const remove = async () => {
-    if (!row || !confirm(`Delete "${row.title}"? This cannot be undone.`)) return;
+    if (!row) return;
+    const ok = await confirm({
+      title:        `Delete "${row.title}"?`,
+      message:      'Permanently removes this content from the public website. If it was published, existing SEO links and social shares will start returning 404. Consider setting status to Draft instead if you might want it back.',
+      confirmLabel: 'Delete',
+      danger:       true,
+    });
+    if (!ok) return;
     setSaving(true);
     try { await adminApi.websiteContent.remove(row.id); onSaved(); }
     catch (e: any) { setErr(e?.message ?? 'Delete failed'); setSaving(false); }

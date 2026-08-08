@@ -10,6 +10,7 @@ export {
   driversApi,
   notificationsApi,
   identityApi,
+  userVerificationApi,
   chatApi,
   sosApi,
   offlineSyncApi,

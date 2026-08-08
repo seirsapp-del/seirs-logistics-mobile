@@ -12,7 +12,20 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { MOCK_VEHICLES, RIDE_VEHICLES, calcRideFare, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
+import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcRideFare, calcPackageFare, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
+
+// UI presentation for the rate-card package vehicles — keyed by the
+// canonical id calcPackageFare looks up. Keeping this here (not on the
+// rate-card) because icons/eta are UX concerns, not pricing concerns.
+const PACKAGE_UI: Record<string, { icon: string; eta: string; descKey: string; features: string[] }> = {
+  bicycle:    { icon: 'bicycle-outline', eta: '6 min',  descKey: 'vehBicycleNote',    features: ['Light', 'Cheap'] },
+  motorcycle: { icon: 'bicycle',         eta: '4 min',  descKey: 'vehMotorcycleNote', features: ['Fast', 'Up to 20kg'] },
+  keke:       { icon: 'car',             eta: '5 min',  descKey: 'vehKekeNote',       features: ['Shaded', 'Up to 100kg'] },
+  car:        { icon: 'car-sport',       eta: '4 min',  descKey: 'vehCarNote',        features: ['AC', 'Up to 200kg'] },
+  van:        { icon: 'bus',             eta: '8 min',  descKey: 'vehVanNote',        features: ['Covered', 'Up to 800kg'] },
+  truck_sm:   { icon: 'bus-outline',     eta: '12 min', descKey: 'vehTruckSmNote',    features: ['Heavy', 'Up to 3 tonnes'] },
+  truck_lg:   { icon: 'bus-outline',     eta: '18 min', descKey: 'vehTruckLgNote',    features: ['Heaviest', 'Bulk loads'] },
+};
 
 export default function VehicleSelectScreen() {
   const router  = useRouter();
@@ -32,6 +45,15 @@ export default function VehicleSelectScreen() {
   const isRide = params.mode === 'ride';
   const distKm = Number(params.distanceKm ?? '0') || 0;
 
+  // Coords drive regional + zone surcharges in the fare calc. Passing them
+  // here keeps the picker price aligned with what fare-breakdown computes
+  // (otherwise the picker undercounts and the user gets sticker-shock on
+  // the next screen).
+  const pickupCoords  = Number(params.pickupLat)  && Number(params.pickupLng)
+    ? { latitude: Number(params.pickupLat),  longitude: Number(params.pickupLng)  } : null;
+  const dropoffCoords = Number(params.dropoffLat) && Number(params.dropoffLng)
+    ? { latitude: Number(params.dropoffLat), longitude: Number(params.dropoffLng) } : null;
+
   // Share-ride lives on this screen now (used to live on /request).
   // Only applies to car / danfo; the toggle row is hidden otherwise.
   const [shared, setShared] = useState(false);
@@ -49,26 +71,53 @@ export default function VehicleSelectScreen() {
         description: v.description,
         eta:         v.eta,
         features:    [...v.features],
-        priceLabel:  `₦${calcRideFare(v.id, distKm, shared).total.toLocaleString()}`,
+        priceLabel:  `₦${calcRideFare(v.id, distKm, shared, { pickupCoords, dropoffCoords }).total.toLocaleString()}`,
         shareable:   v.shareable,
       }))
-    : MOCK_VEHICLES.map(v => ({
-        id:          v.id,
-        label:       v.label,
-        icon:        v.icon,
-        accentColor: theme.primary,
-        photoUrl:    undefined as string | undefined,
-        description: v.description,
-        eta:         v.eta,
-        features:    [...v.features],
-        priceLabel:  v.priceLabel,
-        shareable:   false,
-      }));
+    : PACKAGE_VEHICLES.map(v => {
+        const ui = PACKAGE_UI[v.id] ?? { icon: 'cube-outline', eta: '—', descKey: v.noteKey, features: [] };
+        // Cargo flow doesn't have a weight at this screen — the picker
+        // shows base + km only. Final fare (with weight/category/COD)
+        // resolves on fare-breakdown which reads them from the params
+        // forwarded by /multi-stop or /send.
+        const priced = calcPackageFare(v.id, distKm, 0, { pickupCoords, dropoffCoords });
+        return {
+          id:          v.id,
+          label:       t(`send.${v.labelKey}`, { defaultValue: v.id }),
+          icon:        ui.icon,
+          accentColor: theme.primary,
+          photoUrl:    undefined as string | undefined,
+          description: t(`send.${ui.descKey}`, { defaultValue: '' }),
+          eta:         ui.eta,
+          features:    ui.features,
+          priceLabel:  `₦${priced.total.toLocaleString()}`,
+          shareable:   false,
+        };
+      });
 
   const initial = list.find(v => v.id === params.preselect)?.id ?? list[0].id;
   const [selected, setSelected] = useState(initial);
   const selectedVehicle = list.find(v => v.id === selected) ?? list[0];
   const selectedShareable = selectedVehicle.shareable;
+
+  // Okada at night is a known safety/legality concern in most Nigerian
+  // cities (most major roads restrict it past 7-9pm and security risk
+  // climbs after dark). We warn instead of blocking — riders should be
+  // able to choose, but they should see the risk so they can swap to
+  // Keke / Car for a few hundred naira more.
+  const hr = new Date().getHours();
+  const isNight = hr >= 22 || hr < 5;
+  const showOkadaNightWarning = isRide && selected === 'okada' && isNight;
+
+  // Picking a non-shareable vehicle while share was toggled on would
+  // leave `shared` stuck true (toggle row hides, but state remains) —
+  // confusing if the user later switches back to a shareable one and
+  // sees the discount already applied. Reset on every selection change.
+  const selectVehicle = (id: string) => {
+    setSelected(id);
+    const next = list.find(v => v.id === id);
+    if (next && !next.shareable) setShared(false);
+  };
 
   // ── Map background ──────────────────────────────────────────────────────
   const pickupLat  = Number(params.pickupLat  ?? '0') || null;
@@ -84,7 +133,7 @@ export default function VehicleSelectScreen() {
   // ── Bottom sheet ─────────────────────────────────────────────────────────
   const sheetRef = useRef<BottomSheet>(null);
   const sheetTopInset = insets.top + 88;
-  const snapPoints = useMemo(() => [220, '88%'] as const, []);
+  const snapPoints = useMemo<(string | number)[]>(() => [220, '88%'], []);
 
   return (
     <View style={styles.container}>
@@ -148,7 +197,7 @@ export default function VehicleSelectScreen() {
                   isSelected && { backgroundColor: isDark ? '#0A0A0A' : '#F0F7FF' },
                   Shadows.sm,
                 ]}
-                onPress={() => setSelected(v.id)}
+                onPress={() => selectVehicle(v.id)}
               >
                 {/* Uber-style: vehicle-coloured tinted square, bigger filled
                     icon when selected, slightly subtler when not. Photos
@@ -202,6 +251,14 @@ export default function VehicleSelectScreen() {
               </Pressable>
             );
           })}
+
+          {/* Safety warning when Okada is chosen at night — see comment above. */}
+          {showOkadaNightWarning && (
+            <View style={[styles.warnRow, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+              <Ionicons name="warning-outline" size={18} color="#92400E" />
+              <Text style={[styles.warnText, { color: '#78350F' }]}>{t('vehicleSelect2.okadaNightWarning')}</Text>
+            </View>
+          )}
 
           {/* Share-ride toggle — only shown for shareable vehicles (car/danfo). */}
           {isRide && selectedShareable && (
@@ -284,6 +341,8 @@ const styles = StyleSheet.create({
   eta:         { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
   checkWrap:   { width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
 
+  warnRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, marginTop: Spacing.sm },
+  warnText:    { flex: 1, fontSize: FontSize.sm, lineHeight: 18 },
   shareRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5, marginTop: Spacing.sm },
   shareIcon:   { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   shareTitle:  { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },

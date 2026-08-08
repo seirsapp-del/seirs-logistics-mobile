@@ -1,6 +1,7 @@
 import {
-  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar,
+  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Platform,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,7 +91,10 @@ export default function DriverProfileScreen() {
     }
   };
 
-  const displayName = user?.name ?? driver.name;
+  // Show only the FIRST name for privacy. Customers only need the first
+  // name during a delivery; the full legal name lives on the KYC document.
+  const displayName = (user as any)?.firstName
+    ?? (user?.name ? String(user.name).trim().split(/\s+/)[0] : driver.name);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
@@ -135,6 +139,27 @@ export default function DriverProfileScreen() {
               </View>
             </View>
           </View>
+
+          {/* SEIRS ID row: tap to copy. Support asks drivers for their ID
+              often (dispatch escalations, payout disputes). Faster than
+              spelling out an email over a noisy phone call. */}
+          {(user as any)?.accountId && (
+            <Pressable
+              onPress={async () => {
+                await Clipboard.setStringAsync((user as any).accountId);
+                Alert.alert('Copied', 'Your SEIRS ID has been copied. Paste it to support to identify yourself.');
+              }}
+              style={[styles.seirsIdRow, { borderTopColor: theme.border }]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.seirsIdLabel, { color: theme.textSecond }]}>SEIRS ID · tap to copy</Text>
+                <Text style={[styles.seirsIdValue, { color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }]}>
+                  {(user as any).accountId}
+                </Text>
+              </View>
+              <Ionicons name="copy-outline" size={16} color={theme.textThird} />
+            </Pressable>
+          )}
 
           {/* Stats */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
@@ -236,6 +261,9 @@ const styles = StyleSheet.create({
   approvedBadge:{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full },
   approvedText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: '#22C55E' },
 
+  seirsIdRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md, paddingVertical: 10, borderTopWidth: 1 },
+  seirsIdLabel:  { fontSize: FontSize.xs - 1, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: FontWeight.semibold },
+  seirsIdValue:  { fontSize: FontSize.sm, fontWeight: FontWeight.bold, letterSpacing: 1, marginTop: 2 },
   statsRow:  { flexDirection: 'row', borderTopWidth: 1, paddingVertical: Spacing.md },
   statItem:  { flex: 1, alignItems: 'center', gap: 3 },
   statValue: { fontSize: FontSize.md, fontWeight: FontWeight.bold },

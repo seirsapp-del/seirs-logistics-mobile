@@ -40,12 +40,14 @@ export function getActiveRateCard(): RateCard {
 }
 
 /**
- * Merge backend-fetched fields into the local DEFAULT_RATE_CARD. Only the
- * fields where backend + customer-app schemas already match are taken
- * from backend; the rest fall back to DEFAULT to avoid shape mismatches.
+ * Merge backend-fetched fields into the local DEFAULT_RATE_CARD. Each
+ * sub-object is merged defensively so the customer-app keeps any field
+ * the backend didn't populate (rather than overwriting with undefined).
  *
- * Defensive — backend could return null fields if admin hasn't filled
- * them in for an env, so each pull checks before overwriting.
+ * Vehicle base + perKm + categories stay bundled until the shape
+ * translation layer is in (backend stores them as dict with combined
+ * customer+driver fields). Everything else is admin-editable from the
+ * dashboard and propagates here on the next 5-min refresh.
  */
 function mergeFromBackend(remote: any): RateCard {
   if (!remote) return DEFAULT_RATE_CARD;
@@ -54,24 +56,75 @@ function mergeFromBackend(remote: any): RateCard {
   // flat on the RateCard. Translate so admin edits in the dashboard
   // flow through without restructuring the local schema.
   const backendRegions = remote.regions ?? {};
+  const d = DEFAULT_RATE_CARD;
+
+  // Tiny helper — picks remote value when present and numeric, else falls
+  // back to the default. Keeps mergers readable below.
+  const num = (v: any, fallback: number) =>
+    typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+  const bool = (v: any, fallback: boolean) =>
+    typeof v === 'boolean' ? v : fallback;
 
   return {
-    ...DEFAULT_RATE_CARD,
-    version:       remote.version ? String(remote.version) : DEFAULT_RATE_CARD.version,
-    effectiveFrom: remote.activatedAt ? String(remote.activatedAt) : DEFAULT_RATE_CARD.effectiveFrom,
-    vatPct:        typeof remote.vatRate === 'number' ? Number(remote.vatRate) : DEFAULT_RATE_CARD.vatPct,
+    ...d,
+    version:       remote.version ? String(remote.version) : d.version,
+    effectiveFrom: remote.activatedAt ? String(remote.activatedAt) : d.effectiveFrom,
+    vatPct:        num(remote.vatRate, d.vatPct),
     fuelPrices: remote.fuelPrices
       ? {
-          petrolNgn: Number(remote.fuelPrices.petrolPerLitreNgn ?? DEFAULT_RATE_CARD.fuelPrices.petrolNgn),
-          dieselNgn: Number(remote.fuelPrices.dieselPerLitreNgn ?? DEFAULT_RATE_CARD.fuelPrices.dieselNgn),
+          petrolNgn: num(remote.fuelPrices.petrolPerLitreNgn, d.fuelPrices.petrolNgn),
+          dieselNgn: num(remote.fuelPrices.dieselPerLitreNgn, d.fuelPrices.dieselNgn),
         }
-      : DEFAULT_RATE_CARD.fuelPrices,
+      : d.fuelPrices,
     zone: {
-      ...DEFAULT_RATE_CARD.zone,
+      ...d.zone,
       ...(remote.zoneSurcharges ?? {}),
     },
-    zoneOverrides:  backendRegions.zoneOverrides  ?? DEFAULT_RATE_CARD.zoneOverrides,
-    stateOverrides: backendRegions.stateOverrides ?? DEFAULT_RATE_CARD.stateOverrides,
+    dwell: remote.dwell ? {
+      freeMinutes:        num(remote.dwell.freeMinutes,        d.dwell.freeMinutes),
+      perMinuteNgn:       num(remote.dwell.perMinuteNgn,       d.dwell.perMinuteNgn),
+      capMinutes:         num(remote.dwell.capMinutes,         d.dwell.capMinutes),
+      driverPerMinuteNgn: num(remote.dwell.driverPerMinuteNgn, d.dwell.driverPerMinuteNgn),
+    } : d.dwell,
+    cancellation: remote.cancellation ? {
+      preAssignNgn:    num(remote.cancellation.preAssignNgn,    d.cancellation.preAssignNgn),
+      postAssignNgn:   num(remote.cancellation.postAssignNgn,   d.cancellation.postAssignNgn),
+      midRouteFlatNgn: num(remote.cancellation.midRouteFlatNgn, d.cancellation.midRouteFlatNgn),
+      noShowFlatNgn:   num(remote.cancellation.noShowFlatNgn,   d.cancellation.noShowFlatNgn),
+      noShowWaitMin:   num(remote.cancellation.noShowWaitMin,   d.cancellation.noShowWaitMin),
+    } : d.cancellation,
+    cod: remote.cod ? {
+      enabled:         bool(remote.cod.enabled,         d.cod.enabled),
+      handlingFlatNgn: num(remote.cod.handlingFlatNgn,  d.cod.handlingFlatNgn),
+      handlingPct:     num(remote.cod.handlingPct,      d.cod.handlingPct),
+      handlingCapNgn:  num(remote.cod.handlingCapNgn,   d.cod.handlingCapNgn),
+    } : d.cod,
+    insurance: remote.insurance ? {
+      enabled:                   bool(remote.insurance.enabled,                   d.insurance.enabled),
+      premiumPct:                num(remote.insurance.premiumPct,                 d.insurance.premiumPct),
+      minPremiumNgn:             num(remote.insurance.minPremiumNgn,              d.insurance.minPremiumNgn),
+      declaredValueThresholdNgn: num(remote.insurance.declaredValueThresholdNgn,  d.insurance.declaredValueThresholdNgn),
+      maxCoverageNgn:            num(remote.insurance.maxCoverageNgn,             d.insurance.maxCoverageNgn),
+    } : d.insurance,
+    discounts: remote.discounts ? {
+      bulkUploadOffPct:           num(remote.discounts.bulkUploadOffPct,           d.discounts.bulkUploadOffPct),
+      bulkUploadMinPackages:      num(remote.discounts.bulkUploadMinPackages,      d.discounts.bulkUploadMinPackages),
+      recurringOffPct:            num(remote.discounts.recurringOffPct,            d.discounts.recurringOffPct),
+      welcomeOffPct:              num(remote.discounts.welcomeOffPct,              d.discounts.welcomeOffPct),
+      welcomeMaxNgn:              num(remote.discounts.welcomeMaxNgn,              d.discounts.welcomeMaxNgn),
+      loyaltyPointValueNgn:       num(remote.discounts.loyaltyPointValueNgn,       d.discounts.loyaltyPointValueNgn),
+      loyaltyMaxPointsPerBooking: num(remote.discounts.loyaltyMaxPointsPerBooking, d.discounts.loyaltyMaxPointsPerBooking),
+      maxTotalPct:                num(remote.discounts.maxTotalPct,                d.discounts.maxTotalPct),
+    } : d.discounts,
+    returnTrip: remote.returnTrip ? {
+      callAttempts:    num(remote.returnTrip.callAttempts,    d.returnTrip.callAttempts),
+      callIntervalMin: num(remote.returnTrip.callIntervalMin, d.returnTrip.callIntervalMin),
+      returnFlatNgn:   num(remote.returnTrip.returnFlatNgn,   d.returnTrip.returnFlatNgn),
+      storageFlatNgn:  num(remote.returnTrip.storageFlatNgn,  d.returnTrip.storageFlatNgn),
+    } : d.returnTrip,
+    perStopBonus:    num(remote.perStopBonus, d.perStopBonus),
+    zoneOverrides:   backendRegions.zoneOverrides  ?? d.zoneOverrides,
+    stateOverrides:  backendRegions.stateOverrides ?? d.stateOverrides,
   };
 }
 

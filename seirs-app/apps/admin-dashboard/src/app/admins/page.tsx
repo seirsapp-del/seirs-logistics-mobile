@@ -1,13 +1,11 @@
-'use client';
+﻿'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { adminApi } from '@/lib/api';
 import {
   ROLE_LABELS,
   ROLE_COLORS,
-  NAV_SECTIONS,
   AdminRole,
   type AdminRoleType,
-  type NavItem,
 } from '@/lib/rbac';
 import {
   Plus,
@@ -15,19 +13,17 @@ import {
   Search,
   CheckCircle,
   XCircle,
-  Check,
-  Minus,
   RefreshCw,
   UserX,
   UserCheck,
   ChevronLeft,
   ChevronRight,
   Users,
-  ShieldCheck,
   AlertTriangle,
   Pencil,
   KeyRound,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,7 +42,7 @@ interface AdminMember {
   createdAt: string;
 }
 
-// Spec V8 — dynamic role from /admin/roles
+// Spec V8. dynamic role from /admin/roles
 interface DynamicRole {
   id:           string;
   slug:         string;
@@ -69,39 +65,10 @@ const COLOR_BG: Record<string, string> = {
   orange: 'bg-orange-100 text-orange-700',
 };
 
-// ─── RBAC helpers (permissions defined inline to match backend) ───────────────
-
-// Flatten all nav items that aren't super_admin_only for the permissions grid
-const ALL_NAV_ITEMS: { section: string; item: NavItem }[] = NAV_SECTIONS.flatMap((s) =>
-  s.items
-    .filter((i) => i.permission !== 'super_admin_only')
-    .map((i) => ({ section: s.title, item: i })),
-);
-
-// Mirror PERMISSIONS from rbac.ts (kept in sync manually)
-const ROLE_PERMISSIONS: Record<AdminRoleType, string[]> = {
-  super_admin:       ['*'],
-  ops_manager:       ['overview', 'ops-map', 'deliveries', 'drivers', 'users', 'partners', 'partner-redirects', 'specialists', 'analytics', 'tickets', 'pricing'],
-  support_agent:     ['tickets', 'users', 'suggestions', 'deliveries'],
-  finance_officer:   ['overview', 'wallet', 'pricing', 'referrals', 'insurance', 'analytics', 'reports'],
-  driver_compliance: ['drivers', 'kyc', 'duplicates', 'fraud', 'users', 'audit-log'],
-  media_content:     ['cms', 'promotions'],
-  analyst:           ['overview', 'analytics', 'reports'],
-  partner_manager:   ['partners', 'partner-redirects', 'specialists', 'deliveries', 'overview'],
-};
-
-const ROLE_DESCRIPTIONS: Record<AdminRoleType, string> = {
-  super_admin:       'Full unrestricted platform access',
-  ops_manager:       'Operations, deliveries, drivers, pricing',
-  support_agent:     'Customer tickets, users, delivery queries',
-  finance_officer:   'Revenue analytics & pricing configuration',
-  driver_compliance: 'Driver vetting, audits, and compliance',
-  media_content:     'CMS and content publishing only',
-  analyst:           'Read-only analytics and reporting',
-  partner_manager:   'Delivery overview and partner relations',
-};
-
-const ALL_ROLES = Object.values(AdminRole) as AdminRoleType[];
+// Note: Prior versions of this file mirrored the backend PERMISSIONS array
+// inline. That's now sourced live via `adminApi.roles.list()` (each dynamic
+// role carries its own `permissions: string[]`) and. for the display grid.
+// `adminApi.roles.catalogue()`. See src/lib/api.ts.
 
 // ─── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -157,59 +124,10 @@ const AVATAR_BG: Record<string, string> = {
 
 const PAGE_SIZE = 20;
 
-// ─── Permissions Preview Card ──────────────────────────────────────────────────
-
-function PermissionsPreview({ role }: { role: AdminRoleType | '' }) {
-  if (!role) return null;
-
-  const perms = ROLE_PERMISSIONS[role] ?? [];
-  const isSuperAdmin = role === AdminRole.SUPER_ADMIN;
-
-  // Group nav items by section for display
-  const sections = NAV_SECTIONS
-    .map((s) => ({
-      title: s.title,
-      items: s.items.filter((i) => i.permission !== 'super_admin_only'),
-    }))
-    .filter((s) => s.items.length > 0);
-
-  return (
-    <div className="rounded-xl border border-[#E5E7EB] bg-[#F8F9FB] p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <ShieldCheck size={14} className="text-[#3A7BD5] shrink-0" />
-        <span className="text-xs font-semibold text-[#0F2B4C]">
-          {isSuperAdmin ? 'Full access to all sections' : 'This role can access:'}
-        </span>
-      </div>
-      <div className="space-y-3">
-        {sections.map((sec) => (
-          <div key={sec.title}>
-            <p className="text-[10px] font-bold text-[#0F2B4C]/30 uppercase tracking-widest mb-1.5">
-              {sec.title}
-            </p>
-            <div className="grid grid-cols-2 gap-1">
-              {sec.items.map((navItem) => {
-                const allowed = isSuperAdmin || perms.includes(navItem.permission);
-                return (
-                  <div key={navItem.permission} className="flex items-center gap-1.5">
-                    {allowed ? (
-                      <Check size={11} className="text-emerald-500 shrink-0" />
-                    ) : (
-                      <Minus size={11} className="text-[#0F2B4C]/20 shrink-0" />
-                    )}
-                    <span className={`text-xs leading-tight ${allowed ? 'text-[#0F2B4C]/80' : 'text-[#0F2B4C]/25'}`}>
-                      {navItem.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// PermissionsPreview was removed. it depended on a hardcoded mirror of
+// backend PERMISSIONS that risked silent drift. Live-role permissions come
+// from `roles.list()`; the display catalogue is at `roles.catalogue()`.
+// Re-add here as a live-data component if the invite/edit UI needs it back.
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -242,52 +160,6 @@ function ToastContainer({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: nu
           </button>
         </div>
       ))}
-    </div>
-  );
-}
-
-// ─── Confirm Dialog ────────────────────────────────────────────────────────────
-
-function ConfirmDialog({
-  message,
-  onConfirm,
-  onCancel,
-  confirmLabel = 'Confirm',
-  danger = false,
-}: {
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  confirmLabel?: string;
-  danger?: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] p-6 max-w-sm w-full mx-4">
-        <div className="flex items-start gap-3 mb-5">
-          <AlertTriangle
-            size={20}
-            className={`shrink-0 mt-0.5 ${danger ? 'text-red-500' : 'text-amber-500'}`}
-          />
-          <p className="text-sm text-[#0F2B4C] leading-relaxed">{message}</p>
-        </div>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-[#0F2B4C]/60 hover:bg-[#F5F5F0] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors ${
-              danger ? 'bg-red-600 hover:bg-red-700' : 'bg-[#3A7BD5] hover:bg-[#2a6bc4]'
-            }`}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -343,7 +215,7 @@ function CreateDrawer({ onClose, onCreated, addToast, roles }: CreateDrawerProps
         lastName:  form.lastName.trim(),
         email:     form.email.trim().toLowerCase(),
         // Pass legacy adminRole only for system roles whose slug matches the enum.
-        // Custom roles get roleId only — the user record stores both consistently.
+        // Custom roles get roleId only. the user record stores both consistently.
         ...(role?.isSystemRole ? { adminRole: role.slug } : {}),
         roleId: form.roleId,
       });
@@ -440,7 +312,7 @@ function CreateDrawer({ onClose, onCreated, addToast, roles }: CreateDrawerProps
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
 
-            {/* Role selection — dynamic from /admin/roles */}
+            {/* Role selection. dynamic from /admin/roles */}
             <div>
               <label className="block text-xs font-semibold text-[#0F2B4C]/60 mb-1.5 uppercase tracking-wide">
                 Role
@@ -591,7 +463,7 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
     }
   };
 
-  // Spec V8 — open offboarding wizard. Loads footprint to show what
+  // Spec V8. open offboarding wizard. Loads footprint to show what
   // the admin owns + needs reassigning before deactivation.
   const handleOpenOffboard = async () => {
     setConfirm('offboard');
@@ -623,7 +495,7 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
       setConfirm(null);
       onClose();
     } catch (err: any) {
-      // Backend returns blocker list on 409 — re-render the wizard with it
+      // Backend returns blocker list on 409. re-render the wizard with it
       if (err?.message?.includes?.('reassign')) {
         addToast('error', err.message);
       } else {
@@ -696,7 +568,7 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
               </span>
             </div>
 
-            {/* Role change — dynamic from /admin/roles */}
+            {/* Role change. dynamic from /admin/roles */}
             <div>
               <h3 className="text-xs font-semibold text-[#0F2B4C]/40 uppercase tracking-wide mb-3">
                 Change Role
@@ -816,7 +688,7 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
                 <div>
                   <h3 className="text-base font-bold text-[#0F2B4C]">Offboard {getFullName(member)}</h3>
                   <p className="text-xs text-[#0F2B4C]/50 mt-0.5">
-                    Pre-flight check — what they own that may need handover
+                    Pre-flight check. what they own that may need handover
                   </p>
                 </div>
               </div>
@@ -835,7 +707,7 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
                 <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm text-emerald-800">
                   <CheckCircle size={16} className="shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold">Clean — nothing to reassign</p>
+                    <p className="font-semibold">Clean. nothing to reassign</p>
                     <p className="text-xs mt-1">No open tickets, draft CMS items, active API keys, or pending fraud reviews.</p>
                   </div>
                 </div>
@@ -882,7 +754,7 @@ function EditDrawer({ member, onClose, onUpdated, addToast, roles }: EditDrawerP
                 />
               </div>
 
-              {/* Force toggle — only relevant when blockers exist */}
+              {/* Force toggle. only relevant when blockers exist */}
               {footprint && !footprint.ready && (
                 <label className="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50 cursor-pointer">
                   <input
@@ -992,7 +864,7 @@ export default function StaffManagementPage() {
   const dismissToast = (id: number) =>
     setToasts((prev) => prev.filter((t) => t.id !== id));
 
-  // Fetch — admins + dynamic roles in parallel
+  // Fetch. admins + dynamic roles in parallel
   const load = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
@@ -1145,7 +1017,7 @@ export default function StaffManagementPage() {
               className="px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm bg-white text-[#0F2B4C] focus:outline-none focus:ring-2 focus:ring-[#3A7BD5] min-w-40"
             >
               <option value="">All Roles</option>
-              {/* Spec V8 — dynamic roles from /admin/roles. Filter by role slug
+              {/* Spec V8. dynamic roles from /admin/roles. Filter by role slug
                   (system roles use enum-style slugs; custom roles use derived). */}
               {roles.map((r) => (
                 <option key={r.id} value={r.slug}>{r.name}</option>
@@ -1216,7 +1088,7 @@ export default function StaffManagementPage() {
                   : paginated.map((m) => {
                       const role      = getRole(m);
                       const initials  = getInitials(m);
-                      // Spec V8 — prefer dynamic role lookup by roleId, fall
+                      // Spec V8. prefer dynamic role lookup by roleId, fall
                       // back to legacy hardcoded label/color for older users.
                       const dynamicRole = m.roleId
                         ? roles.find(r => r.id === m.roleId)
@@ -1226,7 +1098,7 @@ export default function StaffManagementPage() {
                         ? (COLOR_BG[dynamicRole.badgeColor] ?? COLOR_BG.gray)
                         : role ? (ROLE_COLORS[role] ?? '') : '';
                       const roleLabel = dynamicRole?.name
-                        ?? (role ? (ROLE_LABELS[role] ?? role) : '—');
+                        ?? (role ? (ROLE_LABELS[role] ?? role) : '-');
 
                       return (
                         <tr key={m.id} className="hover:bg-[#F8F9FB] transition-colors group">

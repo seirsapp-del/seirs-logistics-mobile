@@ -1,5 +1,5 @@
-/**
- * Admin · Pricing — RateCard editor.
+﻿/**
+ * Admin · Pricing. RateCard editor.
  *
  * Loads the currently-active RateCard from /config/rate-card, lets the
  * admin edit every numeric field, then publishes a new version via
@@ -28,6 +28,7 @@ import {
   type GeopoliticalZone,
   type StateCode,
 } from '@/lib/nigerianStates';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 const VEHICLE_ORDER = ['bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'] as const;
 const VEHICLE_LABEL: Record<string, string> = {
@@ -50,6 +51,7 @@ interface SubZone {
 type RateCard = any;
 
 export default function PricingPage() {
+  const confirm               = useConfirm();
   const [card, setCard]       = useState<RateCard | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ export default function PricingPage() {
 
   useEffect(() => { reload(); }, []);
 
-  // Generic patch helper — keeps nested keys editable via dot-path.
+  // Generic patch helper. keeps nested keys editable via dot-path.
   // Auto-creates intermediate objects so new sections (regions, etc.) work
   // even when the loaded RateCard doesn't yet contain them.
   const patchPath = (path: string, value: any) => {
@@ -122,9 +124,15 @@ export default function PricingPage() {
     } finally { setSaving(false); }
   };
 
-  const inflationBump = (pct: number) => {
+  const inflationBump = async (pct: number) => {
     if (!card) return;
-    if (!confirm(`Increase ALL labour rates + base fares by ${pct}%? Fuel pass-through is unaffected.`)) return;
+    const ok = await confirm({
+      title:        `Bump all labour rates + base fares by ${pct}%?`,
+      message:      'Every vehicle labour-per-km and base-fare value gets multiplied by the new factor. Fuel pass-through is untouched. This is a draft. you still need to hit Publish to activate.',
+      confirmLabel: `Bump ${pct}%`,
+      danger:       true,
+    });
+    if (!ok) return;
     const factor = 1 + pct / 100;
     const next = structuredClone(card);
     for (const v of Object.keys(next.vehicleRates)) {
@@ -171,7 +179,7 @@ export default function PricingPage() {
           <h1 className="text-2xl font-bold text-gray-900">Pricing &amp; Rate Card</h1>
           <p className="text-sm text-gray-500 mt-1">
             Active version <b>{card.version}</b> · activated{' '}
-            {card.activatedAt ? new Date(card.activatedAt).toLocaleString() : '—'}.
+            {card.activatedAt ? new Date(card.activatedAt).toLocaleString() : '-'}.
             Apps re-fetch within 5 minutes of publish.
           </p>
         </div>
@@ -217,10 +225,10 @@ export default function PricingPage() {
               {history.slice(0, 10).map((h: any) => (
                 <tr key={h.id} className="border-b border-gray-100">
                   <td className="py-2 font-mono">v{h.version}</td>
-                  <td>{h.isActive ? <span className="text-green-700 font-bold">YES</span> : '—'}</td>
-                  <td>{h.activatedAt ? new Date(h.activatedAt).toLocaleString() : '—'}</td>
-                  <td>{h.activatedBy ?? '—'}</td>
-                  <td className="text-gray-600">{h.changeReason ?? '—'}</td>
+                  <td>{h.isActive ? <span className="text-green-700 font-bold">YES</span> : '-'}</td>
+                  <td>{h.activatedAt ? new Date(h.activatedAt).toLocaleString() : '-'}</td>
+                  <td>{h.activatedBy ?? '-'}</td>
+                  <td className="text-gray-600">{h.changeReason ?? '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -398,7 +406,7 @@ export default function PricingPage() {
         </Row>
       </Card>
 
-      <Card title="Zone surcharges" hint="Tiered by how far the trip goes — stays in one state, crosses to a neighbour, or crosses to a different geopolitical zone.">
+      <Card title="Zone surcharges" hint="Tiered by how far the trip goes. stays in one state, crosses to a neighbour, or crosses to a different geopolitical zone.">
         <Row>
           <FieldNumber label="Intra-state long-haul threshold (km)"
             value={card.zoneSurcharges?.intraStateLongHaulKm ?? 100}
@@ -426,7 +434,7 @@ export default function PricingPage() {
             value={pctVal(card.zoneSurcharges?.crossZonePct, 0.40)}
             step={1}
             onChange={(v) => patchPath('zoneSurcharges.crossZonePct', v / 100)}
-            hint="Trip crosses a geopolitical zone (NW↔SS, etc.) — usually long-distance." />
+            hint="Trip crosses a geopolitical zone (NW↔SS, etc.). usually long-distance." />
           <FieldNumber label="Restricted sub-zone default %"
             value={pctVal(card.zoneSurcharges?.restrictedZoneDefaultPct, 0.50)}
             step={1}
@@ -468,8 +476,8 @@ export default function PricingPage() {
                     <div className="text-xs text-gray-500">{GEOPOLITICAL_ZONES[zoneCode].description}</div>
                   </td>
                   <td className="px-1"><InlineNum value={ov.rateMultiplier ?? 1.0} step={0.01} onChange={(v) => patchPath(`${path}.rateMultiplier`, v)} /></td>
-                  <td className="px-1"><InlineNum value={ov.fuelPrices?.petrolNgn ?? null} placeholder="—" onChange={(v) => patchPath(`${path}.fuelPrices.petrolNgn`, v)} /></td>
-                  <td className="px-1"><InlineNum value={ov.fuelPrices?.dieselNgn ?? null} placeholder="—" onChange={(v) => patchPath(`${path}.fuelPrices.dieselNgn`, v)} /></td>
+                  <td className="px-1"><InlineNum value={ov.fuelPrices?.petrolNgn ?? null} placeholder="-" onChange={(v) => patchPath(`${path}.fuelPrices.petrolNgn`, v)} /></td>
+                  <td className="px-1"><InlineNum value={ov.fuelPrices?.dieselNgn ?? null} placeholder="-" onChange={(v) => patchPath(`${path}.fuelPrices.dieselNgn`, v)} /></td>
                   <td className="px-1"><InlineNum value={ov.dwellBufferMin ?? 0} onChange={(v) => patchPath(`${path}.dwellBufferMin`, v)} /></td>
                   <td className="px-1">
                     <input
@@ -498,10 +506,10 @@ export default function PricingPage() {
         />
       </Card>
 
-      {/* ── Restricted Sub-Zones — admin-addable ─────────────────── */}
+      {/* ── Restricted Sub-Zones. admin-addable ─────────────────── */}
       <Card
         title="Restricted sub-zones"
-        hint="Manually-added zones (curfew areas, flood-affected LGAs, conflict corridors). Each row carries its own surcharge — backend matches by name + state when pricing a booking. Disable with the toggle to pause without deleting."
+        hint="Manually-added zones (curfew areas, flood-affected LGAs, conflict corridors). Each row carries its own surcharge. backend matches by name + state when pricing a booking. Disable with the toggle to pause without deleting."
       >
         <SubZonesEditor card={card} patchPath={patchPath} />
       </Card>
@@ -718,7 +726,7 @@ function pctVal(v: number | undefined, fallback: number): number {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// State overrides — table with collapse + filter
+// State overrides. table with collapse + filter
 
 function StateOverridesTable({
   card, patchPath,
@@ -787,7 +795,7 @@ function StateOverridesTable({
                   <input
                     type="text"
                     value={ov.reason ?? ''}
-                    placeholder={hasOverride ? 'Why this state differs' : '— inherits zone —'}
+                    placeholder={hasOverride ? 'Why this state differs' : 'inherits zone.'}
                     onChange={(e) => patchPath(`${path}.reason`, e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
                   />
@@ -802,7 +810,7 @@ function StateOverridesTable({
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// Restricted sub-zones — admin can add/remove/disable rows manually
+// Restricted sub-zones. admin can add/remove/disable rows manually
 
 function SubZonesEditor({
   card, patchPath,
@@ -832,9 +840,15 @@ function SubZonesEditor({
     setSubZones(next);
   };
 
-  const removeSubZone = (idx: number) => {
+  const removeSubZone = async (idx: number) => {
     const row = subZones[idx];
-    if (!confirm(`Delete restricted sub-zone "${row.name || '(unnamed)'}"? This can't be undone after publishing.`)) return;
+    const ok = await confirm({
+      title:        `Delete restricted sub-zone "${row.name || '(unnamed)'}"?`,
+      message:      "Removed from the draft immediately. If you publish the rate card without this sub-zone, its no-service or surcharge rules stop applying to future orders. historical orders keep their applied pricing.",
+      confirmLabel: 'Delete',
+      danger:       true,
+    });
+    if (!ok) return;
     setSubZones(subZones.filter((_, i) => i !== idx));
   };
 
@@ -878,7 +892,7 @@ function SubZonesEditor({
                   >
                     <option value="">Select…</option>
                     {ZONE_ORDER.map(zone => (
-                      <optgroup key={zone} label={`${zone} — ${GEOPOLITICAL_ZONES[zone].name}`}>
+                      <optgroup key={zone} label={`${zone}. ${GEOPOLITICAL_ZONES[zone].name}`}>
                         {statesInZone(zone).map(s => (
                           <option key={s.code} value={s.code}>{s.name}</option>
                         ))}

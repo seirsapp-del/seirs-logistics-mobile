@@ -4,7 +4,6 @@ import {
   TextInput, Dimensions, Alert, RefreshControl, Animated, Easing,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -15,10 +14,13 @@ import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/Drawer';
-import { deliveriesApi, paymentsApi } from '@/services/api';
+import { Illustration } from '@/components/Illustration';
+import { HeroCarousel } from '@/components/HeroCarousel';
+import { SeirsMarkBold } from '@/components/SeirsLogoV2';
+import { deliveriesApi, loyaltyApi } from '@/services/api';
 import {
-  AlignLeft, MapPin, Package, Car, Clock, Search,
-  Wallet, Bell, TrendingUp, ChevronRight, Plus,
+  AlignLeft, MapPin, Package, Car, Search,
+  Bell, TrendingUp, ChevronRight, Sparkles,
   Newspaper, Truck,
 } from 'lucide-react-native';
 
@@ -50,7 +52,9 @@ export default function CustomerHomeScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab,     setActiveTab]     = useState<TripTab>('in_progress');
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [balance,       setBalance]       = useState(0);
+  // Points (loyalty) replaces NGN balance on the home — customers don't
+  // hold NGN per CBN rules. Rewards/Points are the value-on-account proxy.
+  const [points,        setPoints]        = useState<number | null>(null);
 
   // Floating action buttons (Send + Ride) — auto-hide on scroll-down,
   // show on scroll-up. Each button expands its label briefly on press
@@ -95,11 +99,11 @@ export default function CustomerHomeScreen() {
 
   const reload = useCallback(async () => {
     try {
-      const [wallet, deliveries] = await Promise.all([
-        paymentsApi.wallet().catch(() => null),
+      const [loyalty, deliveries] = await Promise.all([
+        loyaltyApi.balance().catch(() => null),
         deliveriesApi.myDeliveries(1, 20).catch(() => ({ items: [] })),
       ]);
-      if (wallet) setBalance(Number(wallet.balanceNaira ?? 0));
+      if (loyalty) setPoints(Number(loyalty.balance ?? 0));
       const mapped = (deliveries.items ?? []).map((d: any) => ({
         id:             d.id,
         status:         String(d.status ?? 'pending').replace('picked_up', 'in_progress').replace('in_transit', 'in_progress'),
@@ -142,7 +146,11 @@ export default function CustomerHomeScreen() {
         scrollEventThrottle={16}
       >
 
-        {/* ── Top bar ─────────────────────────────────────────────────────── */}
+        {/* ── Top bar — hamburger + SEIRS lockup (no pill bg) + avatar ────
+            Logo replaces the greeting text. Same bold mark + wordmark
+            as the drawer header; theme-coloured so it auto-flips
+            navy/white between light + dark mode. Yellow package stays
+            constant — the brand signal. */}
         <View style={styles.topBar}>
           <Pressable
             style={[styles.menuBtn, { backgroundColor: theme.surface }, Shadows.xs]}
@@ -151,9 +159,10 @@ export default function CustomerHomeScreen() {
             <AlignLeft size={20} color={theme.text} strokeWidth={2} />
           </Pressable>
 
-          <Text style={[styles.greeting, { color: theme.text }]}>
-            {t(getGreetingKey())}, {firstName}
-          </Text>
+          <View style={styles.brandSlot}>
+            <SeirsMarkBold size={38} color={theme.text} hubColor={theme.background} />
+            <Text style={[styles.brandWord, { color: theme.text }]}>SEIRS</Text>
+          </View>
 
           <Pressable onPress={() => router.push('/(customer)/profile' as any)}>
             <Avatar name={user?.name ?? firstName} uri={user?.profilePhoto} size={40} />
@@ -189,90 +198,89 @@ export default function CustomerHomeScreen() {
           </Pressable>
         )}
 
-        {/* ── Widgets row ─────────────────────────────────────────────────── */}
+        {/* ── Hero carousel ─────────────────────────────────────────────────
+            5-card swipeable stack, auto-advance with pause-on-touch.
+            Card 1 = animated SEIRS okada (brand anchor). Cards 2-5
+            cycle through editable content (new outlets, weekly tips,
+            upcoming features, promos) — content lives in
+            constants/heroCards.ts, swap to backend-driven once the
+            admin Hero Cards CMS lands. */}
+        <View style={styles.cardWrap}>
+          <HeroCarousel />
+        </View>
+
+        {/* ── Secondary chips row ───────────────────────────────────────────
+            Sits directly under the hero so the brand banner is followed by
+            lightweight quick-access pills, then by the commitment tiles
+            below. Points chip first — leads with reward value, replaces
+            the old wallet pill. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.widgetsRow}
+          contentContainerStyle={styles.chipsRow}
         >
-          {/* Customer Stories — always visible */}
           <Pressable
-            style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
-            onPress={() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))}
-          >
-            <Newspaper size={20} color={theme.accent} strokeWidth={1.75} />
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{t('home.stories')}</Text>
-          </Pressable>
-
-          {/* Wallet Balance */}
-          <Pressable
-            style={[styles.widget, styles.widgetWide, { backgroundColor: theme.primary }]}
+            style={[styles.chip, { backgroundColor: theme.primary + '15', borderColor: theme.primary }]}
             onPress={() => router.push('/(customer)/wallet' as any)}
           >
-            <View style={styles.widgetRow}>
-              <Wallet size={16} color="rgba(255,255,255,0.8)" strokeWidth={1.75} />
-              <Text style={styles.widgetLabelWhite}>{t('home.wallet')}</Text>
-            </View>
-            <Text style={styles.widgetAmount}>
-              ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 0 })}
+            <Sparkles size={14} color={theme.primary} strokeWidth={2} />
+            <Text style={[styles.chipText, { color: theme.primary }]}>
+              {points != null ? t('home.pointsChip', { n: points.toLocaleString() }) : t('home.pointsChipEmpty')}
             </Text>
           </Pressable>
 
-          {/* Notifications */}
           <Pressable
-            style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
-            onPress={() => router.push('/notifications' as any)}
-          >
-            <Bell size={20} color={theme.accent} strokeWidth={1.75} />
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{t('home.alerts')}</Text>
-          </Pressable>
-
-          {/* Suggestions */}
-          <Pressable
-            style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+            style={[styles.chip, { backgroundColor: theme.surface, borderColor: theme.border }]}
             onPress={() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))}
           >
-            <TrendingUp size={20} color={theme.accent} strokeWidth={1.75} />
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>{t('home.suggestions')}</Text>
+            <Newspaper size={14} color={theme.textSecond} strokeWidth={1.75} />
+            <Text style={[styles.chipText, { color: theme.textSecond }]}>{t('home.stories')}</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.chip, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            onPress={() => router.push('/notifications' as any)}
+          >
+            <Bell size={14} color={theme.textSecond} strokeWidth={1.75} />
+            <Text style={[styles.chipText, { color: theme.textSecond }]}>{t('home.alerts')}</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.chip, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            onPress={() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))}
+          >
+            <TrendingUp size={14} color={theme.textSecond} strokeWidth={1.75} />
+            <Text style={[styles.chipText, { color: theme.textSecond }]}>{t('home.suggestions')}</Text>
           </Pressable>
         </ScrollView>
 
-        {/* ── Wallet card ─────────────────────────────────────────────────── */}
-        <View style={styles.cardWrap}>
-          <LinearGradient
-            colors={isDark ? ['#1C2128', '#0D1117'] : ['#0F2B4C', '#1A3A63']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={[styles.walletCard, Shadows.navy]}
+        {/* ── Primary actions ──────────────────────────────────────────────
+            Two large tiles, side-by-side. These are the only two reasons a
+            customer opens the app: send something, or get a ride. Big tap
+            targets, vehicle icon, price hint anchored to the cheapest
+            option for each mode (admin can tune via rate card). */}
+        <View style={styles.actionRow}>
+          <Pressable
+            style={[styles.actionTile, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
+            onPress={() => router.push('/(customer)/send' as any)}
           >
-            <View style={styles.walletTop}>
-              <Text style={styles.walletLabel}>{t('home.walletBalance')}</Text>
-              <Pressable
-                style={styles.walletTopUpBtn}
-                onPress={() => router.push('/(customer)/wallet' as any)}
-              >
-                <Plus size={16} color="#fff" strokeWidth={2.5} />
-              </Pressable>
+            <View style={[styles.actionIconWrap, { backgroundColor: theme.primary + '15' }]}>
+              <Package size={28} color={theme.primary} strokeWidth={1.75} />
             </View>
-            <Text style={styles.walletAmount}>
-              ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-            </Text>
-            <Text style={styles.walletSub}>{t('home.availableBalance')}</Text>
-            <View style={styles.walletActions}>
-              {([
-                { key: 'topUp',   label: t('home.topUp') },
-                { key: 'send',    label: t('home.send') },
-                { key: 'history', label: t('home.history') },
-              ]).map(({ key, label }) => (
-                <Pressable
-                  key={key}
-                  style={styles.walletActionBtn}
-                  onPress={() => router.push('/(customer)/wallet' as any)}
-                >
-                  <Text style={styles.walletActionText}>{label}</Text>
-                </Pressable>
-              ))}
+            <Text style={[styles.actionTitle, { color: theme.text }]}>{t('home.sendTile')}</Text>
+            <Text style={[styles.actionHint, { color: theme.textSecond }]}>{t('home.sendTileHint')}</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.actionTile, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
+            onPress={() => router.push('/(customer)/request' as any)}
+          >
+            <View style={[styles.actionIconWrap, { backgroundColor: theme.accent + '15' }]}>
+              <Car size={28} color={theme.accent} strokeWidth={1.75} />
             </View>
-          </LinearGradient>
+            <Text style={[styles.actionTitle, { color: theme.text }]}>{t('home.rideTile')}</Text>
+            <Text style={[styles.actionHint, { color: theme.textSecond }]}>{t('home.rideTileHint')}</Text>
+          </Pressable>
         </View>
 
         {/* ── Recent Trips (3 tabs) ────────────────────────────────────────── */}
@@ -313,7 +321,10 @@ export default function CustomerHomeScreen() {
           {/* Trip list */}
           {tabTrips.length === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: theme.surface }, Shadows.sm]}>
-              <Package size={40} color={theme.textThird} strokeWidth={1.5} />
+              <Illustration
+                name={activeTab === 'in_progress' ? 'empty-no-active' : 'empty-no-deliveries'}
+                size={120}
+              />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
                 {activeTab === 'in_progress' ? 'No active deliveries' : 'No deliveries yet'}
               </Text>
@@ -432,6 +443,18 @@ const styles = StyleSheet.create({
   menuBtn:  { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   greeting: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, flex: 1, textAlign: 'center', marginHorizontal: Spacing.sm },
 
+  // Bare brand lockup in the top bar centre — same look as the drawer
+  // header (no pill background). flex:1 so it fills the gap between
+  // hamburger and avatar; flexDirection row so mark + wordmark sit
+  // side-by-side, centred horizontally.
+  brandSlot: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8,
+  },
+  brandWord: {
+    fontSize: 18, fontWeight: '900', letterSpacing: 2.5,
+  },
+
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
     marginHorizontal: Spacing.md, marginBottom: Spacing.md,
@@ -448,27 +471,23 @@ const styles = StyleSheet.create({
   activeBannerTitle:{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   activeBannerSub:  { fontSize: FontSize.xs },
 
-  widgetsRow: { paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingBottom: Spacing.sm, marginBottom: Spacing.md },
-  widget: {
-    width: 72, height: 72, borderRadius: Radius.lg, borderWidth: 1,
-    justifyContent: 'center', alignItems: 'center', gap: 6,
-  },
-  widgetWide: { width: 120, height: 72 },
-  widgetRow:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  widgetLabel:      { fontSize: 10, fontWeight: FontWeight.semibold },
-  widgetLabelWhite: { fontSize: 10, fontWeight: FontWeight.semibold, color: 'rgba(255,255,255,0.8)' },
-  widgetAmount:     { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: '#FFFFFF', marginTop: 2 },
+  // Hero wrapper — full-bleed so the carousel can render each page at
+  // SCREEN_WIDTH (it handles its own internal 16 px gutter so cards
+  // stay flush with the Rewards / chips / tiles below). Don't add
+  // marginHorizontal here — it'd clip the right edge of every card.
+  cardWrap: { marginBottom: Spacing.md },
 
-  cardWrap:       { marginHorizontal: Spacing.md, marginBottom: Spacing.lg },
-  walletCard:     { borderRadius: Radius.xl, padding: Spacing.lg },
-  walletTop:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs },
-  walletLabel:    { color: 'rgba(255,255,255,0.7)', fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  walletTopUpBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  walletAmount:   { color: '#fff', fontSize: FontSize['3xl'], fontWeight: FontWeight.bold, letterSpacing: -0.5, marginBottom: 4 },
-  walletSub:      { color: 'rgba(255,255,255,0.6)', fontSize: FontSize.xs, marginBottom: Spacing.md },
-  walletActions:  { flexDirection: 'row', gap: Spacing.sm },
-  walletActionBtn:{ flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: Radius.md, paddingVertical: 10, alignItems: 'center' },
-  walletActionText:{ color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  // Primary action tiles — Send + Ride.
+  actionRow:        { flexDirection: 'row', gap: Spacing.md, paddingHorizontal: Spacing.md, marginBottom: Spacing.md },
+  actionTile:       { flex: 1, borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: 6, minHeight: 130 },
+  actionIconWrap:   { width: 52, height: 52, borderRadius: Radius.lg, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  actionTitle:      { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  actionHint:       { fontSize: FontSize.xs },
+
+  // Secondary chip row.
+  chipsRow:  { paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingBottom: Spacing.sm, marginBottom: Spacing.md },
+  chip:      { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full, borderWidth: 1 },
+  chipText:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
 
   section:       { paddingHorizontal: Spacing.md, marginBottom: Spacing.lg },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },

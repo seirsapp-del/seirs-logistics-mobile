@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SEIRS favicon — Option F (white rounded square + navy mark, no package).
+  Same paths as seirs-icon-square.svg (kept in sync).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect x="0" y="0" width="48" height="48" rx="8" fill="#FFFFFF"/>
+  <g transform="translate(0, 8)">
+    <path d="M 10 24 L 18 16 L 30 16 L 38 24" stroke="#0E2540" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="10" cy="24" r="7" fill="#0E2540"/>
+    <circle cx="10" cy="24" r="2.5" fill="#FFFFFF"/>
+    <circle cx="38" cy="24" r="7" fill="#0E2540"/>
+    <circle cx="38" cy="24" r="2.5" fill="#FFFFFF"/>
+    <line x1="37" y1="12" x2="42" y2="9"  stroke="#0E2540" stroke-width="5" stroke-linecap="round"/>
+    <line x1="24" y1="16" x2="28" y2="8"  stroke="#0E2540" stroke-width="5.5" stroke-linecap="round"/>
+    <circle cx="28" cy="5" r="4" fill="#0E2540"/>
+    <line x1="27" y1="10" x2="37" y2="12" stroke="#0E2540" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

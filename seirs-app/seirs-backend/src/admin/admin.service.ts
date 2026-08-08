@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+﻿import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -46,15 +46,15 @@ export class AdminService {
     private readonly usersService: UsersService,
   ) {}
 
-  // ── Spec V8 §3.13 — NDPR admin tools (A32 + A33) ──────────────────────────
+  // ── Spec V8 §3.13. NDPR admin tools (A32 + A33) ──────────────────────────
 
-  // A32 — export any user's NDPR bundle. Wraps the self-service export
+  // A32. export any user's NDPR bundle. Wraps the self-service export
   // for legal / subject-access requests where the user can't pull it.
   async adminExportUserData(targetUserId: string) {
     return this.usersService.exportUserData(targetUserId);
   }
 
-  // A33 — admin-triggered immediate hard-delete. Bypasses the 30-day
+  // A33. admin-triggered immediate hard-delete. Bypasses the 30-day
   // grace window for compliance requests the user has formally
   // escalated. Refuses on admins (use offboard) or on accounts with
   // active deliveries (would orphan a customer's package).
@@ -93,7 +93,7 @@ export class AdminService {
     return { ok: true, archivedAt: new Date().toISOString() };
   }
 
-  // ── Spec V8 §3.13 — Duplicate account detection + merge (A21) ─────────────
+  // ── Spec V8 §3.13. Duplicate account detection + merge (A21) ─────────────
 
   // Walk all active non-admin users and flag candidate duplicate pairs.
   // Idempotent: existing (primary, duplicate) rows are preserved with
@@ -227,7 +227,7 @@ export class AdminService {
     return this.duplicatesRepo.save(candidate);
   }
 
-  // ── Spec V8 §3.13 — External partners directory (A40 + A41) ───────────────
+  // ── Spec V8 §3.13. External partners directory (A40 + A41) ───────────────
 
   listExternalPartners(type?: ExternalPartnerType) {
     const where = type ? { type } : {};
@@ -320,8 +320,9 @@ export class AdminService {
         pending: pendingDeliveries,
       },
       revenue: {
-        total:      Number(revenueResult?.total ?? 0),
-        commission: Number(revenueResult?.total ?? 0) * PLATFORM_COMMISSION,
+        total:          Number(revenueResult?.total ?? 0),
+        commission:     Number(revenueResult?.total ?? 0) * PLATFORM_COMMISSION,
+        commissionRate: PLATFORM_COMMISSION,   // exposed so admin UI never hardcodes the "30%" label
       },
     };
   }
@@ -394,7 +395,7 @@ export class AdminService {
       ?? [data.firstName?.trim(), data.lastName?.trim()].filter(Boolean).join(' ');
     if (!fullName) throw new ConflictException('Name (or firstName + lastName) required.');
 
-    // If no password provided, generate a secure random one — they'll
+    // If no password provided, generate a secure random one. they'll
     // reset via the email-link flow on first login.
     const rawPassword = data.password?.trim()
       || crypto.randomBytes(16).toString('base64url');
@@ -622,7 +623,7 @@ export class AdminService {
       .getMany();
   }
 
-  // Spec V8 — deliveries grouped by driver's vehicle type (motorcycle vs van etc.)
+  // Spec V8. deliveries grouped by driver's vehicle type (motorcycle vs van etc.)
   async getDeliveriesByVehicle() {
     const rows = await this.deliveriesRepo
       .createQueryBuilder('d')
@@ -637,7 +638,7 @@ export class AdminService {
       .map(r => ({ vehicleType: r.vehicleType as string, count: Number(r.count) }));
   }
 
-  // Spec V8 — deliveries grouped by package category (using urgency as proxy
+  // Spec V8. deliveries grouped by package category (using urgency as proxy
   // until per-category field ships in the multi-drop e-commerce module)
   async getDeliveriesByCategory() {
     const rows = await this.deliveriesRepo
@@ -649,7 +650,7 @@ export class AdminService {
     return rows.map(r => ({ category: r.category as string, count: Number(r.count) }));
   }
 
-  // Spec V8 §2.4 — total hours each top driver has been on active jobs
+  // Spec V8 §2.4. total hours each top driver has been on active jobs
   // (assignedAt → deliveredAt) over the last 30 days.
   async getDriverHours(days = 30, limit = 10) {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -680,7 +681,7 @@ export class AdminService {
       }));
   }
 
-  // Spec V8 §1.13 — funnel of referred users → completed first delivery
+  // Spec V8 §1.13. funnel of referred users → completed first delivery
   async getReferralFunnel() {
     const referred = await this.usersRepo
       .createQueryBuilder('u')
@@ -739,9 +740,9 @@ export class AdminService {
     return { message: 'User suspended.' };
   }
 
-  // Spec V8 — admin offboarding footprint. Lists what a soon-to-be-
+  // Spec V8. admin offboarding footprint. Lists what a soon-to-be-
   // offboarded admin currently owns so the super-admin can reassign
-  // before deactivating. Counts only — full lists live on their
+  // before deactivating. Counts only. full lists live on their
   // respective pages (tickets, fraud, cms, dev-platform/keys).
   async getAdminFootprint(adminUserId: string) {
     const mgr = this.usersRepo.manager;
@@ -784,7 +785,7 @@ export class AdminService {
     });
     if (apiKeys > 0) blockers.push({
       type: 'api_keys', count: apiKeys,
-      action: `Revoke ${apiKeys} active API key${apiKeys === 1 ? '' : 's'} they own — apps using them will stop working.`,
+      action: `Revoke ${apiKeys} active API key${apiKeys === 1 ? '' : 's'} they own. apps using them will stop working.`,
     });
     if (openFraudFlags > 0) blockers.push({
       type: 'fraud_flags', count: openFraudFlags,
@@ -795,7 +796,7 @@ export class AdminService {
       adminUserId,
       ready: blockers.length === 0,
       blockers,
-      auditEntries, // informational — never blocks; audit trail is retained per legal hold
+      auditEntries, // informational. never blocks; audit trail is retained per legal hold
     };
   }
 
@@ -812,7 +813,7 @@ export class AdminService {
       const footprint = await this.getAdminFootprint(adminUserId);
       if (!footprint.ready) {
         throw new ConflictException({
-          message: 'Cannot offboard — outstanding work to reassign first.',
+          message: 'Cannot offboard. outstanding work to reassign first.',
           blockers: footprint.blockers,
         });
       }
@@ -831,7 +832,7 @@ export class AdminService {
 
   // TOTP setup is handled by the auth module; these are stubs
   async setupTOTP(_id: string) {
-    return { message: 'TOTP setup initiated — handled by auth flow.' };
+    return { message: 'TOTP setup initiated. handled by auth flow.' };
   }
 
   async confirmTOTP(_id: string, _code: string) {
@@ -1033,7 +1034,7 @@ export class AdminService {
     return rows.map(r => ({
       id:             r.id,
       driverId:       r.driverId,
-      driverName:     r.driver?.name ?? '—',
+      driverName:     r.driver?.name ?? '-',
       grossAmount:    Number(r.grossAmount),
       seirsCut:       Number(r.seirsCut),
       driverNet:      Number(r.driverNet),
@@ -1053,7 +1054,7 @@ export class AdminService {
     return rows.map(r => ({
       id:           r.id,
       driverId:     r.driverId,
-      driverName:   r.driver?.name ?? '—',
+      driverName:   r.driver?.name ?? '-',
       driverNet:    Number(r.driverNet),
       holdReason:   r.holdReason,
       updatedAt:    r.updatedAt,
@@ -1082,7 +1083,7 @@ export class AdminService {
     return rows.map(r => ({
       id:                    r.id,
       driverId:              r.driverId,
-      driverName:            r.driver?.name ?? '—',
+      driverName:            r.driver?.name ?? '-',
       driverNet:             Number(r.driverNet),
       paidAt:                r.paidAt,
       flutterwaveTransferId: r.flutterwaveTransferId,

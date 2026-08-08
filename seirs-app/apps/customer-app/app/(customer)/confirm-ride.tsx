@@ -5,7 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -13,8 +13,9 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { MOCK_VEHICLES, RIDE_VEHICLES, MOCK_DRIVERS, FARE_BREAKDOWN, calcRideFare, cancellationFee, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
-import { DEFAULT_RATE_CARD } from '@/constants/rateCard';
+import { PACKAGE_VEHICLES, RIDE_VEHICLES, MOCK_DRIVERS, calcRideFare, cancellationFee, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
+import { getActiveRateCard } from '@/hooks/use-rate-card';
+import { deliveriesApi, paymentsApi, loyaltyApi, type SavedCard } from '@/services/api';
 
 export default function ConfirmRideScreen() {
   const router   = useRouter();
@@ -27,30 +28,65 @@ export default function ConfirmRideScreen() {
     mode?: string; pickup: string; dropoff: string; vehicleId: string;
     pickupLat?: string; pickupLng?: string; dropoffLat?: string; dropoffLng?: string;
     shared?: string; distanceKm?: string; durationText?: string; fareTotal?: string;
+    // Cargo extras
+    weightKg?: string; category?: string; codAmountNgn?: string; extraStops?: string;
   }>();
 
   const isRide = params.mode === 'ride';
   const distKm = Number(params.distanceKm ?? '0') || 0;
   const shared = params.shared === '1';
 
-  const [payment,    setPayment]    = useState<'wallet' | 'card' | 'cash'>('wallet');
+  const [payment,    setPayment]    = useState<'points' | 'card' | 'cash' | 'banktransfer'>('cash');
   const [confirming, setConfirming] = useState(false);
 
+  // Real wallet + saved-cards state — load on mount, fall back to "—"
+  // labels if the backend call fails (offline first run, expired token).
+  const [pointsBalance, setPointsBalance] = useState<number | null>(null);
+  const [defaultCard,   setDefaultCard]   = useState<SavedCard | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [loyalty, cards] = await Promise.all([
+          loyaltyApi.balance().catch(() => null),
+          paymentsApi.listSavedCards().catch(() => [] as SavedCard[]),
+        ]);
+        if (cancelled) return;
+        if (loyalty) setPointsBalance(loyalty.balance);
+        const def = cards.find(c => c.isDefault) ?? cards[0] ?? null;
+        if (def) setDefaultCard(def);
+      } catch { /* keep falsy state — UI shows "—" */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Cargo vehicle lookup uses the rate-card list now (same IDs as
+  // calcPackageFare) so label/icon match what the picker actually showed.
   const vehicle = isRide
     ? RIDE_VEHICLES.find(v => v.id === params.vehicleId) ?? RIDE_VEHICLES[0]
-    : MOCK_VEHICLES.find(v => v.id === params.vehicleId) ?? MOCK_VEHICLES[0];
+    : (() => {
+        const v = PACKAGE_VEHICLES.find(pv => pv.id === params.vehicleId);
+        return v
+          ? { id: v.id, label: t(`send.${v.labelKey}`, { defaultValue: v.id }), icon: 'cube-outline' }
+          : { id: 'cargo', label: t('vehicleSelect2.title'), icon: 'cube-outline' };
+      })();
 
-  // Trust fareTotal if it was computed upstream; otherwise recompute /
-  // fall back to FARE_BREAKDOWN for the legacy cargo flow.
+  // Trust fareTotal from upstream (fare-breakdown's calc against the live
+  // rate card). If it's missing, recompute against the live card so the
+  // total here can never disagree with what we POST to the backend.
   const total = params.fareTotal
     ? Number(params.fareTotal)
     : isRide
-      ? calcRideFare(params.vehicleId, distKm, shared).total
-      : FARE_BREAKDOWN.total;
+      ? calcRideFare(params.vehicleId, distKm, shared, {
+          pickupCoords:  Number(params.pickupLat)  ? { latitude: Number(params.pickupLat),  longitude: Number(params.pickupLng!)  } : null,
+          dropoffCoords: Number(params.dropoffLat) ? { latitude: Number(params.dropoffLat), longitude: Number(params.dropoffLng!) } : null,
+        }).total
+      : 0;
 
-  // Pick a driver deterministically from the route + vehicle so the
-  // same booking always shows the same driver, but different bookings
-  // see different ones. Will be replaced by the real assignment API.
+  // Driver assignment is still a deterministic hash placeholder until the
+  // backend assignment API hands one back. The real assignment will arrive
+  // via the WS `driver:assigned` event on trip-progress.
   const driverIndex = (() => {
     let h = 0;
     const seed = `${params.pickup ?? ''}|${params.dropoff ?? ''}|${params.vehicleId ?? ''}`;
@@ -59,33 +95,104 @@ export default function ConfirmRideScreen() {
   })();
   const driver = MOCK_DRIVERS[driverIndex];
 
+  // Wallet → Rewards: customers don't hold NGN per CBN model. They can
+  // redeem points for fare credit instead — label + balance reflect that.
   const PAYMENT_OPTS = [
-    { id: 'wallet' as const, label: t('confirmRide.payWallet'),               icon: 'wallet-outline', sub: t('confirmRide.payWalletSub', { balance: '47,500' }) },
-    { id: 'card'   as const, label: t('confirmRide.payCard', { last4: '4532' }), icon: 'card-outline',   sub: t('confirmRide.payCardSub') },
-    { id: 'cash'   as const, label: t('confirmRide.payCash'),                 icon: 'cash-outline',   sub: t('confirmRide.payCashSub') },
+    {
+      id:   'points' as const,
+      label: t('confirmRide.payPoints'),
+      icon: 'gift-outline',
+      sub:  pointsBalance != null
+              ? t('confirmRide.payPointsSub',  { balance: pointsBalance.toLocaleString() })
+              : t('confirmRide.payPointsSubNone'),
+      disabled: pointsBalance == null || pointsBalance <= 0,
+    },
+    {
+      id:   'card' as const,
+      label: defaultCard ? t('confirmRide.payCard', { last4: defaultCard.last4 }) : t('confirmRide.payCardAdd'),
+      icon: 'card-outline',
+      sub:  defaultCard ? `${defaultCard.brand} · ${t('confirmRide.payCardDefault')}` : t('confirmRide.payCardAddSub'),
+      disabled: false,
+    },
+    { id: 'banktransfer' as const, label: t('confirmRide.payBank'),     icon: 'business-outline', sub: t('confirmRide.payBankSub'),     disabled: false },
+    { id: 'cash'         as const, label: t('confirmRide.payCash'),     icon: 'cash-outline',     sub: t('confirmRide.payCashSub'),     disabled: false },
   ];
 
+  // Books the delivery + (if not cash) kicks off Flutterwave. Returns the
+  // real deliveryId from the API so trip-progress can subscribe to its WS
+  // room and show the actual route, not the mock fallback trip.
   const handleConfirm = async () => {
     setConfirming(true);
-    setTimeout(() => {
-      setConfirming(false);
+    try {
+      const created = await deliveriesApi.create({
+        mode:            isRide ? 'ride' : 'cargo',
+        pickupAddress:   params.pickup,
+        dropoffAddress:  params.dropoff,
+        pickupLat:       Number(params.pickupLat)  || undefined,
+        pickupLng:       Number(params.pickupLng)  || undefined,
+        dropoffLat:      Number(params.dropoffLat) || undefined,
+        dropoffLng:      Number(params.dropoffLng) || undefined,
+        vehicleType:     params.vehicleId,
+        km:              distKm,
+        sharedRide:      shared || undefined,
+        // Cargo extras — backend ignores when mode='ride'
+        weightKg:        params.weightKg ? Number(params.weightKg) : undefined,
+        packageCategory: params.category || undefined,
+        codAmountNgn:    params.codAmountNgn ? Number(params.codAmountNgn) : undefined,
+        // Payment + total snapshot — backend persists the agreed price so
+        // ledger reconciliation matches what the customer was shown.
+        paymentMethod:   payment,
+        agreedTotalNgn:  total,
+      } as any);
+
+      const deliveryId = created?.id ?? created?.deliveryId;
+      if (!deliveryId) throw new Error(t('confirmRide.errBookingFailed'));
+
+      // For card / bank-transfer, hand off to the hosted Flutterwave flow
+      // which redirects back to /payment/[deliveryId] on success.
+      if (payment === 'card' || payment === 'banktransfer') {
+        try {
+          const res = await paymentsApi.initiate(deliveryId, payment, payment === 'banktransfer' ? 'banktransfer' : 'card');
+          if (res?.authorizationUrl) {
+            router.replace({ pathname: '/(customer)/payment/[deliveryId]', params: { deliveryId, url: res.authorizationUrl } } as any);
+            return;
+          }
+        } catch {
+          // Init failed but delivery exists — let user pay on the
+          // payment screen, which can retry initiate.
+          router.replace({ pathname: '/(customer)/payment/[deliveryId]', params: { deliveryId } } as any);
+          return;
+        }
+      }
+
       router.replace({
         pathname: '/(customer)/trip-progress',
         params: {
-          id:       't3',
-          driverId: driver.id,
-          pickup:   params.pickup,
-          dropoff:  params.dropoff,
+          id:         deliveryId,
+          driverId:   driver.id,
+          pickup:     params.pickup,
+          dropoff:    params.dropoff,
+          pickupLat:  params.pickupLat ?? '',
+          pickupLng:  params.pickupLng ?? '',
+          dropoffLat: params.dropoffLat ?? '',
+          dropoffLng: params.dropoffLng ?? '',
+          vehicleId:  params.vehicleId,
         },
       });
-    }, 1500);
+    } catch (e: any) {
+      Alert.alert(
+        t('confirmRide.errTitle'),
+        e?.message ?? t('confirmRide.errBookingFailed'),
+        [{ text: t('common.ok') }],
+      );
+    } finally {
+      setConfirming(false);
+    }
   };
 
-  // Cancellation fee tier — at /confirm-ride the driver hasn't been
-  // dispatched yet (pre-assign), so the fee is whatever the rate card
-  // says for that stage (defaults to ₦0). Admin can charge here later
-  // for spammy bookings if needed.
-  const cancelFee = cancellationFee(DEFAULT_RATE_CARD, 'preAssign');
+  // Cancellation fee uses the live rate card, not the bundled default,
+  // so admin price changes propagate without a deploy.
+  const cancelFee = cancellationFee(getActiveRateCard(), 'preAssign');
   const handleCancel = () => {
     const msg = cancelFee > 0
       ? t('confirmRide.cancelConfirmWithFee', { fee: cancelFee.toLocaleString() })
@@ -114,7 +221,7 @@ export default function ConfirmRideScreen() {
   // ── Bottom sheet ─────────────────────────────────────────────────────────
   const sheetRef = useRef<BottomSheet>(null);
   const sheetTopInset = insets.top + 88;
-  const snapPoints = useMemo(() => [240, '92%'] as const, []);
+  const snapPoints = useMemo<(string | number)[]>(() => [240, '92%'], []);
 
   return (
     <View style={styles.container}>
@@ -238,10 +345,12 @@ export default function ConfirmRideScreen() {
               {PAYMENT_OPTS.map((opt) => (
                 <Pressable
                   key={opt.id}
+                  disabled={opt.disabled}
                   style={[
                     styles.payOpt,
                     { borderColor: payment === opt.id ? theme.primary : theme.border },
-                    payment === opt.id && { backgroundColor: isDark ? '#0A1A2A' : '#EFF6FF' },
+                    payment === opt.id && { backgroundColor: isDark ? theme.surfaceSecond : '#EFF6FF' },
+                    opt.disabled && { opacity: 0.5 },
                   ]}
                   onPress={() => setPayment(opt.id)}
                 >

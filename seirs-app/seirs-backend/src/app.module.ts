@@ -27,6 +27,7 @@ import { ChatModule }   from './chat/chat.module';
 import { SosModule }    from './sos/sos.module';
 import { HealthModule } from './health/health.module';
 import { IdentityModule } from './identity/identity.module';
+import { UserVerificationModule } from './user-verification/user-verification.module';
 import { PartnerStoreModule } from './partner-store/partner-store.module';
 import { PoolingModule } from './pooling/pooling.module';
 import { MultiDropRoutingModule } from './multi-drop-routing/multi-drop-routing.module';
@@ -105,6 +106,7 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
     SosModule,
     HealthModule,
     IdentityModule,
+    UserVerificationModule,
     PartnerStoreModule,
     PoolingModule,
     MultiDropRoutingModule,

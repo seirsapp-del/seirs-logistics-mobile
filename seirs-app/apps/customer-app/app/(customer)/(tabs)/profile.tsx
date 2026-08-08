@@ -1,6 +1,7 @@
-import {
-  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Linking,
+﻿import {
+  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Linking, Platform,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -33,9 +34,12 @@ export default function ProfileScreen() {
   const [activePromos,    setActivePromos]    = useState<number | null>(null);
   const [referralCode,    setReferralCode]    = useState<string | null>(null);
 
-  // Show the user's actual name when available; empty string otherwise so
-  // <Text> renders nothing (Avatar handles initial without a name).
-  const displayName = user?.name ?? '';
+  // Show only the FIRST name (privacy. never expose full govt name on
+  // read-only screens; drivers and other users don't need the full legal
+  // name). Falls back to the legacy `name` split for accounts that
+  // pre-date the firstName/lastName rollout.
+  const displayName = user?.firstName
+    ?? (user?.name ? String(user.name).trim().split(/\s+/)[0] : '');
 
   useFocusEffect(
     // Re-fetch on every focus so coming back from wallet top-up etc.
@@ -50,7 +54,7 @@ export default function ProfileScreen() {
           promotionsApi.listActive().catch(() => null),
         ]);
         if (cancelled) return;
-        setWalletBalance(w?.balance ?? 0);
+        setWalletBalance(w?.balanceNaira ?? 0);
         setLoyaltyPoints(l?.balance ?? 0);
         setLoyaltyTier(l?.tier ?? null);
         setCompletedTrips((h as any)?.total ?? (h as any)?.items?.filter?.((i: any) => i.status === 'completed').length ?? 0);
@@ -73,7 +77,11 @@ export default function ProfileScreen() {
       title: t('profile.sectionAccount'),
       items: [
         { icon: 'person-outline',    label: t('profile.editProfile'),     sub: t('profile.editProfileSub'),     onPress: () => router.push('/(customer)/edit-profile') },
-        { icon: 'shield-outline',    label: t('profile.verifyIdentity'),  sub: t('profile.verifyIdentitySub'),  onPress: () => Alert.alert(t('common.comingSoon'), t('profile.verifyIdentityComingSoon')) },
+        // Identity verification. see [[project_seirs_identity_policy]]. Optional
+        // trust-tier upgrade; unverified users have full app access. The screen
+        // itself handles status (not-started / pending / rejected / verified)
+        // + benefits copy + doc-type picker + upload + submit.
+        { icon: 'shield-outline',    label: t('profile.verifyIdentity'),  sub: t('profile.verifyIdentitySub'),  onPress: () => router.push('/(customer)/verify-identity') },
         { icon: 'card-outline',      label: t('profile.paymentMethods'),  sub: t('profile.paymentMethodsSub'),  onPress: () => router.push('/(customer)/payment-methods') },
         { icon: 'location-outline',  label: t('profile.savedAddresses'),  sub: t('profile.savedAddressesSub'),  onPress: () => router.push('/(customer)/addresses') },
       ],
@@ -83,7 +91,7 @@ export default function ProfileScreen() {
       items: [
         { icon: 'receipt-outline',   label: t('profile.myTrips'),     sub: t('profile.myTripsSub',  { count: completedTrips ?? 0 }), onPress: () => router.push('/(customer)/history') },
         { icon: 'wallet-outline',    label: t('profile.wallet'),      sub: t('profile.walletSub',   { balance: (walletBalance ?? 0).toLocaleString() }), onPress: () => router.push('/(customer)/wallet') },
-        { icon: 'star-outline',      label: t('profile.rewards'),     sub: t('profile.rewardsSub',  { points: (loyaltyPoints ?? 0).toLocaleString(), tier: loyaltyTier ?? '—' }), onPress: () => router.push('/(customer)/rewards') },
+        { icon: 'star-outline',      label: t('profile.rewards'),     sub: t('profile.rewardsSub',  { points: (loyaltyPoints ?? 0).toLocaleString(), tier: loyaltyTier ?? '-' }), onPress: () => router.push('/(customer)/rewards') },
         { icon: 'gift-outline',      label: t('profile.referEarn'),   sub: t('profile.referEarnSub'),     onPress: () => router.push('/(customer)/referral') },
         { icon: 'ticket-outline',    label: t('profile.promotions'),  sub: t('profile.promotionsSub', { count: activePromos ?? 0 }), onPress: () => router.push('/(customer)/promotions') },
       ],
@@ -100,7 +108,10 @@ export default function ProfileScreen() {
       title: t('profile.sectionSupport'),
       items: [
         { icon: 'help-circle-outline',   label: t('profile.helpCenter'), sub: t('profile.helpCenterSub'), onPress: () => router.push('/(customer)/help') },
-        { icon: 'chatbubble-outline',    label: t('profile.liveChat'),   sub: t('profile.liveChatSub'),   onPress: () => Alert.alert(t('common.comingSoon'), t('profile.liveChatComingSoon')) },
+        // Live chat pending. for launch, route users to the ticket flow
+        // (or WhatsApp support if that's the interim channel). Never
+        // dead-end a support request. Update the target once /support-chat lands.
+        { icon: 'chatbubble-outline',    label: t('profile.liveChat'),   sub: t('profile.liveChatSub'),   onPress: () => router.push('/(customer)/help') },
         { icon: 'document-text-outline', label: t('profile.terms'),      sub: t('profile.termsSub'),      onPress: () => Linking.openURL('https://seirs.co/terms').catch(() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))) },
       ],
     },
@@ -132,11 +143,15 @@ export default function ProfileScreen() {
           <View style={styles.userCardTop}>
             <Avatar name={displayName} uri={user?.profilePhoto} size={68} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.userName, { color: theme.text }]}>{displayName || '—'}</Text>
-              <Text style={[styles.userEmail, { color: theme.textSecond }]}>{user?.email ?? '—'}</Text>
-              <Text style={[styles.userPhone, { color: theme.textSecond }]}>{user?.phone ?? '—'}</Text>
+              <Text style={[styles.userName, { color: theme.text }]}>{displayName || '-'}</Text>
+              <Text style={[styles.userEmail, { color: theme.textSecond }]}>{user?.email ?? '-'}</Text>
+              <Text style={[styles.userPhone, { color: theme.textSecond }]}>{user?.phone ?? '-'}</Text>
             </View>
-            {loyaltyTier && (
+            {/* Show tier pill only once the user has earned above Bronze (the
+                entry tier. every new user is Bronze, so showing it adds
+                visual noise for the ~90% who haven't unlocked anything).
+                Silver / Gold / Platinum are aspirational and worth showing. */}
+            {loyaltyTier && loyaltyTier.toLowerCase() !== 'bronze' && (
               <View style={[styles.tierPill, { backgroundColor: '#FFBE0B20', borderColor: '#FFBE0B40' }]}>
                 <Ionicons name="medal" size={13} color="#FFBE0B" />
                 <Text style={[styles.tierText, { color: '#B45309' }]}>{loyaltyTier}</Text>
@@ -144,14 +159,35 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          {/* Stats row — drivers get rated, customers don't. Wallet balance is
+          {/* SEIRS ID row. tap to copy. Primary identifier for support
+              flows; helps customers give us the right handle without
+              revealing their email or full name over the phone. */}
+          {(user as any)?.accountId && (
+            <Pressable
+              onPress={async () => {
+                await Clipboard.setStringAsync((user as any).accountId);
+                Alert.alert('Copied', 'Your SEIRS ID has been copied. Paste it to support to identify yourself.');
+              }}
+              style={[styles.seirsIdRow, { borderTopColor: theme.border }]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.seirsIdLabel, { color: theme.textSecond }]}>SEIRS ID · tap to copy</Text>
+                <Text style={[styles.seirsIdValue, { color: theme.text, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }]}>
+                  {(user as any).accountId}
+                </Text>
+              </View>
+              <Ionicons name="copy-outline" size={16} color={theme.textThird} />
+            </Pressable>
+          )}
+
+          {/* Stats row. drivers get rated, customers don't. Wallet balance is
               a more relevant stat for the customer to see at a glance.
-              Falls back to 0 / '—' while real data loads — NEVER mock values. */}
+              Falls back to 0 / '-' while real data loads. NEVER mock values. */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
             {[
-              { label: t('profile.statTrips'),  value: completedTrips != null ? `${completedTrips}` : '—' },
-              { label: t('profile.statPoints'), value: loyaltyPoints  != null ? loyaltyPoints.toLocaleString() : '—' },
-              { label: t('profile.statWallet'), value: walletBalance  != null ? `₦${walletBalance.toLocaleString()}` : '—' },
+              { label: t('profile.statTrips'),  value: completedTrips != null ? `${completedTrips}` : '-' },
+              { label: t('profile.statPoints'), value: loyaltyPoints  != null ? loyaltyPoints.toLocaleString() : '-' },
+              { label: t('profile.statWallet'), value: walletBalance  != null ? `₦${walletBalance.toLocaleString()}` : '-' },
             ].map((s, i) => (
               <View key={s.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
                 <Text style={[styles.statValue, { color: theme.text }]}>{s.value}</Text>
@@ -161,7 +197,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Referral code quick access — only show the code if the user
+        {/* Referral code quick access. only show the code if the user
             actually has one; otherwise tap-through to the referral screen
             where they can generate or claim one. */}
         <Pressable
@@ -236,6 +272,10 @@ const styles = StyleSheet.create({
   userPhone:   { fontSize: FontSize.xs, marginTop: 1 },
   tierPill:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full, borderWidth: 1, alignSelf: 'flex-start' },
   tierText:    { fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+
+  seirsIdRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md, paddingVertical: 10, borderTopWidth: 1 },
+  seirsIdLabel:  { fontSize: FontSize.xs - 1, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: FontWeight.semibold },
+  seirsIdValue:  { fontSize: FontSize.sm, fontWeight: FontWeight.bold, letterSpacing: 1, marginTop: 2 },
 
   statsRow:  { flexDirection: 'row', borderTopWidth: 1 },
   statItem:  { flex: 1, alignItems: 'center', paddingVertical: Spacing.sm },

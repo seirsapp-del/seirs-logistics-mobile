@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import {
@@ -14,7 +14,7 @@ interface Stats {
   users:      { total: number };
   drivers:    { total: number; pendingKyc: number };
   deliveries: { total: number; active: number; today: number; pending: number };
-  revenue:    { total: number; commission: number };
+  revenue:    { total: number; commission: number; commissionRate?: number };
 }
 
 const fmt = (n: number) =>
@@ -30,16 +30,23 @@ export default function DashboardPage() {
   const [stats,   setStats]   = useState<Stats | null>(null);
   const [revenue, setRevenue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(null);
     Promise.all([
       adminApi.stats(),
       adminApi.analytics.revenue(30),
     ]).then(([s, r]) => {
       setStats(s);
       setRevenue(Array.isArray(r?.data) ? r.data : []);
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+    }).catch((e: any) => {
+      setError(e?.message ?? 'Could not load dashboard. Backend may be waking up (Railway cold start).');
+    }).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
 
   const cards: { label: string; value: string; sub?: string; Icon: LucideIcon; color: string; bg: string }[] = stats ? [
     {
@@ -75,7 +82,9 @@ export default function DashboardPage() {
     },
     {
       label: 'Platform Commission', value: fmt(stats.revenue.commission),
-      sub: '30% of gross revenue',
+      sub: stats.revenue.commissionRate != null
+        ? `${(stats.revenue.commissionRate * 100).toFixed(stats.revenue.commissionRate % 0.01 === 0 ? 0 : 1)}% of gross revenue`
+        : 'of gross revenue',
       Icon: TrendingUp, color: 'text-[#3A7BD5]', bg: 'bg-[#3A7BD5]/10',
     },
   ] : [];
@@ -97,11 +106,28 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {error && (
+          <div className="mb-6 flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-red-800">Could not load dashboard</p>
+              <p className="text-xs text-red-700/80 mt-0.5 break-words">{error}</p>
+            </div>
+            <button
+              onClick={load}
+              disabled={loading}
+              className="shrink-0 text-xs font-semibold text-red-700 hover:text-red-900 underline disabled:opacity-40"
+            >
+              {loading ? 'Retrying…' : 'Retry'}
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-[#0F2B4C]/30">Loading…</div>
           </div>
-        ) : (
+        ) : error && !stats ? null : (
           <>
             {/* Stats grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -121,7 +147,7 @@ export default function DashboardPage() {
             {revenue.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-semibold text-[#0F2B4C]">Revenue — Last 30 Days</h2>
+                  <h2 className="font-semibold text-[#0F2B4C]">Revenue. Last 30 Days</h2>
                   <span className="text-xs text-[#0F2B4C]/40">Daily gross</span>
                 </div>
                 <ResponsiveContainer width="100%" height={180}>

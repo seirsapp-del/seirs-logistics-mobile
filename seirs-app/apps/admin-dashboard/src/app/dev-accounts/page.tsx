@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { Code2, AlertCircle, Loader2, RefreshCw, Pause, Play, Gauge, ChevronDown, ChevronRight } from 'lucide-react';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 interface ApiKey {
   id:        string;
@@ -23,6 +24,7 @@ export default function DevAccountsPage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [openOwner, setOpenOwner] = useState<string | null>(null);
+  const confirm                   = useConfirm();
 
   const load = () => {
     setLoading(true);
@@ -46,7 +48,12 @@ export default function DevAccountsPage() {
   };
 
   const resume = async (ownerUserId: string) => {
-    if (!confirm('Resume this developer account? All keys will be reactivated.')) return;
+    const ok = await confirm({
+      title:        'Resume this developer account?',
+      message:      'All previously-suspended API keys for this owner will be reactivated immediately. The owner will regain full API access with their existing quota.',
+      confirmLabel: 'Resume',
+    });
+    if (!ok) return;
     try {
       const r = await adminApi.devPlatform.resumeOwner(ownerUserId);
       alert(`Resumed ${r.resumed} key${r.resumed === 1 ? '' : 's'} for this owner.`);

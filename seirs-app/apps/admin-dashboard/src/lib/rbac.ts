@@ -1,4 +1,4 @@
-export const AdminRole = {
+﻿export const AdminRole = {
   SUPER_ADMIN:       'super_admin',
   OPS_MANAGER:       'ops_manager',
   SUPPORT_AGENT:     'support_agent',
@@ -38,7 +38,7 @@ const PERMISSIONS: Record<AdminRoleType, string[]> = {
   ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs'],
   support_agent:     ['tickets','users','suggestions','deliveries','disputes'],
   finance_officer:   ['overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage'],
-  driver_compliance: ['drivers','kyc','duplicates','fraud','users','audit-log','interstate','last-order-compliance'],
+  driver_compliance: ['drivers','kyc','identity','duplicates','fraud','users','audit-log','interstate','last-order-compliance'],
   media_content:     ['cms','promotions','email-templates','dev-docs'],
   analyst:           ['overview','analytics','reports'],
   partner_manager:   ['partners','partner-redirects','specialists','deliveries','overview'],
@@ -58,7 +58,7 @@ export function canAccess(role: AdminRoleType | undefined, page: string): boolea
   return perms.includes('*') || perms.includes(page);
 }
 
-// Spec V8 — server-driven permission check. Call this when the user
+// Spec V8. server-driven permission check. Call this when the user
 // object exposes `permissions` + `roleSlug` from the dynamic role
 // system. Falls back to the hardcoded enum check for legacy sessions.
 export function canAccessFromUser(
@@ -77,7 +77,7 @@ export function isSuperAdmin(role: AdminRoleType | undefined): boolean {
   return role === AdminRole.SUPER_ADMIN || isLegacyAdmin(role);
 }
 
-// Same idea — checks the server-provided role slug first, falls back to enum.
+// Same idea. checks the server-provided role slug first, falls back to enum.
 export function isSuperAdminFromUser(
   user: { adminRole?: AdminRoleType; role?: string; roleSlug?: string | null } | null,
 ): boolean {
@@ -136,6 +136,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: '/fraud',                  label: 'Fraud & Risk',        icon: 'ShieldAlert',    permission: 'fraud',                  badge: 'fraud' },
       { href: '/duplicates',             label: 'Duplicate Accounts',  icon: 'Copy',           permission: 'duplicates'              },
       { href: '/kyc',                    label: 'Driver KYC Queue',    icon: 'ClipboardCheck', permission: 'kyc'                     },
+      { href: '/identity',               label: 'Customer ID Queue',    icon: 'ShieldCheck',    permission: 'identity'                },
       { href: '/disputes',               label: 'Liability Disputes',  icon: 'ShieldCheck',    permission: 'disputes'                },
       { href: '/last-order-compliance',  label: 'Last-Order Compliance',icon: 'MoonStar',      permission: 'last-order-compliance'   },
       { href: '/interstate',             label: 'Interstate Trips',     icon: 'Truck',         permission: 'interstate'              },

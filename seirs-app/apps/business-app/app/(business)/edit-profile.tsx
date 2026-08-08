@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
   KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -10,22 +10,50 @@ import { usersApi, businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 
-// Spec V8 §4 — business / partner profile editor. Edits both the User
+// Spec V8 §4. business / partner profile editor. Edits both the User
 // row (name, phone) AND the BusinessAccount row (companyName, RC,
-// structured address). Business-side fields are owner-only — non-
+// structured address). Business-side fields are owner-only. non-
 // owner team members see them read-only with a hint about who to
 // contact.
+// Validation shared with backend UpdateProfileDto.
+const NAME_CHARS   = /^[\p{L}][\p{L} .'\-]*[\p{L}.]$/u;
+const NAME_NO_SPAM = /^(?!.*\d{3,})(?!.*\s{2,})(?!.*(?:https?:|www\.|\.com|\.ng|\.co|@))/i;
+const NG_PHONE     = /^(\+?234[789]\d{9}|0[789]\d{9}|[789]\d{9})$/;
+
+function validateName(v: string, min = 2, max = 40): string | null {
+  const s = v.trim();
+  if (!s) return null;
+  if (s.length < min || s.length > max) return `Must be ${min} to ${max} characters`;
+  if (!NAME_CHARS.test(s))               return 'Only letters, spaces, hyphens, apostrophes, dots';
+  if (!NAME_NO_SPAM.test(s))             return 'No phone numbers, URLs, or emails';
+  return null;
+}
+function validatePhone(v: string): string | null {
+  if (!v.trim()) return null;
+  if (!NG_PHONE.test(v.trim())) return 'Nigerian mobile only';
+  return null;
+}
+
 export default function BusinessEditProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useColors();
   const { user, refresh } = useAuth() as any;
 
-  const [name,  setName]  = useState('');
+  // Split-name for the account owner (Spec V8 privacy pass 2026-08-08)
+  const [firstName,  setFirstName]  = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName,   setLastName]   = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [phone, setPhone] = useState('');
+  const [emergencyName,  setEmergencyName]  = useState('');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string | null>>({});
 
-  // Spec V8 — business account fields (owner-only edit)
+  const dobLocked = !!user?.dateOfBirth;
+
+  // Spec V8. business account fields (owner-only edit)
   const [biz,           setBiz]           = useState<any>(null);
   const [companyName,   setCompanyName]   = useState('');
   const [rcNumber,      setRcNumber]      = useState('');
@@ -35,8 +63,14 @@ export default function BusinessEditProfileScreen() {
   const [bizLoading,    setBizLoading]    = useState(true);
 
   useEffect(() => {
-    setName(user?.name ?? '');
-    setPhone(user?.phone ?? '');
+    if (!user) return;
+    setFirstName(user.firstName ?? deriveFirst(user.name));
+    setMiddleName(user.middleName ?? '');
+    setLastName(user.lastName ?? deriveLast(user.name));
+    setDateOfBirth(user.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : '');
+    setPhone(user.phone ?? '');
+    setEmergencyName(user.emergencyContactName ?? '');
+    setEmergencyPhone(user.emergencyContactPhone ?? '');
   }, [user]);
 
   useEffect(() => {
@@ -49,7 +83,7 @@ export default function BusinessEditProfileScreen() {
         setStreetAddress(account.streetAddress ?? '');
         setCity(account.city ?? '');
         setState(account.state ?? '');
-      } catch { /* non-fatal — partner-only users with no biz account */ }
+      } catch { /* non-fatal. partner-only users with no biz account */ }
       finally { setBizLoading(false); }
     })();
   }, []);
@@ -57,12 +91,36 @@ export default function BusinessEditProfileScreen() {
   const isOwner = biz?.myTeamRole === 'owner';
   const myRoleLabel = biz?.myTeamRole ? biz.myTeamRole.charAt(0).toUpperCase() + biz.myTeamRole.slice(1) : null;
 
+  const validate = (): boolean => {
+    const e: Record<string, string | null> = {
+      firstName:      validateName(firstName, 2, 40),
+      middleName:     validateName(middleName, 1, 40),
+      lastName:       validateName(lastName, 2, 40),
+      phone:          validatePhone(phone),
+      emergencyName:  validateName(emergencyName, 2, 100),
+      emergencyPhone: validatePhone(emergencyPhone),
+    };
+    if (!firstName.trim()) e.firstName = 'First name required';
+    if (!lastName.trim())  e.lastName  = 'Last name required';
+    setErrors(e);
+    return Object.values(e).every(v => v === null);
+  };
+
   const handleSave = async () => {
-    if (!name.trim()) { Alert.alert('Name required'); return; }
+    if (!validate()) return;
     setSaving(true);
     try {
-      // Always update user row
-      await usersApi.updateProfile({ name: name.trim(), phone: phone.trim() });
+      // Always update user row (split-name + related fields)
+      const userPayload: any = {
+        firstName: firstName.trim(),
+        lastName:  lastName.trim(),
+        phone:     phone.trim(),
+      };
+      if (middleName.trim())     userPayload.middleName            = middleName.trim();
+      if (dateOfBirth.trim() && !dobLocked) userPayload.dateOfBirth = dateOfBirth.trim();
+      if (emergencyName.trim())  userPayload.emergencyContactName  = emergencyName.trim();
+      if (emergencyPhone.trim()) userPayload.emergencyContactPhone = emergencyPhone.trim();
+      await usersApi.updateProfile(userPayload);
       // Owner-only: persist business account changes if any
       if (biz && isOwner) {
         const bizUpdates: any = {};
@@ -99,25 +157,102 @@ export default function BusinessEditProfileScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
+          {/* SEIRS ID: shown for support flows. Copy button optional here
+              (business owners typically use the dashboard, not phone). */}
+          {(user as any)?.accountId && (
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.label, { color: colors.textSecond }]}>SEIRS ID</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: 1, marginTop: 2 }}>
+                {(user as any).accountId}
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.textThird, marginTop: 4 }}>
+                Use this when contacting support. Identifies your account without needing to share your email.
+              </Text>
+            </View>
+          )}
+
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.label, { color: colors.textSecond }]}>EMAIL (READ-ONLY)</Text>
-            <Text style={[styles.email, { color: colors.textSecond }]}>{user?.email ?? '—'}</Text>
+            <Text style={[styles.email, { color: colors.textSecond }]}>{user?.email ?? '-'}</Text>
+          </View>
+
+          {/* Legal name: split for privacy and identity cross-check.
+              Owner's legal name is separate from the company name below. */}
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.label, { color: colors.textSecond }]}>FIRST NAME</Text>
+            <TextInput
+              value={firstName} onChangeText={setFirstName}
+              style={[styles.input, { borderColor: errors.firstName ? '#DC2626' : colors.border, color: colors.text }]}
+              placeholder="Adebayo" placeholderTextColor={colors.textThird} />
+            {errors.firstName && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.firstName}</Text>}
+            <Text style={{ fontSize: 11, color: colors.textThird }}>30-day change limit</Text>
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.label, { color: colors.textSecond }]}>NAME</Text>
+            <Text style={[styles.label, { color: colors.textSecond }]}>MIDDLE NAME (OPTIONAL)</Text>
             <TextInput
-              value={name} onChangeText={setName}
-              style={[styles.input, { borderColor: colors.border, color: colors.text }]}
-              placeholder="Your name" placeholderTextColor={colors.textThird} />
+              value={middleName} onChangeText={setMiddleName}
+              style={[styles.input, { borderColor: errors.middleName ? '#DC2626' : colors.border, color: colors.text }]}
+              placeholder="" placeholderTextColor={colors.textThird} />
+            {errors.middleName && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.middleName}</Text>}
+          </View>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.label, { color: colors.textSecond }]}>LAST NAME</Text>
+            <TextInput
+              value={lastName} onChangeText={setLastName}
+              style={[styles.input, { borderColor: errors.lastName ? '#DC2626' : colors.border, color: colors.text }]}
+              placeholder="Ogunlana" placeholderTextColor={colors.textThird} />
+            {errors.lastName && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.lastName}</Text>}
+            <Text style={{ fontSize: 11, color: colors.textThird }}>30-day change limit</Text>
+          </View>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.label, { color: colors.textSecond }]}>DATE OF BIRTH {dobLocked ? '(LOCKED)' : ''}</Text>
+            <TextInput
+              value={dateOfBirth} onChangeText={setDateOfBirth} editable={!dobLocked}
+              keyboardType="numbers-and-punctuation"
+              style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: dobLocked ? 0.6 : 1 }]}
+              placeholder="1985-04-22" placeholderTextColor={colors.textThird} />
+            <Text style={{ fontSize: 11, color: colors.textThird }}>
+              {dobLocked ? 'Contact support to correct a typo.' : 'Locked once you save. Format: YYYY-MM-DD'}
+            </Text>
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.label, { color: colors.textSecond }]}>PHONE</Text>
             <TextInput
               value={phone} onChangeText={setPhone} keyboardType="phone-pad"
-              style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+              style={[styles.input, { borderColor: errors.phone ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="08012345678" placeholderTextColor={colors.textThird} />
+            {errors.phone && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.phone}</Text>}
+            <Text style={{ fontSize: 11, color: colors.textThird }}>90-day change limit</Text>
+          </View>
+
+          {/* Emergency contact: escalation contact for the account. */}
+          <View style={[styles.sectionHeader]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Emergency contact</Text>
+          </View>
+          <Text style={{ fontSize: 11, color: colors.textThird, marginTop: -4 }}>
+            Who should we call if there is a critical issue with your account (unauthorised access, urgent dispute)? Update any time.
+          </Text>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.label, { color: colors.textSecond }]}>CONTACT NAME</Text>
+            <TextInput
+              value={emergencyName} onChangeText={setEmergencyName}
+              style={[styles.input, { borderColor: errors.emergencyName ? '#DC2626' : colors.border, color: colors.text }]}
+              placeholder="e.g. Chinyere Okafor" placeholderTextColor={colors.textThird} />
+            {errors.emergencyName && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.emergencyName}</Text>}
+          </View>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.label, { color: colors.textSecond }]}>CONTACT PHONE</Text>
+            <TextInput
+              value={emergencyPhone} onChangeText={setEmergencyPhone} keyboardType="phone-pad"
+              style={[styles.input, { borderColor: errors.emergencyPhone ? '#DC2626' : colors.border, color: colors.text }]}
+              placeholder="08012345678" placeholderTextColor={colors.textThird} />
+            {errors.emergencyPhone && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.emergencyPhone}</Text>}
           </View>
 
           {bizLoading ? (
@@ -198,6 +333,17 @@ export default function BusinessEditProfileScreen() {
       </KeyboardAvoidingView>
     </View>
   );
+}
+
+function deriveFirst(name?: string): string {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  return parts[0] ?? '';
+}
+function deriveLast(name?: string): string {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  return parts.length > 1 ? parts[parts.length - 1] : '';
 }
 
 const styles = StyleSheet.create({

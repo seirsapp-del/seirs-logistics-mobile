@@ -4,6 +4,7 @@ import {
   ScrollView, Switch, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(300, SCREEN_WIDTH * 0.82);
@@ -117,6 +118,13 @@ export function Drawer({
           },
         ]}
       >
+        {/* Brand row — SEIRS v2 logo lockup. Mark colour follows theme so
+            the okada is navy in light mode, white in dark mode. Yellow
+            package stays constant — it's the brand signal. */}
+        <View style={[styles.brand, { borderBottomColor: theme.border }]}>
+          <SeirsBrandLockup color={theme.text} bgColor={theme.surface} />
+        </View>
+
         {/* Profile header */}
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           {user.avatar}
@@ -211,6 +219,13 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 12,
   },
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -246,3 +261,35 @@ const styles = StyleSheet.create({
   },
   signOutText: { fontSize: 13, fontWeight: '600' },
 });
+
+// ── SEIRS brand lockup — mark + wordmark, shared across all 3 apps ────
+// Okada: monoline strokes, matches SeirsMarkBold in the customer-app.
+// Wordmark: "SEIRS" rendered in the device system font (One UI Sans on
+// Samsung, Roboto on Pixel, SF Pro on iOS) — matches the splash #58
+// look the user chose. NOT a traced/bundled font.
+
+function SeirsBrandLockup({ color, bgColor }: { color: string; bgColor: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <Svg width={48} height={32} viewBox="0 0 48 32" fill="none">
+        <Path d="M 10 24 L 18 16 L 30 16 L 38 24"
+              stroke={color} strokeWidth={3.5} fill="none"
+              strokeLinecap="round" strokeLinejoin="round"/>
+        <Circle cx={10} cy={24} r={6} fill={color}/>
+        <Circle cx={10} cy={24} r={2} fill={bgColor}/>
+        <Circle cx={38} cy={24} r={6} fill={color}/>
+        <Circle cx={38} cy={24} r={2} fill={bgColor}/>
+        <Line x1={37} y1={12} x2={42} y2={9} stroke={color} strokeWidth={3.5} strokeLinecap="round"/>
+        <Line x1={24} y1={16} x2={28} y2={8}  stroke={color} strokeWidth={4} strokeLinecap="round"/>
+        <Circle cx={28} cy={5} r={3.5} fill={color}/>
+        <Line x1={27} y1={10} x2={37} y2={12} stroke={color} strokeWidth={3.5} strokeLinecap="round"/>
+      </Svg>
+      {/* Plain Text with natural letter-spacing — matches the home
+          top-bar wordmark (which the user preferred over the old
+          forced equal-cell SVG spacing). */}
+      <Text style={{ fontSize: 22, fontWeight: '900', letterSpacing: 2.5, color }}>
+        SEIRS
+      </Text>
+    </View>
+  );
+}

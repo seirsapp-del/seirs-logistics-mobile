@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { getAdminRole } from '@/lib/auth';
 import { isSuperAdmin } from '@/lib/rbac';
+import { useConfirm } from '@/components/ConfirmDialog';
 import {
   Plus, Eye, CheckCircle, Send, Trash2, ImageIcon, Megaphone, Star, Filter,
 } from 'lucide-react';
@@ -52,6 +53,7 @@ export default function CmsPage() {
   const [newItem,      setNewItem]      = useState({ type: 'banner' as ContentType, title: '', body: '' });
   const [submitting,   setSubmitting]   = useState(false);
   const [actionId,     setActionId]     = useState<string | null>(null);
+  const confirm                         = useConfirm();
 
   const role = getAdminRole();
   const isSuper = isSuperAdmin(role);
@@ -92,7 +94,13 @@ export default function CmsPage() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this content item?')) return;
+    const ok = await confirm({
+      title:        'Delete this content item?',
+      message:      'Removes the item from the app immediately. If it was published, any user currently viewing it may see a gap until they refresh. Consider unpublishing first if you might want it back.',
+      confirmLabel: 'Delete',
+      danger:       true,
+    });
+    if (!ok) return;
     setActionId(id);
     try { await adminApi.cms.delete(id); load(); } finally { setActionId(null); }
   };

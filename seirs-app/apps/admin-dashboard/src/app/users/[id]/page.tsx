@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { adminApi } from '@/lib/api';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-yellow-100 text-yellow-800',
@@ -21,6 +22,7 @@ export default function UserDetailPage() {
   const [data,    setData]    = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
+  const confirm               = useConfirm();
 
   useEffect(() => {
     adminApi.user(id).then(setData).catch(() => {}).finally(() => setLoading(false));
@@ -28,7 +30,19 @@ export default function UserDetailPage() {
 
   const toggleBan = async () => {
     if (!data) return;
-    if (!confirm(data.user.isActive ? 'Ban this user?' : 'Unban this user?')) return;
+    const ok = await confirm(data.user.isActive
+      ? {
+          title:        `Ban ${data.user.name}?`,
+          message:      'They will be signed out on their next request and cannot use the app until unbanned. Their historical data, deliveries, and wallet balance are preserved.',
+          confirmLabel: 'Ban',
+          danger:       true,
+        }
+      : {
+          title:        `Unban ${data.user.name}?`,
+          message:      'They will regain full access on next sign-in.',
+          confirmLabel: 'Unban',
+        });
+    if (!ok) return;
     setSaving(true);
     await adminApi.updateUser(id, { isActive: !data.user.isActive });
     setData(await adminApi.user(id));
@@ -36,7 +50,13 @@ export default function UserDetailPage() {
   };
 
   const promoteToAdmin = async () => {
-    if (!confirm(`Promote ${data.user.name} to admin? They will gain full platform access.`)) return;
+    const ok = await confirm({
+      title:        `Promote ${data.user.name} to admin?`,
+      message:      'They will gain full platform access — including the ability to ban users, change pricing, and access financial reports. This action is irreversible without another admin demoting them.',
+      confirmLabel: 'Promote to Admin',
+      danger:       true,
+    });
+    if (!ok) return;
     setSaving(true);
     await adminApi.changeRole(id, 'admin');
     setData(await adminApi.user(id));

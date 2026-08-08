@@ -1,8 +1,10 @@
-import { Body, Controller, Delete, Get, Patch, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Delete, Get, Headers, Ip, Patch, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from './user.entity';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -16,16 +18,35 @@ export class UsersController {
   }
 
   // PATCH /api/v1/users/me
+  // Rate-limited to 3 changes per minute. legitimate users edit profile
+  // rarely; higher rates are almost always abuse (bulk-rename bots or
+  // impersonation attempts). Cool-down + name-content rules enforced in
+  // service layer via UpdateProfileDto.
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
   @Patch('me')
   updateProfile(
     @CurrentUser() user: User,
-    @Body() body: { name?: string; phone?: string; profilePhoto?: string },
+    @Body() body: UpdateProfileDto,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent?: string,
   ) {
-    return this.usersService.updateProfile(user.id, body);
+    return this.usersService.updateProfile(user.id, body, {
+      actorRole: 'self',
+      ipAddress: ip,
+      userAgent: userAgent ?? null,
+    });
+  }
+
+  // GET /api/v1/users/me/profile-changes
+  // NDPR + user self-service: see your own history of profile edits.
+  // Reassuring: users can see exactly what/when they (or admin) changed.
+  @Get('me/profile-changes')
+  getProfileAudit(@CurrentUser() user: User) {
+    return this.usersService.getProfileAudit(user.id);
   }
 
   // DELETE /api/v1/users/me  { password, reason? }
-  // NDPR right to erasure — soft-delete with 30-day grace; reactivated
+  // NDPR right to erasure. soft-delete with 30-day grace; reactivated
   // automatically if user logs in within window. Daily archive cron
   // hard-deletes after the grace expires.
   @Delete('me')
@@ -37,7 +58,7 @@ export class UsersController {
   }
 
   // GET /api/v1/users/me/export
-  // NDPR Article 24 — right to data portability. Returns a JSON
+  // NDPR Article 24. right to data portability. Returns a JSON
   // bundle of profile + deliveries + payments + handoff records etc.
   @Get('me/export')
   exportData(@CurrentUser() user: User) {

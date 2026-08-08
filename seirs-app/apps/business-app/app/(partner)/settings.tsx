@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, Pressable, Switch,
   ActivityIndicator, Alert,
@@ -214,8 +214,17 @@ export default function PartnerSettingsScreen() {
           <View style={styles.accountRow}>
             <Icon name="User" size={16} color={colors.textSecond} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.accountLabel, { color: colors.text }]}>{user?.name}</Text>
+              {/* First name only for privacy. Full legal name lives in Edit Profile. */}
+              <Text style={[styles.accountLabel, { color: colors.text }]}>
+                {(user as any)?.firstName
+                  ?? (user?.name ? String(user.name).trim().split(/\s+/)[0] : '')}
+              </Text>
               <Text style={[styles.accountEmail, { color: colors.textSecond }]}>{user?.email}</Text>
+              {(user as any)?.accountId && (
+                <Text style={{ fontSize: 11, color: colors.textThird, marginTop: 2, letterSpacing: 0.5 }}>
+                  SEIRS ID: {(user as any).accountId}
+                </Text>
+              )}
             </View>
           </View>
           <Pressable style={[styles.logoutBtn, { borderTopColor: colors.border }]} onPress={logout}>
@@ -276,7 +285,7 @@ const styles = StyleSheet.create({
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText:   { color: '#fff', fontWeight: '700', fontSize: 16 },
 
-  // Closing section — red semantic colors retained for destructive action
+  // Closing section. red semantic colors retained for destructive action
   closingSection: { backgroundColor: '#FFFBFB', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#FCA5A5', marginTop: 24 },
   closingTitle:   { fontSize: 14, fontWeight: '800', color: '#991B1B', marginBottom: 4 },
   closingSub:     { fontSize: 12, color: '#7F1D1D', lineHeight: 17, marginBottom: 12 },
@@ -342,7 +351,7 @@ function ClosingSection({ storeId }: { storeId: string }) {
       {loading && <ActivityIndicator color="#DC2626" />}
 
       {readiness && readiness.ready && (
-        <Text style={styles.readyTip}>✓ Store is empty — safe to close</Text>
+        <Text style={styles.readyTip}>✓ Store is empty. safe to close</Text>
       )}
 
       {readiness && !readiness.ready && readiness.blockers.length > 0 && (

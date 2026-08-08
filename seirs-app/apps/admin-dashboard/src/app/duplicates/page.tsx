@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { Copy, AlertTriangle, RefreshCw, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 interface Candidate {
   id:              string;
@@ -40,6 +41,7 @@ export default function DuplicatesPage() {
   const [scanning, setScanning] = useState(false);
   const [error,    setError]    = useState<string | null>(null);
   const [toast,    setToast]    = useState<string | null>(null);
+  const confirm                 = useConfirm();
 
   const load = () => {
     setLoading(true);
@@ -55,7 +57,7 @@ export default function DuplicatesPage() {
     setError(null); setToast(null);
     try {
       const r = await adminApi.duplicates.scan();
-      setToast(`Scan complete — ${r.newCandidates} new candidate${r.newCandidates === 1 ? '' : 's'} across ${r.scanned} users.`);
+      setToast(`Scan complete. ${r.newCandidates} new candidate${r.newCandidates === 1 ? '' : 's'} across ${r.scanned} users.`);
       setTimeout(() => setToast(null), 3500);
       load();
     } catch (e: any) { setError(e?.message ?? 'Scan failed'); }
@@ -63,7 +65,13 @@ export default function DuplicatesPage() {
   };
 
   const merge = async (c: Candidate) => {
-    if (!confirm(`Merge "${c.duplicateName}" into "${c.primaryName}"?\n\nThe duplicate is deactivated and a merge pointer is set. This cannot be undone.`)) return;
+    const ok = await confirm({
+      title:        `Merge "${c.duplicateName}" into "${c.primaryName}"?`,
+      message:      `The duplicate account is deactivated and a merge pointer is set so future queries redirect to the primary. Historical deliveries, wallet balance, and audit trails on the duplicate stay attached under the primary. This cannot be undone. if in doubt, dismiss the candidate instead.`,
+      confirmLabel: 'Merge',
+      danger:       true,
+    });
+    if (!ok) return;
     try { await adminApi.duplicates.merge(c.id); load(); }
     catch (e: any) { alert(e?.message ?? 'Merge failed'); }
   };
@@ -90,7 +98,7 @@ export default function DuplicatesPage() {
         </div>
         <div className="flex-1">
           <h1 className="text-lg font-bold text-[#0F2B4C]">Duplicate Accounts</h1>
-          <p className="text-sm text-gray-500">Detected accounts with overlapping identity signals — review and merge or dismiss.</p>
+          <p className="text-sm text-gray-500">Detected accounts with overlapping identity signals. review and merge or dismiss.</p>
         </div>
         <button onClick={load} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-white border border-[#E5E7EB] rounded-lg hover:bg-gray-50">
           <RefreshCw size={14} /> Refresh
@@ -182,7 +190,7 @@ export default function DuplicatesPage() {
                           <button onClick={() => merge(c)}   className="text-xs text-red-600 hover:underline font-medium">Merge</button>
                           <button onClick={() => dismiss(c)} className="text-xs text-gray-500 hover:underline font-medium">Dismiss</button>
                         </>
-                      ) : <span className="text-xs text-gray-400">—</span>}
+                      ) : <span className="text-xs text-gray-400">-</span>}
                     </td>
                   </tr>
                 ))}

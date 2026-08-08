@@ -3,9 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoyaltyPoint } from './loyalty-point.entity';
 import { LoyaltyService } from './loyalty.service';
 import { LoyaltyController } from './loyalty.controller';
+import { User } from '../users/user.entity';
+import { Delivery } from '../deliveries/delivery.entity';
 
 @Module({
-  imports:     [TypeOrmModule.forFeature([LoyaltyPoint])],
+  imports:     [TypeOrmModule.forFeature([LoyaltyPoint, User, Delivery])],
   providers:   [LoyaltyService],
   controllers: [LoyaltyController],
   exports:     [LoyaltyService],

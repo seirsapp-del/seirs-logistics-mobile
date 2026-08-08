@@ -1,8 +1,9 @@
-'use client';
+﻿'use client';
 import { useEffect, useState, Suspense } from 'react';
 import { adminApi } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
 import { MapPin, Navigation } from 'lucide-react';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-amber-100 text-amber-700',
@@ -21,6 +22,7 @@ function DeliveriesContent() {
   const [data, setData]       = useState<any>(null);
   const [page, setPage]       = useState(1);
   const [loading, setLoading] = useState(true);
+  const confirm               = useConfirm();
 
   const load = (p = 1) => {
     setLoading(true);
@@ -32,7 +34,13 @@ function DeliveriesContent() {
   useEffect(() => { load(1); }, [statusFilter]);
 
   const handleCancel = async (id: string) => {
-    if (!confirm('Cancel this delivery?')) return;
+    const ok = await confirm({
+      title:        'Cancel this delivery?',
+      message:      'Notifies the customer + driver, releases any escrowed payment, and voids driver earnings for this trip. If the customer paid, they get a wallet refund. This cannot be undone.',
+      confirmLabel: 'Cancel Delivery',
+      danger:       true,
+    });
+    if (!ok) return;
     await adminApi.cancelDelivery(id);
     load(page);
   };
@@ -76,7 +84,7 @@ function DeliveriesContent() {
                   {data?.deliveries?.map((d: any) => (
                     <tr key={d.id} className="hover:bg-[#F5F5F0] transition-colors">
                       <td className="px-4 py-3 font-mono text-xs font-bold text-[#0F2B4C]">{d.trackingCode}</td>
-                      <td className="px-4 py-3 text-[#0F2B4C]/70">{d.customer?.name ?? '—'}</td>
+                      <td className="px-4 py-3 text-[#0F2B4C]/70">{d.customer?.name ?? '-'}</td>
                       <td className="px-4 py-3 max-w-xs">
                         <div className="flex items-start gap-1 text-xs text-[#0F2B4C]/60 mb-0.5" title={d.pickupAddress}>
                           <MapPin size={10} className="mt-0.5 shrink-0 text-[#3A7BD5]" />

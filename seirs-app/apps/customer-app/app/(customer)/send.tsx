@@ -21,6 +21,7 @@ import { deliveriesApi, uploadApi } from '@/services/api';
 import { type PickedAddress } from '@/components/AddressPicker';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
+import { Illustration } from '@/components/Illustration';
 import {
   ArrowLeft, ArrowRight, Truck, Calendar, CreditCard,
   Camera, X, CheckCircle, Zap,
@@ -124,7 +125,7 @@ function calcFare(
   vid: VehicleId,
   distKm: number,
   kg: number,
-  opts: { categoryId?: string | null; codAmountNgn?: number } = {},
+  opts: Parameters<typeof calcPackageFare>[3] = {},
 ) {
   // Delegates to the rate-card calculator so admin can edit prices
   // without touching screen code. Returns base + dist + weight + handling
@@ -455,6 +456,31 @@ export default function SendScreen() {
               <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
             </View>
           )}
+
+          {/* Per-step illustration + caption — the DHL pattern. Anchors
+              each step with a visual cue so the user knows what they're
+              about to do before they read the form. Illustration auto-
+              falls back to a branded placeholder until the SVG is
+              dropped in assets/illustrations/. */}
+          {(() => {
+            const SLOTS = [
+              { name: 'send-package',  captionKey: 'step1Caption' },
+              { name: 'send-address',  captionKey: 'step2Caption' },
+              { name: 'send-vehicle',  captionKey: 'step3Caption' },
+              { name: 'send-fare',     captionKey: 'step4Caption' },
+              { name: 'send-confirm',  captionKey: 'step5Caption' },
+            ];
+            const slot = SLOTS[step];
+            if (!slot) return null;
+            return (
+              <View style={styles.stepHero}>
+                <Illustration name={slot.name} size={140} />
+                <Text style={[styles.stepHeroCaption, { color: theme.textSecond }]}>
+                  {t(`send.${slot.captionKey}`)}
+                </Text>
+              </View>
+            );
+          })()}
 
           {/* STEP 0 — Package */}
           {step === 0 && (
@@ -907,6 +933,8 @@ const styles = StyleSheet.create({
 
   sheetInner:   { paddingHorizontal: Spacing.md },
   stepGap:      { gap: Spacing.md },
+  stepHero:        { alignItems: 'center', gap: 8, marginBottom: Spacing.md },
+  stepHeroCaption: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, textAlign: 'center' },
 
   errorBox:     { padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.sm },
   errorText:    { fontSize: FontSize.sm, fontWeight: FontWeight.medium },

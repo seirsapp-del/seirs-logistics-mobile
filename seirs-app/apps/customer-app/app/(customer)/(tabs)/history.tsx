@@ -11,6 +11,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
+import { Illustration } from '@/components/Illustration';
 import { deliveriesApi } from '@/services/api';
 
 // Display config minus the label (label is looked up via t('status.<key>')).
@@ -150,9 +151,7 @@ export default function HistoryScreen() {
             <View style={styles.empty}><ActivityIndicator color={theme.primary} /></View>
           ) : (
             <View style={styles.empty}>
-              <View style={[styles.emptyIcon, { backgroundColor: theme.surfaceSecond }]}>
-                <Ionicons name="car-outline" size={48} color={theme.textThird} />
-              </View>
+              <Illustration name="empty-no-deliveries" size={140} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('history.empty')}</Text>
               <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
                 {activeTab === 'All' ? 'Request your first ride to see it here.' : `No ${activeTab.toLowerCase()} trips.`}

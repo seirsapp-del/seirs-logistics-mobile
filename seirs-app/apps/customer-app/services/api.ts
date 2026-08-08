@@ -11,6 +11,7 @@ export {
   notificationsApi,
   dropoffApi,
   identityApi,
+  userVerificationApi,
   chatApi,
   sosApi,
   offlineSyncApi,
@@ -41,4 +42,5 @@ export type {
   PromoDTO,
   FlutterwavePaymentOption,
   SavedAddressDTO,
+  IdentityDocType,
 } from '@seirs/shared/services/api';

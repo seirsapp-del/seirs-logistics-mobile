@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 import { useEffect, useState } from 'react';
 import { Percent, Plus, Calendar, Users, Loader2, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 interface Promo {
   id:              string;
@@ -37,6 +38,7 @@ export default function PromotionsPage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const confirm                 = useConfirm();
 
   const load = () => {
     setLoading(true);
@@ -152,7 +154,7 @@ export default function PromotionsPage() {
                     <td className="px-4 py-3 text-gray-600">{TYPE_LABEL[p.type] ?? p.type}</td>
                     <td className="px-4 py-3 font-semibold text-gray-800">{renderValue(p)}</td>
                     <td className="px-4 py-3 text-gray-600">{p.usageCount} / {p.usageLimit || '∞'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(p.validFrom)} — {fmtDate(p.validTo)}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(p.validFrom)}. {fmtDate(p.validTo)}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_STYLES[p.status]}`}>{p.status}</span>
                     </td>
@@ -170,7 +172,13 @@ export default function PromotionsPage() {
                       {p.usageCount === 0 && (
                         <button
                           onClick={async () => {
-                            if (!confirm(`Delete promotion "${p.code}"?`)) return;
+                            const ok = await confirm({
+                              title:        `Delete promotion "${p.code}"?`,
+                              message:      'Only unused promotions can be deleted. If anyone has already redeemed it, pause it instead so historical records stay attached.',
+                              confirmLabel: 'Delete',
+                              danger:       true,
+                            });
+                            if (!ok) return;
                             try { await adminApi.promotions.remove(p.id); load(); }
                             catch (e: any) { alert(e?.message ?? 'Delete failed'); }
                           }}

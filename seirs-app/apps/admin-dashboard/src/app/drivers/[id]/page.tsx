@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Bike, Car, Truck, FileText, Star, MapPin, IdCard } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 const VEHICLE_LUCIDE: Record<string, typeof Bike> = {
   bicycle:    Bike,
@@ -37,6 +38,7 @@ export default function DriverDetailPage() {
   const [data,    setData]    = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
+  const confirm               = useConfirm();
 
   const reload = () => adminApi.driver(id).then(setData).catch(() => {});
 
@@ -52,7 +54,13 @@ export default function DriverDetailPage() {
   };
 
   const suspend = async () => {
-    if (!confirm('Suspend this driver?')) return;
+    const ok = await confirm({
+      title:        'Suspend this driver?',
+      message:      'They will stop receiving new dispatch offers immediately. Any active in-progress trip continues to completion. Reactivate anytime from this page.',
+      confirmLabel: 'Suspend',
+      danger:       true,
+    });
+    if (!ok) return;
     setSaving(true);
     await adminApi.suspendDriver(id);
     await reload();

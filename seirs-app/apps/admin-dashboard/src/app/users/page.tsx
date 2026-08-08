@@ -1,6 +1,7 @@
-'use client';
+﻿'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 const ROLE_COLORS: Record<string, string> = {
   customer: 'bg-blue-100 text-blue-700',
@@ -13,6 +14,7 @@ export default function UsersPage() {
   const [page,    setPage]    = useState(1);
   const [role,    setRole]    = useState('');
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
 
   const load = (p = 1) => {
     setLoading(true);
@@ -24,7 +26,19 @@ export default function UsersPage() {
   useEffect(() => { load(1); }, [role]);
 
   const toggleBan = async (id: string, isActive: boolean) => {
-    if (!confirm(isActive ? 'Ban this user?' : 'Unban this user?')) return;
+    const ok = await confirm(isActive
+      ? {
+          title:        'Ban this user?',
+          message:      'They will be signed out on their next request and cannot use the app until unbanned. Their historical data, deliveries, and wallet balance are preserved.',
+          confirmLabel: 'Ban',
+          danger:       true,
+        }
+      : {
+          title:        'Unban this user?',
+          message:      'They will regain full access on next sign-in.',
+          confirmLabel: 'Unban',
+        });
+    if (!ok) return;
     await adminApi.updateUser(id, { isActive: !isActive });
     load(page);
   };
@@ -75,7 +89,7 @@ export default function UsersPage() {
                       <a href={`/users/${u.id}`} className="font-medium text-[#0F2B4C] hover:text-[#3A7BD5] transition-colors">{u.name}</a>
                       <div className="text-xs text-[#0F2B4C]/40">{u.email}</div>
                     </td>
-                    <td className="px-4 py-3 text-[#0F2B4C]/60">{u.phone ?? '—'}</td>
+                    <td className="px-4 py-3 text-[#0F2B4C]/60">{u.phone ?? '-'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${ROLE_COLORS[u.role] ?? 'bg-[#0F2B4C]/5 text-[#0F2B4C]/50'}`}>
                         {u.role}

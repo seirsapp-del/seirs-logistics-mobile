@@ -1,9 +1,10 @@
-'use client';
+﻿'use client';
 import { useState } from 'react';
 import { X, AlertCircle, Loader2, Save, Trash2 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { useConfirm } from './ConfirmDialog';
 
-// Spec V8 §3.13 — shared editor for Insurance + Specialist partner
+// Spec V8 §3.13. shared editor for Insurance + Specialist partner
 // directories. Renders the right meta fields per type discriminator.
 
 export interface ExternalPartner {
@@ -34,6 +35,7 @@ export function ExternalPartnerModal({ row, type, onClose, onSaved }: {
   const [meta,         setMeta]         = useState<Record<string, any>>(row?.meta ?? {});
   const [saving,       setSaving]       = useState(false);
   const [err,          setErr]          = useState<string | null>(null);
+  const confirm                         = useConfirm();
 
   const setMetaField = (k: string, v: any) => setMeta(prev => ({ ...prev, [k]: v }));
 
@@ -49,7 +51,14 @@ export function ExternalPartnerModal({ row, type, onClose, onSaved }: {
   };
 
   const remove = async () => {
-    if (!row?.id || !confirm(`Delete "${row.name}"? This cannot be undone.`)) return;
+    if (!row?.id) return;
+    const ok = await confirm({
+      title:        `Delete "${row.name}"?`,
+      message:      `Removes this ${type} partner from the directory. Historical references (past claims, past bookings) keep pointing to the record until purged.`,
+      confirmLabel: 'Delete',
+      danger:       true,
+    });
+    if (!ok) return;
     setSaving(true);
     try { await adminApi.externalPartners.remove(row.id); onSaved(); }
     catch (e: any) { setErr(e?.message ?? 'Delete failed'); setSaving(false); }
