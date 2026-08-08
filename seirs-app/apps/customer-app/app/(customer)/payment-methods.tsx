@@ -84,13 +84,21 @@ export default function PaymentMethodsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Header */}
+      {/* Header. Right-side + button triggers the add-card flow (Bolt/Uber
+          pattern). Always visible so users can add a card even with an
+          existing list. Empty state also gets a bigger CTA below. */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <Text style={[styles.title, { color: theme.text }]}>{t('paymentMethods.title')}</Text>
-        <View style={{ width: 36 }} />
+        <Pressable
+          style={[styles.backBtn, { backgroundColor: theme.primary }]}
+          onPress={() => router.push('/(customer)/add-payment' as any)}
+          accessibilityLabel="Add payment method"
+        >
+          <Ionicons name="add" size={22} color="#fff" />
+        </Pressable>
       </View>
 
       {loading ? (
@@ -114,6 +122,13 @@ export default function PaymentMethodsScreen() {
           <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
             {t('paymentMethods.emptyDesc')}
           </Text>
+          <Pressable
+            style={[styles.addCta, { backgroundColor: theme.primary }]}
+            onPress={() => router.push('/(customer)/add-payment' as any)}
+          >
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={styles.addCtaText}>Add payment method</Text>
+          </Pressable>
           <Text style={[styles.emptyFootnote, { color: theme.textThird }]}>
             We never store your card number. Flutterwave handles tokenization securely.
           </Text>
@@ -159,6 +174,14 @@ export default function PaymentMethodsScreen() {
               </Pressable>
             </View>
           ))}
+
+          <Pressable
+            style={[styles.addCtaSecondary, { borderColor: theme.primary }]}
+            onPress={() => router.push('/(customer)/add-payment' as any)}
+          >
+            <Ionicons name="add" size={18} color={theme.primary} />
+            <Text style={[styles.addCtaSecondaryText, { color: theme.primary }]}>Add another payment method</Text>
+          </Pressable>
 
           <View style={[styles.infoBox, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <Ionicons name="lock-closed" size={14} color={theme.textSecond} />
@@ -224,6 +247,18 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md, marginTop: Spacing.md,
   },
   retryBtnText: { color: '#fff', fontWeight: FontWeight.bold },
+  addCta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingHorizontal: Spacing.lg, paddingVertical: 14,
+    borderRadius: Radius.lg, marginTop: Spacing.sm,
+  },
+  addCtaText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  addCtaSecondary: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingHorizontal: Spacing.md, paddingVertical: 12,
+    borderRadius: Radius.lg, borderWidth: 1.5, marginTop: Spacing.md,
+  },
+  addCtaSecondaryText: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   content: { padding: Spacing.lg, gap: Spacing.sm },
   sectionLabel: {
     fontSize: FontSize.sm, fontWeight: FontWeight.semibold,
