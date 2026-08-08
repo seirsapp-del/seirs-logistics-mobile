@@ -1,12 +1,12 @@
 ﻿import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not, Repository } from 'typeorm';
+import { In, Not, MoreThan, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { User, UserRole, AdminSubRole } from '../users/user.entity';
 import { ArchivedUser } from '../users/archived-user.entity';
 import { Driver, DriverStatus } from '../drivers/driver.entity';
-import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
+import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery.entity';
 import { FraudFlag, FraudFlagStatus } from '../fraud/fraud-flag.entity';
 import { FraudService } from '../fraud/fraud.service';
 import { MailService } from '../mail/mail.service';
@@ -470,6 +470,47 @@ export class AdminService {
       .getRawMany()
       .catch(() => []);
 
+    // ── Channel breakdown (all-time, by source) ──
+    // Grouped counts by DeliverySource. Rows returned as { source, count }
+    // for the admin donut. Legacy rows default to 'customer_app'.
+    const channelRows = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .select('d.source', 'source')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('d.source')
+      .getRawMany()
+      .catch(() => []);
+
+    // ── Monthly target vs actual ──
+    // Targets stored in platform_config; actuals summed for the current
+    // calendar month. Returns pct as an integer 0-999 (can exceed 100 when
+    // month is running hot — that's a feature, not a bug).
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [targetRows, monthRevenueRaw, monthDeliveryCount] = await Promise.all([
+      this.configRepo.find({
+        where: [
+          { key: 'dashboard_target_monthly_revenue_ngn' },
+          { key: 'dashboard_target_monthly_deliveries' },
+        ],
+      }).catch(() => []),
+      this.deliveriesRepo
+        .createQueryBuilder('d')
+        .select('COALESCE(SUM(d.price), 0)', 'total')
+        .where('d.status = :s', { s: DeliveryStatus.DELIVERED })
+        .andWhere('d.createdAt >= :since', { since: monthStart })
+        .getRawOne()
+        .then((r) => Number(r?.total ?? 0))
+        .catch(() => 0),
+      this.deliveriesRepo.count({
+        where: { status: DeliveryStatus.DELIVERED, createdAt: MoreThan(monthStart) as any },
+      }).catch(() => 0),
+    ]);
+    const targetMap = new Map<string, number>(
+      targetRows.map((r: any) => [String(r.key), Number(r.value) || 0] as [string, number]),
+    );
+    const revTarget: number = targetMap.get('dashboard_target_monthly_revenue_ngn') ?? 0;
+    const delTarget: number = targetMap.get('dashboard_target_monthly_deliveries')   ?? 0;
+
     return {
       generatedAt: now.toISOString(),
       drivers: {
@@ -512,7 +553,52 @@ export class AdminService {
         hour: r.hour instanceof Date ? r.hour.toISOString() : String(r.hour),
         deliveries: Number(r.count),
       })),
+      channels: channelRows.map((r: any) => ({
+        source: String(r.source ?? DeliverySource.CUSTOMER_APP),
+        count:  Number(r.count),
+      })),
+      targets: {
+        monthlyRevenue: {
+          target: revTarget,
+          actual: monthRevenueRaw,
+          pct:    revTarget > 0 ? Math.round((monthRevenueRaw / revTarget) * 100) : null,
+        },
+        monthlyDeliveries: {
+          target: delTarget,
+          actual: monthDeliveryCount,
+          pct:    delTarget > 0 ? Math.round((monthDeliveryCount / delTarget) * 100) : null,
+        },
+      },
     };
+  }
+
+  // Getter + setter for the dashboard monthly targets. Kept as generic
+  // key/value ops so more targets can be added without new endpoints. UI
+  // uses PATCH /admin/dashboard/targets with { revenueNgn, deliveries }.
+  async setDashboardTargets(patch: { revenueNgn?: number; deliveries?: number }) {
+    const upsert = async (key: string, value: number) => {
+      const existing = await this.configRepo.findOne({ where: { key } });
+      if (existing) {
+        existing.value = String(value);
+        await this.configRepo.save(existing);
+      } else {
+        await this.configRepo.save(this.configRepo.create({
+          key,
+          value: String(value),
+          description: key === 'dashboard_target_monthly_revenue_ngn'
+            ? 'Monthly gross revenue target in NGN, powers dashboard progress bar'
+            : 'Monthly delivered-count target, powers dashboard progress bar',
+          isEditable: true,
+        }));
+      }
+    };
+    if (typeof patch.revenueNgn === 'number' && patch.revenueNgn >= 0) {
+      await upsert('dashboard_target_monthly_revenue_ngn', Math.floor(patch.revenueNgn));
+    }
+    if (typeof patch.deliveries === 'number' && patch.deliveries >= 0) {
+      await upsert('dashboard_target_monthly_deliveries', Math.floor(patch.deliveries));
+    }
+    return { ok: true };
   }
 
   // ── Universal search ──────────────────────────────────────────────────────

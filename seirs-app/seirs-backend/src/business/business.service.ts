@@ -15,7 +15,7 @@ import { RecurringTemplate, RecurringCadence } from './recurring-template.entity
 import { MailService } from '../mail/mail.service';
 import { PricingService } from '../pricing/pricing.service';
 import { RoutingService } from '../routing/routing.service';
-import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
+import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery.entity';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
 
 const PER_PACKAGE_RATE = 500; // ₦500 per package stored
@@ -464,6 +464,7 @@ export class BusinessService {
         optimizedWaypointOrder: dto.optimizedWaypointOrder ?? null,
         routeWasAutoOptimized:  !!dto.routeWasAutoOptimized,
         status: DeliveryStatus.PENDING,
+        source: DeliverySource.BUSINESS_APP,
       } as any);
       const savedDelivery = await mgr.save(delivery);
 

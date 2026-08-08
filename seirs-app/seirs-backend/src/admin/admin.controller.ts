@@ -40,6 +40,14 @@ export class AdminController {
   @Get('dashboard/live')
   getLiveDashboard() { return this.adminService.getLiveDashboard(); }
 
+  // PATCH /api/v1/admin/dashboard/targets  { revenueNgn?, deliveries? }
+  // Updates the monthly targets stored in platform_config that power the
+  // target-vs-actual bars on the dashboard.
+  @Patch('dashboard/targets')
+  setDashboardTargets(@Body() body: { revenueNgn?: number; deliveries?: number }) {
+    return this.adminService.setDashboardTargets(body ?? {});
+  }
+
   // GET /api/v1/admin/search?q=<term>&limit=15
   // Universal search across users, drivers, deliveries. Matches on name,
   // email, phone, SEIRS ID (accountId), plate number, tracking code.

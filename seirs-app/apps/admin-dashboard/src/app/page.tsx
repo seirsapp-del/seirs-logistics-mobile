@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 
 interface Stats {
@@ -205,6 +205,22 @@ export default function DashboardPage() {
               <AnomalyPanel anomalies={live.anomalies} />
             )}
 
+            {/* Monthly targets vs actual */}
+            {live?.targets && (
+              <TargetsCard targets={live.targets} onSave={async (p) => { await adminApi.setDashboardTargets(p); loadLive(); }} />
+            )}
+
+            {/* Channel breakdown donut */}
+            {live?.channels && live.channels.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Package size={16} className="text-[#3A7BD5]" />
+                  <h2 className="text-sm font-semibold text-[#0F2B4C]">Deliveries by channel (all time)</h2>
+                </div>
+                <ChannelDonut data={live.channels} />
+              </div>
+            )}
+
             {/* Hourly demand chart */}
             {live?.hourly && live.hourly.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
@@ -285,6 +301,130 @@ export default function DashboardPage() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+// Monthly targets card. Inline-editable via a small "Set targets" affordance
+// that opens a plain dialog for revenueNgn + deliveries. Progress bars
+// clamp at 100% width so a hot month doesn't overflow the container; a
+// small "104%" pill next to the numeric surfaces the overage.
+function TargetsCard({ targets, onSave }: { targets: any; onSave: (p: { revenueNgn?: number; deliveries?: number }) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [rev, setRev]         = useState(String(targets.monthlyRevenue?.target ?? 0));
+  const [del, setDel]         = useState(String(targets.monthlyDeliveries?.target ?? 0));
+  const [saving, setSaving]   = useState(false);
+  const fmtN = (n: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await onSave({ revenueNgn: Number(rev) || 0, deliveries: Number(del) || 0 });
+      setEditing(false);
+    } finally { setSaving(false); }
+  };
+
+  const Bar = ({ label, actual, target, pct, formatter }: { label: string; actual: number; target: number; pct: number | null; formatter: (n: number) => string }) => {
+    const clampedPct = pct == null ? 0 : Math.min(100, pct);
+    const overshoot  = pct != null && pct > 100;
+    const barColour = pct == null ? 'bg-gray-200' : pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-[#3A7BD5]' : 'bg-amber-500';
+    return (
+      <div>
+        <div className="flex items-baseline justify-between text-sm">
+          <span className="font-semibold text-[#0F2B4C]">{label}</span>
+          <span className="text-xs text-[#0F2B4C]/50">
+            {formatter(actual)} / {target > 0 ? formatter(target) : 'no target set'}
+            {pct != null && <span className={`ml-2 font-bold ${overshoot ? 'text-emerald-600' : 'text-[#0F2B4C]'}`}>{pct}%</span>}
+          </span>
+        </div>
+        <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
+          <div className={`h-full ${barColour} transition-all`} style={{ width: `${clampedPct}%` }} />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <TrendingUp size={16} className="text-emerald-600" />
+          <h2 className="text-sm font-semibold text-[#0F2B4C]">This month vs target</h2>
+        </div>
+        {!editing && (
+          <button onClick={() => setEditing(true)} className="text-xs font-semibold text-[#3A7BD5] hover:underline">Set targets</button>
+        )}
+      </div>
+      {editing ? (
+        <div className="space-y-3">
+          <label className="block">
+            <span className="block text-xs font-semibold text-[#0F2B4C] mb-1">Monthly revenue target (NGN)</span>
+            <input type="number" value={rev} onChange={(e) => setRev(e.target.value)} min="0" className="w-full text-sm p-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-[#0F2B4C] mb-1">Monthly deliveries target (count)</span>
+            <input type="number" value={del} onChange={(e) => setDel(e.target.value)} min="0" className="w-full text-sm p-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+          </label>
+          <div className="flex justify-end gap-2 pt-1">
+            <button onClick={() => setEditing(false)} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#0F2B4C]/60 hover:bg-gray-100">Cancel</button>
+            <button onClick={submit} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#3A7BD5] hover:bg-[#2a6bc4] disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <Bar label="Revenue"    actual={targets.monthlyRevenue?.actual  ?? 0} target={targets.monthlyRevenue?.target  ?? 0} pct={targets.monthlyRevenue?.pct}    formatter={fmtN} />
+          <Bar label="Deliveries" actual={targets.monthlyDeliveries?.actual ?? 0} target={targets.monthlyDeliveries?.target ?? 0} pct={targets.monthlyDeliveries?.pct} formatter={(n) => n.toLocaleString()} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Channel breakdown pie. Colour palette maps to source: customer_app is
+// SEIRS blue, business_app is emerald, partner_store is amber, developer_api
+// is purple. Anything unknown falls back to gray.
+function ChannelDonut({ data }: { data: Array<{ source: string; count: number }> }) {
+  const COLOURS: Record<string, string> = {
+    customer_app:  '#3A7BD5',
+    business_app:  '#10B981',
+    partner_store: '#F59E0B',
+    developer_api: '#8B5CF6',
+  };
+  const LABELS: Record<string, string> = {
+    customer_app:  'Customer app',
+    business_app:  'Business app',
+    partner_store: 'Partner store',
+    developer_api: 'Developer API',
+  };
+  const rows = data.map((r) => ({
+    name:  LABELS[r.source] ?? r.source,
+    value: r.count,
+    fill:  COLOURS[r.source] ?? '#9CA3AF',
+  }));
+  const total = rows.reduce((s, r) => s + r.value, 0);
+  return (
+    <div className="flex items-center gap-6">
+      <ResponsiveContainer width={180} height={180}>
+        <PieChart>
+          <Pie data={rows} dataKey="value" nameKey="name" innerRadius={45} outerRadius={80} paddingAngle={2}>
+            {rows.map((r, i) => <Cell key={i} fill={r.fill} />)}
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="flex-1 space-y-2">
+        {rows.map((r) => (
+          <div key={r.name} className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: r.fill }} />
+              <span className="text-[#0F2B4C]">{r.name}</span>
+            </div>
+            <span className="text-xs text-[#0F2B4C]/60 font-mono">
+              {r.value} <span className="text-[#0F2B4C]/40">({total > 0 ? Math.round((r.value / total) * 100) : 0}%)</span>
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

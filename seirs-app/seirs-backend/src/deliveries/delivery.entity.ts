@@ -35,6 +35,17 @@ export enum UrgencyLevel {
   INSTANT  = 'instant',   // same day, hours
 }
 
+// Where a delivery was booked from. Set at creation time on the server so
+// we can never confuse client-app UA sniffing with the real origin. Powers
+// the channel breakdown donut on the admin dashboard + informs commission
+// splits when they diverge by source.
+export enum DeliverySource {
+  CUSTOMER_APP  = 'customer_app',
+  BUSINESS_APP  = 'business_app',
+  PARTNER_STORE = 'partner_store',
+  DEVELOPER_API = 'developer_api',
+}
+
 @Entity('deliveries')
 export class Delivery {
   @PrimaryGeneratedColumn('uuid')
@@ -160,6 +171,14 @@ export class Delivery {
   @Index()
   @Column({ type: 'enum', enum: DeliveryStatus, default: DeliveryStatus.PENDING })
   status: DeliveryStatus;
+
+  // Source: which client/API created this delivery. Set at creation on the
+  // server so it never lies. Backfilled to customer_app for legacy rows
+  // (SYNC_DB adds the column with the default). Powers the admin channel
+  // breakdown donut.
+  @Index()
+  @Column({ type: 'enum', enum: DeliverySource, default: DeliverySource.CUSTOMER_APP })
+  source: DeliverySource;
 
   // Proof of delivery
   @Column({ nullable: true })
