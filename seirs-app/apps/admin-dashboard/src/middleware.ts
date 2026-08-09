@@ -25,6 +25,7 @@ const PATH_PERMISSIONS: Record<string, string> = {
   '/duplicates':        'duplicates',
   '/kyc':               'kyc',
   '/tickets':           'tickets',
+  '/support':           'support',
   '/suggestions':       'suggestions',
   '/cms':               'cms',
   '/promotions':        'promotions',
@@ -37,8 +38,8 @@ const PATH_PERMISSIONS: Record<string, string> = {
 
 const ROLE_PERMS: Record<string, string[]> = {
   super_admin:       ['*'],
-  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','pricing'],
-  support_agent:     ['tickets','users','suggestions','deliveries'],
+  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','support','pricing'],
+  support_agent:     ['tickets','support','users','suggestions','deliveries'],
   finance_officer:   ['overview','wallet','pricing','referrals','insurance','analytics','reports'],
   driver_compliance: ['drivers','kyc','duplicates','fraud','users','audit-log'],
   media_content:     ['cms','promotions'],

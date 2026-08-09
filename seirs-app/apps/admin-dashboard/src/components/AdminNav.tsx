@@ -5,7 +5,7 @@ import { clearSession, getUser } from '@/lib/auth';
 import {
   LayoutDashboard, Map, Package, Truck, Users, Store, ArrowRightLeft, Briefcase,
   Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, ShieldCheck, Copy, ClipboardCheck,
-  Ticket, Lightbulb, FileText, Percent, BarChart2, BarChart3, FileBarChart,
+  Ticket, Lightbulb, FileText, Percent, BarChart2, BarChart3, FileBarChart, Inbox,
   UserCog, ScrollText, Settings, LogOut, ChevronLeft, ChevronRight,
   Activity, Send, MoonStar, Mail, Code2, BookOpen,
 } from 'lucide-react';
@@ -16,7 +16,7 @@ import { SeirsMarkBold, SeirsLockup } from './SeirsLogo';
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   LayoutDashboard, Map, Package, Truck, Users, Store, ArrowRightLeft, Briefcase,
   Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, ShieldCheck, Copy, ClipboardCheck,
-  Ticket, Lightbulb, FileText, Percent, BarChart2, BarChart3, FileBarChart,
+  Ticket, Lightbulb, FileText, Percent, BarChart2, BarChart3, FileBarChart, Inbox,
   UserCog, ScrollText, Settings,
   Activity, Send, MoonStar, Mail, Code2, BookOpen,
 };

@@ -9,6 +9,10 @@ import { FallbackReason } from '../fallback/fallback.service';
 export class SchedulerService {
   private readonly logger = new Logger(SchedulerService.name);
   fallbackService?: any;
+  // Chat 5 support toolkit: wired lazily by SchedulerModule.onModuleInit
+  // to avoid a circular dep with SupportModule. Cron below sweeps
+  // 7-day-idle tickets.
+  supportService?: any;
 
   constructor(
     @InjectRepository(Delivery) private deliveriesRepo: Repository<Delivery>,
@@ -56,6 +60,20 @@ export class SchedulerService {
       .execute();
 
     this.logger.log(`Archived ${result.affected} stale deliveries`);
+  }
+
+  // Every hour: auto-close support tickets idle for 7+ days. Matches
+  // the Chat 5 decision (rate limit + auto-close). Silent-fails so a
+  // schema hiccup does not break the cron worker.
+  @Cron(CronExpression.EVERY_HOUR)
+  async sweepIdleSupportTickets() {
+    if (!this.supportService) return;
+    try {
+      const { closed } = await this.supportService.sweepIdleTickets();
+      if (closed > 0) this.logger.log(`Auto-closed ${closed} idle support tickets`);
+    } catch (e: any) {
+      this.logger.warn(`support sweep skipped: ${e?.message ?? e}`);
+    }
   }
 
   // Every hour: log a platform health summary

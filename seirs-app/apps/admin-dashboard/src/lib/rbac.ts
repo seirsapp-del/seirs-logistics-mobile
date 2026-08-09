@@ -35,8 +35,8 @@ export const ROLE_COLORS: Record<AdminRoleType, string> = {
 
 const PERMISSIONS: Record<AdminRoleType, string[]> = {
   super_admin:       ['*'],
-  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs'],
-  support_agent:     ['tickets','users','suggestions','deliveries','disputes'],
+  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','support','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs'],
+  support_agent:     ['tickets','support','users','suggestions','deliveries','disputes'],
   finance_officer:   ['overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage'],
   driver_compliance: ['drivers','kyc','identity','duplicates','fraud','users','audit-log','interstate','last-order-compliance'],
   media_content:     ['cms','promotions','email-templates','dev-docs'],
@@ -163,6 +163,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: 'SUPPORT',
     items: [
       { href: '/tickets',     label: 'Ticketing',        icon: 'Ticket',    permission: 'tickets',     badge: 'tickets' },
+      { href: '/support',     label: 'Support Inbox',    icon: 'Inbox',     permission: 'support'      },
       { href: '/suggestions', label: 'User Suggestions', icon: 'Lightbulb', permission: 'suggestions'  },
     ],
   },
