@@ -481,4 +481,31 @@ export const adminApi = {
         method: 'PATCH', body: JSON.stringify({ value }),
       }),
   },
+
+  // Support toolkit (Chat 5). Rejected server-side if the admin is
+  // not super_admin or support_agent.
+  support: {
+    queue: (params: {
+      status?:      'open' | 'awaiting_agent' | 'awaiting_user' | 'resolved' | 'closed';
+      topic?:       'billing' | 'driver' | 'account' | 'delivery' | 'other';
+      accountType?: string;
+      limit?:       number;
+    } = {}) => {
+      const qs = new URLSearchParams();
+      if (params.status)      qs.set('status',      params.status);
+      if (params.topic)       qs.set('topic',       params.topic);
+      if (params.accountType) qs.set('accountType', params.accountType);
+      qs.set('limit', String(params.limit ?? 30));
+      return req<any[]>(`/support/queue?${qs.toString()}`);
+    },
+    thread: (ticketId: string) => req<any>(`/support/tickets/${ticketId}`),
+    reply:  (ticketId: string, body: string) =>
+      req<any>(`/support/tickets/${ticketId}/agent-reply`, {
+        method: 'POST', body: JSON.stringify({ body }),
+      }),
+    setStatus: (ticketId: string, status: string) =>
+      req<any>(`/support/tickets/${ticketId}/status`, {
+        method: 'PATCH', body: JSON.stringify({ status }),
+      }),
+  },
 };

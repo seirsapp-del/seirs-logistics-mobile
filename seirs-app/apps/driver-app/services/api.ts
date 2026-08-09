@@ -16,6 +16,7 @@ export {
   offlineSyncApi,
   feesApi,
   earningsApi,
+  supportApi,
 } from '@seirs/shared/services/api';
 
 export type {

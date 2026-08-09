@@ -25,6 +25,7 @@ export {
   // Wave 16B additions
   addressesApi,
   ticketsApi,
+  supportApi,
   // Wave 16E addition
   maintenanceApi,
 } from '@seirs/shared/services/api';

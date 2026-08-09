@@ -24,6 +24,7 @@ import { BusinessModule } from './business/business.module';
 import { FxModule } from './fx/fx.module';
 import { FeesModule } from './fees/fees.module';
 import { ChatModule }   from './chat/chat.module';
+import { SupportModule } from './support/support.module';
 import { SosModule }    from './sos/sos.module';
 import { HealthModule } from './health/health.module';
 import { IdentityModule } from './identity/identity.module';
@@ -103,6 +104,7 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
     FxModule,
     FeesModule,
     ChatModule,
+    SupportModule,
     SosModule,
     HealthModule,
     IdentityModule,

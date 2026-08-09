@@ -642,6 +642,76 @@ export const chatApi = {
     request<void>('POST', `/chats/${deliveryId}/read`),
 };
 
+// ─── Support tickets (Chat 5) ────────────────────────────────────────────
+// Users can open a support conversation with SEIRS ops any time. Kept
+// deliberately separate from delivery chats so admins do not snoop
+// customer<->driver threads. Backend enforces rate limits (3 open + 10
+// per 24h) and inserts an auto-response system message outside 6am-10pm
+// WAT so the user knows when to expect a reply.
+
+export type TicketTopic  = 'billing' | 'driver' | 'account' | 'delivery' | 'other';
+export type TicketStatus = 'open' | 'awaiting_agent' | 'awaiting_user' | 'resolved' | 'closed';
+
+export interface SupportTicketDTO {
+  id:                  string;
+  userAccountType:     string;
+  topic:               TicketTopic;
+  status:              TicketStatus;
+  subject:             string;
+  linkedDeliveryId:    string | null;
+  assignedAgentId:     string | null;
+  firstAgentReplyAt:   string | null;
+  resolvedAt:          string | null;
+  autoClosedAt:        string | null;
+  lastMessageAt:       string;
+  createdAt:           string;
+}
+
+export interface SupportThreadDTO {
+  ticket:   SupportTicketDTO;
+  messages: ChatMessageDTO[];
+}
+
+export const supportApi = {
+  // User endpoints
+  create: (body: {
+    topic:            TicketTopic;
+    subject:          string;
+    firstMessage:     string;
+    linkedDeliveryId?: string | null;
+  }) => request<SupportTicketDTO>('POST', '/support/tickets', body),
+
+  listMine: (status?: TicketStatus, limit = 30) => {
+    const qs = new URLSearchParams();
+    if (status) qs.set('status', status);
+    qs.set('limit', String(limit));
+    return request<SupportTicketDTO[]>('GET', `/support/tickets?${qs.toString()}`);
+  },
+
+  thread: (ticketId: string) =>
+    request<SupportThreadDTO>('GET', `/support/tickets/${ticketId}`),
+
+  reply: (ticketId: string, body: string) =>
+    request<ChatMessageDTO>('POST', `/support/tickets/${ticketId}/messages`, { body }),
+
+  // Agent endpoints (admin dashboard). Rejected server-side if the
+  // caller is not super_admin or support_agent.
+  queue: (params: { status?: TicketStatus; topic?: TicketTopic; accountType?: string; limit?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.status)      qs.set('status',      params.status);
+    if (params.topic)       qs.set('topic',       params.topic);
+    if (params.accountType) qs.set('accountType', params.accountType);
+    qs.set('limit', String(params.limit ?? 30));
+    return request<SupportTicketDTO[]>('GET', `/support/queue?${qs.toString()}`);
+  },
+
+  agentReply: (ticketId: string, body: string) =>
+    request<ChatMessageDTO>('POST', `/support/tickets/${ticketId}/agent-reply`, { body }),
+
+  setStatus: (ticketId: string, status: TicketStatus) =>
+    request<SupportTicketDTO>('PATCH', `/support/tickets/${ticketId}/status`, { status }),
+};
+
 // ─── Maintenance status (public. apps poll to show banner) ────────────────
 export const maintenanceApi = {
   status: () =>

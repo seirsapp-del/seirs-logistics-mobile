@@ -25,6 +25,7 @@ export {
   pricingApi,
   usersApi,
   chatApi,
+  supportApi,
 } from '@seirs/shared/services/api';
 
 export type {
