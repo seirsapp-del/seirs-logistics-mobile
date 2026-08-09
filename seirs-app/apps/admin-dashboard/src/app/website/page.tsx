@@ -310,6 +310,17 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
                 className="flex-1 px-3 py-2 border border-[#E5E7EB] rounded-lg font-mono text-xs focus:outline-none focus:border-[#3A7BD5]" />
               <button onClick={autoSlug} className="px-3 py-2 text-xs font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg">Auto</button>
             </div>
+            {type === 'page_block' && (
+              <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
+                Reserved slugs that render on the marketing site:{' '}
+                <code className="bg-gray-100 px-1 rounded">home_hero</code>,{' '}
+                <code className="bg-gray-100 px-1 rounded">hero_for_business</code>,{' '}
+                <code className="bg-gray-100 px-1 rounded">hero_for_drivers</code>,{' '}
+                <code className="bg-gray-100 px-1 rounded">hero_for_partner_stores</code>,{' '}
+                <code className="bg-gray-100 px-1 rounded">hero_how_it_works</code>.
+                Upload a hero image on any of these to change the corresponding page&apos;s hero backdrop.
+              </div>
+            )}
           </div>
 
           {(type === 'article' || type === 'changelog') && (
@@ -336,9 +347,11 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
             )}
           </div>
 
-          {type !== 'faq' && type !== 'page_block' && (
+          {type !== 'faq' && (
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Cover image</label>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                {type === 'page_block' ? 'Hero image (optional)' : 'Cover image'}
+              </label>
               <div className="mt-1 flex items-start gap-3">
                 {cover && (
                   // eslint-disable-next-line @next/next/no-img-element

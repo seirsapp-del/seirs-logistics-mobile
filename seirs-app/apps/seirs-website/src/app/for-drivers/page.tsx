@@ -15,6 +15,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
+import { getPageBlock } from "@/lib/cms";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "For Drivers",
@@ -102,10 +105,12 @@ function StepRow({
   );
 }
 
-export default function ForDriversPage() {
+export default async function ForDriversPage() {
+  const hero = await getPageBlock('hero_for_drivers');
   return (
     <>
       <PageHero
+        heroImageUrl={hero?.coverImageUrl ?? null}
         eyebrow="Earn on Your Terms"
         title={
           <>

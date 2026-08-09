@@ -254,6 +254,17 @@ export default async function HomePage() {
           background: "linear-gradient(135deg, #0F2B4C 0%, #1a3a5c 60%, #0F2B4C 100%)",
         }}
       >
+        {/* Admin-editable hero backdrop: falls back to the pure gradient
+            when the CMS row is unset so marketing can add/remove without
+            a code deploy. Kept darkened (opacity 25) so foreground text
+            stays readable regardless of the uploaded image. */}
+        {hero?.coverImageUrl && (
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-cover bg-center opacity-25"
+            style={{ backgroundImage: `url(${hero.coverImageUrl})` }}
+          />
+        )}
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-5">
           <div

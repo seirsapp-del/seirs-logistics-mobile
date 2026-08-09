@@ -15,6 +15,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
+import { getPageBlock } from "@/lib/cms";
+
+// ISR: refetch the CMS-editable hero image every 60s so marketing
+// changes appear within a minute without a redeploy.
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "For Business",
@@ -55,10 +60,12 @@ function CheckRow({ children }: { children: string }) {
   );
 }
 
-export default function ForBusinessPage() {
+export default async function ForBusinessPage() {
+  const hero = await getPageBlock('hero_for_business');
   return (
     <>
       <PageHero
+        heroImageUrl={hero?.coverImageUrl ?? null}
         eyebrow="Built for Volume"
         title={
           <>

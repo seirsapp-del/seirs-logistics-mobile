@@ -5,9 +5,15 @@ import { ArrowRight } from "lucide-react";
 
 /**
  * Shared hero block for dedicated marketing pages (How it Works, For
- * Business, etc). Keeps the visual language consistent across pages
- *, same gradient, same spacing, same radial dot pattern as the
+ * Business, etc). Keeps the visual language consistent across pages:
+ * same gradient, same spacing, same radial dot pattern as the
  * homepage hero, but scaled for content-first pages.
+ *
+ * `heroImageUrl` is optional and typically comes from a CMS page_block
+ * so marketing can swap the hero backdrop without a code deploy. When
+ * set, we render it as a low-opacity darkened overlay on top of the
+ * navy gradient (so text stays readable regardless of the image), and
+ * fall back cleanly to the pure gradient when unset.
  */
 export function PageHero({
   eyebrow,
@@ -18,6 +24,7 @@ export function PageHero({
   primaryCtaHref,
   secondaryCtaLabel,
   secondaryCtaHref,
+  heroImageUrl,
 }: {
   eyebrow: string;
   title: ReactNode;
@@ -27,6 +34,7 @@ export function PageHero({
   primaryCtaHref: string;
   secondaryCtaLabel?: string;
   secondaryCtaHref?: string;
+  heroImageUrl?: string | null;
 }) {
   return (
     <section
@@ -36,6 +44,13 @@ export function PageHero({
           "linear-gradient(135deg, #0F2B4C 0%, #1a3a5c 60%, #0F2B4C 100%)",
       }}
     >
+      {heroImageUrl && (
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-cover bg-center opacity-25"
+          style={{ backgroundImage: `url(${heroImageUrl})` }}
+        />
+      )}
       <div className="absolute inset-0 opacity-5">
         <div
           className="absolute inset-0"

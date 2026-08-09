@@ -12,6 +12,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
+import { getPageBlock } from "@/lib/cms";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "How It Works",
@@ -72,10 +75,12 @@ function FeatureBlock({
   );
 }
 
-export default function HowItWorksPage() {
+export default async function HowItWorksPage() {
+  const hero = await getPageBlock('hero_how_it_works');
   return (
     <>
       <PageHero
+        heroImageUrl={hero?.coverImageUrl ?? null}
         eyebrow="Simple Process"
         title={
           <>

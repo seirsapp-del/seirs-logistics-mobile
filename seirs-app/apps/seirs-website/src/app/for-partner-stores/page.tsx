@@ -13,6 +13,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
+import { getPageBlock } from "@/lib/cms";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Partner Stores",
@@ -70,10 +73,12 @@ function CheckRow({ children }: { children: string }) {
   );
 }
 
-export default function ForPartnerStoresPage() {
+export default async function ForPartnerStoresPage() {
+  const hero = await getPageBlock('hero_for_partner_stores');
   return (
     <>
       <PageHero
+        heroImageUrl={hero?.coverImageUrl ?? null}
         eyebrow="Earn From Your Shop"
         title={
           <>
