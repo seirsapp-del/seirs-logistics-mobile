@@ -52,9 +52,14 @@ export default function BusinessDashboard() {
               <Text style={styles.greeting}>Good {getTimeOfDay()},</Text>
               <Text style={styles.companyName}>{user?.companyName ?? user?.name}</Text>
             </View>
-            <Pressable style={styles.avatarBtn} onPress={() => setDrawerOpen(true)}>
-              <Icon name="Menu" size={20} color="#fff" strokeWidth={1.5} />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable style={styles.avatarBtn} onPress={() => router.push('/(business)/notifications' as any)}>
+                <Icon name="Bell" size={20} color="#fff" strokeWidth={1.5} />
+              </Pressable>
+              <Pressable style={styles.avatarBtn} onPress={() => setDrawerOpen(true)}>
+                <Icon name="Menu" size={20} color="#fff" strokeWidth={1.5} />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.walletCard}>
@@ -202,6 +207,7 @@ const styles = StyleSheet.create({
   headerRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   greeting:    { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   companyName: { fontSize: 20, fontWeight: '800', color: '#fff', marginTop: 2 },
+  headerActions: { flexDirection: 'row', gap: 8 },
   avatarBtn:   {
     width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center', justifyContent: 'center',

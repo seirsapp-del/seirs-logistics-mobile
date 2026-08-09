@@ -51,9 +51,12 @@ interface MessagesInboxProps {
   /** Route prefix for support tickets. Defaults to /(business)/support since
    *  business + partner modes share the same account (and tickets). */
   supportRoutePrefix?: string;
+  /** When provided, renders a hamburger button in the header (opens the
+   *  caller's Drawer). Kept optional so embedded usages stay chrome-free. */
+  onMenuPress?: () => void;
 }
 
-export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(business)/support' }: MessagesInboxProps) {
+export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(business)/support', onMenuPress }: MessagesInboxProps) {
   const router     = useRouter();
   const { isDark } = useTheme();
   const theme      = Colors[isDark ? 'dark' : 'light'];
@@ -97,6 +100,11 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(busin
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        {onMenuPress && (
+          <Pressable onPress={onMenuPress} style={styles.menuBtn} accessibilityLabel="Open menu" hitSlop={8}>
+            <Icon name="AlignLeft" size={20} color={theme.text} />
+          </Pressable>
+        )}
         <Text style={[styles.headerTitle, { color: theme.text }]}>
           {t('chat.messagesTitle', { defaultValue: 'Messages' })}
         </Text>
@@ -238,7 +246,8 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(busin
 }
 
 const styles = StyleSheet.create({
-  header:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
+  header:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
+  menuBtn:     { justifyContent: 'center', alignItems: 'center' },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '700' },
   unreadPill:  { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, justifyContent: 'center', alignItems: 'center' },
   unreadPillText: { color: '#fff', fontSize: 11, fontWeight: '700' },

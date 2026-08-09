@@ -51,7 +51,19 @@ export default function DriverHomeScreen() {
   const firstName        = user?.name?.split(' ')[0] ?? 'Driver';
 
   useEffect(() => {
-    driversApi.me().then(setDriverData).catch(() => {});
+    driversApi.me().then((d) => {
+      setDriverData(d);
+      // Hydrate the online switch from the server. Without this the toggle
+      // resets to OFFLINE on every app restart/reload while the backend
+      // (and the admin ops map) still has the driver online. Resume the
+      // location heartbeat too, or the position goes stale within 5 min.
+      if (d?.isOnline) {
+        setIsOnline(true);
+        startLocationUpdates();
+        fetchDeliveries();
+      }
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch real demand zones whenever the driver's known location changes.
@@ -108,6 +120,8 @@ export default function DriverHomeScreen() {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return;
 
+    // Guard against double intervals (server hydration + manual toggle).
+    if (locationInterval.current) clearInterval(locationInterval.current);
     locationInterval.current = setInterval(async () => {
       const loc = await Location.getCurrentPositionAsync({});
       driversApi.updateLocation(loc.coords.latitude, loc.coords.longitude).catch(() => {});

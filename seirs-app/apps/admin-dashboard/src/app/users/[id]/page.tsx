@@ -101,6 +101,25 @@ export default function UserDetailPage() {
     } catch (e: any) { alert(e?.message ?? 'Export failed'); }
   };
 
+  // Documents hub: prompt-driven quick send. A full modal with category
+  // picker + file upload is a follow-up; this covers "get a contract or
+  // letter into their app today".
+  const sendDocument = async () => {
+    const title = prompt('Document title (e.g. "Driver Service Agreement 2026"):');
+    if (!title?.trim()) return;
+    const category = prompt('Category: statement / contract / letter / policy / other', 'letter') ?? 'other';
+    const body = prompt('Paste the document text (or leave empty to attach a file URL instead):') ?? '';
+    let fileUrl = '';
+    if (!body.trim()) {
+      fileUrl = prompt('File URL (https link to the PDF/document):') ?? '';
+      if (!fileUrl.trim()) { alert('Need either text or a file URL.'); return; }
+    }
+    try {
+      await adminApi.documents.send(id, { title: title.trim(), category: category.trim(), body: body.trim() || undefined, fileUrl: fileUrl.trim() || undefined });
+      alert('Document delivered. The user sees it in their Documents screen and got a notification.');
+    } catch (e: any) { alert(e?.message ?? 'Send failed'); }
+  };
+
   // Hard-delete triggers a two-step branded modal (reason input → confirm)
   // instead of the browser's ugly prompt()/confirm(). See HardDeleteModal
   // component at the bottom of this file.
@@ -214,6 +233,13 @@ export default function UserDetailPage() {
                 Promote to Admin
               </button>
             )}
+            <button
+              onClick={sendDocument}
+              className="text-sm px-4 py-2 rounded-lg font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+              title="Deliver an official document (contract, letter, statement) into this user's in-app Documents"
+            >
+              Send document
+            </button>
             <button
               onClick={exportData}
               className="text-sm px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"

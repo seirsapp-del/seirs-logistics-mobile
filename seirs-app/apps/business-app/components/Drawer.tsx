@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Drawer as SharedDrawer, type DrawerItem } from '@seirs/shared/components/Drawer';
@@ -59,18 +59,25 @@ export function Drawer({ visible, onClose }: Props) {
       label:   t('drawer.applyPartner', { defaultValue: 'Apply to be a Partner Store' }),
       onPress: () => navigate('/(business)/apply-partner'),
     }]),
+    { icon: 'Bell',            label: t('drawer.notifications',   { defaultValue: 'Notifications' }),    onPress: () => navigate('/(business)/notifications') },
+    { icon: 'FileText',        label: t('drawer.documents',       { defaultValue: 'Documents' }),        onPress: () => navigate('/(business)/documents') },
     { icon: 'Globe',           label: t('drawer.language',        { defaultValue: 'Language' }),         onPress: () => navigate('/(business)/language') },
-    { icon: 'HelpCircle',      label: t('drawer.help',            { defaultValue: 'Help & FAQ' }) },
-    { icon: 'Lock',            label: t('drawer.privacy',         { defaultValue: 'Privacy Policy' }) },
+    // Canonical FAQ + legal copies live on the marketing site; open in
+    // browser rather than shipping stub screens with no onPress (dead
+    // buttons found in live testing 2026-08-09).
+    { icon: 'HelpCircle',      label: t('drawer.help',            { defaultValue: 'Help & FAQ' }),      onPress: () => { onClose(); Linking.openURL('https://seirs.co/faq'); } },
+    { icon: 'Lock',            label: t('drawer.privacy',         { defaultValue: 'Privacy Policy' }),  onPress: () => { onClose(); Linking.openURL('https://seirs.co/privacy-policy'); } },
     { icon: 'MessageCircle',   label: t('drawer.contactSupport',  { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support') },
   ];
 
   const partnerItems: DrawerItem[] = [
     { icon: 'Store',      label: t('drawer.partnerProfile', { defaultValue: 'Partner Profile' }), onPress: () => navigate('/(partner)') },
+    { icon: 'Bell',       label: t('drawer.notifications',  { defaultValue: 'Notifications' }),   onPress: () => navigate('/(business)/notifications') },
+    { icon: 'FileText',   label: t('drawer.documents',      { defaultValue: 'Documents' }),       onPress: () => navigate('/(business)/documents') },
     { icon: 'Settings',   label: t('drawer.settings',       { defaultValue: 'Settings' }),        onPress: () => navigate('/(partner)/settings') },
     { icon: 'Globe',      label: t('drawer.language',       { defaultValue: 'Language' }),        onPress: () => navigate('/(partner)/language') },
-    { icon: 'HelpCircle', label: t('drawer.help',           { defaultValue: 'Help & FAQ' }) },
-    { icon: 'Lock',       label: t('drawer.privacy',        { defaultValue: 'Privacy Policy' }) },
+    { icon: 'HelpCircle', label: t('drawer.help',           { defaultValue: 'Help & FAQ' }),     onPress: () => { onClose(); Linking.openURL('https://seirs.co/faq'); } },
+    { icon: 'Lock',       label: t('drawer.privacy',        { defaultValue: 'Privacy Policy' }), onPress: () => { onClose(); Linking.openURL('https://seirs.co/privacy-policy'); } },
     { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support') },
   ];
 

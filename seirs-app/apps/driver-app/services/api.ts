@@ -17,6 +17,7 @@ export {
   feesApi,
   earningsApi,
   supportApi,
+  documentsApi,
 } from '@seirs/shared/services/api';
 
 export type {
@@ -29,4 +30,5 @@ export type {
   SupportThreadDTO,
   TicketTopic,
   TicketStatus,
+  UserDocumentDTO,
 } from '@seirs/shared/services/api';

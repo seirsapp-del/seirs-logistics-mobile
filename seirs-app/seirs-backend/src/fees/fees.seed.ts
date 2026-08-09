@@ -83,6 +83,12 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'return_to_sender_fee',        name: 'Return-to-Sender Transport Fee',
     description: 'Flat transport fee owed by the sender when a partner-store package passes 5 working days uncollected and is returned. Storage itself is free (2026-08-09 policy: 3 working days free, warning at 3, return at 5, no fee build-up).',
     category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 1500 },
+  { key: 'platform_commission_pct',     name: 'Platform Commission',
+    description: 'SEIRS cut of each delivery fare, applied at escrow release when the driver is paid. The remainder is the driver share. Changing this affects NEW settlements only, never already-recorded earnings.',
+    category: FeeCategory.COMMISSION,   unit: FeeUnit.PERCENT,    value: 30 },
+  { key: 'instant_payout_fee_pct',      name: 'Instant Withdrawal Fee',
+    description: 'Percent charged on the not-yet-cleared portion of a driver instant withdrawal. Standard clearance is 2 business days after delivery (free); instant unlocks earnings 24h+ old for this fee (2026-08-09 policy, founder set 5%).',
+    category: FeeCategory.DRIVER_FEE,   unit: FeeUnit.PERCENT,    value: 5 },
 
   // ── Developer Platform tiers ───────────────────────────────────────────
   { key: 'dev_growth_tier_monthly',     name: 'Dev Platform — Growth Tier',

@@ -11,6 +11,7 @@ import { FraudFlag, FraudFlagStatus } from '../fraud/fraud-flag.entity';
 import { FraudService } from '../fraud/fraud.service';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
+import { PaymentsService } from '../payments/payments.service';
 import { CmsItem, ContentType, ContentStatus } from './cms-item.entity';
 import { SupportTicket, TicketStatus, TicketPriority } from './support-ticket.entity';
 import { AuditLogEntry } from './audit-log.entity';
@@ -59,6 +60,7 @@ export class AdminService {
     private readonly fraudService: FraudService,
     private readonly mailService:  MailService,
     private readonly usersService: UsersService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   // ── Spec V8 §3.13. NDPR admin tools (A32 + A33) ──────────────────────────
@@ -133,6 +135,18 @@ export class AdminService {
   // Sorted soonest-purge-first so the recycle-bin page has action items on top.
   async listPendingDeletions() {
     return this.usersService.listPendingDeletions();
+  }
+
+  /**
+   * Approve or reject a driver's pending payout-bank change (2026-08-09
+   * policy: replacing a bank account needs admin review within 3 business
+   * days; the review ticket lives in support). PII-role gated + audited.
+   */
+  async resolveBankChange(targetUserId: string, approve: boolean, admin: any, ip?: string) {
+    this.ensureNdprAccess(admin, this.PII_VIEW_ROLES, 'bank_change_review');
+    const result = await this.paymentsService.resolveBankChange(targetUserId, approve);
+    await this.logAudit(admin, approve ? 'bank_change_approved' : 'bank_change_rejected', `user:${targetUserId}`, {}, ip);
+    return result;
   }
 
   // Admin schedules a soft-delete on behalf of a user. Same 30-day grace as

@@ -1,22 +1,43 @@
 import {
   View, Text, Pressable, StyleSheet, ScrollView, TextInput,
-  KeyboardAvoidingView, Platform, StatusBar, Modal, FlatList,
+  KeyboardAvoidingView, Platform, StatusBar, Modal, FlatList, Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { NIGERIAN_BANKS } from '@/constants/driverMockData';
+import { paymentsApi } from '@/services/api';
+
+/**
+ * Payout bank account setup: fully live.
+ *   1. Bank list from GET /payments/banks (Flutterwave's Nigerian bank
+ *      directory, includes transfer codes).
+ *   2. Account resolution via POST /payments/verify-bank: the registered
+ *      account name comes back from Flutterwave, never typed by hand.
+ *   3. Save via PATCH /payments/bank-details, which stores the account
+ *      on the user row that payouts read from.
+ * One account per driver: saving replaces the previous one.
+ */
+interface Bank { id: string; name: string; code: string }
 
 export default function AddBankScreen() {
   const router  = useRouter();
+  const insets  = useSafeAreaInsets();
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [selectedBank,   setSelectedBank]   = useState('');
+  const [banks,          setBanks]          = useState<Bank[]>([]);
+  const [banksLoading,   setBanksLoading]   = useState(true);
+  const [current,        setCurrent]        = useState<{
+    bankName: string | null; bankAccountNumber: string | null; bankAccountName: string | null;
+    pendingBankName?: string | null; pendingBankAccountNumber?: string | null;
+  } | null>(null);
+  const [savedAsPending, setSavedAsPending] = useState(false);
+  const [selectedBank,   setSelectedBank]   = useState<Bank | null>(null);
   const [accountNumber,  setAccountNumber]  = useState('');
   const [accountName,    setAccountName]    = useState('');
   const [bankModalOpen,  setBankModalOpen]  = useState(false);
@@ -26,33 +47,99 @@ export default function AddBankScreen() {
   const [submitting,     setSubmitting]     = useState(false);
   const [done,           setDone]           = useState(false);
 
-  const filteredBanks = NIGERIAN_BANKS.filter(b => b.toLowerCase().includes(bankSearch.toLowerCase()));
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      paymentsApi.banks().catch(() => [] as Bank[]),
+      paymentsApi.getBankDetails().catch(() => null),
+    ]).then(([bs, cur]) => {
+      if (cancelled) return;
+      setBanks((bs ?? []).sort((a, b) => a.name.localeCompare(b.name)));
+      setCurrent(cur);
+    }).finally(() => { if (!cancelled) setBanksLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
-  const handleVerify = () => {
+  const filteredBanks = banks.filter(b => b.name.toLowerCase().includes(bankSearch.toLowerCase()));
+
+  const handleVerify = async () => {
     if (accountNumber.length !== 10 || !selectedBank) return;
     setVerifying(true);
-    setTimeout(() => {
-      setAccountName('Chidi Okonkwo');
+    try {
+      const res = await paymentsApi.verifyBank(selectedBank.code, accountNumber);
+      if (res.verified && res.accountName) {
+        setAccountName(res.accountName);
+        setVerified(true);
+      } else {
+        Alert.alert('Could not verify', res.message ?? 'Check the bank and account number, then try again.');
+      }
+    } catch (e: any) {
+      Alert.alert('Could not verify', e?.message ?? 'Check your connection and try again.');
+    } finally {
       setVerifying(false);
-      setVerified(true);
-    }, 1200);
+    }
   };
 
-  const canSave = verified && selectedBank && accountNumber.length === 10;
+  const canSave = verified && !!selectedBank && accountNumber.length === 10;
+
+  const submitSave = async () => {
+    if (!selectedBank) return;
+    setSubmitting(true);
+    try {
+      const res = await paymentsApi.updateBankDetails({
+        bankName:          selectedBank.name,
+        bankCode:          selectedBank.code,
+        bankAccountNumber: accountNumber,
+        bankAccountName:   accountName,
+      });
+      setSavedAsPending(!!(res as any)?.pending);
+      setDone(true);
+    } catch (e: any) {
+      Alert.alert('Save failed', e?.message ?? 'Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSave = () => {
-    setSubmitting(true);
-    setTimeout(() => { setSubmitting(false); setDone(true); }, 1000);
+    if (!canSave || !selectedBank) return;
+    // Replacing an existing account: explicit warning BEFORE submitting,
+    // since it freezes withdrawals until support approves the change.
+    if (current?.bankAccountNumber) {
+      Alert.alert(
+        'Replace payout account?',
+        `Your withdrawals will PAUSE until our team reviews and approves this change (up to 3 business days). ` +
+        `This protects your earnings if someone else gets into your account.\n\n` +
+        `New account: ${selectedBank.name} · ${accountName} · ${accountNumber}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Submit for review', style: 'destructive', onPress: submitSave },
+        ],
+      );
+      return;
+    }
+    submitSave();
   };
 
   if (done) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl }}>
-        <View style={[styles.successCircle, { backgroundColor: '#22C55E18' }]}>
-          <Ionicons name="checkmark-circle" size={64} color="#22C55E" />
+        <View style={[styles.successCircle, { backgroundColor: savedAsPending ? '#D9770618' : '#22C55E18' }]}>
+          <Ionicons
+            name={savedAsPending ? 'hourglass-outline' : 'checkmark-circle'}
+            size={64}
+            color={savedAsPending ? '#D97706' : '#22C55E'}
+          />
         </View>
-        <Text style={[styles.successTitle, { color: theme.text }]}>Bank Added!</Text>
-        <Text style={[styles.successSub, { color: theme.textSecond }]}>{selectedBank} account ending in {accountNumber.slice(-4)} has been saved.</Text>
+        <Text style={[styles.successTitle, { color: theme.text }]}>
+          {savedAsPending ? 'Submitted for Review' : 'Bank Saved!'}
+        </Text>
+        <Text style={[styles.successSub, { color: theme.textSecond }]}>
+          {savedAsPending
+            ? `Changing your payout account is a critical change, so our team reviews it first (up to 3 business days). ` +
+              `Payouts continue to your current account until it is approved. We will confirm in your Messages.`
+            : `${selectedBank?.name} account ending in ${accountNumber.slice(-4)} is now your payout account.`}
+        </Text>
         <Pressable style={[styles.doneBtn, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
           <Text style={styles.doneBtnText}>Done</Text>
         </Pressable>
@@ -68,12 +155,41 @@ export default function AddBankScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Add Bank Account</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Payout Bank Account</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+
+          {/* Current account (if any) */}
+          {current?.bankAccountNumber ? (
+            <View style={[styles.currentCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
+              <View style={[styles.bankIcon, { backgroundColor: theme.surfaceSecond }]}>
+                <Ionicons name="business-outline" size={20} color={theme.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.currentLabel, { color: theme.textThird }]}>Current payout account</Text>
+                <Text style={[styles.currentValue, { color: theme.text }]}>
+                  {current.bankName ?? 'Bank'} · {current.bankAccountName} · {current.bankAccountNumber}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
+          {/* Pending change banner */}
+          {current?.pendingBankAccountNumber ? (
+            <View style={[styles.currentCard, { backgroundColor: isDark ? '#1F1500' : '#FFFBEB', borderColor: '#D9770640' }]}>
+              <Ionicons name="hourglass-outline" size={20} color="#D97706" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.currentLabel, { color: '#D97706' }]}>Change under review</Text>
+                <Text style={[styles.currentValue, { color: theme.text }]}>
+                  {current.pendingBankName ?? 'New bank'} account ending {String(current.pendingBankAccountNumber).slice(-4)}.
+                  Review takes up to 3 business days.
+                </Text>
+              </View>
+            </View>
+          ) : null}
 
           {/* Bank selector */}
           <View style={styles.fieldGroup}>
@@ -84,7 +200,7 @@ export default function AddBankScreen() {
             >
               <Ionicons name="business-outline" size={18} color={selectedBank ? theme.primary : theme.textThird} />
               <Text style={[styles.selectText, { color: selectedBank ? theme.text : theme.textThird }]}>
-                {selectedBank || 'Select bank…'}
+                {banksLoading ? 'Loading banks…' : (selectedBank?.name || 'Select bank…')}
               </Text>
               <Ionicons name="chevron-down" size={16} color={theme.textThird} />
             </Pressable>
@@ -101,10 +217,10 @@ export default function AddBankScreen() {
                 keyboardType="numeric"
                 maxLength={10}
                 value={accountNumber}
-                onChangeText={v => { setAccountNumber(v); setVerified(false); setAccountName(''); }}
+                onChangeText={v => { setAccountNumber(v.replace(/\D/g, '')); setVerified(false); setAccountName(''); }}
               />
               {accountNumber.length === 10 && selectedBank && !verified && (
-                <Pressable style={[styles.verifyBtn, { backgroundColor: theme.primary }]} onPress={handleVerify}>
+                <Pressable style={[styles.verifyBtn, { backgroundColor: theme.primary }]} onPress={handleVerify} disabled={verifying}>
                   <Text style={styles.verifyBtnText}>{verifying ? 'Checking…' : 'Verify'}</Text>
                 </Pressable>
               )}
@@ -113,7 +229,7 @@ export default function AddBankScreen() {
             <Text style={[styles.hint, { color: theme.textThird }]}>{accountNumber.length}/10 digits</Text>
           </View>
 
-          {/* Account name (auto-filled) */}
+          {/* Account name (resolved by Flutterwave, never typed) */}
           {accountName ? (
             <View style={[styles.nameCard, { backgroundColor: isDark ? '#001800' : '#F0FDF4', borderColor: '#22C55E30' }]}>
               <Ionicons name="person-circle-outline" size={20} color="#22C55E" />
@@ -128,7 +244,10 @@ export default function AddBankScreen() {
           <View style={[styles.infoNote, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <Ionicons name="shield-checkmark-outline" size={16} color={theme.textThird} />
             <Text style={[styles.infoText, { color: theme.textSecond }]}>
-              Your bank details are encrypted and used only for withdrawal processing.
+              The account name is confirmed directly with the bank. Your details are encrypted and used only for paying you.
+              {current?.bankAccountNumber
+                ? ' Replacing your account pauses withdrawals until support approves the change (up to 3 business days). This protects your earnings if someone else gets into your account.'
+                : ''}
             </Text>
           </View>
 
@@ -136,8 +255,8 @@ export default function AddBankScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Save CTA */}
-      <View style={[styles.ctaBar, { backgroundColor: theme.navBackground, borderTopColor: theme.border }]}>
+      {/* Save CTA (safe-area padded so Android gesture nav never covers it) */}
+      <View style={[styles.ctaBar, { backgroundColor: theme.navBackground, borderTopColor: theme.border, paddingBottom: Spacing.md + insets.bottom }]}>
         <Pressable
           style={[styles.saveBtn, { backgroundColor: canSave ? theme.primary : theme.surfaceSecond }]}
           onPress={handleSave}
@@ -153,7 +272,7 @@ export default function AddBankScreen() {
       {/* Bank picker modal */}
       <Modal visible={bankModalOpen} transparent animationType="slide" onRequestClose={() => setBankModalOpen(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: theme.surface }]}>
+          <View style={[styles.modalCard, { backgroundColor: theme.surface, paddingBottom: Spacing.lg + insets.bottom }]}>
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: theme.text }]}>Select Bank</Text>
             <View style={[styles.searchWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
@@ -166,20 +285,29 @@ export default function AddBankScreen() {
                 onChangeText={setBankSearch}
               />
             </View>
-            <FlatList
-              data={filteredBanks}
-              keyExtractor={b => b}
-              style={{ maxHeight: 360 }}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={[styles.bankItem, { borderBottomColor: theme.border }]}
-                  onPress={() => { setSelectedBank(item); setBankModalOpen(false); setBankSearch(''); setVerified(false); setAccountName(''); }}
-                >
-                  <Text style={[styles.bankItemText, { color: theme.text }]}>{item}</Text>
-                  {selectedBank === item && <Ionicons name="checkmark" size={18} color={theme.primary} />}
-                </Pressable>
-              )}
-            />
+            {banksLoading ? (
+              <ActivityIndicator color={theme.primary} style={{ paddingVertical: Spacing.xl }} />
+            ) : (
+              <FlatList
+                data={filteredBanks}
+                keyExtractor={b => b.id}
+                style={{ maxHeight: 360 }}
+                ListEmptyComponent={
+                  <Text style={[styles.emptyBanks, { color: theme.textThird }]}>
+                    {banks.length === 0 ? 'Bank list unavailable. Check your connection and reopen.' : 'No bank matches that search.'}
+                  </Text>
+                }
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={[styles.bankItem, { borderBottomColor: theme.border }]}
+                    onPress={() => { setSelectedBank(item); setBankModalOpen(false); setBankSearch(''); setVerified(false); setAccountName(''); }}
+                  >
+                    <Text style={[styles.bankItemText, { color: theme.text }]}>{item.name}</Text>
+                    {selectedBank?.id === item.id && <Ionicons name="checkmark" size={18} color={theme.primary} />}
+                  </Pressable>
+                )}
+              />
+            )}
           </View>
         </View>
       </Modal>
@@ -193,6 +321,11 @@ const styles = StyleSheet.create({
   title:   { fontSize: FontSize.md, fontWeight: FontWeight.bold },
 
   content: { padding: Spacing.md, gap: Spacing.lg },
+
+  currentCard:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+  currentLabel: { fontSize: FontSize.xs },
+  currentValue: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginTop: 2 },
+  bankIcon:     { width: 40, height: 40, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
 
   fieldGroup: { gap: Spacing.sm },
   label:      { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
@@ -225,6 +358,7 @@ const styles = StyleSheet.create({
   searchInput:  { flex: 1, fontSize: FontSize.base },
   bankItem:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.md, borderBottomWidth: 0.5 },
   bankItemText: { fontSize: FontSize.base },
+  emptyBanks:   { textAlign: 'center', paddingVertical: Spacing.lg, fontSize: FontSize.sm },
 
   successCircle: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.lg },
   successTitle:  { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },

@@ -26,6 +26,7 @@ import { FeesModule } from './fees/fees.module';
 import { ChatModule }   from './chat/chat.module';
 import { SupportModule } from './support/support.module';
 import { SosModule }    from './sos/sos.module';
+import { DocumentsModule } from './documents/documents.module';
 import { HealthModule } from './health/health.module';
 import { IdentityModule } from './identity/identity.module';
 import { UserVerificationModule } from './user-verification/user-verification.module';
@@ -106,6 +107,7 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
     ChatModule,
     SupportModule,
     SosModule,
+    DocumentsModule,
     HealthModule,
     IdentityModule,
     UserVerificationModule,

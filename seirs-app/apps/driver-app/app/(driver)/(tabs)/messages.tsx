@@ -22,6 +22,7 @@ import { LifeBuoy } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
+import { HamburgerButton } from '@/components/HamburgerButton';
 import {
   chatApi, supportApi,
   type ChatConversationDTO, type SupportTicketDTO,
@@ -96,7 +97,10 @@ export default function DriverMessagesScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Text style={[styles.title, { color: theme.text }]}>Messages</Text>
+        <View style={styles.headerLeft}>
+          <HamburgerButton />
+          <Text style={[styles.title, { color: theme.text }]}>Messages</Text>
+        </View>
         {totalUnread > 0 && (
           <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]}>
             <Text style={styles.unreadCount}>{totalUnread}</Text>
@@ -235,6 +239,7 @@ export default function DriverMessagesScreen() {
 
 const styles = StyleSheet.create({
   header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.xs },
+  headerLeft:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
   title:       { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
   unreadBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.full },
   unreadCount: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },

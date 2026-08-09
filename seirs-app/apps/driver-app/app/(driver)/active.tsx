@@ -164,7 +164,7 @@ export default function ActiveDeliveryScreen() {
         Alert.alert(
           'Delivery Complete!',
           `You've successfully delivered ${delivery.trackingCode}.\n\nPayment will be credited to your wallet shortly.`,
-          [{ text: 'Back to Jobs', onPress: () => router.replace('/(driver)') }],
+          [{ text: 'Back to Jobs', onPress: () => router.replace('/(driver)' as any) }],
         );
       } else {
         setDelivery((prev: any) => ({ ...prev, status: nextStatus }));

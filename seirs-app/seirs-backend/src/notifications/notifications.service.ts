@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './notification.entity';
@@ -99,6 +100,30 @@ export class NotificationsService {
   async markAllRead(userId: string) {
     await this.repo.update({ userId, isRead: false }, { isRead: true });
     return { success: true };
+  }
+
+  // Retention (founder question 2026-08-09 "does it just keep piling
+  // up?"): notifications are ephemeral by nature. Read ones go after 90
+  // days, unread after 180, so the table never grows unbounded and old
+  // phones never page through years of noise. Runs nightly at 3 AM.
+  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  async pruneOldNotifications() {
+    try {
+      const readCutoff   = new Date(Date.now() -  90 * 24 * 3600 * 1000);
+      const unreadCutoff = new Date(Date.now() - 180 * 24 * 3600 * 1000);
+      const r1 = await this.repo
+        .createQueryBuilder().delete()
+        .where('"isRead" = true AND "createdAt" < :cutoff', { cutoff: readCutoff })
+        .execute();
+      const r2 = await this.repo
+        .createQueryBuilder().delete()
+        .where('"createdAt" < :cutoff', { cutoff: unreadCutoff })
+        .execute();
+      const total = (r1.affected ?? 0) + (r2.affected ?? 0);
+      if (total) this.logger.log(`Pruned ${total} old notifications`);
+    } catch (e: any) {
+      this.logger.warn(`notification prune failed: ${e?.message ?? e}`);
+    }
   }
 
   // ── Convenience helpers called from DeliveriesService ───────────────────────

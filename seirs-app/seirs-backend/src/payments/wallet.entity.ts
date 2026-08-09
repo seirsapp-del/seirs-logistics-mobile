@@ -28,7 +28,7 @@ export class Wallet {
   @Column({ nullable: true })
   bankName: string;
 
-  // Paystack bank code, e.g. "058" for GTBank — required for transfers
+  // Flutterwave bank code, e.g. "058" for GTBank: required for transfers
   @Column({ nullable: true })
   bankCode: string;
 
@@ -37,6 +37,29 @@ export class Wallet {
 
   @Column({ nullable: true })
   bankAccountName: string;
+
+  // Pending bank CHANGE awaiting admin review (2026-08-09 policy: the
+  // first bank account saves instantly; replacing it is a critical
+  // change that needs support approval within 3 business days, guarding
+  // against account-takeover payout theft). Applied by admin approve,
+  // discarded by reject.
+  @Column({ nullable: true })
+  pendingBankName: string;
+
+  @Column({ nullable: true })
+  pendingBankCode: string;
+
+  @Column({ nullable: true })
+  pendingBankAccountNumber: string;
+
+  @Column({ nullable: true })
+  pendingBankAccountName: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  pendingBankRequestedAt: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  pendingBankTicketId: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

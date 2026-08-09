@@ -529,6 +529,19 @@ export class AdminController {
     return this.adminService.adminHardDeleteUser(id, admin, body?.reason ?? '', req.ip);
   }
 
+  // POST /api/v1/admin/users/:id/bank-change  { approve: boolean }
+  // Approve/reject a driver's pending payout-bank change. PII-role gated
+  // in the service; audit-logged; resolves the linked support ticket.
+  @Post('users/:id/bank-change')
+  resolveBankChange(
+    @Param('id') id: string,
+    @Body() body: { approve: boolean },
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    return this.adminService.resolveBankChange(id, body?.approve === true, admin, req.ip);
+  }
+
   // POST /api/v1/admin/deliveries/:id/reopen-chat  { hours?, reason, ticketId? }
   // Support toolkit: re-opens a completed delivery's chat (which auto-
   // closes 1hr after delivery per the PII-freeze TTL) so the two parties

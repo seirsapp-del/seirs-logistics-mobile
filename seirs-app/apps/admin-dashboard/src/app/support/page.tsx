@@ -293,6 +293,43 @@ export default function SupportInboxPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  {/* Bank-change review: approve/reject a driver's pending
+                      payout-account replacement. Buttons only appear on the
+                      system-generated review ticket. */}
+                  {thread.ticket.subject === 'Bank account change request' &&
+                    thread.ticket.status !== 'resolved' && thread.ticket.status !== 'closed' &&
+                    thread.ticket.user?.id && (
+                    <>
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Approve this bank change? Future payouts go to the NEW account.')) return;
+                          try {
+                            await adminApi.bankChange.resolve(thread.ticket.user!.id, true);
+                            alert('Bank change approved. The driver was notified in their Messages.');
+                            loadThread(thread.ticket.id);
+                          } catch (e: any) { alert(`Approve failed: ${e?.message ?? 'unknown'}`); }
+                        }}
+                        className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                        title="Apply the pending bank account (audit-logged)"
+                      >
+                        <CheckCircle2 size={12} /> Approve bank change
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Reject this bank change? The pending account is discarded and payouts stay on the current account.')) return;
+                          try {
+                            await adminApi.bankChange.resolve(thread.ticket.user!.id, false);
+                            alert('Bank change rejected. The driver was notified in their Messages.');
+                            loadThread(thread.ticket.id);
+                          } catch (e: any) { alert(`Reject failed: ${e?.message ?? 'unknown'}`); }
+                        }}
+                        className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+                        title="Discard the pending bank account (audit-logged)"
+                      >
+                        <XCircle size={12} /> Reject
+                      </button>
+                    </>
+                  )}
                   {/* PII-frozen chat re-open. Only visible when the ticket
                       is linked to a delivery. Backend enforces PII_VIEW_ROLES
                       + audit-logs the reason + clamps window to 1-72h. */}

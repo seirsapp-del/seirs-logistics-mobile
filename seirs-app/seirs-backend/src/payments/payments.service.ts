@@ -10,6 +10,7 @@ import { SavedCard } from './saved-card.entity';
 import { FlutterwaveService } from './flutterwave.service';
 import { Delivery } from '../deliveries/delivery.entity';
 import { User } from '../users/user.entity';
+import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 import { EarningsService } from '../earnings/earnings.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
@@ -376,6 +377,22 @@ export class PaymentsService {
 
   // ── Escrow release — called when delivery is completed ────────────────────
 
+  /**
+   * Platform commission as a fraction (0.30 = 30%). Admin-tunable via
+   * the Fee Catalogue key 'platform_commission_pct'; falls back to the
+   * compiled constant when the row is missing or the table isn't up.
+   */
+  private async getCommissionRate(): Promise<number> {
+    try {
+      const rows: Array<{ value: string }> = await this.dataSource.query(
+        `SELECT value FROM fees WHERE key = 'platform_commission_pct' AND active = true LIMIT 1`,
+      );
+      const pct = Number(rows?.[0]?.value);
+      if (Number.isFinite(pct) && pct >= 0 && pct <= 60) return pct / 100;
+    } catch { /* fees table unavailable: fall through */ }
+    return PLATFORM_COMMISSION;
+  }
+
   async releaseEscrow(deliveryId: string, driverUserId: string): Promise<void> {
     const payment = await this.paymentsRepo.findOne({
       where: { delivery: { id: deliveryId }, status: PaymentStatus.SUCCESS },
@@ -388,7 +405,8 @@ export class PaymentsService {
 
     if (payment.escrowStatus === EscrowStatus.RELEASED) return;
 
-    const driverShareKobo = Math.round(payment.amountKobo * (1 - PLATFORM_COMMISSION));
+    const commission      = await this.getCommissionRate();
+    const driverShareKobo = Math.round(payment.amountKobo * (1 - commission));
 
     await this.dataSource.transaction(async (manager) => {
       let driverWallet = await manager.findOne(Wallet, {
@@ -420,7 +438,7 @@ export class PaymentsService {
         driverId:        driverUserId,
         deliveryId,
         grossNaira:      toNaira(payment.amountKobo),
-        seirsCutPercent: PLATFORM_COMMISSION,
+        seirsCutPercent: commission,
       });
     } catch (e: any) {
       this.logger.warn(`DriverEarning record failed for ${deliveryId}: ${e.message}`);
@@ -428,7 +446,7 @@ export class PaymentsService {
 
     this.logger.log(
       `Escrow released for delivery ${deliveryId}. ` +
-      `Driver receives ₦${toNaira(driverShareKobo)} (${(1 - PLATFORM_COMMISSION) * 100}%)`,
+      `Driver receives ₦${toNaira(driverShareKobo)} (${(1 - commission) * 100}%)`,
     );
   }
 
@@ -577,13 +595,174 @@ export class PaymentsService {
     return { message: `₦${amountNaira.toLocaleString()} withdrawal initiated. Arrives in 1-2 business days.` };
   }
 
+  /**
+   * Save/replace the payout bank account. Policy (founder, 2026-08-09):
+   *   - FIRST account: applied instantly (drivers must be able to get paid).
+   *   - REPLACING an existing account is a critical change: it is stored
+   *     as PENDING and a support ticket is opened for admin review
+   *     (target: 3 business days). Guards against account-takeover
+   *     payout theft. Payouts keep flowing to the OLD account until an
+   *     admin approves the change.
+   */
   async updateBankDetails(
     userId: string,
     data: { bankName: string; bankCode: string; bankAccountNumber: string; bankAccountName: string },
   ) {
-    const wallet = await this.getOrCreateWallet({ id: userId } as User);
-    await this.walletsRepo.update(wallet.id, data);
-    return { message: 'Bank details updated.' };
+    const wallet   = await this.getOrCreateWallet({ id: userId } as User);
+    const usersRepo = this.dataSource.getRepository(User);
+    const user     = await usersRepo.findOne({ where: { id: userId } });
+    const hasExisting = !!(user?.bankAccountNumber || wallet.bankAccountNumber);
+
+    if (!hasExisting) {
+      // First-time setup: apply immediately to BOTH rows. Payouts
+      // (EarningsService.payoutDriver) read from the USER row; writing
+      // only to the wallet used to leave payouts permanently failing
+      // with "bank account not configured".
+      await this.walletsRepo.update(wallet.id, data);
+      await usersRepo.update(userId, {
+        bankCode:          data.bankCode,
+        bankAccountNumber: data.bankAccountNumber,
+        bankAccountName:   data.bankAccountName,
+      });
+      return { message: 'Bank details updated.', pending: false };
+    }
+
+    // Same account re-submitted: nothing to review.
+    if (
+      (user?.bankAccountNumber ?? wallet.bankAccountNumber) === data.bankAccountNumber &&
+      (user?.bankCode ?? wallet.bankCode) === data.bankCode
+    ) {
+      return { message: 'This is already your payout account.', pending: false };
+    }
+
+    // Replacement: park as pending + open a review ticket.
+    let ticketId: string | null = wallet.pendingBankTicketId ?? null;
+    try {
+      if (!ticketId && user) {
+        const ticketsRepo = this.dataSource.getRepository(SupportTicket);
+        const ticket = await ticketsRepo.save(ticketsRepo.create({
+          user,
+          userAccountType: 'driver',
+          topic:           TicketTopic.ACCOUNT,
+          status:          TicketStatus.OPEN,
+          subject:         'Bank account change request',
+          linkedDeliveryId: null,
+          assignedAgentId:  null,
+          lastMessageAt:    new Date(),
+        }));
+        ticketId = ticket.id;
+        // System message gives the agent masked context; full details
+        // stay in the wallet's pending columns, applied on approval.
+        await this.dataSource.query(
+          `INSERT INTO chat_messages (body, "imageUrl", "systemType", "ticketId")
+           VALUES ($1, NULL, 'bank_change_request', $2)`,
+          [
+            `Driver requested a payout account change to ${data.bankName} ` +
+            `(account ending ${data.bankAccountNumber.slice(-4)}, name: ${data.bankAccountName}). ` +
+            `Review and approve or reject within 3 business days. ` +
+            `Approving applies the new account; payouts continue to the old account until then.`,
+            ticketId,
+          ],
+        );
+      }
+    } catch (e: any) {
+      this.logger.warn(`bank-change ticket creation failed: ${e?.message ?? e}`);
+    }
+
+    await this.walletsRepo.update(wallet.id, {
+      pendingBankName:          data.bankName,
+      pendingBankCode:          data.bankCode,
+      pendingBankAccountNumber: data.bankAccountNumber,
+      pendingBankAccountName:   data.bankAccountName,
+      pendingBankRequestedAt:   new Date(),
+      pendingBankTicketId:      ticketId,
+    });
+
+    return {
+      message: 'Bank change submitted for review. It takes up to 3 business days; payouts continue to your current account until it is approved.',
+      pending: true,
+    };
+  }
+
+  /** Current registered payout account (for display in the driver app). */
+  async getBankDetails(userId: string) {
+    const user = await this.dataSource.getRepository(User).findOne({
+      where:  { id: userId },
+      select: ['id', 'bankCode', 'bankAccountNumber', 'bankAccountName'],
+    });
+    const wallet = await this.walletsRepo.findOne({ where: { user: { id: userId } } });
+    return {
+      bankName:          wallet?.bankName ?? null,
+      bankCode:          user?.bankCode ?? wallet?.bankCode ?? null,
+      bankAccountNumber: user?.bankAccountNumber ?? wallet?.bankAccountNumber ?? null,
+      bankAccountName:   user?.bankAccountName ?? wallet?.bankAccountName ?? null,
+      pendingBankName:          wallet?.pendingBankName ?? null,
+      pendingBankAccountNumber: wallet?.pendingBankAccountNumber ?? null,
+      pendingBankAccountName:   wallet?.pendingBankAccountName ?? null,
+      pendingBankRequestedAt:   wallet?.pendingBankRequestedAt ?? null,
+    };
+  }
+
+  /**
+   * Admin review of a pending bank change (called from AdminService).
+   * Approve applies pending -> active on both wallet + user rows;
+   * reject discards the pending details. Both clear the pending state.
+   */
+  async resolveBankChange(userId: string, approve: boolean) {
+    const wallet = await this.walletsRepo.findOne({ where: { user: { id: userId } } });
+    if (!wallet?.pendingBankAccountNumber) {
+      throw new NotFoundException('No pending bank change for this user.');
+    }
+
+    if (approve) {
+      await this.walletsRepo.update(wallet.id, {
+        bankName:          wallet.pendingBankName,
+        bankCode:          wallet.pendingBankCode,
+        bankAccountNumber: wallet.pendingBankAccountNumber,
+        bankAccountName:   wallet.pendingBankAccountName,
+      });
+      await this.dataSource.getRepository(User).update(userId, {
+        bankCode:          wallet.pendingBankCode,
+        bankAccountNumber: wallet.pendingBankAccountNumber,
+        bankAccountName:   wallet.pendingBankAccountName,
+      });
+    }
+
+    const ticketId = wallet.pendingBankTicketId;
+    await this.walletsRepo.update(wallet.id, {
+      pendingBankName:          null as any,
+      pendingBankCode:          null as any,
+      pendingBankAccountNumber: null as any,
+      pendingBankAccountName:   null as any,
+      pendingBankRequestedAt:   null,
+      pendingBankTicketId:      null,
+    });
+
+    // Close the loop on the review ticket so the driver sees the outcome
+    // in their Messages inbox.
+    if (ticketId) {
+      try {
+        await this.dataSource.query(
+          `INSERT INTO chat_messages (body, "imageUrl", "systemType", "ticketId")
+           VALUES ($1, NULL, 'bank_change_resolved', $2)`,
+          [
+            approve
+              ? 'Your bank account change was approved. Future payouts go to the new account.'
+              : 'Your bank account change was rejected. Payouts continue to your existing account. Contact support if you did not expect this.',
+            ticketId,
+          ],
+        );
+        await this.dataSource.getRepository(SupportTicket).update(ticketId, {
+          status:     TicketStatus.RESOLVED,
+          resolvedAt: new Date(),
+          lastMessageAt: new Date(),
+        });
+      } catch (e: any) {
+        this.logger.warn(`bank-change ticket close failed: ${e?.message ?? e}`);
+      }
+    }
+
+    return { approved: approve };
   }
 
   async getPaymentHistory(userId: string): Promise<Payment[]> {

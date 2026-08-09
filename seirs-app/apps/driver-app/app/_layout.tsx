@@ -45,7 +45,7 @@ function NavigationGuard() {
     }
 
     if (isAuthenticated && !inDriver) {
-      router.replace('/(driver)');
+      router.replace('/(driver)' as any);
     }
   }, [isAuthenticated, role, isLoading, segments]);
 

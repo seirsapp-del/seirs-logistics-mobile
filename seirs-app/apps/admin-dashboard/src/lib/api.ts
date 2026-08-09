@@ -500,6 +500,23 @@ export const adminApi = {
       ),
   },
 
+  // Documents hub: deliver an official document (contract, letter,
+  // statement, policy) straight into a user's in-app Documents screen.
+  documents: {
+    send: (userId: string, body: { title: string; category?: string; body?: string; fileUrl?: string }) =>
+      req<{ id: string }>(`/documents/admin-send/${userId}`, { method: 'POST', body: JSON.stringify(body) }),
+  },
+
+  // Driver payout-bank change review (critical change, 3-business-day
+  // SLA). PII-role gated + audit-logged server-side.
+  bankChange: {
+    resolve: (userId: string, approve: boolean) =>
+      req<{ approved: boolean }>(
+        `/admin/users/${userId}/bank-change`,
+        { method: 'POST', body: JSON.stringify({ approve }) },
+      ),
+  },
+
   // Support toolkit (Chat 5). Rejected server-side if the admin is
   // not super_admin or support_agent.
   support: {

@@ -1,5 +1,6 @@
 import {
   View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,12 +13,14 @@ import { notificationsApi } from '@/services/api';
 type NotifType = 'job' | 'payment' | 'system' | 'rating';
 
 interface Notif {
-  id:     string;
-  type:   NotifType;
-  title:  string;
-  body:   string;
-  time:   string;
-  read:   boolean;
+  id:         string;
+  type:       NotifType;
+  rawType:    string;
+  title:      string;
+  body:       string;
+  time:       string;
+  read:       boolean;
+  deliveryId: string | null;
 }
 
 const TYPE_CONFIG: Record<NotifType, { color: string; icon: string }> = {
@@ -62,12 +65,14 @@ export default function DriverNotificationsScreen() {
     try {
       const res = await notificationsApi.list(1);
       setNotifs((res.items ?? []).map((n: any) => ({
-        id:    n.id,
-        type:  bucketType(n.type),
-        title: n.title ?? 'Notification',
-        body:  n.body ?? n.message ?? '',
-        time:  relativeTime(n.createdAt ?? n.timestamp ?? new Date().toISOString()),
-        read:  !!n.readAt || !!n.read,
+        id:         n.id,
+        type:       bucketType(n.type),
+        rawType:    String(n.type ?? ''),
+        title:      n.title ?? 'Notification',
+        body:       n.body ?? n.message ?? '',
+        time:       relativeTime(n.createdAt ?? n.timestamp ?? new Date().toISOString()),
+        read:       !!n.isRead || !!n.readAt || !!n.read,
+        deliveryId: n.deliveryId ?? null,
       })));
     } catch {
       setNotifs([]);
@@ -94,6 +99,34 @@ export default function DriverNotificationsScreen() {
   const markOneRead = async (id: string) => {
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     try { await notificationsApi.markRead(id); } catch {}
+  };
+
+  // Tapping a notification acts on it, not just marks it read (founder
+  // ask 2026-08-09: "what action can they do by clicking?").
+  const handleTap = (n: Notif) => {
+    markOneRead(n.id);
+
+    // Safety check-in: give real choices instead of a dead tap.
+    if (n.title.startsWith('Are you OK')) {
+      Alert.alert(
+        'Are you OK?',
+        'We could not see your location for a while. If everything is fine just confirm; if not, get help now.',
+        [
+          { text: "I'm OK", style: 'default' },
+          { text: 'Contact support', onPress: () => router.push('/(driver)/support/new' as any) },
+          { text: 'SOS Emergency', style: 'destructive', onPress: () => router.push('/(driver)/sos' as any) },
+        ],
+      );
+      return;
+    }
+    if (n.rawType === 'sos_alert') { router.push('/(driver)/sos' as any); return; }
+    if (n.title.toLowerCase().includes('document')) { router.push('/(driver)/tax-docs' as any); return; }
+    switch (n.type) {
+      case 'payment': router.push('/(driver)/(tabs)/earnings' as any); break;
+      case 'rating':  router.push('/(driver)/ratings' as any); break;
+      case 'job':     router.push(n.deliveryId ? ('/(driver)/active' as any) : ('/(driver)/(tabs)' as any)); break;
+      default: break; // system/broadcast: nothing to open
+    }
   };
 
   return (
@@ -139,7 +172,7 @@ export default function DriverNotificationsScreen() {
                 { backgroundColor: item.read ? theme.surface : (isDark ? '#001020' : '#EFF6FF'), borderColor: item.read ? theme.border : theme.primary + '30' },
                 Shadows.xs,
               ]}
-              onPress={() => markOneRead(item.id)}
+              onPress={() => handleTap(item)}
             >
               <View style={[styles.notifIcon, { backgroundColor: cfg.color + '18' }]}>
                 <Ionicons name={cfg.icon as any} size={20} color={cfg.color} />

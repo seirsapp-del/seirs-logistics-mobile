@@ -6,9 +6,14 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
+// Watch ONLY what this app bundles from, not the whole workspace.
+// Watching workspaceRoot overflows Windows fs.watch handles once the
+// backend/admin/siblings churn (EMFILE crash-loop); same fix as
+// customer-app bc65e90 and driver-app.
 config.watchFolders = [
-  workspaceRoot,
-  ...(config.watchFolders || []),
+  projectRoot,
+  path.resolve(workspaceRoot, 'shared'),
+  path.resolve(workspaceRoot, 'node_modules'),
 ];
 
 config.resolver.nodeModulesPaths = [
@@ -38,6 +43,11 @@ config.resolver.blockList = [
   /[\\/]\.git[\\/].*/,
   /[\\/]android[\\/]build[\\/].*/,
   /[\\/]android[\\/]\.gradle[\\/].*/,
+  // Sibling apps are never bundled into this one.
+  /apps[\\/]customer-app[\\/].*/,
+  /apps[\\/]driver-app[\\/].*/,
+  /apps[\\/]admin-dashboard[\\/].*/,
+  /apps[\\/]seirs-website[\\/].*/,
 ];
 
 module.exports = config;

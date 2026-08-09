@@ -167,6 +167,13 @@ export class PaymentsController {
     return this.paymentsService.verifyAndRefundCardCharge(user.id, txRef);
   }
 
+  // GET /api/v1/payments/bank-details  (current registered payout account)
+  @UseGuards(JwtAuthGuard)
+  @Get('bank-details')
+  getBankDetails(@CurrentUser() user: User) {
+    return this.paymentsService.getBankDetails(user.id);
+  }
+
   // PATCH /api/v1/payments/bank-details
   @UseGuards(JwtAuthGuard)
   @Patch('bank-details')

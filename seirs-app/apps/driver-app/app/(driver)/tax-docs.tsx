@@ -1,18 +1,28 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator,
-  Alert,
+  Share, Modal, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft, FileText, Download, ChevronRight, Calendar, Receipt, AlertCircle,
+  FileSignature, Mail, ShieldCheck, File,
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { driversApi } from '@/services/api';
+import { driversApi, documentsApi, type UserDocumentDTO } from '@/services/api';
 
-// Spec V8 §2 — driver yearly earnings statements for FIRS tax filing.
+// Icon per document category (admin-sent official docs).
+const DOC_ICON: Record<string, any> = {
+  statement: Receipt,
+  contract:  FileSignature,
+  letter:    Mail,
+  policy:    ShieldCheck,
+  other:     File,
+};
+
+// Spec V8 §2: driver yearly earnings statements for FIRS tax filing.
 // Once the backend tax-export endpoint ships, "Download" generates a
 // signed PDF (R2) of the year's earnings + commission breakdown.
 // Until then this surface lists yearly aggregates so drivers know the
@@ -35,31 +45,59 @@ export default function TaxDocsScreen() {
   const theme  = Colors[cs ?? 'light'];
 
   const [summaries, setSummaries] = useState<YearSummary[]>([]);
+  const [received,  setReceived]  = useState<UserDocumentDTO[]>([]);
+  const [viewing,   setViewing]   = useState<UserDocumentDTO | null>(null);
   const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await driversApi.taxSummary();
+        const [res, docs] = await Promise.all([
+          driversApi.taxSummary().catch(() => null),
+          documentsApi.mine().catch(() => [] as UserDocumentDTO[]),
+        ]);
         const items = res?.years ?? [];
-        setSummaries(items.map(y => ({
+        setSummaries(items.map((y: any) => ({
           year:          y.year,
           grossNgn:      y.grossNgn,
           commissionNgn: y.commissionNgn,
           netNgn:        y.netNgn,
           trips:         y.tripCount,
         })));
+        setReceived(docs ?? []);
       } catch { setSummaries([]); }
       finally { setLoading(false); }
     })();
   }, []);
 
-  const handleDownload = (year: number) => {
-    Alert.alert(
-      `Download ${year} statement`,
-      'PDF export ships in a follow-up — for now the numbers shown are the canonical aggregates the backend will use to generate the PDF. Screenshot this page if you need to file before then.',
-      [{ text: 'OK' }],
-    );
+  const openDoc = (d: UserDocumentDTO) => {
+    if (d.fileUrl) { Linking.openURL(d.fileUrl); return; }
+    setViewing(d);
+  };
+
+  // Share a plain-text statement (email, WhatsApp, save to Drive, print
+  // to PDF via the share sheet). Uses RN's built-in Share: no native
+  // module, so it works without a rebuild. Formal signed PDF export is
+  // a post-launch upgrade on the same aggregates.
+  const handleDownload = async (year: number) => {
+    const y = summaries.find(s => s.year === year);
+    if (!y) return;
+    const lines = [
+      `SEIRS Logistics - Driver Earnings Statement ${year}`,
+      `Generated: ${new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+      '',
+      `Trips completed:      ${y.trips.toLocaleString()}`,
+      `Gross earnings:       ${fmtNgn(y.grossNgn)}`,
+      `SEIRS commission:     ${fmtNgn(y.commissionNgn)}`,
+      `Net earnings (yours): ${fmtNgn(y.netNgn)}`,
+      '',
+      'Figures are the canonical aggregates from the SEIRS earnings ledger,',
+      'suitable for FIRS self-assessment filing. Questions? Contact support',
+      'in the SEIRS Driver app.',
+    ];
+    try {
+      await Share.share({ title: `SEIRS earnings statement ${year}`, message: lines.join('\n') });
+    } catch { /* user dismissed the share sheet */ }
   };
 
   return (
@@ -68,18 +106,47 @@ export default function TaxDocsScreen() {
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Tax Documents</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Documents</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
 
+        {/* Official documents sent by SEIRS (contracts, letters, policies) */}
+        {received.length > 0 && (
+          <>
+            <Text style={[styles.sectionHead, { color: theme.textSecond }]}>FROM SEIRS</Text>
+            {received.map(d => {
+              const DIcon = DOC_ICON[d.category] ?? File;
+              return (
+                <Pressable
+                  key={d.id}
+                  onPress={() => openDoc(d)}
+                  style={[styles.docRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                >
+                  <View style={[styles.yearIcon, { backgroundColor: theme.primary + '15' }]}>
+                    <DIcon size={18} color={theme.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.yearLabel, { color: theme.text }]} numberOfLines={1}>{d.title}</Text>
+                    <Text style={[styles.yearSub, { color: theme.textSecond }]}>
+                      {d.category} · {new Date(d.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </Text>
+                  </View>
+                  <ChevronRight size={16} color={theme.textThird} />
+                </Pressable>
+              );
+            })}
+          </>
+        )}
+
+        <Text style={[styles.sectionHead, { color: theme.textSecond }]}>EARNINGS STATEMENTS</Text>
         <View style={[styles.intro, { backgroundColor: theme.primary + '12' }]}>
           <FileText size={20} color={theme.primary} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.introTitle, { color: theme.text }]}>For your FIRS tax filing</Text>
             <Text style={[styles.introSub, { color: theme.textSecond }]}>
-              Yearly earnings + platform commission breakdown. Download the PDF to attach when filing.
+              Yearly earnings + platform commission breakdown. Tap a year to share or save the statement.
             </Text>
           </View>
         </View>
@@ -109,7 +176,12 @@ export default function TaxDocsScreen() {
                   <Text style={[styles.yearLabel, { color: theme.text }]}>{y.year}</Text>
                   <Text style={[styles.yearSub, { color: theme.textSecond }]}>{y.trips} trip{y.trips === 1 ? '' : 's'}</Text>
                 </View>
-                <Download size={16} color={theme.primary} />
+                {/* Explicit labeled button: the bare icon was invisible to
+                    the founder in live testing 2026-08-09 */}
+                <View style={[styles.shareBtn, { backgroundColor: theme.primary }]}>
+                  <Download size={14} color="#fff" />
+                  <Text style={styles.shareBtnText}>Share</Text>
+                </View>
               </View>
 
               <View style={styles.breakdown}>
@@ -126,10 +198,38 @@ export default function TaxDocsScreen() {
         <View style={styles.footnote}>
           <AlertCircle size={12} color={theme.textThird} />
           <Text style={[styles.footnoteText, { color: theme.textThird }]}>
-            Numbers are derived from your payment history. Canonical tax-summary endpoint with PDF export is a follow-up.
+            Numbers are derived from your payment history. PDF export arrives with the next app update.
           </Text>
         </View>
       </ScrollView>
+
+      {/* Inline document viewer (body-text documents) */}
+      <Modal visible={!!viewing} transparent animationType="slide" onRequestClose={() => setViewing(null)}>
+        <View style={styles.docModalOverlay}>
+          <View style={[styles.docModalCard, { backgroundColor: theme.surface }]}>
+            <View style={styles.docModalHandle} />
+            <Text style={[styles.docModalTitle, { color: theme.text }]}>{viewing?.title}</Text>
+            <Text style={[styles.docModalMeta, { color: theme.textThird }]}>
+              {viewing?.category}{viewing?.sentByName ? ` · sent by ${viewing.sentByName}` : ''} ·{' '}
+              {viewing ? new Date(viewing.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+            </Text>
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.docModalBody, { color: theme.textSecond }]}>{viewing?.body}</Text>
+            </ScrollView>
+            <View style={styles.docModalBtns}>
+              <Pressable
+                style={[styles.docModalBtn, { backgroundColor: theme.surfaceSecond }]}
+                onPress={() => { if (viewing) Share.share({ title: viewing.title, message: `${viewing.title}\n\n${viewing.body ?? ''}` }).catch(() => {}); }}
+              >
+                <Text style={{ color: theme.text, fontWeight: FontWeight.semibold }}>Share</Text>
+              </Pressable>
+              <Pressable style={[styles.docModalBtn, { backgroundColor: theme.primary }]} onPress={() => setViewing(null)}>
+                <Text style={{ color: '#fff', fontWeight: FontWeight.bold }}>Close</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -161,11 +261,25 @@ const styles = StyleSheet.create({
   yearCard:  { borderRadius: Radius.lg, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
   yearTop:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
   yearIcon:  { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  shareBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
+  shareBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   yearLabel: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
   yearSub:   { fontSize: FontSize.xs, marginTop: 2 },
   breakdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 10, paddingVertical: 10, marginTop: 4 },
   divider:   { width: 1, alignSelf: 'stretch' },
 
   footnote:  { flexDirection: 'row', gap: 6, alignItems: 'flex-start', paddingHorizontal: 4, marginTop: Spacing.sm },
+
+  sectionHead: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 0.8, marginTop: Spacing.xs },
+  docRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+
+  docModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  docModalCard:    { borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm },
+  docModalHandle:  { width: 40, height: 4, borderRadius: 2, backgroundColor: '#D1D1D6', alignSelf: 'center', marginBottom: Spacing.xs },
+  docModalTitle:   { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  docModalMeta:    { fontSize: FontSize.xs },
+  docModalBody:    { fontSize: FontSize.sm, lineHeight: 21, paddingVertical: Spacing.sm },
+  docModalBtns:    { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
+  docModalBtn:     { flex: 1, height: 46, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center' },
   footnoteText: { flex: 1, fontSize: FontSize.xs, lineHeight: 17 },
 });

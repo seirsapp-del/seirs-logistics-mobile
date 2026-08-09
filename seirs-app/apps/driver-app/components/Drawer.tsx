@@ -36,19 +36,25 @@ export function Drawer({ visible, onClose }: Props) {
     }, 220);
   };
 
+  // "Earnings" is deliberately NOT here: it is already a bottom tab, and
+  // a second entry point for the same screen reads as a duplicate.
   const items: DrawerItem[] = [
     { icon: 'User',       label: t('drawer.profile',       { defaultValue: 'Profile' }),               onPress: () => navigate('/(driver)/profile') },
-    { icon: 'TrendingUp', label: t('drawer.earnings',      { defaultValue: 'Earnings' }),              onPress: () => navigate('/(driver)/earnings') },
-    { icon: 'Wallet',     label: t('drawer.payouts',       { defaultValue: 'Live Earnings & Payout' }), onPress: () => navigate('/(driver)/live-earnings') },
+    { icon: 'Wallet',     label: t('drawer.payouts',       { defaultValue: 'Withdraw Earnings' }),     onPress: () => navigate('/(driver)/withdrawal') },
     { icon: 'QrCode',     label: t('drawer.seirsId',       { defaultValue: 'My SEIRS ID' }),           onPress: () => navigate('/(driver)/seirs-id') },
     { icon: 'Map',        label: t('drawer.interstate',    { defaultValue: 'Interstate Trip' }),       onPress: () => navigate('/(driver)/interstate') },
     { icon: 'Moon',       label: t('drawer.lastOrder',     { defaultValue: 'Wind Down (Last Order)' }),onPress: () => navigate('/(driver)/last-order') },
     { icon: 'Star',       label: t('drawer.ratings',       { defaultValue: 'Ratings' }),               onPress: () => navigate('/(driver)/ratings') },
+    // General documents hub (founder direction 2026-08-09): earnings
+    // statements + any official doc admin sends (contracts, letters).
+    { icon: 'FileText',   label: t('drawer.documents',     { defaultValue: 'Documents' }),             onPress: () => navigate('/(driver)/tax-docs') },
     { icon: 'Calendar',   label: t('drawer.schedule',      { defaultValue: 'Schedule' }),              onPress: () => navigate('/(driver)/schedule') },
     { icon: 'Bell',       label: t('drawer.notifications', { defaultValue: 'Notifications' }),         onPress: () => navigate('/(driver)/notification-settings') },
     { icon: 'Globe',      label: t('drawer.language',      { defaultValue: 'Language' }),              onPress: () => navigate('/(driver)/language') },
-    { icon: 'BookOpen',   label: t('drawer.codeOfConduct', { defaultValue: 'Driver Code of Conduct' }), onPress: () => navigate('/(driver)/privacy') },
-    { icon: 'Shield',     label: t('drawer.insurance',     { defaultValue: 'Insurance Partners' }),    onPress: () => navigate('/(driver)/help') },
+    { icon: 'BookOpen',   label: t('drawer.codeOfConduct', { defaultValue: 'Driver Code of Conduct' }), onPress: () => navigate('/(driver)/code-of-conduct') },
+    // The partner-insurer list lives on the KYC screen (collapsible
+    // "Need vehicle insurance?" section), not in Help & FAQ.
+    { icon: 'Shield',     label: t('drawer.insurance',     { defaultValue: 'Insurance Partners' }),    onPress: () => navigate('/(driver)/kyc') },
     { icon: 'HelpCircle', label: t('drawer.help',          { defaultValue: 'Help & FAQ' }),            onPress: () => navigate('/(driver)/help') },
     { icon: 'Lock',       label: t('drawer.privacy',       { defaultValue: 'Privacy Policy' }),        onPress: () => navigate('/(driver)/privacy') },
     // Chat 5: in-app support inbox. Replaces the old shortcut to /help

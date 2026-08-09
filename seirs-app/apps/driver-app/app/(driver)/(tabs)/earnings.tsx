@@ -1,6 +1,8 @@
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar, RefreshControl,
+  Modal, TextInput,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -17,7 +19,11 @@ import { EarningsCalendar } from '@/components/EarningsCalendar';
 
 type Period = 'today' | 'week' | 'month';
 
-const GOAL_TARGET = 50000;
+// Default weekly target; each driver can set their own (founder note
+// 2026-08-09: hard workers and high-demand regions outgrow a fixed
+// number). Stored per device; purely motivational, no money attached.
+const GOAL_DEFAULT = 50000;
+const GOAL_STORAGE_KEY = 'seirs_weekly_goal_ngn';
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'] as const;
 
 export default function EarningsScreen() {
@@ -30,6 +36,24 @@ export default function EarningsScreen() {
   const [dashboard, setDashboard]   = useState<any | null>(null);
   const [history, setHistory]       = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [goalTarget, setGoalTarget] = useState(GOAL_DEFAULT);
+  const [goalEditOpen, setGoalEditOpen] = useState(false);
+  const [goalDraft, setGoalDraft]   = useState('');
+
+  useEffect(() => {
+    AsyncStorage.getItem(GOAL_STORAGE_KEY)
+      .then(v => { const n = Number(v); if (Number.isFinite(n) && n >= 1000) setGoalTarget(n); })
+      .catch(() => {});
+  }, []);
+
+  const saveGoal = async () => {
+    const n = parseInt(goalDraft.replace(/\D/g, ''), 10);
+    if (Number.isFinite(n) && n >= 1000) {
+      setGoalTarget(n);
+      AsyncStorage.setItem(GOAL_STORAGE_KEY, String(n)).catch(() => {});
+    }
+    setGoalEditOpen(false);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -58,25 +82,33 @@ export default function EarningsScreen() {
       if (!t) continue;
       const daysAgo = Math.floor((now - t) / 86400000);
       if (daysAgo < 0 || daysAgo > 6) continue;
-      totals[6 - daysAgo] += Number(e.driverEarnings ?? e.amount ?? 0);
+      // Ledger rows carry driverNet; older shapes used driverEarnings/amount.
+      totals[6 - daysAgo] += Number(e.driverNet ?? e.driverEarnings ?? e.amount ?? 0);
     }
     return totals;
   })();
   const weekTotal      = dayTotals.reduce((s, n) => s + n, 0);
   const todayTotal     = dayTotals[6] ?? 0;
-  const totalEarned    = Number(dashboard?.totalEarnings ?? 0);
-  const totalTrips     = Number(dashboard?.totalTrips    ?? 0);
-  const balance        = Number(dashboard?.pendingBalance ?? dashboard?.balance ?? 0);
+  const totalEarned    = Number(dashboard?.allTime?.earned ?? dashboard?.totalEarnings ?? 0);
+  const totalTrips     = Number(dashboard?.allTime?.deliveries ?? dashboard?.totalTrips ?? 0);
+  // Withdrawable = cleared ledger balance. The old field names
+  // (pendingBalance/balance) don't exist on the earnings dashboard, so
+  // this permanently displayed ₦0.
+  const balance        = Number(dashboard?.available ?? dashboard?.pendingBalance ?? dashboard?.balance ?? 0);
   const maxBar         = Math.max(1, ...dayTotals);
-  const goalPct        = Math.min((weekTotal / GOAL_TARGET) * 100, 100);
+  const goalPct        = Math.min((weekTotal / goalTarget) * 100, 100);
   const recentEarnings = history.slice(0, 5);
 
   const walletGradient: [string, string] = isDark
     ? ['#161B22', '#0D1117']
     : ['#0F2B4C', '#1A3A63'];
 
-  const displayAmount = period === 'today' ? todayTotal : period === 'week' ? weekTotal : totalEarned;
-  const displayLabel  = period === 'today' ? "Today's Earnings" : period === 'week' ? 'This Week' : 'All Time';
+  // Month = the real calendar month from the backend dashboard (founder
+  // finding 2026-08-09: the Month tab was silently showing all-time).
+  // All-time stays visible in the stats grid as "Total Earned".
+  const monthTotal    = Number(dashboard?.month?.earned ?? 0);
+  const displayAmount = period === 'today' ? todayTotal : period === 'week' ? weekTotal : monthTotal;
+  const displayLabel  = period === 'today' ? "Today's Earnings" : period === 'week' ? 'This Week' : 'This Month';
 
   const TABS: { id: Period; label: string }[] = [
     { id: 'today', label: 'Today' },
@@ -133,7 +165,10 @@ export default function EarningsScreen() {
                 <Text style={styles.walletAmount}>₦{displayAmount.toLocaleString()}</Text>
               </View>
               <View style={styles.walletRight}>
-                <Text style={styles.balanceLabel}>Available ₦{balance.toLocaleString()}</Text>
+                {/* "Withdrawable", not "Available": the founder read the
+                    old label as a duplicate of the This Week figure. This
+                    is the cleared cash-out balance, a different number. */}
+                <Text style={styles.balanceLabel}>Withdrawable ₦{balance.toLocaleString()}</Text>
               </View>
             </View>
             <View style={styles.walletActions}>
@@ -149,12 +184,16 @@ export default function EarningsScreen() {
           </LinearGradient>
         </View>
 
-        {/* Goal tracker */}
-        <View style={[styles.goalCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+        {/* Goal tracker: personal target, tap to edit. Copy is honest:
+            no bonus program exists yet, so the banner never promises one. */}
+        <Pressable
+          onPress={() => { setGoalDraft(String(goalTarget)); setGoalEditOpen(true); }}
+          style={[styles.goalCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
+        >
           <View style={styles.goalTop}>
             <View style={styles.goalLabel}>
               <Target size={18} color="#D97706" strokeWidth={1.75} />
-              <Text style={[styles.goalTitle, { color: theme.text }]}>Weekly Goal</Text>
+              <Text style={[styles.goalTitle, { color: theme.text }]}>My Weekly Goal</Text>
             </View>
             <Text style={[styles.goalPct, { color: goalPct >= 100 ? '#16A34A' : '#D97706' }]}>{Math.round(goalPct)}%</Text>
           </View>
@@ -163,14 +202,48 @@ export default function EarningsScreen() {
           </View>
           <View style={styles.goalBottom}>
             <Text style={[styles.goalCurrent, { color: theme.textSecond }]}>₦{weekTotal.toLocaleString()}</Text>
-            <Text style={[styles.goalTarget,  { color: theme.textThird }]}>Target ₦{GOAL_TARGET.toLocaleString()}</Text>
+            <Text style={[styles.goalTarget,  { color: theme.textThird }]}>Target ₦{goalTarget.toLocaleString()} · tap to change</Text>
           </View>
           {goalPct >= 100 && (
             <View style={[styles.goalBanner, { backgroundColor: '#16A34A15' }]}>
-              <Text style={[styles.goalBannerText, { color: '#16A34A' }]}>Goal reached! Keep going to earn bonuses.</Text>
+              <Text style={[styles.goalBannerText, { color: '#16A34A' }]}>
+                Goal reached! You beat your ₦{goalTarget.toLocaleString()} target. Raise it and see how far you can go.
+              </Text>
             </View>
           )}
-        </View>
+        </Pressable>
+
+        {/* Goal edit modal */}
+        <Modal visible={goalEditOpen} transparent animationType="fade" onRequestClose={() => setGoalEditOpen(false)}>
+          <View style={styles.goalModalOverlay}>
+            <View style={[styles.goalModalCard, { backgroundColor: theme.surface }]}>
+              <Text style={[styles.goalModalTitle, { color: theme.text }]}>Set your weekly goal</Text>
+              <Text style={[styles.goalModalSub, { color: theme.textSecond }]}>
+                Your personal target. Set it to match your hustle; you can change it any time.
+              </Text>
+              <View style={[styles.goalInputWrap, { borderColor: theme.border, backgroundColor: theme.background }]}>
+                <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold as any, color: theme.text }}>₦</Text>
+                <TextInput
+                  style={[styles.goalInput, { color: theme.text }]}
+                  keyboardType="numeric"
+                  value={goalDraft}
+                  onChangeText={v => setGoalDraft(v.replace(/\D/g, ''))}
+                  placeholder="50000"
+                  placeholderTextColor={theme.textThird}
+                  autoFocus
+                />
+              </View>
+              <View style={styles.goalModalBtns}>
+                <Pressable style={[styles.goalModalBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => setGoalEditOpen(false)}>
+                  <Text style={{ color: theme.text, fontWeight: FontWeight.semibold as any }}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[styles.goalModalBtn, { backgroundColor: theme.primary }]} onPress={saveGoal}>
+                  <Text style={{ color: '#fff', fontWeight: FontWeight.bold as any }}>Save</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Stats grid */}
         <View style={styles.statsGrid}>
@@ -229,12 +302,20 @@ export default function EarningsScreen() {
               <Text style={{ color: theme.textThird }}>No transactions yet.</Text>
             </View>
           ) : recentEarnings.map((tx: any) => {
-            const amount   = Number(tx.driverEarnings ?? tx.amount ?? 0);
+            const amount   = Number(tx.driverNet ?? tx.driverEarnings ?? tx.amount ?? 0);
+            const gross    = Number(tx.grossAmount ?? 0);
+            const cut      = Number(tx.seirsCut ?? 0);
             const isCredit = tx.type !== 'debit' && tx.type !== 'payout' && tx.type !== 'withdrawal';
             const amtColor = isCredit ? '#16A34A' : '#EF4444';
             const label    = tx.label ?? (isCredit ? `Trip ${tx.trackingCode ?? ''}`.trim() : 'Withdrawal');
             const date     = new Date(tx.createdAt ?? tx.earnedAt ?? tx.deliveredAt ?? Date.now())
               .toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+            // Commission transparency (founder ask 2026-08-09): show the
+            // gross fare + SEIRS cut per trip so drivers see exactly how
+            // their net was computed. The cut never enters their balance.
+            const sub = gross > 0
+              ? `${date} · Fare ₦${gross.toLocaleString()} − SEIRS ₦${cut.toLocaleString()}`
+              : date;
             return (
               <Pressable
                 key={tx.id}
@@ -249,7 +330,7 @@ export default function EarningsScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.txLabel, { color: theme.text }]}>{label}</Text>
-                  <Text style={[styles.txDate,  { color: theme.textSecond }]}>{date}</Text>
+                  <Text style={[styles.txDate,  { color: theme.textSecond }]} numberOfLines={1}>{sub}</Text>
                 </View>
                 <Text style={[styles.txAmount, { color: amtColor }]}>
                   {isCredit ? '+' : '−'}₦{amount.toLocaleString()}
@@ -275,6 +356,15 @@ const styles = StyleSheet.create({
   tabRow:  { flexDirection: 'row', marginHorizontal: Spacing.md, borderRadius: Radius.xl, padding: 4, marginBottom: Spacing.md },
   tab:     { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: Radius.lg },
   tabText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+
+  goalModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: Spacing.lg },
+  goalModalCard:    { borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm },
+  goalModalTitle:   { fontSize: FontSize.lg, fontWeight: FontWeight.bold as any },
+  goalModalSub:     { fontSize: FontSize.sm, lineHeight: 19 },
+  goalInputWrap:    { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, height: 52, marginTop: Spacing.xs },
+  goalInput:        { flex: 1, fontSize: FontSize.lg, fontWeight: FontWeight.bold as any },
+  goalModalBtns:    { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
+  goalModalBtn:     { flex: 1, height: 46, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center' },
 
   cardWrap:    { marginHorizontal: Spacing.md, marginBottom: Spacing.md, borderRadius: Radius.xl, overflow: 'hidden' },
   walletCard:  { padding: Spacing.lg, gap: Spacing.md },

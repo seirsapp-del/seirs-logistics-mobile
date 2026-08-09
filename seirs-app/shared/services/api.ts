@@ -299,8 +299,16 @@ export const paymentsApi = {
   history:  () => request<any[]>('GET', '/payments/history'),
   withdraw: (amountNaira: number) =>
     request<{ message: string }>('POST', '/payments/withdraw', { amountNaira }),
-  updateBankDetails: (data: { bankName: string; bankAccountNumber: string; bankAccountName: string }) =>
+  updateBankDetails: (data: { bankName: string; bankCode: string; bankAccountNumber: string; bankAccountName: string }) =>
     request<any>('PATCH', '/payments/bank-details', data),
+  getBankDetails: () =>
+    request<{
+      bankName: string | null; bankCode: string | null;
+      bankAccountNumber: string | null; bankAccountName: string | null;
+      pendingBankName?: string | null; pendingBankAccountNumber?: string | null;
+      pendingBankAccountName?: string | null; pendingBankRequestedAt?: string | null;
+    }>('GET', '/payments/bank-details'),
+  banks: () => request<Array<{ id: string; name: string; code: string }>>('GET', '/payments/banks'),
 
   // ── Saved cards (Flutterwave-tokenized, one-tap reuse) ──
   listSavedCards: () => request<SavedCard[]>('GET', '/payments/saved-cards'),
@@ -361,9 +369,14 @@ export const loyaltyApi = {
 export interface EarningsDashboard {
   today:     { earned: number; deliveries: number };
   week:      { earned: number; deliveries: number };
+  month?:    { earned: number; deliveries: number };
   allTime:   { earned: number; deliveries: number };
   pending:   number;
   available: number;
+  // Instant withdrawal: pending earnings 24h+ old, unlockable for a fee.
+  instantEligible?: number;
+  instantFeePct?:   number;
+  clearanceBusinessDays?: number;
   nextPayoutEta: string;
 }
 
@@ -379,12 +392,33 @@ export interface DriverEarning {
   createdAt:   string;
 }
 
+// ─── Documents hub (official docs: statements, contracts, letters) ──────────
+export interface UserDocumentDTO {
+  id:         string;
+  title:      string;
+  category:   'statement' | 'contract' | 'letter' | 'policy' | 'other';
+  body:       string | null;
+  fileUrl:    string | null;
+  sentByName: string | null;
+  createdAt:  string;
+}
+
+export const documentsApi = {
+  mine: () => request<UserDocumentDTO[]>('GET', '/documents/mine'),
+};
+
 export const earningsApi = {
   dashboard: () => request<EarningsDashboard>('GET', '/earnings/dashboard'),
   history:   () => request<DriverEarning[]>('GET', '/earnings/history'),
-  payout:    () => request<{ paidAmount: number; transferId?: string; payoutEarningIds: string[] }>(
-    'POST', '/earnings/payout',
-  ),
+  // amountNaira (optional) caps the withdrawal; earnings rows are matched
+  // FIFO so the actual paid amount can be slightly below the request.
+  // instant=true unlocks 24h+ old earnings still inside the business-day
+  // clearance window (fee applies to that portion only).
+  payout:    (amountNaira?: number, instant?: boolean) =>
+    request<{ paidAmount: number; feeNgn?: number; transferId?: string; payoutEarningIds: string[] }>(
+      'POST', '/earnings/payout',
+      amountNaira !== undefined || instant ? { amountNaira, instant: !!instant } : undefined,
+    ),
 };
 
 // ─── Saved Card type (used by paymentsApi above) ─────────────────────────────
