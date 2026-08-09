@@ -16,19 +16,32 @@ export class PartnerStoreController {
 
   // ── Public discovery ───────────────────────────────────────────────────
 
-  // GET /api/v1/partner-store/directory?q=&limit=&offset=
+  // GET /api/v1/partner-store/directory?q=&limit=&offset=&lat=&lng=
   // Public "find a partner store near you" list. Powers the marketing
   // website /find-a-partner page. Returns only approved + accepting
   // stores. Public-safe fields only (no owner phone, no KYC doc URLs,
-  // no capacity numbers). Optional `q` filters by name + address prefix.
+  // no capacity numbers).
+  //
+  // Optional `q` filters by name + address prefix.
+  // Optional `lat` + `lng` (visitor geolocation) triggers Haversine
+  // distance sort. Response items include `distanceKm` when the visitor
+  // granted location; null otherwise.
   @Public()
   @Get('directory')
   publicDirectory(
-    @Query('q')                                                             q?: string,
-    @Query('limit',  new DefaultValuePipe(30),  ParseIntPipe)               limit?: number,
-    @Query('offset', new DefaultValuePipe(0),   ParseIntPipe)               offset?: number,
+    @Query('q')                                              q?: string,
+    @Query('limit',  new DefaultValuePipe(30),  ParseIntPipe) limit?: number,
+    @Query('offset', new DefaultValuePipe(0),   ParseIntPipe) offset?: number,
+    @Query('lat')                                            lat?: string,
+    @Query('lng')                                            lng?: string,
   ) {
-    return this.svc.publicDirectory({ q, limit: limit!, offset: offset! });
+    return this.svc.publicDirectory({
+      q,
+      limit:  limit!,
+      offset: offset!,
+      lat:    lat != null && lat !== '' ? Number(lat) : undefined,
+      lng:    lng != null && lng !== '' ? Number(lng) : undefined,
+    });
   }
 
   // ── Customer / sender ──────────────────────────────────────────────────

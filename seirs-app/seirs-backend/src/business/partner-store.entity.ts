@@ -33,6 +33,16 @@ export class PartnerStore {
   @Column({ default: '' })
   storeAddress: string;
 
+  // Optional coordinates. Nullable so existing rows keep working; the
+  // partner apply form captures these when the storefront address is
+  // picked from a places autocomplete. When set they let the public
+  // /find-a-partner page sort by distance from the visitor.
+  @Column({ type: 'numeric', precision: 9, scale: 6, nullable: true })
+  storeLat: string | null;
+
+  @Column({ type: 'numeric', precision: 9, scale: 6, nullable: true })
+  storeLng: string | null;
+
   @Column({ default: '' })
   phone: string;
 

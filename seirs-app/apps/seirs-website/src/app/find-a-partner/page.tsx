@@ -15,13 +15,15 @@
  * accepting new drop-offs are returned. Owner phone, KYC docs, and
  * capacity numbers are never on the wire here.
  *
- * v1 is a searchable list keyed on store name + address. Coordinates
- * are not on the entity yet, so a map view is a follow-up when the
- * registration flow captures lat/lng from the address entry.
+ * v1 is a searchable list. If the visitor grants browser geolocation,
+ * results are re-sorted by Haversine distance from them (backend does
+ * the SQL math). Stores without coordinates appear at the end of the
+ * distance-sorted list. Follow-up: static map view once we have a
+ * reasonable number of stores with coordinates.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { MapPin, Phone, Clock, Search, Store, ExternalLink } from 'lucide-react';
+import { MapPin, Phone, Clock, Search, Store, ExternalLink, Navigation } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.seirs.app/api/v1';
 
@@ -35,6 +37,7 @@ interface PartnerStoreDTO {
   closeTime:     string;
   lat:           number | null;
   lng:           number | null;
+  distanceKm:    number | null;
 }
 
 interface DirectoryResponse {
@@ -74,12 +77,29 @@ export default function FindAPartnerPage() {
   const [data,     setData]     = useState<DirectoryResponse | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
+  const [userLoc,  setUserLoc]  = useState<{ lat: number; lng: number } | null>(null);
+  const [locState, setLocState] = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
 
-  // Debounce search input so we do not fire a request on every keystroke.
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
+
+  const requestLocation = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocState('denied');
+      return;
+    }
+    setLocState('requesting');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocState('granted');
+      },
+      () => setLocState('denied'),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300_000 },
+    );
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,6 +107,10 @@ export default function FindAPartnerPage() {
     try {
       const params = new URLSearchParams();
       if (debouncedQ) params.set('q', debouncedQ);
+      if (userLoc) {
+        params.set('lat', String(userLoc.lat));
+        params.set('lng', String(userLoc.lng));
+      }
       const res = await fetch(`${API_BASE}/partner-store/directory?${params.toString()}`);
       if (!res.ok) throw new Error('Could not load partner stores');
       const json = await res.json();
@@ -97,7 +121,7 @@ export default function FindAPartnerPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedQ]);
+  }, [debouncedQ, userLoc]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -123,9 +147,9 @@ export default function FindAPartnerPage() {
             </p>
           </div>
 
-          {/* Search */}
-          <div className="mt-8 max-w-xl">
-            <label className="relative block">
+          {/* Search + geolocation */}
+          <div className="mt-8 flex max-w-xl flex-col gap-2 sm:flex-row">
+            <label className="relative block flex-1">
               <span className="sr-only">Search partner stores</span>
               <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
@@ -136,6 +160,18 @@ export default function FindAPartnerPage() {
                 className="w-full rounded-xl border border-white/20 bg-white py-3.5 pl-11 pr-4 text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/50"
               />
             </label>
+            <button
+              onClick={requestLocation}
+              disabled={locState === 'requesting'}
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-white/20 disabled:opacity-60"
+              title={locState === 'granted' ? 'Location shared. Results sorted by distance.' : 'Sort by nearest to you.'}
+            >
+              <Navigation size={15} />
+              {locState === 'granted'    ? 'Using your location'
+                : locState === 'requesting' ? 'Requesting…'
+                : locState === 'denied'  ? 'Try again'
+                : 'Nearest to me'}
+            </button>
           </div>
         </div>
       </section>
@@ -204,6 +240,16 @@ export default function FindAPartnerPage() {
                 </div>
 
                 <div className="mt-4 space-y-2 border-t border-slate-100 pt-3 text-xs">
+                  {s.distanceKm != null && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky/10 px-2 py-0.5 font-semibold text-sky">
+                        <Navigation size={10} />
+                        {s.distanceKm < 1
+                          ? `${Math.round(s.distanceKm * 1000)} m away`
+                          : `${s.distanceKm.toFixed(1)} km away`}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1.5 text-slate-700">
                     <Clock size={12} className="text-slate-400" />
                     <span className="font-medium">{formatDays(s.operatingDays)}</span>

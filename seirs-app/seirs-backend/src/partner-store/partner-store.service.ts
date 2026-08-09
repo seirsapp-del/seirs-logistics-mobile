@@ -436,7 +436,13 @@ export class PartnerStoreService {
    * future release adds coordinates, they get returned too so the
    * client can render a map view without a schema change on the wire.
    */
-  async publicDirectory(opts: { q?: string; limit: number; offset: number }) {
+  async publicDirectory(opts: {
+    q?:      string;
+    limit:   number;
+    offset:  number;
+    lat?:    number;
+    lng?:    number;
+  }) {
     const qb = this.storeRepo
       .createQueryBuilder('s')
       .where('s."acceptingNew" = true')
@@ -447,30 +453,61 @@ export class PartnerStoreService {
       qb.andWhere('(s."storeName" ILIKE :t OR s."storeAddress" ILIKE :t)', { t: term });
     }
 
-    // Cap the response so a curious visitor cannot pull the entire
-    // partner network down in one request. Sane default + hard ceiling.
     const clamped = Math.min(Math.max(opts.limit ?? 30, 1), 100);
-    qb.orderBy('s."storeName"', 'ASC').take(clamped).skip(opts.offset ?? 0);
+    qb.take(clamped).skip(opts.offset ?? 0);
 
-    const [rows, total] = await qb.getManyAndCount();
+    // Distance-aware ordering: when the visitor granted geolocation on
+    // the /find-a-partner page and passed lat/lng in the query, prefer
+    // stores with coordinates first, then sort by Haversine ascending.
+    // Falls back to alphabetical when no location is provided so the
+    // ordering stays stable and cheap.
+    const hasUserLoc = Number.isFinite(opts.lat) && Number.isFinite(opts.lng);
+    if (hasUserLoc) {
+      // 6371 * 2 * asin(sqrt(sin^2(dLat/2) + cos(lat1)*cos(lat2)*sin^2(dLng/2))) km
+      qb.addSelect(`
+        CASE
+          WHEN s."storeLat" IS NULL OR s."storeLng" IS NULL THEN NULL
+          ELSE (
+            6371 * 2 * asin(sqrt(
+              power(sin(radians(s."storeLat"::float - :ulat) / 2), 2) +
+              cos(radians(:ulat)) * cos(radians(s."storeLat"::float)) *
+              power(sin(radians(s."storeLng"::float - :ulng) / 2), 2)
+            ))
+          )
+        END
+      `, 'distance_km')
+      .setParameter('ulat', opts.lat)
+      .setParameter('ulng', opts.lng)
+      // Stores without coordinates sort last, then real distance ascending.
+      .orderBy('CASE WHEN s."storeLat" IS NULL THEN 1 ELSE 0 END', 'ASC')
+      .addOrderBy('distance_km', 'ASC')
+      .addOrderBy('s."storeName"', 'ASC');
+    } else {
+      qb.orderBy('s."storeName"', 'ASC');
+    }
+
+    const { entities, raw } = await qb.getRawAndEntities();
+    const total = await qb.getCount();
+
     return {
       total,
       limit:  clamped,
       offset: opts.offset ?? 0,
-      items:  rows.map(s => ({
-        id:            s.id,
-        storeName:     s.storeName,
-        storeAddress:  s.storeAddress,
-        phone:         s.phone,           // published storefront line, safe for a marketing page
-        operatingDays: s.operatingDays,
-        openTime:      s.openTime,
-        closeTime:     s.closeTime,
-        // Coordinates will be added when partner-store gets lat/lng cols.
-        // Kept in the response shape so the client can render null-guarded
-        // map markers today and light up when data lands.
-        lat:           null,
-        lng:           null,
-      })),
+      items:  entities.map((s, i) => {
+        const distanceRaw = hasUserLoc ? raw[i]?.distance_km : null;
+        return {
+          id:            s.id,
+          storeName:     s.storeName,
+          storeAddress:  s.storeAddress,
+          phone:         s.phone,           // published storefront line, safe for a marketing page
+          operatingDays: s.operatingDays,
+          openTime:      s.openTime,
+          closeTime:     s.closeTime,
+          lat:           s.storeLat != null ? Number(s.storeLat) : null,
+          lng:           s.storeLng != null ? Number(s.storeLng) : null,
+          distanceKm:    distanceRaw != null ? Number(distanceRaw) : null,
+        };
+      }),
     };
   }
 
