@@ -22,7 +22,16 @@ import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
-import { chatApi, type ChatConversationDTO } from '@/services/api';
+import {
+  chatApi, supportApi,
+  type ChatConversationDTO, type SupportTicketDTO,
+} from '@/services/api';
+
+// Unified inbox row: delivery chat OR support ticket, merged + sorted
+// by recency so the tab shows one coherent conversation surface.
+type InboxRow =
+  | { kind: 'chat';    id: string; sortKey: number; unread: number; data: ChatConversationDTO }
+  | { kind: 'support'; id: string; sortKey: number; unread: number; data: SupportTicketDTO };
 
 function formatRelativeTime(iso: string): string {
   const ts   = new Date(iso).getTime();
@@ -39,25 +48,29 @@ function formatRelativeTime(iso: string): string {
 interface MessagesInboxProps {
   /** Route prefix for a tapped thread, e.g. `/(business)/messages` or `/(partner)/messages`. */
   threadRoutePrefix: string;
+  /** Route prefix for support tickets. Defaults to /(business)/support since
+   *  business + partner modes share the same account (and tickets). */
+  supportRoutePrefix?: string;
 }
 
-export function MessagesInbox({ threadRoutePrefix }: MessagesInboxProps) {
+export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(business)/support' }: MessagesInboxProps) {
   const router     = useRouter();
   const { isDark } = useTheme();
   const theme      = Colors[isDark ? 'dark' : 'light'];
   const { t }      = useTranslation();
 
   const [conversations, setConversations] = useState<ChatConversationDTO[]>([]);
+  const [tickets,       setTickets]       = useState<SupportTicketDTO[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [refreshing,    setRefreshing]    = useState(false);
 
   const load = useCallback(async () => {
-    try {
-      const list = await chatApi.conversations();
-      setConversations(list ?? []);
-    } catch {
-      setConversations([]);
-    }
+    const [convs, tks] = await Promise.all([
+      chatApi.conversations().catch(() => [] as ChatConversationDTO[]),
+      supportApi.listMine(undefined, 50).catch(() => [] as SupportTicketDTO[]),
+    ]);
+    setConversations(convs ?? []);
+    setTickets(tks ?? []);
   }, []);
 
   useEffect(() => {
@@ -68,7 +81,16 @@ export function MessagesInbox({ threadRoutePrefix }: MessagesInboxProps) {
     setRefreshing(true); await load(); setRefreshing(false);
   }, [load]);
 
-  const totalUnread = conversations.reduce((sum, c) => sum + (c.unread ?? 0), 0);
+  const rows: InboxRow[] = [
+    ...conversations.map((c): InboxRow => ({
+      kind: 'chat',    id: `chat:${c.deliveryId}`, sortKey: new Date(c.lastMessageAt).getTime(), unread: c.unread ?? 0, data: c,
+    })),
+    ...tickets.map((tk): InboxRow => ({
+      kind: 'support', id: `support:${tk.id}`,     sortKey: new Date(tk.lastMessageAt).getTime(), unread: tk.status === 'awaiting_user' ? 1 : 0, data: tk,
+    })),
+  ].sort((a, b) => b.sortKey - a.sortKey);
+
+  const totalUnread = rows.reduce((sum, r) => sum + r.unread, 0);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
@@ -85,14 +107,14 @@ export function MessagesInbox({ threadRoutePrefix }: MessagesInboxProps) {
         )}
       </View>
 
-      {loading && conversations.length === 0 ? (
+      {loading && rows.length === 0 ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={theme.primary} />
         </View>
       ) : (
         <FlatList
-          data={conversations}
-          keyExtractor={c => c.deliveryId}
+          data={rows}
+          keyExtractor={r => r.id}
           contentContainerStyle={{ paddingVertical: 4 }}
           refreshControl={
             <RefreshControl
@@ -109,20 +131,68 @@ export function MessagesInbox({ threadRoutePrefix }: MessagesInboxProps) {
                 {t('chat.emptyInboxTitle', { defaultValue: 'No conversations yet' })}
               </Text>
               <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
-                {t('chat.emptyInboxBody', { defaultValue: 'Chats appear here once a driver is assigned to one of your deliveries.' })}
+                {t('chat.emptyInboxBody2', { defaultValue: 'Driver chats appear once a delivery is assigned. You can also start a support conversation any time.' })}
               </Text>
+              <Pressable
+                onPress={() => router.push(`${supportRoutePrefix}/new` as any)}
+                style={[styles.emptyCta, { backgroundColor: theme.primary }]}
+              >
+                <Icon name="LifeBuoy" size={15} color="#fff" />
+                <Text style={styles.emptyCtaText}>
+                  {t('chat.startSupport', { defaultValue: 'Contact SEIRS support' })}
+                </Text>
+              </Pressable>
             </View>
           }
           renderItem={({ item }) => {
-            const isUnread = (item.unread ?? 0) > 0;
+            if (item.kind === 'support') {
+              const tk = item.data;
+              const needsReply = tk.status === 'awaiting_user';
+              return (
+                <Pressable
+                  onPress={() => router.push(`${supportRoutePrefix}/${tk.id}` as any)}
+                  style={[styles.row, { borderBottomColor: theme.border }]}
+                >
+                  <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
+                    <Icon name="LifeBuoy" size={18} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.rowTop}>
+                      <Text style={[styles.name, { color: theme.text }, needsReply && { fontWeight: '700' }]} numberOfLines={1}>
+                        SEIRS Support
+                      </Text>
+                      <Text style={[styles.time, { color: theme.textSecond }]}>
+                        {formatRelativeTime(tk.lastMessageAt)}
+                      </Text>
+                    </View>
+                    <View style={styles.rowBottom}>
+                      <Text
+                        style={[styles.preview, { color: needsReply ? theme.text : theme.textSecond }, needsReply && { fontWeight: '600' }]}
+                        numberOfLines={1}
+                      >
+                        {tk.subject}
+                      </Text>
+                      {needsReply && (
+                        <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+                          <Text style={styles.badgeText}>!</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.tracking, { color: theme.textSecond }]}>Support · {tk.topic}</Text>
+                  </View>
+                </Pressable>
+              );
+            }
+            const c = item.data;
+            const isUnread = (c.unread ?? 0) > 0;
             return (
               <Pressable
-                onPress={() => router.push(`${threadRoutePrefix}/${item.deliveryId}?other=${encodeURIComponent(item.otherParty.name)}` as any)}
+                onPress={() => router.push(`${threadRoutePrefix}/${c.deliveryId}?other=${encodeURIComponent(c.otherParty.name)}` as any)}
                 style={[styles.row, { borderBottomColor: theme.border }]}
               >
                 <View style={[styles.avatar, { backgroundColor: theme.surfaceSecond }]}>
                   <Icon
-                    name={item.otherParty.role === 'driver' ? 'Bike' : 'User'}
+                    name={c.otherParty.role === 'driver' ? 'Bike' : 'User'}
                     size={18}
                     color={theme.text}
                   />
@@ -133,10 +203,10 @@ export function MessagesInbox({ threadRoutePrefix }: MessagesInboxProps) {
                       style={[styles.name, { color: theme.text }, isUnread && { fontWeight: '700' }]}
                       numberOfLines={1}
                     >
-                      {item.otherParty.name}
+                      {c.otherParty.name}
                     </Text>
                     <Text style={[styles.time, { color: theme.textSecond }]}>
-                      {formatRelativeTime(item.lastMessageAt)}
+                      {formatRelativeTime(c.lastMessageAt)}
                     </Text>
                   </View>
                   <View style={styles.rowBottom}>
@@ -148,15 +218,15 @@ export function MessagesInbox({ threadRoutePrefix }: MessagesInboxProps) {
                       ]}
                       numberOfLines={1}
                     >
-                      {item.lastMessage || '(no messages)'}
+                      {c.lastMessage || '(no messages)'}
                     </Text>
                     {isUnread && (
                       <View style={[styles.badge, { backgroundColor: theme.primary }]}>
-                        <Text style={styles.badgeText}>{item.unread}</Text>
+                        <Text style={styles.badgeText}>{c.unread}</Text>
                       </View>
                     )}
                   </View>
-                  <Text style={[styles.tracking, { color: theme.textSecond }]}>#{item.trackingCode}</Text>
+                  <Text style={[styles.tracking, { color: theme.textSecond }]}>#{c.trackingCode}</Text>
                 </View>
               </Pressable>
             );
@@ -178,6 +248,8 @@ const styles = StyleSheet.create({
   emptyWrap:  { alignItems: 'center', paddingHorizontal: 40, paddingTop: 80, gap: 10 },
   emptyTitle: { fontSize: 15, fontWeight: '700' },
   emptyBody:  { fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  emptyCta:   { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999 },
+  emptyCtaText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
   row:      { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   avatar:   { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
