@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { AppStoreBadges } from "@/components/AppStoreBadges";
+import SeirsLogo from "@/components/SeirsLogo";
 
 export default function Footer() {
   return (
@@ -9,18 +10,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           {/* Brand column */}
           <div className="lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 bg-sky rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-black text-base">S</span>
-              </div>
-              <div className="flex flex-col leading-none">
-                <span className="text-white font-extrabold text-xl tracking-tight">
-                  Seirs
-                </span>
-                <span className="text-sky text-[10px] font-semibold tracking-widest uppercase">
-                  Logistics
-                </span>
-              </div>
+            <Link href="/" className="inline-flex items-center mb-4" aria-label="Seirs Logistics home">
+              {/* Footer background is navy, so render logo in white */}
+              <SeirsLogo variant="lockup" size={150} color="#FFFFFF" />
             </Link>
             <p className="text-white/60 text-sm leading-relaxed mb-5">
               Nigeria&apos;s smartest last-mile delivery platform. Connecting businesses, drivers, and partner stores across Nigeria.

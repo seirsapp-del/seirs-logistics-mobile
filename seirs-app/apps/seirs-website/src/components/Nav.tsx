@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Menu, X, Globe, Check } from "lucide-react";
+import SeirsLogo from "./SeirsLogo";
 
 const navLinks = [
   { label: "How it Works",   href: "/how-it-works" },
@@ -58,19 +59,9 @@ export default function Nav() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-1.5 flex-shrink-0">
-            <div className="w-8 h-8 bg-navy rounded-lg flex items-center justify-center">
-              <span className="text-white font-black text-sm">S</span>
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-navy font-extrabold text-xl tracking-tight">
-                Seirs
-              </span>
-              <span className="text-sky text-[10px] font-semibold tracking-widest uppercase">
-                Logistics
-              </span>
-            </div>
+          {/* Logo: SEIRS okada mark + wordmark, mirrors mobile SeirsLogoV2 */}
+          <Link href="/" className="flex items-center flex-shrink-0" aria-label="Seirs Logistics home">
+            <SeirsLogo variant="lockup" size={130} />
           </Link>
 
           {/* Desktop Links */}
