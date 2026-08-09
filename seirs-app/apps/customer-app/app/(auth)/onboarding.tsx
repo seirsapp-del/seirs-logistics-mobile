@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import {
   Package, MapPin, Truck, Users, ShoppingBag, Store,
   ChevronRight,
@@ -126,7 +127,9 @@ export default function OnboardingScreen() {
         >
           <SafeAreaView style={styles.topBar} edges={['top']}>
             <View style={styles.logoRow}>
-              <Truck size={20} color="#FFFFFF" strokeWidth={2} />
+              {/* Okada brand mark on every first-touch screen across all
+                  SEIRS apps (founder direction 2026-08-09). */}
+              <SeirsMarkBold size={40} color="#FFFFFF" hubColor={slide.gradientStart} />
               <Text style={styles.logoText}>SEIRS</Text>
               <Text style={styles.logoSub}>LOGISTICS</Text>
             </View>

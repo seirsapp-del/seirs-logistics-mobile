@@ -51,7 +51,7 @@ function NavigationGuard() {
     }
 
     if (isAuthenticated && !inCustomer) {
-      router.replace('/(customer)');
+      router.replace('/(customer)' as any);
     }
   }, [isAuthenticated, role, isLoading, segments]);
 

@@ -64,7 +64,7 @@ export default function ScheduleScreen() {
       Alert.alert(
         'Scheduled!',
         `Your delivery is scheduled for ${scheduleDate} at ${scheduleTime}.\nTracking: ${delivery.trackingCode}`,
-        [{ text: 'OK', onPress: () => router.replace('/(customer)') }],
+        [{ text: 'OK', onPress: () => router.replace('/(customer)' as any) }],
       );
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'Failed to schedule delivery.');

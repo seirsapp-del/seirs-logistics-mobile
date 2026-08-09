@@ -832,7 +832,21 @@ export class AdminService {
       .skip((page - 1) * limit)
       .take(limit);
 
-    if (role) qb.where('u.role = :role', { role });
+    // Business accounts are stored as role='customer' + a businessRole
+    // ('sender'/'partner') + BIZ- account id, so they were invisible in
+    // the admin list (founder finding 2026-08-09). Virtual filters:
+    //   role=business -> any business account
+    //   role=partner  -> business accounts with the partner capability
+    //   role=customer -> personal customers ONLY (business excluded)
+    if (role === 'business') {
+      qb.where(`(u."businessRole" IS NOT NULL OR u."accountId" LIKE 'BIZ-%')`);
+    } else if (role === 'partner') {
+      qb.where(`(u."businessRole" = 'partner' OR (u.capabilities ->> 'canPartner') = 'true')`);
+    } else if (role === 'customer') {
+      qb.where(`u.role = 'customer' AND u."businessRole" IS NULL AND u."accountId" NOT LIKE 'BIZ-%'`);
+    } else if (role) {
+      qb.where('u.role = :role', { role });
+    }
 
     const [users, total] = await qb.getManyAndCount();
     return { users, total, page, limit };

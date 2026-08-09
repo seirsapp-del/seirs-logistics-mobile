@@ -39,6 +39,7 @@ export type {
   QuoteInput,
   SavedCard,
   LoyaltyEntry,
+  ReferralHistoryItem,
   LoyaltyTier,
   PromoDTO,
   FlutterwavePaymentOption,

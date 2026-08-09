@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
+import { SeirsMarkBold, SeirsWordmark } from '@seirs/shared/components/SeirsLogoV2';
 
 const { width } = Dimensions.get('window');
 
@@ -69,6 +70,13 @@ export default function OnboardingScreen() {
 
   return (
     <LinearGradient colors={slide.gradient} style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Brand lockup: the okada mark + wordmark on every first-touch
+          screen across all SEIRS apps (founder direction 2026-08-09). */}
+      <View style={styles.brandRow}>
+        <SeirsMarkBold size={44} color="#fff" hubColor="#0F2B4C" />
+        <SeirsWordmark size={92} color="#fff" />
+        <Text style={styles.brandSub}>BUSINESS</Text>
+      </View>
       <FlatList
         ref={flatRef}
         data={SLIDES}
@@ -123,7 +131,9 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  slide:     { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingTop: 80 },
+  brandRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingTop: 18 },
+  brandSub:  { color: '#FFBE0B', fontSize: 11, fontWeight: '800', letterSpacing: 2, marginLeft: 2 },
+  slide:     { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingTop: 40 },
   iconWrap:  {
     width: 100, height: 100, borderRadius: 28,
     backgroundColor: 'rgba(255,255,255,0.12)',

@@ -8,6 +8,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
@@ -103,7 +104,9 @@ export default function LoginScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <Truck size={22} color={theme.primary} strokeWidth={2} />
+            {/* Okada brand mark replaces the generic truck icon
+                (founder direction 2026-08-09: one logo everywhere). */}
+            <SeirsMarkBold size={38} color={theme.primary} hubColor={theme.background} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
           </View>
           <Text style={[styles.title, { color: theme.text }]}>{t('auth.welcomeBack')}</Text>

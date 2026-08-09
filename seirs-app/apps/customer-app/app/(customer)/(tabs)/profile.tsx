@@ -40,7 +40,7 @@ export default function ProfileScreen() {
   // read-only screens; drivers and other users don't need the full legal
   // name). Falls back to the legacy `name` split for accounts that
   // pre-date the firstName/lastName rollout.
-  const displayName = user?.firstName
+  const displayName = (user as any)?.firstName
     ?? (user?.name ? String(user.name).trim().split(/\s+/)[0] : '');
 
   useFocusEffect(
@@ -91,7 +91,7 @@ export default function ProfileScreen() {
     {
       title: t('profile.sectionActivity'),
       items: [
-        { icon: 'receipt-outline',   label: t('profile.myTrips'),     sub: t('profile.myTripsSub',  { count: completedTrips ?? 0 }), onPress: () => router.push('/(customer)/history') },
+        { icon: 'receipt-outline',   label: t('profile.myTrips'),     sub: t('profile.myTripsSub',  { count: completedTrips ?? 0 }), onPress: () => router.push('/(customer)/history' as any) },
         // Wallet list item removed: it pointed to the same screen as Rewards
         // and customers do not hold NGN so "Wallet ₦0 balance" was misleading.
         // See [[feedback_wallet_is_rewards]].

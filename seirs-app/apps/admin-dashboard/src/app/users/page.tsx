@@ -7,7 +7,21 @@ const ROLE_COLORS: Record<string, string> = {
   customer: 'bg-blue-100 text-blue-700',
   driver:   'bg-[#3A7BD5]/10 text-[#3A7BD5]',
   admin:    'bg-violet-100 text-violet-700',
+  business: 'bg-amber-100 text-amber-700',
+  partner:  'bg-emerald-100 text-emerald-700',
 };
+
+// Business accounts are stored as role='customer' + businessRole +
+// BIZ- account id backend-side; derive the honest display type so
+// business/partner accounts stop masquerading as customers.
+function displayType(u: any): string {
+  if (u.role === 'admin' || u.role === 'driver') return u.role;
+  const isPartner  = u.businessRole === 'partner' || u.capabilities?.canPartner === true;
+  const isBusiness = !!u.businessRole || String(u.accountId ?? '').startsWith('BIZ-');
+  if (isPartner)  return 'partner';
+  if (isBusiness) return 'business';
+  return 'customer';
+}
 
 export default function UsersPage() {
   const [data,    setData]    = useState<any>(null);
@@ -54,7 +68,7 @@ export default function UsersPage() {
             )}
           </div>
           <div className="flex gap-2">
-            {['', 'customer', 'driver', 'admin'].map((r) => (
+            {['', 'customer', 'business', 'partner', 'driver', 'admin'].map((r) => (
               <button
                 key={r}
                 onClick={() => setRole(r)}
@@ -98,8 +112,8 @@ export default function UsersPage() {
                     </td>
                     <td className="px-4 py-3 text-[#0F2B4C]/60">{u.phone ?? '-'}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${ROLE_COLORS[u.role] ?? 'bg-[#0F2B4C]/5 text-[#0F2B4C]/50'}`}>
-                        {u.role}
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${ROLE_COLORS[displayType(u)] ?? 'bg-[#0F2B4C]/5 text-[#0F2B4C]/50'}`}>
+                        {displayType(u)}
                       </span>
                     </td>
                     <td className="px-4 py-3">

@@ -277,7 +277,7 @@ function SupportRow({ theme, row, onPress }: { theme: any; row: SupportTicketDTO
             numberOfLines={1}
             style={[
               styles.preview,
-              { color: row.unread > 0 || row.status === 'awaiting_user' ? theme.text : theme.textSecond },
+              { color: row.status === 'awaiting_user' ? theme.text : theme.textSecond },
               (row.status === 'awaiting_user') && { fontWeight: FontWeight.semibold },
             ]}
           >

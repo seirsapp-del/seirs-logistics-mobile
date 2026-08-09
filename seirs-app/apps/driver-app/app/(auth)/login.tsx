@@ -11,6 +11,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 
 export default function LoginScreen() {
   const router      = useRouter();
@@ -73,7 +74,9 @@ export default function LoginScreen() {
 
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <Truck size={24} color={theme.primary} strokeWidth={1.5} />
+            {/* Okada brand mark replaces the generic truck icon
+                (founder direction 2026-08-09: one logo everywhere). */}
+            <SeirsMarkBold size={40} color={theme.primary} hubColor={theme.background} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS DRIVER</Text>
           </View>
           <Text style={[styles.title, { color: theme.text }]}>Welcome back</Text>

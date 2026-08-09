@@ -56,10 +56,11 @@ export default function VerifyIdentityScreen() {
     latest: null | {
       id:              string;
       documentType:    IdentityDocType;
-      status:          'submitted' | 'approved' | 'rejected' | 'withdrawn';
+      status:          'submitted' | 'approved' | 'rejected' | 'withdrawn' | 'revoked' | 'expired';
       submittedAt:     string;
       reviewedAt:      string | null;
       rejectionReason: string | null;
+      revokedReason?:  string | null;
       submitterNote:   string | null;
     };
   } | null>(null);

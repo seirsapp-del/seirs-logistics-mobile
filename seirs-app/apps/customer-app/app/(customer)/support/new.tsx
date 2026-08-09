@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, textAlign: 'center', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
 
   greetingWrap: { paddingHorizontal: Spacing.md, paddingTop: 20, paddingBottom: 12 },
-  greeting:     { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, lineHeight: 30 },
+  greeting:     { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold, lineHeight: 30 },
   responseRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   responseText: { fontSize: FontSize.sm },
   teamRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },

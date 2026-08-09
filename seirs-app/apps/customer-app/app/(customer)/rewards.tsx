@@ -288,7 +288,7 @@ export default function RewardsScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.tierRowName, { color: theme.text }]}>
-                    {tier.name} <Text style={{ fontWeight: FontWeight.normal, color: theme.textSecond, fontSize: FontSize.xs }}>· {tier.multiplier}× earn</Text>
+                    {tier.name} <Text style={{ fontWeight: FontWeight.regular, color: theme.textSecond, fontSize: FontSize.xs }}>· {tier.multiplier}× earn</Text>
                   </Text>
                   <Text style={[styles.tierRange, { color: theme.textSecond }]}>
                     {tier.min.toLocaleString()}{tier.max ? ` – ${tier.max.toLocaleString()}` : '+'} pts

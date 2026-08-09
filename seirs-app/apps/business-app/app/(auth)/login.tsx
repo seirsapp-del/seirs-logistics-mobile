@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/Icon';
+import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { authApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -56,9 +57,10 @@ export default function LoginScreen() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <LinearGradient colors={headerGradient} style={{ paddingTop: insets.top + 24, paddingBottom: 24 }}>
         <View style={styles.logoRow}>
-          <View style={[styles.logoIcon, { backgroundColor: Palette.sky500 }]}>
-            <Icon name="Briefcase" size={22} color={Palette.white} strokeWidth={1.5} />
-          </View>
+          {/* Okada brand mark, same as every other SEIRS surface
+              (founder direction 2026-08-09: logo on all first-touch
+              screens). Replaced the generic briefcase square. */}
+          <SeirsMarkBold size={52} color={Palette.white} hubColor={Palette.navy800} />
           <View>
             <Text style={[styles.logoText, { color: Palette.white }]}>SEIRS</Text>
             <Text style={[styles.logoSub, { color: 'rgba(255,255,255,0.5)' }]}>Business &amp; Partners</Text>
