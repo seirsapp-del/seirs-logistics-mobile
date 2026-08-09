@@ -55,11 +55,11 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'HelpCircle', label: t('drawer.help',          { defaultValue: 'Help & FAQ' }),      onPress: () => navigate('/(customer)/help') },
     { icon: 'Lock',       label: t('drawer.privacy',       { defaultValue: 'Privacy Policy' }),  onPress: () => navigate('/(customer)/privacy') },
     { icon: 'Send',       label: t('drawer.sendMultiple',  { defaultValue: 'Send Multiple' }),   onPress: () => navigate('/(customer)/business') },
-    { icon: 'Phone',      label: t('drawer.contact',       { defaultValue: 'Contact Support' }),
-      onPress: () => {
-        onClose();
-        setTimeout(() => Linking.openURL('tel:07007347701').catch(() => router.push('/(customer)/help' as any)), 220);
-      } },
+    // Chat 5: in-app support chat replaces the old tel: link. Users can
+    // still see the support hotline inside the ticket flow if they prefer
+    // to call.
+    { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }),
+      onPress: () => navigate('/(customer)/support') },
   ];
 
   return (
