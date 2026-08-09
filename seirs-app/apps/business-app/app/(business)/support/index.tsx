@@ -9,7 +9,7 @@ import {
   View, Text, StyleSheet, FlatList, Pressable, StatusBar, ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -37,6 +37,7 @@ export default function BusinessSupportInboxScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const theme = Colors[isDark ? 'dark' : 'light'];
+  const insets = useSafeAreaInsets();
 
   const [tickets,    setTickets]    = useState<SupportTicketDTO[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -105,7 +106,7 @@ export default function BusinessSupportInboxScreen() {
 
       <Pressable
         onPress={() => router.push('/(business)/support/new' as any)}
-        style={[styles.fab, { backgroundColor: theme.primary }]}
+        style={[styles.fab, { backgroundColor: theme.primary, bottom: 24 + insets.bottom }]}
       >
         <Icon name="Plus" size={20} color="#fff" />
         <Text style={styles.fabText}>New ticket</Text>
@@ -130,6 +131,6 @@ const styles = StyleSheet.create({
   pill:        { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: 1 },
   pillText:    { fontSize: 10, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },
   topic:       { fontSize: 11, fontWeight: '500', textTransform: 'capitalize' },
-  fab:         { position: 'absolute', bottom: 24, right: 24, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999 },
+  fab:         { position: 'absolute', right: 24, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999 },
   fabText:     { color: '#fff', fontSize: 13, fontWeight: '700' },
 });

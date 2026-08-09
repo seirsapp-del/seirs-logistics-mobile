@@ -9,7 +9,7 @@ import {
   View, Text, StyleSheet, FlatList, Pressable, StatusBar, ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -40,6 +40,7 @@ export default function DriverSupportInboxScreen() {
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
   const { t }  = useTranslation();
+  const insets = useSafeAreaInsets();
 
   const [tickets, setTickets] = useState<SupportTicketDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,7 +114,7 @@ export default function DriverSupportInboxScreen() {
 
       <Pressable
         onPress={() => router.push('/(driver)/support/new' as any)}
-        style={[styles.fab, { backgroundColor: theme.primary }]}
+        style={[styles.fab, { backgroundColor: theme.primary, bottom: 24 + insets.bottom }]}
       >
         <Ionicons name="add" size={22} color="#fff" />
         <Text style={styles.fabText}>{t('support.newTicket', { defaultValue: 'New ticket' })}</Text>
@@ -138,6 +139,6 @@ const styles = StyleSheet.create({
   pill:        { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: 1 },
   pillText:    { fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.4, textTransform: 'uppercase' },
   topic:       { fontSize: 11, fontWeight: FontWeight.medium, textTransform: 'capitalize' },
-  fab:         { position: 'absolute', bottom: 24, right: 24, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999 },
+  fab:         { position: 'absolute', right: 24, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999 },
   fabText:     { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 });
