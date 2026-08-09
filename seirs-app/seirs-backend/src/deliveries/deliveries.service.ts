@@ -7,6 +7,70 @@ import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
 import { User } from '../users/user.entity';
 
+// Vehicle-tuned average speeds for Lagos street conditions (km/h).
+// Deliberately conservative: matches lived experience of standstill
+// traffic + NEPA + checkpoints so ETA is more likely to under-promise
+// and over-deliver than the opposite. Never surfaced as a SLA or a
+// refund-if-late guarantee per the no-time-guarantee rule.
+const VEHICLE_SPEED_KMH: Record<string, number> = {
+  bicycle:     12,
+  motorcycle:  25,   // okada, weaves traffic
+  tricycle:    15,   // keke marwa
+  car:         18,
+  van:         15,
+  truck_small: 12,
+  truck_large:  8,
+};
+
+// Compute an "estimated minutes to arrival" for a delivery based on the
+// current best-known driver location and the appropriate destination
+// (pickup for pre-pickup states, dropoff for in-transit). Free: no
+// Google Directions call, uses Haversine + vehicle-tuned speed. Adds
+// a fixed traffic buffer at the end. Returns null when we cannot make
+// a defensible estimate (no driver assigned, no location fix, terminal
+// state).
+function computeEtaMinutes(
+  delivery: any,
+  driverLat: number | null | undefined,
+  driverLng: number | null | undefined,
+): number | null {
+  if (!delivery) return null;
+  const terminal = ['delivered', 'cancelled', 'failed'];
+  if (terminal.includes(String(delivery.status))) return null;
+  if (driverLat == null || driverLng == null) return null;
+
+  // Pick destination based on status. Before pickup, the driver is
+  // heading TO the pickup point. After, to the dropoff.
+  const isPrePickup = ['pending', 'assigned'].includes(String(delivery.status));
+  const destLat = isPrePickup ? delivery.pickupLat  : delivery.dropoffLat;
+  const destLng = isPrePickup ? delivery.pickupLng  : delivery.dropoffLng;
+  if (destLat == null || destLng == null) return null;
+
+  const distanceKm = PricingService.haversineKm(
+    Number(driverLat), Number(driverLng),
+    Number(destLat),   Number(destLng),
+  );
+
+  const speed = VEHICLE_SPEED_KMH[String(delivery.vehicleType)] ?? 15;
+  // 3-minute buffer for stop-and-go + junctions + pedestrian crossings.
+  const raw = (distanceKm / speed) * 60 + 3;
+  return Math.max(1, Math.round(raw));
+}
+
+// Human-readable label for a handoff record surfaced on the tracking
+// timeline. The stage values mirror HandoffStage from identity module
+// but kept as strings here to avoid a cross-module type import.
+function describeHandoffStage(stage: string): string {
+  switch (stage) {
+    case 'customer_to_store':   return 'Package handed to partner store';
+    case 'store_to_driver':     return 'Driver picked up from partner';
+    case 'driver_to_store':     return 'Driver dropped at partner';
+    case 'store_to_recipient':  return 'Recipient collected from partner';
+    case 'driver_to_recipient': return 'Handed to recipient';
+    default:                    return 'Hand-off recorded';
+  }
+}
+
 function generateTrackingCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'SRS-';
@@ -359,6 +423,41 @@ export class DeliveriesService {
       }
     } catch { /* self-heal race, no events yet */ }
 
+    // Also fold in handoff records (chain-of-custody entries from the
+    // identity module) as HANDOFF-typed events. Kept as a read-time
+    // merge to avoid write coupling: the handoff module keeps writing
+    // to handoff_records the way it always has, and the tracking view
+    // synthesises the timeline. Cheap raw SQL, indexed on deliveryId.
+    try {
+      const handoffs: any[] = await this.repo.manager.query(
+        `SELECT id, stage, method, "fromUserId", "toUserId",
+                "signatureName", "proofPhotoUrl", "createdAt"
+           FROM handoff_records
+          WHERE "deliveryId" = $1
+          ORDER BY "createdAt" ASC`,
+        [delivery.id],
+      );
+      for (const h of handoffs) {
+        events.push({
+          id:          `handoff:${h.id}`,
+          type:        'handoff',
+          actorRole:   'partner',
+          description: describeHandoffStage(h.stage),
+          lat:         null,
+          lng:         null,
+          meta:        {
+            stage:         h.stage,
+            method:        h.method,
+            signatureName: h.signatureName,
+            photoUrl:      h.proofPhotoUrl,
+          },
+          createdAt:   h.createdAt,
+        });
+      }
+      // Re-sort so the merged timeline is chronological.
+      events.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } catch { /* handoff_records may not exist yet on very old databases */ }
+
     const publicDriver = delivery.driver
       ? {
           name:        delivery.driver.user?.name ?? 'Driver',
@@ -366,6 +465,15 @@ export class DeliveriesService {
           rating:      delivery.driver.rating ?? null,
         }
       : null;
+
+    // Uber-style live ETA: derived from the driver's last known GPS +
+    // vehicle-tuned Lagos speeds. Free (no Google Directions), and
+    // deliberately never surfaced as an SLA or refund trigger per the
+    // no-time-guarantee rule. Null when the delivery is terminal or we
+    // do not yet have a location fix from the driver.
+    const driverLat = delivery.driver?.lastLat  ?? null;
+    const driverLng = delivery.driver?.lastLng  ?? null;
+    const etaMinutes = computeEtaMinutes(delivery, driverLat, driverLng);
 
     return {
       id:             delivery.id,
@@ -381,13 +489,15 @@ export class DeliveriesService {
       createdAt:      delivery.createdAt,
       proofPhotoUrl:  delivery.proofPhotoUrl,
       driver:         publicDriver,
+      etaMinutes:     etaMinutes,
+      etaAsOf:        etaMinutes != null ? new Date().toISOString() : null,
       events:         events.map(e => ({
         id:          e.id,
         type:        e.type,
         actorRole:   e.actorRole,
         description: e.description,
-        lat:         e.lat ? Number(e.lat) : null,
-        lng:         e.lng ? Number(e.lng) : null,
+        lat:         e.lat != null ? Number(e.lat) : null,
+        lng:         e.lng != null ? Number(e.lng) : null,
         meta:        e.meta,
         createdAt:   e.createdAt,
       })),

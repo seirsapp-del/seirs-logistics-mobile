@@ -48,6 +48,8 @@ interface PublicDelivery {
   createdAt:      string;
   proofPhotoUrl:  string | null;
   driver:         { name: string; vehicleType: string | null; rating: number | null } | null;
+  etaMinutes:     number | null;
+  etaAsOf:        string | null;
   events:         DeliveryEventDTO[];
 }
 
@@ -204,6 +206,11 @@ export default function PublicTrackingPage() {
           </div>
           <div className="flex-1">
             <div className="text-sm font-bold text-slate-900">{statusMeta.label}</div>
+            {isActive && delivery.etaMinutes != null && (
+              <div className="mt-0.5 text-sm font-semibold text-slate-700">
+                Estimated arrival in ~{delivery.etaMinutes} min
+              </div>
+            )}
             {isActive && (
               <div className="mt-0.5 text-xs text-slate-500">
                 Auto-refreshes every 30 seconds
