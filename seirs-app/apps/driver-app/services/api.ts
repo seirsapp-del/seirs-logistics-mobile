@@ -24,4 +24,9 @@ export type {
   ChatConversationDTO,
   EarningsDashboard,
   DriverEarning,
+  // Chat 5 support toolkit
+  SupportTicketDTO,
+  SupportThreadDTO,
+  TicketTopic,
+  TicketStatus,
 } from '@seirs/shared/services/api';

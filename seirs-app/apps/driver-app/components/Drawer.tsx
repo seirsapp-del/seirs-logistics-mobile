@@ -51,7 +51,10 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'Shield',     label: t('drawer.insurance',     { defaultValue: 'Insurance Partners' }),    onPress: () => navigate('/(driver)/help') },
     { icon: 'HelpCircle', label: t('drawer.help',          { defaultValue: 'Help & FAQ' }),            onPress: () => navigate('/(driver)/help') },
     { icon: 'Lock',       label: t('drawer.privacy',       { defaultValue: 'Privacy Policy' }),        onPress: () => navigate('/(driver)/privacy') },
-    { icon: 'Phone',      label: t('drawer.contact',       { defaultValue: 'Contact Support' }),       onPress: () => navigate('/(driver)/help') },
+    // Chat 5: in-app support inbox. Replaces the old shortcut to /help
+    // so drivers can escalate a stuck delivery to a support agent
+    // without leaving the app or calling.
+    { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }),   onPress: () => navigate('/(driver)/support') },
     { icon: 'AlertTriangle', label: t('drawer.sos',         { defaultValue: 'SOS Emergency' }),         onPress: () => navigate('/(driver)/sos') },
   ];
 

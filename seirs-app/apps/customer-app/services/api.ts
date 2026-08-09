@@ -44,4 +44,9 @@ export type {
   FlutterwavePaymentOption,
   SavedAddressDTO,
   IdentityDocType,
+  // Chat 5 support toolkit
+  SupportTicketDTO,
+  SupportThreadDTO,
+  TicketTopic,
+  TicketStatus,
 } from '@seirs/shared/services/api';

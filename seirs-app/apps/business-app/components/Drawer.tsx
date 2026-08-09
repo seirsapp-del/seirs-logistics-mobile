@@ -59,7 +59,7 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'Globe',           label: t('drawer.language',        { defaultValue: 'Language' }),         onPress: () => navigate('/(business)/language') },
     { icon: 'HelpCircle',      label: t('drawer.help',            { defaultValue: 'Help & FAQ' }) },
     { icon: 'Lock',            label: t('drawer.privacy',         { defaultValue: 'Privacy Policy' }) },
-    { icon: 'Phone',           label: t('drawer.contact',         { defaultValue: 'Contact Support' }) },
+    { icon: 'MessageCircle',   label: t('drawer.contactSupport',  { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support') },
   ];
 
   const partnerItems: DrawerItem[] = [
@@ -68,7 +68,7 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'Globe',      label: t('drawer.language',       { defaultValue: 'Language' }),        onPress: () => navigate('/(partner)/language') },
     { icon: 'HelpCircle', label: t('drawer.help',           { defaultValue: 'Help & FAQ' }) },
     { icon: 'Lock',       label: t('drawer.privacy',        { defaultValue: 'Privacy Policy' }) },
-    { icon: 'Phone',      label: t('drawer.contact',        { defaultValue: 'Contact Support' }) },
+    { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support') },
   ];
 
   const displayName = isPartner ? (user?.storeName ?? 'Partner Store')

@@ -35,6 +35,11 @@ export type {
   QuoteInput,
   ChatMessageDTO,
   ChatConversationDTO,
+  // Chat 5 support toolkit
+  SupportTicketDTO,
+  SupportThreadDTO,
+  TicketTopic,
+  TicketStatus,
 } from '@seirs/shared/services/api';
 
 import { businessAuthApi, authApi as sharedAuthApi } from '@seirs/shared/services/api';
