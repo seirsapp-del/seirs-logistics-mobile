@@ -133,6 +133,16 @@ export default function ActiveDeliveryScreen() {
       }
       Alert.alert('Confirm Delivery', 'Has the package been handed to the recipient?', [
         { text: 'Cancel', style: 'cancel' },
+        // Gap 5 QR: verify the right package meets the right recipient
+        // before confirming. Customer shows their package QR; driver
+        // scans; wrong-code scans show a red banner in scan-package.
+        {
+          text: 'Scan package QR first',
+          onPress: () => router.push({
+            pathname: '/(driver)/scan-package',
+            params:   { code: delivery.trackingCode ?? '' },
+          } as any),
+        },
         { text: 'Yes, Delivered', onPress: () => doUpdate(nextStatus) },
       ]);
     } else {

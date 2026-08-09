@@ -16,6 +16,8 @@ import { MOCK_TRIPS, MOCK_DRIVERS, dwellFee, cancellationFee } from '@/constants
 import { getActiveRateCard } from '@/hooks/use-rate-card';
 import { SOCKET_URL } from '@/constants/config';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
+import QRCode from 'react-native-qrcode-svg';
+import { deliveriesApi } from '@/services/api';
 
 const STATUS_STEPS = [
   { key: 'assigned',   labelKey: 'stepAssigned',  icon: 'navigate-outline' },
@@ -61,6 +63,19 @@ export default function TripProgressScreen() {
   const [eta,         setEta]         = useState(driver.eta);
   const pulse = useRef(new Animated.Value(1)).current;
   const mapRef = useRef<MapView>(null);
+
+  // Gap 5 QR: the customer shows this at hand-off; the driver scans it
+  // in scan-package.tsx to verify the right package meets the right
+  // recipient. QR content is the trackingCode only (public code, zero
+  // PII). Fetched lazily from the delivery record.
+  const [trackingCode, setTrackingCode] = useState<string | null>((trip as any).trackingCode ?? null);
+  const [qrVisible,    setQrVisible]    = useState(false);
+  useEffect(() => {
+    if (trackingCode || !trip.id) return;
+    deliveriesApi.get(String(trip.id))
+      .then((d: any) => { if (d?.trackingCode) setTrackingCode(d.trackingCode); })
+      .catch(() => {});
+  }, [trip.id, trackingCode]);
 
   // Wait-fee tracker — driver arrives at pickup (currentStep === 1) and the
   // meter starts. First `freeMinutes` are free per rate card; after that
@@ -376,6 +391,21 @@ export default function TripProgressScreen() {
             <Text style={[styles.sosBtnText, { color: theme.error }]}>{t('tripProgress2.sosBtn')}</Text>
           </Pressable>
 
+          {/* Package QR: shown to the driver at hand-off so their scanner
+              confirms the right package meets the right recipient. Only
+              relevant while the trip is moving (before rating stage). */}
+          {trackingCode && currentStep < 3 && (
+            <Pressable
+              style={[styles.sosBtn, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}
+              onPress={() => setQrVisible(true)}
+            >
+              <Ionicons name="qr-code-outline" size={16} color={theme.text} />
+              <Text style={[styles.sosBtnText, { color: theme.text }]}>
+                {t('tripProgress2.packageQr', { defaultValue: 'Package QR' })}
+              </Text>
+            </Pressable>
+          )}
+
           {currentStep >= 3 && (
             <Button
               label={t('rateDriver.title')}
@@ -385,6 +415,27 @@ export default function TripProgressScreen() {
             />
           )}
         </View>
+
+        {/* Fullscreen package-QR modal for the driver to scan */}
+        {qrVisible && trackingCode && (
+          <Pressable style={styles.qrBackdrop} onPress={() => setQrVisible(false)}>
+            <View style={[styles.qrCard, { backgroundColor: '#fff' }]}>
+              <Text style={styles.qrTitle}>
+                {t('tripProgress2.qrTitle', { defaultValue: 'Show this to your driver' })}
+              </Text>
+              <View style={styles.qrBox}>
+                <QRCode value={trackingCode} size={220} />
+              </View>
+              <Text style={styles.qrCode}>{trackingCode}</Text>
+              <Text style={styles.qrHint}>
+                {t('tripProgress2.qrHint', { defaultValue: 'The driver scans this to confirm they are handing over the right package.' })}
+              </Text>
+              <Pressable onPress={() => setQrVisible(false)} style={styles.qrClose}>
+                <Text style={styles.qrCloseText}>{t('common.done', { defaultValue: 'Done' })}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        )}
 
         {/* Cancel link — pre-/mid-route only. Once in_transit (step 2+)
             the trip is already moving so we don't expose a cancel path. */}
@@ -402,6 +453,21 @@ export default function TripProgressScreen() {
 }
 
 const styles = StyleSheet.create({
+  qrBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center', alignItems: 'center', zIndex: 100,
+  },
+  qrCard: {
+    width: '84%', borderRadius: 20, padding: 24, alignItems: 'center', gap: 12,
+  },
+  qrTitle:     { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: '#0F2B4C', textAlign: 'center' },
+  qrBox:       { padding: 14, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' },
+  qrCode:      { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: '#3A7BD5', letterSpacing: 2 },
+  qrHint:      { fontSize: FontSize.xs, color: '#6B7280', textAlign: 'center', lineHeight: 17 },
+  qrClose:     { marginTop: 4, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 999, backgroundColor: '#0F2B4C' },
+  qrCloseText: { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+
   topBar: {
     position: 'absolute', top: 0, left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
