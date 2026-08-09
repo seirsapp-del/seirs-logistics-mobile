@@ -1,10 +1,11 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
-import { TypeOrmModule, InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Logger, Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { TypeOrmModule, InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { DeliveriesController } from './deliveries.controller';
 import { DeliveriesService } from './deliveries.service';
 import { PricingService } from './pricing.service';
 import { Delivery } from './delivery.entity';
+import { DeliveryEvent } from './delivery-event.entity';
 import { MatchingModule } from '../matching/matching.module';
 import { TrackingModule } from '../tracking/tracking.module';
 import { MatchingService } from '../matching/matching.service';
@@ -27,7 +28,7 @@ import { ChatService } from '../chat/chat.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Delivery, User]),
+    TypeOrmModule.forFeature([Delivery, DeliveryEvent, User]),
     MatchingModule,
     TrackingModule,
     forwardRef(() => PaymentsModule),
@@ -43,6 +44,8 @@ import { ChatService } from '../chat/chat.service';
   exports: [DeliveriesService, PricingService],
 })
 export class DeliveriesModule implements OnModuleInit {
+  private readonly logger = new Logger(DeliveriesModule.name);
+
   constructor(
     private deliveriesService:    DeliveriesService,
     private matchingService:      MatchingService,
@@ -53,11 +56,13 @@ export class DeliveriesModule implements OnModuleInit {
     private mailService:          MailService,
     private driversService:       DriversService,
     private loyaltyService:       LoyaltyService,
-    @InjectRepository(User) private usersRepo: Repository<User>,
+    @InjectRepository(User)          private usersRepo:          Repository<User>,
+    @InjectRepository(DeliveryEvent) private deliveryEventsRepo: Repository<DeliveryEvent>,
     private chatService:          ChatService,
+    @InjectDataSource()           private readonly ds: DataSource,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     this.deliveriesService.matchingService      = this.matchingService;
     this.deliveriesService.trackingGateway      = this.trackingGateway;
     this.deliveriesService.paymentsService      = this.paymentsService;
@@ -68,8 +73,36 @@ export class DeliveriesModule implements OnModuleInit {
     this.deliveriesService.loyaltyService       = this.loyaltyService;
     this.deliveriesService.usersRepoRef         = this.usersRepo;
     this.deliveriesService.chatService          = this.chatService;
+    this.deliveriesService.deliveryEventsRepo   = this.deliveryEventsRepo;
 
     // Give NotificationsService a reference to the gateway for WS delivery
     this.notificationsService.trackingGateway = this.trackingGateway;
+
+    // Self-heal: create delivery_events + its index if missing. Matches
+    // the pattern in ChatModule so the app keeps working without a
+    // manual SYNC_DB=true toggle on Railway.
+    try {
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "delivery_events" (
+          "id"           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+          "deliveryId"   uuid        NOT NULL REFERENCES "deliveries" ("id") ON DELETE CASCADE,
+          "type"         varchar(32) NOT NULL,
+          "actorRole"    varchar(16) NOT NULL,
+          "actorUserId"  uuid        NULL,
+          "description"  text        NULL,
+          "lat"          numeric(9,6) NULL,
+          "lng"          numeric(9,6) NULL,
+          "meta"         jsonb        NULL,
+          "createdAt"    timestamptz  NOT NULL DEFAULT NOW()
+        )
+      `);
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "delivery_events_delivery_created_idx"
+          ON "delivery_events" ("deliveryId", "createdAt")
+      `);
+      this.logger.log('delivery_events schema self-heal complete');
+    } catch (e: any) {
+      this.logger.warn(`delivery_events self-heal skipped: ${e?.message ?? e}`);
+    }
   }
 }

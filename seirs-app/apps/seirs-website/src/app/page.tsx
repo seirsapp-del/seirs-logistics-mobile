@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { getPageBlock } from "@/lib/cms";
 import {
   Package,
@@ -240,7 +240,7 @@ function PartnerBenefit({
 export const revalidate = 60;
 
 export default async function HomePage() {
-  // Inline-editable hero block — falls back to the hardcoded copy below
+  // Inline-editable hero block, falls back to the hardcoded copy below
   // when the CMS row is missing or unreachable, so marketing can edit
   // without breaking the page.
   const hero = await getPageBlock('home_hero');
@@ -310,14 +310,14 @@ export default async function HomePage() {
                 </Link>
               </div>
 
-              {/* Translation cue — browsers (Chrome / Edge / Safari / Firefox)
+              {/* Translation cue, browsers (Chrome / Edge / Safari / Firefox)
                   auto-detect and offer to translate the page to the user's
                   language. This banner just makes that affordance visible
                   for users who don't know the browser feature exists. */}
               <div className="inline-flex items-center gap-2.5 bg-white/5 border border-white/15 rounded-lg px-3 py-2 mb-8">
                 <Globe size={14} className="text-sky flex-shrink-0" strokeWidth={1.75} />
                 <span className="text-white/65 text-xs">
-                  Available in Yoruba, Igbo, Hausa &amp; 100+ more — your browser will translate
+                  Available in Yoruba, Igbo, Hausa &amp; 100+ more, your browser will translate
                 </span>
               </div>
 
@@ -362,7 +362,7 @@ export default async function HomePage() {
             <p className="section-label mb-3">Simple Process</p>
             <h2 className="section-title mb-4">How It Works</h2>
             <p className="section-sub">
-              From order creation to doorstep delivery — Seirs makes logistics effortless.
+              From order creation to doorstep delivery, Seirs makes logistics effortless.
             </p>
           </div>
 
@@ -382,7 +382,7 @@ export default async function HomePage() {
             <StepCard
               number={3}
               title="Real-Time Tracking"
-              description="Track every step of the journey on the map in real time. Get push notifications at each milestone — dispatched, picked up, nearby, delivered."
+              description="Track every step of the journey on the map in real time. Get push notifications at each milestone, dispatched, picked up, nearby, delivered."
               icon={MapPin}
             />
           </div>
@@ -405,7 +405,7 @@ export default async function HomePage() {
                 Built for Nigerian Businesses
               </h2>
               <p className="text-text-muted text-lg leading-relaxed mb-8">
-                Whether you ship 10 parcels a day or 10,000 a month, Seirs scales with you. Manage your entire logistics operation from one dashboard — no spreadsheets, no chasing drivers.
+                Whether you ship 10 parcels a day or 10,000 a month, Seirs scales with you. Manage your entire logistics operation from one dashboard, no spreadsheets, no chasing drivers.
               </p>
               <Link
                 href="/contact"
@@ -439,7 +439,7 @@ export default async function HomePage() {
               <FeatureCard
                 icon={Wallet}
                 title="Business Wallet"
-                description="Top up once, dispatch all day. Your wallet is instantly debited per delivery — no per-transaction friction."
+                description="Top up once, dispatch all day. Your wallet is instantly debited per delivery, no per-transaction friction."
               />
               <FeatureCard
                 icon={Users}
@@ -449,7 +449,7 @@ export default async function HomePage() {
               <FeatureCard
                 icon={Gift}
                 title="Loyalty Rewards"
-                description="Earn ₦10 per point on every delivery. Redeem points against future orders — the more you send, the more you save."
+                description="Earn ₦10 per point on every delivery. Redeem points against future orders, the more you send, the more you save."
               />
               <FeatureCard
                 icon={Zap}
@@ -481,7 +481,7 @@ export default async function HomePage() {
               Earn on Your Schedule
             </h2>
             <p className="text-white/65 text-lg max-w-2xl mx-auto">
-              Join over 500 verified drivers across Nigeria who use Seirs to build a flexible, rewarding income. You set your hours — we bring the deliveries.
+              Join over 500 verified drivers across Nigeria who use Seirs to build a flexible, rewarding income. You set your hours, we bring the deliveries.
             </p>
           </div>
 
@@ -494,7 +494,7 @@ export default async function HomePage() {
             <DriverBenefit
               icon={Truck}
               title="Vehicle Flexibility"
-              description="Ride a motorcycle, drive a car, or operate a truck. Seirs supports all vehicle types — earn more with larger vehicles."
+              description="Ride a motorcycle, drive a car, or operate a truck. Seirs supports all vehicle types, earn more with larger vehicles."
             />
             <DriverBenefit
               icon={Smartphone}
@@ -562,7 +562,7 @@ export default async function HomePage() {
             <PartnerBenefit
               icon={Smartphone}
               title="Simple Scanning App"
-              description="Scan barcodes to accept and release packages. The app handles everything — notifications, customer verification, payout records."
+              description="Scan barcodes to accept and release packages. The app handles everything, notifications, customer verification, payout records."
             />
           </div>
 
@@ -638,7 +638,7 @@ export default async function HomePage() {
               rating={5}
             />
             <TestimonialCard
-              quote="I drive for Seirs after my regular job on Tuesdays and Saturdays. Last month I made ₦67,000 extra. The app is clean, the payouts are always on time Monday morning — I don't even have to chase anybody."
+              quote="I drive for Seirs after my regular job on Tuesdays and Saturdays. Last month I made ₦67,000 extra. The app is clean, the payouts are always on time Monday morning, I don't even have to chase anybody."
               name="Emeka Nwosu"
               role="Part-time Driver"
               location="Ikeja, Lagos"

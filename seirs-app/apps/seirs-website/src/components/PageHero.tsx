@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowRight } from "lucide-react";
@@ -6,7 +6,7 @@ import { ArrowRight } from "lucide-react";
 /**
  * Shared hero block for dedicated marketing pages (How it Works, For
  * Business, etc). Keeps the visual language consistent across pages
- * — same gradient, same spacing, same radial dot pattern as the
+ *, same gradient, same spacing, same radial dot pattern as the
  * homepage hero, but scaled for content-first pages.
  */
 export function PageHero({
@@ -101,7 +101,7 @@ export function PageHero({
 }
 
 /**
- * Standard CTA strip used at the bottom of marketing pages — same
+ * Standard CTA strip used at the bottom of marketing pages, same
  * navy gradient as the hero so the page bookends visually.
  */
 export function PageCta({

@@ -29,7 +29,9 @@ export default function ShareTripScreen() {
   const trip = MOCK_TRIPS.find(tr => tr.id === id) ?? MOCK_TRIPS[2];
   const [copied, setCopied] = useState(false);
 
-  const shareLink = `https://track.seirs.app/${trip.trackingCode}`;
+  // Public tracking page lives on the marketing website: seirs.app/track/{code}.
+  // Anyone with the code can open this in any browser without a login.
+  const shareLink = `https://seirs.app/track/${trip.trackingCode}`;
 
   const handleShare = async (via: string) => {
     if (via === 'copy') {

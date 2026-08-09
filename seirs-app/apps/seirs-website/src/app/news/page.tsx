@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { ArrowRight, Newspaper } from 'lucide-react';
 import { listContent, fmtDate } from '@/lib/cms';
 
@@ -69,7 +69,7 @@ export default async function NewsPage() {
   );
 }
 
-// Lightweight hero for content-list pages — gradient matches PageHero
+// Lightweight hero for content-list pages, gradient matches PageHero
 // but no required CTAs, icon, or eyebrow.
 function ContentHero({ title, subtitle }: { title: string; subtitle: string }) {
   return (

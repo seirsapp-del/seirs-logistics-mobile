@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import {
   Workflow,
   Smartphone,
@@ -16,7 +16,7 @@ import { PageHero, PageCta } from "@/components/PageHero";
 export const metadata: Metadata = {
   title: "How It Works",
   description:
-    "From order creation to doorstep handoff — see exactly how Seirs Logistics matches customers, drivers, and partner stores across Nigeria for fast, secure last-mile delivery.",
+    "From order creation to doorstep handoff, see exactly how Seirs Logistics matches customers, drivers, and partner stores across Nigeria for fast, secure last-mile delivery.",
 };
 
 function StepCard({
@@ -83,7 +83,7 @@ export default function HowItWorksPage() {
             <span className="text-sky">trusted</span> network.
           </>
         }
-        subtitle="Seirs runs on three connected apps — one for customers sending packages, one for drivers fulfilling them, and one for businesses and partner stores managing volume. They all talk to the same backend, in real time."
+        subtitle="Seirs runs on three connected apps, one for customers sending packages, one for drivers fulfilling them, and one for businesses and partner stores managing volume. They all talk to the same backend, in real time."
         icon={Workflow}
         primaryCtaLabel="Get the Customer App"
         primaryCtaHref="/contact"
@@ -107,7 +107,7 @@ export default function HowItWorksPage() {
               step={1}
               icon={Smartphone}
               title="Create the order"
-              body="Open the Seirs Customer app, choose Send a Package or Request a Ride, drop your pickup and dropoff pins, pick a vehicle that fits your load. We auto-quote a fair price using our pooled-driver matching, fuel index, and zone-based pricing — no surprise surcharges at the end."
+              body="Open the Seirs Customer app, choose Send a Package or Request a Ride, drop your pickup and dropoff pins, pick a vehicle that fits your load. We auto-quote a fair price using our pooled-driver matching, fuel index, and zone-based pricing, no surprise surcharges at the end."
             />
             <StepCard
               step={2}
@@ -118,7 +118,7 @@ export default function HowItWorksPage() {
             <StepCard
               step={3}
               icon={CheckCircle}
-              title="Pickup, transit, drop-off — all tracked live"
+              title="Pickup, transit, drop-off, all tracked live"
               body="Watch your package move on the map in real time. The driver verifies pickup and drop-off using a one-time code generated in your app, so packages can't be released to the wrong person. Funds in escrow release to the driver only after you confirm delivery."
             />
           </div>
@@ -135,7 +135,7 @@ export default function HowItWorksPage() {
             </h2>
             <p className="section-sub">
               We took the four most common Nigerian delivery failures
-              — wrong recipient, lost package, fraud, missed payment —
+              (wrong recipient, lost package, fraud, missed payment)
               and engineered them out of the flow.
             </p>
           </div>
@@ -169,7 +169,7 @@ export default function HowItWorksPage() {
             <FeatureBlock
               icon={Truck}
               title="Backup driver auto-assignment"
-              body="If a driver goes offline mid-trip without warning, our scheduler reassigns the active leg to a nearby driver within 90 seconds — your package keeps moving."
+              body="If a driver goes offline mid-trip without warning, our scheduler reassigns the active leg to a nearby driver within 90 seconds, your package keeps moving."
             />
           </div>
         </div>
@@ -196,7 +196,7 @@ export default function HowItWorksPage() {
                 methods, earn referral rewards.
               </p>
               <p className="text-text-muted text-xs">
-                Available for Android — iOS coming soon.
+                Available for Android, iOS coming soon.
               </p>
             </div>
 

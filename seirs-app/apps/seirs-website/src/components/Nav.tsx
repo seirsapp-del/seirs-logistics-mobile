@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -14,7 +14,7 @@ const navLinks = [
   { label: "Contact",        href: "/contact" },
 ];
 
-// Spec V8 §i18n — supported languages. UI ships en-only at launch;
+// Spec V8 §i18n, supported languages. UI ships en-only at launch;
 // the dropdown persists the user preference, sets the html lang
 // attribute so browsers/screen-readers pick up the choice, and
 // signals to the user that browser translation kicks in. CMS schema

@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { FileText, Mail } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Seirs Logistics Ltd terms of service — the rules and conditions governing use of the Seirs platform for customers, businesses, drivers, and partner stores.",
+    "Seirs Logistics Ltd terms of service, the rules and conditions governing use of the Seirs platform for customers, businesses, drivers, and partner stores.",
 };
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -124,7 +124,7 @@ export default function TermsOfServicePage() {
                 Seirs Logistics Ltd (&quot;Seirs&quot;, &quot;we&quot;, &quot;us&quot;) is a Nigerian technology company
                 operating a last-mile delivery platform. We connect business senders with
                 verified delivery drivers and partner pickup stores. We are a technology
-                intermediary — we do not own delivery vehicles or operate physical stores.
+                intermediary, we do not own delivery vehicles or operate physical stores.
               </BodyText>
             </Section>
 
@@ -283,6 +283,7 @@ export default function TermsOfServicePage() {
                   Privacy Policy
                 </Link>
                 , which is incorporated into these Terms by reference.
+
               </BodyText>
             </Section>
 

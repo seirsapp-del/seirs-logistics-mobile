@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Cookie, X } from 'lucide-react';
 
-// Spec V8 — NDPR-compliant cookie banner. NDPR Article 25 requires
+// Spec V8, NDPR-compliant cookie banner. NDPR Article 25 requires
 // explicit consent before non-essential cookies (analytics, ads) fire.
 // We only read/persist a localStorage flag; no third-party trackers on
 // the marketing site yet. When analytics ship, gate the script tag on
@@ -27,7 +27,7 @@ export default function CookieBanner() {
     setConsent(choice);
   };
 
-  // Don't render until we know the persisted choice — prevents flash
+  // Don't render until we know the persisted choice, prevents flash
   // on every page load for returning visitors.
   if (!hydrated || consent !== null) return null;
 

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Mail, MapPin } from 'lucide-react';
 import { getContentBySlug, listContent, fmtDate, renderMarkdown } from '@/lib/cms';
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props) {
   if (!r) return { title: 'Role not found · SEIRS' };
   return {
     title:       r.seoTitle ?? `${r.title} · SEIRS Careers`,
-    description: r.seoDescription ?? r.excerpt ?? `${r.title} — open role at SEIRS Logistics.`,
+    description: r.seoDescription ?? r.excerpt ?? `${r.title}, open role at SEIRS Logistics.`,
   };
 }
 

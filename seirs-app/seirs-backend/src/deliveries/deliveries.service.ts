@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { Delivery, DeliveryStatus } from './delivery.entity';
+import { DeliveryEvent, DeliveryEventType, EventActorRole } from './delivery-event.entity';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
 import { User } from '../users/user.entity';
@@ -36,6 +37,11 @@ export class DeliveriesService {
   // Auto-inserts system messages into the delivery's chat on state changes
   // so customer + driver see status inline without switching screens.
   chatService?:          any;
+  // Append-only event log per delivery. Wired by DeliveriesModule.
+  // logEvent() writes here; findByTracking() reads here for the DHL-
+  // style timeline. Optional so tests that only stub DeliveriesService
+  // don't blow up when this is unset.
+  deliveryEventsRepo?:   Repository<DeliveryEvent>;
 
   constructor(
     @InjectRepository(Delivery) private repo: Repository<Delivery>,
@@ -331,14 +337,103 @@ export class DeliveriesService {
   }
 
   async findByTracking(trackingCode: string) {
-    const delivery = await this.repo.findOne({ where: { trackingCode } });
+    const delivery = await this.repo.findOne({
+      where: { trackingCode },
+      relations: ['driver', 'driver.user'],
+    });
     if (!delivery) throw new NotFoundException('Delivery not found.');
-    return delivery;
+
+    // Attach the event log inline. Kept oldest-first so the client can
+    // render a timeline without re-sorting. Cheap indexed scan on
+    // (deliveryId, createdAt). We DO NOT reveal PII (email, phone) here:
+    // the tracking endpoint is public, so we return only the driver's
+    // display name + vehicle.
+    let events: any[] = [];
+    try {
+      if (this.deliveryEventsRepo) {
+        events = await this.deliveryEventsRepo
+          .createQueryBuilder('e')
+          .where('e."deliveryId" = :id', { id: delivery.id })
+          .orderBy('e."createdAt"', 'ASC')
+          .getMany();
+      }
+    } catch { /* self-heal race, no events yet */ }
+
+    const publicDriver = delivery.driver
+      ? {
+          name:        delivery.driver.user?.name ?? 'Driver',
+          vehicleType: delivery.driver.vehicleType ?? null,
+          rating:      delivery.driver.rating ?? null,
+        }
+      : null;
+
+    return {
+      id:             delivery.id,
+      trackingCode:   delivery.trackingCode,
+      status:         delivery.status,
+      pickupAddress:  delivery.pickupAddress,
+      dropoffAddress: delivery.dropoffAddress,
+      packageSize:    delivery.packageSize,
+      vehicleType:    delivery.vehicleType,
+      assignedAt:     delivery.assignedAt,
+      pickedUpAt:     delivery.pickedUpAt,
+      deliveredAt:    delivery.deliveredAt,
+      createdAt:      delivery.createdAt,
+      proofPhotoUrl:  delivery.proofPhotoUrl,
+      driver:         publicDriver,
+      events:         events.map(e => ({
+        id:          e.id,
+        type:        e.type,
+        actorRole:   e.actorRole,
+        description: e.description,
+        lat:         e.lat ? Number(e.lat) : null,
+        lng:         e.lng ? Number(e.lng) : null,
+        meta:        e.meta,
+        createdAt:   e.createdAt,
+      })),
+    };
+  }
+
+  /**
+   * Append one row to the delivery event log. Silent-fails on any error
+   * so business logic that calls this never breaks a status transition
+   * because of a downstream write hiccup. The event log is telemetry-
+   * grade, not transactional-truth.
+   */
+  async logEvent(
+    deliveryId: string,
+    type:       DeliveryEventType,
+    actorRole:  EventActorRole,
+    body: {
+      actorUserId?: string | null;
+      description?: string | null;
+      lat?:         number | null;
+      lng?:         number | null;
+      meta?:        Record<string, any> | null;
+    } = {},
+  ): Promise<void> {
+    if (!this.deliveryEventsRepo) return;
+    try {
+      await this.deliveryEventsRepo.insert({
+        delivery:    { id: deliveryId } as any,
+        type,
+        actorRole,
+        actorUserId: body.actorUserId ?? null,
+        description: body.description ?? null,
+        lat:         body.lat != null ? String(body.lat) : null,
+        lng:         body.lng != null ? String(body.lng) : null,
+        meta:        body.meta ?? null,
+      });
+    } catch (e: any) {
+      this.logger.warn(`logEvent(${deliveryId}, ${type}) failed: ${e?.message ?? e}`);
+    }
   }
 
   async updateStatus(id: string, status: DeliveryStatus, proofPhotoUrl?: string) {
     const delivery = await this.repo.findOne({ where: { id } });
     if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    const fromStatus = delivery.status;
 
     const timestamps: Partial<Delivery> = { status };
     if (status === DeliveryStatus.ASSIGNED)   timestamps.assignedAt  = new Date();
@@ -349,6 +444,23 @@ export class DeliveriesService {
     }
 
     await this.repo.update(id, timestamps);
+
+    // Append the status transition to the delivery event log. This is
+    // what powers the DHL-style timeline on the public tracking page +
+    // the admin per-delivery drill-in. Fire-and-forget: even if the
+    // event log write fails, the status transition already committed.
+    this.logEvent(id, DeliveryEventType.STATUS_CHANGE, EventActorRole.SYSTEM, {
+      meta: { fromStatus, toStatus: status },
+    }).catch(() => {});
+
+    // If the DELIVERED transition included a proof photo, log a
+    // separate PHOTO_ADDED event so the timeline can render the photo
+    // as its own bullet.
+    if (status === DeliveryStatus.DELIVERED && proofPhotoUrl) {
+      this.logEvent(id, DeliveryEventType.PHOTO_ADDED, EventActorRole.DRIVER, {
+        meta: { photoUrl: proofPhotoUrl, kind: 'proof_of_delivery' },
+      }).catch(() => {});
+    }
 
     if (this.trackingGateway) {
       this.trackingGateway.broadcastStatusChange(id, status);

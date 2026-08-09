@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import {
   Truck,
   Wallet,
@@ -114,7 +114,7 @@ export default function ForDriversPage() {
             <span className="text-sky">Get paid daily.</span>
           </>
         }
-        subtitle="Join Nigeria's smartest last-mile delivery network. Bicycle, motorbike, tricycle, car, van — bring what you have. Daily wallet payouts, smart routing, verified senders, real support."
+        subtitle="Join Nigeria's smartest last-mile delivery network. Bicycle, motorbike, tricycle, car, van, bring what you have. Daily wallet payouts, smart routing, verified senders, real support."
         icon={Truck}
         primaryCtaLabel="Apply to drive"
         primaryCtaHref="/contact"
@@ -141,7 +141,7 @@ export default function ForDriversPage() {
             <FeatureCard
               icon={Wallet}
               title="Daily payouts"
-              body="Earnings credit your Seirs wallet after every completed trip. Withdraw to your bank account any time — no waiting until end of week, no minimum balance."
+              body="Earnings credit your Seirs wallet after every completed trip. Withdraw to your bank account any time, no waiting until end of week, no minimum balance."
             />
             <FeatureCard
               icon={Clock}
@@ -151,12 +151,12 @@ export default function ForDriversPage() {
             <FeatureCard
               icon={MapPin}
               title="Smart routing"
-              body="Multi-stop matching groups nearby orders so you're paid for one trip but deliver multiple packages — your earnings per litre of fuel go up."
+              body="Multi-stop matching groups nearby orders so you're paid for one trip but deliver multiple packages, your earnings per litre of fuel go up."
             />
             <FeatureCard
               icon={ShieldCheck}
               title="Verified senders, insured trips"
-              body="Every customer is identity-verified before they can book. Every trip is covered by our platform insurance — you're never out of pocket if something goes wrong."
+              body="Every customer is identity-verified before they can book. Every trip is covered by our platform insurance, you're never out of pocket if something goes wrong."
             />
             <FeatureCard
               icon={Award}
@@ -166,7 +166,7 @@ export default function ForDriversPage() {
             <FeatureCard
               icon={TrendingUp}
               title="Earnings dashboard"
-              body="See today's earnings, this week, this month — broken down by trip count, distance, and bonuses. Forecast tomorrow based on your usual hours."
+              body="See today's earnings, this week, this month, broken down by trip count, distance, and bonuses. Forecast tomorrow based on your usual hours."
             />
           </div>
         </div>
@@ -189,31 +189,31 @@ export default function ForDriversPage() {
               icon={Bike}
               label="Bicycle"
               capacity="Up to 5 kg"
-              earningsHint="₦500 — ₦1,500 / trip"
+              earningsHint="₦500, ₦1,500 / trip"
             />
             <VehicleCard
               icon={Bike}
               label="Motorcycle"
               capacity="Up to 20 kg"
-              earningsHint="₦800 — ₦3,000 / trip"
+              earningsHint="₦800, ₦3,000 / trip"
             />
             <VehicleCard
               icon={Bike}
               label="Tricycle"
               capacity="Up to 100 kg"
-              earningsHint="₦1,500 — ₦5,000 / trip"
+              earningsHint="₦1,500, ₦5,000 / trip"
             />
             <VehicleCard
               icon={Car}
               label="Car"
               capacity="Up to 200 kg"
-              earningsHint="₦2,000 — ₦8,000 / trip"
+              earningsHint="₦2,000, ₦8,000 / trip"
             />
             <VehicleCard
               icon={Truck}
               label="Van / Truck"
               capacity="800 kg+"
-              earningsHint="₦4,000 — ₦25,000 / trip"
+              earningsHint="₦4,000, ₦25,000 / trip"
             />
           </div>
 
@@ -280,7 +280,7 @@ export default function ForDriversPage() {
             />
             <StepRow
               step={2}
-              title="KYC verification (24 — 48 hrs)"
+              title="KYC verification (24, 48 hrs)"
               body="Our compliance team reviews your documents. We may call you for a short interview. You'll get an email + push notification when you're approved."
             />
             <StepRow

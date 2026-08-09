@@ -1,4 +1,4 @@
-import fs from "node:fs";
+﻿import fs from "node:fs";
 import path from "node:path";
 import { LottieAnimation } from "@/components/LottieAnimation";
 
@@ -10,12 +10,12 @@ import { LottieAnimation } from "@/components/LottieAnimation";
  *      (or search for "delivery", "package", "courier", "wallet")
  *   2. Click an animation → "Download" → "Lottie JSON"
  *   3. Save to src/animations/<descriptive-name>.json
- *   4. Refresh this page (`/lottie-preview`) — it auto-discovers + renders all JSONs
+ *   4. Refresh this page (`/lottie-preview`), it auto-discovers + renders all JSONs
  *   5. If you like it, copy the import line shown below the preview into the
  *      target marketing page (Homepage hero, /for-drivers, etc.)
  *
  * Once the marketing pages have their animations wired you can delete this
- * file — it's purely a development aid.
+ * file, it's purely a development aid.
  */
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,7 @@ export default async function LottiePreviewPage() {
         <p className="text-gray-600 mb-8">
           Renders every <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm">.json</code> in{" "}
           <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm">src/animations/</code>.
-          Drop new files in, refresh this page, and see them play. Dev-only — don&apos;t link from production nav.
+          Drop new files in, refresh this page, and see them play. Dev-only, don&apos;t link from production nav.
         </p>
 
         {animations.length === 0 ? (
@@ -66,11 +66,11 @@ export default async function LottiePreviewPage() {
               >
                 lottiefiles.com/featured-free-animations
               </a>
-              , download a Lottie JSON, save it as{" "}
+              . Download a Lottie JSON, save it as{" "}
               <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">
                 src/animations/&lt;name&gt;.json
               </code>{" "}
-              — then refresh this page.
+              . Then refresh this page.
             </p>
           </div>
         ) : (
@@ -113,10 +113,10 @@ import { LottieAnimation } from "@/components/LottieAnimation";
         <div className="mt-12 bg-sky/5 border border-sky/20 rounded-2xl p-6">
           <h3 className="text-base font-bold text-navy mb-3">Recommended placements</h3>
           <ul className="text-sm text-gray-700 space-y-2">
-            <li>• <strong>Homepage hero (right column)</strong> — search lottiefiles for &quot;delivery package map&quot; or &quot;motorcycle delivery&quot;</li>
-            <li>• <strong>/how-it-works</strong> after the steps — &quot;3-step icon flow&quot; or &quot;phone-to-checkmark&quot;</li>
-            <li>• <strong>/for-drivers</strong> near the earnings hero — &quot;wallet money fill&quot; or &quot;cash flow&quot;</li>
-            <li>• <strong>/for-partner-stores</strong> near the earnings table — &quot;package scanned&quot; or &quot;box stamp&quot;</li>
+            <li>• <strong>Homepage hero (right column)</strong>, search lottiefiles for &quot;delivery package map&quot; or &quot;motorcycle delivery&quot;</li>
+            <li>• <strong>/how-it-works</strong> after the steps, &quot;3-step icon flow&quot; or &quot;phone-to-checkmark&quot;</li>
+            <li>• <strong>/for-drivers</strong> near the earnings hero, &quot;wallet money fill&quot; or &quot;cash flow&quot;</li>
+            <li>• <strong>/for-partner-stores</strong> near the earnings table, &quot;package scanned&quot; or &quot;box stamp&quot;</li>
           </ul>
         </div>
       </div>

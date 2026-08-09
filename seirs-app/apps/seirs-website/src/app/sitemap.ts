@@ -1,7 +1,7 @@
-import type { MetadataRoute } from 'next';
+﻿import type { MetadataRoute } from 'next';
 import { listContent } from '@/lib/cms';
 
-// Next.js Metadata API sitemap — generates /sitemap.xml at build /
+// Next.js Metadata API sitemap, generates /sitemap.xml at build /
 // revalidate time. ISR cadence matches the article fetch so newly
 // published articles appear in the sitemap within ~1 minute.
 export const revalidate = 60;

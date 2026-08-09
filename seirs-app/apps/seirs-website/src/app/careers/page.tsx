@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { Briefcase, MapPin, ArrowRight } from 'lucide-react';
 import { listContent, fmtDate } from '@/lib/cms';
 
@@ -6,7 +6,7 @@ export const revalidate = 60;
 
 export const metadata = {
   title: 'Careers · SEIRS',
-  description: 'Open roles at SEIRS — building the logistics layer Nigeria has been waiting for.',
+  description: 'Open roles at SEIRS, building the logistics layer Nigeria has been waiting for.',
 };
 
 const DEFAULT_LOCATION = 'Lagos, Nigeria';

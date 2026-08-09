@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Mail, Phone, MapPin, Send, CheckCircle, Building2, Truck, Store, MessageSquare } from "lucide-react";
@@ -104,7 +104,7 @@ export default function ContactPage() {
           </div>
           <h1 className="text-4xl font-extrabold text-white mb-3">Contact Us</h1>
           <p className="text-white/60 text-lg max-w-xl">
-            Whether you&apos;re a business, a driver, a store owner, or just have a question — we&apos;re here to help.
+            Whether you&apos;re a business, a driver, a store owner, or just have a question, we&apos;re here to help.
           </p>
         </div>
       </div>

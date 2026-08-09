@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import "../styles/globals.css";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
@@ -7,7 +7,7 @@ import SentryInit from "@/components/SentryInit";
 
 export const metadata: Metadata = {
   title: {
-    default: "Seirs Logistics — Nigeria's Smartest Last-Mile Delivery Platform",
+    default: "Seirs Logistics, Nigeria's Smartest Last-Mile Delivery Platform",
     template: "%s | Seirs Logistics",
   },
   description:
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     locale: "en_NG",
     url: "https://seirs.co",
     siteName: "Seirs Logistics",
-    title: "Seirs Logistics — Nigeria's Smartest Last-Mile Delivery Platform",
+    title: "Seirs Logistics, Nigeria's Smartest Last-Mile Delivery Platform",
     description:
       "Send thousands of packages with one click. Real-time tracking, business wallets, and a network of verified drivers across Nigeria.",
   },

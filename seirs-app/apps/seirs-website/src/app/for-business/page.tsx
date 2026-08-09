@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import {
   Briefcase,
   Upload,
@@ -67,7 +67,7 @@ export default function ForBusinessPage() {
             <span className="text-sky">with one click.</span>
           </>
         }
-        subtitle="Seirs Business is for traders, e-commerce shops, restaurants, and SMEs who dispatch dozens to hundreds of packages a day. Bulk send, multi-stop routes, business wallet, team access — all from one dashboard."
+        subtitle="Seirs Business is for traders, e-commerce shops, restaurants, and SMEs who dispatch dozens to hundreds of packages a day. Bulk send, multi-stop routes, business wallet, team access, all from one dashboard."
         icon={Briefcase}
         primaryCtaLabel="Talk to our team"
         primaryCtaHref="/contact"
@@ -117,7 +117,7 @@ export default function ForBusinessPage() {
             <FeatureCard
               icon={Upload}
               title="CSV bulk upload"
-              body="Drag in a CSV with recipient names, addresses, and notes — we generate every individual delivery, validate Nigerian phone formats, and dispatch in one batch."
+              body="Drag in a CSV with recipient names, addresses, and notes, we generate every individual delivery, validate Nigerian phone formats, and dispatch in one batch."
             />
             <FeatureCard
               icon={Route}
@@ -127,7 +127,7 @@ export default function ForBusinessPage() {
             <FeatureCard
               icon={Wallet}
               title="Business wallet"
-              body="Fund once via card, bank transfer, or USSD. Every delivery debits the wallet — no card-on-file friction, no awkward payment delays at peak hours."
+              body="Fund once via card, bank transfer, or USSD. Every delivery debits the wallet, no card-on-file friction, no awkward payment delays at peak hours."
             />
             <FeatureCard
               icon={Users}
@@ -142,7 +142,7 @@ export default function ForBusinessPage() {
             <FeatureCard
               icon={Repeat}
               title="Recurring orders"
-              body="Schedule the same delivery to repeat daily, weekly, or on selected days — for office supplies, bakery deliveries, or pharmacy refills."
+              body="Schedule the same delivery to repeat daily, weekly, or on selected days, for office supplies, bakery deliveries, or pharmacy refills."
             />
             <FeatureCard
               icon={Clock}
@@ -152,12 +152,12 @@ export default function ForBusinessPage() {
             <FeatureCard
               icon={TrendingUp}
               title="Loyalty discounts"
-              body="Volume tiers automatically unlock 5% — 15% off platform fees as your monthly delivery count grows. Top tier: dedicated account manager."
+              body="Volume tiers automatically unlock 5%, 15% off platform fees as your monthly delivery count grows. Top tier: dedicated account manager."
             />
             <FeatureCard
               icon={Building2}
               title="Multiple branches"
-              body="One business account, multiple pickup addresses — branch in Ikeja, branch in Lekki, warehouse in Apapa. Each can dispatch independently."
+              body="One business account, multiple pickup addresses, branch in Ikeja, branch in Lekki, warehouse in Apapa. Each can dispatch independently."
             />
           </div>
         </div>
@@ -201,10 +201,10 @@ export default function ForBusinessPage() {
               </p>
               <ul className="space-y-3">
                 <CheckRow>Earn ₦500 per package collected</CheckRow>
-                <CheckRow>Capacity dashboard — accept what you have room for</CheckRow>
+                <CheckRow>Capacity dashboard, accept what you have room for</CheckRow>
                 <CheckRow>QR scan-in / scan-out for every package</CheckRow>
                 <CheckRow>Weekly automatic payout to your bank</CheckRow>
-                <CheckRow>Foot traffic boost — customers come to your shop</CheckRow>
+                <CheckRow>Foot traffic boost, customers come to your shop</CheckRow>
                 <CheckRow>Pause acceptance during stock days or closures</CheckRow>
               </ul>
               <p className="text-text-muted text-xs mt-5">

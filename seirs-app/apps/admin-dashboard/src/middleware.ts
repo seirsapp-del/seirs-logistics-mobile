@@ -84,9 +84,13 @@ export function middleware(request: NextRequest) {
   const isLoginPage  = pathname === '/login';
   // Spec V8 §3 — admin password recovery is reachable without a session
   const isPublicAuthPage = pathname === '/forgot-password' || pathname === '/reset-password';
+  // Public tracking page: anyone with a tracking code can view a delivery's
+  // timeline + live status without a login. This is the DHL-side of SEIRS
+  // tracking. Same reason share.seirs.app/{code} URLs work in a browser.
+  const isPublicTrackingPage = pathname === '/track' || pathname.startsWith('/track/');
 
-  // Unauthenticated — send to login (unless already on a public auth page)
-  if (!token && !isLoginPage && !isPublicAuthPage) {
+  // Unauthenticated — send to login (unless already on a public page)
+  if (!token && !isLoginPage && !isPublicAuthPage && !isPublicTrackingPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('from', pathname);

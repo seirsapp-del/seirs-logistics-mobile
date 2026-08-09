@@ -1,4 +1,4 @@
-// Spec V8 §3.13 — public website CMS fetcher.
+﻿// Spec V8 §3.13, public website CMS fetcher.
 //
 // Hits the backend's public /v1/website/* endpoints with Next.js ISR so
 // edits in the admin website page land on the marketing site within

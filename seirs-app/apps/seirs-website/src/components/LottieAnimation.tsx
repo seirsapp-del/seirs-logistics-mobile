@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import dynamic from "next/dynamic";
 import type { CSSProperties } from "react";
 
-// Lottie's web player touches `window` on init — must lazy-load with
+// Lottie's web player touches `window` on init, must lazy-load with
 // SSR disabled so Next.js doesn't crash during static generation.
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
@@ -29,7 +29,7 @@ interface Props {
  *   <LottieAnimation animationData={deliveryFlow} className="w-full max-w-md" />
  *
  * Free animations: lottiefiles.com (filter by free + community).
- * Recolour to brand palette via the JSON's `it` array — or use Lottie's
+ * Recolour to brand palette via the JSON's `it` array, or use Lottie's
  * Color Override on the website if it ships with one.
  */
 export function LottieAnimation({

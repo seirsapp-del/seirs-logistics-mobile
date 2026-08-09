@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { AppStoreBadges } from "@/components/AppStoreBadges";
 
@@ -119,7 +119,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* App-store badges — render in 'coming soon' state until the
+        {/* App-store badges, render in 'coming soon' state until the
             apps publish and NEXT_PUBLIC_PLAY_STORE_URL + APP_STORE_URL
             are set on Vercel. */}
         <div className="border-t border-white/10 pt-8 mb-6">

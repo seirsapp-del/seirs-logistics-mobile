@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 import { Smartphone, Apple } from 'lucide-react';
 
-// Spec V8 — public download badges. Until the apps actually publish,
+// Spec V8, public download badges. Until the apps actually publish,
 // the env vars are unset and the badges render in a soft "coming soon"
 // state instead of broken empty links. When Play / App Store URLs land
 // in Vercel env, the badges become active without a code change.
@@ -13,7 +13,7 @@ import { Smartphone, Apple } from 'lucide-react';
 interface Props {
   /** 'navy' = white-on-navy buttons (for hero), 'light' = navy-on-white (for footer/contact) */
   theme?: 'navy' | 'light';
-  /** Which audience the apps target — customer / driver / business — for the right-side label */
+  /** Which audience the apps target, customer / driver / business, for the right-side label */
   app?: 'customer' | 'driver' | 'business';
   className?: string;
 }

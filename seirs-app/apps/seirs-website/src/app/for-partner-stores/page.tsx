@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import {
   Store,
   Banknote,
@@ -120,7 +120,7 @@ export default function ForPartnerStoresPage() {
             <FeatureCard
               icon={Banknote}
               title="Earn ₦500 per package"
-              body="Every package a customer drops off or picks up at your shop earns you ₦500 — credited to your Seirs wallet the moment the handoff completes."
+              body="Every package a customer drops off or picks up at your shop earns you ₦500, credited to your Seirs wallet the moment the handoff completes."
             />
             <FeatureCard
               icon={Calendar}
@@ -130,7 +130,7 @@ export default function ForPartnerStoresPage() {
             <FeatureCard
               icon={Footprints}
               title="Foot traffic into your shop"
-              body="Customers come to you to drop or collect packages — and often buy something while they&apos;re there. Free customer acquisition you didn&apos;t pay for."
+              body="Customers come to you to drop or collect packages, and often buy something while they&apos;re there. Free customer acquisition you didn&apos;t pay for."
             />
             <FeatureCard
               icon={PauseCircle}
@@ -150,17 +150,17 @@ export default function ForPartnerStoresPage() {
             <FeatureCard
               icon={ShieldCheck}
               title="Insured packages"
-              body="All packages held at your shop are covered by Seirs insurance — so you&apos;re never personally liable for damage or loss while in your custody."
+              body="All packages held at your shop are covered by Seirs insurance, so you&apos;re never personally liable for damage or loss while in your custody."
             />
             <FeatureCard
               icon={TrendingUp}
               title="Earnings dashboard"
-              body="See today&apos;s earnings, this week, this month — broken down by package type. Forecast your monthly side income."
+              body="See today&apos;s earnings, this week, this month, broken down by package type. Forecast your monthly side income."
             />
             <FeatureCard
               icon={Store}
               title="Featured in customer search"
-              body="Customers nearby will see your shop in the Seirs Customer app when picking a drop-off point — your shop name, photo, and hours displayed."
+              body="Customers nearby will see your shop in the Seirs Customer app when picking a drop-off point, your shop name, photo, and hours displayed."
             />
           </div>
         </div>
@@ -199,7 +199,7 @@ export default function ForPartnerStoresPage() {
               </CheckRow>
             </ul>
             <p className="text-text-muted text-xs mt-6 leading-relaxed">
-              Don&apos;t tick every box? Apply anyway — we&apos;ll let you know
+              Don&apos;t tick every box? Apply anyway, we&apos;ll let you know
               what&apos;s missing and how to address it. We&apos;re actively
               expanding across Nigeria and want to hear from every interested
               shop owner.
@@ -231,7 +231,7 @@ export default function ForPartnerStoresPage() {
               {
                 step: 3,
                 title: "Set up the Business app",
-                body: "We onboard you on a video call — set up your account, link your bank, do a test scan. Takes 20 minutes.",
+                body: "We onboard you on a video call, set up your account, link your bank, do a test scan. Takes 20 minutes.",
               },
               {
                 step: 4,
