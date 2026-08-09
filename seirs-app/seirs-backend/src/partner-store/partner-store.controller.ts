@@ -187,6 +187,8 @@ export class PartnerStoreController {
       storefrontPhotoUrl: string;
       cacRegUrl?:         string;
       ownerIdUrl:         string;
+      storeLat?:          number;
+      storeLng?:          number;
     },
   ) {
     return this.svc.submitPartnerApplication(user.id, body);

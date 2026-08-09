@@ -50,6 +50,10 @@ export default function ApplyPartnerScreen() {
   const [cacReg,          setCacReg]          = useState<string | null>(null);
   const [ownerId,         setOwnerId]         = useState<string | null>(null);
   const [submitting,      setSubmitting]      = useState(false);
+  // Coordinates from the Places autocomplete pick. Optional — the
+  // backend accepts submissions without them (existing behaviour) and
+  // simply skips the /find-a-partner distance sort for such stores.
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
     partnerApi.myPartnerApplication()
@@ -108,6 +112,11 @@ export default function ApplyPartnerScreen() {
         storefrontPhotoUrl: storefront.url,
         cacRegUrl:          cac.url || undefined,
         ownerIdUrl:         owner.url,
+        // Only send when the user picked from the autocomplete. Freehand
+        // addresses stay coord-less and gracefully fall to the end of
+        // the /find-a-partner list until an admin backfills.
+        storeLat:           coords?.lat,
+        storeLng:           coords?.lng,
       });
       Alert.alert(
         'Application submitted',
@@ -239,9 +248,16 @@ export default function ApplyPartnerScreen() {
           <StreetAutocomplete
             label="Street Address & Landmark"
             value={form.streetAddress}
-            onChangeText={(v) => setForm({ ...form, streetAddress: v })}
+            onChangeText={(v) => {
+              setForm({ ...form, streetAddress: v });
+              // Freehand edit after a pick invalidates the previously-
+              // resolved coordinates. Better to have no coords than
+              // stale ones pointing at the wrong storefront.
+              if (coords) setCoords(null);
+            }}
             state={form.state}
             placeholder="Start typing a street or landmark…"
+            onCoordsResolved={(lat, lng) => setCoords({ lat, lng })}
           />
         </View>
 

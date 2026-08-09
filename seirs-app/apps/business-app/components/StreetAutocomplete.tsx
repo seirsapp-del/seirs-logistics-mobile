@@ -33,9 +33,17 @@ interface Props {
   /** Optional state name to bias search results (e.g. "Lagos"). */
   state?:        string;
   placeholder?:  string;
+  /**
+   * Fired when the user picks a suggestion and Google Place Details
+   * returns coordinates. Used by the partner-store apply form so
+   * the new store lands on /find-a-partner immediately with a
+   * distance chip instead of falling to the end of the list.
+   * Silently no-op if omitted, so existing callers keep working.
+   */
+  onCoordsResolved?: (lat: number, lng: number) => void;
 }
 
-export function StreetAutocomplete({ label, value, onChangeText, state, placeholder }: Props) {
+export function StreetAutocomplete({ label, value, onChangeText, state, placeholder, onCoordsResolved }: Props) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [searching,   setSearching]   = useState(false);
   const [focused,     setFocused]     = useState(false);
@@ -74,13 +82,33 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
     debounce.current = setTimeout(() => fetchPredictions(text), 300);
   };
 
-  const pick = (p: Prediction) => {
+  const pick = async (p: Prediction) => {
     // Use main + secondary as the final address — Place Details would give
     // us coords too but for register-time text storage this is sufficient.
     const combined = p.secondary_text ? `${p.main_text}, ${p.secondary_text}` : p.main_text;
     onChangeText(combined);
     setPredictions([]);
     setFocused(false);
+
+    // When the caller wants coordinates (e.g. partner-store apply form
+    // for the /find-a-partner distance sort), fetch Place Details for
+    // this place_id. Cheap: one extra HTTP call, only on pick, only
+    // when onCoordsResolved is wired. Silent-fails so a network glitch
+    // never blocks the address being saved.
+    if (!onCoordsResolved) return;
+    try {
+      const detailsUrl =
+        `https://maps.googleapis.com/maps/api/place/details/json` +
+        `?place_id=${encodeURIComponent(p.place_id)}` +
+        `&fields=geometry` +
+        `&key=${MAPS_KEY}`;
+      const res  = await fetch(detailsUrl);
+      const json = await res.json();
+      const loc  = json?.result?.geometry?.location;
+      if (loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
+        onCoordsResolved(loc.lat, loc.lng);
+      }
+    } catch { /* silent: coords are optional, address save should not fail */ }
   };
 
   const showDropdown = focused && predictions.length > 0;

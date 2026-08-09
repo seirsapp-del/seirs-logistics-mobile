@@ -673,8 +673,19 @@ export class PartnerStoreService {
       storefrontPhotoUrl: string;
       cacRegUrl?:         string;
       ownerIdUrl:         string;
+      // Optional coordinates from a client-side Places autocomplete.
+      // Nullable + validated: values outside plausible Nigeria bounds
+      // are dropped rather than throwing so a picker glitch does not
+      // block the whole KYC submission.
+      storeLat?:          number;
+      storeLng?:          number;
     },
   ) {
+    // Validate coordinates (Nigeria lat 4-14, lng 2.5-15). Drop if invalid.
+    const validLat = typeof body.storeLat === 'number' && body.storeLat >=  4 && body.storeLat <= 14;
+    const validLng = typeof body.storeLng === 'number' && body.storeLng >= 2.5 && body.storeLng <= 15;
+    const lat = validLat ? body.storeLat : null;
+    const lng = validLng ? body.storeLng : null;
     if (!body.storeName?.trim() || !body.storeAddress?.trim()) {
       throw new BadRequestException('Store name and address are required.');
     }
@@ -699,6 +710,8 @@ export class PartnerStoreService {
       await this.storeRepo.update(store.id, {
         storeName:          body.storeName.trim(),
         storeAddress:       body.storeAddress.trim(),
+        storeLat:           lat != null ? String(lat) : null,
+        storeLng:           lng != null ? String(lng) : null,
         phone:              body.phone?.trim() ?? '',
         maxCapacity:        body.maxCapacity ?? 50,
         storefrontPhotoUrl: body.storefrontPhotoUrl,
@@ -715,6 +728,8 @@ export class PartnerStoreService {
         userId:             userId,
         storeName:          body.storeName.trim(),
         storeAddress:       body.storeAddress.trim(),
+        storeLat:           lat != null ? String(lat) : null,
+        storeLng:           lng != null ? String(lng) : null,
         phone:              body.phone?.trim() ?? '',
         maxCapacity:        body.maxCapacity ?? 50,
         storefrontPhotoUrl: body.storefrontPhotoUrl,

@@ -932,6 +932,11 @@ export const partnerApi = {
     storefrontPhotoUrl: string;
     cacRegUrl?:         string;
     ownerIdUrl:         string;
+    // Optional coordinates from the address autocomplete. When present,
+    // the store appears distance-sorted on /find-a-partner immediately
+    // instead of falling to the end of the list.
+    storeLat?:          number;
+    storeLng?:          number;
   }) =>
     request<{ storeId: string; status: string; submittedAt: string; message: string }>(
       'POST', '/partner-store/apply', body,
