@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { earningsApi } from '@/services/api';
+import { EarningsCalendar } from '@/components/EarningsCalendar';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -209,6 +210,10 @@ export default function EarningsScreen() {
             })}
           </View>
         </View>
+
+        {/* Earnings calendar (Klarna-style): per-day amounts, tap a day
+            for the trip breakdown, arrows scroll back through history. */}
+        <EarningsCalendar history={history} theme={theme} />
 
         {/* Recent transactions */}
         <View style={styles.section}>

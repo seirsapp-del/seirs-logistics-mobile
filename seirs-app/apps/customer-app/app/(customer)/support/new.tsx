@@ -154,8 +154,8 @@ export default function NewSupportTicketScreen() {
                   <Clock size={13} color={openHours ? '#16A34A' : '#D97706'} />
                   <Text style={[styles.responseText, { color: theme.textSecond }]}>
                     {openHours
-                      ? 'Typically replies in a few hours during today'
-                      : 'Support opens at 6am WAT. We usually reply by 7am.'}
+                      ? 'Support is online now · hours 6am–10pm WAT'
+                      : 'Support is closed right now · hours 6am–10pm WAT'}
                   </Text>
                 </View>
                 {/* Team avatars strip — social proof + humanises the queue */}
@@ -343,8 +343,8 @@ export default function NewSupportTicketScreen() {
                 <Clock size={13} color={openHours ? '#16A34A' : '#D97706'} />
                 <Text style={[styles.hoursNoteText, { color: theme.textSecond }]}>
                   {openHours
-                    ? 'Support hours 6am–10pm WAT. Currently open.'
-                    : 'Support hours 6am–10pm WAT. You will get an auto-response now; a real reply arrives by 7am.'}
+                    ? 'Support is online now. Hours: 6am–10pm WAT.'
+                    : 'Support is closed right now (hours 6am–10pm WAT). Send your message and we will reply once we open at 6am.'}
                 </Text>
               </View>
             </View>

@@ -84,7 +84,7 @@ export class SupportService {
       await this.appendSystemMessage(
         ticket,
         'support_after_hours',
-        `Thanks for reaching out. Our support team is available 6am–10pm WAT. We will respond by 7am tomorrow.`,
+        `Thanks for reaching out. Support is closed right now (hours 6am–10pm WAT). We will reply once we open at 6am.`,
       );
     }
 

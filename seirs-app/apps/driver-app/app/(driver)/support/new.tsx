@@ -119,7 +119,7 @@ export default function DriverNewSupportTicketScreen() {
           </Pressable>
 
           <Text style={[styles.hint, { color: theme.textThird }]}>
-            {t('support.hoursHint', { defaultValue: 'Support hours 6am–10pm WAT. Outside those hours we will reply by 7am.' })}
+            {t('support.hoursHint', { defaultValue: 'Support hours: 6am–10pm WAT. Messages sent outside those hours get a reply once we open at 6am.' })}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

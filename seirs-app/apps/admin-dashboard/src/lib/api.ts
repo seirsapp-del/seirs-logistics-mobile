@@ -441,6 +441,8 @@ export const adminApi = {
   opsMap: {
     onlineDrivers:    () => req<Array<{ id: string; name: string; lat: number; lng: number; isOnline: boolean; lastSeen?: string }>>('/admin/ops-map/drivers'),
     activeDeliveries: () => req<Array<{ id: string; trackingCode: string; pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number; status: string }>>('/admin/ops-map/deliveries'),
+    stores:           () => req<{ missingCoords: number; stores: Array<{ id: string; storeName: string; storeAddress: string; lat: number; lng: number; acceptingNew: boolean }> }>('/admin/ops-map/stores'),
+    demand:           () => req<{ pending: Array<{ id: string; trackingCode: string; lat: number; lng: number; ageMinutes: number }>; heat: Array<{ lat: number; lng: number }> }>('/admin/ops-map/demand'),
   },
 
   // Pricing system. admin reads + writes the active RateCard and the

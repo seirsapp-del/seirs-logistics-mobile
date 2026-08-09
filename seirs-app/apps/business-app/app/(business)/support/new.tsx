@@ -112,7 +112,7 @@ export default function BusinessNewTicketScreen() {
           </Pressable>
 
           <Text style={[styles.hint, { color: theme.textSecond }]}>
-            Support hours 6am–10pm WAT. Outside those hours we will reply by 7am.
+            Support hours: 6am–10pm WAT. Messages sent outside those hours get a reply once we open at 6am.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

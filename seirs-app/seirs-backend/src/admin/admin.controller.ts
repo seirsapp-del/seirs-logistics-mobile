@@ -455,6 +455,24 @@ export class AdminController {
     return this.adminService.getOpsMapDeliveries();
   }
 
+  // GET /api/v1/admin/ops-map/stores
+  // Partner stores with coordinates for the map's store layer. Stores
+  // without coords (legacy rows) are excluded; the count of excluded
+  // rows is returned so ops knows how many need a coord backfill.
+  @Get('ops-map/stores')
+  getOpsMapStores() {
+    return this.adminService.getOpsMapStores();
+  }
+
+  // GET /api/v1/admin/ops-map/demand
+  // Demand layer: pending (unassigned) requests as points + the last
+  // 24h of pickup coordinates for the heat layer. This is what tells
+  // ops (and later drivers) WHERE the volume is.
+  @Get('ops-map/demand')
+  getOpsMapDemand() {
+    return this.adminService.getOpsMapDemand();
+  }
+
   // ── Interstate Trip Board (Spec V8 §3.12) ────────────────────────────────
   // GET /api/v1/admin/interstate-trips?status=active
   // Returns declared intercity trips for the ops board. Default: active only.

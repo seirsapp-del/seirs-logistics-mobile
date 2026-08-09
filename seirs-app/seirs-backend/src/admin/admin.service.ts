@@ -1726,6 +1726,67 @@ export class AdminService {
     }));
   }
 
+  /**
+   * Partner stores for the ops-map store layer. Only rows with coords
+   * are mappable; the count without coords is returned so ops knows
+   * the backfill debt. Uses raw SQL to avoid importing the partner
+   * module here.
+   */
+  async getOpsMapStores() {
+    const rows: any[] = await this.deliveriesRepo.manager.query(`
+      SELECT id, "storeName", "storeAddress", "storeLat", "storeLng",
+             status, "acceptingNew"
+        FROM partner_stores
+       WHERE status IN ('approved', 'active')
+    `);
+    const withCoords = rows.filter(r => r.storeLat != null && r.storeLng != null);
+    return {
+      missingCoords: rows.length - withCoords.length,
+      stores: withCoords.map(r => ({
+        id:           r.id,
+        storeName:    r.storeName,
+        storeAddress: r.storeAddress,
+        lat:          Number(r.storeLat),
+        lng:          Number(r.storeLng),
+        acceptingNew: !!r.acceptingNew,
+      })),
+    };
+  }
+
+  /**
+   * Demand layer for the ops map:
+   *   - pending: unassigned requests RIGHT NOW (each is a lost sale if
+   *     no driver reaches it) as points with age-in-minutes
+   *   - heat: pickup coordinates of every delivery created in the last
+   *     24h, weighted 1 each. This is real demand density, unlike the
+   *     old heat toggle which just blurred driver positions.
+   */
+  async getOpsMapDemand() {
+    const pendingRows = await this.deliveriesRepo.find({
+      where: { status: DeliveryStatus.PENDING },
+      take: 300,
+    });
+    const dayAgo = new Date(Date.now() - 24 * 3600_000);
+    const heatRows: any[] = await this.deliveriesRepo.manager.query(
+      `SELECT "pickupLat", "pickupLng" FROM deliveries
+        WHERE "createdAt" >= $1
+          AND "pickupLat" IS NOT NULL AND "pickupLng" IS NOT NULL
+        LIMIT 2000`,
+      [dayAgo],
+    );
+    const now = Date.now();
+    return {
+      pending: pendingRows.map(d => ({
+        id:           d.id,
+        trackingCode: d.trackingCode,
+        lat:          Number(d.pickupLat),
+        lng:          Number(d.pickupLng),
+        ageMinutes:   Math.round((now - new Date(d.createdAt).getTime()) / 60_000),
+      })),
+      heat: heatRows.map(r => ({ lat: Number(r.pickupLat), lng: Number(r.pickupLng) })),
+    };
+  }
+
   async getAuditLog(page: number, adminId?: string, action?: string) {
     const limit = 50;
     const qb = this.auditRepo.createQueryBuilder('a')
