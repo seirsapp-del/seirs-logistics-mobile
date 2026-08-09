@@ -32,6 +32,18 @@ export function usePushRegistration(enabled: boolean) {
     let cancelled = false;
     (async () => {
       try {
+        // Native-module pre-check (2026-08-09): the JS package can be
+        // bundled from hoisted node_modules while the NATIVE module is
+        // absent from the APK (app built before expo-notifications was
+        // added to its package.json). In that state expo-notifications
+        // internally logs "Cannot find native module 'ExpoPushTokenManager'"
+        // as a full-screen dev error before our catch runs. Probe with
+        // expo-modules-core's optional lookup and bail silently instead.
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const core = require('expo-modules-core');
+        const probe = core?.requireOptionalNativeModule?.('ExpoPushTokenManager');
+        if (!probe) return; // native side not built into this APK yet
+
         // Dynamic require — if expo-notifications isn't installed yet, the
         // require throws and we silently bail. No build-time dependency.
         // eslint-disable-next-line @typescript-eslint/no-var-requires
