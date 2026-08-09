@@ -6,13 +6,13 @@ import { Menu, X, Globe, Check } from "lucide-react";
 import SeirsLogo from "./SeirsLogo";
 
 const navLinks = [
-  { label: "How it Works",   href: "/how-it-works" },
-  { label: "For Business",   href: "/for-business" },
-  { label: "For Drivers",    href: "/for-drivers" },
-  { label: "Partner Stores", href: "/for-partner-stores" },
-  { label: "News",           href: "/news" },
-  { label: "FAQ",            href: "/faq" },
-  { label: "Contact",        href: "/contact" },
+  { label: "How it Works",     href: "/how-it-works" },
+  { label: "Find a Partner",   href: "/find-a-partner" },
+  { label: "For Business",     href: "/for-business" },
+  { label: "For Drivers",      href: "/for-drivers" },
+  { label: "Partner Stores",   href: "/for-partner-stores" },
+  { label: "News",             href: "/news" },
+  { label: "Contact",          href: "/contact" },
 ];
 
 // Spec V8 §i18n, supported languages. UI ships en-only at launch;

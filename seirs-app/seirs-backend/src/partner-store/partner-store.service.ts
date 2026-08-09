@@ -407,7 +407,7 @@ export class PartnerStoreService {
   }
 
   async listCapacityNearby(_lat?: number, _lng?: number, _radiusKm = 10) {
-    // Stub for the customer "pick a store" screen — returns all active
+    // Stub for the customer "pick a store" screen. returns all active
     // stores with their capacity. Geofiltering by haversine moves to
     // a follow-up commit when we wire the customer UI.
     const stores = await this.storeRepo.find({ where: { status: 'active' } });
@@ -419,6 +419,59 @@ export class PartnerStoreService {
         ...(await this.getCapacity(s.id)),
       })),
     );
+  }
+
+  /**
+   * Public partner-store directory. Powers the marketing website's
+   * /find-a-partner discovery page. Zero-auth on purpose so anyone
+   * researching SEIRS can browse without an account.
+   *
+   * Filters:
+   *   - status in ('approved', 'active')   admin has KYC-approved
+   *   - acceptingNew = true                partner is currently open to drop-offs
+   *   - optional `q` text search on storeName + storeAddress (ILIKE)
+   *
+   * Response contains only fields safe for a public page. Owner phone,
+   * KYC document URLs, and capacity numbers are NOT returned. If a
+   * future release adds coordinates, they get returned too so the
+   * client can render a map view without a schema change on the wire.
+   */
+  async publicDirectory(opts: { q?: string; limit: number; offset: number }) {
+    const qb = this.storeRepo
+      .createQueryBuilder('s')
+      .where('s."acceptingNew" = true')
+      .andWhere('s.status IN (:...allowed)', { allowed: ['approved', 'active'] });
+
+    if (opts.q && opts.q.trim()) {
+      const term = `%${opts.q.trim()}%`;
+      qb.andWhere('(s."storeName" ILIKE :t OR s."storeAddress" ILIKE :t)', { t: term });
+    }
+
+    // Cap the response so a curious visitor cannot pull the entire
+    // partner network down in one request. Sane default + hard ceiling.
+    const clamped = Math.min(Math.max(opts.limit ?? 30, 1), 100);
+    qb.orderBy('s."storeName"', 'ASC').take(clamped).skip(opts.offset ?? 0);
+
+    const [rows, total] = await qb.getManyAndCount();
+    return {
+      total,
+      limit:  clamped,
+      offset: opts.offset ?? 0,
+      items:  rows.map(s => ({
+        id:            s.id,
+        storeName:     s.storeName,
+        storeAddress:  s.storeAddress,
+        phone:         s.phone,           // published storefront line, safe for a marketing page
+        operatingDays: s.operatingDays,
+        openTime:      s.openTime,
+        closeTime:     s.closeTime,
+        // Coordinates will be added when partner-store gets lat/lng cols.
+        // Kept in the response shape so the client can render null-guarded
+        // map markers today and light up when data lands.
+        lat:           null,
+        lng:           null,
+      })),
+    };
   }
 
   // ── Partner store status (accept-incoming toggle) ──────────────────────

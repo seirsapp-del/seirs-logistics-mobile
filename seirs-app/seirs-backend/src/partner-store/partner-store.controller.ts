@@ -1,8 +1,10 @@
 import {
-  Body, Controller, Get, Param, Patch, Post, Query, UseGuards,
+  Body, Controller, DefaultValuePipe, Get, Param, ParseIntPipe,
+  Patch, Post, Query, UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { PartnerStoreService } from './partner-store.service';
 import { DropoffMode } from './store-dropoff.entity';
 import { HandoffMethod } from '../identity/handoff-record.entity';
@@ -11,6 +13,23 @@ import { HandoffMethod } from '../identity/handoff-record.entity';
 @Controller('partner-store')
 export class PartnerStoreController {
   constructor(private readonly svc: PartnerStoreService) {}
+
+  // ── Public discovery ───────────────────────────────────────────────────
+
+  // GET /api/v1/partner-store/directory?q=&limit=&offset=
+  // Public "find a partner store near you" list. Powers the marketing
+  // website /find-a-partner page. Returns only approved + accepting
+  // stores. Public-safe fields only (no owner phone, no KYC doc URLs,
+  // no capacity numbers). Optional `q` filters by name + address prefix.
+  @Public()
+  @Get('directory')
+  publicDirectory(
+    @Query('q')                                                             q?: string,
+    @Query('limit',  new DefaultValuePipe(30),  ParseIntPipe)               limit?: number,
+    @Query('offset', new DefaultValuePipe(0),   ParseIntPipe)               offset?: number,
+  ) {
+    return this.svc.publicDirectory({ q, limit: limit!, offset: offset! });
+  }
 
   // ── Customer / sender ──────────────────────────────────────────────────
 
