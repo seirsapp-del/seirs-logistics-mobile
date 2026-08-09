@@ -56,6 +56,10 @@ export default function PartnerLayout() {
         )}}
       />
       <Tabs.Screen
+        name="messages"
+        options={{ title: 'Messages', tabBarIcon: ({ focused }) => <TabIcon name="MessageSquare" focused={focused} /> }}
+      />
+      <Tabs.Screen
         name="earnings"
         options={{ title: 'Earnings', tabBarIcon: ({ focused }) => <TabIcon name="TrendingUp" focused={focused} /> }}
       />

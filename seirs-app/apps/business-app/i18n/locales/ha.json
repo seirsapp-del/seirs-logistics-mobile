@@ -230,5 +230,42 @@
     "title": "Harshe",
     "subtitle": "Zaɓi harshen da kuke so",
     "current": "Harshe na yanzu"
+  },
+  "common": {
+    "cancel": "Soke"
+  },
+  "chat": {
+    "online": "A kan layi",
+    "empty": "Babu saƙo tukuna.",
+    "messagesTitle": "Saƙonni",
+    "emptyInboxTitle": "Babu tattaunawa tukuna",
+    "emptyInboxBody": "Tattaunawa za su bayyana anan idan aka sanya direba a ɗayan isarwar ku.",
+    "inputPlaceholder": "Rubuta saƙo…",
+    "quickReplies": {
+      "business": {
+        "ready": "Kaya na shirye don ɗauka",
+        "atCounter": "Zo ga kanti na gaba",
+        "fiveMin": "Ba mu mintuna biyar",
+        "callOffice": "Da fatan kira ofishinmu",
+        "thanks": "Na gode"
+      }
+    },
+    "system": {
+      "assigned": "An sanya direba. Zai zo ya ɗauko kayanku ba da daɗewa ba.",
+      "picked_up": "Direba ya ɗauko kayanku.",
+      "in_transit": "Kaya na kan hanya.",
+      "delivered": "An isar da kaya.",
+      "cancelled": "An soke aikin.",
+      "failed": "Ba a iya kammala isar da kaya ba."
+    },
+    "attach": {
+      "title": "Haɗa hoto",
+      "subtitle": "Zaɓi inda za a ɗauko hoton.",
+      "camera": "Ɗauki hoto",
+      "gallery": "Daga gallery",
+      "permTitle": "Ana buƙatar izini",
+      "permBody": "Ba da izini ga kamara ko hotuna a saitin wayarka.",
+      "errorTitle": "Ba a iya aika hoton ba"
+    }
   }
 }

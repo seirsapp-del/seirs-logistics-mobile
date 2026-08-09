@@ -230,5 +230,42 @@
     "title": "Èdè",
     "subtitle": "Yan èdè tí o fẹ́",
     "current": "Èdè lọ́wọ́lọ́wọ́"
+  },
+  "common": {
+    "cancel": "Fagilé"
+  },
+  "chat": {
+    "online": "Ori ayelujara",
+    "empty": "Kò sí ìwífún síbẹ̀.",
+    "messagesTitle": "Ìwífún",
+    "emptyInboxTitle": "Kò sí ìjíròrò síbẹ̀",
+    "emptyInboxBody": "Ìjíròrò máa wá níbí nígbà tí a bá yan awakọ fún ìfìsíni yín.",
+    "inputPlaceholder": "Ko ìwífún…",
+    "quickReplies": {
+      "business": {
+        "ready": "Ẹrù ti ṣetán fún gbígbà",
+        "atCounter": "Wá sí kaunter iwájú",
+        "fiveMin": "Fún wa ní ìṣẹ́jú márùn",
+        "callOffice": "Jọ̀wọ́ pè ọ́fíìsì wa",
+        "thanks": "O ṣé"
+      }
+    },
+    "system": {
+      "assigned": "A ti yan awakọ. Yóò gba ẹrù rẹ láìpẹ́.",
+      "picked_up": "Awakọ ti gba ẹrù rẹ.",
+      "in_transit": "Ẹrù wà lọ́nà.",
+      "delivered": "A ti fi ẹrù ránṣẹ́.",
+      "cancelled": "A fagilé ìfìsíni náà.",
+      "failed": "A kò lè parí ìfìsíni náà."
+    },
+    "attach": {
+      "title": "Fi fọtò kún",
+      "subtitle": "Yan ibi tí o fẹ́ mú fọtò náà wá.",
+      "camera": "Ya fọtò",
+      "gallery": "Láti inú gálárì",
+      "permTitle": "Àṣẹ nílo",
+      "permBody": "Jẹ́ àṣẹ fún kámẹ́rà tàbí fọtò nínú ètò fóònù rẹ.",
+      "errorTitle": "A kò lè fi fọtò ránṣẹ́"
+    }
   }
 }

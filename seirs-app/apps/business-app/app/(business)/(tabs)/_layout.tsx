@@ -66,6 +66,10 @@ export default function BusinessTabsLayout() {
         )}}
       />
       <Tabs.Screen
+        name="messages"
+        options={{ title: 'Messages', tabBarIcon: ({ focused }) => <TabIcon name="MessageSquare" focused={focused} /> }}
+      />
+      <Tabs.Screen
         name="wallet"
         options={{ title: 'Wallet', tabBarIcon: ({ focused }) => <TabIcon name="Wallet" focused={focused} /> }}
       />

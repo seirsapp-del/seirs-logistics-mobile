@@ -230,5 +230,42 @@
     "title": "Asụsụ",
     "subtitle": "Họọ asụsụ ị chọọ",
     "current": "Asụsụ ugbu a"
+  },
+  "common": {
+    "cancel": "Kagbuo"
+  },
+  "chat": {
+    "online": "Nọ na ntanetị",
+    "empty": "Enweghị ozi ọ bụla.",
+    "messagesTitle": "Ozi",
+    "emptyInboxTitle": "Enweghị mkparịta ụka ọ bụla",
+    "emptyInboxBody": "Mkparịta ụka ga-apụta ebe a mgbe enyere onye nkwọ na otu n'ime nnyefe gị.",
+    "inputPlaceholder": "Dee ozi…",
+    "quickReplies": {
+      "business": {
+        "ready": "Ngwongwo dị njikere maka nnata",
+        "atCounter": "Bịa n'oche iru",
+        "fiveMin": "Nye anyị nkeji ise",
+        "callOffice": "Biko kpọọ ọfịs anyị",
+        "thanks": "Daalụ"
+      }
+    },
+    "system": {
+      "assigned": "Enyere onye nkwọ. Ọ ga-ewere ngwongwo gị obere oge.",
+      "picked_up": "Onye nkwọ ebuwerela ngwongwo gị.",
+      "in_transit": "Ngwongwo nọ n'ụzọ.",
+      "delivered": "Enyere ngwongwo.",
+      "cancelled": "Akagbuola nnyefe.",
+      "failed": "Enweghị ike ime nnyefe."
+    },
+    "attach": {
+      "title": "Tinye foto",
+      "subtitle": "Họrọ ebe ị ga-esite were foto.",
+      "camera": "Sepụ foto",
+      "gallery": "Site na galarị",
+      "permTitle": "Ikike dị mkpa",
+      "permBody": "Kwe ka kamera ma ọ bụ foto banye na ntọala ekwentị gị.",
+      "errorTitle": "Enweghị ike izipụ foto"
+    }
   }
 }

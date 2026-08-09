@@ -24,6 +24,7 @@ export {
   configApi,
   pricingApi,
   usersApi,
+  chatApi,
 } from '@seirs/shared/services/api';
 
 export type {
@@ -31,6 +32,8 @@ export type {
   RateCard,
   PriceBreakdown,
   QuoteInput,
+  ChatMessageDTO,
+  ChatConversationDTO,
 } from '@seirs/shared/services/api';
 
 import { businessAuthApi, authApi as sharedAuthApi } from '@seirs/shared/services/api';
