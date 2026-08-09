@@ -21,10 +21,20 @@ config.resolver = {
   sourceExts: [...(config.resolver.sourceExts || []), 'svg'],
 };
 
-// Merge our workspace watch folders with Expo's defaults
+// Watch only the paths we actually import from. Watching the entire
+// workspaceRoot on Windows blows past fs.watch's handle limit because
+// it recurses through every app's android/build, .next, and duplicated
+// node_modules. That reliably triggers Metro's "Failed to construct
+// transformer: Failed to start watch mode" on cold-start.
+//
+// The three folders below are the only ones customer-app resolves code
+// from at runtime: the app itself, the shared package, and the hoisted
+// workspace node_modules. Everything else is either dead weight or
+// belongs to another app.
 config.watchFolders = [
-  workspaceRoot,
-  ...(config.watchFolders || []),
+  projectRoot,
+  path.resolve(workspaceRoot, 'shared'),
+  path.resolve(workspaceRoot, 'node_modules'),
 ];
 
 // Tell Metro where to find modules — project first, then workspace root
@@ -60,6 +70,13 @@ config.resolver.blockList = [
   /[\\/]\.git[\\/].*/,
   /[\\/]android[\\/]build[\\/].*/,
   /[\\/]android[\\/]\.gradle[\\/].*/,
+  // Belt-and-braces defence for the fs.watch handle limit on Windows:
+  // even though watchFolders is now narrowed, blockList prevents the
+  // resolver from accidentally reaching into sibling apps.
+  /apps[\\/](?!customer-app)[^\\/]+[\\/]node_modules[\\/].*/,
+  /apps[\\/](?!customer-app)[^\\/]+[\\/]android[\\/].*/,
+  /apps[\\/](?!customer-app)[^\\/]+[\\/]\.next[\\/].*/,
+  /apps[\\/](?!customer-app)[^\\/]+[\\/]out[\\/].*/,
 ];
 
 module.exports = config;
