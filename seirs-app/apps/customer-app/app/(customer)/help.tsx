@@ -69,8 +69,11 @@ export default function HelpScreen() {
         {/* Quick contact */}
         <View style={styles.contactRow}>
           {[
-            { icon: 'chatbubble-ellipses-outline', label: 'Live Chat',  sub: 'Avg. 2 min reply', color: '#3A86FF',
-              onPress: () => Alert.alert('Coming soon', 'Live chat with our support team is launching shortly.') },
+            // Chat 5 (2026-08-09): live chat is no longer coming soon.
+            // Opens the in-app support inbox; a new ticket lands the user
+            // straight in a thread with a SEIRS agent.
+            { icon: 'chatbubble-ellipses-outline', label: 'Live Chat',  sub: '6am–10pm WAT reply', color: '#3A86FF',
+              onPress: () => router.push('/(customer)/support' as any) },
             { icon: 'call-outline',                label: 'Call Us',    sub: '0700-SEIRS-01',    color: '#22C55E',
               onPress: () => Linking.openURL('tel:07007347701').catch(() => Alert.alert('Could not open dialer')) },
             { icon: 'mail-outline',                label: 'Email',      sub: 'support@seirs.app', color: '#8B5CF6',
