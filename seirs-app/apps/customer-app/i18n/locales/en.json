@@ -1072,7 +1072,8 @@
       "in_transit": "Package is on the way.",
       "delivered": "Package delivered.",
       "cancelled": "Delivery was cancelled.",
-      "failed": "Delivery could not be completed."
+      "failed": "Delivery could not be completed.",
+      "chat_closing": "This chat will close in 1 hour. For anything after that, contact SEIRS support."
     },
     "attach": {
       "title": "Attach photo",

@@ -594,6 +594,25 @@ export class DeliveriesService {
       if (label) {
         this.chatService.insertSystemMessage(id, String(status), label).catch(() => {});
       }
+
+      // Right after "driver assigned": surface the customer's delivery
+      // instructions as their own system message so the driver sees them
+      // inline without opening a separate detail screen. `instructions`
+      // systemType renders with a distinct icon client-side.
+      if (String(status) === 'assigned' && delivery.deliveryInstructions?.trim()) {
+        this.chatService
+          .insertSystemMessage(id, 'instructions', `Customer instructions: ${delivery.deliveryInstructions.trim()}`)
+          .catch(() => {});
+      }
+
+      // TTL policy: when delivered, post a countdown notice so both
+      // parties know the thread will close for new messages in 1 hour.
+      // (Admin can re-open via chatReopenedUntil for support cases.)
+      if (String(status) === 'delivered') {
+        this.chatService
+          .insertSystemMessage(id, 'chat_closing', 'This chat will close in 1 hour. For anything after that, contact SEIRS support.')
+          .catch(() => {});
+      }
     }
 
     // Spec V8 Tier 3: fan out to partner webhook subscribers

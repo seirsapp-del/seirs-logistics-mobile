@@ -482,6 +482,22 @@ export const adminApi = {
       }),
   },
 
+  // Chat re-open for support investigations. Chats close for writes
+  // 1hr after delivery (PII freeze); these endpoints let PII_VIEW_ROLES
+  // re-open a window (1-72h, audit-logged) and close it early.
+  chatReopen: {
+    reopen: (deliveryId: string, body: { hours?: number; reason: string; ticketId?: string }) =>
+      req<{ deliveryId: string; chatReopenedUntil: string; hours: number }>(
+        `/admin/deliveries/${deliveryId}/reopen-chat`,
+        { method: 'POST', body: JSON.stringify(body) },
+      ),
+    close: (deliveryId: string) =>
+      req<{ deliveryId: string; closed: boolean }>(
+        `/admin/deliveries/${deliveryId}/close-chat`,
+        { method: 'POST' },
+      ),
+  },
+
   // Support toolkit (Chat 5). Rejected server-side if the admin is
   // not super_admin or support_agent.
   support: {

@@ -304,7 +304,8 @@
       "in_transit": "A kan hanya zuwa wurin sauka.",
       "delivered": "An kammala isar.",
       "cancelled": "An soke wannan isar.",
-      "failed": "Ba a iya kammala isar da kaya ba."
+      "failed": "Ba a iya kammala isar da kaya ba.",
+      "chat_closing": "Wannan hira za ta rufe cikin awa daya. Don komai bayan haka, tuntubi tallafin SEIRS."
     },
     "attach": {
       "title": "Haɗa hoto",

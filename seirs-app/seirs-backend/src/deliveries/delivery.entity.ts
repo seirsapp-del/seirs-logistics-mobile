@@ -213,6 +213,23 @@ export class Delivery {
   @Column({ nullable: true })
   customerComment: string;
 
+  // Free-text instructions from the customer for the driver
+  // (500 char cap enforced at DTO layer). Auto-inserted as the first
+  // system message on ASSIGNED so drivers cannot miss it. Editable by
+  // the customer while status is pending or assigned; frozen after
+  // pickup.
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  deliveryInstructions: string | null;
+
+  // TTL policy: chat closes for writes 1hr after DELIVERED.
+  // `chatReopenedUntil` overrides that: when an admin re-opens a
+  // completed delivery's chat for a support investigation, this
+  // timestamp is set to the reopen expiry and chat.service.send()
+  // consults it before rejecting a write. NULL = default TTL policy
+  // applies.
+  @Column({ type: 'timestamptz', nullable: true })
+  chatReopenedUntil: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

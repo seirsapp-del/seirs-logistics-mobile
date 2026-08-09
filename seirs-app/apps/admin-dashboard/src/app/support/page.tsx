@@ -293,6 +293,33 @@ export default function SupportInboxPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  {/* PII-frozen chat re-open. Only visible when the ticket
+                      is linked to a delivery. Backend enforces PII_VIEW_ROLES
+                      + audit-logs the reason + clamps window to 1-72h. */}
+                  {thread.ticket.linkedDeliveryId && (
+                    <button
+                      onClick={async () => {
+                        const reason = prompt(
+                          'Reason for re-opening this delivery chat (min 6 chars).\nThe customer and driver will be able to message each other again for 24 hours.',
+                        );
+                        if (!reason || reason.trim().length < 6) return;
+                        try {
+                          await adminApi.chatReopen.reopen(thread.ticket.linkedDeliveryId!, {
+                            hours:    24,
+                            reason:   reason.trim(),
+                            ticketId: thread.ticket.id,
+                          });
+                          alert('Chat re-opened for 24 hours. This action was audit-logged.');
+                        } catch (e: any) {
+                          alert(`Re-open failed: ${e?.message ?? 'unknown'}`);
+                        }
+                      }}
+                      className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                      title="Re-open the customer-driver chat for this delivery (24h, audit-logged)"
+                    >
+                      <MessageSquare size={12} /> Re-open chat
+                    </button>
+                  )}
                   {thread.ticket.status !== 'resolved' && (
                     <button onClick={() => setStatus('resolved')}
                       className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">

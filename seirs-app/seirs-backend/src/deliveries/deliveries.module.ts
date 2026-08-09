@@ -100,6 +100,16 @@ export class DeliveriesModule implements OnModuleInit {
         CREATE INDEX IF NOT EXISTS "delivery_events_delivery_created_idx"
           ON "delivery_events" ("deliveryId", "createdAt")
       `);
+      // Messaging-system columns (2026-08-09): customer instructions for
+      // the driver + the admin chat-reopen override for the PII TTL.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "deliveryInstructions" varchar(500) NULL
+      `);
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "chatReopenedUntil" timestamptz NULL
+      `);
       this.logger.log('delivery_events schema self-heal complete');
     } catch (e: any) {
       this.logger.warn(`delivery_events self-heal skipped: ${e?.message ?? e}`);

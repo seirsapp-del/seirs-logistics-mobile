@@ -137,6 +137,35 @@ export class ChatService {
 
     const delivery = await this.assertParticipant(deliveryId, sender.id);
 
+    // TTL policy: delivery chats close for new messages 1 hour after
+    // the delivered timestamp. Terminal failures close immediately.
+    // The full history stays readable (list() is unaffected) and is
+    // never deleted — this is a WRITE gate only, so PII exposure stays
+    // frozen at the moment the trip context ends.
+    //
+    // Admin override: when support is investigating an issue, an admin
+    // can set delivery.chatReopenedUntil to a future timestamp, which
+    // re-opens the thread until then. The re-open action is audit-
+    // logged on the admin side.
+    const now = Date.now();
+    const reopenedUntil = delivery.chatReopenedUntil ? new Date(delivery.chatReopenedUntil).getTime() : 0;
+    const isReopened    = reopenedUntil > now;
+    if (!isReopened) {
+      if (delivery.status === 'cancelled' || delivery.status === 'failed') {
+        throw new ForbiddenException(
+          'This chat is closed. Contact SEIRS support if you need help with this delivery.',
+        );
+      }
+      if (delivery.status === 'delivered' && delivery.deliveredAt) {
+        const closedAt = new Date(delivery.deliveredAt).getTime() + 60 * 60 * 1000; // +1hr
+        if (now > closedAt) {
+          throw new ForbiddenException(
+            'This chat closed 1 hour after delivery. Contact SEIRS support if you need help.',
+          );
+        }
+      }
+    }
+
     const msg = this.repo.create({
       delivery,
       sender,

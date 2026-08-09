@@ -76,7 +76,7 @@ export default function RateDriverScreen() {
     setLoading(true);
     try {
       const tagText = Array.from(selected).join(', ');
-      const noteText = [tagText, comment.trim()].filter(Boolean).join(' — ');
+      const noteText = [tagText, comment.trim()].filter(Boolean).join(' | ');
       await deliveriesApi.rate(tripId, stars, noteText || undefined);
       router.replace('/(customer)/(tabs)' as any);
     } catch (e: any) {
@@ -216,6 +216,20 @@ export default function RateDriverScreen() {
             fullWidth
             leftIcon={<Ionicons name="star" size={18} color="#fff" />}
           />
+          {/* Escalation path: bad experience should route to support with
+              the delivery pre-attached, not die inside a star rating. */}
+          <Pressable
+            onPress={() => router.push({
+              pathname: '/(customer)/support/new',
+              params:   { deliveryId: tripId ?? '', topic: 'delivery' },
+            } as any)}
+            style={{ alignItems: 'center', paddingTop: 10 }}
+            hitSlop={8}
+          >
+            <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, textDecorationLine: 'underline' }}>
+              {t('rateDriver.reportProblem', { defaultValue: 'Report a problem with this delivery' })}
+            </Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     </KeyboardAvoidingView>

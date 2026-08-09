@@ -25,7 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlignLeft, Bike, LifeBuoy, Plus } from 'lucide-react-native';
+import { AlignLeft, Bike, LifeBuoy } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
@@ -186,25 +186,28 @@ export default function MessagesScreen() {
         />
       )}
 
-      {/* Floating "Start support" CTA — safe-area aware so system nav
-          doesn't cover it on gesture-nav phones (Pixel, newer Samsungs).
-          Uses insets.bottom + tab-bar height (~64) so it sits comfortably
-          above both. */}
-      <Pressable
-        onPress={() => router.push('/(customer)/support/new' as any)}
-        style={[
-          styles.fab,
-          {
-            backgroundColor: theme.primary,
-            bottom: 80 + insets.bottom,
-          },
-          Shadows.sm,
-        ]}
-        accessibilityLabel="Start a support conversation"
-      >
-        <Plus size={18} color="#fff" strokeWidth={2.5} />
-        <Text style={styles.fabText}>Support</Text>
-      </Pressable>
+      {/* Single support entry point: a compose icon in the header would
+          be duplicative with the empty-state CTA; when the list has rows
+          we show one compact FAB. The empty state's inline CTA covers
+          the no-conversations case, so the FAB renders ONLY when rows
+          exist (no duplicated actions on screen at once). */}
+      {rows.length > 0 && (
+        <Pressable
+          onPress={() => router.push('/(customer)/support/new' as any)}
+          style={[
+            styles.fab,
+            {
+              backgroundColor: theme.primary,
+              bottom: 80 + insets.bottom,
+            },
+            Shadows.sm,
+          ]}
+          accessibilityLabel="Start a support conversation"
+        >
+          <LifeBuoy size={18} color="#fff" strokeWidth={2} />
+          <Text style={styles.fabText}>Support</Text>
+        </Pressable>
+      )}
 
       <Drawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />
     </SafeAreaView>

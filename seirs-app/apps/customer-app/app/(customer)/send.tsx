@@ -153,6 +153,10 @@ export default function SendScreen() {
   const [description, setDescription] = useState('');
   const [category,    setCategory]    = useState<CategoryId | null>(null);
   const [weightKg,    setWeightKg]    = useState('');
+  // Free-text instructions for the driver ("call at gate", "security
+  // code 4231"). Auto-posted into the chat as a system message when a
+  // driver is assigned so it is impossible to miss.
+  const [instructions, setInstructions] = useState('');
   const [pickup,      setPickup]      = useState<PickedAddress | null>(null);
   const [dropoff,     setDropoff]     = useState<PickedAddress | null>(null);
   const [vehicleId,   setVehicleId]   = useState<VehicleId>('motorcycle');
@@ -384,6 +388,7 @@ export default function SendScreen() {
                            ? buildScheduledFor(scheduledDate, scheduledHour).toISOString()
                            : undefined,
         codAmountNgn:    codAmountNgn || undefined,
+        deliveryInstructions: instructions.trim() || undefined,
       } as any);
       router.replace('/(customer)/history' as any);
     } catch (e: any) {
@@ -564,6 +569,19 @@ export default function SendScreen() {
                 keyboardType="decimal-pad"
                 value={weightKg}
                 onChangeText={setWeightKg}
+              />
+
+              <Text style={[styles.label, { color: theme.textSecond }]}>
+                {t('send.instructions', { defaultValue: 'Instructions for driver (optional)' })}
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text, minHeight: 70, textAlignVertical: 'top' }]}
+                placeholder={t('send.instructionsPlaceholder', { defaultValue: 'e.g. Call when you reach the gate. Ask for security.' })}
+                placeholderTextColor={theme.textThird}
+                value={instructions}
+                onChangeText={setInstructions}
+                multiline
+                maxLength={500}
               />
             </View>
           )}

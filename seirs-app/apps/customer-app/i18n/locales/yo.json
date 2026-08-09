@@ -1020,7 +1020,8 @@
       "in_transit": "Ẹrù wà lọ́nà.",
       "delivered": "A ti fi ẹrù ránṣẹ́.",
       "cancelled": "A fagilé ìfìsíni náà.",
-      "failed": "A kò lè parí ìfìsíni náà."
+      "failed": "A kò lè parí ìfìsíni náà.",
+      "chat_closing": "Ìjíròrò yìí yóò tì ní wákàtí kan. Fún ohunkóhun lẹ́yìn ìyẹn, kan sí ìrànlọ́wọ́ SEIRS."
     },
     "attach": {
       "title": "Fi fọtò kún",

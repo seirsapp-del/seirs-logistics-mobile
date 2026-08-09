@@ -511,6 +511,31 @@ export class AdminController {
     return this.adminService.adminHardDeleteUser(id, admin, body?.reason ?? '', req.ip);
   }
 
+  // POST /api/v1/admin/deliveries/:id/reopen-chat  { hours?, reason, ticketId? }
+  // Support toolkit: re-opens a completed delivery's chat (which auto-
+  // closes 1hr after delivery per the PII-freeze TTL) so the two parties
+  // can talk during a support investigation. Role-gated to PII_VIEW_ROLES,
+  // audit-logged with reason + linked ticket. Window clamped 1-72 hours.
+  @Post('deliveries/:id/reopen-chat')
+  reopenDeliveryChat(
+    @Param('id') id: string,
+    @Body() body: { hours?: number; reason: string; ticketId?: string },
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    return this.adminService.reopenDeliveryChat(id, admin, body ?? { reason: '' }, req.ip);
+  }
+
+  // POST /api/v1/admin/deliveries/:id/close-chat — end a re-open early.
+  @Post('deliveries/:id/close-chat')
+  closeReopenedChat(
+    @Param('id') id: string,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    return this.adminService.closeReopenedChat(id, admin, req.ip);
+  }
+
   // POST /api/v1/admin/users/:id/reveal-identity-docs
   // Explicit PII-view action. Returns the identity document URLs (front,
   // back, selfie). Role-gated to super_admin + support_agent +

@@ -304,7 +304,8 @@
       "in_transit": "Na-aga ebe nnyefe.",
       "delivered": "Nnyefe ejikwara.",
       "cancelled": "Akagbuola nnyefe a.",
-      "failed": "Enweghị ike ime nnyefe."
+      "failed": "Enweghị ike ime nnyefe.",
+      "chat_closing": "Mkparịta ụka a ga-emechi n'ime otu awa. Maka ihe ọ bụla mgbe ahụ gasịrị, kpọtụrụ nkwado SEIRS."
     },
     "attach": {
       "title": "Tinye foto",

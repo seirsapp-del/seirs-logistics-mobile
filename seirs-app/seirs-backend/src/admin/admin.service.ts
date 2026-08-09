@@ -161,6 +161,60 @@ export class AdminService {
     return result;
   }
 
+  /**
+   * Re-open a completed delivery's chat for a support investigation.
+   *
+   * Chats auto-close for writes 1 hour after delivery (PII freeze).
+   * When a user contacts support about a completed delivery, the agent
+   * may need the two parties to exchange messages again (e.g. driver
+   * returning an item left in the vehicle). This sets
+   * delivery.chatReopenedUntil = now + `hours`, which chat.service.send
+   * consults before rejecting a write.
+   *
+   * Restricted to PII_VIEW_ROLES (super_admin, support_agent,
+   * driver_compliance) since re-opening exposes both parties' chat
+   * surface again. Audit-logged with the reason + linked ticket.
+   */
+  async reopenDeliveryChat(
+    deliveryId: string,
+    admin: any,
+    opts: { hours?: number; reason: string; ticketId?: string },
+    ip?: string,
+  ) {
+    this.ensureNdprAccess(admin, this.PII_VIEW_ROLES, 'chat_reopen');
+    if (!opts?.reason || opts.reason.trim().length < 6) {
+      throw new BadRequestException('Reason (min 6 chars) is required.');
+    }
+    const delivery = await this.deliveriesRepo.findOne({ where: { id: deliveryId } });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    // Clamp: 1 hour min, 72 hours max. Support cases resolve in days,
+    // not weeks; a longer window means a longer PII re-exposure.
+    const hours = Math.min(Math.max(opts.hours ?? 24, 1), 72);
+    const until = new Date(Date.now() + hours * 3600_000);
+
+    await this.deliveriesRepo.update(deliveryId, { chatReopenedUntil: until } as any);
+
+    await this.logAudit(admin, 'chat_reopen', `delivery:${deliveryId}`, {
+      hours,
+      until:    until.toISOString(),
+      reason:   opts.reason.trim(),
+      ticketId: opts.ticketId ?? null,
+    }, ip);
+
+    return { deliveryId, chatReopenedUntil: until.toISOString(), hours };
+  }
+
+  /** Close a re-opened chat early (sets chatReopenedUntil to now). */
+  async closeReopenedChat(deliveryId: string, admin: any, ip?: string) {
+    this.ensureNdprAccess(admin, this.PII_VIEW_ROLES, 'chat_reopen_close');
+    const delivery = await this.deliveriesRepo.findOne({ where: { id: deliveryId } });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    await this.deliveriesRepo.update(deliveryId, { chatReopenedUntil: new Date() } as any);
+    await this.logAudit(admin, 'chat_reopen_close', `delivery:${deliveryId}`, {}, ip);
+    return { deliveryId, closed: true };
+  }
+
   async adminHardDeleteUser(targetUserId: string, admin: any, reason: string, ip?: string) {
     this.ensureNdprAccess(admin, this.NDPR_DELETE_ROLES, 'ndpr_hard_delete');
     if (!reason || reason.trim().length < 6) {

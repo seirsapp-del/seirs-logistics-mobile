@@ -18,17 +18,17 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Package, CreditCard, Bike, User, MoreHorizontal, Clock, ShieldCheck, ArrowRight,
+  Package, CreditCard, Bike, User, MoreHorizontal, Clock, ShieldCheck, ArrowRight, X,
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
-import { supportApi, type TicketTopic } from '@/services/api';
+import { supportApi, deliveriesApi, type TicketTopic } from '@/services/api';
 
 const TOPICS: { key: TicketTopic; label: string; icon: any; hint: string }[] = [
   { key: 'delivery', label: 'Delivery issue',      icon: Package,         hint: 'Package late, missing, damaged, wrong address' },
@@ -49,6 +49,14 @@ function isBusinessHoursNow(): boolean {
   return lagosHour >= 6 && lagosHour < 22;
 }
 
+interface RecentDelivery {
+  id:            string;
+  trackingCode?: string;
+  status?:       string;
+  dropoffAddress?: string;
+  createdAt?:    string;
+}
+
 export default function NewSupportTicketScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
@@ -57,15 +65,37 @@ export default function NewSupportTicketScreen() {
   const { t }  = useTranslation();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  // Deep-link params: RateDeliveryCard's "Report a problem" and the
+  // delivery-detail "Contact support" button pass deliveryId + topic
+  // so the ticket lands pre-linked with context.
+  const params = useLocalSearchParams<{ deliveryId?: string; topic?: TicketTopic }>();
 
-  const [step,         setStep]         = useState<'topic' | 'details'>('topic');
-  const [topic,        setTopic]        = useState<TicketTopic | null>(null);
+  const [step,         setStep]         = useState<'topic' | 'details'>(params.topic ? 'details' : 'topic');
+  const [topic,        setTopic]        = useState<TicketTopic | null>(params.topic ?? null);
   const [subject,      setSubject]      = useState('');
   const [firstMessage, setFirstMessage] = useState('');
   const [submitting,   setSubmitting]   = useState(false);
+  const [linkedDeliveryId, setLinkedDeliveryId] = useState<string | null>(params.deliveryId ?? null);
+  // Recent deliveries for the attach picker. Loaded lazily only when
+  // the topic is delivery/billing (the two where attachment matters).
+  const [recent, setRecent] = useState<RecentDelivery[]>([]);
+  const [showPicker, setShowPicker] = useState(false);
+
+  const wantsAttachment = topic === 'delivery' || topic === 'billing';
+
+  useEffect(() => {
+    if (!wantsAttachment || recent.length > 0) return;
+    deliveriesApi.myDeliveries(1, 10)
+      .then((res: any) => {
+        const items = Array.isArray(res) ? res : (res?.items ?? res?.data ?? []);
+        setRecent(items.slice(0, 10));
+      })
+      .catch(() => setRecent([]));
+  }, [wantsAttachment, recent.length]);
 
   const canSubmit = !!subject.trim() && !!firstMessage.trim() && !submitting && !!topic;
   const openHours = isBusinessHoursNow();
+  const linkedDelivery = recent.find(d => d.id === linkedDeliveryId);
 
   const submit = async () => {
     if (!canSubmit || !topic) return;
@@ -73,8 +103,9 @@ export default function NewSupportTicketScreen() {
     try {
       const ticket = await supportApi.create({
         topic,
-        subject:      subject.trim(),
-        firstMessage: firstMessage.trim(),
+        subject:          subject.trim(),
+        firstMessage:     firstMessage.trim(),
+        linkedDeliveryId: linkedDeliveryId ?? undefined,
       });
       router.replace(`/(customer)/support/${ticket.id}` as any);
     } catch (e: any) {
@@ -204,6 +235,65 @@ export default function NewSupportTicketScreen() {
                 </View>
               )}
 
+              {/* Delivery attachment: only for delivery/billing topics.
+                  Attaching gives the support agent instant context and
+                  powers the admin-side chat-reopen flow. */}
+              {wantsAttachment && (
+                <View>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Related delivery (optional)</Text>
+                  {linkedDeliveryId ? (
+                    <View style={[styles.attachedRow, { backgroundColor: theme.surface, borderColor: theme.primary }]}>
+                      <Package size={18} color={theme.primary} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.attachedCode, { color: theme.text }]}>
+                          {linkedDelivery?.trackingCode ?? `Delivery ${linkedDeliveryId.slice(0, 8)}`}
+                        </Text>
+                        {linkedDelivery?.dropoffAddress && (
+                          <Text style={[styles.attachedSub, { color: theme.textSecond }]} numberOfLines={1}>
+                            {linkedDelivery.dropoffAddress}
+                          </Text>
+                        )}
+                      </View>
+                      <Pressable onPress={() => setLinkedDeliveryId(null)} hitSlop={10}>
+                        <X size={16} color={theme.textSecond} />
+                      </Pressable>
+                    </View>
+                  ) : showPicker ? (
+                    <View style={[styles.pickerList, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                      {recent.length === 0 ? (
+                        <Text style={[styles.pickerEmpty, { color: theme.textSecond }]}>No recent deliveries found.</Text>
+                      ) : recent.map(d => (
+                        <Pressable
+                          key={d.id}
+                          onPress={() => { setLinkedDeliveryId(d.id); setShowPicker(false); }}
+                          style={({ pressed }) => [styles.pickerRow, { borderBottomColor: theme.border, opacity: pressed ? 0.7 : 1 }]}
+                        >
+                          <Package size={16} color={theme.textSecond} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.pickerCode, { color: theme.text }]}>{d.trackingCode ?? d.id.slice(0, 8)}</Text>
+                            {d.dropoffAddress && (
+                              <Text style={[styles.pickerSub, { color: theme.textSecond }]} numberOfLines={1}>{d.dropoffAddress}</Text>
+                            )}
+                          </View>
+                          {d.status && <Text style={[styles.pickerStatus, { color: theme.textThird }]}>{d.status}</Text>}
+                        </Pressable>
+                      ))}
+                      <Pressable onPress={() => setShowPicker(false)} style={styles.pickerCancel}>
+                        <Text style={[styles.pickerCancelText, { color: theme.textSecond }]}>Cancel</Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={() => setShowPicker(true)}
+                      style={[styles.attachBtn, { borderColor: theme.border, backgroundColor: theme.surface }]}
+                    >
+                      <Package size={16} color={theme.textSecond} />
+                      <Text style={[styles.attachBtnText, { color: theme.textSecond }]}>Attach a delivery</Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+
               <View>
                 <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>Subject</Text>
                 <TextInput
@@ -309,4 +399,18 @@ const styles = StyleSheet.create({
 
   hoursNote:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 4 },
   hoursNoteText: { fontSize: 11, flex: 1, lineHeight: 15 },
+
+  attachBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: Radius.md, borderWidth: 1, borderStyle: 'dashed' },
+  attachBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  attachedRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: Radius.md, borderWidth: 1.5 },
+  attachedCode:  { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  attachedSub:   { fontSize: 11, marginTop: 2 },
+  pickerList:    { borderRadius: Radius.md, borderWidth: 1, overflow: 'hidden' },
+  pickerRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1 },
+  pickerCode:    { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  pickerSub:     { fontSize: 11, marginTop: 2 },
+  pickerStatus:  { fontSize: 10, textTransform: 'capitalize' },
+  pickerEmpty:   { fontSize: FontSize.sm, padding: 14, textAlign: 'center' },
+  pickerCancel:  { padding: 12, alignItems: 'center' },
+  pickerCancelText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
 });
