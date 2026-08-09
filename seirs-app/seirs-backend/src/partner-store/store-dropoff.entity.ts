@@ -71,6 +71,13 @@ export class StoreDropoff {
   @Column({ nullable: true })
   recipientPhone: string;
 
+  // Optional. Lets recipients WITHOUT a SEIRS account receive the
+  // collection OTP by email (launch policy: email + in-app only, no
+  // SMS). When absent and recipient has no account, verification falls
+  // back to physical ID + possession of the drop/backup code.
+  @Column({ nullable: true, length: 255 })
+  recipientEmail: string;
+
   // Package details
   @Column({ type: 'decimal', precision: 6, scale: 2, default: 0 })
   weightKg: number;
@@ -90,8 +97,26 @@ export class StoreDropoff {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   prePaidAmountNgn: number;
 
+  // LEGACY (2026-08-09): daily accrual removed per founder decision.
+  // No fee build-up while a package waits. Column kept for historical
+  // rows; new policy uses the working-day clock + flat return fee.
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   storageFeesAccruedNgn: number;
+
+  // Storage policy (2026-08-09): 3 WORKING days free (weekends do not
+  // count, covers partner closures), sender notified at day 3, hard max
+  // 5 working days, then RETURN_TRIGGERED with a flat return-transport
+  // fee owed by the sender.
+  @Column({ type: 'timestamptz', nullable: true })
+  senderOverstayNotifiedAt: Date | null;
+
+  // Flat return-to-sender transport fee owed once RETURN_TRIGGERED.
+  // 0 until triggered. Cleared when paid (returnFeePaidAt set).
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  returnFeeOwedNgn: number;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  returnFeePaidAt: Date | null;
 
   // Foreign reference into the regular Delivery flow once a driver is matched.
   // Null while package is still purely store-side.

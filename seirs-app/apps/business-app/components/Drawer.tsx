@@ -48,6 +48,9 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'LayoutDashboard', label: t('drawer.businessProfile', { defaultValue: 'Business Profile' }), onPress: () => navigate('/(business)') },
     { icon: 'Users',           label: t('drawer.teamMembers',     { defaultValue: 'Team Members' }),     onPress: () => navigate('/(business)/team') },
     { icon: 'Banknote',        label: t('drawer.billing',         { defaultValue: 'Billing & Invoices' }), onPress: () => navigate('/(business)/wallet') },
+    // Gap 6 (2026-08-09): bulk drop at a partner counter instead of
+    // per-package door pickups. Each package gets its own QR.
+    { icon: 'Store',           label: t('drawer.dropAtStore',     { defaultValue: 'Drop at Partner Store' }), onPress: () => navigate('/(business)/drop-at-store') },
     // Hybrid-account: senders can apply to additionally operate as a Partner
     // Store. Hidden once approval lands (canPartner === true) — the
     // context switcher at the top of the app takes over from there.

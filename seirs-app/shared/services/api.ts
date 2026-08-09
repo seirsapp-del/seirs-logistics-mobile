@@ -270,6 +270,17 @@ export const deliveriesApi = {
   // Driver-initiated claim of an unassigned pending job.
   claim: (id: string) =>
     request<any>('POST', `/deliveries/${id}/claim`),
+  // Gap 5 audit copy: log the driver's package-QR scan server-side
+  // (delivery_events SCAN type). Assigned driver only. Both match and
+  // mismatch results are logged for the dispute trail.
+  scanVerify: (id: string, scannedCode: string) =>
+    request<{ match: boolean }>('POST', `/deliveries/${id}/scan-verify`, { scannedCode }),
+  // Mid-flight rescue: move the drop-off to a partner store while the
+  // package is en route. Customer of the delivery only.
+  redirectToStore: (id: string, storeId: string) =>
+    request<{ deliveryId: string; newDropoffAddress: string; storeId: string }>(
+      'POST', `/deliveries/${id}/redirect-to-store`, { storeId },
+    ),
 };
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
@@ -1006,6 +1017,9 @@ export const dropoffApi = {
     recipientUserId?: string;
     recipientName:    string;
     recipientPhone:   string;
+    // Optional: no-account recipients receive the collection OTP by
+    // email (email + in-app only, no SMS per launch policy).
+    recipientEmail?:  string;
     weightKg:         number;
     packageDescription?: string;
     declaredValueNgn?: number;

@@ -6,10 +6,15 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// Merge our workspace watch folders with Expo's defaults
+// Watch only the paths this app actually imports from. Watching the
+// whole workspaceRoot on Windows blows past fs.watch's handle limit
+// (recursing every sibling app's android/build, .next, node_modules)
+// and Metro dies with "Failed to construct transformer: Failed to
+// start watch mode". Same fix as customer-app (bc65e90).
 config.watchFolders = [
-  workspaceRoot,
-  ...(config.watchFolders || []),
+  projectRoot,
+  path.resolve(workspaceRoot, 'shared'),
+  path.resolve(workspaceRoot, 'node_modules'),
 ];
 
 // Tell Metro where to find modules — project first, then workspace root
@@ -41,6 +46,11 @@ config.resolver.blockList = [
   /[\\/]\.git[\\/].*/,
   /[\\/]android[\\/]build[\\/].*/,
   /[\\/]android[\\/]\.gradle[\\/].*/,
+  // Belt-and-braces: never resolve into sibling apps (fs.watch guard).
+  /apps[\\/](?!driver-app)[^\\/]+[\\/]node_modules[\\/].*/,
+  /apps[\\/](?!driver-app)[^\\/]+[\\/]android[\\/].*/,
+  /apps[\\/](?!driver-app)[^\\/]+[\\/]\.next[\\/].*/,
+  /apps[\\/](?!driver-app)[^\\/]+[\\/]out[\\/].*/,
 ];
 
 module.exports = config;

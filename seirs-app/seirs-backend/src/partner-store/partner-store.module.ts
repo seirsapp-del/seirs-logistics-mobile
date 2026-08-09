@@ -44,6 +44,26 @@ export class PartnerStoreModule implements OnModuleInit {
         ALTER TABLE "partner_stores"
           ADD COLUMN IF NOT EXISTS "storeLng" numeric(9,6) NULL
       `);
+      // Storage-policy columns (2026-08-09): once-only overstay warning
+      // stamp + flat return fee owed/paid tracking.
+      await this.ds.query(`
+        ALTER TABLE "store_dropoffs"
+          ADD COLUMN IF NOT EXISTS "senderOverstayNotifiedAt" timestamptz NULL
+      `);
+      await this.ds.query(`
+        ALTER TABLE "store_dropoffs"
+          ADD COLUMN IF NOT EXISTS "returnFeeOwedNgn" numeric(12,2) NOT NULL DEFAULT 0
+      `);
+      await this.ds.query(`
+        ALTER TABLE "store_dropoffs"
+          ADD COLUMN IF NOT EXISTS "returnFeePaidAt" timestamptz NULL
+      `);
+      // Optional recipient email so no-account recipients can receive
+      // the collection OTP by email (no SMS per launch policy).
+      await this.ds.query(`
+        ALTER TABLE "store_dropoffs"
+          ADD COLUMN IF NOT EXISTS "recipientEmail" varchar(255) NULL
+      `);
       this.logger.log('partner_stores schema self-heal complete');
     } catch (e: any) {
       this.logger.warn(`partner_stores self-heal skipped: ${e?.message ?? e}`);

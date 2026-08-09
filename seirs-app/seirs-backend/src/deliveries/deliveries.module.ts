@@ -110,6 +110,18 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "deliveries"
           ADD COLUMN IF NOT EXISTS "chatReopenedUntil" timestamptz NULL
       `);
+      // Per-stop verification codes for multi-drop runs (2026-08-09).
+      await this.ds.query(`
+        ALTER TABLE "delivery_stops"
+          ADD COLUMN IF NOT EXISTS "stopCode" varchar(12) NULL
+      `);
+      // Partial unique index: every non-null stop code must be unique
+      // platform-wide (recipient N can only ever claim stop N). Legacy
+      // null rows are exempt.
+      await this.ds.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS "delivery_stops_stopcode_uniq"
+          ON "delivery_stops" ("stopCode") WHERE "stopCode" IS NOT NULL
+      `);
       this.logger.log('delivery_events schema self-heal complete');
     } catch (e: any) {
       this.logger.warn(`delivery_events self-heal skipped: ${e?.message ?? e}`);

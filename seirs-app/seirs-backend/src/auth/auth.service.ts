@@ -26,6 +26,7 @@ import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import {
   AccountIdPrefix,
+  type AccountIdPrefixType,
   generateAccountId,
   generateOtp,
   generateUuidAccountId,
@@ -61,6 +62,25 @@ export class AuthService {
       .split(' ')
       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join(' ');
+  }
+
+  /**
+   * Collision-safe SEIRS ID (2026-08-09). The users.accountId unique
+   * constraint is the authoritative guard, but without a retry a random
+   * clash would fail the whole registration. At full-Nigeria scale
+   * (220M users in a 32^8 space) the birthday bound predicts ~22k raw
+   * clashes across the rollout; this loop turns each into an invisible
+   * regenerate. 5 attempts bounds worst-case latency; the probability
+   * all 5 clash is ~1e-17 even at full occupancy of 220M IDs.
+   */
+  private async uniqueAccountId(prefix: AccountIdPrefixType): Promise<string> {
+    let id = generateAccountId(prefix);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const exists = await this.usersRepo.exist({ where: { accountId: id } });
+      if (!exists) return id;
+      id = generateAccountId(prefix);
+    }
+    return id; // DB unique constraint remains the final guard
   }
 
   /**
@@ -118,7 +138,7 @@ export class AuthService {
     }
 
     const hashed    = await bcrypt.hash(dto.password, 12);
-    const accountId = generateAccountId(
+    const accountId = await this.uniqueAccountId(
       dto.role === UserRole.DRIVER ? AccountIdPrefix.DRIVER : AccountIdPrefix.CUSTOMER,
     );
 
@@ -300,7 +320,7 @@ export class AuthService {
     let user = await this.usersRepo.findOne({ where: [{ googleId: payload.sub }, { email }] });
 
     if (!user) {
-      const accountId = generateAccountId(AccountIdPrefix.CUSTOMER);
+      const accountId = await this.uniqueAccountId(AccountIdPrefix.CUSTOMER);
       user = this.usersRepo.create({
         name:          AuthService.toTitleCase(payload.name),
         email,
@@ -345,7 +365,7 @@ export class AuthService {
       }
       const email     = AuthService.canonicalEmail(payload.email);
       const existing  = await this.usersRepo.findOne({ where: { email } });
-      const accountId = generateAccountId(AccountIdPrefix.CUSTOMER);
+      const accountId = await this.uniqueAccountId(AccountIdPrefix.CUSTOMER);
 
       if (existing) {
         await this.usersRepo.update(existing.id, { appleId: payload.sub, emailVerified: true });

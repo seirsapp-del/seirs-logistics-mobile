@@ -152,7 +152,7 @@ export class IdentityService {
     if (!otpMatch) throw new ForbiddenException('OTP did not match');
 
     // High-value packages require ID photo (Spec V8 — threshold from Fee Catalogue)
-    const threshold = await this.feesService.getValueOr('high_value_threshold_ngn', 50000);
+    const threshold = await this.feesService.getValueOr('high_value_threshold_ngn', 100000);
     if (Number(delivery.price) >= threshold && !payload.idPhotoUrl) {
       throw new BadRequestException(
         `High-value delivery (₦${threshold.toLocaleString()}+) requires a photo of recipient holding the ID`,

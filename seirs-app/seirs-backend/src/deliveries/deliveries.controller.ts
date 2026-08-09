@@ -106,6 +106,34 @@ export class DeliveriesController {
     return this.deliveriesService.rateDelivery(id, user.id, rating, body.comment?.slice(0, 500));
   }
 
+  // POST /api/v1/deliveries/:id/redirect-to-store  { storeId }
+  // Mid-flight rescue: customer moves the drop-off to a partner store
+  // while the package is en route ("recipient not home"). Customer of
+  // the delivery only; store must be approved + accepting.
+  @Post(':id/redirect-to-store')
+  redirectToStore(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: { storeId: string },
+  ) {
+    if (!body?.storeId) throw new BadRequestException('storeId is required.');
+    return this.deliveriesService.redirectToStore(id, user.id, body.storeId);
+  }
+
+  // POST /api/v1/deliveries/:id/scan-verify  { scannedCode }
+  // Gap 5 evidence trail: the driver's QR scan at hand-off is verified
+  // server-side and logged to delivery_events (SCAN type) so disputes
+  // have scan evidence. Returns { match } either way; the client's UI
+  // already showed its own local verdict, this is the audit copy.
+  @Post(':id/scan-verify')
+  scanVerify(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: { scannedCode: string },
+  ) {
+    return this.deliveriesService.verifyPackageScan(id, user.id, body?.scannedCode ?? '');
+  }
+
   // PATCH /api/v1/deliveries/:id/status
   @Patch(':id/status')
   updateStatus(

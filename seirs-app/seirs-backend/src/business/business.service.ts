@@ -17,8 +17,17 @@ import { PricingService } from '../pricing/pricing.service';
 import { RoutingService } from '../routing/routing.service';
 import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery.entity';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
+import { secureCode } from '../common/utils/auth-codes';
 
 const PER_PACKAGE_RATE = 500; // ₦500 per package stored
+
+// Per-stop verification code for multi-drop runs. STP- prefix keeps it
+// visually distinct from SRS- tracking codes and SDR- drop codes so
+// support agents can identify what kind of code a user is reading out.
+// Crypto-secure via the shared secureCode primitive (2026-08-09).
+function generateStopCode(): string {
+  return 'STP-' + secureCode(8);
+}
 
 const clamp = (n: number, min: number, max: number) =>
   Math.min(Math.max(n, min), max);
@@ -468,9 +477,24 @@ export class BusinessService {
       } as any);
       const savedDelivery = await mgr.save(delivery);
 
+      // Per-stop verification codes: dedupe within the batch (a 5-stop
+      // run picking the same random code twice would violate the
+      // partial unique index).
+      const usedStopCodes = new Set<string>();
+      const nextStopCode = () => {
+        let c = generateStopCode();
+        while (usedStopCodes.has(c)) c = generateStopCode();
+        usedStopCodes.add(c);
+        return c;
+      };
+
       const stopRows = dto.stops.map((s, idx) => mgr.create(DeliveryStop, {
         deliveryId:    savedDelivery.id,
         sequenceOrder: s.sequenceOrder ?? idx + 1,
+        // Per-stop verification code (2026-08-09): each recipient can
+        // only claim THEIR stop, not the whole run. Same alphabet as
+        // tracking codes, STP- prefix so support can tell them apart.
+        stopCode:      nextStopCode(),
         address:       s.address,
         lat:           s.lat,
         lng:           s.lng,
@@ -480,6 +504,28 @@ export class BusinessService {
         estimatedDwellMinutes: perStopDwellMin,
         status:        DeliveryStopStatus.PENDING,
       }));
+
+      // Scale guard: at ~1M orders/day the accumulated stop-code table
+      // makes random clashes with HISTORY a real event (birthday math:
+      // ~0.03% per code after a year). One indexed IN query catches
+      // them; clashing rows regenerate before the insert so the partial
+      // unique index never fails the whole booking transaction.
+      const batchCodes = stopRows.map(r => r.stopCode!).filter(Boolean);
+      if (batchCodes.length > 0) {
+        const clashes: Array<{ stopCode: string }> = await mgr.query(
+          `SELECT "stopCode" FROM delivery_stops WHERE "stopCode" = ANY($1)`,
+          [batchCodes],
+        );
+        if (clashes.length > 0) {
+          const clashSet = new Set(clashes.map(c => c.stopCode));
+          for (const row of stopRows) {
+            if (row.stopCode && clashSet.has(row.stopCode)) {
+              row.stopCode = nextStopCode();
+            }
+          }
+        }
+      }
+
       await mgr.save(stopRows);
 
       // ── Wallet debit + ledger (uses live row-locked balance) ────────

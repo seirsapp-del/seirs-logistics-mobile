@@ -44,6 +44,15 @@ export class DeliveryStop {
   @Column({ type: 'int' })
   sequenceOrder: number;
 
+  // Per-stop verification code (2026-08-09): each drop in a multi-stop
+  // run gets its own short code so recipient N can only claim stop N,
+  // not the whole run's trackingCode. Shown as a QR by the recipient /
+  // sender share message; driver scans at each door. Nullable so legacy
+  // stops keep working; generated for all new stops.
+  @Index()
+  @Column({ type: 'varchar', length: 12, nullable: true })
+  stopCode: string | null;
+
   @Column()
   address: string;
 

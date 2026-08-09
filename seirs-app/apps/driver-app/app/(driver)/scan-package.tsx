@@ -24,13 +24,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
+import { deliveriesApi } from '@/services/api';
 
 export default function ScanPackageScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
-  const params = useLocalSearchParams<{ code?: string; label?: string }>();
+  const params = useLocalSearchParams<{ code?: string; label?: string; deliveryId?: string }>();
   const expected = (params.code ?? '').trim().toUpperCase();
+  const deliveryId = params.deliveryId ?? '';
 
   const [permission, requestPermission] = useCameraPermissions();
   const [result,   setResult]   = useState<'idle' | 'match' | 'mismatch'>('idle');
@@ -43,6 +45,13 @@ export default function ScanPackageScreen() {
 
     const scanned = (data ?? '').trim().toUpperCase();
     setLastSeen(scanned);
+
+    // Audit copy: log the scan server-side (delivery_events SCAN type)
+    // regardless of outcome. Fire-and-forget; the local verdict below
+    // never waits on the network.
+    if (deliveryId) {
+      deliveriesApi.scanVerify(deliveryId, scanned).catch(() => {});
+    }
 
     if (expected && scanned === expected) {
       Vibration.vibrate([0, 60, 60, 60]);

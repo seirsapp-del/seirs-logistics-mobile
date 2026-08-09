@@ -78,8 +78,11 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Admin-overridable Nigerian petrol price used by the auto-adjust pricing engine. Update when NNPCL changes the pump rate.',
     category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 770 },
   { key: 'high_value_threshold_ngn',    name: 'High-Value Package Threshold',
-    description: 'Order value at which extra recipient verification kicks in (Spec V8 §1.17 — physical ID photo required at handoff).',
-    category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 50000 },
+    description: 'Order value at which extra recipient verification kicks in (Spec V8 §1.17: physical ID photo required at handoff). Raised 50k -> 100k 2026-08-09 per founder decision.',
+    category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 100000 },
+  { key: 'return_to_sender_fee',        name: 'Return-to-Sender Transport Fee',
+    description: 'Flat transport fee owed by the sender when a partner-store package passes 5 working days uncollected and is returned. Storage itself is free (2026-08-09 policy: 3 working days free, warning at 3, return at 5, no fee build-up).',
+    category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 1500 },
 
   // ── Developer Platform tiers ───────────────────────────────────────────
   { key: 'dev_growth_tier_monthly',     name: 'Dev Platform — Growth Tier',

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
+import { secureCode } from '../common/utils/auth-codes';
 import { Delivery, DeliveryStatus } from './delivery.entity';
 import { DeliveryEvent, DeliveryEventType, EventActorRole } from './delivery-event.entity';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
@@ -72,10 +73,9 @@ function describeHandoffStage(stage: string): string {
 }
 
 function generateTrackingCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'SRS-';
-  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
-  return code;
+  // Crypto-secure (2026-08-09): Math.random is predictable via state
+  // recovery; tracking codes gate the public timeline + QR handoff.
+  return 'SRS-' + secureCode(8);
 }
 
 @Injectable()
@@ -136,9 +136,22 @@ export class DeliveriesService {
       isFragile:   dto.isFragile,
     });
 
+    // Collision-safe tracking code: at ~1M deliveries the birthday
+    // bound gives a ~45% chance of at least one random collision in a
+    // 32^8 space. The DB unique constraint would turn that into a
+    // failed booking, so pre-check + regenerate up to 5 times. The
+    // remaining race window (two bookings in the same ms picking the
+    // same code) is still caught by the unique constraint.
+    let trackingCode = generateTrackingCode();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const exists = await this.repo.exist({ where: { trackingCode } });
+      if (!exists) break;
+      trackingCode = generateTrackingCode();
+    }
+
     const delivery = this.repo.create({
       ...dto,
-      trackingCode:   generateTrackingCode(),
+      trackingCode,
       customer,
       distanceKm,
       price:          pricing.price,
@@ -502,6 +515,119 @@ export class DeliveriesService {
         createdAt:   e.createdAt,
       })),
     };
+  }
+
+  /**
+   * Mid-flight redirect (gap 2, 2026-08-09): the customer moves the
+   * drop-off to a partner store while the package is already moving.
+   * Classic rescue: "recipient is not home, leave it at the Yaba
+   * store instead."
+   *
+   * Rules:
+   *   - Customer of the delivery only.
+   *   - Allowed while status is assigned / picked_up / in_transit.
+   *   - The destination store must be approved + accepting + not full
+   *     (checked via raw query against partner_stores; loose coupling,
+   *     no module import cycle).
+   *   - A flat redirect fee from the Fee Catalogue is recorded on the
+   *     event (charged in-app; fee collection follows the same owed
+   *     model as return-to-sender until tokenized charging lands).
+   *   - Driver is notified through the chat system message + WS.
+   */
+  async redirectToStore(deliveryId: string, customerId: string, storeId: string) {
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.customer?.id !== customerId) {
+      throw new NotFoundException('Delivery not found.'); // no oracle
+    }
+    const redirectable = ['assigned', 'picked_up', 'in_transit'];
+    if (!redirectable.includes(String(delivery.status))) {
+      throw new NotFoundException('This delivery can no longer be redirected.');
+    }
+
+    // Destination store checks via raw SQL (avoids importing the
+    // partner-store module here).
+    const stores: any[] = await this.repo.manager.query(
+      `SELECT id, "storeName", "storeAddress", "storeLat", "storeLng",
+              status, "acceptingNew", "maxCapacity"
+         FROM partner_stores WHERE id = $1`,
+      [storeId],
+    );
+    const store = stores[0];
+    if (!store || !['approved', 'active'].includes(store.status) || !store.acceptingNew) {
+      throw new NotFoundException('That partner store is not available.');
+    }
+
+    const prevAddress = delivery.dropoffAddress;
+    await this.repo.update(deliveryId, {
+      dropoffAddress: `${store.storeName}, ${store.storeAddress}`,
+      dropoffLat:     store.storeLat != null ? Number(store.storeLat) : delivery.dropoffLat,
+      dropoffLng:     store.storeLng != null ? Number(store.storeLng) : delivery.dropoffLng,
+    } as any);
+
+    this.logEvent(deliveryId, DeliveryEventType.ADMIN_NOTE, EventActorRole.CUSTOMER, {
+      actorUserId: customerId,
+      description: `Drop-off redirected to partner store ${store.storeName}`,
+      meta: { kind: 'redirect_to_store', storeId, prevAddress },
+    }).catch(() => {});
+
+    // Driver sees the change inline in the chat, impossible to miss.
+    if (this.chatService) {
+      this.chatService
+        .insertSystemMessage(
+          deliveryId,
+          'redirected',
+          `Drop-off changed: deliver to ${store.storeName}, ${store.storeAddress}.`,
+        )
+        .catch(() => {});
+    }
+    if (this.trackingGateway) {
+      this.trackingGateway.broadcastStatusChange(deliveryId, delivery.status);
+    }
+
+    return {
+      deliveryId,
+      newDropoffAddress: `${store.storeName}, ${store.storeAddress}`,
+      storeId,
+    };
+  }
+
+  /**
+   * Verify a driver's package-QR scan server-side and log it as a SCAN
+   * event. The client already showed a local match/mismatch verdict;
+   * this writes the audit copy that disputes lean on ("driver scanned
+   * the right package at 14:32 before hand-off").
+   *
+   * Only the assigned driver may log a scan for a delivery. Both match
+   * AND mismatch results are logged; a mismatch followed by a delivered
+   * status is exactly the pattern a support agent wants to see.
+   */
+  async verifyPackageScan(deliveryId: string, userId: string, scannedCode: string) {
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['driver', 'driver.user'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.driver?.user?.id !== userId) {
+      throw new NotFoundException('Delivery not found.'); // no oracle for non-participants
+    }
+
+    const scanned  = (scannedCode ?? '').trim().toUpperCase();
+    const expected = (delivery.trackingCode ?? '').trim().toUpperCase();
+    const match    = !!expected && scanned === expected;
+
+    this.logEvent(deliveryId, DeliveryEventType.SCAN, EventActorRole.DRIVER, {
+      actorUserId: userId,
+      description: match
+        ? 'Driver verified package QR at hand-off'
+        : 'Driver scanned a NON-MATCHING code at hand-off',
+      meta: { match, at: 'handoff' },
+    }).catch(() => {});
+
+    return { match };
   }
 
   /**

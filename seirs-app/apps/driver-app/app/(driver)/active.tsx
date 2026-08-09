@@ -140,7 +140,7 @@ export default function ActiveDeliveryScreen() {
           text: 'Scan package QR first',
           onPress: () => router.push({
             pathname: '/(driver)/scan-package',
-            params:   { code: delivery.trackingCode ?? '' },
+            params:   { code: delivery.trackingCode ?? '', deliveryId: delivery.id },
           } as any),
         },
         { text: 'Yes, Delivered', onPress: () => doUpdate(nextStatus) },

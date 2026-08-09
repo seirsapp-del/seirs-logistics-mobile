@@ -12,6 +12,7 @@ import { FeesService } from '../fees/fees.service';
 import { IdentityService } from '../identity/identity.service';
 import { HandoffMethod, HandoffStage } from '../identity/handoff-record.entity';
 import { MailService } from '../mail/mail.service';
+import { secureCode } from '../common/utils/auth-codes';
 
 // "In store" means physically present at the pickup or dropoff location —
 // these statuses count against capacity, accrue storage fees, etc.
@@ -22,19 +23,31 @@ const IN_STORE_STATUSES: DropoffStatus[] = [
   DropoffStatus.AWAITING_COLLECTION,
 ];
 
-// Crockford-style alphabet (no I L O 0 1) — same as auth-codes.ts.
-// Keeps backup codes unambiguous when read aloud or printed on receipts.
-const BACKUP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+// Every status where the code pair is still "live" and must therefore
+// be unambiguous. Terminal rows (collected/cancelled) may share backup
+// codes with newer bookings; lookups exclude them.
+const ACTIVE_STATUSES: DropoffStatus[] = [
+  DropoffStatus.SCHEDULED,
+  DropoffStatus.RECEIVED_AT_STORE,
+  DropoffStatus.AWAITING_DRIVER,
+  DropoffStatus.DRIVER_EN_ROUTE,
+  DropoffStatus.IN_TRANSIT,
+  DropoffStatus.AT_DROPOFF_STORE,
+  DropoffStatus.AWAITING_COLLECTION,
+  DropoffStatus.RETURN_TRIGGERED,
+];
 
+// Crockford-style alphabet (no I L O 0 1) — same as auth-codes.ts.
+// Crypto-secure code generation via the shared primitive (2026-08-09):
+// Math.random state-recovery would have let an attacker predict drop +
+// backup codes. Alphabet stays no-lookalike for counter reads.
 function generateBackupCode(): string {
-  let s = '';
-  for (let i = 0; i < 6; i++) s += BACKUP_ALPHABET[Math.floor(Math.random() * BACKUP_ALPHABET.length)];
-  return s;
+  return secureCode(6);
 }
 
 function generateDropCode(): string {
   // 12-char prefixed code printed on labels, e.g. SDR-A7K2P9X3
-  return 'SDR-' + generateBackupCode() + generateBackupCode().slice(0, 2);
+  return 'SDR-' + secureCode(8);
 }
 
 @Injectable()
@@ -184,6 +197,9 @@ export class PartnerStoreService {
     recipientUserId?: string;
     recipientName:    string;
     recipientPhone:   string;
+    // Optional: lets no-account recipients receive the collection OTP
+    // by email (email + in-app only, no SMS per launch policy).
+    recipientEmail?:  string;
     weightKg:         number;
     packageDescription?: string;
     declaredValueNgn?: number;
@@ -212,9 +228,31 @@ export class PartnerStoreService {
       }
     }
 
+    // Collision-safe codes (2026-08-09). dropCode carries a DB unique
+    // constraint, so pre-check + regenerate rather than failing the
+    // booking on a random clash. backupCode has NO unique constraint
+    // (6 chars, expect duplicates at scale by birthday math), so we
+    // scope it: regenerate until no ACTIVE dropoff shares it. Terminal
+    // rows (collected/cancelled) may reuse old backup codes safely
+    // because findByCode only matches active statuses.
+    let dropCode = generateDropCode();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const exists = await this.dropoffRepo.exist({ where: { dropCode } });
+      if (!exists) break;
+      dropCode = generateDropCode();
+    }
+    let backupCode = generateBackupCode();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const clash = await this.dropoffRepo.exist({
+        where: { backupCode, status: In(ACTIVE_STATUSES) },
+      });
+      if (!clash) break;
+      backupCode = generateBackupCode();
+    }
+
     const dropoff = this.dropoffRepo.create({
-      dropCode:           generateDropCode(),
-      backupCode:         generateBackupCode(),
+      dropCode,
+      backupCode,
       senderUserId,
       pickupStoreId:      body.pickupStoreId,
       mode:               body.mode,
@@ -223,6 +261,7 @@ export class PartnerStoreService {
       recipientUserId:    body.recipientUserId ?? null,
       recipientName:      body.recipientName,
       recipientPhone:     body.recipientPhone,
+      recipientEmail:     body.recipientEmail?.trim().toLowerCase() ?? null,
       weightKg:           body.weightKg,
       packageDescription: body.packageDescription ?? null,
       declaredValueNgn:   body.declaredValueNgn ?? 0,
@@ -347,9 +386,16 @@ export class PartnerStoreService {
     const c = code.trim().toUpperCase();
     let row: StoreDropoff | null = null;
     if (c.startsWith('SDR-')) {
+      // dropCode is DB-unique: safe to match across all statuses.
       row = await this.dropoffRepo.findOne({ where: { dropCode: c } });
     } else {
-      row = await this.dropoffRepo.findOne({ where: { backupCode: c } });
+      // backupCode is 6 chars and NOT unique. Scope the match to ACTIVE
+      // rows only so a terminal booking's recycled code can never
+      // resolve to the wrong package. Generation regenerates on active
+      // clashes, so at most one active row carries a given code.
+      row = await this.dropoffRepo.findOne({
+        where: { backupCode: c, status: In(ACTIVE_STATUSES) },
+      });
     }
     if (!row) throw new NotFoundException('Drop-off not found');
     return row;
@@ -581,13 +627,14 @@ export class PartnerStoreService {
         { dropoffStoreId: partnerStoreId, status: In(IN_STORE_STATUSES) },
       ],
     });
-    const now = Date.now();
+    const now = new Date();
     return all
       .map(d => {
         const arrivedAt = d.arrivedAtDropoffStoreAt ?? d.receivedAtStoreAt;
         const hoursInStore = arrivedAt
-          ? (now - new Date(arrivedAt).getTime()) / 3600_000
+          ? (now.getTime() - new Date(arrivedAt).getTime()) / 3600_000
           : 0;
+        const workingDays = arrivedAt ? this.workingDaysBetween(new Date(arrivedAt), now) : 0;
         return {
           id:                    d.id,
           dropCode:              d.dropCode,
@@ -597,27 +644,67 @@ export class PartnerStoreService {
           status:                d.status,
           arrivedAt:             arrivedAt?.toISOString() ?? null,
           hoursInStore:          Math.round(hoursInStore * 10) / 10,
+          workingDaysInStore:    workingDays,
           storageFeesAccruedNgn: Number(d.storageFeesAccruedNgn),
+          returnFeeOwedNgn:      Number((d as any).returnFeeOwedNgn ?? 0),
+          // Working-day policy (2026-08-09): free until 3 working days,
+          // warned at 3-4, return-eligible at 5+.
           tier:
-            hoursInStore < 24 ? 'free' :
-            hoursInStore < 48 ? 'tier_1' :          // 24-48hr
-            hoursInStore < 72 ? 'tier_2' :          // 48-72hr
-                                'return_eligible',  // ≥72hr
+            workingDays < 3 ? 'free' :
+            workingDays < 5 ? 'warned' :
+                              'return_eligible',
         };
       })
-      .filter(d => d.hoursInStore >= 24) // only overstays
-      .sort((a, b) => b.hoursInStore - a.hoursInStore);
+      // Show anything past the free window; partners plan collections
+      // around this list.
+      .filter(d => d.workingDaysInStore >= 3 || d.status === DropoffStatus.RETURN_TRIGGERED)
+      .sort((a, b) => b.workingDaysInStore - a.workingDaysInStore);
   }
 
-  // ── Storage fee accrual ────────────────────────────────────────────────
+  // ── Storage policy (2026-08-09 model) ──────────────────────────────────
+  //
+  // Founder decision replacing the old daily-accrual model:
+  //   - 3 WORKING days free (Sat + Sun excluded, so a partner closed for
+  //     the weekend never costs the sender anything)
+  //   - At 3 working days: notify the sender once ("collect within 2
+  //     working days or the package returns to you")
+  //   - Hard max 5 working days: status flips to RETURN_TRIGGERED and a
+  //     flat return-transport fee is owed by the sender
+  //   - NO storage fee build-up at any point
+  //
+  // Auto-charge: if PaymentsService ever exposes chargeTokenizedCard,
+  // the return fee is attempted against the sender's saved card and
+  // returnFeePaidAt stamps on success. Until then the fee is owed and
+  // the sender pays in-app before the return delivery is arranged.
 
-  // Daily cron — at 00:05 every day, walk every active in-store dropoff
-  // older than 24 hours and accrue the daily storage fee per Spec V8.
-  // After 72 hours triggers the return-to-sender path.
+  /** Email the sender (fire-and-forget, resolves user record first). */
+  private notifySender(senderUserId: string, subject: string, body: string): void {
+    this.usersRepo.findOne({ where: { id: senderUserId } })
+      .then(u => {
+        if (!u?.email) return;
+        return this.mailService.sendGeneric(u.email, u.name ?? 'there', subject, body);
+      })
+      .catch(() => { /* mail is best-effort */ });
+  }
+
+  /** Count working days (Mon-Fri) fully elapsed between two instants. */
+  private workingDaysBetween(from: Date, to: Date): number {
+    let days = 0;
+    const cursor = new Date(from);
+    cursor.setHours(0, 0, 0, 0);
+    const end = new Date(to);
+    end.setHours(0, 0, 0, 0);
+    while (cursor < end) {
+      cursor.setDate(cursor.getDate() + 1);
+      const dow = cursor.getDay();
+      if (dow !== 0 && dow !== 6) days++;
+    }
+    return days;
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
-  async accrueStorageFees() {
-    const dailyFee   = await this.feesService.getValueOr('storage_24_72hr', 200);
-    const returnFee  = await this.feesService.getValueOr('storage_return_fee', 500);
+  async enforceStoragePolicy() {
+    const returnFee = await this.feesService.getValueOr('return_to_sender_fee', 1500);
 
     const inStore = await this.dropoffRepo.find({
       where: [
@@ -627,28 +714,58 @@ export class PartnerStoreService {
       ],
     });
 
-    let charged = 0;
+    let notified = 0;
     let returned = 0;
+    const now = new Date();
+
     for (const d of inStore) {
       const arrivedAt = d.arrivedAtDropoffStoreAt ?? d.receivedAtStoreAt;
       if (!arrivedAt) continue;
-      const hoursInStore = (Date.now() - new Date(arrivedAt).getTime()) / 3600_000;
+      const workingDays = this.workingDaysBetween(new Date(arrivedAt), now);
 
-      if (hoursInStore >= 24 && hoursInStore < 72) {
+      if (workingDays >= 5) {
+        // Hard max reached: flag for return + flat transport fee owed.
         await this.dropoffRepo.update(d.id, {
-          storageFeesAccruedNgn: Number(d.storageFeesAccruedNgn) + dailyFee,
-        });
-        charged++;
-      } else if (hoursInStore >= 72 && d.status !== DropoffStatus.RETURN_TRIGGERED) {
-        await this.dropoffRepo.update(d.id, {
-          status: DropoffStatus.RETURN_TRIGGERED,
-          storageFeesAccruedNgn: Number(d.storageFeesAccruedNgn) + returnFee,
-        });
+          status:           DropoffStatus.RETURN_TRIGGERED,
+          returnFeeOwedNgn: returnFee,
+        } as any);
         returned++;
+
+        // Hook: attempt the sender's saved card when a tokenized-charge
+        // method lands in PaymentsService. Loose-coupled + optional so
+        // this cron never breaks on the missing integration.
+        const pay: any = (this as any).paymentsService;
+        if (pay?.chargeTokenizedCard) {
+          pay.chargeTokenizedCard(d.senderUserId, returnFee, `return_to_sender:${d.dropCode}`)
+            .then(() => this.dropoffRepo.update(d.id, { returnFeePaidAt: new Date() } as any))
+            .catch(() => { /* fee stays owed; sender pays in-app */ });
+        }
+
+        this.notifySender(
+          d.senderUserId,
+          'Your package is being returned',
+          `Package ${d.dropCode} was not collected within 5 working days and is being returned to you. ` +
+          `A return-transport fee of NGN ${returnFee.toLocaleString()} applies. Open the SEIRS app to arrange the return.`,
+        );
+      } else if (workingDays >= 3 && !d.senderOverstayNotifiedAt) {
+        // First warning at 3 working days. Sent exactly once.
+        await this.dropoffRepo.update(d.id, {
+          senderOverstayNotifiedAt: now,
+        } as any);
+        notified++;
+
+        this.notifySender(
+          d.senderUserId,
+          'Your package is waiting for collection',
+          `Package ${d.dropCode} has been waiting at the partner store for 3 working days. ` +
+          `Please have it collected within 2 more working days or it will be returned to you (transport fee applies). ` +
+          `No storage fees have been charged.`,
+        );
       }
     }
-    if (charged || returned) {
-      this.logger.log(`Storage fee accrual: charged=${charged} return-triggered=${returned}`);
+
+    if (notified || returned) {
+      this.logger.log(`Storage policy: warned=${notified} return-triggered=${returned}`);
     }
   }
 

@@ -14,6 +14,12 @@ export enum HandoffStage {
   DRIVER_TO_STORE     = 'driver_to_store',
   STORE_TO_RECIPIENT  = 'store_to_recipient',
   DRIVER_TO_RECIPIENT = 'driver_to_recipient',
+  // Interstate relay (2026-08-09): one driver hands the package to the
+  // next leg's driver directly, no store in between. Same OTP + record
+  // discipline as every other stage. Full leg modelling (DeliveryLeg
+  // entity) is post-launch; this stage makes the custody chain complete
+  // in the meantime.
+  DRIVER_TO_DRIVER    = 'driver_to_driver',
 }
 
 // Append-only chain-of-custody record. One row per successful transition.
