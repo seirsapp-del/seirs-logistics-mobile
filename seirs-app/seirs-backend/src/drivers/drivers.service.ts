@@ -790,6 +790,14 @@ export class DriversService {
   }
 
   // ── Driver Premium subscription (Spec V8 §2.13 / D35) ─────────────────────
+  //
+  // PAUSED PLATFORM-WIDE (founder decision 2026-08-10): selling queue
+  // priority felt unfair to drivers and the "Verified Pro" badge read
+  // as paid verification. All entry points are hidden, activation is
+  // blocked, billing is stopped, and the matching boost is off (via
+  // isPremiumActive returning false). The code stays so a future
+  // commission-swap version can revive it deliberately.
+  private static readonly PREMIUM_PAUSED = true;
 
   async getSubscription(userId: string) {
     const driver = await this.findByUserId(userId);
@@ -804,6 +812,9 @@ export class DriversService {
   }
 
   async activateSubscription(userId: string) {
+    if (DriversService.PREMIUM_PAUSED) {
+      throw new BadRequestException('SEIRS Premium is not available right now.');
+    }
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
 
@@ -855,6 +866,7 @@ export class DriversService {
   // benefits during the retry window so a transient wallet shortfall
   // doesn't drop them out of priority mid-day.
   async isPremiumActive(driverId: string): Promise<boolean> {
+    if (DriversService.PREMIUM_PAUSED) return false;
     const sub = await this.subsRepo.findOne({ where: { driverId } });
     if (!sub) return false;
     return sub.status === DriverSubscriptionStatus.ACTIVE ||
@@ -866,6 +878,7 @@ export class DriversService {
   // nextInvoiceAt is in the past.
   @Cron(CronExpression.EVERY_HOUR)
   async invoiceDueSubscriptions() {
+    if (DriversService.PREMIUM_PAUSED) return;
     const due = await this.subsRepo.find({
       where: {
         status:        In([DriverSubscriptionStatus.ACTIVE, DriverSubscriptionStatus.PAST_DUE]),

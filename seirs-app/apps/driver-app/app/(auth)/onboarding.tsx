@@ -68,7 +68,7 @@ const SLIDES = [
     id: 'rewards',
     Icon: Award,
     headline: 'Top drivers earn\nmore. Period.',
-    sub: 'High-rating riders get priority on premium jobs and bonus payouts each week.',
+    sub: 'Keep your rating high and your completed trips growing: your reputation travels with you on every job.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#79B8FF',
