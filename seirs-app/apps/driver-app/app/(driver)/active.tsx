@@ -377,10 +377,23 @@ export default function ActiveDeliveryScreen() {
             <Text style={[styles.cardTitle, { color: theme.text }]}>Customer</Text>
             <View style={styles.customerRow}>
               <Avatar name={delivery.customer.name ?? 'Customer'} uri={delivery.customer.profilePhoto} size={44} />
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={[styles.customerName, { color: theme.text }]}>{delivery.customer.name}</Text>
                 <Text style={[styles.customerPhone, { color: theme.textSecond }]}>{delivery.customer.phone}</Text>
               </View>
+              {/* Message the customer without leaving the trip: the
+                  active screen had NO chat entry point until the
+                  production-readiness audit 2026-08-10. */}
+              <Pressable
+                style={[styles.chatBtn, { backgroundColor: theme.primary }]}
+                onPress={() => router.push({
+                  pathname: '/(driver)/messages/[chatId]',
+                  params: { chatId: delivery.id, other: delivery.customer?.name ?? 'Customer' },
+                } as any)}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
+                <Text style={styles.chatBtnText}>Chat</Text>
+              </Pressable>
             </View>
           </View>
         )}
@@ -502,6 +515,8 @@ const styles = StyleSheet.create({
   infoValue:    { fontSize: FontSize.sm, maxWidth: '55%', textAlign: 'right' },
 
   customerRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  chatBtn:       { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999 },
+  chatBtnText:   { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
   avatar:        { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   avatarText:    { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
   customerName:  { fontSize: FontSize.base, fontWeight: FontWeight.semibold },

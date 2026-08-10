@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -8,7 +9,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { MOCK_DRIVER_RATINGS } from '@/constants/driverMockData';
+import { driversApi } from '@/services/api';
 
 const RATING_THRESHOLD = 3.5;
 
@@ -25,9 +26,43 @@ export default function DriverRatingsScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
-  const { average, total, breakdown, recent } = MOCK_DRIVER_RATINGS;
 
-  const belowThreshold = average < RATING_THRESHOLD;
+  // Real ratings from GET /drivers/me/ratings (production audit
+  // 2026-08-10: this screen used to show the same mock numbers to
+  // every driver).
+  const [data,    setData]    = useState<Awaited<ReturnType<typeof driversApi.myRatings>> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    driversApi.myRatings()
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const average = Number(data?.average ?? 0);
+  const total   = Number(data?.total ?? 0);
+  const breakdown = [5, 4, 3, 2, 1].map(stars => ({
+    stars,
+    pct: total > 0 ? (Number(data?.breakdown?.[stars] ?? 0) / total) : 0,
+  }));
+  const recent = (data?.recent ?? []).map(r => ({
+    id:       r.id,
+    customer: `Trip ${r.trackingCode ?? ''}`.trim(),
+    date:     r.deliveredAt ? new Date(r.deliveredAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+    stars:    r.rating,
+    comment:  r.comment,
+  }));
+
+  const belowThreshold = total > 0 && average < RATING_THRESHOLD;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
@@ -62,19 +97,23 @@ export default function DriverRatingsScreen() {
           backgroundColor: isDark ? '#1A1000' : '#FFFBEB',
           borderColor: belowThreshold ? '#EF444430' : '#FFBE0B30',
         }]}>
-          <Text style={[styles.heroScore, { color: belowThreshold ? '#EF4444' : theme.text }]}>{average.toFixed(1)}</Text>
+          <Text style={[styles.heroScore, { color: belowThreshold ? '#EF4444' : theme.text }]}>
+            {total > 0 ? average.toFixed(1) : '—'}
+          </Text>
           <View style={styles.heroStars}>
             {[1, 2, 3, 4, 5].map(s => (
-              <Star key={s} size={22} color="#FFBE0B" fill={s <= Math.round(average) ? '#FFBE0B' : 'transparent'} strokeWidth={1.75} />
+              <Star key={s} size={22} color="#FFBE0B" fill={total > 0 && s <= Math.round(average) ? '#FFBE0B' : 'transparent'} strokeWidth={1.75} />
             ))}
           </View>
-          <Text style={[styles.heroSub, { color: theme.textSecond }]}>Based on {total.toLocaleString()} ratings</Text>
+          <Text style={[styles.heroSub, { color: theme.textSecond }]}>
+            {total > 0 ? `Based on ${total.toLocaleString()} rating${total === 1 ? '' : 's'}` : 'No ratings yet. Complete deliveries to earn your first.'}
+          </Text>
         </View>
 
         {/* Breakdown */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Breakdown</Text>
-          {[...breakdown].reverse().map(row => (
+          {breakdown.map(row => (
             <View key={row.stars} style={styles.barRow}>
               <View style={styles.barStarLabel}>
                 <Star size={12} color="#FFBE0B" fill="#FFBE0B" strokeWidth={0} />
@@ -89,7 +128,7 @@ export default function DriverRatingsScreen() {
         </View>
 
         {/* Recent reviews */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Reviews</Text>
+        {recent.length > 0 && <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Reviews</Text>}
         {recent.map(r => (
           <View key={r.id} style={[styles.reviewCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
             <View style={styles.reviewTop}>

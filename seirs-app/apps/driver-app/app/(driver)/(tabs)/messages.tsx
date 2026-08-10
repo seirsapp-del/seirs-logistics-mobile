@@ -147,7 +147,10 @@ export default function DriverMessagesScreen() {
                   pressed && { opacity: 0.85 },
                 ]}
                 onPress={() =>
-                  router.push({ pathname: '/(driver)/messages/[chatId]', params: { chatId: item.data.deliveryId } })
+                  router.push({
+                    pathname: '/(driver)/messages/[chatId]',
+                    params: { chatId: item.data.deliveryId, other: item.data.otherParty.name },
+                  })
                 }
               >
                 <View style={styles.avatarWrap}>

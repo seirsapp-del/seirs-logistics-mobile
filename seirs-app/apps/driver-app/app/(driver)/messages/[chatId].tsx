@@ -24,7 +24,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/context/AuthContext';
-import { MOCK_DRIVER_MESSAGES } from '@/constants/driverMockData';
 import { useChat } from '@seirs/shared/hooks/useChat';
 import { chatApi, uploadApi } from '@/services/api';
 import { SOCKET_URL } from '@/constants/config';
@@ -45,13 +44,15 @@ export default function DriverChatScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
-  const params  = useLocalSearchParams<{ chatId: string }>();
+  const params  = useLocalSearchParams<{ chatId: string; other?: string }>();
   const { user } = useAuth();
   const { t }   = useTranslation();
 
   const deliveryId = params.chatId ?? null;
-  const conversation = MOCK_DRIVER_MESSAGES.find(m => m.id === params.chatId) ?? MOCK_DRIVER_MESSAGES[0];
-  const customer = conversation.customer;
+  // Real other-party name comes from the inbox via the `other` param
+  // (production-readiness audit 2026-08-10: this used to fall back to a
+  // mock conversation whose fake customer name showed in the header).
+  const customer = { name: params.other?.trim() || 'Customer' };
 
   const { messages, loading, sending, send } = useChat(deliveryId, { socketUrl: SOCKET_URL });
 

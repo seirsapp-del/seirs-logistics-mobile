@@ -94,14 +94,15 @@ export default function LanguageScreen() {
         <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>{t('settings.displayCurrency')}</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {CURRENCIES.map((curr, i, arr) => (
-            <Pressable
+            /* Display-only: NGN is the only launch currency, so this is
+               a View, not a dead Pressable (production audit 2026-08-10). */
+            <View
               key={curr.code}
               style={[
                 styles.row,
                 i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
                 selectedCurr === curr.code && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
               ]}
-              onPress={() => {}}
             >
               <Text style={styles.flag}>{curr.flag}</Text>
               <View style={[styles.symbolWrap, { backgroundColor: selectedCurr === curr.code ? theme.primary : theme.surfaceSecond }]}>
@@ -114,7 +115,7 @@ export default function LanguageScreen() {
               {selectedCurr === curr.code && (
                 <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
               )}
-            </Pressable>
+            </View>
           ))}
         </View>
 

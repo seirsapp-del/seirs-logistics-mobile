@@ -292,7 +292,7 @@ export default function EarningsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Recent Transactions</Text>
-            <Pressable onPress={() => {}}>
+            <Pressable onPress={() => router.push('/(driver)/(tabs)/history' as any)}>
               <Text style={[styles.seeAll, { color: theme.primary }]}>See all</Text>
             </Pressable>
           </View>

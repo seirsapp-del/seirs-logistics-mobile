@@ -527,6 +527,14 @@ export const driversApi = {
       years: Array<{ year: number; tripCount: number; grossNgn: number; commissionNgn: number; netNgn: number }>;
       note: string;
     }>('GET', `/drivers/me/tax-summary${year ? `?year=${year}` : ''}`),
+
+  // Real customer ratings on this driver's deliveries.
+  myRatings: () =>
+    request<{
+      average: number; total: number;
+      breakdown: Record<number, number>;
+      recent: Array<{ id: string; trackingCode: string; rating: number; comment: string | null; deliveredAt: string }>;
+    }>('GET', '/drivers/me/ratings'),
 };
 
 // ─── Promotions (Spec V8 §3.13) ──────────────────────────────────────────────

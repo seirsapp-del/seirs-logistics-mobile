@@ -1,4 +1,4 @@
-import {
+﻿import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,10 +6,13 @@ import {
   ArrowLeft, Calendar, Clock, ChevronRight, Bell, BellOff,
   MapPin, Package, ChevronDown,
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+
+const SCHEDULE_STORAGE_KEY = 'seirs_driver_working_hours';
 
 type DayId = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
@@ -48,38 +51,10 @@ const DAY_LABELS: Record<DayId, string> = {
   Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday',
 };
 
-const MOCK_PREBOOKED: PreBookedJob[] = [
-  {
-    id: 'pb1',
-    date: 'Today',
-    time: '14:00',
-    customer: 'Aisha Mohammed',
-    pickup: '15 Adeola Odeku, Victoria Island',
-    dropoff: 'Ikeja City Mall, Airport Road',
-    fare: 4800,
-    vehicle: 'Car',
-  },
-  {
-    id: 'pb2',
-    date: 'Tomorrow',
-    time: '09:30',
-    customer: 'Biodun Adeyemi',
-    pickup: 'Lekki Phase 1 Roundabout',
-    dropoff: 'Trade Fair Complex, Lagos',
-    fare: 7200,
-    vehicle: 'Van',
-  },
-  {
-    id: 'pb3',
-    date: 'Thu, 2 May',
-    time: '11:00',
-    customer: 'Chidinma Eze',
-    pickup: 'Surulere Market',
-    dropoff: 'Agege Stadium, Lagos',
-    fare: 2500,
-    vehicle: 'Motorcycle',
-  },
-];
+// Production audit 2026-08-10: the fake pre-booked jobs (three
+// invented customers) are gone. This renders the honest empty state
+// until accepted scheduled pickups are wired to a real endpoint.
+const PREBOOKED: PreBookedJob[] = [];
 
 export default function ScheduleScreen() {
   const router  = useRouter();
@@ -94,6 +69,14 @@ export default function ScheduleScreen() {
   const [pickerOpen,  setPickerOpen]  = useState<{ day: DayId; field: 'start' | 'end' } | null>(null);
   const [showSched,   setShowSched]   = useState(true);
 
+  // Working hours persist on the device (audit 2026-08-10: Save used to
+  // be a fake timeout that stored nothing).
+  useEffect(() => {
+    AsyncStorage.getItem(SCHEDULE_STORAGE_KEY)
+      .then(v => { if (v) { const parsed = JSON.parse(v); if (parsed?.Mon) setSchedule(parsed); } })
+      .catch(() => {});
+  }, []);
+
   const toggle = (day: DayId) =>
     setSchedule(prev => ({ ...prev, [day]: { ...prev[day], enabled: !prev[day].enabled } }));
 
@@ -102,9 +85,11 @@ export default function ScheduleScreen() {
     setPickerOpen(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => { setSaving(false); setSaved(true); }, 800);
+    try { await AsyncStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(schedule)); } catch {}
+    setSaving(false);
+    setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
 
@@ -137,16 +122,16 @@ export default function ScheduleScreen() {
             <Calendar size={18} color={theme.primary} strokeWidth={1.75} />
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Upcoming Jobs</Text>
           </View>
-          <Text style={[styles.sectionCount, { color: theme.textThird }]}>{MOCK_PREBOOKED.length} scheduled</Text>
+          <Text style={[styles.sectionCount, { color: theme.textThird }]}>{PREBOOKED.length} scheduled</Text>
         </View>
 
-        {MOCK_PREBOOKED.length === 0 ? (
+        {PREBOOKED.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Package size={32} color={theme.textThird} strokeWidth={1.5} />
             <Text style={[styles.emptyText, { color: theme.textSecond }]}>No scheduled jobs yet</Text>
           </View>
         ) : (
-          MOCK_PREBOOKED.map(job => (
+          PREBOOKED.map(job => (
             <View key={job.id} style={[styles.jobCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
               <View style={styles.jobTop}>
                 <View style={[styles.timeBadge, { backgroundColor: theme.primary + '15' }]}>
@@ -232,7 +217,7 @@ export default function ScheduleScreen() {
                     >
                       <Text style={[styles.timePillText, { color: theme.text }]}>{fmtTime(schedule[day].start)}</Text>
                     </Pressable>
-                    <Text style={[styles.timeSep, { color: theme.textThird }]}>–</Text>
+                    <Text style={[styles.timeSep, { color: theme.textThird }]}>to</Text>
                     <Pressable
                       style={[styles.timePill, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}
                       onPress={() => setPickerOpen({ day, field: 'end' })}
@@ -250,7 +235,7 @@ export default function ScheduleScreen() {
             {pickerOpen && (
               <View style={[styles.pickerOverlay, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.md]}>
                 <Text style={[styles.pickerTitle, { color: theme.text }]}>
-                  {DAY_LABELS[pickerOpen.day]} — {pickerOpen.field === 'start' ? 'Start' : 'End'} time
+                  {DAY_LABELS[pickerOpen.day]}: {pickerOpen.field === 'start' ? 'Start' : 'End'} time
                 </Text>
                 <ScrollView style={{ maxHeight: 200 }}>
                   {HOURS.map(h => (

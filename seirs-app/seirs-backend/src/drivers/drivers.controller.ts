@@ -157,4 +157,12 @@ export class DriversController {
     const y = year ? Number(year) : undefined;
     return this.driversService.getTaxSummary(user.id, Number.isFinite(y) ? y : undefined);
   }
+
+  // GET /api/v1/drivers/me/ratings — real customer ratings on this
+  // driver's deliveries (average, star breakdown, recent comments).
+  // Replaces the mock ratings screen (production audit 2026-08-10).
+  @Get('me/ratings')
+  myRatings(@CurrentUser() user: User) {
+    return this.driversService.getMyRatings(user.id);
+  }
 }

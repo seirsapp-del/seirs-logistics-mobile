@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Platform, Modal,
 } from 'react-native';
@@ -12,61 +12,12 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
-import { MOCK_DRIVER } from '@/constants/driverMockData';
-
-const TIER_COLORS: Record<string, string> = {
-  Bronze:   '#CD7F32',
-  Silver:   '#9CA3AF',
-  Gold:     '#FFBE0B',
-  Platinum: '#7C3AED',
-};
+import { driversApi, earningsApi, notificationsApi } from '@/services/api';
 
 interface MenuSection {
   title: string;
   items: { icon: string; label: string; sub?: string; route?: string; danger?: boolean; badge?: string }[];
 }
-
-const MENU_SECTIONS: MenuSection[] = [
-  {
-    title: 'Account',
-    items: [
-      { icon: 'shield-checkmark-outline', label: 'KYC Verification',    sub: 'Documents verified',         route: '/(driver)/kyc' },
-      { icon: 'car-outline',              label: 'My Vehicle',           sub: 'Toyota Corolla · LND 423 GH', route: '/(driver)/vehicle' },
-      { icon: 'star-outline',             label: 'My Ratings',           sub: '4.9 · 1,247 reviews',         route: '/(driver)/ratings' },
-    ],
-  },
-  {
-    title: 'Earnings',
-    items: [
-      { icon: 'cash-outline',              label: 'Earnings & Wallet',  sub: `₦${MOCK_DRIVER.balance.toLocaleString()} available`, route: '/(driver)/earnings' },
-      { icon: 'arrow-up-circle-outline',   label: 'Withdraw Earnings',  sub: 'Transfer to bank account',   route: '/(driver)/withdrawal' },
-      { icon: 'business-outline',          label: 'Bank Accounts',      sub: '2 accounts saved',            route: '/(driver)/add-bank' },
-    ],
-  },
-  {
-    title: 'Work',
-    items: [
-      { icon: 'calendar-outline',         label: 'My Schedule',         sub: 'Set working hours',           route: '/(driver)/schedule' },
-      { icon: 'receipt-outline',          label: 'Trip History',        sub: 'View past deliveries',        route: '/(driver)/history' },
-      { icon: 'notifications-outline',    label: 'Notifications',       sub: '',                            route: '/(driver)/notifications', badge: '2' },
-      { icon: 'rocket-outline',            label: 'SEIRS Premium',       sub: 'Priority matching + badge',   route: '/(driver)/subscription' },
-    ],
-  },
-  {
-    title: 'Preferences',
-    items: [
-      { icon: 'notifications-outline',    label: 'Notification Settings', route: '/(driver)/notification-settings' },
-      { icon: 'lock-closed-outline',      label: 'Privacy & Data',        route: '/(driver)/privacy' },
-    ],
-  },
-  {
-    title: 'Support',
-    items: [
-      { icon: 'help-circle-outline',      label: 'Help Center',          route: '/(driver)/help' },
-      { icon: 'chatbubble-ellipses-outline', label: 'Contact Support',   sub: 'Live chat · 0700-SEIRS-01' },
-    ],
-  },
-];
 
 export default function DriverProfileScreen() {
   const router           = useRouter();
@@ -76,8 +27,67 @@ export default function DriverProfileScreen() {
   const { user, logout } = useAuth();
   const [showQrModal, setShowQrModal] = useState(false);
 
-  const driver     = MOCK_DRIVER;
-  const tierColor  = TIER_COLORS[driver.tier] ?? theme.primary;
+  // Real profile data (production-readiness audit 2026-08-10: this
+  // screen previously rendered MOCK_DRIVER's phone, tier, stats, and
+  // balance for every driver).
+  const [driverData, setDriverData] = useState<any>(null);
+  const [dashboard,  setDashboard]  = useState<any>(null);
+  const [unread,     setUnread]     = useState(0);
+
+  useEffect(() => {
+    driversApi.me().then(setDriverData).catch(() => {});
+    earningsApi.dashboard().then(setDashboard).catch(() => {});
+    notificationsApi.unreadCount().then(r => setUnread(r?.count ?? 0)).catch(() => {});
+  }, []);
+
+  const rating      = Number(driverData?.rating ?? 0);
+  const totalTrips  = Number(driverData?.totalTrips ?? 0);
+  const available   = Number(dashboard?.available ?? 0);
+  const allTime     = Number(dashboard?.allTime?.earned ?? 0);
+  const isOnline    = !!driverData?.isOnline;
+  const vehicleSub  = [driverData?.vehicleType, driverData?.plateNumber].filter(Boolean).join(' · ') || 'View vehicle details';
+
+  const MENU_SECTIONS: MenuSection[] = [
+    {
+      title: 'Account',
+      items: [
+        { icon: 'shield-checkmark-outline', label: 'KYC Verification', sub: 'Documents & verification',   route: '/(driver)/kyc' },
+        { icon: 'car-outline',              label: 'My Vehicle',        sub: vehicleSub,                   route: '/(driver)/vehicle' },
+        { icon: 'star-outline',             label: 'My Ratings',        sub: rating > 0 ? `${rating.toFixed(1)}★ average` : 'No ratings yet', route: '/(driver)/ratings' },
+      ],
+    },
+    {
+      title: 'Earnings',
+      items: [
+        { icon: 'cash-outline',            label: 'Earnings & Wallet', sub: `₦${available.toLocaleString()} withdrawable`, route: '/(driver)/earnings' },
+        { icon: 'arrow-up-circle-outline', label: 'Withdraw Earnings', sub: 'Transfer to bank account',    route: '/(driver)/withdrawal' },
+        { icon: 'business-outline',        label: 'Payout Bank Account', sub: 'Manage where you get paid', route: '/(driver)/add-bank' },
+      ],
+    },
+    {
+      title: 'Work',
+      items: [
+        { icon: 'calendar-outline',      label: 'My Schedule',    sub: 'Set working hours',         route: '/(driver)/schedule' },
+        { icon: 'receipt-outline',       label: 'Trip History',   sub: 'View past deliveries',      route: '/(driver)/history' },
+        { icon: 'notifications-outline', label: 'Notifications',  sub: '',                          route: '/(driver)/notifications', badge: unread > 0 ? String(unread) : undefined },
+        { icon: 'rocket-outline',        label: 'SEIRS Premium',  sub: 'Priority matching + badge', route: '/(driver)/subscription' },
+      ],
+    },
+    {
+      title: 'Preferences',
+      items: [
+        { icon: 'notifications-outline', label: 'Notification Settings', route: '/(driver)/notification-settings' },
+        { icon: 'lock-closed-outline',   label: 'Privacy & Data',        route: '/(driver)/privacy' },
+      ],
+    },
+    {
+      title: 'Support',
+      items: [
+        { icon: 'help-circle-outline',         label: 'Help Center',     route: '/(driver)/help' },
+        { icon: 'chatbubble-ellipses-outline', label: 'Contact Support', sub: 'Chat with SEIRS support', route: '/(driver)/support' },
+      ],
+    },
+  ];
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -87,17 +97,13 @@ export default function DriverProfileScreen() {
   };
 
   const handleItemPress = (item: MenuSection['items'][0]) => {
-    if (item.route) {
-      router.push(item.route as any);
-    } else if (item.label === 'Contact Support') {
-      Alert.alert('Support', 'Call us at 0700-SEIRS-01 or email drivers@seirs.app');
-    }
+    if (item.route) router.push(item.route as any);
   };
 
   // Show only the FIRST name for privacy. Customers only need the first
   // name during a delivery; the full legal name lives on the KYC document.
   const displayName = (user as any)?.firstName
-    ?? (user?.name ? String(user.name).trim().split(/\s+/)[0] : driver.name);
+    ?? (user?.name ? String(user.name).trim().split(/\s+/)[0] : 'Driver');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
@@ -116,24 +122,27 @@ export default function DriverProfileScreen() {
             onPress={() => router.push('/(driver)/notifications')}
           >
             <Ionicons name="notifications-outline" size={20} color={theme.text} />
-            <View style={[styles.notifDot, { backgroundColor: theme.primary }]} />
+            {unread > 0 && <View style={[styles.notifDot, { backgroundColor: theme.primary }]} />}
           </Pressable>
         </View>
 
         {/* Profile card */}
         <View style={[styles.profileCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <View style={styles.profileTop}>
-            <View style={[styles.avatarWrap, { borderColor: tierColor + '50' }]}>
+            <View style={[styles.avatarWrap, { borderColor: theme.primary + '50' }]}>
               <Avatar name={displayName} uri={user?.profilePhoto} size={72} />
-              <View style={[styles.onlineDot, { backgroundColor: driver.isOnline ? '#22C55E' : '#9CA3AF', borderColor: theme.surface }]} />
+              <View style={[styles.onlineDot, { backgroundColor: isOnline ? '#16A34A' : '#9CA3AF', borderColor: theme.surface }]} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.driverName, { color: theme.text }]}>{displayName}</Text>
-              <Text style={[styles.driverPhone, { color: theme.textSecond }]}>{driver.phone}</Text>
+              <Text style={[styles.driverPhone, { color: theme.textSecond }]}>{user?.phone ?? ''}</Text>
               <View style={styles.badgeRow}>
-                <View style={[styles.tierBadge, { backgroundColor: tierColor + '18', borderColor: tierColor + '40' }]}>
-                  <Ionicons name="ribbon-outline" size={11} color={tierColor} />
-                  <Text style={[styles.tierText, { color: tierColor }]}>{driver.tier}</Text>
+                {/* The fake Bronze/Gold/Platinum tier badge is gone: no
+                    driver tier system exists in the backend. Show the
+                    honest online state instead. */}
+                <View style={[styles.tierBadge, { backgroundColor: (isOnline ? '#16A34A' : '#9CA3AF') + '18', borderColor: (isOnline ? '#16A34A' : '#9CA3AF') + '40' }]}>
+                  <Ionicons name={isOnline ? 'wifi-outline' : 'moon-outline'} size={11} color={isOnline ? '#16A34A' : '#9CA3AF'} />
+                  <Text style={[styles.tierText, { color: isOnline ? '#16A34A' : '#9CA3AF' }]}>{isOnline ? 'Online' : 'Offline'}</Text>
                 </View>
                 {/* ID-Verified badge is now tied to user.identityVerifiedAt.
                     Previously hardcoded to always show, which was misleading.
@@ -170,9 +179,9 @@ export default function DriverProfileScreen() {
           {/* Stats */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
             {[
-              { label: 'Total Trips',    value: driver.totalTrips.toLocaleString(), icon: 'navigate-outline' },
-              { label: 'Rating',         value: `${driver.rating}★`,                icon: 'star-outline' },
-              { label: 'Total Earned',   value: `₦${(driver.totalEarned / 1000000).toFixed(1)}M`, icon: 'trending-up-outline' },
+              { label: 'Total Trips',  value: totalTrips.toLocaleString(), icon: 'navigate-outline' },
+              { label: 'Rating',       value: rating > 0 ? `${rating.toFixed(1)}★` : '—', icon: 'star-outline' },
+              { label: 'Total Earned', value: allTime >= 1_000_000 ? `₦${(allTime / 1_000_000).toFixed(1)}M` : `₦${allTime.toLocaleString()}`, icon: 'trending-up-outline' },
             ].map(s => (
               <View key={s.label} style={styles.statItem}>
                 <Text style={[styles.statValue, { color: theme.text }]}>{s.value}</Text>
@@ -188,8 +197,8 @@ export default function DriverProfileScreen() {
           onPress={() => router.push('/(driver)/withdrawal')}
         >
           <View>
-            <Text style={[styles.balLabel, { color: theme.textSecond }]}>Available Balance</Text>
-            <Text style={[styles.balAmount, { color: '#22C55E' }]}>₦{driver.balance.toLocaleString()}</Text>
+            <Text style={[styles.balLabel, { color: theme.textSecond }]}>Withdrawable Balance</Text>
+            <Text style={[styles.balAmount, { color: '#16A34A' }]}>₦{available.toLocaleString()}</Text>
           </View>
           <View style={[styles.withdrawQuick, { backgroundColor: '#22C55E' }]}>
             <Ionicons name="arrow-up-circle-outline" size={16} color="#fff" />

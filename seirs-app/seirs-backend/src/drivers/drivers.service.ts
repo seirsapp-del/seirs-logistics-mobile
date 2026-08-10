@@ -261,6 +261,55 @@ export class DriversService {
     if (pinged) this.logger.log(`Auto check-in: pinged ${pinged} stale online drivers`);
   }
 
+  /**
+   * Customer ratings on this driver's deliveries: average, per-star
+   * breakdown, and the most recent rated trips with comments.
+   */
+  async getMyRatings(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    const rows: Array<{ rating: number; count: string }> = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .select('d.customerRating', 'rating')
+      .addSelect('COUNT(*)', 'count')
+      .where('d.driverId = :driverId', { driverId: driver.id })
+      .andWhere('d.customerRating IS NOT NULL')
+      .groupBy('d.customerRating')
+      .getRawMany();
+
+    const breakdown: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let total = 0;
+    let sum   = 0;
+    for (const r of rows) {
+      const star = Number(r.rating);
+      const cnt  = Number(r.count);
+      if (star >= 1 && star <= 5) { breakdown[star] = cnt; total += cnt; sum += star * cnt; }
+    }
+
+    const recent = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .select(['d.id', 'd.trackingCode', 'd.customerRating', 'd.customerComment', 'd.deliveredAt'])
+      .where('d.driverId = :driverId', { driverId: driver.id })
+      .andWhere('d.customerRating IS NOT NULL')
+      .orderBy('d.deliveredAt', 'DESC')
+      .take(30)
+      .getMany();
+
+    return {
+      average: total > 0 ? +(sum / total).toFixed(2) : 0,
+      total,
+      breakdown,
+      recent: recent.map(d => ({
+        id:           d.id,
+        trackingCode: d.trackingCode,
+        rating:       Number(d.customerRating),
+        comment:      d.customerComment ?? null,
+        deliveredAt:  d.deliveredAt,
+      })),
+    };
+  }
+
   // ── Spec V8 §2.9 — Driver tax summary ─────────────────────────────────────
   // Aggregates the driver's delivery earnings by year so the FIRS-filing
   // helper screen (drv.taxDocs) can render a real table. Returns flat
