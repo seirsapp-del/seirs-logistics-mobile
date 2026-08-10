@@ -102,6 +102,12 @@ export class NotificationsService {
     return { success: true };
   }
 
+  /** Swipe-to-dismiss. Scoped by userId so nobody deletes another user's rows. */
+  async remove(id: string, userId: string) {
+    await this.repo.delete({ id, userId });
+    return { success: true };
+  }
+
   // Retention (founder question 2026-08-09 "does it just keep piling
   // up?"): notifications are ephemeral by nature. Read ones go after 90
   // days, unread after 180, so the table never grows unbounded and old

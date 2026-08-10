@@ -2,6 +2,7 @@ import {
   View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
@@ -23,12 +24,17 @@ interface Notif {
   deliveryId: string | null;
 }
 
+// Brand palette only (founder 2026-08-10: the old purple system chip
+// was off-brand): sky blue, green, navy, yellow.
 const TYPE_CONFIG: Record<NotifType, { color: string; icon: string }> = {
-  job:     { color: '#3A86FF', icon: 'briefcase-outline' },
-  payment: { color: '#22C55E', icon: 'cash-outline' },
-  system:  { color: '#8B5CF6', icon: 'megaphone-outline' },
+  job:     { color: '#3A7BD5', icon: 'briefcase-outline' },
+  payment: { color: '#16A34A', icon: 'cash-outline' },
+  system:  { color: '#0F2B4C', icon: 'megaphone-outline' },
   rating:  { color: '#FFBE0B', icon: 'star-outline' },
 };
+// Navy is invisible on the dark theme; swap the system chip to the sky
+// tone there. Everything else reads fine on both.
+const SYSTEM_DARK = '#7FA8D9';
 
 // Map backend notification.type → our 4 visual buckets.
 function bucketType(t: string | undefined): NotifType {
@@ -101,6 +107,13 @@ export default function DriverNotificationsScreen() {
     try { await notificationsApi.markRead(id); } catch {}
   };
 
+  // Swipe-to-dismiss (founder 2026-08-10): removes the row immediately
+  // and deletes server-side so it never comes back on refresh.
+  const dismissOne = async (id: string) => {
+    setNotifs(prev => prev.filter(n => n.id !== id));
+    try { await notificationsApi.remove(id); } catch {}
+  };
+
   // Tapping a notification acts on it, not just marks it read (founder
   // ask 2026-08-09: "what action can they do by clicking?").
   const handleTap = (n: Notif) => {
@@ -165,27 +178,38 @@ export default function DriverNotificationsScreen() {
         }
         renderItem={({ item }) => {
           const cfg = TYPE_CONFIG[item.type];
+          const chipColor = item.type === 'system' && isDark ? SYSTEM_DARK : cfg.color;
           return (
-            <Pressable
-              style={[
-                styles.notifCard,
-                { backgroundColor: item.read ? theme.surface : (isDark ? '#001020' : '#EFF6FF'), borderColor: item.read ? theme.border : theme.primary + '30' },
-                Shadows.xs,
-              ]}
-              onPress={() => handleTap(item)}
+            <Swipeable
+              overshootRight={false}
+              renderRightActions={() => (
+                <Pressable style={styles.dismissAction} onPress={() => dismissOne(item.id)}>
+                  <Ionicons name="trash-outline" size={20} color="#fff" />
+                  <Text style={styles.dismissText}>Dismiss</Text>
+                </Pressable>
+              )}
             >
-              <View style={[styles.notifIcon, { backgroundColor: cfg.color + '18' }]}>
-                <Ionicons name={cfg.icon as any} size={20} color={cfg.color} />
-              </View>
-              <View style={styles.notifBody}>
-                <View style={styles.notifTitleRow}>
-                  <Text style={[styles.notifTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
-                  {!item.read && <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />}
+              <Pressable
+                style={[
+                  styles.notifCard,
+                  { backgroundColor: item.read ? theme.surface : (isDark ? '#001020' : '#EFF6FF'), borderColor: item.read ? theme.border : theme.primary + '30' },
+                  Shadows.xs,
+                ]}
+                onPress={() => handleTap(item)}
+              >
+                <View style={[styles.notifIcon, { backgroundColor: chipColor + '18' }]}>
+                  <Ionicons name={cfg.icon as any} size={20} color={chipColor} />
                 </View>
-                <Text style={[styles.notifBody2, { color: theme.textSecond }]} numberOfLines={2}>{item.body}</Text>
-                <Text style={[styles.notifTime, { color: theme.textThird }]}>{item.time}</Text>
-              </View>
-            </Pressable>
+                <View style={styles.notifBody}>
+                  <View style={styles.notifTitleRow}>
+                    <Text style={[styles.notifTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
+                    {!item.read && <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />}
+                  </View>
+                  <Text style={[styles.notifBody2, { color: theme.textSecond }]} numberOfLines={2}>{item.body}</Text>
+                  <Text style={[styles.notifTime, { color: theme.textThird }]}>{item.time}</Text>
+                </View>
+              </Pressable>
+            </Swipeable>
           );
         }}
       />
@@ -209,6 +233,9 @@ const styles = StyleSheet.create({
   notifBody2:   { fontSize: FontSize.sm, lineHeight: 20 },
   notifTime:    { fontSize: FontSize.xs, marginTop: 2 },
   unreadDot:    { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+
+  dismissAction: { backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center', width: 84, borderRadius: Radius.xl, marginLeft: Spacing.xs, gap: 2 },
+  dismissText:   { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
 
   empty:      { paddingTop: Spacing.xl * 3, alignItems: 'center', gap: Spacing.md },
   emptyTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },

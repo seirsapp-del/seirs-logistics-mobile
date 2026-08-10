@@ -11,6 +11,7 @@ import {
   View, Text, Pressable, StyleSheet, FlatList, StatusBar,
   RefreshControl, ActivityIndicator,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -28,11 +29,13 @@ interface Notif {
   read:  boolean;
 }
 
-function iconFor(type: string | undefined): { name: string; color: string } {
+// Brand palette only: green, sky blue, navy (dark mode gets the muted
+// sky so navy stays readable). No purple: it is not a SEIRS colour.
+function iconFor(type: string | undefined, isDark: boolean): { name: string; color: string } {
   const t = type ?? '';
   if (t.includes('payment') || t.includes('wallet'))   return { name: 'Banknote', color: '#16A34A' };
   if (t.includes('delivery') || t.includes('job'))     return { name: 'Package',  color: '#3A7BD5' };
-  return { name: 'Megaphone', color: '#7C3AED' };
+  return { name: 'Megaphone', color: isDark ? '#7FA8D9' : '#0F2B4C' };
 }
 
 function relativeTime(iso: string): string {
@@ -93,6 +96,11 @@ export default function BusinessNotificationsScreen() {
     try { await notificationsApi.markRead(id); } catch {}
   };
 
+  const dismissOne = async (id: string) => {
+    setNotifs(prev => prev.filter(n => n.id !== id));
+    try { await notificationsApi.remove(id); } catch {}
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -131,11 +139,20 @@ export default function BusinessNotificationsScreen() {
             </View>
           }
           renderItem={({ item }) => {
-            const ic = iconFor(item.type);
+            const ic = iconFor(item.type, isDark);
             return (
+              <Swipeable
+                overshootRight={false}
+                renderRightActions={() => (
+                  <Pressable style={styles.dismissAction} onPress={() => dismissOne(item.id)}>
+                    <Icon name="Trash2" size={18} color="#fff" />
+                    <Text style={styles.dismissText}>Dismiss</Text>
+                  </Pressable>
+                )}
+              >
               <Pressable
                 onPress={() => markOneRead(item.id)}
-                style={[styles.row, { borderBottomColor: theme.border }]}
+                style={[styles.row, { borderBottomColor: theme.border, backgroundColor: theme.background }]}
               >
                 <View style={[styles.rowIcon, { backgroundColor: ic.color + '15' }]}>
                   <Icon name={ic.name as any} size={18} color={ic.color} />
@@ -154,6 +171,7 @@ export default function BusinessNotificationsScreen() {
                   <Text style={[styles.rowTime, { color: theme.textSecond }]}>{item.time}</Text>
                 </View>
               </Pressable>
+              </Swipeable>
             );
           }}
         />
@@ -168,6 +186,9 @@ const styles = StyleSheet.create({
   markAll:     { fontSize: 13, fontWeight: '600' },
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  dismissAction: { backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center', width: 80, gap: 2 },
+  dismissText:   { color: '#fff', fontSize: 11, fontWeight: '700' },
 
   row:       { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   rowIcon:   { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },

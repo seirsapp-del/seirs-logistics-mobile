@@ -2,6 +2,7 @@ import {
   View, Text, Pressable, StyleSheet,
   FlatList, ActivityIndicator,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -9,13 +10,15 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
 
+// Brand palette only (founder 2026-08-10: purple is not a SEIRS
+// colour): sky blue, navy, green, yellow.
 const TYPE_ICONS: Record<string, { icon: string; color: string }> = {
-  job_request:       { icon: 'briefcase-outline',        color: '#3A86FF' },
-  delivery_assigned: { icon: 'navigate-outline',         color: '#3A86FF' },
-  status_update:     { icon: 'cube-outline',             color: '#8B5CF6' },
-  delivery_complete: { icon: 'checkmark-circle-outline', color: '#22C55E' },
-  payment_received:  { icon: 'cash-outline',             color: '#22C55E' },
-  general:           { icon: 'notifications-outline',    color: '#00C2FF' },
+  job_request:       { icon: 'briefcase-outline',        color: '#3A7BD5' },
+  delivery_assigned: { icon: 'navigate-outline',         color: '#3A7BD5' },
+  status_update:     { icon: 'cube-outline',             color: '#FFBE0B' },
+  delivery_complete: { icon: 'checkmark-circle-outline', color: '#16A34A' },
+  payment_received:  { icon: 'cash-outline',             color: '#16A34A' },
+  general:           { icon: 'notifications-outline',    color: '#3A7BD5' },
 };
 
 function timeAgo(dateStr: string): string {
@@ -34,7 +37,7 @@ export default function NotificationsScreen() {
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
 
-  const { notifications, unreadCount, loading, refresh, markRead, markAllRead } =
+  const { notifications, unreadCount, loading, refresh, markRead, markAllRead, dismiss } =
     useNotifications();
 
   const handlePress = (notif: AppNotification) => {
@@ -49,6 +52,15 @@ export default function NotificationsScreen() {
   const renderItem = ({ item }: { item: AppNotification }) => {
     const typeConfig = TYPE_ICONS[item.type] ?? TYPE_ICONS.general;
     return (
+      <Swipeable
+        overshootRight={false}
+        renderRightActions={() => (
+          <Pressable style={styles.dismissAction} onPress={() => dismiss(item.id)}>
+            <Ionicons name="trash-outline" size={20} color="#fff" />
+            <Text style={styles.dismissText}>Dismiss</Text>
+          </Pressable>
+        )}
+      >
       <Pressable
         style={[
           styles.item,
@@ -79,6 +91,7 @@ export default function NotificationsScreen() {
           <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />
         )}
       </Pressable>
+      </Swipeable>
     );
   };
 
@@ -143,6 +156,8 @@ const styles = StyleSheet.create({
   itemBody:    { fontSize: FontSize.sm, lineHeight: 18 },
   itemTime:    { fontSize: FontSize.xs },
   unreadDot:   { width: 8, height: 8, borderRadius: 4, marginTop: 6, flexShrink: 0 },
+  dismissAction: { backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center', width: 84, borderRadius: Radius.lg, marginLeft: Spacing.xs, gap: 2 },
+  dismissText:   { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
 
   center:       { flex: 1, justifyContent: 'center', alignItems: 'center', gap: Spacing.md, padding: Spacing.xl },
   emptyIconWrap:{ width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.xs },

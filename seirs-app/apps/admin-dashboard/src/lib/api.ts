@@ -299,15 +299,16 @@ export const adminApi = {
     remove: (id: string)             => req<any>(`/admin/website/content/${id}`, { method: 'DELETE' }),
   },
 
-  // Direct R2 upload helper for the CMS image picker (re-uses the
-  // existing /upload endpoint with folder=cms).
+  // Direct R2 upload helper (re-uses the existing /upload endpoint).
+  // folder=cms for marketing images, folder=documents for PDFs/files
+  // delivered through the Documents hub.
   upload: {
-    image: async (file: File): Promise<{ url: string }> => {
+    image: async (file: File, folder: 'cms' | 'documents' = 'cms'): Promise<{ url: string }> => {
       const form = new FormData();
       form.append('file', file);
       const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
       const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-      const r = await fetch(`${base}/upload?folder=cms`, {
+      const r = await fetch(`${base}/upload?folder=${folder}`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: form,

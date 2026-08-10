@@ -772,6 +772,7 @@ export const notificationsApi = {
   unreadCount: () => request<{ count: number }>('GET', '/notifications/unread-count'),
   markRead:    (id: string) => request<any>('PATCH', `/notifications/${id}/read`),
   markAllRead: () => request<any>('PATCH', '/notifications/read-all'),
+  remove:      (id: string) => request<any>('DELETE', `/notifications/${id}`),
   // Register the device's push token (FCM or Expo). Pass null to clear
   // (e.g. on logout). Backend stores it on user.fcmToken.
   registerToken: (token: string | null) =>
@@ -922,6 +923,11 @@ export const businessApi = {
       request<any>('DELETE', `/business/recurring-templates/${id}`),
   },
 
+  // Yearly spend statement for company accounting / FIRS expense records.
+  statement: () =>
+    request<{ companyName: string; years: Array<{ year: number; spentNgn: number; payments: number; toppedUpNgn: number }> }>(
+      'GET', '/business/statement',
+    ),
 };
 
 // ─── Partner Store ───────────────────────────────────────────────────────────
@@ -938,6 +944,11 @@ export const partnerApi = {
   markCollected:  (packageId: string) => request<any>('PATCH', `/partner/packages/${packageId}/collect`),
   earnings:       (period: 'week' | 'month') => request<any>('GET', `/partner/earnings?period=${period}`),
   payouts:        (page = 1) => request<any>('GET', `/partner/payouts?page=${page}`),
+  // Yearly PAID-payout statement for the partner's records/taxes.
+  statement:      () =>
+    request<{ storeName: string; years: Array<{ year: number; paidNgn: number; payouts: number }> }>(
+      'GET', '/partner/statement',
+    ),
   getSettings:    () => request<any>('GET', '/partner/settings'),
   updateSettings: (data: any) => request<any>('PATCH', '/partner/settings', data),
 

@@ -19,6 +19,7 @@ interface UseNotificationsReturn {
   refresh: () => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
+  dismiss: (id: string) => Promise<void>;
 }
 
 export function useNotifications(): UseNotificationsReturn {
@@ -54,7 +55,17 @@ export function useNotifications(): UseNotificationsReturn {
     setUnreadCount(0);
   }, []);
 
+  // Swipe-to-dismiss: optimistic removal + server delete.
+  const dismiss = useCallback(async (id: string) => {
+    setNotifications(prev => {
+      const target = prev.find(n => n.id === id);
+      if (target && !target.isRead) setUnreadCount(c => Math.max(0, c - 1));
+      return prev.filter(n => n.id !== id);
+    });
+    await notificationsApi.remove(id).catch(() => {});
+  }, []);
+
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { notifications, unreadCount, loading, refresh, markRead, markAllRead };
+  return { notifications, unreadCount, loading, refresh, markRead, markAllRead, dismiss };
 }

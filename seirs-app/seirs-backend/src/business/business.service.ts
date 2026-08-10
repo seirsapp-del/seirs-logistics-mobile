@@ -252,10 +252,9 @@ export class BusinessService {
   }
 
   private generateTrackingNumber(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
-    let id = 'SEIRS-';
-    for (let i = 0; i < 9; i++) id += chars[Math.floor(Math.random() * chars.length)];
-    return id;
+    // crypto-secure (Math.random here was missed in the 2026-08-09
+    // predictability sweep; every other generator already uses secureCode).
+    return 'SEIRS-' + secureCode(9, 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789');
   }
 
   // ─── Business Sender: Dashboard ─────────────────────────────────────────────
@@ -293,6 +292,63 @@ export class BusinessService {
       weeklySpend,
       companyName:      biz.companyName,
       recentDeliveries: recentPackages,
+    };
+  }
+
+  /**
+   * Yearly spend statement (founder direction 2026-08-10): wallet debits
+   * are delivery spend, credits are top-ups, grouped per calendar year.
+   * For company accounting and FIRS expense records.
+   */
+  async getSpendStatement(userId: string) {
+    const biz = await this.getBizAccount(userId);
+    const rows: Array<{ year: number; spent: string; payments: string; topups: string }> =
+      await this.walletTxRepo.query(
+        `SELECT EXTRACT(YEAR FROM "createdAt")::int AS year,
+                COALESCE(SUM(CASE WHEN type = 'debit'  THEN amount END), 0) AS spent,
+                COUNT(CASE WHEN type = 'debit' THEN 1 END)                  AS payments,
+                COALESCE(SUM(CASE WHEN type = 'credit' THEN amount END), 0) AS topups
+         FROM business_wallet_transactions
+         WHERE "businessAccountId" = $1
+         GROUP BY 1
+         ORDER BY 1 DESC`,
+        [biz.id],
+      );
+    return {
+      companyName: biz.companyName,
+      years: rows.map(r => ({
+        year:        Number(r.year),
+        spentNgn:    Number(r.spent),
+        payments:    Number(r.payments),
+        toppedUpNgn: Number(r.topups),
+      })),
+    };
+  }
+
+  /**
+   * Yearly payout statement for partner stores: PAID payouts only
+   * (money actually received), grouped by the year it was paid.
+   */
+  async getPartnerPayoutStatement(userId: string) {
+    const store = await this.getPartnerStore(userId);
+    const rows: Array<{ year: number; paid: string; payouts: string }> =
+      await this.payoutsRepo.query(
+        `SELECT EXTRACT(YEAR FROM "paidAt")::int AS year,
+                COALESCE(SUM(amount), 0)         AS paid,
+                COUNT(*)                         AS payouts
+         FROM partner_payouts
+         WHERE "partnerStoreId" = $1 AND status = 'paid' AND "paidAt" IS NOT NULL
+         GROUP BY 1
+         ORDER BY 1 DESC`,
+        [store.id],
+      );
+    return {
+      storeName: store.storeName,
+      years: rows.map(r => ({
+        year:     Number(r.year),
+        paidNgn:  Number(r.paid),
+        payouts:  Number(r.payouts),
+      })),
     };
   }
 

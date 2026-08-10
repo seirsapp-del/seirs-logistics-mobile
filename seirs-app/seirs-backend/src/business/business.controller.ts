@@ -20,6 +20,14 @@ export class BusinessController {
     return this.svc.businessDashboard(user.id);
   }
 
+  // Yearly spend statement for company accounting / FIRS expense records
+  // (founder direction 2026-08-10: business + partner need statements
+  // like drivers do). Aggregates successful payments by year.
+  @Get('business/statement')
+  businessStatement(@CurrentUser() user: User) {
+    return this.svc.getSpendStatement(user.id);
+  }
+
   @Get('business/deliveries')
   getDeliveries(
     @CurrentUser() user: User,
@@ -157,6 +165,12 @@ export class BusinessController {
   @Get('partner/dashboard')
   partnerDashboard(@CurrentUser() user: User) {
     return this.svc.partnerDashboard(user.id);
+  }
+
+  // Yearly paid-payout statement for the partner's records/taxes.
+  @Get('partner/statement')
+  partnerStatement(@CurrentUser() user: User) {
+    return this.svc.getPartnerPayoutStatement(user.id);
   }
 
   @Get('partner/inventory')

@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Get, Patch, Param, Post, Query,
+  Body, Controller, Delete, Get, Patch, Param, Post, Query,
   UseGuards, ParseIntPipe, DefaultValuePipe,
 } from '@nestjs/common';
 import { NotificationsService, BroadcastAudience } from './notifications.service';
@@ -40,6 +40,12 @@ export class NotificationsController {
   @Patch('read-all')
   markAllRead(@CurrentUser() user: User) {
     return this.svc.markAllRead(user.id);
+  }
+
+  // DELETE /api/v1/notifications/:id  (swipe-to-dismiss in the apps)
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.svc.remove(id, user.id);
   }
 
   // POST /api/v1/notifications/register-token  { token: string | null }
