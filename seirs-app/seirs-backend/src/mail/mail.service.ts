@@ -7,6 +7,11 @@ import { Resend } from 'resend';
 const BRAND_BLUE = '#3A7BD5';
 const BRAND_NAVY = '#0F2B4C';
 
+// Hosted on the marketing site (apps/seirs-website/public/). Email
+// clients need an https-hosted image; inline SVG and data URIs are
+// stripped by Gmail.
+const LOGO_WHITE_URL = 'https://seirs.co/seirs-logo-white.png';
+
 function baseTemplate(content: string): string {
   return `
     <!DOCTYPE html>
@@ -16,12 +21,18 @@ function baseTemplate(content: string): string {
       <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6;padding:32px 0">
         <tr><td align="center">
           <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;max-width:560px;width:100%">
-            <!-- Header -->
+            <!-- Header: okada mark + wordmark lockup (founder 2026-08-10) -->
             <tr>
-              <td style="background:${BRAND_NAVY};padding:24px 32px">
-                <span style="font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:-0.5px">
-                  <span style="color:${BRAND_BLUE}">Seirs</span> Logistics
-                </span>
+              <td style="background:${BRAND_NAVY};padding:20px 32px">
+                <table cellpadding="0" cellspacing="0"><tr>
+                  <td style="vertical-align:middle;padding-right:12px">
+                    <img src="${LOGO_WHITE_URL}" width="38" height="38" alt="SEIRS" style="display:block;border:0"/>
+                  </td>
+                  <td style="vertical-align:middle">
+                    <span style="font-size:19px;font-weight:bold;color:#ffffff;letter-spacing:6px;font-family:Arial,Helvetica,sans-serif">SEIRS</span><br/>
+                    <span style="font-size:9px;color:#8FA8C7;letter-spacing:4px">LOGISTICS</span>
+                  </td>
+                </tr></table>
               </td>
             </tr>
             <!-- Body -->
@@ -33,9 +44,16 @@ function baseTemplate(content: string): string {
             <!-- Footer -->
             <tr>
               <td style="background:#F9FAFB;padding:20px 32px;border-top:1px solid #E5E7EB">
-                <p style="margin:0;font-size:12px;color:#9CA3AF">
-                  © ${new Date().getFullYear()} Seirs Logistics. All rights reserved.<br/>
-                  You're receiving this because you have an account on Seirs.
+                <p style="margin:0 0 6px;font-size:12px;color:#9CA3AF">
+                  © ${new Date().getFullYear()} Seirs Logistics · Lagos, Nigeria<br/>
+                  You're receiving this because you have a SEIRS account.
+                </p>
+                <p style="margin:0;font-size:12px">
+                  <a href="https://seirs.co/faq" style="color:${BRAND_BLUE};text-decoration:none">Help centre</a>
+                  &nbsp;·&nbsp;
+                  <a href="https://seirs.co/contact" style="color:${BRAND_BLUE};text-decoration:none">Contact support</a>
+                  &nbsp;·&nbsp;
+                  <a href="https://seirs.co/privacy-policy" style="color:${BRAND_BLUE};text-decoration:none">Privacy</a>
                 </p>
               </td>
             </tr>
@@ -176,38 +194,42 @@ export class MailService {
 
   // ── Password reset ──────────────────────────────────────────────────────────
 
-  // Audience picks the deep-link scheme. Audit 2026-08-10: every reset
-  // email used a single DEEP_LINK_BASE defaulting to seirsmobile:/, a
-  // scheme NO app registers (customer = seirscustomer, driver =
-  // seirsdriver, business = seirsbusiness), so tapping Reset Password
-  // opened nothing on any phone. 'mobile' kept as a legacy alias for
-  // customer.
+  // Live test 2026-08-10: Gmail (and most mail clients) refuse custom
+  // app schemes (seirsdriver:// etc), so deep-linked reset buttons did
+  // nothing. Mobile audiences now get an https page on the marketing
+  // site where they set the new password in the browser; the app param
+  // only personalises that page. Admin keeps its dashboard URL.
   async sendPasswordReset(
     to: string, name: string, token: string,
     audience: 'mobile' | 'admin' | 'customer' | 'driver' | 'business' = 'customer',
   ) {
-    const SCHEMES: Record<string, string> = {
-      customer: this.cfg.get<string>('DEEP_LINK_BASE_CUSTOMER', 'seirscustomer:/'),
-      mobile:   this.cfg.get<string>('DEEP_LINK_BASE_CUSTOMER', 'seirscustomer:/'),
-      driver:   this.cfg.get<string>('DEEP_LINK_BASE_DRIVER',   'seirsdriver:/'),
-      business: this.cfg.get<string>('DEEP_LINK_BASE_BUSINESS', 'seirsbusiness:/'),
-    };
+    const app = audience === 'mobile' ? 'customer' : audience;
     const resetUrl = audience === 'admin'
       ? `${this.cfg.get<string>('ADMIN_WEB_URL', 'https://seirs-admin.vercel.app')}/reset-password?token=${token}`
-      : `${SCHEMES[audience] ?? SCHEMES.customer}/reset-password?token=${token}`;
+      : `${this.cfg.get<string>('WEBSITE_URL', 'https://seirs.co')}/reset-password?token=${token}&app=${app}`;
 
     const html = baseTemplate(`
       <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Reset your password</h2>
       <p>Hi ${name},</p>
-      <p>We received a request to reset your Seirs password. Tap the button below within <strong>1 hour</strong>.</p>
+      <p>We received a request to reset the password on your SEIRS account. Tap the button below to choose a new one.</p>
       ${primaryButton(resetUrl, 'Reset Password')}
-      <p style="font-size:13px;color:#6B7280">Or copy this link:<br/>
-        <code style="font-size:12px;word-break:break-all">${resetUrl}</code>
+      <p style="font-size:13px;color:#6B7280;margin:4px 0 20px">
+        This link works once and expires in <strong>1 hour</strong>.
+        If the button doesn't open, copy this link into your browser:<br/>
+        <a href="${resetUrl}" style="color:${BRAND_BLUE};font-size:12px;word-break:break-all">${resetUrl}</a>
       </p>
-      <p style="font-size:13px;color:#9CA3AF">If you didn't request this, you can safely ignore this email.</p>
+      <table width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:14px 16px">
+          <p style="margin:0;font-size:13px;color:#6B7280;line-height:1.5">
+            <strong style="color:#111827">Didn't request this?</strong>
+            You can safely ignore this email - your password stays the same.
+            For your security, never share this link. SEIRS staff will never ask you for it.
+          </p>
+        </td>
+      </tr></table>
     `);
 
-    await this.send(to, 'Reset your Seirs password', html);
+    await this.send(to, 'Reset your SEIRS password', html);
   }
 
   // ── Welcome ─────────────────────────────────────────────────────────────────
