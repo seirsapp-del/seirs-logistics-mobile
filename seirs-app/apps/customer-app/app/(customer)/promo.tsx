@@ -43,7 +43,7 @@ export default function PromoScreen() {
 
   // Validate the code against the backend. We pass subtotalKobo=0 so
   // the live "Apply" check only validates existence / activity / per-
-  // user cap — the actual discount calc runs again at booking time
+  // user cap: the actual discount calc runs again at booking time
   // with the real subtotal.
   const handleApply = async () => {
     const trimmed = code.trim().toUpperCase();
@@ -132,7 +132,7 @@ export default function PromoScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.promoLabel, { color: theme.text }]}>No active promos</Text>
-              <Text style={[styles.promoDesc, { color: theme.textSecond }]}>Check back soon — new offers go live regularly.</Text>
+              <Text style={[styles.promoDesc, { color: theme.textSecond }]}>Check back soon: new offers go live regularly.</Text>
             </View>
           </View>
         ) : promos.map(promo => (

@@ -102,6 +102,29 @@ export default function DriverNotificationsScreen() {
     try { await notificationsApi.markAllRead(); } catch {}
   };
 
+  // Mass clear (founder 2026-08-10): one action instead of a hundred
+  // individual swipes.
+  const clearAll = () => {
+    Alert.alert('Clear notifications', 'Which ones should go?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Clear read only',
+        onPress: async () => {
+          setNotifs(prev => prev.filter(n => !n.read));
+          try { await notificationsApi.removeAll(true); } catch {}
+        },
+      },
+      {
+        text: 'Clear everything',
+        style: 'destructive',
+        onPress: async () => {
+          setNotifs([]);
+          try { await notificationsApi.removeAll(false); } catch {}
+        },
+      },
+    ]);
+  };
+
   const markOneRead = async (id: string) => {
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     try { await notificationsApi.markRead(id); } catch {}
@@ -151,13 +174,18 @@ export default function DriverNotificationsScreen() {
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <Text style={[styles.title, { color: theme.text }]}>Notifications</Text>
-        {unreadCount > 0 ? (
-          <Pressable onPress={markAllRead}>
-            <Text style={[styles.markAll, { color: theme.primary }]}>Mark all read</Text>
-          </Pressable>
-        ) : (
-          <View style={{ width: 80 }} />
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+          {unreadCount > 0 && (
+            <Pressable onPress={markAllRead}>
+              <Text style={[styles.markAll, { color: theme.primary }]}>Mark all read</Text>
+            </Pressable>
+          )}
+          {notifs.length > 0 && (
+            <Pressable onPress={clearAll} hitSlop={8} accessibilityLabel="Clear notifications">
+              <Ionicons name="trash-outline" size={20} color={theme.textSecond} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <FlatList

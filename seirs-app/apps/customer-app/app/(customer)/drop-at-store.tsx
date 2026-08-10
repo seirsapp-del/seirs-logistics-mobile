@@ -16,7 +16,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { dropoffApi } from '@/services/api';
 
-// Spec V8 §3 — async customer entry point. Customer schedules a drop-off,
+// Spec V8 §3: async customer entry point. Customer schedules a drop-off,
 // gets a printable QR + 6-char backup code, walks into the picked store
 // at their convenience. Partner staff scans → driver picks up → recipient
 // collects (door delivery or store pickup).
@@ -252,7 +252,7 @@ export default function DropAtStoreScreen() {
             </View>
           )}
 
-          {/* Step 1 — pickup store ─────────────────────────────────────── */}
+          {/* Step 1: pickup store ─────────────────────────────────────── */}
           {step === 'pickup' && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.selectStore').toUpperCase()}</Text>
@@ -302,7 +302,7 @@ export default function DropAtStoreScreen() {
             </>
           )}
 
-          {/* Step 2 — destination mode ─────────────────────────────────── */}
+          {/* Step 2: destination mode ─────────────────────────────────── */}
           {step === 'destination' && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.whereToHeading')}</Text>
@@ -408,7 +408,7 @@ export default function DropAtStoreScreen() {
             </>
           )}
 
-          {/* Step 3 — package + recipient ──────────────────────────────── */}
+          {/* Step 3: package + recipient ──────────────────────────────── */}
           {step === 'package' && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.packageHeading')}</Text>
@@ -477,7 +477,7 @@ export default function DropAtStoreScreen() {
             </>
           )}
 
-          {/* Step 4 — review ───────────────────────────────────────────── */}
+          {/* Step 4: review ───────────────────────────────────────────── */}
           {step === 'review' && pickupStore && (
             <>
               <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('dropAtStore.reviewHeading')}</Text>

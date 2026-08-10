@@ -13,7 +13,7 @@ import { loyaltyApi, deliveriesApi, type LoyaltyTier } from '@/services/api';
 
 // Tier thresholds MUST mirror the backend (loyalty.service.ts:TIER_THRESHOLDS).
 // Keep in sync manually. The tier chip shown to the user is otherwise a lie.
-// [[project_seirs_tier_policy]] — tiers only unlock the earning multiplier.
+// [[project_seirs_tier_policy]]: tiers only unlock the earning multiplier.
 const TIERS: Array<{
   key: LoyaltyTier;
   name: string;
@@ -64,7 +64,7 @@ export default function RewardsScreen() {
   const [history,     setHistory]     = useState<any[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [redeemingType, setRedeemingType] = useState<RedemptionType | null>(null);
-  // Active deliveries (pending or assigned) — the only ones a redemption
+  // Active deliveries (pending or assigned): the only ones a redemption
   // can be applied to. Backend rejects anything else.
   const [activeDeliveries, setActiveDeliveries] = useState<any[]>([]);
 
@@ -193,7 +193,7 @@ export default function RewardsScreen() {
           <View style={styles.heroTop}>
             <View>
               <Text style={styles.heroLabel}>Your points</Text>
-              <Text style={styles.heroPoints}>{loading ? '—' : points.toLocaleString()}</Text>
+              <Text style={styles.heroPoints}>{loading ? '-' : points.toLocaleString()}</Text>
               <Text style={styles.heroSub}>Earn {currentTier.multiplier}× multiplier at {currentTier.name}</Text>
             </View>
             <View style={[styles.tierBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
@@ -202,7 +202,7 @@ export default function RewardsScreen() {
             </View>
           </View>
 
-          {/* Progress to next tier — real visual bar */}
+          {/* Progress to next tier: real visual bar */}
           {nextTier && (
             <View style={styles.progressSection}>
               <View style={styles.progressLabels}>
@@ -216,7 +216,7 @@ export default function RewardsScreen() {
           )}
         </LinearGradient>
 
-        {/* Expiring soon urgency callout — only when there's actual expiry */}
+        {/* Expiring soon urgency callout: only when there's actual expiry */}
         {expiring > 0 && (
           <View style={[styles.expiryCard, { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' }]}>
             <Ionicons name="time-outline" size={16} color="#92400E" />
@@ -226,7 +226,7 @@ export default function RewardsScreen() {
           </View>
         )}
 
-        {/* Redeem rewards — sorted cheapest first so users see something achievable */}
+        {/* Redeem rewards: sorted cheapest first so users see something achievable */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Redeem your points</Text>
         {REDEMPTIONS.map(r => {
           const canRedeem = points >= r.cost;
@@ -337,7 +337,7 @@ export default function RewardsScreen() {
           ))
         )}
 
-        {/* How to earn — numbers match backend loyalty.service.ts exactly */}
+        {/* How to earn: numbers match backend loyalty.service.ts exactly */}
         <View style={[styles.earnCard, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
           <Text style={[styles.earnTitle, { color: theme.text }]}>How to earn</Text>
           {[

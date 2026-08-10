@@ -9,7 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 
-// Spec V8 §2.14 — quick three-button status broadcast. When network is
+// Spec V8 §2.14: quick three-button status broadcast. When network is
 // flaky or driver is delayed, one tap sends a status that's queued and
 // delivered to the customer's tracking screen the moment connectivity
 // recovers. Powered by the offline GPS sync layer (be.offline planned).
@@ -27,9 +27,9 @@ const WIRE: Record<Status, 'network_bad' | 'traffic' | 'need_help'> = {
 };
 
 const OPTIONS: Array<{ key: Status; label: string; sub: string; color: string; Icon: any }> = [
-  { key: 'network', label: 'Network is bad — still moving',     sub: 'GPS may be delayed but I&apos;m on the way',                color: '#3A7BD5', Icon: Wifi          },
-  { key: 'traffic', label: 'Stuck in traffic',                  sub: 'I&apos;m moving slowly — ETA may extend',                  color: '#D97706', Icon: AlertCircle   },
-  { key: 'help',    label: 'Need help — please contact support', sub: 'Trigger an alert to ops with my last known location',   color: '#DC2626', Icon: AlertTriangle },
+  { key: 'network', label: 'Network is bad: still moving',     sub: 'GPS may be delayed but I&apos;m on the way',                color: '#3A7BD5', Icon: Wifi          },
+  { key: 'traffic', label: 'Stuck in traffic',                  sub: 'I&apos;m moving slowly: ETA may extend',                  color: '#D97706', Icon: AlertCircle   },
+  { key: 'help',    label: 'Need help: please contact support', sub: 'Trigger an alert to ops with my last known location',   color: '#DC2626', Icon: AlertTriangle },
 ];
 
 export default function StatusBroadcastScreen() {
@@ -68,7 +68,7 @@ export default function StatusBroadcastScreen() {
       <ScrollView contentContainerStyle={styles.content}>
 
         <Text style={[styles.intro, { color: theme.textSecond }]}>
-          Tap any status to send it to the customer. Works offline — your message is queued locally and delivered the moment your connection comes back.
+          Tap any status to send it to the customer. Works offline: your message is queued locally and delivered the moment your connection comes back.
         </Text>
 
         {OPTIONS.map(o => {

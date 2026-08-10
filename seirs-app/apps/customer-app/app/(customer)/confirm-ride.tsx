@@ -39,7 +39,7 @@ export default function ConfirmRideScreen() {
   const [payment,    setPayment]    = useState<'points' | 'card' | 'cash' | 'banktransfer'>('cash');
   const [confirming, setConfirming] = useState(false);
 
-  // Real wallet + saved-cards state — load on mount, fall back to "—"
+  // Real wallet + saved-cards state: load on mount, fall back to "-"
   // labels if the backend call fails (offline first run, expired token).
   const [pointsBalance, setPointsBalance] = useState<number | null>(null);
   const [defaultCard,   setDefaultCard]   = useState<SavedCard | null>(null);
@@ -56,7 +56,7 @@ export default function ConfirmRideScreen() {
         if (loyalty) setPointsBalance(loyalty.balance);
         const def = cards.find(c => c.isDefault) ?? cards[0] ?? null;
         if (def) setDefaultCard(def);
-      } catch { /* keep falsy state — UI shows "—" */ }
+      } catch { /* keep falsy state: UI shows "-" */ }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -96,7 +96,7 @@ export default function ConfirmRideScreen() {
   const driver = MOCK_DRIVERS[driverIndex];
 
   // Wallet → Rewards: customers don't hold NGN per CBN model. They can
-  // redeem points for fare credit instead — label + balance reflect that.
+  // redeem points for fare credit instead: label + balance reflect that.
   const PAYMENT_OPTS = [
     {
       id:   'points' as const,
@@ -135,11 +135,11 @@ export default function ConfirmRideScreen() {
         vehicleType:     params.vehicleId,
         km:              distKm,
         sharedRide:      shared || undefined,
-        // Cargo extras — backend ignores when mode='ride'
+        // Cargo extras: backend ignores when mode='ride'
         weightKg:        params.weightKg ? Number(params.weightKg) : undefined,
         packageCategory: params.category || undefined,
         codAmountNgn:    params.codAmountNgn ? Number(params.codAmountNgn) : undefined,
-        // Payment + total snapshot — backend persists the agreed price so
+        // Payment + total snapshot: backend persists the agreed price so
         // ledger reconciliation matches what the customer was shown.
         paymentMethod:   payment,
         agreedTotalNgn:  total,
@@ -158,7 +158,7 @@ export default function ConfirmRideScreen() {
             return;
           }
         } catch {
-          // Init failed but delivery exists — let user pay on the
+          // Init failed but delivery exists: let user pay on the
           // payment screen, which can retry initiate.
           router.replace({ pathname: '/(customer)/payment/[deliveryId]', params: { deliveryId } } as any);
           return;
@@ -393,7 +393,7 @@ export default function ConfirmRideScreen() {
             />
           </View>
 
-          {/* Cancel link — pre-assign cancellation, free at this stage by default. */}
+          {/* Cancel link: pre-assign cancellation, free at this stage by default. */}
           <Pressable onPress={handleCancel} style={styles.cancelLink}>
             <Text style={[styles.cancelLinkText, { color: theme.error ?? '#DC2626' }]}>
               {t('confirmRide.cancelLink')}

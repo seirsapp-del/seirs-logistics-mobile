@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Platform, Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -29,18 +29,24 @@ export default function DriverProfileScreen() {
 
   // Real profile data (production-readiness audit 2026-08-10: this
   // screen previously rendered MOCK_DRIVER's phone, tier, stats, and
-  // balance for every driver).
+  // balance for every driver). Refetched on every focus so the online
+  // toggle from the home tab is reflected immediately.
   const [driverData, setDriverData] = useState<any>(null);
   const [dashboard,  setDashboard]  = useState<any>(null);
+  const [ratings,    setRatings]    = useState<any>(null);
   const [unread,     setUnread]     = useState(0);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     driversApi.me().then(setDriverData).catch(() => {});
     earningsApi.dashboard().then(setDashboard).catch(() => {});
+    driversApi.myRatings().then(setRatings).catch(() => {});
     notificationsApi.unreadCount().then(r => setUnread(r?.count ?? 0)).catch(() => {});
-  }, []);
+  }, []));
 
-  const rating      = Number(driverData?.rating ?? 0);
+  // Rating comes from the REAL ratings aggregate, never a DB default:
+  // a driver with zero ratings shows a dash, not a fake five stars.
+  const ratingCount = Number(ratings?.total ?? 0);
+  const rating      = ratingCount > 0 ? Number(ratings?.average ?? 0) : 0;
   const totalTrips  = Number(driverData?.totalTrips ?? 0);
   const available   = Number(dashboard?.available ?? 0);
   const allTime     = Number(dashboard?.allTime?.earned ?? 0);
@@ -51,9 +57,10 @@ export default function DriverProfileScreen() {
     {
       title: 'Account',
       items: [
+        { icon: 'person-outline',           label: 'Edit Profile',     sub: 'Name, photo, contact details', route: '/(driver)/edit-profile' },
         { icon: 'shield-checkmark-outline', label: 'KYC Verification', sub: 'Documents & verification',   route: '/(driver)/kyc' },
         { icon: 'car-outline',              label: 'My Vehicle',        sub: vehicleSub,                   route: '/(driver)/vehicle' },
-        { icon: 'star-outline',             label: 'My Ratings',        sub: rating > 0 ? `${rating.toFixed(1)}★ average` : 'No ratings yet', route: '/(driver)/ratings' },
+        { icon: 'star-outline',             label: 'My Ratings',        sub: ratingCount > 0 ? `${rating.toFixed(1)} average from ${ratingCount}` : 'No ratings yet', route: '/(driver)/ratings' },
       ],
     },
     {
@@ -83,8 +90,10 @@ export default function DriverProfileScreen() {
     {
       title: 'Support',
       items: [
-        { icon: 'help-circle-outline',         label: 'Help Center',     route: '/(driver)/help' },
-        { icon: 'chatbubble-ellipses-outline', label: 'Contact Support', sub: 'Chat with SEIRS support', route: '/(driver)/support' },
+        // One entry, not two (founder 2026-08-10: Help Center and
+        // Contact Support overlapped). FAQs answer the common cases;
+        // the help screen links into live support chat for the rest.
+        { icon: 'help-circle-outline', label: 'Help & Support', sub: 'FAQs and live chat', route: '/(driver)/help' },
       ],
     },
   ];
@@ -180,7 +189,7 @@ export default function DriverProfileScreen() {
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
             {[
               { label: 'Total Trips',  value: totalTrips.toLocaleString(), icon: 'navigate-outline' },
-              { label: 'Rating',       value: rating > 0 ? `${rating.toFixed(1)}★` : '—', icon: 'star-outline' },
+              { label: 'Rating',       value: ratingCount > 0 ? rating.toFixed(1) : '-', icon: 'star-outline' },
               { label: 'Total Earned', value: allTime >= 1_000_000 ? `₦${(allTime / 1_000_000).toFixed(1)}M` : `₦${allTime.toLocaleString()}`, icon: 'trending-up-outline' },
             ].map(s => (
               <View key={s.label} style={styles.statItem}>
@@ -191,9 +200,10 @@ export default function DriverProfileScreen() {
           </View>
         </View>
 
-        {/* Balance quick-access */}
+        {/* Balance quick-access (neutral card; the green wash clashed
+            with the design language, same call as the withdraw screen) */}
         <Pressable
-          style={[styles.balanceCard, { backgroundColor: isDark ? '#001A00' : '#F0FDF4', borderColor: '#22C55E30' }]}
+          style={[styles.balanceCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
           onPress={() => router.push('/(driver)/withdrawal')}
         >
           <View>

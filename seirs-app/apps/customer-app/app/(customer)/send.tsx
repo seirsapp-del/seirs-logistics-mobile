@@ -66,7 +66,7 @@ const PAYMENT_METHODS = [
 ] as const;
 type PaymentId = typeof PAYMENT_METHODS[number]['id'];
 
-// 5 steps total — Address + Schedule are combined ("when & where" in one screen).
+// 5 steps total: Address + Schedule are combined ("when & where" in one screen).
 // Labels resolved via t(`send.step${cap}`) at render.
 const STEPS = ['Package', 'Address', 'Vehicle', 'Fare', 'Confirm'] as const;
 const STEP_KEYS = ['stepPackage', 'stepAddress', 'stepVehicle', 'stepFare', 'stepConfirm'] as const;
@@ -74,7 +74,7 @@ const STEP_KEYS = ['stepPackage', 'stepAddress', 'stepVehicle', 'stepFare', 'ste
 function autoRecommend(cat: CategoryId, kg: number): VehicleId {
   if (cat === 'documents') return 'bicycle';
   if ((cat === 'food_hot' || cat === 'small_parcel') && kg <= 20) return 'motorcycle';
-  if (cat === 'food_cold' && kg <= 800)               return 'van';      // cold chain — van only
+  if (cat === 'food_cold' && kg <= 800)               return 'van';      // cold chain: van only
   if (cat === 'medical')                              return kg <= 200 ? 'car' : 'van';
   if (cat === 'fragile' && kg <= 100)                 return 'keke';
   if (cat === 'standard_parcel' && kg <= 100)         return 'keke';
@@ -103,7 +103,7 @@ function buildScheduledFor(isoDate: string, hour: number): Date {
 
 // Scheduled-pickup window: 5 AM – 9 PM, 1-hour slots (17 total).
 // Drivers go online at 4 AM so they have ~1hr buffer to reach the
-// pickup point by the earliest 5 AM slot. "Send Now" stays 24/7 —
+// pickup point by the earliest 5 AM slot. "Send Now" stays 24/7 -
 // only this scheduled list is gated.
 const TIME_SLOTS = Array.from({ length: 17 }, (_, i) => {
   const hour = 5 + i; // 5 → 21
@@ -161,14 +161,14 @@ export default function SendScreen() {
   const [dropoff,     setDropoff]     = useState<PickedAddress | null>(null);
   const [vehicleId,   setVehicleId]   = useState<VehicleId>('motorcycle');
   const [scheduleNow,   setScheduleNow]   = useState(true);
-  // ISO date string ('YYYY-MM-DD') — driven by the inline calendar.
+  // ISO date string ('YYYY-MM-DD'): driven by the inline calendar.
   const [scheduledDate, setScheduledDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [scheduledHour, setScheduledHour] = useState<number | null>(null);
   const [paymentId,   setPaymentId]   = useState<PaymentId>('wallet');
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
 
-  // Cash on delivery — sender opts in; recipient pays cash; we charge a
+  // Cash on delivery: sender opts in; recipient pays cash; we charge a
   // handling fee for the cash-collection service.
   const [codEnabled,  setCodEnabled]  = useState(false);
   const [codAmount,   setCodAmount]   = useState('');
@@ -184,7 +184,7 @@ export default function SendScreen() {
   const mapRef   = useRef<MapView>(null);
   const sheetRef = useRef<BottomSheet>(null);
   // Two snap points: peek (enough to see the form exists) and comfy
-  // (sheet rises almost to the header — topInset stops it from covering
+  // (sheet rises almost to the header: topInset stops it from covering
   // the title). The sheet's BottomSheetScrollView handles overflow
   // (long vehicle list, long suggestion lists) by scrolling internally.
   const snapPoints = useMemo(() => [180, '92%'], []);
@@ -248,7 +248,7 @@ export default function SendScreen() {
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
-      // Global autocomplete — Google biases by requesting IP region.
+      // Global autocomplete: Google biases by requesting IP region.
       const url =
         `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
         `?input=${encodeURIComponent(text)}` +
@@ -435,7 +435,7 @@ export default function SendScreen() {
         <View style={[styles.topTitle, { backgroundColor: theme.surface }, Shadows.sm]}>
           <Text style={[styles.topTitleText, { color: theme.text }]}>{t('send.sendPackage')}</Text>
           <Text style={[styles.topStep, { color: theme.textSecond }]}>
-            {t('send.stepOf', { current: step + 1, total: STEPS.length })} — {t(`send.${STEP_KEYS[step]}`)}
+            {t('send.stepOf', { current: step + 1, total: STEPS.length })}: {t(`send.${STEP_KEYS[step]}`)}
           </Text>
         </View>
       </SafeAreaView>
@@ -462,7 +462,7 @@ export default function SendScreen() {
             </View>
           )}
 
-          {/* Per-step illustration + caption — the DHL pattern. Anchors
+          {/* Per-step illustration + caption: the DHL pattern. Anchors
               each step with a visual cue so the user knows what they're
               about to do before they read the form. Illustration auto-
               falls back to a branded placeholder until the SVG is
@@ -487,7 +487,7 @@ export default function SendScreen() {
             );
           })()}
 
-          {/* STEP 0 — Package */}
+          {/* STEP 0: Package */}
           {step === 0 && (
             <View style={styles.stepGap}>
               <Pressable
@@ -586,7 +586,7 @@ export default function SendScreen() {
             </View>
           )}
 
-          {/* STEP 1 — Address (inline autocomplete + map underneath) */}
+          {/* STEP 1: Address (inline autocomplete + map underneath) */}
           {step === 1 && (
             <View style={styles.stepGap}>
               <View style={[styles.inputBlock, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
@@ -676,8 +676,8 @@ export default function SendScreen() {
                 </Pressable>
               )}
 
-              {/* When? — merged from old Step 4 so address + timing live
-                  together. Always visible on Step 2 — scroll to reach it
+              {/* When?: merged from old Step 4 so address + timing live
+                  together. Always visible on Step 2: scroll to reach it
                   if the suggestions list is open above. */}
               <>
                 <Text style={[styles.label, { color: theme.textSecond, marginTop: Spacing.md }]}>{t('send.whenLabel')}</Text>
@@ -767,7 +767,7 @@ export default function SendScreen() {
             </View>
           )}
 
-          {/* STEP 2 — Vehicle */}
+          {/* STEP 2: Vehicle */}
           {step === 2 && (
             <View style={styles.stepGap}>
               <Text style={[styles.hintText, { color: theme.textSecond }]}>
@@ -808,7 +808,7 @@ export default function SendScreen() {
             </View>
           )}
 
-          {/* STEP 3 — Fare */}
+          {/* STEP 3: Fare */}
           {step === 3 && (
             <View style={styles.stepGap}>
               <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
@@ -820,7 +820,7 @@ export default function SendScreen() {
                   [t('send.weightSurcharge'),                                fare.weight           ],
                   [t('send.handlingFee'),                                    fare.handling         ],
                   [t('send.categorySurcharge'),                              fare.categorySurcharge],
-                  [t('send.timeSurcharge', { labels: fare.timeLabels.join(', ') || '—' }),
+                  [t('send.timeSurcharge', { labels: fare.timeLabels.join(', ') || '-' }),
                                                                               fare.timeSurcharge   ],
                   [t('send.zoneSurcharge'),                                  fare.zoneSurcharge    ],
                   [t('send.overnightFee'),                                   fare.zoneFlat         ],
@@ -891,23 +891,23 @@ export default function SendScreen() {
             </View>
           )}
 
-          {/* STEP 4 — Confirm */}
+          {/* STEP 4: Confirm */}
           {step === 4 && (
             <View style={styles.stepGap}>
               <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                 <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.orderSummary')}</Text>
                 {([
-                  [t('send.pickup'),         pickup?.address  ?? '—'],
-                  [t('send.dropoff'),        dropoff?.address ?? '—'],
+                  [t('send.pickup'),         pickup?.address  ?? '-'],
+                  [t('send.dropoff'),        dropoff?.address ?? '-'],
                   [t('send.summaryDistance'), distanceText ?? `${distKmRoute} km`],
                   [t('send.category'),       t(`send.${PACKAGE_CATEGORIES.find(c => c.id === category)?.labelKey ?? 'category'}`)],
-                  [t('send.vehicle2'),       (() => { const v = VEHICLES.find(v => v.id === vehicleId); return v ? t(`send.${v.labelKey}`) : '—'; })()],
+                  [t('send.vehicle2'),       (() => { const v = VEHICLES.find(v => v.id === vehicleId); return v ? t(`send.${v.labelKey}`) : '-'; })()],
                   [t('send.summaryWhen'),    scheduleNow
                                                ? t('send.summarySendNow')
                                                : (scheduledHour != null
                                                    ? buildScheduledFor(scheduledDate, scheduledHour).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-                                                   : '—')],
-                  [t('send.payment'),        (() => { const p = PAYMENT_METHODS.find(p => p.id === paymentId); return p ? t(`send.${p.labelKey}`) : '—'; })()],
+                                                   : '-')],
+                  [t('send.payment'),        (() => { const p = PAYMENT_METHODS.find(p => p.id === paymentId); return p ? t(`send.${p.labelKey}`) : '-'; })()],
                   [t('send.total'),          `₦${fare.total.toLocaleString()}`],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
@@ -919,7 +919,7 @@ export default function SendScreen() {
             </View>
           )}
 
-          {/* CTA — back inside the scroll, at the bottom of step content. */}
+          {/* CTA: back inside the scroll, at the bottom of step content. */}
           <Pressable
             style={[styles.cta, { backgroundColor: theme.primary, marginTop: Spacing.lg }, loading && { opacity: 0.7 }]}
             onPress={step < 4 ? next : handleBook}

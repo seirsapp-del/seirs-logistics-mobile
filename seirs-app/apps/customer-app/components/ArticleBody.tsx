@@ -17,7 +17,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
  *   "![caption](url)"     → inline image (caption optional, can be "")
  *   anything else         → paragraph
  *
- * The parser is intentionally tiny — easy to extend by adding another
+ * The parser is intentionally tiny: easy to extend by adding another
  * prefix case here. This keeps article authoring readable in i18n files
  * (no JSX, no JSON nesting) and gives translators a familiar mental
  * model (markdown).

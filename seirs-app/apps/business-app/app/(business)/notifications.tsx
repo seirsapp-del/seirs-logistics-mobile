@@ -9,7 +9,7 @@
  */
 import {
   View, Text, Pressable, StyleSheet, FlatList, StatusBar,
-  RefreshControl, ActivityIndicator,
+  RefreshControl, ActivityIndicator, Alert,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -101,6 +101,27 @@ export default function BusinessNotificationsScreen() {
     try { await notificationsApi.remove(id); } catch {}
   };
 
+  const clearAll = () => {
+    Alert.alert('Clear notifications', 'Which ones should go?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Clear read only',
+        onPress: async () => {
+          setNotifs(prev => prev.filter(n => !n.read));
+          try { await notificationsApi.removeAll(true); } catch {}
+        },
+      },
+      {
+        text: 'Clear everything',
+        style: 'destructive',
+        onPress: async () => {
+          setNotifs([]);
+          try { await notificationsApi.removeAll(false); } catch {}
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -110,13 +131,18 @@ export default function BusinessNotificationsScreen() {
           <Icon name="ArrowLeft" size={20} color={theme.text} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Notifications</Text>
-        {unreadCount > 0 ? (
-          <Pressable onPress={markAllRead} hitSlop={8}>
-            <Text style={[styles.markAll, { color: theme.primary }]}>Mark all read</Text>
-          </Pressable>
-        ) : (
-          <View style={{ width: 86 }} />
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          {unreadCount > 0 && (
+            <Pressable onPress={markAllRead} hitSlop={8}>
+              <Text style={[styles.markAll, { color: theme.primary }]}>Mark all read</Text>
+            </Pressable>
+          )}
+          {notifs.length > 0 && (
+            <Pressable onPress={clearAll} hitSlop={8} accessibilityLabel="Clear notifications">
+              <Icon name="Trash2" size={18} color={theme.textSecond} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {loading ? (

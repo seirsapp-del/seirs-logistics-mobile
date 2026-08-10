@@ -1,5 +1,5 @@
 /**
- * New support ticket — premium redesign.
+ * New support ticket: premium redesign.
  *
  * Pattern borrowed from Intercom / Stripe Support Center:
  *   - Warm personalised greeting header (uses first name)
@@ -158,7 +158,7 @@ export default function NewSupportTicketScreen() {
                       : 'Support is closed right now · hours 6am–10pm WAT'}
                   </Text>
                 </View>
-                {/* Team avatars strip — social proof + humanises the queue */}
+                {/* Team avatars strip: social proof + humanises the queue */}
                 <View style={styles.teamRow}>
                   <View style={styles.avatarStack}>
                     <View style={styles.avatarOverlap}><Avatar name="Adaobi Nwosu"     size={28} /></View>

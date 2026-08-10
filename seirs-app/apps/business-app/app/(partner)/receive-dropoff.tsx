@@ -11,7 +11,7 @@ import { Icon } from '@/components/Icon';
 import { partnerApi, uploadApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
-// Spec V8 §3 / §4.7 — partner staff scans incoming sender drop-off,
+// Spec V8 §3 / §4.7: partner staff scans incoming sender drop-off,
 // confirms details + photo + sender OTP, transitions to RECEIVED_AT_STORE.
 // Three steps: SCAN → DETAILS → CONFIRM.
 
@@ -88,7 +88,7 @@ export default function ReceiveDropoffScreen() {
     await lookupCode(manualCode.trim().toUpperCase());
   };
 
-  // ── Details — weight + photo ─────────────────────────────────────────────
+  // ── Details: weight + photo ─────────────────────────────────────────────
 
   const pickPhoto = async () => {
     Alert.alert('Package photo', 'How would you like to capture the package?', [
@@ -128,7 +128,7 @@ export default function ReceiveDropoffScreen() {
     }
   };
 
-  // ── Confirm — sender OTP, finalize ───────────────────────────────────────
+  // ── Confirm: sender OTP, finalize ───────────────────────────────────────
 
   const submitFinal = async () => {
     if (!senderOtp.trim()) { Alert.alert('Sender OTP required', 'Ask sender to read the 6-digit code from their email.'); return; }

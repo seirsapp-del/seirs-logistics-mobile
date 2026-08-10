@@ -3,7 +3,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 
 /**
- * Top-level driver Stack — owns the back history.
+ * Top-level driver Stack: owns the back history.
  *
  *   (driver)/
  *     _layout.tsx       <- Stack (this file)

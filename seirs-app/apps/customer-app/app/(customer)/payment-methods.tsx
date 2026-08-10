@@ -13,12 +13,12 @@ import { paymentsApi, type SavedCard } from '@/services/api';
 import { Illustration } from '@/components/Illustration';
 
 /**
- * Payment Methods — lists Flutterwave-tokenized cards saved during prior
+ * Payment Methods: lists Flutterwave-tokenized cards saved during prior
  * checkouts. Cards are saved via the "Save this card for next time" toggle
  * on the checkout screen, NOT via a separate "Add Card" flow (cleaner UX,
  * matches Amazon's pattern, doesn't waste Flutterwave fees on micro-charges).
  *
- * Per docs/payments-spec.md §⑤ — SEIRS does NOT hold customer money. Each
+ * Per docs/payments-spec.md §⑤: SEIRS does NOT hold customer money. Each
  * delivery is a one-shot Flutterwave charge against the chosen saved card.
  */
 export default function PaymentMethodsScreen() {

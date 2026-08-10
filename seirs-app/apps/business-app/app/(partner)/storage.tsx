@@ -10,7 +10,7 @@ import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 
-// Spec V8 §4.10 — partner sees overstayed packages with accruing storage
+// Spec V8 §4.10: partner sees overstayed packages with accruing storage
 // fees. Packages enter the list once they cross 24hr in-store. Tier_1
 // (24-48h) and tier_2 (48-72h) accrue ₦200/day; >=72h triggers return
 // and a ₦500 fee. Both numbers come from the live Fee Catalogue and
@@ -140,7 +140,7 @@ export default function PartnerStorageScreen() {
           <Icon name="Clock" size={32} color={colors.textThird} />
           <Text style={[styles.emptyText, { color: colors.textSecond }]}>
             {tab === 'all'
-              ? 'No overstayed packages right now — everything is within the 24h free window.'
+              ? 'No overstayed packages right now: everything is within the 24h free window.'
               : 'No packages in this tier.'}
           </Text>
         </View>
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   backBtn:    { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   title:      { fontSize: 18, fontWeight: '700' },
 
-  // Brand-navy summary card — high-contrast feature card stays constant
+  // Brand-navy summary card: high-contrast feature card stays constant
   summary:    { backgroundColor: '#0F2B4C', borderRadius: 16, padding: 20 },
   summaryLabel:{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
   summaryAmount:{ color: '#fff', fontSize: 28, fontWeight: '800', marginTop: 6 },

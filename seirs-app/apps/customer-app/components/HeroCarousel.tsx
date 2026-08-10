@@ -9,21 +9,21 @@ import { HeroCardImage } from './HeroCardImage';
 import { HERO_CARDS, type HeroCard } from '@/constants/heroCards';
 
 /**
- * Horizontal swipeable card stack — the Joyn / Netflix "featured cards"
+ * Horizontal swipeable card stack: the Joyn / Netflix "featured cards"
  * pattern. Card 1 is the animated SEIRS okada hero (brand anchor); the
  * rest come from the HERO_CARDS constant in @/constants/heroCards.ts.
  *
  *   - Swipe left/right to page through
  *   - Auto-advances every 5 seconds
  *   - Pauses for 8 seconds when the user touches it
- *   - SEAMLESS infinite loop — when the auto-advance passes the last
+ *   - SEAMLESS infinite loop: when the auto-advance passes the last
  *     real card, it slides to a clone of card 1 placed at the end, then
  *     silently snaps back to the real card 1 (no visible backward
  *     scroll across all cards)
  *   - Dot indicator below shows current position (clone counts as card 1)
  *   - Tapping a card opens its article at /article/[id]
  *
- * PHASE-2 SWAP POINT — when the admin "Hero Cards" CMS lands, replace
+ * PHASE-2 SWAP POINT: when the admin "Hero Cards" CMS lands, replace
  * the `HERO_CARDS` constant with `useHeroCardsFromBackend()` (fetch +
  * cache via the same pattern as use-rate-card.ts). No other component
  * change required.
@@ -57,7 +57,7 @@ export function HeroCarousel() {
   const [paused, setPaused] = useState(false);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-advance — uses displayedIndex (can hit the clone), then the
+  // Auto-advance: uses displayedIndex (can hit the clone), then the
   // momentum-end handler silently jumps back to real 0 if needed.
   useEffect(() => {
     if (paused) return;
@@ -68,7 +68,7 @@ export function HeroCarousel() {
       if (next > REAL_COUNT) return;
       try {
         listRef.current?.scrollToIndex({ index: next, animated: true });
-      } catch { /* FlatList not ready on first mount — will retry next tick */ }
+      } catch { /* FlatList not ready on first mount: will retry next tick */ }
     }, AUTO_ADVANCE_MS);
     return () => clearInterval(interval);
   }, [displayedIndex, paused, REAL_COUNT]);
@@ -79,7 +79,7 @@ export function HeroCarousel() {
 
     if (i === REAL_COUNT) {
       // We've landed on the clone of card 1. Silently jump to real index
-      // 0 — the user sees the same card, no flicker, and the next
+      // 0: the user sees the same card, no flicker, and the next
       // auto-advance picks up from index 0 → 1, looping cleanly.
       listRef.current?.scrollToOffset({ offset: 0, animated: false });
       setDisplayedIndex(0);
@@ -151,7 +151,7 @@ export function HeroCarousel() {
         })}
       />
 
-      {/* Dot indicators — based on activeIndex (clone never lights up).
+      {/* Dot indicators: based on activeIndex (clone never lights up).
           Active dot is wider (pill) for modern feel. */}
       <View style={styles.dotsRow}>
         {HERO_CARDS.map((_, i) => {

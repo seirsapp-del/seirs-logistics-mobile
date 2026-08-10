@@ -11,7 +11,7 @@ import { Icon } from '@/components/Icon';
 import { partnerApi, identityApi, uploadApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
-// Spec V8 §3 / §4.8 — partner staff releases a package to the recipient
+// Spec V8 §3 / §4.8: partner staff releases a package to the recipient
 // after identity verification. Two methods supported per Spec V8 §1.17:
 //   - PHYSICAL_ID + email OTP (primary path for recipients with ID)
 //   - SEIRS_ID + typed-name signature (backup for recipients without ID)
@@ -122,7 +122,7 @@ export default function ReleasePickupScreen() {
         `A 6-digit code has been emailed to ${dropoff.recipientName}. It expires in ${res.expiresInMinutes} minutes.`,
       );
     } catch (e: any) {
-      setError(e.message ?? 'Could not send OTP — try again in a moment.');
+      setError(e.message ?? 'Could not send OTP: try again in a moment.');
     } finally {
       setLoading(false);
     }
@@ -314,7 +314,7 @@ export default function ReleasePickupScreen() {
     );
   }
 
-  // METHOD step — choose verification path
+  // METHOD step: choose verification path
   if (step === 'method' && dropoff) {
     return (
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={[styles.formContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}>
@@ -337,7 +337,7 @@ export default function ReleasePickupScreen() {
           {dropoff.declaredValueNgn >= 50000 && (
             <View style={styles.warnBadge}>
               <Icon name="AlertCircle" size={14} color="#92400E" />
-              <Text style={styles.warnText}>High-value package — ID photo required at handoff</Text>
+              <Text style={styles.warnText}>High-value package: ID photo required at handoff</Text>
             </View>
           )}
         </View>
@@ -379,7 +379,7 @@ export default function ReleasePickupScreen() {
     );
   }
 
-  // VERIFY step — method-specific fields + photo + submit
+  // VERIFY step: method-specific fields + photo + submit
   if (step === 'verify' && dropoff) {
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -430,7 +430,7 @@ export default function ReleasePickupScreen() {
                 </Pressable>
               ) : (
                 <>
-                  <Text style={styles.helperText}>Code emailed — expires in {otpExpiryMin} minutes.</Text>
+                  <Text style={styles.helperText}>Code emailed: expires in {otpExpiryMin} minutes.</Text>
                   <TextInput
                     keyboardType="number-pad"
                     value={otp}
@@ -515,7 +515,7 @@ const CORNER_SIZE = 24;
 const CORNER_THICK = 3;
 
 // Note: this screen uses the same minimum-viable dark-mode approach as
-// receive-dropoff — outer backgrounds + ArrowLeft icon + placeholders
+// receive-dropoff: outer backgrounds + ArrowLeft icon + placeholders
 // flip to theme colors via inline overrides; structural styles below
 // keep neutral. Card text/borders retain light tones which still read
 // acceptably on the dark background. Full per-element theming can come

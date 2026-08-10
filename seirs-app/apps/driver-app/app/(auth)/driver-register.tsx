@@ -64,7 +64,7 @@ export default function DriverRegisterScreen() {
       return;
     }
     if (!NIGERIAN_PHONE_RE.test(normalisePhone(phone))) {
-      setError('Enter a valid Nigerian mobile number (e.g. 08012345678 — 11 digits; +234 prefix also accepted).');
+      setError('Enter a valid Nigerian mobile number (e.g. 08012345678: 11 digits; +234 prefix also accepted).');
       return;
     }
     const pwErr = validatePassword(password);

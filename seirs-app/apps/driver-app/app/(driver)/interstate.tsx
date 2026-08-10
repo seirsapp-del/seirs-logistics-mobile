@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 
-// Spec V8 §2.18 — driver declares an upcoming intercity trip
+// Spec V8 §2.18: driver declares an upcoming intercity trip
 // (Lagos → Ibadan, etc.). System surfaces matching packages along
 // that corridor. Customer chose at booking whether to drop at
 // destination address or destination partner store.

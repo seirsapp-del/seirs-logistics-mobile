@@ -40,7 +40,7 @@ export default function ReportScreen() {
     setLoading(true);
     try {
       await ticketsApi.create({
-        subject:     cat.label + (tripId ? ` — trip ${String(tripId).toUpperCase()}` : ''),
+        subject:     cat.label + (tripId ? `: trip ${String(tripId).toUpperCase()}` : ''),
         description: detail.trim() || cat.desc,
         category,
         tripId:      tripId ?? undefined,
@@ -62,7 +62,7 @@ export default function ReportScreen() {
           </View>
           <Text style={[styles.successTitle, { color: theme.text }]}>{t('report.submitted')}</Text>
           <Text style={[styles.successDesc, { color: theme.textSecond }]}>
-            {t('report.submittedMsg', { ref: tripId ?? '—' })}
+            {t('report.submittedMsg', { ref: tripId ?? '-' })}
           </Text>
           <Button label={t('tabs.home')} onPress={() => router.replace('/(customer)/(tabs)' as any)} fullWidth />
         </View>

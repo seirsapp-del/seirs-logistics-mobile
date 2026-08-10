@@ -10,7 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 
-// Spec V8 §2.11 — driver wind-down toggle. When enabled, the matching
+// Spec V8 §2.11: driver wind-down toggle. When enabled, the matching
 // service stops auto-assigning new jobs while the driver finishes the
 // ones already accepted. Gating: only enable if today's acceptance
 // rate ≥ 80% so drivers can't game it to skip undesirable orders.
@@ -75,7 +75,7 @@ export default function LastOrderScreen() {
         ],
       );
     } else {
-      // No-op — Spec V8 says one-way until full sign-off
+      // No-op: Spec V8 says one-way until full sign-off
       Alert.alert('Already winding down', 'You can\'t re-enable jobs without fully signing off first.');
     }
   };
@@ -135,7 +135,7 @@ export default function LastOrderScreen() {
                   <Text style={[styles.cardValue, { color: theme.text }]}>{activeJobs}</Text>
                   <Text style={[styles.cardSub, { color: theme.textSecond }]}>
                     {activeJobs === 0
-                      ? 'No active jobs — you can sign off normally.'
+                      ? 'No active jobs: you can sign off normally.'
                       : `Complete these ${activeJobs} before fully signing off.`}
                   </Text>
                 </View>
@@ -154,7 +154,7 @@ export default function LastOrderScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardLabel, { color: theme.textSecond }]}>TODAY&apos;S ACCEPTANCE RATE</Text>
                   <Text style={[styles.cardValue, { color: meetsThreshold ? '#16A34A' : '#DC2626' }]}>
-                    {acceptanceRate != null ? `${acceptanceRate}%` : '—'}
+                    {acceptanceRate != null ? `${acceptanceRate}%` : '-'}
                   </Text>
                   <Text style={[styles.cardSub, { color: theme.textSecond }]}>
                     Last Order requires ≥80%. This stops drivers from gaming the toggle to skip undesirable orders.
@@ -168,7 +168,7 @@ export default function LastOrderScreen() {
               <Text style={[styles.howTitle, { color: theme.text }]}>What happens when you wind down</Text>
               {[
                 'Dispatcher stops sending you new job offers',
-                'Active jobs continue normally — complete them at your pace',
+                'Active jobs continue normally: complete them at your pace',
                 'You can\'t re-enable jobs without fully signing off (one-way toggle)',
                 'Re-enabling within 30 minutes counts against next-day priority',
               ].map(t => (

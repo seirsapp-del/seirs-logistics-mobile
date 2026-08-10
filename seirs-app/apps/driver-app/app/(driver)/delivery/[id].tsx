@@ -1,5 +1,5 @@
 /**
- * Driver · Active Trip — single-stop OR multi-stop view.
+ * Driver · Active Trip: single-stop OR multi-stop view.
  *
  * Fetches the real Delivery (with stops eager-loaded) from the backend.
  * If `isMultiStop`, renders an ordered checklist with per-stop Arrived /
@@ -122,7 +122,7 @@ export default function DeliveryDetailScreen() {
     try {
       // TODO Phase 5b: tie into proof-of-delivery photo + signature
       // (existing upload flow in receive-dropoff.tsx). For now we ship
-      // the action without proof — backend accepts null.
+      // the action without proof: backend accepts null.
       await driversApi.markStopDelivered(delivery.id, stop.id);
       await load();
     } catch (e: any) {
@@ -332,7 +332,7 @@ export default function DeliveryDetailScreen() {
           })
         ) : delivery.dropoffAddress ? (
           // Legacy single-leg fallback for old bookings created before the
-          // multi-stop refactor — show dropoff as a single card.
+          // multi-stop refactor: show dropoff as a single card.
           <View style={[styles.locationCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <View style={styles.locationHeader}>
               <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />

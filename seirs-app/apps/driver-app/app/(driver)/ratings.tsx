@@ -14,7 +14,7 @@ import { driversApi } from '@/services/api';
 const RATING_THRESHOLD = 3.5;
 
 const TIPS = [
-  'Arrive on time — punctuality boosts your score most',
+  'Arrive on time: punctuality boosts your score most',
   'Handle packages carefully and with both hands',
   'Be polite, professional, and greet customers warmly',
   'Keep your vehicle clean inside and out',
@@ -78,7 +78,7 @@ export default function DriverRatingsScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Warning banner — shown below 3.5 */}
+        {/* Warning banner: shown below 3.5 */}
         {belowThreshold && (
           <View style={[styles.warnBanner, { backgroundColor: '#EF444415', borderColor: '#EF444440' }]}>
             <AlertTriangle size={20} color="#EF4444" strokeWidth={1.75} />
@@ -98,7 +98,7 @@ export default function DriverRatingsScreen() {
           borderColor: belowThreshold ? '#EF444430' : '#FFBE0B30',
         }]}>
           <Text style={[styles.heroScore, { color: belowThreshold ? '#EF4444' : theme.text }]}>
-            {total > 0 ? average.toFixed(1) : '—'}
+            {total > 0 ? average.toFixed(1) : '-'}
           </Text>
           <View style={styles.heroStars}>
             {[1, 2, 3, 4, 5].map(s => (

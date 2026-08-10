@@ -9,7 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 
-// Spec V8 §1.17 — driver presents this screen at handoff so the partner
+// Spec V8 §1.17: driver presents this screen at handoff so the partner
 // staff or recipient can scan the QR (or read the alphanumeric backup
 // code aloud) to verify identity. Doubles as the SEIRS Verified ID
 // fallback when the user has no physical ID.
@@ -95,7 +95,7 @@ export default function SeirsIdScreen() {
           {[
             { step: '1', text: 'Partner staff scans the QR (or types the code) at pickup.' },
             { step: '2', text: 'They see your registered name on their screen.' },
-            { step: '3', text: 'Say your full name — they type it to confirm a match.' },
+            { step: '3', text: 'Say your full name: they type it to confirm a match.' },
             { step: '4', text: 'The handoff is recorded in your delivery audit trail.' },
           ].map(s => (
             <View key={s.step} style={styles.howRow}>
@@ -111,7 +111,7 @@ export default function SeirsIdScreen() {
           style={[styles.alert, { backgroundColor: '#FEF9C3', borderColor: '#FDE68A' }]}
           onPress={() => Alert.alert(
             'Keep this code safe',
-            'Anyone with your SEIRS ID + your full name could verify a handoff in your name. Treat it like a debit-card PIN — only show it at the moment of pickup.',
+            'Anyone with your SEIRS ID + your full name could verify a handoff in your name. Treat it like a debit-card PIN: only show it at the moment of pickup.',
           )}
         >
           <View style={styles.alertRow}>

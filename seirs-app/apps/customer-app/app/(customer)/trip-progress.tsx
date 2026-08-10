@@ -77,7 +77,7 @@ export default function TripProgressScreen() {
       .catch(() => {});
   }, [trip.id, trackingCode]);
 
-  // Wait-fee tracker — driver arrives at pickup (currentStep === 1) and the
+  // Wait-fee tracker: driver arrives at pickup (currentStep === 1) and the
   // meter starts. First `freeMinutes` are free per rate card; after that
   // the sender pays `perMinuteNgn` per minute up to `capMinutes`. Reads
   // the LIVE rate card so admin price changes propagate without redeploy.
@@ -87,7 +87,7 @@ export default function TripProgressScreen() {
   const rateCard         = getActiveRateCard();
   const currentWaitFee   = dwellFee(rateCard, waitMinutes);
 
-  // Live driver position from WS — seeds to the pickup so the car icon
+  // Live driver position from WS: seeds to the pickup so the car icon
   // doesn't sit at (0,0) before the first ping arrives. No Lagos
   // fallback; if pickup is missing the marker simply renders at (0,0)
   // until the first WS ping (an obvious bug signal in dev).
@@ -116,7 +116,7 @@ export default function TripProgressScreen() {
     ).start();
     // Auto-progress timers exist only in dev so the screen demos without a
     // running driver app. In prod the WS `delivery:status` event below is
-    // the single source of truth — customers should never see a fake
+    // the single source of truth: customers should never see a fake
     // "delivered" badge while the driver hasn't moved.
     const timers: ReturnType<typeof setTimeout>[] = [];
     if (__DEV__ && !hasParams) {
@@ -130,7 +130,7 @@ export default function TripProgressScreen() {
 
   // Wait-fee timer: starts when driver arrives at pickup (step 1),
   // stops when they leave with the package (step 2+). Cap enforced by
-  // rate card — after capMinutes the meter freezes.
+  // rate card: after capMinutes the meter freezes.
   useEffect(() => {
     if (currentStep === 1 && !waitTimerRef.current) {
       waitArrivedAtRef.current = Date.now();
@@ -138,7 +138,7 @@ export default function TripProgressScreen() {
         const since = waitArrivedAtRef.current ?? Date.now();
         const mins  = Math.floor((Date.now() - since) / 60_000);
         setWaitMinutes(Math.min(mins, rateCard.dwell.capMinutes));
-      }, 10_000);   // poll every 10 s — minute-accurate without burning battery
+      }, 10_000);   // poll every 10 s: minute-accurate without burning battery
     }
     if (currentStep > 1 && waitTimerRef.current) {
       clearInterval(waitTimerRef.current);
@@ -189,7 +189,7 @@ export default function TripProgressScreen() {
     router.push({ pathname: '/(customer)/rate/[driverId]', params: { driverId: driver.id } });
   };
 
-  // Cancellation tier — escalates with trip stage so the customer pays
+  // Cancellation tier: escalates with trip stage so the customer pays
   // more the further along the booking is. Values come from the live
   // rate card so admin can tune without a deploy. currentStep:
   //   0 = assigned, pre-pickup → postAssign fee
@@ -322,7 +322,7 @@ export default function TripProgressScreen() {
             : t('tripProgress2.arrived')}
         </Text>
 
-        {/* ETA — driver ETA from simulator + real route distance from Directions API */}
+        {/* ETA: driver ETA from simulator + real route distance from Directions API */}
         <View style={styles.etaRow}>
           <View style={[styles.etaBadge, { backgroundColor: isDark ? theme.surfaceSecond : '#EFF6FF' }]}>
             <Ionicons name="time-outline" size={16} color={theme.primary} />
@@ -340,7 +340,7 @@ export default function TripProgressScreen() {
           )}
         </View>
 
-        {/* Wait-fee chip — visible only while driver is parked at pickup. */}
+        {/* Wait-fee chip: visible only while driver is parked at pickup. */}
         {currentStep === 1 && waitMinutes > 0 && (
           <View style={[styles.etaRow, { marginTop: Spacing.xs }]}>
             <View style={[styles.etaBadge, { backgroundColor: currentWaitFee > 0 ? '#FEE2E2' : (isDark ? '#1A1A1A' : '#F3F4F6') }]}>
@@ -377,7 +377,7 @@ export default function TripProgressScreen() {
             >
               <Ionicons name="chatbubble-outline" size={18} color="#2EC4B6" />
             </Pressable>
-            {/* Phone calls disabled per spec §1.12 — chat only */}
+            {/* Phone calls disabled per spec §1.12: chat only */}
           </View>
         </View>
 
@@ -437,7 +437,7 @@ export default function TripProgressScreen() {
           </Pressable>
         )}
 
-        {/* Cancel link — pre-/mid-route only. Once in_transit (step 2+)
+        {/* Cancel link: pre-/mid-route only. Once in_transit (step 2+)
             the trip is already moving so we don't expose a cancel path. */}
         {canCancel && (
           <Pressable onPress={handleCancel} style={styles.cancelLink}>

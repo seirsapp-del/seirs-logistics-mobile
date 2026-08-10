@@ -9,11 +9,11 @@ import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
-// Spec V8 §4.11 — partner sponsored-placement billing view. Live monthly
+// Spec V8 §4.11: partner sponsored-placement billing view. Live monthly
 // fee is read from the Fee Catalogue (admin-editable, propagates within
 // 60s) so the displayed price always matches what would actually be
 // charged. The actual subscribe/unsubscribe wire-up routes through
-// Flutterwave when the partner taps Activate — placeholder for now.
+// Flutterwave when the partner taps Activate: placeholder for now.
 
 const fmtNgn = (n: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
@@ -40,7 +40,7 @@ export default function PartnerBillingScreen() {
       setSponsorship(res?.sponsorship ?? null);
     } catch (e: any) {
       // Don't blow up if the partner store isn't fully provisioned;
-      // the screen still renders with a "—" price.
+      // the screen still renders with a "-" price.
       setMonthlyPrice(null);
       setSponsorship(null);
     } finally {
@@ -54,7 +54,7 @@ export default function PartnerBillingScreen() {
     if (next) {
       Alert.alert(
         'Activate Sponsored Placement',
-        `Your store will appear pinned at the top of the customer map.\n\nMonthly fee: ${monthlyPrice != null ? fmtNgn(monthlyPrice) : '—'}.\n\nFlutterwave recurring billing is being wired in Phase 2 payments — for now the invoice is recorded but no card is charged. Pause anytime, no contract.`,
+        `Your store will appear pinned at the top of the customer map.\n\nMonthly fee: ${monthlyPrice != null ? fmtNgn(monthlyPrice) : '-'}.\n\nFlutterwave recurring billing is being wired in Phase 2 payments: for now the invoice is recorded but no card is charged. Pause anytime, no contract.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Activate', onPress: async () => {
@@ -109,7 +109,7 @@ export default function PartnerBillingScreen() {
         </View>
         <Text style={styles.heroTitle}>Be the first store customers see</Text>
         <Text style={styles.heroSub}>
-          Sponsored stores appear pinned at the top of the customer map and in the drop-off picker — significantly more drop-offs and impressions per week.
+          Sponsored stores appear pinned at the top of the customer map and in the drop-off picker: significantly more drop-offs and impressions per week.
         </Text>
       </View>
 
@@ -178,7 +178,7 @@ export default function PartnerBillingScreen() {
           { icon: 'MapPin',     text: 'Top-pinned spot on customer map within your service area' },
           { icon: 'Search',     text: 'Featured first in store-picker results when customers schedule drop-offs' },
           { icon: 'BarChart3',  text: 'Live impression + click-through dashboard updated daily' },
-          { icon: 'CreditCard', text: 'Auto-billed monthly via Flutterwave — pause anytime, no contract' },
+          { icon: 'CreditCard', text: 'Auto-billed monthly via Flutterwave: pause anytime, no contract' },
         ].map(b => (
           <View key={b.text} style={styles.benefitRow}>
             <View style={[styles.benefitIcon, { backgroundColor: colors.accent + '18' }]}>

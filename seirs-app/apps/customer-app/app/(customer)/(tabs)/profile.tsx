@@ -1,4 +1,4 @@
-﻿import {
+import {
   View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Linking, Platform, Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -194,7 +194,7 @@ export default function ProfileScreen() {
 
           {/* Stats row. drivers get rated, customers don't. Tier replaces
               the old "Wallet ₦" cell because customers cannot hold NGN
-              (see [[feedback_wallet_is_rewards]]) — tier is the natural
+              (see [[feedback_wallet_is_rewards]]): tier is the natural
               at-a-glance value alongside Trips and Points.
               Falls back to '-' while real data loads. NEVER mock values. */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>

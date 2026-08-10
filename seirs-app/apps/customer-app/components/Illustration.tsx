@@ -11,15 +11,15 @@ import {
 /**
  * One slot, three render paths in priority order:
  *
- *   1. LOTTIE_REGISTRY[name]   — animated (use only when you want motion)
- *   2. CUSTOM_REGISTRY[name]   — hand-drawn SEIRS SVG (the default — see
+ *   1. LOTTIE_REGISTRY[name]  : animated (use only when you want motion)
+ *   2. CUSTOM_REGISTRY[name]  : hand-drawn SEIRS SVG (the default: see
  *                                components/illustrations/index.tsx)
- *   3. branded placeholder     — soft navy square with a lucide icon
+ *   3. branded placeholder    : soft navy square with a lucide icon
  *                                (last-resort fallback)
  *
  * Phase 1 ships ALL 8 slots with custom SEIRS SVGs (CUSTOM_REGISTRY).
  * To swap a slot for an animated Lottie, paste a lottiefiles URL into
- * LOTTIE_REGISTRY[<slot>] — it takes precedence.
+ * LOTTIE_REGISTRY[<slot>]: it takes precedence.
  *
  * USER INSTRUCTION FOR LOTTIE:
  *   On lottiefiles.com, find an animation you like, copy the "Lottie URL"
@@ -52,7 +52,7 @@ const CUSTOM_REGISTRY: Record<string, React.FC<{ size?: number }>> = {
   'empty-no-cards':      EmptyNoCardsSvg,
 };
 
-// Fallback lucide icon per slot — last-resort placeholder.
+// Fallback lucide icon per slot: last-resort placeholder.
 const FALLBACK_ICONS: Record<string, React.ComponentType<any>> = {
   'send-package':        Package,
   'send-address':        MapPin,
@@ -76,7 +76,7 @@ export function Illustration({ name, size = 140 }: IllustrationProps) {
   const theme = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
 
-  // 1) Lottie wins when set — animated.
+  // 1) Lottie wins when set: animated.
   const lottie = LOTTIE_REGISTRY[name];
   if (lottie) {
     const source: any = typeof lottie === 'string' ? { uri: lottie } : lottie;
@@ -93,7 +93,7 @@ export function Illustration({ name, size = 140 }: IllustrationProps) {
     );
   }
 
-  // 2) Hand-drawn SEIRS SVG — the default for Phase 1.
+  // 2) Hand-drawn SEIRS SVG: the default for Phase 1.
   const CustomSvg = CUSTOM_REGISTRY[name];
   if (CustomSvg) {
     return <CustomSvg size={size} />;

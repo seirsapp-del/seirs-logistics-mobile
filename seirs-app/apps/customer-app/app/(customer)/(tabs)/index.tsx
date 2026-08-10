@@ -52,11 +52,11 @@ export default function CustomerHomeScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab,     setActiveTab]     = useState<TripTab>('in_progress');
   const [drawerVisible, setDrawerVisible] = useState(false);
-  // Points (loyalty) replaces NGN balance on the home — customers don't
+  // Points (loyalty) replaces NGN balance on the home: customers don't
   // hold NGN per CBN rules. Rewards/Points are the value-on-account proxy.
   const [points,        setPoints]        = useState<number | null>(null);
 
-  // Floating action buttons (Send + Ride) — auto-hide on scroll-down,
+  // Floating action buttons (Send + Ride): auto-hide on scroll-down,
   // show on scroll-up. Each button expands its label briefly on press
   // for a satisfying tap-to-action animation.
   const fabTranslate = useRef(new Animated.Value(0)).current;
@@ -108,7 +108,7 @@ export default function CustomerHomeScreen() {
         id:             d.id,
         status:         String(d.status ?? 'pending').replace('picked_up', 'in_progress').replace('in_transit', 'in_progress'),
         date:           d.deliveredAt ?? d.createdAt ?? new Date().toISOString(),
-        dropoffAddress: d.dropoffAddress ?? '—',
+        dropoffAddress: d.dropoffAddress ?? '-',
         price:          Number(d.price ?? 0),
         distance:       d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '',
       }));
@@ -146,11 +146,11 @@ export default function CustomerHomeScreen() {
         scrollEventThrottle={16}
       >
 
-        {/* ── Top bar — hamburger + SEIRS lockup (no pill bg) + avatar ────
+        {/* ── Top bar: hamburger + SEIRS lockup (no pill bg) + avatar ────
             Logo replaces the greeting text. Same bold mark + wordmark
             as the drawer header; theme-coloured so it auto-flips
             navy/white between light + dark mode. Yellow package stays
-            constant — the brand signal. */}
+            constant: the brand signal. */}
         <View style={styles.topBar}>
           <Pressable
             style={[styles.menuBtn, { backgroundColor: theme.surface }, Shadows.xs]}
@@ -202,7 +202,7 @@ export default function CustomerHomeScreen() {
             5-card swipeable stack, auto-advance with pause-on-touch.
             Card 1 = animated SEIRS okada (brand anchor). Cards 2-5
             cycle through editable content (new outlets, weekly tips,
-            upcoming features, promos) — content lives in
+            upcoming features, promos): content lives in
             constants/heroCards.ts, swap to backend-driven once the
             admin Hero Cards CMS lands. */}
         <View style={styles.cardWrap}>
@@ -212,7 +212,7 @@ export default function CustomerHomeScreen() {
         {/* ── Secondary chips row ───────────────────────────────────────────
             Sits directly under the hero so the brand banner is followed by
             lightweight quick-access pills, then by the commitment tiles
-            below. Points chip first — leads with reward value, replaces
+            below. Points chip first: leads with reward value, replaces
             the old wallet pill. */}
         <ScrollView
           horizontal
@@ -373,7 +373,7 @@ export default function CustomerHomeScreen() {
       {/* ── Floating Action Buttons (Send + Ride) ──────────────────────────
           Bottom-right corner, two stacked compact pills. Icon-only at
           rest. On tap, each expands leftward to show its label briefly
-          while we navigate — satisfying tap feedback. The whole pair
+          while we navigate: satisfying tap feedback. The whole pair
           slides off-screen when the user scrolls DOWN through the recent
           trips, and slides back in on scroll-up. No full-width bar means
           the trip list is never blocked. */}
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   menuBtn:  { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   greeting: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, flex: 1, textAlign: 'center', marginHorizontal: Spacing.sm },
 
-  // Bare brand lockup in the top bar centre — same look as the drawer
+  // Bare brand lockup in the top bar centre: same look as the drawer
   // header (no pill background). flex:1 so it fills the gap between
   // hamburger and avatar; flexDirection row so mark + wordmark sit
   // side-by-side, centred horizontally.
@@ -471,13 +471,13 @@ const styles = StyleSheet.create({
   activeBannerTitle:{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   activeBannerSub:  { fontSize: FontSize.xs },
 
-  // Hero wrapper — full-bleed so the carousel can render each page at
+  // Hero wrapper: full-bleed so the carousel can render each page at
   // SCREEN_WIDTH (it handles its own internal 16 px gutter so cards
   // stay flush with the Rewards / chips / tiles below). Don't add
-  // marginHorizontal here — it'd clip the right edge of every card.
+  // marginHorizontal here: it'd clip the right edge of every card.
   cardWrap: { marginBottom: Spacing.md },
 
-  // Primary action tiles — Send + Ride.
+  // Primary action tiles: Send + Ride.
   actionRow:        { flexDirection: 'row', gap: Spacing.md, paddingHorizontal: Spacing.md, marginBottom: Spacing.md },
   actionTile:       { flex: 1, borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: 6, minHeight: 130 },
   actionIconWrap:   { width: 52, height: 52, borderRadius: Radius.lg, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
   emptyBtn:   { marginTop: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: 12, borderRadius: Radius.full },
   emptyBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 
-  // Floating Action Buttons (Send + Ride) — bottom-right corner.
+  // Floating Action Buttons (Send + Ride): bottom-right corner.
   fabPair: {
     position: 'absolute', right: 16, gap: 12,
   },

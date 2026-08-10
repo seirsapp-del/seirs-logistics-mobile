@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcRideFare, calcPackageFare, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 
-// UI presentation for the rate-card package vehicles — keyed by the
+// UI presentation for the rate-card package vehicles: keyed by the
 // canonical id calcPackageFare looks up. Keeping this here (not on the
 // rate-card) because icons/eta are UX concerns, not pricing concerns.
 const PACKAGE_UI: Record<string, { icon: string; eta: string; descKey: string; features: string[] }> = {
@@ -75,8 +75,8 @@ export default function VehicleSelectScreen() {
         shareable:   v.shareable,
       }))
     : PACKAGE_VEHICLES.map(v => {
-        const ui = PACKAGE_UI[v.id] ?? { icon: 'cube-outline', eta: '—', descKey: v.noteKey, features: [] };
-        // Cargo flow doesn't have a weight at this screen — the picker
+        const ui = PACKAGE_UI[v.id] ?? { icon: 'cube-outline', eta: '-', descKey: v.noteKey, features: [] };
+        // Cargo flow doesn't have a weight at this screen: the picker
         // shows base + km only. Final fare (with weight/category/COD)
         // resolves on fare-breakdown which reads them from the params
         // forwarded by /multi-stop or /send.
@@ -102,7 +102,7 @@ export default function VehicleSelectScreen() {
 
   // Okada at night is a known safety/legality concern in most Nigerian
   // cities (most major roads restrict it past 7-9pm and security risk
-  // climbs after dark). We warn instead of blocking — riders should be
+  // climbs after dark). We warn instead of blocking: riders should be
   // able to choose, but they should see the risk so they can swap to
   // Keke / Car for a few hundred naira more.
   const hr = new Date().getHours();
@@ -110,7 +110,7 @@ export default function VehicleSelectScreen() {
   const showOkadaNightWarning = isRide && selected === 'okada' && isNight;
 
   // Picking a non-shareable vehicle while share was toggled on would
-  // leave `shared` stuck true (toggle row hides, but state remains) —
+  // leave `shared` stuck true (toggle row hides, but state remains) -
   // confusing if the user later switches back to a shareable one and
   // sees the discount already applied. Reset on every selection change.
   const selectVehicle = (id: string) => {
@@ -201,7 +201,7 @@ export default function VehicleSelectScreen() {
               >
                 {/* Uber-style: vehicle-coloured tinted square, bigger filled
                     icon when selected, slightly subtler when not. Photos
-                    (v.photoUrl) take precedence when set — currently never. */}
+                    (v.photoUrl) take precedence when set: currently never. */}
                 <View style={[
                   styles.iconWrap,
                   {
@@ -252,7 +252,7 @@ export default function VehicleSelectScreen() {
             );
           })}
 
-          {/* Safety warning when Okada is chosen at night — see comment above. */}
+          {/* Safety warning when Okada is chosen at night: see comment above. */}
           {showOkadaNightWarning && (
             <View style={[styles.warnRow, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
               <Ionicons name="warning-outline" size={18} color="#92400E" />
@@ -260,7 +260,7 @@ export default function VehicleSelectScreen() {
             </View>
           )}
 
-          {/* Share-ride toggle — only shown for shareable vehicles (car/danfo). */}
+          {/* Share-ride toggle: only shown for shareable vehicles (car/danfo). */}
           {isRide && selectedShareable && (
             <Pressable
               onPress={() => setShared(s => !s)}

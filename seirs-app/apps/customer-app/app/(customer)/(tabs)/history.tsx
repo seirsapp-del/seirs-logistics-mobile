@@ -58,9 +58,9 @@ function toTrip(d: any): Trip {
     id:             d.id,
     status:         String(d.status ?? 'pending'),
     date:           d.deliveredAt ?? d.createdAt ?? new Date().toISOString(),
-    pickupAddress:  d.pickupAddress ?? '—',
-    dropoffAddress: d.dropoffAddress ?? '—',
-    distance:       d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '—',
+    pickupAddress:  d.pickupAddress ?? '-',
+    dropoffAddress: d.dropoffAddress ?? '-',
+    distance:       d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '-',
     price:          Number(d.price ?? 0),
     driver:         drv,
     rating:         d.customerRating ?? null,
@@ -210,7 +210,7 @@ export default function HistoryScreen() {
                   <Text style={[styles.driverName, { color: theme.textThird }]}>No driver</Text>
                 )}
                 <View style={styles.footerRight}>
-                  {trip.distance !== '—' && (
+                  {trip.distance !== '-' && (
                     <Text style={[styles.distText, { color: theme.textThird }]}>{trip.distance} · </Text>
                   )}
                   <Text style={[styles.priceText, { color: theme.primary }]}>₦{trip.price.toLocaleString()}</Text>

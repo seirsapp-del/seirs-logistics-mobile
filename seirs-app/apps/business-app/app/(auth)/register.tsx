@@ -1,16 +1,16 @@
 /**
- * Business Registration — single-step Sender signup.
+ * Business Registration: single-step Sender signup.
  *
  * 2026-05-11 hybrid-account redesign: removed the upfront "Sender vs Partner
  * Store" picker. Everyone signs up as a Business Sender (instant access,
  * canSend=true). Operating as a Partner Store is now an *additive* role
- * applied for via Settings → "Apply to be a Partner Store" — admin reviews
+ * applied for via Settings → "Apply to be a Partner Store": admin reviews
  * KYC docs, flips canPartner=true, and the user gets a context switcher
  * at the top of the app to swap between sending and partnering modes.
  *
  * This matches real Nigerian SME pattern: a shop owner can simultaneously
  * ship their own goods (Sender) AND accept SEIRS drop-offs from neighbours
- * (Partner Store) — under one account.
+ * (Partner Store): under one account.
  */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
@@ -56,7 +56,7 @@ export default function RegisterScreen() {
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   // Nigerian mobile numbers are 11 digits total: 0 + 2-digit network code + 8 digits.
-  // Accept the `+234` international prefix too — normalise to 0-prefixed before
+  // Accept the `+234` international prefix too: normalise to 0-prefixed before
   // testing. (Earlier regex only allowed \d{7} = 10 digits total, rejecting
   // every valid Nigerian number.)
   const normalisedPhone = form.phone.replace(/[\s-]/g, '').replace(/^\+234/, '0');
@@ -74,7 +74,7 @@ export default function RegisterScreen() {
     if (!form.email.trim())                      return 'Please enter your email address.';
     if (!form.email.includes('@'))               return 'Please enter a valid email address.';
     if (!form.phone.trim())                      return 'Please enter your phone number.';
-    if (!phoneValid)                             return 'Phone must be a Nigerian number starting with 080, 081, 070, 090, or 091 (11 digits total — e.g. 08012345678).';
+    if (!phoneValid)                             return 'Phone must be a Nigerian number starting with 080, 081, 070, 090, or 091 (11 digits total: e.g. 08012345678).';
     if (!form.companyName.trim())                return 'Please enter your company name.';
     if (!form.state)                              return 'Please pick your state.';
     if (!form.city.trim())                        return 'Please enter your city or LGA (e.g. Ikeja, Surulere, Lekki).';
@@ -140,7 +140,7 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}
-      // 'padding' on iOS, 'height' on Android — together they ensure the
+      // 'padding' on iOS, 'height' on Android: together they ensure the
       // ScrollView resizes above the keyboard so focused inputs aren't
       // hidden. Android also benefits from adjustResize in AndroidManifest
       // which Expo sets by default.
@@ -175,7 +175,7 @@ export default function RegisterScreen() {
           </View>
         )}
 
-        {/* Personal info — Nigerian users commonly have 3 names; first +
+        {/* Personal info: Nigerian users commonly have 3 names; first +
             optional middle + last keeps the form readable and respects
             naming conventions instead of forcing a single Full Name field. */}
         <Field label="First Name" value={form.firstName} onChangeText={(v) => set('firstName', v)}
@@ -194,7 +194,7 @@ export default function RegisterScreen() {
         <Field label="RC Number (optional)" value={form.rcNumber} onChangeText={(v) => set('rcNumber', v)}
           placeholder="RC-123456" />
 
-        {/* Structured address — state picker locks the canonical name so
+        {/* Structured address: state picker locks the canonical name so
             dispatch + zone pricing can filter reliably. City/LGA and the
             street remain free-text since exhaustive LGA lists are noisy. */}
         <StatePicker
@@ -204,7 +204,7 @@ export default function RegisterScreen() {
         />
         <Field label="City / LGA" value={form.city} onChangeText={(v) => set('city', v)}
           placeholder="e.g. Ikeja, Surulere, Lekki, Ikoyi" />
-        {/* Google Places autocomplete biased to the selected state — same
+        {/* Google Places autocomplete biased to the selected state: same
             engine as the customer-app Send/Request flow, so a user typing
             "15 adeola" while Lagos is selected sees real Lagos streets,
             not a free-text guess. */}
@@ -237,7 +237,7 @@ export default function RegisterScreen() {
           <Text style={styles.fieldError}>{passError}</Text>
         )}
 
-        {/* Confirm Password — mirror of the Password field with its own
+        {/* Confirm Password: mirror of the Password field with its own
             eye toggle so the user can verify what they typed if the two
             don't match. Without the toggle they're stuck guessing. */}
         <Text style={styles.label}>Confirm Password</Text>
@@ -266,7 +266,7 @@ export default function RegisterScreen() {
         {/* Terms + Privacy: the document names are tappable independently of
             the checkbox, so a user can read either doc on seirs.co before
             agreeing. The checkbox itself only toggles when the box (or the
-            non-link text) is tapped — tapping a link won't accidentally
+            non-link text) is tapped: tapping a link won't accidentally
             consent for them. */}
         <CheckRow
           value={termsOk}
@@ -287,7 +287,7 @@ export default function RegisterScreen() {
           }
         />
 
-        {/* Button is always tappable — if the form is incomplete, tapping
+        {/* Button is always tappable: if the form is incomplete, tapping
             shows the user exactly what's missing in the error box above.
             Better than a greyed-out button they can't diagnose. */}
         <Pressable
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   // Note: heading/text/label colors stay in StyleSheet for the light-mode
   // path that matches the user's preferred design. In dark mode the
   // outer KeyboardAvoidingView + ScrollView backgrounds flip via inline
-  // overrides at the use site, so the screen is at minimum readable —
+  // overrides at the use site, so the screen is at minimum readable -
   // a full per-element theming pass can come later if needed since
   // register is a one-shot screen seen only during signup.
   backBtn:    { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginLeft: -8 },

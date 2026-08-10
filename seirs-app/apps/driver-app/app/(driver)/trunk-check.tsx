@@ -11,7 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { uploadApi } from '@/services/api';
 
-// Spec V8 §2.16 — anti-theft trunk inventory check. Whenever a passenger
+// Spec V8 §2.16: anti-theft trunk inventory check. Whenever a passenger
 // or recipient exits the vehicle while there are still other packages
 // in the trunk (multi-cargo pool ride), the driver MUST take a quick
 // photo confirming everything else is still present. Photo URL is

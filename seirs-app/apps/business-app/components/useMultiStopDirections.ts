@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-// Same key as useDirectionsPolyline — Directions API + Places enabled in
+// Same key as useDirectionsPolyline: Directions API + Places enabled in
 // the same Google Cloud project.
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 
@@ -79,7 +79,7 @@ const EMPTY: MultiStopDirectionsResult = {
  * and Google reorders the intermediate stops to find the shortest route.
  * Caller can read `waypointOrder` to reorder its local stops array.
  *
- * Replaces useDirectionsPolyline in flows that support 2+ stops — that hook
+ * Replaces useDirectionsPolyline in flows that support 2+ stops: that hook
  * only knows about pickup → first-stop, so business-app's multi-stop new-
  * delivery would silently freeze the total km after the first stop got coords.
  */
@@ -96,7 +96,7 @@ export function useMultiStopDirections(
   const [result, setResult] = useState<MultiStopDirectionsResult>(EMPTY);
 
   // Stable cache key so the effect re-runs whenever any coord changes. Using
-  // JSON.stringify for the small stop array — cheaper than restructuring the
+  // JSON.stringify for the small stop array: cheaper than restructuring the
   // dependency list.
   const stopsKey = stops.map(s => `${s.latitude},${s.longitude}`).join('|');
 

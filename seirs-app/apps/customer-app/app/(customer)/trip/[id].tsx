@@ -77,16 +77,16 @@ export default function TripDetailsScreen() {
     );
   }
 
-  // Unified trip shape — maps raw API fields to what the UI below uses.
+  // Unified trip shape: maps raw API fields to what the UI below uses.
   const trip = {
     id:             raw.id,
     status:         String(raw.status ?? 'pending'),
     date:           raw.deliveredAt ?? raw.createdAt ?? new Date().toISOString(),
     trackingCode:   raw.trackingCode ?? raw.id,
-    pickupAddress:  raw.pickupAddress ?? '—',
-    dropoffAddress: raw.dropoffAddress ?? '—',
-    distance:       raw.distanceKm ? `${Number(raw.distanceKm).toFixed(1)} km` : '—',
-    duration:       raw.estimatedTotalMinutes ? `${raw.estimatedTotalMinutes} min` : '—',
+    pickupAddress:  raw.pickupAddress ?? '-',
+    dropoffAddress: raw.dropoffAddress ?? '-',
+    distance:       raw.distanceKm ? `${Number(raw.distanceKm).toFixed(1)} km` : '-',
+    duration:       raw.estimatedTotalMinutes ? `${raw.estimatedTotalMinutes} min` : '-',
     price:          Number(raw.price ?? 0),
     paymentMethod:  raw.paymentMethod ?? 'wallet',
     vehicleType:    raw.vehicleType ?? '',
@@ -212,7 +212,7 @@ export default function TripDetailsScreen() {
                     >
                       <Ionicons name="chatbubble-outline" size={18} color="#2EC4B6" />
                     </Pressable>
-                    {/* Phone calls disabled per spec §1.12 — chat only */}
+                    {/* Phone calls disabled per spec §1.12: chat only */}
                   </View>
                 )}
                 {isCompleted && trip.rating && (

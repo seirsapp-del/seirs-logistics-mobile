@@ -1,5 +1,5 @@
 /**
- * InlineAddressPicker — Google Places autocomplete that lives inline in a
+ * InlineAddressPicker: Google Places autocomplete that lives inline in a
  * form (no modal). For the bottom-sheet variant used in Request a Ride, the
  * autocomplete logic is duplicated locally in that screen so it can wire
  * into BottomSheetTextInput / BottomSheetScrollView.
@@ -50,7 +50,7 @@ export default function InlineAddressPicker({ label, dotColor, value, onSelect, 
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
-      // No country filter — autocomplete works globally and Google biases
+      // No country filter: autocomplete works globally and Google biases
       // results by the requesting IP region. Add `&location=lat,lng
       // &radius=50000` later if we want explicit Lagos bias.
       const url =

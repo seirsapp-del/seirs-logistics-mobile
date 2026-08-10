@@ -5,7 +5,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize } from '@/constants/theme';
 
 /**
- * Inner Tabs navigator — only the 5 bottom-bar screens.
+ * Inner Tabs navigator: only the 5 bottom-bar screens.
  * Detail screens (active, kyc, job/[id], delivery/[id], etc.) live at the
  * (driver) parent level inside a Stack so the Android back button works
  * naturally. Standard Expo Router "Tabs inside Stack" pattern.

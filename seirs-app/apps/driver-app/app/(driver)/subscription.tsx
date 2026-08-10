@@ -10,7 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 
-// Spec V8 §2.13 — Driver Premium (D35). Weekly flat fee in exchange
+// Spec V8 §2.13: Driver Premium (D35). Weekly flat fee in exchange
 // for priority matching + "Verified Pro" badge + (future) commission
 // swap. Charged from the SEIRS wallet on a 7-day rolling cycle.
 
@@ -27,7 +27,7 @@ const PERKS = [
   },
   {
     icon:  'wallet-outline',
-    title: 'Weekly billing — no surprises',
+    title: 'Weekly billing, no surprises',
     body:  'Cancel any time before the next charge. Skipped weeks are free.',
   },
 ];
@@ -63,7 +63,7 @@ export default function SubscriptionScreen() {
   const sub          = data?.subscription;
   const weeklyNgn    = data?.weeklyPriceNgn ?? 5000;
   const status       = sub?.status ?? 'none';
-  const statusMeta   = STATUS_LABEL[status] ?? { label: '—', color: theme.textSecond };
+  const statusMeta   = STATUS_LABEL[status] ?? { label: '-', color: theme.textSecond };
   const isOn         = status === 'active' || status === 'past_due';
 
   const handleActivate = async () => {
@@ -153,7 +153,7 @@ export default function SubscriptionScreen() {
             {sub.lastFailureReason && (
               <View style={[styles.warnRow, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
                 <Ionicons name="alert-circle-outline" size={14} color="#92400E" />
-                <Text style={[styles.warnText, { color: '#92400E' }]}>{sub.lastFailureReason} — top up your wallet to avoid pause.</Text>
+                <Text style={[styles.warnText, { color: '#92400E' }]}>{sub.lastFailureReason}: top up your wallet to avoid pause.</Text>
               </View>
             )}
             <Text style={[styles.statusMeta, { color: theme.textThird }]}>
@@ -187,7 +187,7 @@ export default function SubscriptionScreen() {
         {/* Fine print */}
         <View style={[styles.fineCard, { backgroundColor: theme.surfaceSecond }]}>
           <Text style={[styles.fineText, { color: theme.textSecond }]}>
-            Charged from your SEIRS wallet on a 7-day cycle. If your balance is short, we retry the next day for 3 days then auto-pause. Pause or cancel any time — you keep benefits until the current period ends.
+            Charged from your SEIRS wallet on a 7-day cycle. If your balance is short, we retry the next day for 3 days then auto-pause. Pause or cancel any time: you keep benefits until the current period ends.
           </Text>
         </View>
 
@@ -198,7 +198,7 @@ export default function SubscriptionScreen() {
             onPress={handleActivate}
             disabled={busy}
           >
-            <Text style={styles.primaryBtnText}>{busy ? 'Activating…' : `Activate — ₦${weeklyNgn.toLocaleString()}/week`}</Text>
+            <Text style={styles.primaryBtnText}>{busy ? 'Activating…' : `Activate: ₦${weeklyNgn.toLocaleString()}/week`}</Text>
           </Pressable>
         ) : (
           <Pressable

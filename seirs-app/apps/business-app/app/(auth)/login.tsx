@@ -26,7 +26,7 @@ export default function LoginScreen() {
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
 
-  // Login should not enforce password complexity — existing accounts may
+  // Login should not enforce password complexity: existing accounts may
   // pre-date the current policy. Just require non-empty.
   const canSubmit = email.trim() && password.length > 0 && !loading;
 
@@ -38,7 +38,7 @@ export default function LoginScreen() {
       await login({ ...user, token });
     } catch (e: any) {
       const msg: string = e.message ?? '';
-      // Account exists but email not verified — route to OTP screen with
+      // Account exists but email not verified: route to OTP screen with
       // email pre-filled so user can finish verification.
       if (msg.toLowerCase().includes('verify your email')) {
         router.push({ pathname: '/(auth)/verify-otp' as any, params: { email: email.trim().toLowerCase() } });
@@ -50,7 +50,7 @@ export default function LoginScreen() {
     }
   };
 
-  // Brand gradient — Navy → lighter Navy. These are the canonical brand stops.
+  // Brand gradient: Navy → lighter Navy. These are the canonical brand stops.
   const headerGradient: [string, string] = [Palette.navy800, Palette.navy700];
 
   return (

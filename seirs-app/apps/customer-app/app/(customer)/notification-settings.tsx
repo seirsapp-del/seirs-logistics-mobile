@@ -82,7 +82,7 @@ export default function NotificationSettingsScreen() {
     })();
   }, []);
 
-  // Debounced save — collapses bursts of toggles into one PATCH.
+  // Debounced save: collapses bursts of toggles into one PATCH.
   const queueSave = (next: Record<ToggleKey, boolean>) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {

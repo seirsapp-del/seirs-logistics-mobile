@@ -20,6 +20,7 @@ interface UseNotificationsReturn {
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
   dismiss: (id: string) => Promise<void>;
+  dismissAll: (onlyRead: boolean) => Promise<void>;
 }
 
 export function useNotifications(): UseNotificationsReturn {
@@ -65,7 +66,14 @@ export function useNotifications(): UseNotificationsReturn {
     await notificationsApi.remove(id).catch(() => {});
   }, []);
 
+  // Mass clear: read rows only, or everything.
+  const dismissAll = useCallback(async (onlyRead: boolean) => {
+    setNotifications(prev => (onlyRead ? prev.filter(n => !n.isRead) : []));
+    if (!onlyRead) setUnreadCount(0);
+    await notificationsApi.removeAll(onlyRead).catch(() => {});
+  }, []);
+
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { notifications, unreadCount, loading, refresh, markRead, markAllRead, dismiss };
+  return { notifications, unreadCount, loading, refresh, markRead, markAllRead, dismiss, dismissAll };
 }

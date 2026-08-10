@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-// Android Maps key — also has Directions + Places APIs enabled in the
+// Android Maps key: also has Directions + Places APIs enabled in the
 // Google Cloud project. (The previous key here returned REQUEST_DENIED.)
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 
@@ -11,7 +11,7 @@ export interface LatLng {
 
 /**
  * Decode a Google encoded polyline string into an array of {latitude, longitude}.
- * Standard algorithm — see https://developers.google.com/maps/documentation/utilities/polylinealgorithm
+ * Standard algorithm: see https://developers.google.com/maps/documentation/utilities/polylinealgorithm
  *
  * Implemented inline (rather than pulling @mapbox/polyline) to keep the
  * dependency surface small.
@@ -56,7 +56,7 @@ export interface DirectionsResult {
   distanceText: string | null;
   /** Human-readable duration, e.g. "18 min". null until first response. */
   durationText: string | null;
-  /** Raw distance in metres — useful for fare calc. */
+  /** Raw distance in metres: useful for fare calc. */
   distanceMeters: number | null;
   /** Raw duration in seconds. */
   durationSeconds: number | null;

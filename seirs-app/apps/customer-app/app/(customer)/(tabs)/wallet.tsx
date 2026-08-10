@@ -20,7 +20,7 @@ import { HamburgerButton } from '@/components/HamburgerButton';
  * Rewards tab hub.
  *
  * Design: elegant + motivating + personalized + social. Deliberately no
- * "total spent" or ₦ transaction history — see product decision to avoid
+ * "total spent" or ₦ transaction history: see product decision to avoid
  * the accountant/guilt framing. Payment history lives on the Bookings tab.
  *
  * Sections top → bottom:

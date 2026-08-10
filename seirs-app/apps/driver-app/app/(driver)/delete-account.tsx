@@ -20,7 +20,7 @@ interface Readiness {
 
 const CONFIRM_PHRASE = 'delete my account';
 
-// Spec V8 — driver NDPR right to erasure. Same flow as customer app.
+// Spec V8: driver NDPR right to erasure. Same flow as customer app.
 // Drivers should reconcile pending wallet balance + active deliveries
 // before triggering this; backend currently doesn't enforce that and
 // will let a balance get orphaned. Better validation in a follow-up.
@@ -35,7 +35,7 @@ export default function DeleteAccountScreen() {
   const [loading,     setLoading]     = useState(false);
   const [exporting,   setExporting]   = useState(false);
 
-  // Spec V8 — pre-deletion readiness. Blocks deletion until active
+  // Spec V8: pre-deletion readiness. Blocks deletion until active
   // deliveries are completed and wallet balance is withdrawn.
   const [readiness,   setReadiness]   = useState<Readiness | null>(null);
 
@@ -45,7 +45,7 @@ export default function DeleteAccountScreen() {
       .catch(() => setReadiness({ ready: true, blockers: [] }));
   }, []);
 
-  // Spec V8 NDPR Article 24 — surfaced before delete so drivers can
+  // Spec V8 NDPR Article 24: surfaced before delete so drivers can
   // take their earnings + trip history with them.
   const handleExport = async () => {
     setExporting(true);
@@ -124,7 +124,7 @@ export default function DeleteAccountScreen() {
             </View>
           </View>
 
-          {/* Spec V8 — pre-flight readiness panel. Blocks deletion until
+          {/* Spec V8: pre-flight readiness panel. Blocks deletion until
               active deliveries are 0 and wallet balance is withdrawn. */}
           {readiness === null ? (
             <View style={[styles.readyBanner, { backgroundColor: '#F3F4F6' }]}>
@@ -164,7 +164,7 @@ export default function DeleteAccountScreen() {
           {[
             'Your driver profile, KYC documents, and ratings',
             'Your trip history (after the 30-day grace window)',
-            'Your wallet balance — withdraw it before deleting',
+            'Your wallet balance: withdraw it before deleting',
             'Your bank details + saved payout info',
           ].map(t => (
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
@@ -174,7 +174,7 @@ export default function DeleteAccountScreen() {
           {[
             'Audit trails for any open complaints or disputes',
             'Tax records we are legally required to retain (FIRS / NDPR)',
-            'Anonymised analytics — you are not personally identifiable',
+            'Anonymised analytics: you are not personally identifiable',
           ].map(t => (
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
           ))}

@@ -40,8 +40,8 @@ export default function DriverHistoryScreen() {
         id:              d.id,
         status:          String(d.status ?? 'pending'),
         date:            d.deliveredAt ?? d.createdAt ?? new Date().toISOString(),
-        pickupAddress:   d.pickupAddress  ?? '—',
-        dropoffAddress:  d.dropoffAddress ?? '—',
+        pickupAddress:   d.pickupAddress  ?? '-',
+        dropoffAddress:  d.dropoffAddress ?? '-',
         distance:        d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '',
         price:           Number(d.price ?? 0),
         driverEarnings:  Number(d.driverEarnings ?? 0),
@@ -159,7 +159,7 @@ export default function DriverHistoryScreen() {
                     <Text style={[styles.distText, { color: theme.textThird }]}>{item.distanceKm} km · </Text>
                   )}
                   <Text style={[styles.earnText, { color: item.driverEarnings > 0 ? '#22C55E' : theme.textThird }]}>
-                    {item.driverEarnings > 0 ? `+₦${item.driverEarnings.toLocaleString()}` : '—'}
+                    {item.driverEarnings > 0 ? `+₦${item.driverEarnings.toLocaleString()}` : '-'}
                   </Text>
                 </View>
               </View>

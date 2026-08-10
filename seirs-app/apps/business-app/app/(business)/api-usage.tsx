@@ -53,7 +53,7 @@ export default function ApiUsageScreen() {
               <Stat label="Active Keys"  value={usage?.activeKeys ?? 0} accent="#16A34A" />
             </View>
 
-            {/* Brand navy stays in both modes — high-contrast feature card */}
+            {/* Brand navy stays in both modes: high-contrast feature card */}
             <View style={styles.bigCard}>
               <Text style={styles.bigLabel}>CALLS TODAY</Text>
               <Text style={styles.bigValue}>{(usage?.callsToday ?? 0).toLocaleString()}</Text>

@@ -4,8 +4,8 @@
  * a persistent header CTA to open a new ticket.
  *
  * Previously this was a separate list-of-tickets screen but that
- * created two "message inboxes" — driver chats in the tab bar and
- * support here — which was confusing (users kept looking for support
+ * created two "message inboxes": driver chats in the tab bar and
+ * support here: which was confusing (users kept looking for support
  * in the Messages tab and finding nothing).
  */
 import { useEffect } from 'react';

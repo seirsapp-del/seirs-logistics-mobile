@@ -1,5 +1,5 @@
 /**
- * Business · CSV Bulk Upload — preview + confirm flow.
+ * Business · CSV Bulk Upload: preview + confirm flow.
  *
  * Spec V8 §⑬ schema. Two-step UX:
  *   1. Pick file → POST to /business/deliveries/csv → backend parses,
@@ -13,7 +13,7 @@
  *      atomically per booking.
  *
  * Nothing is charged before the user explicitly confirms. Invalid
- * bookings are shown as warnings — the user can fix locally and
+ * bookings are shown as warnings: the user can fix locally and
  * re-upload, OR proceed to create only the valid ones.
  */
 import { useState } from 'react';
@@ -28,7 +28,7 @@ import { Icon } from '@/components/Icon';
 import { businessApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
-// Shape of the backend preview response — mirrors what
+// Shape of the backend preview response: mirrors what
 // business.service.uploadCsvDeliveries() returns.
 interface ParsedRow {
   lineNumber:    number;
@@ -204,7 +204,7 @@ export default function CsvUploadScreen() {
             <Text style={styles.infoText}>
               1. Pick your CSV file (template available via the icon top-right).{'\n'}
               2. We geocode addresses and price every booking on the server.{'\n'}
-              3. Review the preview below — fix any flagged rows.{'\n'}
+              3. Review the preview below: fix any flagged rows.{'\n'}
               4. Tap Confirm to create the deliveries (wallet debited then).{'\n\n'}
               <Text style={styles.bold}>Group multi-stop bookings</Text> by giving rows the same{' '}
               <Text style={styles.bold}>booking_ref</Text>. Empty booking_ref = standalone single-stop.
@@ -294,12 +294,12 @@ export default function CsvUploadScreen() {
           >
             <Icon name="Check" size={18} color="#fff" />
             <Text style={styles.ctaBtnText}>
-              Confirm — ₦{Math.round(preview.grandTotal).toLocaleString()} ({preview.bookings.filter(b => b.valid).length} bookings)
+              Confirm: ₦{Math.round(preview.grandTotal).toLocaleString()} ({preview.bookings.filter(b => b.valid).length} bookings)
             </Text>
           </Pressable>
           {!preview.canAfford && (
             <Text style={styles.affordWarn}>
-              Wallet has ₦{preview.walletBalance.toLocaleString()} — top up before confirming.
+              Wallet has ₦{preview.walletBalance.toLocaleString()}: top up before confirming.
             </Text>
           )}
         </View>
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   },
   headerTitle:  { fontSize: 16, fontWeight: '700' },
 
-  // Info banner intentionally keeps light-blue accent in both modes — it
+  // Info banner intentionally keeps light-blue accent in both modes: it
   // reads cleanly against either background and the brand sky-blue tint
   // signals it's informational.
   infoBox:      {

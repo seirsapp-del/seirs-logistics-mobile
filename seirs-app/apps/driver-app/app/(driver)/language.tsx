@@ -11,7 +11,7 @@ import { LANGUAGES, changeLanguage, type LanguageCode } from '@/i18n';
 import { useState } from 'react';
 import i18n from '@/i18n';
 
-// All payouts settle in NGN at launch — FX display is a v1.1 feature.
+// All payouts settle in NGN at launch: FX display is a v1.1 feature.
 const CURRENCIES = [
   { code: 'NGN', symbol: '₦', label: 'Nigerian Naira',  flag: '🇳🇬' },
 ];

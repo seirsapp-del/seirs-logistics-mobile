@@ -43,7 +43,7 @@ export function HeroCardImage({
         { backgroundColor: isDark ? '#0D1117' : '#0F2B4C' },
       ]}
     >
-      {/* Background image — covers the whole card. */}
+      {/* Background image: covers the whole card. */}
       {imageUrl ? (
         <Image
           source={{ uri: imageUrl }}

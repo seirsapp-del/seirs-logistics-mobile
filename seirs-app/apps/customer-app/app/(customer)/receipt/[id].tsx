@@ -67,10 +67,10 @@ export default function ReceiptScreen() {
   ];
 
   const trackingCode    = trip.trackingCode    ?? trip.id;
-  const pickupAddress   = trip.pickupAddress   ?? trip.pickup?.address   ?? '—';
-  const dropoffAddress  = trip.dropoffAddress  ?? trip.dropoff?.address  ?? '—';
-  const distance        = trip.distance        ?? '—';
-  const duration        = trip.duration        ?? '—';
+  const pickupAddress   = trip.pickupAddress   ?? trip.pickup?.address   ?? '-';
+  const dropoffAddress  = trip.dropoffAddress  ?? trip.dropoff?.address  ?? '-';
+  const distance        = trip.distance        ?? '-';
+  const duration        = trip.duration        ?? '-';
   const paymentMethod   = trip.paymentMethod   ?? 'wallet';
   const completedDate   = trip.deliveredAt     ?? trip.completedAt       ?? trip.createdAt;
   const rating          = trip.rating          ?? trip.driverRating      ?? null;
@@ -78,7 +78,7 @@ export default function ReceiptScreen() {
   const onShare = async () => {
     try {
       await Share.share({
-        message: `SEIRS receipt ${trackingCode} — ₦${totalAmount.toLocaleString()} paid via ${paymentMethod}`,
+        message: `SEIRS receipt ${trackingCode}: ₦${totalAmount.toLocaleString()} paid via ${paymentMethod}`,
       });
     } catch {}
   };
@@ -96,7 +96,7 @@ export default function ReceiptScreen() {
     iso ? new Date(iso).toLocaleDateString('en-NG', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
-    }) : '—';
+    }) : '-';
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>

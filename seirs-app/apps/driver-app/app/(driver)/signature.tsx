@@ -11,7 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { identityApi, uploadApi } from '@/services/api';
 
-// Spec V8 §1.17 — driver door-to-door handoff signature. Two methods:
+// Spec V8 §1.17: driver door-to-door handoff signature. Two methods:
 // physical ID + email OTP, or SEIRS ID + typed-name signature. Mirrors
 // the partner release-pickup flow but built into the driver app for
 // the door-delivery scenario. Shares identityApi so the chain-of-
@@ -100,7 +100,7 @@ export default function DriverSignatureScreen() {
     setError('');
     try {
       const photoUploaded = await uploadApi.uploadFile(photoUri, 'driver-handoff');
-      // stage = DRIVER_TO_RECIPIENT — see HandoffStage enum in backend
+      // stage = DRIVER_TO_RECIPIENT: see HandoffStage enum in backend
       await identityApi.verifyHandoff(deliveryId, {
         stage:         'driver_to_recipient',
         method,
@@ -111,7 +111,7 @@ export default function DriverSignatureScreen() {
       });
       Alert.alert(
         'Handoff complete',
-        'Recipient verified — chain of custody record saved. You can mark the delivery as delivered.',
+        'Recipient verified: chain of custody record saved. You can mark the delivery as delivered.',
         [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch (e: any) {

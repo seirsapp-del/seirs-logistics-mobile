@@ -13,7 +13,7 @@ interface Props {
 }
 
 /**
- * Driver-app drawer adapter — wires the shared headless Drawer to
+ * Driver-app drawer adapter: wires the shared headless Drawer to
  * driver-specific menu items per Master Spec V7 §2.2.
  */
 export function Drawer({ visible, onClose }: Props) {

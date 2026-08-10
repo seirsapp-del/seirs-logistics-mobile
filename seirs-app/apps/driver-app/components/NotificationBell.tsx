@@ -8,7 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 interface NotificationBellProps {
   /** Bell icon size in pixels. Default 22. */
   size?:  number;
-  /** Icon stroke color. Default falls back to current theme.text — pass
+  /** Icon stroke color. Default falls back to current theme.text: pass
    *  '#fff' when rendering on a dark/coloured header. */
   color?: string;
 }

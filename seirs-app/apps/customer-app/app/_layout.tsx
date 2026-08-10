@@ -106,13 +106,13 @@ function OTAUpdateChecker() {
 
 // Renders nothing until AuthContext finishes loading the stored session.
 // Without this gate, expo-router renders the default route for one frame
-// before NavigationGuard's useEffect can redirect — visible as a brief
+// before NavigationGuard's useEffect can redirect: visible as a brief
 // flash of the inside of the app on cold launch.
 function AppContent() {
   const { isLoading, isAuthenticated, user } = useAuth();
   // Register the device push token once the user is authenticated. The
   // hook silently no-ops until expo-notifications is installed + a
-  // native rebuild ships — see shared/hooks/usePushRegistration.ts.
+  // native rebuild ships: see shared/hooks/usePushRegistration.ts.
   usePushRegistration(isAuthenticated);
   // Pull the live RateCard from backend on launch, cache in AsyncStorage,
   // refresh every 5 min. Until this resolves, fare calcs read the bundled

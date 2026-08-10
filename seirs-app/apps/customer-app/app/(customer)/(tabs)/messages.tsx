@@ -1,5 +1,5 @@
 /**
- * Customer Messages tab — unified inbox.
+ * Customer Messages tab: unified inbox.
  *
  * One list, two conversation types:
  *   1. Delivery chats: customer ↔ driver for a specific delivery.

@@ -36,7 +36,7 @@ function validate(
   if (!email.trim())     return 'Email address is required.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Enter a valid email address.';
   const digits = normalisePhone(phone);
-  if (!NIGERIAN_PHONE_RE.test(digits)) return 'Enter a valid Nigerian number (e.g. 08012345678 — 11 digits starting with 070/071/080/081/090/091; +234 prefix also accepted).';
+  if (!NIGERIAN_PHONE_RE.test(digits)) return 'Enter a valid Nigerian number (e.g. 08012345678: 11 digits starting with 070/071/080/081/090/091; +234 prefix also accepted).';
   const pwErr = validatePassword(password);
   if (pwErr) return pwErr;
   if (password !== confirmPassword) return 'Passwords do not match.';
@@ -220,7 +220,7 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          {/* Phone — +234 locked prefix */}
+          {/* Phone: +234 locked prefix */}
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecond }]}>{t('auth.phone')}</Text>
             <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>

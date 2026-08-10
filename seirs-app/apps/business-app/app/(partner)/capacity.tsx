@@ -10,7 +10,7 @@ import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 
-// Spec V8 §4.9 — partner staff sees real-time store load + can pause
+// Spec V8 §4.9: partner staff sees real-time store load + can pause
 // incoming bookings when overwhelmed. Backend enforces capacity preflight,
 // this surface lets staff manage the upper bound consciously.
 
@@ -87,7 +87,7 @@ export default function PartnerCapacityScreen() {
     if (!storeId) return;
     const target = next ? 'active' : 'paused';
     setToggling(true);
-    // Optimistic update — revert on error
+    // Optimistic update: revert on error
     setStoreStatus(target);
     try {
       await partnerApi.storeSetStatus(storeId, target);
@@ -165,7 +165,7 @@ export default function PartnerCapacityScreen() {
             {storeStatus === 'paused' && (
               <View style={styles.pauseBanner}>
                 <Icon name="AlertCircle" size={14} color="#92400E" />
-                <Text style={styles.pauseText}>Paused — customers can&apos;t book this store right now</Text>
+                <Text style={styles.pauseText}>Paused: customers can&apos;t book this store right now</Text>
               </View>
             )}
           </View>

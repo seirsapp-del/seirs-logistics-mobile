@@ -1,6 +1,6 @@
 import {
   View, Text, Pressable, StyleSheet,
-  FlatList, ActivityIndicator,
+  FlatList, ActivityIndicator, Alert,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,8 +37,16 @@ export default function NotificationsScreen() {
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
 
-  const { notifications, unreadCount, loading, refresh, markRead, markAllRead, dismiss } =
+  const { notifications, unreadCount, loading, refresh, markRead, markAllRead, dismiss, dismissAll } =
     useNotifications();
+
+  const clearAll = () => {
+    Alert.alert('Clear notifications', 'Which ones should go?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Clear read only',  onPress: () => dismissAll(true) },
+      { text: 'Clear everything', style: 'destructive', onPress: () => dismissAll(false) },
+    ]);
+  };
 
   const handlePress = (notif: AppNotification) => {
     if (!notif.isRead) markRead(notif.id);
@@ -103,13 +111,18 @@ export default function NotificationsScreen() {
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <Text style={[styles.title, { color: theme.text }]}>Notifications</Text>
-        {unreadCount > 0 ? (
-          <Pressable onPress={markAllRead} style={[styles.markAllBtn, { backgroundColor: theme.surfaceSecond }]}>
-            <Text style={[styles.markAll, { color: theme.primary }]}>Mark all read</Text>
-          </Pressable>
-        ) : (
-          <View style={{ width: 88 }} />
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {unreadCount > 0 && (
+            <Pressable onPress={markAllRead} style={[styles.markAllBtn, { backgroundColor: theme.surfaceSecond }]}>
+              <Text style={[styles.markAll, { color: theme.primary }]}>Mark all read</Text>
+            </Pressable>
+          )}
+          {notifications.length > 0 && (
+            <Pressable onPress={clearAll} hitSlop={8} accessibilityLabel="Clear notifications">
+              <Ionicons name="trash-outline" size={20} color={theme.textSecond} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {loading ? (

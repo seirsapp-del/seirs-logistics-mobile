@@ -9,7 +9,7 @@ import { notificationsApi } from '../services/api';
  * gets the device push token, and registers it with the backend so
  * NotificationsService can target this device with FCM/Expo pushes.
  *
- * **Safe to import even if `expo-notifications` isn't installed yet** —
+ * **Safe to import even if `expo-notifications` isn't installed yet** -
  * it dynamically requires the modules and silently no-ops if either is
  * missing. That lets the JS-side code ship before the native rebuild.
  *
@@ -21,7 +21,7 @@ import { notificationsApi } from '../services/api';
  * Pushes won't actually deliver until step 3 ships, but the hook will
  * start working automatically the moment the modules become available.
  *
- * @param enabled  — only attempt registration when true (e.g. after login)
+ * @param enabled : only attempt registration when true (e.g. after login)
  */
 export function usePushRegistration(enabled: boolean) {
   const registered = useRef(false);
@@ -44,12 +44,12 @@ export function usePushRegistration(enabled: boolean) {
         const probe = core?.requireOptionalNativeModule?.('ExpoPushTokenManager');
         if (!probe) return; // native side not built into this APK yet
 
-        // Dynamic require — if expo-notifications isn't installed yet, the
+        // Dynamic require: if expo-notifications isn't installed yet, the
         // require throws and we silently bail. No build-time dependency.
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const Notifications = require('expo-notifications');
 
-        // Permission gate — iOS prompts the user, Android grants by default
+        // Permission gate: iOS prompts the user, Android grants by default
         // until SDK 33+ where it also prompts.
         const settings = await Notifications.getPermissionsAsync();
         let status = settings.status;
@@ -76,7 +76,7 @@ export function usePushRegistration(enabled: boolean) {
         await notificationsApi.registerToken(token);
         registered.current = true;
       } catch {
-        // expo-notifications not installed yet, or token fetch failed — no-op.
+        // expo-notifications not installed yet, or token fetch failed: no-op.
       }
     })();
 

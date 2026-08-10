@@ -42,6 +42,13 @@ export class NotificationsController {
     return this.svc.markAllRead(user.id);
   }
 
+  // DELETE /api/v1/notifications?read=true  (mass clear; read-only or all)
+  // Registered before :id so "clear" style calls don't match the param route.
+  @Delete()
+  removeAll(@CurrentUser() user: User, @Query('read') read?: string) {
+    return this.svc.removeAll(user.id, read === 'true');
+  }
+
   // DELETE /api/v1/notifications/:id  (swipe-to-dismiss in the apps)
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: User) {

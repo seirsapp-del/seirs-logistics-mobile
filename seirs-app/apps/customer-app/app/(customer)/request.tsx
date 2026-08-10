@@ -43,7 +43,7 @@ export default function RequestDriverScreen() {
   const [pickup,     setPickup]     = useState<PickedAddress | null>(null);
   const [dropoff,    setDropoff]    = useState<PickedAddress | null>(null);
 
-  // Inline autocomplete state — replaces the old modal AddressPicker.
+  // Inline autocomplete state: replaces the old modal AddressPicker.
   const [pickupQuery,  setPickupQuery]  = useState('');
   const [dropoffQuery, setDropoffQuery] = useState('');
   const [activeField,  setActiveField]  = useState<Field | null>(null);
@@ -53,10 +53,10 @@ export default function RequestDriverScreen() {
 
   const mapRef   = useRef<MapView>(null);
   const sheetRef = useRef<BottomSheet>(null);
-  // Pixel-based snap points — consistent across phone sizes:
+  // Pixel-based snap points: consistent across phone sizes:
   //   200 = just the two address inputs visible (peek)
   //   480 = inputs + vehicles + share + CTA (comfy default; height-of-content)
-  // No "full screen" snap when not searching — that's where the empty
+  // No "full screen" snap when not searching: that's where the empty
   // space came from. When the user focuses an input we use keyboardBehavior
   // "extend" to lift the sheet above the keyboard so suggestions are visible.
   const snapPoints = useMemo(() => [200, 480], []);
@@ -112,7 +112,7 @@ export default function RequestDriverScreen() {
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
-      // Global autocomplete — Google biases by requesting IP region.
+      // Global autocomplete: Google biases by requesting IP region.
       const url =
         `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
         `?input=${encodeURIComponent(text)}` +
@@ -181,7 +181,7 @@ export default function RequestDriverScreen() {
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const { latitude: lat, longitude: lng } = pos.coords;
 
-      // Reverse geocode (Geocoding API may not be enabled — fall back to friendly label).
+      // Reverse geocode (Geocoding API may not be enabled: fall back to friendly label).
       let address = 'Current location';
       try {
         const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${MAPS_KEY}`);
@@ -282,7 +282,7 @@ export default function RequestDriverScreen() {
           contentContainerStyle={{ paddingBottom: Spacing.xl }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Address inputs — inline, no modal pop-up */}
+          {/* Address inputs: inline, no modal pop-up */}
           <View style={[styles.inputBlock, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <View style={styles.inputRow}>
               <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
@@ -377,7 +377,7 @@ export default function RequestDriverScreen() {
             </Pressable>
           )}
 
-          {/* CTA — slim, addresses-only screen. Vehicle + share-ride
+          {/* CTA: slim, addresses-only screen. Vehicle + share-ride
               live on /vehicle-select so the user picks once. */}
           {!showSuggestions && (
             <View style={styles.cta}>

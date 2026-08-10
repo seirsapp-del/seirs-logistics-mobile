@@ -109,7 +109,7 @@ export default function DriverHomeScreen() {
     });
 
     socket.on('job:request', () => {
-      // A new job was assigned to this driver — refresh the list silently.
+      // A new job was assigned to this driver: refresh the list silently.
       fetchDeliveries(true);
     });
 
@@ -160,12 +160,13 @@ export default function DriverHomeScreen() {
   };
 
   // Backend returns numeric columns (decimal) as strings via TypeORM, and
-  // a brand-new driver may not have any rating/earnings recorded yet —
+  // a brand-new driver may not have any rating/earnings recorded yet -
   // coerce everything to Number with a sane default so .toFixed/.formatting
   // calls don't crash on strings or null.
   const weekEarnings  = Number(driverData?.weekEarnings  ?? 0);
   const todayEarnings = Number(driverData?.todayEarnings ?? 0);
-  const rating        = Number(driverData?.rating        ?? 4.8);
+  // No fake defaults: a new driver has no rating, not a pretend 4.8.
+  const rating        = Number(driverData?.rating        ?? 0);
   const tripCount     = Number(driverData?.totalTrips    ?? 0);
   const goalPct       = Math.min((weekEarnings / GOAL_TARGET) * 100, 100);
   const walletBal     = Number(driverData?.balance       ?? 0);
@@ -314,7 +315,7 @@ export default function DriverHomeScreen() {
           </Pressable>
 
           {/* Demand heatmap mini-map. Used to navigate to /(driver)/active
-              but that screen requires a delivery id — clicking it with no
+              but that screen requires a delivery id: clicking it with no
               id left the spinner forever. The map below is the whole
               widget; no destination needed today. */}
           <View style={[styles.widgetCard, styles.heatmapWidget, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -341,14 +342,14 @@ export default function DriverHomeScreen() {
                     coordinate={{ latitude: Number(driverData.lastLat), longitude: Number(driverData.lastLng) }}
                     pinColor="#3A7BD5"
                   />
-                  {/* Demand zones from backend GET /drivers/demand-zones —
+                  {/* Demand zones from backend GET /drivers/demand-zones -
                       colour ramps with intensity (red = hottest). */}
                   {demandZones.map((z, i) => {
                     const fill = z.intensity > 0.66
-                      ? 'rgba(239,68,68,0.35)'   // hot — red
+                      ? 'rgba(239,68,68,0.35)'   // hot: red
                       : z.intensity > 0.33
-                      ? 'rgba(245,158,11,0.30)'  // warm — orange
-                      : 'rgba(22,163,74,0.25)';  // cool — green
+                      ? 'rgba(245,158,11,0.30)'  // warm: orange
+                      : 'rgba(22,163,74,0.25)';  // cool: green
                     return (
                       <Circle
                         key={i}
@@ -390,7 +391,7 @@ export default function DriverHomeScreen() {
           ) : pendingJobs.length === 0 ? (
             <View style={[styles.emptyBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Package size={32} color={theme.textThird} strokeWidth={1.5} />
-              <Text style={[styles.emptyText, { color: theme.textSecond }]}>No jobs nearby. Stay online — new requests come in frequently.</Text>
+              <Text style={[styles.emptyText, { color: theme.textSecond }]}>No jobs nearby. Stay online: new requests come in frequently.</Text>
             </View>
           ) : (
             pendingJobs.map(job => (

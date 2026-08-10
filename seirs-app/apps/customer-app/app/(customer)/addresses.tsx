@@ -13,7 +13,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { addressesApi, deliveriesApi, type SavedAddressDTO } from '@/services/api';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
 
-// Spec V8 — saved address book synced to backend so the data follows
+// Spec V8: saved address book synced to backend so the data follows
 // the user across devices + can pre-fill driver routing. AsyncStorage
 // is kept as a warm cache so the list renders before the network round
 // trip on cold starts.
@@ -56,7 +56,7 @@ export default function AddressesScreen() {
       setLoading(false);
     })();
     // Fetch suggestions in parallel. Combined pickups + dropoffs, ranked by
-    // total usage. Not blocking the main list — appears when it lands.
+    // total usage. Not blocking the main list: appears when it lands.
     deliveriesApi.frequentAddresses().then((res) => {
       const combined: Record<string, { address: string; lat: number | null; lng: number | null; count: number }> = {};
       for (const r of [...(res.pickups ?? []), ...(res.dropoffs ?? [])]) {
@@ -140,7 +140,7 @@ export default function AddressesScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
-          {/* Suggestions strip — most-used addresses from the last 90 days
+          {/* Suggestions strip: most-used addresses from the last 90 days
               of the user's delivery history. One tap opens the add form
               pre-filled with the address + coords. */}
           {filteredSuggestions.length > 0 && !adding && (

@@ -17,7 +17,7 @@ import { useBookmarks } from '@/hooks/use-bookmarks';
 import { calcReadingMinutes, relativeDate } from '@/utils/articleMeta';
 
 /**
- * Article view — opened when a customer taps a hero carousel card.
+ * Article view: opened when a customer taps a hero carousel card.
  * Tier 3 reading experience:
  *
  *   - Reading progress bar at the very top (animates with scroll)
@@ -28,7 +28,7 @@ import { calcReadingMinutes, relativeDate } from '@/utils/articleMeta';
  *   - Rich body via <ArticleBody> (parses headings, lists, quotes,
  *     inline images from a flat string-array i18n key)
  *   - "More from SEIRS" horizontal scroll of other articles at the bottom
- *   - No sticky CTA — intentionally a reading experience, not a funnel
+ *   - No sticky CTA: intentionally a reading experience, not a funnel
  *
  * Data source: HERO_CARDS constant for now. When the CMS lands (Phase 2),
  * swap `findHeroCardById` for a backend fetch + swap `HERO_CARDS` (for
@@ -51,26 +51,26 @@ export default function ArticleScreen() {
 
   const card = findHeroCardById(id);
 
-  // Body is an array of strings (one per "block" — see ArticleBody for
+  // Body is an array of strings (one per "block": see ArticleBody for
   // the DSL). returnObjects:true lets a single key hold a list.
   const body = card?.bodyKey
     ? (t(card.bodyKey, { returnObjects: true, defaultValue: [] }) as string[])
     : [];
   const paragraphs = Array.isArray(body) ? body : [String(body)];
 
-  // Meta — author + relative date + reading time. All from i18n so
+  // Meta: author + relative date + reading time. All from i18n so
   // locale switches reflect live.
   const readMinutes = useMemo(() => calcReadingMinutes(paragraphs), [paragraphs]);
   const relDate     = useMemo(() => relativeDate(card?.publishedAt, t), [card?.publishedAt, t]);
 
-  // "More from SEIRS" — every other image-kind card. Stable order from
+  // "More from SEIRS": every other image-kind card. Stable order from
   // the HERO_CARDS array.
   const moreArticles = useMemo<HeroCard[]>(
     () => HERO_CARDS.filter(c => c.id !== id && c.kind === 'image'),
     [id],
   );
 
-  // Reading-progress bar — driven by ScrollView's onScroll. Width
+  // Reading-progress bar: driven by ScrollView's onScroll. Width
   // animates 0 → 1 based on (scrollY / scrollableHeight).
   const scrollY    = useRef(new RNAnimated.Value(0)).current;
   const [contentH, setContentH] = useState(1);
@@ -82,7 +82,7 @@ export default function ArticleScreen() {
     extrapolate: 'clamp',
   });
 
-  // Not-found state — defensive (e.g. an article id removed from the
+  // Not-found state: defensive (e.g. an article id removed from the
   // CMS while a customer has the URL deep-linked).
   if (!card) {
     return (
@@ -118,7 +118,7 @@ export default function ArticleScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar barStyle="light-content" />
 
-      {/* ── Reading progress bar — pinned to the top edge of the safe area */}
+      {/* ── Reading progress bar: pinned to the top edge of the safe area */}
       <View style={[styles.progressTrack, { paddingTop: insets.top }]} pointerEvents="none">
         <RNAnimated.View
           style={[
@@ -267,7 +267,7 @@ function MetaDot({ color }: { color: string }) {
   return <Text style={{ color, fontSize: FontSize.xs, marginHorizontal: 2 }}>·</Text>;
 }
 
-// One "More from SEIRS" card — smaller version of HeroCardImage.
+// One "More from SEIRS" card: smaller version of HeroCardImage.
 function MoreCard({
   card, width, onPress, t, theme,
 }: {
@@ -301,7 +301,7 @@ function MoreCard({
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // Progress bar overlay — sits at very top of safe area.
+  // Progress bar overlay: sits at very top of safe area.
   progressTrack: {
     position: 'absolute',
     top: 0, left: 0, right: 0,

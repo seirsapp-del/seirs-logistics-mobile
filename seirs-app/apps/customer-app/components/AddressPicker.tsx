@@ -1,11 +1,11 @@
 /**
- * AddressPicker — Google Places autocomplete with map preview
+ * AddressPicker: Google Places autocomplete with map preview
  *
  * Props:
- *   label        — e.g. "Pickup Address"
- *   dotColor     — colour of the route dot (green = pickup, red = dropoff)
- *   value        — current address string
- *   onSelect     — called with { address, lat, lng } when user picks a result
+ *   label       : e.g. "Pickup Address"
+ *   dotColor    : colour of the route dot (green = pickup, red = dropoff)
+ *   value       : current address string
+ *   onSelect    : called with { address, lat, lng } when user picks a result
  */
 import {
   View, Text, TextInput, Pressable, FlatList,
@@ -60,7 +60,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
-      // Global autocomplete — Google biases by requesting IP region.
+      // Global autocomplete: Google biases by requesting IP region.
       const url =
         `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
         `?input=${encodeURIComponent(text)}` +
@@ -118,7 +118,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
         onSelect(picked);
       }
     } catch {
-      // fallback — just use the description without coords
+      // fallback: just use the description without coords
     } finally {
       setSearching(false);
     }
@@ -193,7 +193,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
         <Text style={[styles.chevron, { color: theme.textSecond }]}>›</Text>
       </Pressable>
 
-      {/* Picker modal — fullScreen so it actually fills the device, not a
+      {/* Picker modal: fullScreen so it actually fills the device, not a
           card sheet. SafeAreaView so the header clears the notch / status bar. */}
       <Modal
         visible={open}

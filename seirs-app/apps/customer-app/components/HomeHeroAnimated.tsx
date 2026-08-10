@@ -13,7 +13,7 @@ import { Colors, FontSize, FontWeight, Radius, Shadows, Spacing } from '@/consta
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 /**
- * Custom SEIRS home hero — animated. No external dependencies beyond
+ * Custom SEIRS home hero: animated. No external dependencies beyond
  * react-native-svg + react-native-reanimated (both already installed).
  *
  * Composition (left → right across the hero):
@@ -25,7 +25,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
  *     screaming for attention
  *   - Brand mark + tagline overlay sit at the bottom
  *
- * All shapes are pure SVG — no images, no Lottie file, no network.
+ * All shapes are pure SVG: no images, no Lottie file, no network.
  * Animations use react-native-svg props (NOT React Native styles) since
  * SVG groups don't accept `style`. We drive everything via
  * `useAnimatedProps` returning the SVG `transform` prop.
@@ -71,21 +71,21 @@ export function HomeHeroAnimated({ tagline }: Props) {
     );
   }, [slide, wheelRot, packageBob]);
 
-  // SVG transform props — must use animatedProps, not style. The
+  // SVG transform props: must use animatedProps, not style. The
   // `transform` prop on react-native-svg's <G> accepts an array of
   // operations matching React Native's transform style.
   const okadaProps = useAnimatedProps(() => ({
     transform: [{ translateX: 40 + slide.value * (SCENE_WIDTH - 100) }],
   }));
 
-  // Wheel rotation — rotate around the wheel's local centre. Each wheel
+  // Wheel rotation: rotate around the wheel's local centre. Each wheel
   // is already centred at (0,0) inside its own <G x={…} y={…}>, so a
   // plain rotate just spins it in place.
   const wheelProps = useAnimatedProps(() => ({
     transform: [{ rotate: `${wheelRot.value * 360}deg` }],
   }));
 
-  // Package wobble — translateY only, very subtle (1.5 px).
+  // Package wobble: translateY only, very subtle (1.5 px).
   const packageProps = useAnimatedProps(() => ({
     transform: [{ translateY: packageBob.value * -1.5 }],
   }));
@@ -112,7 +112,7 @@ export function HomeHeroAnimated({ tagline }: Props) {
         viewBox={`0 0 ${SCENE_WIDTH} ${SCENE_HEIGHT}`}
         preserveAspectRatio="xMidYMid slice"
       >
-        {/* Soft "sun" — gives the scene depth. */}
+        {/* Soft "sun": gives the scene depth. */}
         <Circle cx={SCENE_WIDTH - 50} cy={40} r={18} fill="rgba(255,190,11,0.18)" />
         <Circle cx={SCENE_WIDTH - 50} cy={40} r={10} fill="rgba(255,190,11,0.30)" />
 
@@ -138,7 +138,7 @@ export function HomeHeroAnimated({ tagline }: Props) {
         <Circle cx={20} cy={HORIZON_Y} r={5} fill={accent} />
         <Circle cx={20} cy={HORIZON_Y} r={2.5} fill="#fff" />
 
-        {/* Destination pin (right) — stylised teardrop. */}
+        {/* Destination pin (right): stylised teardrop. */}
         <G>
           <Path
             d={`M${SCENE_WIDTH - 30} ${HORIZON_Y - 18}
@@ -153,7 +153,7 @@ export function HomeHeroAnimated({ tagline }: Props) {
           <Circle cx={SCENE_WIDTH - 30} cy={HORIZON_Y - 13} r={3} fill={skyTop} />
         </G>
 
-        {/* The okada — slides left to right via animatedProps. */}
+        {/* The okada: slides left to right via animatedProps. */}
         <AnimatedG animatedProps={okadaProps}>
           {/* Rear wheel */}
           <G x={-22} y={RIDER_Y + 16}>
@@ -175,7 +175,7 @@ export function HomeHeroAnimated({ tagline }: Props) {
             <Circle cx={0} cy={0} r={2.5} fill="rgba(255,255,255,0.6)" />
           </G>
 
-          {/* Frame — connects the two wheels. */}
+          {/* Frame: connects the two wheels. */}
           <Path
             d={`M${-22} ${RIDER_Y + 8}
                 L${-6}  ${RIDER_Y - 2}
@@ -196,7 +196,7 @@ export function HomeHeroAnimated({ tagline }: Props) {
           <Line x1={22} y1={RIDER_Y + 8} x2={26} y2={RIDER_Y - 8} stroke="#fff" strokeWidth={2} strokeLinecap="round" />
           <Line x1={22} y1={RIDER_Y - 8} x2={30} y2={RIDER_Y - 8} stroke="#fff" strokeWidth={2.5} strokeLinecap="round" />
 
-          {/* Rider — Nigerian, in high-vis orange vest + dark helmet.
+          {/* Rider: Nigerian, in high-vis orange vest + dark helmet.
               Skin tone is brown (not white), authentic Lagos okada look:
               real riders wear bright vests for visibility and dark
               half-helmets. The helmet stripe is SEIRS blue so the
@@ -211,14 +211,14 @@ export function HomeHeroAnimated({ tagline }: Props) {
             stroke="#0D1117"
             strokeWidth={0.5}
           />
-          {/* Reflective stripe across the vest — classic Lagos vest detail */}
+          {/* Reflective stripe across the vest: classic Lagos vest detail */}
           <Line
             x1={-2} y1={RIDER_Y - 9}
             x2={8}  y2={RIDER_Y - 9}
             stroke="rgba(255,255,255,0.7)"
             strokeWidth={1}
           />
-          {/* Right arm reaching forward to the handlebar — shows skin */}
+          {/* Right arm reaching forward to the handlebar: shows skin */}
           <Line
             x1={6}  y1={RIDER_Y - 10}
             x2={22} y2={RIDER_Y - 2}
@@ -226,9 +226,9 @@ export function HomeHeroAnimated({ tagline }: Props) {
             strokeWidth={2.5}
             strokeLinecap="round"
           />
-          {/* Head — Nigerian skin tone */}
+          {/* Head: Nigerian skin tone */}
           <Circle cx={3} cy={RIDER_Y - 22} r={6} fill="#7B4F2C" />
-          {/* Helmet — solid dark cap covering the top half of the head */}
+          {/* Helmet: solid dark cap covering the top half of the head */}
           <Path
             d={`M${-3} ${RIDER_Y - 22} A6 6 0 0 1 ${9} ${RIDER_Y - 22} Z`}
             fill="#0D1117"
@@ -241,7 +241,7 @@ export function HomeHeroAnimated({ tagline }: Props) {
             fill="none"
           />
 
-          {/* Package — wobbles via animatedProps. Yellow pops on navy. */}
+          {/* Package: wobbles via animatedProps. Yellow pops on navy. */}
           <AnimatedG animatedProps={packageProps}>
             <Rect
               x={-22}

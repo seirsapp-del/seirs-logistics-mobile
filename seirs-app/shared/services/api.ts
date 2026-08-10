@@ -781,6 +781,9 @@ export const notificationsApi = {
   markRead:    (id: string) => request<any>('PATCH', `/notifications/${id}/read`),
   markAllRead: () => request<any>('PATCH', '/notifications/read-all'),
   remove:      (id: string) => request<any>('DELETE', `/notifications/${id}`),
+  // Mass clear: onlyRead=true keeps unread ones.
+  removeAll:   (onlyRead = false) =>
+    request<{ success: boolean; deleted: number }>('DELETE', `/notifications${onlyRead ? '?read=true' : ''}`),
   // Register the device's push token (FCM or Expo). Pass null to clear
   // (e.g. on logout). Backend stores it on user.fcmToken.
   registerToken: (token: string | null) =>

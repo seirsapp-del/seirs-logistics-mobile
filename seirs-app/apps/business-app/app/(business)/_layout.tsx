@@ -3,7 +3,7 @@ import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 
 /**
- * Top-level business Stack — owns the back history.
+ * Top-level business Stack: owns the back history.
  *
  *   (business)/
  *     _layout.tsx        <- Stack (this file)

@@ -12,7 +12,7 @@ function TabIcon({ name, color, focused }: { name: IoniconsName; color: string; 
 }
 
 /**
- * Inner Tabs navigator — only the 5 bottom-bar screens live here.
+ * Inner Tabs navigator: only the 5 bottom-bar screens live here.
  * Detail screens (request, send, edit-profile, payment, etc.) live at the
  * (customer) parent level inside a Stack so the Android back button pops
  * to the previous detail screen instead of resetting to the home tab.

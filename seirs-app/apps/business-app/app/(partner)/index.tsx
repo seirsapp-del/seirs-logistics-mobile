@@ -80,7 +80,7 @@ export default function PartnerDashboard() {
                 <StatCard label="Awaiting Pickup"  value={data?.awaitingPickup ?? 0}  icon="Clock"        color="#D97706" />
               </View>
 
-              {/* Earnings card stays navy — feature card */}
+              {/* Earnings card stays navy: feature card */}
               <View style={styles.earningsCard}>
                 <View style={styles.earningsLeft}>
                   <Text style={styles.earningsLabel}>This Week's Earnings</Text>
@@ -95,7 +95,7 @@ export default function PartnerDashboard() {
                 </Pressable>
               </View>
 
-              {/* Amber receive card — semantic warm-coloured action */}
+              {/* Amber receive card: semantic warm-coloured action */}
               <Pressable
                 style={[styles.scanBtn, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}
                 onPress={() => router.push('/(partner)/receive-dropoff' as any)}
@@ -110,7 +110,7 @@ export default function PartnerDashboard() {
                 <Icon name="ChevronRight" size={18} color="#9CA3AF" />
               </Pressable>
 
-              {/* Green release card — semantic success-coloured action */}
+              {/* Green release card: semantic success-coloured action */}
               <Pressable
                 style={[styles.scanBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
                 onPress={() => router.push('/(partner)/release-pickup' as any)}
@@ -125,7 +125,7 @@ export default function PartnerDashboard() {
                 <Icon name="ChevronRight" size={18} color="#9CA3AF" />
               </Pressable>
 
-              {/* Legacy scan — adapts to theme */}
+              {/* Legacy scan: adapts to theme */}
               <Pressable
                 style={[styles.scanBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => router.push('/(partner)/scan' as any)}

@@ -14,7 +14,7 @@ interface Props {
 }
 
 /**
- * Customer-app drawer adapter — wires the shared headless Drawer to
+ * Customer-app drawer adapter: wires the shared headless Drawer to
  * customer-specific menu items per Master Spec V7 §1.5.
  */
 export function Drawer({ visible, onClose }: Props) {

@@ -1,5 +1,5 @@
 /**
- * StatePicker — Nigerian state dropdown for register / address forms.
+ * StatePicker: Nigerian state dropdown for register / address forms.
  *
  * Tappable field that opens a full-screen modal with a searchable list.
  * Better UX than a native Picker (which is wildly inconsistent across

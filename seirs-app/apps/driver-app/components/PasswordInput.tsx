@@ -5,7 +5,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Radius, Spacing, FontSize } from '@/constants/theme';
 
 interface Props extends Omit<TextInputProps, 'secureTextEntry'> {
-  // Optional — falls back to theme tokens when not supplied. Older form
+  // Optional: falls back to theme tokens when not supplied. Older form
   // screens (login, register) pass these to match surrounding card.
   // Newer screens (change-password, delete-account) rely on defaults.
   borderColor?:    string;

@@ -11,7 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { paymentsApi, type FlutterwavePaymentOption } from '@/services/api';
 
-// Spec V8 §"Confirmed Decisions" — COD removed. All non-wallet methods
+// Spec V8 §"Confirmed Decisions": COD removed. All non-wallet methods
 // route through Flutterwave; the paymentOption hint controls which tab
 // of the Flutterwave widget opens.
 type PickerId = 'card' | 'bank_transfer' | 'ussd' | 'wallet';
@@ -66,7 +66,7 @@ export default function PaymentScreen() {
       if (selected.flutterwave && res.authorizationUrl) {
         pendingTxRef.current = res.reference ?? null;
 
-        // Watch for app returning to foreground — auto-verify payment
+        // Watch for app returning to foreground: auto-verify payment
         const sub = AppState.addEventListener('change', async (state) => {
           if (state === 'active' && pendingTxRef.current) {
             sub.remove();
@@ -75,7 +75,7 @@ export default function PaymentScreen() {
               await paymentsApi.verify(pendingTxRef.current);
               pendingTxRef.current = null;
             } catch {
-              // Payment may still be pending — navigation happens anyway
+              // Payment may still be pending: navigation happens anyway
             } finally {
               setVerifying(false);
               navigateToTracking();
@@ -117,7 +117,7 @@ export default function PaymentScreen() {
         <View style={[styles.amountCard, { backgroundColor: theme.primary }]}>
           <Text style={styles.amountLabel}>Amount to pay</Text>
           <Text style={styles.amount}>₦{Number(price ?? 0).toLocaleString()}</Text>
-          <Text style={styles.amountNote}>Funds held in escrow — released after delivery</Text>
+          <Text style={styles.amountNote}>Funds held in escrow: released after delivery</Text>
         </View>
 
         {/* Payment methods */}
@@ -169,7 +169,7 @@ export default function PaymentScreen() {
         {selectedId === 'bank_transfer' && (
           <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
-              Flutterwave will generate a one-time virtual account number for this transfer. Send the exact amount from your bank app — the order confirms automatically when funds land.
+              Flutterwave will generate a one-time virtual account number for this transfer. Send the exact amount from your bank app: the order confirms automatically when funds land.
             </Text>
           </View>
         )}
@@ -177,7 +177,7 @@ export default function PaymentScreen() {
         {selectedId === 'ussd' && (
           <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
-              Pick your bank on the next screen and dial the code from any phone — no smartphone or internet required for the transfer itself.
+              Pick your bank on the next screen and dial the code from any phone: no smartphone or internet required for the transfer itself.
             </Text>
           </View>
         )}
@@ -185,7 +185,7 @@ export default function PaymentScreen() {
         {selectedId === 'wallet' && (
           <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
             <Text style={[styles.noticeText, { color: theme.text }]}>
-              Charged instantly to your SEIRS wallet — no Flutterwave roundtrip.
+              Charged instantly to your SEIRS wallet: no Flutterwave roundtrip.
             </Text>
           </View>
         )}

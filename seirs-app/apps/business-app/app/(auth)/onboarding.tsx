@@ -106,7 +106,7 @@ export default function OnboardingScreen() {
         ))}
       </View>
 
-      {/* Both options always visible — new users sign up, returning users sign in.
+      {/* Both options always visible: new users sign up, returning users sign in.
           Previously only one button showed per slide (Sign In on slides 0-2,
           Get Started on slide 3) which hid the sign-up path entirely if the
           user tapped Sign In before auto-advance reached the last slide. */}

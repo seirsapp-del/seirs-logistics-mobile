@@ -54,7 +54,7 @@ export default function DriverRegisterScreen() {
     setLoading(true);
     try {
       await authApi.register({ name: fullName, email, phone, password, role: 'driver', vehicleType: vehicle! });
-      // Register sends an OTP — verify happens on the next screen, not
+      // Register sends an OTP: verify happens on the next screen, not
       // here. Login (token issuance) only happens after successful OTP
       // verification.
       router.push({

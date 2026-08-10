@@ -9,7 +9,7 @@ import { Icon } from '@/components/Icon';
 import { businessApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
-// Spec V8 §4.2 — recurring delivery templates for business senders.
+// Spec V8 §4.2: recurring delivery templates for business senders.
 // Each row is a saved schedule that auto-creates a delivery on its
 // cadence. Backend cron fires every 5 min and dispatches due rows.
 

@@ -46,8 +46,8 @@ export default function JobDetailScreen() {
         setJob({
           id:                d.id,
           urgency:           d.urgency ?? 'standard',
-          pickupAddress:     d.pickupAddress ?? '—',
-          dropoffAddress:    d.dropoffAddress ?? '—',
+          pickupAddress:     d.pickupAddress ?? '-',
+          dropoffAddress:    d.dropoffAddress ?? '-',
           distanceKm:        d.distanceKm ? Number(d.distanceKm).toFixed(1) : null,
           estimatedDuration: d.estimatedTotalMinutes,
           price:             Number(d.price ?? 0),
@@ -181,7 +181,7 @@ export default function JobDetailScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Countdown — only when this was auto-offered (not when the driver
+        {/* Countdown: only when this was auto-offered (not when the driver
             tapped through from the browse list). */}
         {isOffered && (
           <View style={[styles.countdownCard, { backgroundColor: countdownColor + '15', borderColor: countdownColor + '40' }]}>

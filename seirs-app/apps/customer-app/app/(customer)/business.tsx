@@ -1,17 +1,17 @@
 /**
- * Send Multiple — single pickup, up to 5 recipients in one go.
+ * Send Multiple: single pickup, up to 5 recipients in one go.
  *
  * Designed for retail customers with a clustered need (moving day,
  * holiday shipping, sending gifts to several friends at once).
  *
- * Not the same as the Business app's CSV bulk upload — that's for
+ * Not the same as the Business app's CSV bulk upload: that's for
  * sustained N-per-day operators. This is a one-off "I have 3 things
  * to send right now" surface.
  *
  * Architecture: spawns N independent deliveries in parallel rather
  * than one multi-stop trip, so each recipient gets their own driver
  * + tracking code. Faster for the last recipient, costs N delivery
- * fees instead of one shared fee — which retail customers prefer
+ * fees instead of one shared fee: which retail customers prefer
  * for irreplaceable items.
  */
 import {
@@ -32,7 +32,7 @@ import { deliveriesApi, uploadApi } from '@/services/api';
 const MAX_RECIPIENTS  = 5;
 const MAX_PHOTOS      = 5;   // matches /send single-package flow
 
-// 16 categories matching /send single-package — keeps surcharge maths
+// 16 categories matching /send single-package: keeps surcharge maths
 // + safety hard-stops consistent across both flows.
 const PACKAGE_CATEGORIES = [
   { id: 'documents',         labelKey: 'categoryDocuments'       },
@@ -172,7 +172,7 @@ export default function SendMultipleScreen() {
     );
     const tracking = results
       .filter(r => r.status === 'fulfilled')
-      .map((r: any) => r.value?.trackingCode ?? r.value?.delivery?.trackingCode ?? '—');
+      .map((r: any) => r.value?.trackingCode ?? r.value?.delivery?.trackingCode ?? '-');
     const failed = results.filter(r => r.status === 'rejected').length;
     setResult({ tracking, failed });
     setSubmitting(false);
@@ -316,7 +316,7 @@ export default function SendMultipleScreen() {
                 />
               </View>
 
-              {/* Photos per recipient — matches /send single-package flow */}
+              {/* Photos per recipient: matches /send single-package flow */}
               <View style={styles.field}>
                 <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>
                   {t('send.packagePhotos')} <Text style={{ color: theme.error }}>*</Text>
@@ -347,7 +347,7 @@ export default function SendMultipleScreen() {
                 </View>
               </View>
 
-              {/* Category — same 16 options as /send, drives surcharge + vehicle fit */}
+              {/* Category: same 16 options as /send, drives surcharge + vehicle fit */}
               <View style={styles.field}>
                 <Text style={[styles.fieldLabel, { color: theme.textSecond }]}>
                   {t('send.category')} <Text style={{ color: theme.error }}>*</Text>

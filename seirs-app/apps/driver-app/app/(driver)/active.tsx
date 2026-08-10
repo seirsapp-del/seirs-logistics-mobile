@@ -21,10 +21,12 @@ const STATUS_STEPS: {
   action: string | null; next: string | null;
   gradient: readonly [string, string];
 }[] = [
-  { key: 'assigned',   label: 'Head to Pickup',   icon: 'map-outline',            action: 'Mark Picked Up',    next: 'picked_up',  gradient: ['#00C2FF', '#0095CC'] },
-  { key: 'picked_up',  label: 'Package Collected', icon: 'cube-outline',           action: 'Start Delivery',    next: 'in_transit', gradient: ['#FF6B00', '#C2410C'] },
-  { key: 'in_transit', label: 'En Route',           icon: 'navigate-outline',       action: 'Confirm Delivered', next: 'delivered',  gradient: ['#8B5CF6', '#6D28D9'] },
-  { key: 'delivered',  label: 'Delivered!',          icon: 'checkmark-circle-outline', action: null,             next: null,         gradient: ['#22C55E', '#15803D'] },
+  // Brand palette only (audit 2026-08-10: the old in_transit step was
+  // purple, which is not a SEIRS colour).
+  { key: 'assigned',   label: 'Head to Pickup',   icon: 'map-outline',            action: 'Mark Picked Up',    next: 'picked_up',  gradient: ['#3A7BD5', '#2A5FA8'] },
+  { key: 'picked_up',  label: 'Package Collected', icon: 'cube-outline',           action: 'Start Delivery',    next: 'in_transit', gradient: ['#FFBE0B', '#D99E00'] },
+  { key: 'in_transit', label: 'En Route',           icon: 'navigate-outline',       action: 'Confirm Delivered', next: 'delivered',  gradient: ['#0F2B4C', '#1A3A63'] },
+  { key: 'delivered',  label: 'Delivered!',          icon: 'checkmark-circle-outline', action: null,             next: null,         gradient: ['#16A34A', '#15803D'] },
 ];
 
 export default function ActiveDeliveryScreen() {
@@ -58,7 +60,7 @@ export default function ActiveDeliveryScreen() {
   );
 
   useEffect(() => {
-    // No id means this screen was opened without a target delivery — flip
+    // No id means this screen was opened without a target delivery: flip
     // loading off so the empty-state renders instead of an infinite spinner.
     if (!id) {
       setLoading(false);
@@ -221,7 +223,7 @@ export default function ActiveDeliveryScreen() {
         <Pressable
           onPress={() => router.push({ pathname: '/(driver)/sos' as any, params: { deliveryId: id ?? '' } } as any)}
           style={[styles.backCircle, { backgroundColor: '#FEE2E2' }]}
-          accessibilityLabel="SOS — emergency"
+          accessibilityLabel="SOS: emergency"
         >
           <Ionicons name="warning" size={20} color="#DC2626" />
         </Pressable>
@@ -255,7 +257,7 @@ export default function ActiveDeliveryScreen() {
           </LinearGradient>
         </View>
 
-        {/* Live map — pickup pin (green), dropoff pin (red), driver pin (blue) */}
+        {/* Live map: pickup pin (green), dropoff pin (red), driver pin (blue) */}
         {delivery.pickupLat && delivery.dropoffLat && (
           <View style={[styles.card, { backgroundColor: theme.surface, padding: 0, overflow: 'hidden' }, Shadows.sm]}>
             <MapView
@@ -355,7 +357,7 @@ export default function ActiveDeliveryScreen() {
           {[
             { label: 'Description',   value: delivery.packageDescription,                          icon: 'cube-outline' },
             { label: 'Size',          value: delivery.packageSize,                                  icon: 'resize-outline' },
-            { label: 'Fragile',       value: delivery.isFragile ? 'Yes — handle carefully' : 'No', icon: 'warning-outline' },
+            { label: 'Fragile',       value: delivery.isFragile ? 'Yes: handle carefully' : 'No', icon: 'warning-outline' },
             { label: 'Distance',      value: `${Number(delivery.distanceKm).toFixed(1)} km`,       icon: 'map-outline' },
             { label: 'Your Earnings', value: `₦${Number(delivery.driverEarnings).toLocaleString()}`, icon: 'cash-outline' },
           ].map(({ label, value, icon }) => (

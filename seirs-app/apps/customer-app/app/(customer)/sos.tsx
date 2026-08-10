@@ -26,7 +26,7 @@ export default function SOSScreen() {
     { labelKey: 'fireService', label: t('sos.fireService'), number: '01-7944929',  icon: 'flame-outline' },
   ];
   // Optional ?deliveryId= param when SOS is opened from the trip-progress
-  // screen — lets the backend notify the assigned driver too.
+  // screen: lets the backend notify the assigned driver too.
   const params  = useLocalSearchParams<{ deliveryId?: string }>();
 
   const [activated, setActivated] = useState(false);
@@ -68,7 +68,7 @@ export default function SOSScreen() {
     setActivated(true);
     setCountdown(5);
 
-    // Try to attach a GPS fix — non-blocking. The alert still posts
+    // Try to attach a GPS fix: non-blocking. The alert still posts
     // without coordinates if permission is denied / no fix yet.
     let lat: number | undefined;
     let lng: number | undefined;
@@ -88,7 +88,7 @@ export default function SOSScreen() {
       });
       setAlertId(created.id);
     } catch (e: any) {
-      // Surface the failure but stay in activated state — user can retry.
+      // Surface the failure but stay in activated state: user can retry.
       Alert.alert(t('sos.cannotReach'),
         e?.message ?? t('sos.cannotReachMsg'));
     } finally {
@@ -109,7 +109,7 @@ export default function SOSScreen() {
 
   const cancelSOS = async () => {
     if (alertId) {
-      // Best-effort — UI already resets even if the cancel API call fails.
+      // Best-effort: UI already resets even if the cancel API call fails.
       sosApi.cancel(alertId).catch(() => {});
     }
     setActivated(false);

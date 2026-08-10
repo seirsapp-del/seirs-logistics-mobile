@@ -15,9 +15,9 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { deliveriesApi, dropoffApi, identityApi } from '@/services/api';
 
-// Spec V8 §1.17 — recipient-side handoff identity surface. Used when the
+// Spec V8 §1.17: recipient-side handoff identity surface. Used when the
 // customer is collecting a package (door delivery from driver, or pickup
-// from a partner store). Two methods supported per spec — the recipient
+// from a partner store). Two methods supported per spec: the recipient
 // can either show their physical ID + email OTP, or their SEIRS ID +
 // typed-name signature. This screen presents both.
 
@@ -221,7 +221,7 @@ export default function RecipientIdScreen() {
           <View style={styles.howSection}>
             <Text style={[styles.howMethod, { color: theme.primary }]}>1. Physical ID + Email Code</Text>
             <Text style={[styles.howText, { color: theme.textSecond }]}>
-              Show staff your National ID, driver&apos;s licence, voter card, NIN slip, or passport — plus the 6-digit code we email when you tap above.
+              Show staff your National ID, driver&apos;s licence, voter card, NIN slip, or passport: plus the 6-digit code we email when you tap above.
             </Text>
           </View>
 

@@ -1,5 +1,5 @@
 /**
- * Apply to be a Partner Store — KYC application form.
+ * Apply to be a Partner Store: KYC application form.
  *
  * Spec V8 hybrid-account redesign (2026-05-11). Reached from the business
  * drawer → "Apply to be a Partner Store" (only visible to Senders who
@@ -38,7 +38,7 @@ export default function ApplyPartnerScreen() {
 
   const [existing, setExisting] = useState<ApplicationStatus | null>(null);
   const [loading,  setLoading]  = useState(true);
-  // Structured address — mirrors the register form so dispatch + zone
+  // Structured address: mirrors the register form so dispatch + zone
   // surcharges can index by state without re-parsing free text. On submit
   // these are joined into the canonical `storeAddress` string the backend
   // expects (same contract as before).
@@ -50,7 +50,7 @@ export default function ApplyPartnerScreen() {
   const [cacReg,          setCacReg]          = useState<string | null>(null);
   const [ownerId,         setOwnerId]         = useState<string | null>(null);
   const [submitting,      setSubmitting]      = useState(false);
-  // Coordinates from the Places autocomplete pick. Optional — the
+  // Coordinates from the Places autocomplete pick. Optional: the
   // backend accepts submissions without them (existing behaviour) and
   // simply skips the /find-a-partner distance sort for such stores.
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -184,7 +184,7 @@ export default function ApplyPartnerScreen() {
     );
   }
 
-  // Rejected, suspended, or no application yet — show the form.
+  // Rejected, suspended, or no application yet: show the form.
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView

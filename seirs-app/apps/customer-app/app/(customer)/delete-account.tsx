@@ -16,7 +16,7 @@ import { PasswordInput } from '@/components/PasswordInput';
 
 const CONFIRM_PHRASE = 'delete my account';
 
-// Spec V8 — NDPR right to erasure. Soft-deletes (isActive=false) with
+// Spec V8: NDPR right to erasure. Soft-deletes (isActive=false) with
 // a 30-day grace window. Logging back in within the window restores;
 // after 30 days a backend cron hard-deletes.
 export default function DeleteAccountScreen() {
@@ -31,7 +31,7 @@ export default function DeleteAccountScreen() {
   const [loading,     setLoading]     = useState(false);
   const [exporting,   setExporting]   = useState(false);
 
-  // Spec V8 NDPR Article 24 — right to data portability. Surfaced on
+  // Spec V8 NDPR Article 24: right to data portability. Surfaced on
   // delete-account so users see + can take a copy before erasing.
   const handleExport = async () => {
     setExporting(true);
@@ -118,7 +118,7 @@ export default function DeleteAccountScreen() {
           {[
             'Your profile, name, phone, photo',
             'Your delivery history (after the 30-day grace window)',
-            'Your wallet balance — withdraw before deleting if there are funds',
+            'Your wallet balance: withdraw before deleting if there are funds',
             'Your saved payment + bank details',
           ].map(t => (
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
@@ -128,12 +128,12 @@ export default function DeleteAccountScreen() {
           {[
             'Audit trails for any open disputes against your account',
             'Tax records we are legally required to retain (FIRS / NDPR)',
-            'Anonymised analytics — you are not personally identifiable',
+            'Anonymised analytics: you are not personally identifiable',
           ].map(t => (
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
           ))}
 
-          {/* NDPR data portability — let user take a copy before deleting */}
+          {/* NDPR data portability: let user take a copy before deleting */}
           <Pressable
             onPress={handleExport}
             disabled={exporting}

@@ -1,5 +1,5 @@
 /**
- * Driver Messages tab — unified inbox.
+ * Driver Messages tab: unified inbox.
  *
  * One list, two conversation types (same pattern as customer-app):
  *   1. Delivery chats (driver ↔ customer), from chatApi.conversations()

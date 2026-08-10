@@ -2,19 +2,19 @@ import { View } from 'react-native';
 import Svg, { Circle, Path, Rect, Line, Text as SvgText, G } from 'react-native-svg';
 
 /**
- * SEIRS logo v2 — refined for "ten-year-old brand on day one" feel.
+ * SEIRS logo v2: refined for "ten-year-old brand on day one" feel.
  *
  * Built 2026-05-20 after a brand-strategy pass. Three principles:
- *   1. Single stroke weight (2px) throughout — feels designed, not sketched
+ *   1. Single stroke weight (2px) throughout: feels designed, not sketched
  *   2. Every coordinate snaps to integer pixels on a 48×32 grid
  *   3. Two colours only in the mark (navy + yellow). Sky-blue is UI-only
  *
  * Hidden detail: the triangular negative space between the rider's
- * torso, arm, and the handlebar forms a forward-pointing wedge — reads
+ * torso, arm, and the handlebar forms a forward-pointing wedge: reads
  * subliminally as "motion." Won't be consciously noticed; will be felt.
  *
  * Three exports:
- *   <SeirsMark    size={96} />                  // mark only (square — app icon, favicon, social avatar)
+ *   <SeirsMark    size={96} />                  // mark only (square: app icon, favicon, social avatar)
  *   <SeirsWordmark size={120} />                // wordmark only (website nav, email signature)
  *   <SeirsLogoLockup size={140} />              // mark + wordmark horizontal (letterhead, receipt header)
  *
@@ -22,7 +22,7 @@ import Svg, { Circle, Path, Rect, Line, Text as SvgText, G } from 'react-native-
  * current brand navy. Pass `color` to override (e.g. white on dark).
  */
 
-// Refined brand colours. Sky-blue intentionally omitted — UI only.
+// Refined brand colours. Sky-blue intentionally omitted: UI only.
 export const NAVY_REFINED = '#0E2540';
 export const YELLOW       = '#FFBE0B';
 
@@ -30,7 +30,7 @@ const STROKE = 2;
 
 // ── 1. The mark ────────────────────────────────────────────────────────
 // Stick-figure okada on a 48×32 grid. Two wheels, single-curve frame,
-// rider leaning forward. NO yellow package (removed 2026-05-20 — user
+// rider leaning forward. NO yellow package (removed 2026-05-20: user
 // preferred a cleaner silhouette). Everything snaps to integer pixels.
 
 interface MarkProps {
@@ -48,7 +48,7 @@ export function SeirsMark({
 
   return (
     <Svg width={size} height={size * aspect} viewBox={`0 0 ${VB_W} ${VB_H}`}>
-      {/* Frame — single 4-segment path: rear hub → saddle-left → saddle-right → front hub */}
+      {/* Frame: single 4-segment path: rear hub → saddle-left → saddle-right → front hub */}
       <Path
         d="M 10 24 L 18 16 L 30 16 L 38 24"
         stroke={color}
@@ -58,7 +58,7 @@ export function SeirsMark({
         strokeLinejoin="round"
       />
 
-      {/* Rear wheel — circle + 2-stroke axle cross */}
+      {/* Rear wheel: circle + 2-stroke axle cross */}
       <Circle cx={10} cy={24} r={5} stroke={color} strokeWidth={STROKE} fill="none" />
       <Line x1={6}  y1={24} x2={14} y2={24} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
       <Line x1={10} y1={20} x2={10} y2={28} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
@@ -68,24 +68,24 @@ export function SeirsMark({
       <Line x1={34} y1={24} x2={42} y2={24} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
       <Line x1={38} y1={20} x2={38} y2={28} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
 
-      {/* Handlebar — short bar reaching forward from the rider's hand,
+      {/* Handlebar: short bar reaching forward from the rider's hand,
           visibly ABOVE the front wheel so there's clear hand→wheel space */}
       <Line x1={37} y1={12} x2={42} y2={9} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
 
-      {/* Rider torso — angled forward */}
+      {/* Rider torso: angled forward */}
       <Line x1={24} y1={16} x2={28} y2={8} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
 
-      {/* Rider head — filled solid so it reads at favicon size */}
+      {/* Rider head: filled solid so it reads at favicon size */}
       <Circle cx={28} cy={5} r={3} fill={color} />
 
-      {/* Arm to handlebar — ends at (37,12), above-left of wheel for breathing room */}
+      {/* Arm to handlebar: ends at (37,12), above-left of wheel for breathing room */}
       <Line x1={27} y1={10} x2={37} y2={12} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
     </Svg>
   );
 }
 
 // ── 2. The wordmark ────────────────────────────────────────────────────
-// "SEIRS" — equal-cell positioning so spacing is platform-consistent
+// "SEIRS": equal-cell positioning so spacing is platform-consistent
 // (system fonts handle letter-spacing differently on iOS vs Android,
 // so we draw each letter at a hand-placed x). 0.18em tracking gives
 // the "luxury wordmark" feel of Stripe / Linear / Vercel.
@@ -104,7 +104,7 @@ export function SeirsWordmark({
   const aspect = VB_H / VB_W;
 
   // Five equal cells. Each letter is centred in its cell. Total tracking
-  // ≈ 0.18em — enough to feel deliberate, not so much it loses cohesion.
+  // ≈ 0.18em: enough to feel deliberate, not so much it loses cohesion.
   const cellW = VB_W / 5;
   const letters = ['S', 'E', 'I', 'R', 'S'];
 
@@ -129,7 +129,7 @@ export function SeirsWordmark({
 }
 
 // ── Bolder variants ────────────────────────────────────────────────────
-// Thicker strokes (3.5px), solid-filled wheels, beefier rider — the
+// Thicker strokes (3.5px), solid-filled wheels, beefier rider: the
 // "people can actually see it" variant. Use when the mark needs to
 // shout (home-screen header, hero card, splash, app icon). Thin v2 is
 // still fine for favicon and small contexts.
@@ -154,7 +154,7 @@ export function SeirsMarkBold({
 
   return (
     <Svg width={size} height={size * aspect} viewBox={`0 0 ${VB_W} ${VB_H}`}>
-      {/* Frame — bolder */}
+      {/* Frame: bolder */}
       <Path
         d="M 10 24 L 18 16 L 30 16 L 38 24"
         stroke={color}
@@ -164,7 +164,7 @@ export function SeirsMarkBold({
         strokeLinejoin="round"
       />
 
-      {/* Rear wheel — SOLID filled, with hub hole showing through */}
+      {/* Rear wheel: SOLID filled, with hub hole showing through */}
       <Circle cx={10} cy={24} r={6}   fill={color} />
       <Circle cx={10} cy={24} r={2}   fill={hubColor} />
 
@@ -172,26 +172,26 @@ export function SeirsMarkBold({
       <Circle cx={38} cy={24} r={6}   fill={color} />
       <Circle cx={38} cy={24} r={2}   fill={hubColor} />
 
-      {/* Handlebar — reaches forward from the hand, sits ABOVE the wheel
+      {/* Handlebar: reaches forward from the hand, sits ABOVE the wheel
           for clear hand→wheel separation */}
       <Line x1={37} y1={12} x2={42} y2={9}
             stroke={color} strokeWidth={STR} strokeLinecap="round" />
 
-      {/* Rider torso — beefier */}
+      {/* Rider torso: beefier */}
       <Line x1={24} y1={16} x2={28} y2={8}
             stroke={color} strokeWidth={4} strokeLinecap="round" />
 
-      {/* Head — bigger solid circle */}
+      {/* Head: bigger solid circle */}
       <Circle cx={28} cy={5} r={3.5} fill={color} />
 
-      {/* Arm — ends at (37,12), above-left of wheel for visible gap */}
+      {/* Arm: ends at (37,12), above-left of wheel for visible gap */}
       <Line x1={27} y1={10} x2={37} y2={12}
             stroke={color} strokeWidth={STR} strokeLinecap="round" />
     </Svg>
   );
 }
 
-// ── 4. The brand pill — bold lockup in a navy capsule ─────────────────
+// ── 4. The brand pill: bold lockup in a navy capsule ─────────────────
 // THIS is the home-screen / drawer / hero brand mark. Mark + wordmark
 // inside a rounded navy pill, white-on-navy with the yellow package
 // as the single colour pop. Self-contained, can't be missed.
@@ -210,7 +210,7 @@ export function SeirsBrandPill({
   background = NAVY_REFINED,
   color      = '#FFFFFF',
 }: PillProps) {
-  // Pill viewBox: 200×56 (≈ 3.6:1) — comfortable banner proportion.
+  // Pill viewBox: 200×56 (≈ 3.6:1): comfortable banner proportion.
   const VB_W = 200;
   const VB_H = 56;
   const aspect = VB_H / VB_W;
@@ -221,7 +221,7 @@ export function SeirsBrandPill({
       {/* Navy pill background */}
       <Rect x={0} y={0} width={200} height={56} rx={28} fill={background} />
 
-      {/* Mark — translated + scaled. Source is 48×32; place at x=14,
+      {/* Mark: translated + scaled. Source is 48×32; place at x=14,
           y=center-of-pill minus half mark-height. Scale 0.85 keeps it
           inside the pill with ~4px vertical padding. */}
       <G transform="translate(14 8) scale(0.85)">
@@ -241,7 +241,7 @@ export function SeirsBrandPill({
               stroke={color} strokeWidth={STR} strokeLinecap="round" />
       </G>
 
-      {/* Wordmark — equal-cell, centred vertically (y=36 = pill mid + 8px optical) */}
+      {/* Wordmark: equal-cell, centred vertically (y=36 = pill mid + 8px optical) */}
       {['S', 'E', 'I', 'R', 'S'].map((char, i) => (
         <SvgText
           key={`${char}-${i}`}

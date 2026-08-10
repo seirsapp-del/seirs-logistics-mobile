@@ -51,7 +51,7 @@ export default function LoginScreen() {
       await login({ ...res.user, token: res.token, rememberMe, pendingDeletion: (res as any).pendingDeletion ?? null });
     } catch (e: any) {
       const msg: string = e.message ?? '';
-      // Account exists but email not verified — send them to OTP screen with
+      // Account exists but email not verified: send them to OTP screen with
       // email pre-filled instead of dead-ending on the error text.
       if (msg.toLowerCase().includes('verify your email')) {
         router.push({ pathname: '/(auth)/verify-otp' as any, params: { email: email.trim().toLowerCase() } });

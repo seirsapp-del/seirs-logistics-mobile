@@ -12,7 +12,7 @@ export type VehicleType =
 
 // Maps SEIRS vehicle types to MaterialCommunityIcons names. All 3 apps
 // + the admin dashboard use this so a "motorcycle" looks identical in
-// every screen — no mismatched emojis or one-off icon choices.
+// every screen: no mismatched emojis or one-off icon choices.
 const ICON_MAP: Record<VehicleType, ComponentProps<typeof MaterialCommunityIcons>['name']> = {
   bicycle:     'bicycle',
   motorcycle:  'motorbike',

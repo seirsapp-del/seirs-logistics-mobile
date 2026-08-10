@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-// Android Maps key — also has Directions + Places APIs enabled in the
+// Android Maps key: also has Directions + Places APIs enabled in the
 // Google Cloud project. Same key as customer-app.
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
 

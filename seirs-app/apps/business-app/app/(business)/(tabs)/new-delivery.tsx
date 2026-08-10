@@ -1,5 +1,5 @@
 /**
- * Business · New Delivery — category-first multi-stop booking flow.
+ * Business · New Delivery: category-first multi-stop booking flow.
  *
  * Spec V8 redesign (2026-05-12). Three-step wizard inside a draggable
  * @gorhom/bottom-sheet over a full-screen Google Map. Connects directly
@@ -8,11 +8,11 @@
  * when the admin tunes the rate card.
  *
  * Steps:
- *   0. WHAT — category picker, weight (required), quantity, vehicle
+ *   0. WHAT: category picker, weight (required), quantity, vehicle
  *      (auto-suggested with safety hard-stops + soft warnings)
- *   1. WHERE — pickup + 1–5 stops with Google Places autocomplete +
+ *   1. WHERE: pickup + 1–5 stops with Google Places autocomplete +
  *      auto-optimize toggle (default ON, shows reordered visit order)
- *   2. WHEN — Send Now / Schedule for Later + price breakdown + ETA
+ *   2. WHEN: Send Now / Schedule for Later + price breakdown + ETA
  *
  * Submit creates one Delivery + N DeliveryStop rows on the backend.
  */
@@ -127,7 +127,7 @@ export default function NewDeliveryScreen() {
   const snapPoints = useMemo(() => [180, '92%'], []);
   const sheetTopInset = insets.top + 88;
 
-  // Track keyboard height so we can pad the ScrollView only while typing —
+  // Track keyboard height so we can pad the ScrollView only while typing -
   // padding lets the focused input scroll above the keyboard, and disappears
   // the moment the keyboard closes (no permanent dead space).
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -610,7 +610,7 @@ export default function NewDeliveryScreen() {
         </Pressable>
         <View style={[styles.topTitle, { backgroundColor: colors.surface }]}>
           <Text style={[styles.topTitleText, { color: colors.text }]}>New Delivery</Text>
-          <Text style={[styles.topStep, { color: colors.textSecond }]}>Step {step + 1} / 3 — {STEPS[step]}</Text>
+          <Text style={[styles.topStep, { color: colors.textSecond }]}>Step {step + 1} / 3: {STEPS[step]}</Text>
         </View>
         {/* Spacer so title chip is visually screen-centered (matches back button) */}
         <View style={styles.backBtn} pointerEvents="none" />
@@ -648,7 +648,7 @@ export default function NewDeliveryScreen() {
             <View style={{ gap: 14 }}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>What are you sending?</Text>
               <Text style={[styles.sectionHint, { color: colors.textSecond }]}>
-                Pick the closest match — this drives suggested vehicle, dwell time, and any safety rules.
+                Pick the closest match: this drives suggested vehicle, dwell time, and any safety rules.
               </Text>
 
               {catalog.length === 0 ? (
@@ -791,7 +791,7 @@ export default function NewDeliveryScreen() {
             <View style={{ gap: 12 }}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Pickup &amp; Stops</Text>
               <Text style={[styles.sectionHint, { color: colors.textSecond }]}>
-                Up to 5 stops per booking. We'll find the shortest route automatically — turn off below if you want a specific order.
+                Up to 5 stops per booking. We'll find the shortest route automatically: turn off below if you want a specific order.
               </Text>
 
               <View style={[styles.inputBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -1029,7 +1029,7 @@ export default function NewDeliveryScreen() {
                   ? <ActivityIndicator color="#fff" />
                   : <>
                       <Text style={styles.nextText}>
-                        Confirm — ₦{quote ? Math.round(quote.customer.total).toLocaleString() : '—'}
+                        Confirm: ₦{quote ? Math.round(quote.customer.total).toLocaleString() : '-'}
                       </Text>
                       <Icon name="Check" size={16} color="#fff" />
                     </>}
@@ -1045,7 +1045,7 @@ export default function NewDeliveryScreen() {
 // ── Helpers ─────────────────────────────────────────────────────────────
 
 /**
- * Mirror of PricingService.computeStopDwellMinutes — used client-side
+ * Mirror of PricingService.computeStopDwellMinutes: used client-side
  * to compute estimated dwell BEFORE the quote endpoint returns, so the
  * quote payload includes a sensible value. Server is authoritative.
  */
@@ -1110,7 +1110,7 @@ function PriceLine({ label, value, bold, negative }: { label: string; value: num
 }
 
 // ── Styles ──────────────────────────────────────────────────────────────
-// Structural styles only — every color (text, background, border) is
+// Structural styles only: every color (text, background, border) is
 // applied inline via the active palette so screens swap between
 // light + dark without rebuilding the StyleSheet.
 const styles = StyleSheet.create({
@@ -1152,7 +1152,7 @@ const styles = StyleSheet.create({
   suggBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: '#3A7BD5' },
   suggBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.4, textTransform: 'uppercase' },
 
-  // Safety banner (amber across both modes — semantic warning color)
+  // Safety banner (amber across both modes: semantic warning color)
   tipBox: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', padding: 10, backgroundColor: '#FFFBEB', borderColor: '#FCD34D', borderWidth: 1, borderRadius: 10 },
   tipText: { flex: 1, fontSize: 12, color: '#92400E' },
 

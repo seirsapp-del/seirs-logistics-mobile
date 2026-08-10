@@ -14,7 +14,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { loyaltyApi, type ReferralHistoryItem } from '@/services/api';
 
-// Universal/web fallback link — when the receiver doesn't have the app,
+// Universal/web fallback link: when the receiver doesn't have the app,
 // the page on seirs.app/r/<code> can show download links and forward
 // the code through to the play store / app store via deferred deep linking.
 const WEB_REFERRAL_BASE = 'https://seirs.app/r/';
@@ -127,9 +127,9 @@ export default function ReferralScreen() {
         {/* Stats */}
         <View style={[styles.statsRow, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {[
-            { label: 'Signups',         value: loading ? '—' : `${history.length}`, icon: 'people-outline', color: theme.primary },
-            { label: 'Bonuses paid',    value: loading ? '—' : `${completedCount}`, icon: 'checkmark-circle-outline', color: '#22C55E' },
-            { label: 'Points earned',   value: loading ? '—' : `${pointsEarned.toLocaleString()}`, icon: 'star-outline', color: '#FFBE0B' },
+            { label: 'Signups',         value: loading ? '-' : `${history.length}`, icon: 'people-outline', color: theme.primary },
+            { label: 'Bonuses paid',    value: loading ? '-' : `${completedCount}`, icon: 'checkmark-circle-outline', color: '#22C55E' },
+            { label: 'Points earned',   value: loading ? '-' : `${pointsEarned.toLocaleString()}`, icon: 'star-outline', color: '#FFBE0B' },
           ].map((stat, i) => (
             <View key={stat.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
               <Ionicons name={stat.icon as any} size={20} color={stat.color} />

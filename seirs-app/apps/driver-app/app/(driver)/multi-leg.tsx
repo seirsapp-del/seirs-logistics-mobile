@@ -11,7 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 
-// Spec V8 §1 / §2.15 — driver's view of a corridor pool trip with up
+// Spec V8 §1 / §2.15: driver's view of a corridor pool trip with up
 // to 4 simultaneous active legs. Each leg shows pickup/dropoff,
 // status, ETA. Driver can mark a leg complete which slides the
 // capacity bound back and frees a slot for the next insertion.
@@ -86,8 +86,8 @@ export default function MultiLegScreen() {
             <Text style={styles.capacityValue}>{slotsUsed} <Text style={styles.capacitySecond}>/ 4 legs</Text></Text>
             <Text style={styles.capacitySub}>
               {slotsFree > 0
-                ? `${slotsFree} slot${slotsFree === 1 ? '' : 's'} open — system can insert more legs along your corridor`
-                : 'At cap — no new insertions until a leg completes'}
+                ? `${slotsFree} slot${slotsFree === 1 ? '' : 's'} open: system can insert more legs along your corridor`
+                : 'At cap: no new insertions until a leg completes'}
             </Text>
           </View>
           <View style={styles.etaBadge}>
@@ -165,7 +165,7 @@ export default function MultiLegScreen() {
 
         <View style={[styles.note, { backgroundColor: theme.primary + '08' }]}>
           <Text style={[styles.noteText, { color: theme.textSecond }]}>
-            <Text style={{ fontWeight: '700' as any }}>How pooling works:</Text> The dispatcher silently inserts legs that lie within 1km of your route + add ≤20% to your time. You don&apos;t need to accept each insertion — just complete legs in the order shown.
+            <Text style={{ fontWeight: '700' as any }}>How pooling works:</Text> The dispatcher silently inserts legs that lie within 1km of your route + add ≤20% to your time. You don&apos;t need to accept each insertion: just complete legs in the order shown.
           </Text>
         </View>
       </ScrollView>

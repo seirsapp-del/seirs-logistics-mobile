@@ -13,7 +13,7 @@ interface Props {
 }
 
 /**
- * Business-app drawer adapter — wires the shared headless Drawer to
+ * Business-app drawer adapter: wires the shared headless Drawer to
  * Business Sender / Partner Store-specific menu items per Master Spec V7
  * §4.2 (sender) and §4.3 (partner). Items differ by `businessRole`.
  */
@@ -52,7 +52,7 @@ export function Drawer({ visible, onClose }: Props) {
     // per-package door pickups. Each package gets its own QR.
     { icon: 'Store',           label: t('drawer.dropAtStore',     { defaultValue: 'Drop at Partner Store' }), onPress: () => navigate('/(business)/drop-at-store') },
     // Hybrid-account: senders can apply to additionally operate as a Partner
-    // Store. Hidden once approval lands (canPartner === true) — the
+    // Store. Hidden once approval lands (canPartner === true): the
     // context switcher at the top of the app takes over from there.
     ...(canPartner ? [] : [{
       icon:    'Store' as const,

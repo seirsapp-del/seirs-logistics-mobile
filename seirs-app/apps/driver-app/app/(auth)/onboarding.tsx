@@ -16,14 +16,14 @@ import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 
 const { width: W, height: H } = Dimensions.get('window');
 
-// Driver-focused slides — different copy from customer onboarding but
+// Driver-focused slides: different copy from customer onboarding but
 // the same animated cross-fade pattern (gold-standard from customer-app).
 const SLIDES = [
   {
     id: 'brand',
     Icon: Truck,
     headline: 'Drive with SEIRS.\nEarn on your terms.',
-    sub: 'Join Nigeria\'s smartest delivery platform — verified, insured, fairly paid.',
+    sub: 'Join Nigeria\'s smartest delivery platform: verified, insured, fairly paid.',
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -32,7 +32,7 @@ const SLIDES = [
     id: 'earnings',
     Icon: Wallet,
     headline: 'Daily payouts.\nNo waiting.',
-    sub: 'Earnings credited to your SEIRS wallet after every trip — withdraw anytime.',
+    sub: 'Earnings credited to your SEIRS wallet after every trip: withdraw anytime.',
     gradientStart: '#0A1E36',
     gradientEnd:   '#235A9C',
     accentColor:   '#58A6FF',
@@ -59,7 +59,7 @@ const SLIDES = [
     id: 'safety',
     Icon: Shield,
     headline: 'Verified senders.\nInsured trips.',
-    sub: 'Every customer is identity-verified. Every trip is covered — you\'re never alone.',
+    sub: 'Every customer is identity-verified. Every trip is covered: you\'re never alone.',
     gradientStart: '#0F2B4C',
     gradientEnd:   '#1A3A63',
     accentColor:   '#3A7BD5',
@@ -106,7 +106,7 @@ export default function OnboardingScreen() {
   const SlideIcon = slide.Icon;
 
   // Cross-app conversion: someone downloaded the driver app but actually
-  // wants to send a package — link them to the customer app's store page
+  // wants to send a package: link them to the customer app's store page
   // so they end up in the right product.
   const handleSendPackage = () => {
     const url = Platform.OS === 'ios'

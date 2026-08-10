@@ -37,9 +37,9 @@ const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; Icon: any
 };
 
 const INITIAL_DOCS: DocItem[] = [
-  { id: 'national_id_front', label: 'National ID — Front',      Icon: CreditCard, desc: 'Government-issued ID or NIN slip (front side)',      status: 'not_uploaded', required: true  },
-  { id: 'national_id_back',  label: 'National ID — Back',       Icon: CreditCard, desc: 'Back side of your National ID or NIN slip',           status: 'not_uploaded', required: true  },
-  { id: 'selfie',            label: 'Selfie / Profile photo',   Icon: Camera,     desc: 'Clear photo of your face — used on your driver profile', status: 'not_uploaded', required: true  },
+  { id: 'national_id_front', label: 'National ID: Front',      Icon: CreditCard, desc: 'Government-issued ID or NIN slip (front side)',      status: 'not_uploaded', required: true  },
+  { id: 'national_id_back',  label: 'National ID: Back',       Icon: CreditCard, desc: 'Back side of your National ID or NIN slip',           status: 'not_uploaded', required: true  },
+  { id: 'selfie',            label: 'Selfie / Profile photo',   Icon: Camera,     desc: 'Clear photo of your face: used on your driver profile', status: 'not_uploaded', required: true  },
   { id: 'drivers_license',   label: "Driver's Licence",         Icon: Car,        desc: "Valid Nigerian driver's licence",                     status: 'not_uploaded', required: true  },
   { id: 'vehicle_photo',     label: 'Vehicle Photo',            Icon: Car,        desc: 'Full photo of your vehicle showing the plate',        status: 'not_uploaded', required: true  },
   { id: 'ownership_proof',   label: 'Vehicle Ownership Proof',  Icon: FileText,   desc: 'Vehicle registration or ownership certificate',       status: 'not_uploaded', required: true  },
@@ -63,7 +63,7 @@ export default function KycScreen() {
   const [docs,      setDocs]      = useState<DocItem[]>(INITIAL_DOCS);
   const [uploading, setUploading] = useState<string | null>(null);
   const [showInsurance, setShowInsurance] = useState(false);
-  // Spec V8 §"Camera policy" — drivers MUST have a working phone
+  // Spec V8 §"Camera policy": drivers MUST have a working phone
   // camera as a signup criterion. We probe permission upfront so
   // a denied/unavailable camera is surfaced before they try to
   // upload anything. 'unknown' = haven't checked yet (no banner).
@@ -74,7 +74,7 @@ export default function KycScreen() {
       try {
         const current = await ImagePicker.getCameraPermissionsAsync();
         if (current.status === 'granted') { setCameraStatus('ok'); return; }
-        // OS-blocked (user picked "never ask again") — no point reprompting
+        // OS-blocked (user picked "never ask again"): no point reprompting
         if (!current.canAskAgain) { setCameraStatus('denied'); return; }
         const asked = await ImagePicker.requestCameraPermissionsAsync();
         setCameraStatus(asked.status === 'granted' ? 'ok' : 'denied');
@@ -143,7 +143,7 @@ export default function KycScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Spec V8 — working phone camera is a signup criterion for
+        {/* Spec V8: working phone camera is a signup criterion for
             drivers. Surface a hard banner if permission was denied so
             the user understands why the upload buttons will keep
             failing. App settings deep-link bumps them straight to the
@@ -181,7 +181,7 @@ export default function KycScreen() {
             <View style={[styles.submittedBanner, { backgroundColor: '#16A34A18' }]}>
               <CheckCircle size={16} color="#16A34A" strokeWidth={1.75} />
               <Text style={[styles.submittedText, { color: '#16A34A' }]}>
-                All documents submitted — review within 24 hours
+                All documents submitted: review within 24 hours
               </Text>
             </View>
           )}

@@ -1,5 +1,5 @@
 /**
- * StreetAutocomplete — Google Places autocomplete biased to a selected
+ * StreetAutocomplete: Google Places autocomplete biased to a selected
  * Nigerian state. Drop into register / apply-partner forms next to the
  * StatePicker so users get the same Jumia/Uber-style address typing.
  *
@@ -9,7 +9,7 @@
  * - On select, resolves to a full formatted address via Place Details
  *
  * Unlike the customer-app InlineAddressPicker, this one stays in-place
- * (no map preview, no GPS button) — register forms don't need the
+ * (no map preview, no GPS button): register forms don't need the
  * full bottom-sheet treatment.
  */
 import { useState, useRef, useCallback } from 'react';
@@ -53,7 +53,7 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
-      // Bias to the selected state by appending it to the query — Google's
+      // Bias to the selected state by appending it to the query: Google's
       // autocomplete prioritises matches that contain the state's name. Also
       // restrict to Nigeria via `components=country:ng`.
       const query = state ? `${text}, ${state}, Nigeria` : `${text}, Nigeria`;
@@ -83,7 +83,7 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
   };
 
   const pick = async (p: Prediction) => {
-    // Use main + secondary as the final address — Place Details would give
+    // Use main + secondary as the final address: Place Details would give
     // us coords too but for register-time text storage this is sufficient.
     const combined = p.secondary_text ? `${p.main_text}, ${p.secondary_text}` : p.main_text;
     onChangeText(combined);

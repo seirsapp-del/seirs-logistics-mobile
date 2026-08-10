@@ -118,9 +118,9 @@ export function Drawer({
           },
         ]}
       >
-        {/* Brand row — SEIRS v2 logo lockup. Mark colour follows theme so
+        {/* Brand row: SEIRS v2 logo lockup. Mark colour follows theme so
             the okada is navy in light mode, white in dark mode. Yellow
-            package stays constant — it's the brand signal. */}
+            package stays constant: it's the brand signal. */}
         <View style={[styles.brand, { borderBottomColor: theme.border }]}>
           <SeirsBrandLockup color={theme.text} bgColor={theme.surface} />
         </View>
@@ -262,10 +262,10 @@ const styles = StyleSheet.create({
   signOutText: { fontSize: 13, fontWeight: '600' },
 });
 
-// ── SEIRS brand lockup — mark + wordmark, shared across all 3 apps ────
+// ── SEIRS brand lockup: mark + wordmark, shared across all 3 apps ────
 // Okada: monoline strokes, matches SeirsMarkBold in the customer-app.
 // Wordmark: "SEIRS" rendered in the device system font (One UI Sans on
-// Samsung, Roboto on Pixel, SF Pro on iOS) — matches the splash #58
+// Samsung, Roboto on Pixel, SF Pro on iOS): matches the splash #58
 // look the user chose. NOT a traced/bundled font.
 
 function SeirsBrandLockup({ color, bgColor }: { color: string; bgColor: string }) {
@@ -284,7 +284,7 @@ function SeirsBrandLockup({ color, bgColor }: { color: string; bgColor: string }
         <Circle cx={28} cy={5} r={3.5} fill={color}/>
         <Line x1={27} y1={10} x2={37} y2={12} stroke={color} strokeWidth={3.5} strokeLinecap="round"/>
       </Svg>
-      {/* Plain Text with natural letter-spacing — matches the home
+      {/* Plain Text with natural letter-spacing: matches the home
           top-bar wordmark (which the user preferred over the old
           forced equal-cell SVG spacing). */}
       <Text style={{ fontSize: 22, fontWeight: '900', letterSpacing: 2.5, color }}>

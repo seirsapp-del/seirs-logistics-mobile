@@ -108,6 +108,13 @@ export class NotificationsService {
     return { success: true };
   }
 
+  /** Mass clear (founder 2026-08-10: nobody deletes 100 rows one by one). */
+  async removeAll(userId: string, onlyRead: boolean) {
+    const where = onlyRead ? { userId, isRead: true } : { userId };
+    const r = await this.repo.delete(where);
+    return { success: true, deleted: r.affected ?? 0 };
+  }
+
   // Retention (founder question 2026-08-09 "does it just keep piling
   // up?"): notifications are ephemeral by nature. Read ones go after 90
   // days, unread after 180, so the table never grows unbounded and old

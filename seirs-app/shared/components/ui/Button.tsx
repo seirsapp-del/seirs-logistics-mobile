@@ -35,7 +35,7 @@ export function Button({
     if (disabled) return theme.border;
     switch (variant) {
       case 'primary':   return theme.primary;
-      // No `secondary` token on the SEIRS palette — falls back to the
+      // No `secondary` token on the SEIRS palette: falls back to the
       // brand accent (sky blue). No callers currently use variant="secondary",
       // but keeping the variant available for future use.
       case 'secondary': return theme.accent ?? '#2EC4B6';

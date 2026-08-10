@@ -30,7 +30,7 @@ export function RatingModal({ visible, deliveryId, trackingCode, driverName, onD
     try {
       await deliveriesApi.rate(deliveryId, rating, comment.trim() || undefined);
       setSubmitted(true);
-    } catch { /* silently ignore — don't block user */ }
+    } catch { /* silently ignore: don't block user */ }
     finally { setLoading(false); }
   };
 

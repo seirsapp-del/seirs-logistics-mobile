@@ -19,7 +19,7 @@ export function Icon({ name, size = 20, color, strokeWidth = 1.75 }: IconProps) 
     color: string;
     strokeWidth: number;
   }>;
-  // Dev-time warning — silently returning null makes invisible-button
+  // Dev-time warning: silently returning null makes invisible-button
   // bugs hard to spot. Pulled from a real bug class found in business-app.
   if (!IconComponent) {
     if (__DEV__) console.warn(`[Icon] "${String(name)}" is not a valid lucide-react-native icon.`);

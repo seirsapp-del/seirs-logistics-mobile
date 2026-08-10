@@ -41,7 +41,7 @@ export default function BusinessDashboard() {
     <>
       <Drawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} showsVerticalScrollIndicator={false}>
-        {/* Header — keeps the brand navy gradient in both modes since it
+        {/* Header: keeps the brand navy gradient in both modes since it
             is intentionally dark-on-dark (text reads on either scheme). */}
         <LinearGradient
           colors={['#0F2B4C', '#1a3a5c']}
@@ -184,7 +184,7 @@ function DeliveryRow({ delivery }: { delivery: any }) {
       <View style={styles.deliveryLeft}>
         <Text style={[styles.deliveryId, { color: colors.text }]}>{delivery.trackingNumber ?? delivery.trackingCode ?? delivery.id?.slice(0, 8)}</Text>
         <Text style={[styles.deliveryAddr, { color: colors.textSecond }]} numberOfLines={1}>
-          {delivery.dropoffAddress ?? delivery.pickupAddress ?? '—'}
+          {delivery.dropoffAddress ?? delivery.pickupAddress ?? '-'}
         </Text>
       </View>
       <View style={[styles.statusBadge, { backgroundColor: c + '20' }]}>
@@ -201,7 +201,7 @@ function getTimeOfDay() {
   return 'evening';
 }
 
-// Structural styles only — colors come from useColors() and override at use site.
+// Structural styles only: colors come from useColors() and override at use site.
 const styles = StyleSheet.create({
   header:      { paddingHorizontal: 24, paddingBottom: 28 },
   headerRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },

@@ -65,7 +65,7 @@ export default function WalletScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        {/* Hero — brand navy gradient stays consistent in both modes */}
+        {/* Hero: brand navy gradient stays consistent in both modes */}
         <LinearGradient
           colors={['#0F2B4C', '#1a3a5c']}
           style={[styles.hero, { paddingTop: insets.top + 20 }]}

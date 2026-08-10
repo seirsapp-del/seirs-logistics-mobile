@@ -160,7 +160,7 @@ export default function PrivacyScreen() {
         <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>Your Data</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
           {[
-            { icon: 'download-outline',   label: 'Download My Data',      sub: 'NDPR Article 24 — export profile, trips, payments', color: theme.primary, onPress: handleDataDownload },
+            { icon: 'download-outline',   label: 'Download My Data',      sub: 'NDPR Article 24: export profile, trips, payments', color: theme.primary, onPress: handleDataDownload },
             { icon: 'document-text-outline', label: 'View Privacy Policy', sub: 'Read how we handle your data',                       color: theme.textSecond, onPress: () => Linking.openURL('https://seirs.app/privacy-policy') },
           ].map((item, i, arr) => (
             <Pressable

@@ -11,7 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { sosApi } from '@/services/api';
 
-// Spec V8 — driver-side SOS. Mirrors customer SOS using the same
+// Spec V8: driver-side SOS. Mirrors customer SOS using the same
 // /sos/trigger backend endpoint. Optional ?deliveryId= when fired
 // from an active trip so ops can correlate with the customer's
 // in-progress order. Driver-tailored copy: emphasises vehicle

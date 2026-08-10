@@ -10,7 +10,7 @@ import { Icon } from '@/components/Icon';
 import { request } from '@seirs/shared/services/api';
 import { useColors } from '@/context/ThemeContext';
 
-// Spec V8 Tier 3 — developer console for API keys. Live + test key
+// Spec V8 Tier 3: developer console for API keys. Live + test key
 // management for SEIRS-as-a-platform integrators. Secret is shown
 // ONCE on creation and never again.
 
@@ -123,15 +123,15 @@ export default function ApiKeysScreen() {
           {/* Revealed-once secret */}
           {revealedSecret && (
             <View style={[styles.card, { borderColor: '#16A34A', backgroundColor: '#F0FDF4' }]}>
-              <Text style={[styles.cardLabel, { color: '#16A34A' }]}>SECRET — SHOWN ONCE</Text>
+              <Text style={[styles.cardLabel, { color: '#16A34A' }]}>SECRET: SHOWN ONCE</Text>
               <Text style={styles.secretMonospace}>{revealedSecret.secret}</Text>
               <Pressable onPress={() => copy(revealedSecret.secret)} style={styles.copyBtn}>
                 <Icon name="Copy" size={14} color="#fff" />
                 <Text style={styles.copyBtnText}>Copy secret</Text>
               </Pressable>
-              <Text style={styles.warnMonospace}>Save this securely — you can&apos;t retrieve it again.</Text>
+              <Text style={styles.warnMonospace}>Save this securely: you can&apos;t retrieve it again.</Text>
               <Pressable onPress={() => setRevealedSecret(null)} style={styles.dismissBtn}>
-                <Text style={styles.dismissBtnText}>I&apos;ve saved it — dismiss</Text>
+                <Text style={styles.dismissBtnText}>I&apos;ve saved it: dismiss</Text>
               </Pressable>
             </View>
           )}
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   card:      { borderRadius: 12, padding: 14, gap: 10, borderWidth: 1 },
   cardLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 
-  // Secret reveal stays green — semantic "saved successfully" color
+  // Secret reveal stays green: semantic "saved successfully" color
   secretMonospace: { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 13, color: '#0F2B4C', backgroundColor: '#F3F4F6', padding: 10, borderRadius: 8 },
   warnMonospace:   { fontSize: 11, color: '#92400E' },
   copyBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, backgroundColor: '#16A34A' },

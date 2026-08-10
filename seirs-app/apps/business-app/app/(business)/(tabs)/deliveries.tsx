@@ -96,7 +96,7 @@ export default function DeliveriesScreen() {
     const address = item.dropoffAddress
       ?? (item.stops?.[item.stops.length - 1] as any)?.address
       ?? item.pickupAddress
-      ?? '—';
+      ?? '-';
     const isCancellable = item.status === 'pending' || item.status === 'assigned';
     return (
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -180,7 +180,7 @@ export default function DeliveriesScreen() {
         style={{ flexGrow: 0 }}
         renderItem={({ item: s }) => {
           const active = status === s;
-          // 'All' has no status color of its own — uses the brand primary.
+          // 'All' has no status color of its own: uses the brand primary.
           const accent = s === 'all' ? colors.primary : STATUS_COLOR[s];
           return (
             <Pressable
