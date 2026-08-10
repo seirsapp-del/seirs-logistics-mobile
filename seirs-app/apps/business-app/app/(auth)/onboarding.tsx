@@ -4,6 +4,7 @@ import {
   Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
@@ -49,14 +50,19 @@ export default function OnboardingScreen() {
   const [idx, setIdx] = useState(0);
   const progress = useRef(new Animated.Value(0)).current;
 
+  // Auto-advance only while focused: the interval used to keep scrolling
+  // the FlatList behind the pushed login screen forever (found in
+  // driver-app live test 2026-08-10, same pattern here).
+  const isFocused = useIsFocused();
   useEffect(() => {
+    if (!isFocused) return;
     const timer = setInterval(() => {
       const next = (idx + 1) % SLIDES.length;
       flatRef.current?.scrollToIndex({ index: next, animated: true });
       setIdx(next);
     }, 4500);
     return () => clearInterval(timer);
-  }, [idx]);
+  }, [idx, isFocused]);
 
   useEffect(() => {
     Animated.timing(progress, {

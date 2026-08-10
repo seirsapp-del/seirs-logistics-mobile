@@ -7,11 +7,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { authApi } from '@/services/api';
 
 export default function ForgotPasswordScreen() {
   const router      = useRouter();
+  const insets      = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
   const isDark      = colorScheme === 'dark';
@@ -40,7 +43,7 @@ export default function ForgotPasswordScreen() {
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]} showsVerticalScrollIndicator={false}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
               <Ionicons name="arrow-back" size={20} color={theme.text} />
@@ -77,7 +80,7 @@ export default function ForgotPasswordScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -91,7 +94,7 @@ export default function ForgotPasswordScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <Ionicons name="cube" size={24} color={theme.primary} />
+            <SeirsMarkBold size={40} color={theme.primary} hubColor={theme.background} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
           </View>
           <Text style={[styles.title, { color: theme.text }]}>{t('auth.forgotTitle')}</Text>

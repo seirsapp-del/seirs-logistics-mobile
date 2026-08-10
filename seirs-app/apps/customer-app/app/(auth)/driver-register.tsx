@@ -6,6 +6,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
@@ -24,6 +26,7 @@ const VEHICLES: { id: VehicleType; label: string; desc: string }[] = [
 
 export default function DriverRegisterScreen() {
   const router      = useRouter();
+  const insets      = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
   const isDark      = colorScheme === 'dark';
@@ -75,7 +78,7 @@ export default function DriverRegisterScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -89,7 +92,7 @@ export default function DriverRegisterScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <Ionicons name="cube" size={24} color={theme.primary} />
+            <SeirsMarkBold size={40} color={theme.primary} hubColor={theme.background} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
           </View>
           <View style={[styles.driverBadge, { backgroundColor: theme.primary + '18' }]}>

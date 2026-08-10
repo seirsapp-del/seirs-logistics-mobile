@@ -13,7 +13,9 @@ import {
   ArrowLeft, User, Mail, Phone, Truck, Bike, Car, Van,
   CheckSquare, Square, AlertCircle,
 } from 'lucide-react-native';
+import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { authApi } from '@/services/api';
@@ -40,6 +42,7 @@ const normalisePhone = (raw: string) =>
 
 export default function DriverRegisterScreen() {
   const router      = useRouter();
+  const insets      = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
   const isDark      = colorScheme === 'dark';
@@ -128,7 +131,12 @@ export default function DriverRegisterScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={[
+          styles.container,
+          // Keep the footer clear of the Android navigation bar
+          // (live test 2026-08-10: "Sign In" sat under the nav buttons).
+          { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -140,8 +148,11 @@ export default function DriverRegisterScreen() {
 
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <Truck size={24} color={theme.primary} strokeWidth={1.5} />
-            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS DRIVER</Text>
+            {/* Same lockup as onboarding (founder 2026-08-10): okada mark
+                + spaced SEIRS wordmark + small DRIVER tag. */}
+            <SeirsMarkBold size={40} color={theme.primary} hubColor={theme.background} />
+            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
+            <Text style={[styles.brandSub, { color: theme.textThird }]}>DRIVER</Text>
           </View>
           <Text style={[styles.title, { color: theme.text }]}>Create driver account</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>Start delivering with Seirs today</Text>
@@ -345,7 +356,8 @@ const styles = StyleSheet.create({
   backCircle:    { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   header:        { marginBottom: Spacing.lg },
   brandRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.md },
-  brand:         { fontSize: FontSize.sm, fontWeight: FontWeight.black as any, letterSpacing: 3 },
+  brand:         { fontSize: FontSize.sm, fontWeight: FontWeight.black as any, letterSpacing: 4 },
+  brandSub:      { fontSize: 9, fontWeight: FontWeight.medium as any, letterSpacing: 3, marginTop: 1 },
   title:         { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold as any, marginBottom: Spacing.xs },
   subtitle:      { fontSize: FontSize.base },
   card:          { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.md },

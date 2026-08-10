@@ -6,6 +6,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { SeirsMarkBold } from '@/components/SeirsLogoV2';
@@ -93,13 +94,18 @@ export default function OnboardingScreen() {
     });
   };
 
+  // Auto-advance only while focused: the carousel used to keep animating
+  // behind the pushed login screen forever (found in driver-app live test
+  // 2026-08-10, same pattern here).
+  const isFocused = useIsFocused();
   useEffect(() => {
+    if (!isFocused) return;
     timerRef.current = setTimeout(() => {
       const next = (current + 1) % SLIDES.length;
       goToSlide(next);
     }, SLIDE_DURATION);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [current]);
+  }, [current, isFocused]);
 
   const slide = SLIDES[current];
   const SlideIcon = slide.Icon;
@@ -181,12 +187,18 @@ export default function OnboardingScreen() {
           </Text>
         </Pressable>
 
-        <Pressable style={styles.driverLink} onPress={handleBecomeDriver}>
-          <Truck size={15} color={theme.accent} strokeWidth={2} />
-          <Text style={[styles.driverLinkText, { color: theme.accent }]}>
-            Become a Driver
-          </Text>
-          <ChevronRight size={13} color={theme.accent} strokeWidth={2.5} />
+        {/* Founder 2026-08-10 (driver-app parity): full button like the
+            two above, not a cramped text link under them. */}
+        <Pressable
+          style={[styles.secondaryBtn, { borderColor: theme.border }]}
+          onPress={handleBecomeDriver}
+        >
+          <View style={styles.secondaryRow}>
+            <Truck size={16} color={theme.text} strokeWidth={2} />
+            <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
+              Become a Driver
+            </Text>
+          </View>
         </Pressable>
       </View>
     </View>
@@ -297,15 +309,9 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     fontWeight: FontWeight.medium,
   },
-  driverLink: {
+  secondaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    paddingVertical: Spacing.xs,
-  },
-  driverLinkText: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
+    gap: Spacing.sm,
   },
 });

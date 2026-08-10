@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { ArrowLeft, Mail, ArrowRight, Truck, AlertCircle } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -15,6 +16,7 @@ import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 
 export default function LoginScreen() {
   const router      = useRouter();
+  const insets      = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
   const isDark      = colorScheme === 'dark';
@@ -62,7 +64,10 @@ export default function LoginScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={[
+          styles.container,
+          { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -74,10 +79,11 @@ export default function LoginScreen() {
 
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            {/* Okada brand mark replaces the generic truck icon
-                (founder direction 2026-08-09: one logo everywhere). */}
+            {/* Same lockup as onboarding (founder 2026-08-10): okada mark
+                + spaced SEIRS wordmark + small DRIVER tag. */}
             <SeirsMarkBold size={40} color={theme.primary} hubColor={theme.background} />
-            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS DRIVER</Text>
+            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
+            <Text style={[styles.brandSub, { color: theme.textThird }]}>DRIVER</Text>
           </View>
           <Text style={[styles.title, { color: theme.text }]}>Welcome back</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>Sign in to continue</Text>
@@ -156,7 +162,8 @@ const styles = StyleSheet.create({
   backCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   header:     { marginBottom: Spacing.xl },
   brandRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.md },
-  brand:      { fontSize: FontSize.sm, fontWeight: FontWeight.black as any, letterSpacing: 3 },
+  brand:      { fontSize: FontSize.sm, fontWeight: FontWeight.black as any, letterSpacing: 4 },
+  brandSub:   { fontSize: 9, fontWeight: FontWeight.medium as any, letterSpacing: 3, marginTop: 1 },
   title:      { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold as any, marginBottom: Spacing.xs },
   subtitle:   { fontSize: FontSize.base },
   card:       { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },

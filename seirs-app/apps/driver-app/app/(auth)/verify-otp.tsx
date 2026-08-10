@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { ArrowLeft, Mail, RefreshCw, CheckCircle } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -100,6 +101,12 @@ export default function VerifyOtpScreen() {
         </Pressable>
 
         <View style={styles.heroSection}>
+          {/* Brand lockup on every auth screen (founder 2026-08-10). */}
+          <View style={styles.brandRow}>
+            <SeirsMarkBold size={40} color={theme.primary} hubColor={theme.background} />
+            <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
+            <Text style={[styles.brandSub, { color: theme.textThird }]}>DRIVER</Text>
+          </View>
           <View style={[styles.iconWrap, { backgroundColor: theme.primary + '18' }]}>
             <Mail size={32} color={theme.primary} strokeWidth={1.5} />
           </View>
@@ -180,6 +187,9 @@ const styles = StyleSheet.create({
   backCircle:  { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   heroSection: { alignItems: 'center', marginBottom: Spacing.xl, gap: Spacing.md },
   iconWrap:    { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center' },
+  brandRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, marginBottom: Spacing.lg },
+  brand:       { fontSize: FontSize.sm, fontWeight: FontWeight.black as any, letterSpacing: 4 },
+  brandSub:    { fontSize: 9, fontWeight: FontWeight.medium as any, letterSpacing: 3, marginTop: 1 },
   title:       { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold as any, textAlign: 'center' },
   subtitle:    { fontSize: FontSize.base, textAlign: 'center', lineHeight: 24 },
   card:        { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.md },

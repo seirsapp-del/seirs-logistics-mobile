@@ -6,6 +6,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/services/api';
@@ -18,6 +20,7 @@ export default function VerifyOtpScreen() {
   const router  = useRouter();
   const params  = useLocalSearchParams<{ email: string }>();
   const email   = params.email ?? '';
+  const insets  = useSafeAreaInsets();
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
@@ -100,7 +103,7 @@ export default function VerifyOtpScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -114,7 +117,7 @@ export default function VerifyOtpScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <Truck size={22} color={theme.primary} strokeWidth={2} />
+            <SeirsMarkBold size={40} color={theme.primary} hubColor={theme.background} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
           </View>
 

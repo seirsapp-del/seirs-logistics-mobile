@@ -3,9 +3,10 @@ import {
   View, Text, StyleSheet, Pressable, Dimensions,
   StatusBar, Animated, Platform, Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import {
   Truck, Wallet, MapPin, Clock, Shield, Award,
   ChevronRight, Package,
@@ -79,6 +80,7 @@ const SLIDE_DURATION = 4500;
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
@@ -94,13 +96,19 @@ export default function OnboardingScreen() {
     });
   };
 
+  // Auto-advance only while this screen is focused. The carousel used to
+  // keep cross-fading behind the pushed login screen forever (live test
+  // 2026-08-10: visible sliding/jank while typing credentials on a
+  // Samsung A30).
+  const isFocused = useIsFocused();
   useEffect(() => {
+    if (!isFocused) return;
     timerRef.current = setTimeout(() => {
       const next = (current + 1) % SLIDES.length;
       goToSlide(next);
     }, SLIDE_DURATION);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [current]);
+  }, [current, isFocused]);
 
   const slide = SLIDES[current];
   const SlideIcon = slide.Icon;
@@ -167,7 +175,7 @@ export default function OnboardingScreen() {
       </Animated.View>
 
       {/* ── Bottom sheet (fixed across all slides) ─────────────────────── */}
-      <View style={[styles.sheet, { backgroundColor: sheetBg }]}>
+      <View style={[styles.sheet, { backgroundColor: sheetBg, paddingBottom: Spacing.lg + insets.bottom }]}>
         <Pressable
           style={[styles.primaryBtn, { backgroundColor: '#0F2B4C' }]}
           onPress={() => router.push('/(auth)/driver-register' as any)}
@@ -185,12 +193,18 @@ export default function OnboardingScreen() {
           </Text>
         </Pressable>
 
-        <Pressable style={styles.driverLink} onPress={handleSendPackage}>
-          <Package size={15} color={theme.primary} strokeWidth={2} />
-          <Text style={[styles.driverLinkText, { color: theme.primary }]}>
-            I just want to send a package
-          </Text>
-          <ChevronRight size={13} color={theme.primary} strokeWidth={2.5} />
+        {/* Founder 2026-08-10: full button like the two above, not a
+            cramped text link under them. */}
+        <Pressable
+          style={[styles.secondaryBtn, { borderColor: theme.border }]}
+          onPress={handleSendPackage}
+        >
+          <View style={styles.secondaryRow}>
+            <Package size={16} color={theme.text} strokeWidth={2} />
+            <Text style={[styles.secondaryBtnText, { color: theme.text }]}>
+              I Just Want to Send a Package
+            </Text>
+          </View>
         </Pressable>
       </View>
     </View>
@@ -301,15 +315,9 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     fontWeight: FontWeight.medium,
   },
-  driverLink: {
+  secondaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    paddingVertical: Spacing.xs,
-  },
-  driverLinkText: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
+    gap: Spacing.sm,
   },
 });

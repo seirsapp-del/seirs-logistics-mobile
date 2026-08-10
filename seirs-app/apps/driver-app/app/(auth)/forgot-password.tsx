@@ -5,12 +5,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { authApi } from '@/services/api';
+import { SeirsMarkBold } from '@seirs/shared/components/SeirsLogoV2';
 
 export default function ForgotPasswordScreen() {
   const router      = useRouter();
+  const insets      = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
   const isDark      = colorScheme === 'dark';
@@ -38,7 +41,7 @@ export default function ForgotPasswordScreen() {
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]} showsVerticalScrollIndicator={false}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <View style={[styles.backCircle, { backgroundColor: theme.surface }]}>
               <Ionicons name="arrow-back" size={20} color={theme.text} />
@@ -76,7 +79,7 @@ export default function ForgotPasswordScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.background, paddingBottom: Spacing.xl + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -90,8 +93,11 @@ export default function ForgotPasswordScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <Ionicons name="cube" size={24} color={theme.primary} />
+            {/* Same lockup as onboarding (founder 2026-08-10): okada mark
+                + spaced SEIRS wordmark + small DRIVER tag. */}
+            <SeirsMarkBold size={40} color={theme.primary} hubColor={theme.background} />
             <Text style={[styles.brand, { color: theme.primary }]}>SEIRS</Text>
+            <Text style={[styles.brandSub, { color: theme.textThird }]}>DRIVER</Text>
           </View>
           <Text style={[styles.title, { color: theme.text }]}>Forgot password?</Text>
           <Text style={[styles.subtitle, { color: theme.textSecond }]}>
@@ -157,7 +163,8 @@ const styles = StyleSheet.create({
   backCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   header:     { marginBottom: Spacing.xl },
   brandRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.md },
-  brand:      { fontSize: FontSize.sm, fontWeight: FontWeight.black, letterSpacing: 3 },
+  brand:      { fontSize: FontSize.sm, fontWeight: FontWeight.black, letterSpacing: 4 },
+  brandSub:   { fontSize: 9, fontWeight: FontWeight.medium as any, letterSpacing: 3, marginTop: 1 },
   title:      { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold, marginBottom: Spacing.xs },
   subtitle:   { fontSize: FontSize.base, lineHeight: 22 },
   card:       { borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },
