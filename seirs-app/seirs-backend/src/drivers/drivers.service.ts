@@ -11,6 +11,7 @@ import { Wallet } from '../payments/wallet.entity';
 import { FraudService } from '../fraud/fraud.service';
 import { TrackingGateway } from '../tracking/tracking.gateway';
 import { FeesService } from '../fees/fees.service';
+import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
 
 // Spec V8 §2.1 — recognised KYC document IDs
 const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
@@ -557,6 +558,14 @@ export class DriversService {
     };
   }
 
+  /**
+   * Vehicle change flow (founder policy 2026-08-10, mirrors the bank
+   * change flow): a driver ALWAYS has a vehicle (set at registration)
+   * and cannot swap it silently. Every change (including new photos)
+   * is parked as pendingChange inside vehicleDetails and a support
+   * ticket is opened for compliance review. The driver keeps working
+   * with the CURRENT vehicle until an admin approves.
+   */
   async updateVehicle(
     userId: string,
     body: {
@@ -566,26 +575,140 @@ export class DriversService {
       model?:        string;
       year?:         string;
       color?:        string;
+      photoExteriorUrl?: string;
+      photoInteriorUrl?: string;
+      photoPlateUrl?:    string;
     },
   ) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
 
-    const patch: Partial<Driver> = {};
-    if (body.vehicleType)  patch.vehicleType  = body.vehicleType as any;
-    if (body.vehiclePlate) patch.vehiclePlate = body.vehiclePlate;
+    const safeUrl = (u?: string) =>
+      typeof u === 'string' && /^https?:\/\//.test(u) ? u.slice(0, 500) : undefined;
 
-    const mergedDetails = {
-      ...(driver.vehicleDetails ?? {}),
+    const pending = {
+      ...(body.vehicleType  ? { vehicleType:  String(body.vehicleType).slice(0, 24) }  : {}),
+      ...(body.vehiclePlate ? { vehiclePlate: String(body.vehiclePlate).slice(0, 16) } : {}),
       ...(body.make  !== undefined ? { make:  String(body.make).slice(0,  64) } : {}),
       ...(body.model !== undefined ? { model: String(body.model).slice(0, 64) } : {}),
       ...(body.year  !== undefined ? { year:  String(body.year).slice(0,  8)  } : {}),
       ...(body.color !== undefined ? { color: String(body.color).slice(0, 32) } : {}),
+      ...(safeUrl(body.photoExteriorUrl) ? { photoExteriorUrl: safeUrl(body.photoExteriorUrl) } : {}),
+      ...(safeUrl(body.photoInteriorUrl) ? { photoInteriorUrl: safeUrl(body.photoInteriorUrl) } : {}),
+      ...(safeUrl(body.photoPlateUrl)    ? { photoPlateUrl:    safeUrl(body.photoPlateUrl)    } : {}),
     };
-    if (Object.keys(mergedDetails).length > 0) patch.vehicleDetails = mergedDetails;
+    if (Object.keys(pending).length === 0) {
+      throw new BadRequestException('Nothing to change.');
+    }
+
+    // Review ticket (best-effort; the pending change stands even if
+    // ticket creation hiccups: admin can still act from the record).
+    let ticketId: string | null =
+      (driver.vehicleDetails as any)?.pendingChange?.ticketId ?? null;
+    try {
+      if (!ticketId && driver.user) {
+        const ticketsRepo = this.repo.manager.getRepository(SupportTicket);
+        const ticket = await ticketsRepo.save(ticketsRepo.create({
+          user:            driver.user,
+          userAccountType: 'driver',
+          topic:           TicketTopic.ACCOUNT,
+          status:          TicketStatus.OPEN,
+          subject:         'Vehicle change request',
+          linkedDeliveryId: null,
+          assignedAgentId:  null,
+          lastMessageAt:    new Date(),
+        }));
+        ticketId = ticket.id;
+        const summary = [
+          pending.vehicleType  ? `type: ${pending.vehicleType}`   : null,
+          pending.vehiclePlate ? `plate: ${pending.vehiclePlate}` : null,
+          pending.make || pending.model ? `vehicle: ${[pending.make, pending.model, pending.year].filter(Boolean).join(' ')}` : null,
+          (pending as any).photoExteriorUrl || (pending as any).photoInteriorUrl || (pending as any).photoPlateUrl
+            ? 'photos attached (exterior/interior/plate)' : null,
+        ].filter(Boolean).join(' · ');
+        await this.repo.manager.query(
+          `INSERT INTO chat_messages (body, "imageUrl", "systemType", "ticketId")
+           VALUES ($1, NULL, 'vehicle_change_request', $2)`,
+          [
+            `Driver requested a vehicle change (${summary}). Review the details and photos, then approve or reject. ` +
+            `The driver keeps working with the current vehicle until approved.`,
+            ticketId,
+          ],
+        );
+      }
+    } catch (e: any) {
+      this.logger.warn(`vehicle-change ticket creation failed: ${e?.message ?? e}`);
+    }
+
+    await this.repo.update(driver.id, {
+      vehicleDetails: {
+        ...(driver.vehicleDetails ?? {}),
+        pendingChange: { ...pending, requestedAt: new Date().toISOString(), ticketId },
+      },
+    } as any);
+
+    return {
+      pending: true,
+      message: 'Vehicle change submitted for review. You keep driving with your current vehicle until it is approved.',
+      driver:  await this.findByUserId(userId),
+    };
+  }
+
+  /**
+   * Admin resolution of a pending vehicle change (called from
+   * AdminService). Approve applies the pending fields; reject discards
+   * them. Both clear the pending state and close the review ticket.
+   */
+  async resolveVehicleChange(targetUserId: string, approve: boolean) {
+    const driver = await this.findByUserId(targetUserId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+    const details = (driver.vehicleDetails ?? {}) as any;
+    const pending = details.pendingChange;
+    if (!pending) throw new NotFoundException('No pending vehicle change for this driver.');
+
+    const { requestedAt: _r, ticketId, ...changes } = pending;
+    const patch: Partial<Driver> = {};
+
+    if (approve) {
+      if (changes.vehicleType)  patch.vehicleType  = changes.vehicleType;
+      if (changes.vehiclePlate) patch.vehiclePlate = changes.vehiclePlate;
+      const { vehicleType: _t, vehiclePlate: _p, ...detailFields } = changes;
+      patch.vehicleDetails = { ...details, ...detailFields, pendingChange: undefined } as any;
+    } else {
+      patch.vehicleDetails = { ...details, pendingChange: undefined } as any;
+    }
+    // Strip the undefined key so jsonb stays clean.
+    if (patch.vehicleDetails) {
+      const vd = { ...(patch.vehicleDetails as any) };
+      delete vd.pendingChange;
+      patch.vehicleDetails = vd;
+    }
 
     await this.repo.update(driver.id, patch);
-    return this.findByUserId(userId);
+
+    if (ticketId) {
+      try {
+        await this.repo.manager.query(
+          `INSERT INTO chat_messages (body, "imageUrl", "systemType", "ticketId")
+           VALUES ($1, NULL, 'vehicle_change_resolved', $2)`,
+          [
+            approve
+              ? 'Your vehicle change was approved. Your profile now shows the new vehicle.'
+              : 'Your vehicle change was rejected. Your registered vehicle is unchanged. Contact support if you did not expect this.',
+            ticketId,
+          ],
+        );
+        await this.repo.manager.getRepository(SupportTicket).update(ticketId, {
+          status:        TicketStatus.RESOLVED,
+          resolvedAt:    new Date(),
+          lastMessageAt: new Date(),
+        });
+      } catch (e: any) {
+        this.logger.warn(`vehicle-change ticket close failed: ${e?.message ?? e}`);
+      }
+    }
+
+    return { approved: approve };
   }
 
   // Spec V8 §2.1 — record uploaded KYC document URL against the right column.

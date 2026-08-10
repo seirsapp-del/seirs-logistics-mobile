@@ -210,13 +210,18 @@ export const MOCK_DRIVER_MESSAGES = [
   },
 ];
 
+// Verified against the live system 2026-08-10 (founder audit): the old
+// answers promised instant earnings, an invented ₦200 no-show fee, a
+// 500-trip rating window, and decline penalties, none of which exist.
 export const DRIVER_HELP_FAQS = [
-  { q: 'When will I receive my earnings?',          a: 'Earnings from completed trips are credited to your SEIRS wallet instantly. You can withdraw to your bank account at any time (min ₦1,000).' },
-  { q: 'How do I report a difficult customer?',    a: 'Go to your trip history, open the trip, and tap "Report Issue". Our support team reviews all reports within 24 hours.' },
-  { q: 'What if the customer does not show up?',   a: 'If a customer does not appear within 5 minutes of your arrival, you can mark a "No Show". A ₦200 inconvenience fee will be charged to the customer.' },
-  { q: 'How is my rating calculated?',             a: 'Your rating is the average of all customer ratings from the last 500 trips. Ratings below 4.0 may affect your ability to receive new job requests.' },
-  { q: 'What documents do I need for KYC?',        a: 'You need a valid government-issued ID (NIN/Driver\'s License/International Passport), a clear photo of your vehicle, and proof of vehicle insurance.' },
-  { q: 'Can I decline a job request?',             a: 'Yes. You can skip or decline any job request. However, a high decline rate may reduce your job priority ranking.' },
+  { topic: 'Earnings', q: 'When will I receive my earnings?',       a: 'Earnings from each delivery clear 2 business days after it completes, then you can withdraw free any time (minimum ₦1,000). Need it sooner? Instant withdrawal unlocks earnings that are at least 24 hours old for a small fee, shown before you confirm.' },
+  { topic: 'Earnings', q: 'How much does SEIRS take per delivery?', a: 'SEIRS takes a 30% service fee from each delivery fare; you keep 70%. Every trip in your earnings history shows the fare, the SEIRS fee, and your net so you can check the math yourself.' },
+  { topic: 'Safety',   q: 'How do I report a difficult customer?',  a: 'Open Contact Support from the menu and describe what happened; you can reference the tracking code of the trip. Support replies during working hours (6am to 10pm WAT). For danger or threats, use SOS immediately.' },
+  { topic: 'Trips',    q: 'What if the customer does not show up?', a: 'Message or call the customer from the trip screen first. If they stay unreachable, contact support from the same trip so the team can resolve it; do not abandon the package or leave it unattended.' },
+  { topic: 'Account',  q: 'How is my rating calculated?',           a: 'Your rating is the average of every customer rating on your completed deliveries. If your average stays below 3.5, your account may be reviewed; the Ratings screen shows tips to improve.' },
+  { topic: 'KYC',      q: 'What documents do I need for KYC?',      a: 'A government-issued ID (NIN, driver\'s licence, or international passport, front and back), a selfie, your driver\'s licence, vehicle photos, proof of vehicle ownership, and a valid insurance certificate. A guarantor letter is recommended but optional.' },
+  { topic: 'Account',  q: 'Can I change my vehicle or bank account?', a: 'Yes, but both are protected changes: submit the new details in the app and our team reviews them before they apply. Bank changes pause withdrawals until approved; vehicle changes need photos of the outside, inside, and plate.' },
+  { topic: 'Trips',    q: 'Can I decline a job request?',           a: 'Yes, you can decline any job request without penalty. Going into Wind Down mode stops new offers entirely while you finish your current jobs.' },
 ];
 
 export const NIGERIAN_BANKS = [

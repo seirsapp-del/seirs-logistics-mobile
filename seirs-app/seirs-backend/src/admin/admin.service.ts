@@ -12,6 +12,7 @@ import { FraudService } from '../fraud/fraud.service';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { PaymentsService } from '../payments/payments.service';
+import { DriversService } from '../drivers/drivers.service';
 import { CmsItem, ContentType, ContentStatus } from './cms-item.entity';
 import { SupportTicket, TicketStatus, TicketPriority } from './support-ticket.entity';
 import { AuditLogEntry } from './audit-log.entity';
@@ -61,6 +62,7 @@ export class AdminService {
     private readonly mailService:  MailService,
     private readonly usersService: UsersService,
     private readonly paymentsService: PaymentsService,
+    private readonly driversService: DriversService,
   ) {}
 
   // ── Spec V8 §3.13. NDPR admin tools (A32 + A33) ──────────────────────────
@@ -146,6 +148,18 @@ export class AdminService {
     this.ensureNdprAccess(admin, this.PII_VIEW_ROLES, 'bank_change_review');
     const result = await this.paymentsService.resolveBankChange(targetUserId, approve);
     await this.logAudit(admin, approve ? 'bank_change_approved' : 'bank_change_rejected', `user:${targetUserId}`, {}, ip);
+    return result;
+  }
+
+  /**
+   * Approve or reject a driver's pending vehicle change (2026-08-10
+   * policy: a driver always has a vehicle and cannot change it without
+   * compliance approval). Same review-ticket pattern as bank changes.
+   */
+  async resolveVehicleChange(targetUserId: string, approve: boolean, admin: any, ip?: string) {
+    this.ensureNdprAccess(admin, this.PII_VIEW_ROLES, 'vehicle_change_review');
+    const result = await this.driversService.resolveVehicleChange(targetUserId, approve);
+    await this.logAudit(admin, approve ? 'vehicle_change_approved' : 'vehicle_change_rejected', `user:${targetUserId}`, {}, ip);
     return result;
   }
 

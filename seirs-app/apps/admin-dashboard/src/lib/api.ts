@@ -518,6 +518,16 @@ export const adminApi = {
       ),
   },
 
+  // Driver vehicle change review (2026-08-10 policy: vehicle swaps need
+  // compliance approval). Same pattern as bankChange.
+  vehicleChange: {
+    resolve: (userId: string, approve: boolean) =>
+      req<{ approved: boolean }>(
+        `/admin/users/${userId}/vehicle-change`,
+        { method: 'POST', body: JSON.stringify({ approve }) },
+      ),
+  },
+
   // Support toolkit (Chat 5). Rejected server-side if the admin is
   // not super_admin or support_agent.
   support: {

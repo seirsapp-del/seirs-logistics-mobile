@@ -462,6 +462,8 @@ export const driversApi = {
   },
   updateKycDoc:   (docId: string, url: string) =>
     request<{ docId: string; saved: boolean }>('PATCH', '/drivers/me/kyc', { docId, url }),
+  // Vehicle changes go to admin review (2026-08-10 policy); the response
+  // carries pending:true + the unchanged live driver record.
   updateVehicle: (body: {
     vehicleType?:  string;
     vehiclePlate?: string;
@@ -469,7 +471,10 @@ export const driversApi = {
     model?:        string;
     year?:         string;
     color?:        string;
-  }) => request<any>('PATCH', '/drivers/me/vehicle', body),
+    photoExteriorUrl?: string;
+    photoInteriorUrl?: string;
+    photoPlateUrl?:    string;
+  }) => request<{ pending: boolean; message: string; driver: any }>('PATCH', '/drivers/me/vehicle', body),
   demandZones:    () =>
     request<{ zones: Array<{ latitude: number; longitude: number; radiusM: number; intensity: number; orderCount: number }> }>(
       'GET', '/drivers/demand-zones',

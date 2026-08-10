@@ -293,6 +293,42 @@ export default function SupportInboxPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  {/* Vehicle-change review: approve/reject a driver's pending
+                      vehicle swap (2026-08-10 policy). */}
+                  {thread.ticket.subject === 'Vehicle change request' &&
+                    thread.ticket.status !== 'resolved' && thread.ticket.status !== 'closed' &&
+                    thread.ticket.user?.id && (
+                    <>
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Approve this vehicle change? The driver profile switches to the new vehicle.')) return;
+                          try {
+                            await adminApi.vehicleChange.resolve(thread.ticket.user!.id, true);
+                            alert('Vehicle change approved. The driver was notified in their Messages.');
+                            loadThread(thread.ticket.id);
+                          } catch (e: any) { alert(`Approve failed: ${e?.message ?? 'unknown'}`); }
+                        }}
+                        className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                        title="Apply the pending vehicle details (audit-logged)"
+                      >
+                        <CheckCircle2 size={12} /> Approve vehicle change
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Reject this vehicle change? The pending details are discarded; the registered vehicle stays.')) return;
+                          try {
+                            await adminApi.vehicleChange.resolve(thread.ticket.user!.id, false);
+                            alert('Vehicle change rejected. The driver was notified in their Messages.');
+                            loadThread(thread.ticket.id);
+                          } catch (e: any) { alert(`Reject failed: ${e?.message ?? 'unknown'}`); }
+                        }}
+                        className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+                        title="Discard the pending vehicle details (audit-logged)"
+                      >
+                        <XCircle size={12} /> Reject
+                      </button>
+                    </>
+                  )}
                   {/* Bank-change review: approve/reject a driver's pending
                       payout-account replacement. Buttons only appear on the
                       system-generated review ticket. */}

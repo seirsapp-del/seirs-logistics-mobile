@@ -529,6 +529,19 @@ export class AdminController {
     return this.adminService.adminHardDeleteUser(id, admin, body?.reason ?? '', req.ip);
   }
 
+  // POST /api/v1/admin/users/:id/vehicle-change  { approve: boolean }
+  // Approve/reject a driver's pending vehicle change. Same review-ticket
+  // pattern as bank changes; PII-role gated + audit-logged.
+  @Post('users/:id/vehicle-change')
+  resolveVehicleChange(
+    @Param('id') id: string,
+    @Body() body: { approve: boolean },
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    return this.adminService.resolveVehicleChange(id, body?.approve === true, admin, req.ip);
+  }
+
   // POST /api/v1/admin/users/:id/bank-change  { approve: boolean }
   // Approve/reject a driver's pending payout-bank change. PII-role gated
   // in the service; audit-logged; resolves the linked support ticket.

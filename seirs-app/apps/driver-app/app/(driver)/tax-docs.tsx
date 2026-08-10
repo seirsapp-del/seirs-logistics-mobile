@@ -180,16 +180,23 @@ export default function TaxDocsScreen() {
           </>
         )}
 
-        <Text style={[styles.sectionHead, { color: theme.textSecond }]}>EARNINGS STATEMENTS</Text>
-        <View style={[styles.intro, { backgroundColor: theme.primary + '12' }]}>
-          <FileText size={20} color={theme.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.introTitle, { color: theme.text }]}>For your FIRS tax filing</Text>
-            <Text style={[styles.introSub, { color: theme.textSecond }]}>
-              Yearly earnings + platform commission breakdown. Tap a year to share or save the statement.
-            </Text>
+        {/* No FIRS banner here (founder 2026-08-10): this hub holds ALL
+            documents, not just tax ones. When nothing has been sent yet,
+            say so; otherwise the hub looks statements-only. */}
+        {received.length === 0 && (
+          <View style={[styles.intro, { backgroundColor: theme.primary + '12' }]}>
+            <FileText size={20} color={theme.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.introTitle, { color: theme.text }]}>All your documents, one place</Text>
+              <Text style={[styles.introSub, { color: theme.textSecond }]}>
+                Official documents from SEIRS (contracts, letters, policies) will appear here when sent to you,
+                alongside your earnings statements below.
+              </Text>
+            </View>
           </View>
-        </View>
+        )}
+
+        <Text style={[styles.sectionHead, { color: theme.textSecond }]}>EARNINGS STATEMENTS</Text>
 
         {loading ? (
           <ActivityIndicator color={theme.primary} style={{ marginTop: 32 }} />
@@ -238,7 +245,8 @@ export default function TaxDocsScreen() {
         <View style={styles.footnote}>
           <AlertCircle size={12} color={theme.textThird} />
           <Text style={[styles.footnoteText, { color: theme.textThird }]}>
-            Numbers are derived from your payment history. PDF export arrives with the next app update.
+            Statements come from your SEIRS earnings ledger and are suitable for FIRS self-assessment filing.
+            Tap a year to share or save as PDF.
           </Text>
         </View>
       </ScrollView>

@@ -24,12 +24,16 @@ export default function DriverHelpScreen() {
   const isDark  = cs === 'dark';
 
   const [query,    setQuery]    = useState('');
+  const [topic,    setTopic]    = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
 
+  // Topic chips actually filter now (audit 2026-08-10: they were
+  // decorative, tapping did nothing). Tap toggles; tap again clears.
   const filtered = DRIVER_HELP_FAQS.filter(faq =>
-    !query.trim() ||
-    faq.q.toLowerCase().includes(query.toLowerCase()) ||
-    faq.a.toLowerCase().includes(query.toLowerCase()),
+    (!topic || (faq as any).topic === topic) &&
+    (!query.trim() ||
+      faq.q.toLowerCase().includes(query.toLowerCase()) ||
+      faq.a.toLowerCase().includes(query.toLowerCase())),
   );
 
   return (
@@ -95,15 +99,23 @@ export default function DriverHelpScreen() {
           <>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Browse by Topic</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topicRow}>
-              {TOPICS.map(t => (
-                <Pressable
-                  key={t.label}
-                  style={[styles.topicChip, { borderColor: theme.border }]}
-                >
-                  <Ionicons name={t.icon as any} size={14} color={theme.textSecond} />
-                  <Text style={[styles.topicText, { color: theme.textSecond }]}>{t.label}</Text>
-                </Pressable>
-              ))}
+              {TOPICS.map(t => {
+                const active = topic === t.label;
+                return (
+                  <Pressable
+                    key={t.label}
+                    onPress={() => setTopic(active ? null : t.label)}
+                    style={[
+                      styles.topicChip,
+                      { borderColor: active ? theme.primary : theme.border },
+                      active && { backgroundColor: theme.primary + '12' },
+                    ]}
+                  >
+                    <Ionicons name={t.icon as any} size={14} color={active ? theme.primary : theme.textSecond} />
+                    <Text style={[styles.topicText, { color: active ? theme.primary : theme.textSecond }]}>{t.label}</Text>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           </>
         )}

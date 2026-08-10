@@ -93,6 +93,9 @@ export class DriversController {
       model?:        string;
       year?:         string;
       color?:        string;
+      photoExteriorUrl?: string;
+      photoInteriorUrl?: string;
+      photoPlateUrl?:    string;
     },
   ) {
     return this.driversService.updateVehicle(user.id, body);
