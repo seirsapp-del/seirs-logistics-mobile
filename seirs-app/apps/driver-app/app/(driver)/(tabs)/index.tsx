@@ -148,10 +148,13 @@ export default function DriverHomeScreen() {
       // Backend codes the message; we strip the leading code prefix so
       // the user sees a clean sentence, and tailor the title for known cases.
       const raw = e?.message ?? 'Something went wrong. Please try again.';
-      const isActiveJobs = raw.includes('ACTIVE_JOBS_PRESENT');
+      const isActiveJobs  = raw.includes('ACTIVE_JOBS_PRESENT');
+      const isUnderReview = raw.includes('ACCOUNT_UNDER_REVIEW');
       const friendly = raw.replace(/^[A-Z_]+:\s*/, '');
       Alert.alert(
-        isActiveJobs ? 'Finish your active jobs first' : 'Could not change status',
+        isUnderReview ? 'Account under review'
+          : isActiveJobs ? 'Finish your active jobs first'
+          : 'Could not change status',
         friendly,
       );
     } finally {
@@ -206,6 +209,25 @@ export default function DriverHomeScreen() {
               </Pressable>
             </View>
           </View>
+
+          {/* Approval banner: pending drivers can browse the app but
+              cannot go online (server enforces it too). Tapping opens
+              KYC so they can finish their documents. */}
+          {driverData?.status && driverData.status !== 'approved' && (
+            <Pressable
+              onPress={() => router.push('/(driver)/kyc' as any)}
+              style={styles.reviewBanner}
+            >
+              <Clock size={18} color="#FFBE0B" strokeWidth={2} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.reviewTitle}>Account under review</Text>
+                <Text style={styles.reviewText}>
+                  Complete your KYC documents to get approved. You can explore the app, but going online unlocks after approval.
+                </Text>
+              </View>
+              <ChevronRight size={16} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+            </Pressable>
+          )}
 
           {/* Online/Offline toggle */}
           <View style={[styles.toggleCard, { backgroundColor: isOnline ? 'rgba(22,163,74,0.25)' : 'rgba(255,255,255,0.1)' }]}>
@@ -442,6 +464,10 @@ const styles = StyleSheet.create({
   headerName:    { fontSize: FontSize.xl, fontWeight: FontWeight.bold as any, color: '#fff' },
   headerActions: { flexDirection: 'row', gap: Spacing.sm },
   headerBtn:     { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+
+  reviewBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: 'rgba(255,190,11,0.14)', borderWidth: 1, borderColor: 'rgba(255,190,11,0.4)', borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.sm },
+  reviewTitle:  { color: '#FFBE0B', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  reviewText:   { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.xs, lineHeight: 16, marginTop: 2 },
 
   toggleCard:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.md, borderRadius: Radius.xl, gap: Spacing.md },
   toggleLeft:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },

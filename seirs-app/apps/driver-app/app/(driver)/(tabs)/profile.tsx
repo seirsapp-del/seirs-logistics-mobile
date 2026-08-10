@@ -94,6 +94,9 @@ export default function DriverProfileScreen() {
       title: 'Support',
       items: [
         { icon: 'help-circle-outline', label: 'Help & Support', sub: 'FAQs and live chat', route: '/(driver)/help' },
+        // Deliberately duplicated from the drawer (founder 2026-08-10),
+        // like Documents and SOS.
+        { icon: 'book-outline',        label: 'Driver Code of Conduct', sub: 'The standard every SEIRS driver agrees to', route: '/(driver)/code-of-conduct' },
         { icon: 'alert-circle-outline', label: 'SOS Emergency', sub: 'Immediate help with live location', route: '/(driver)/sos', danger: true },
       ],
     },

@@ -198,6 +198,19 @@ export class AdminController {
     return this.partnerStoreService.adminRejectStore(id, admin.id, body?.note);
   }
 
+  // PATCH /api/v1/admin/partner-stores/:id/suspend  { note: string }
+  // Reverses the partner capability (founder 2026-08-10): store stops
+  // taking packages and the owner's partner UI disappears. Re-approval
+  // restores it.
+  @Patch('partner-stores/:id/suspend')
+  suspendPartnerStore(
+    @Param('id') id: string,
+    @CurrentUser() admin: any,
+    @Body() body: { note: string },
+  ) {
+    return this.partnerStoreService.adminSuspendStore(id, admin.id, body?.note);
+  }
+
   // ── Deliveries ────────────────────────────────────────────────────────────
 
   // GET /api/v1/admin/deliveries?status=pending&page=1

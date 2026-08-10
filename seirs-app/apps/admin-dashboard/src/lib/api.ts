@@ -156,6 +156,12 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify({ note }),
     }),
+  // Reverses the partner capability: store stops taking packages, the
+  // owner's partner UI disappears. Re-approve to restore.
+  suspendPartnerStore: (id: string, note: string) =>
+    req<any>(`/admin/partner-stores/${id}/suspend`, {
+      method: 'PATCH', body: JSON.stringify({ note }),
+    }),
   rejectPartnerStore: (id: string, note: string) =>
     req<any>(`/admin/partner-stores/${id}/reject`, {
       method: 'PATCH',

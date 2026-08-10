@@ -200,6 +200,7 @@ export default function PartnersPage() {
                   <th className="text-left px-4 py-3">Hours</th>
                   <th className="text-left px-4 py-3">Status</th>
                   <th className="text-left px-4 py-3">Accepting</th>
+                  <th className="text-left px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -224,6 +225,37 @@ export default function PartnersPage() {
                       ) : (
                         <span className="text-xs text-gray-400">Paused</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {(s.status === 'approved' || s.status === 'active') ? (
+                        <button
+                          onClick={async () => {
+                            const note = prompt('Suspension reason (required, kept for the audit trail). The store stops taking packages and the owner loses partner access until re-approved:');
+                            if (!note?.trim()) return;
+                            try {
+                              await adminApi.suspendPartnerStore(s.id, note.trim());
+                              alert('Store suspended. Re-approve from Partner Applications to restore.');
+                              window.location.reload();
+                            } catch (e: any) { alert(`Suspend failed: ${e?.message ?? 'unknown'}`); }
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                        >
+                          Suspend
+                        </button>
+                      ) : s.status === 'suspended' ? (
+                        <button
+                          onClick={async () => {
+                            if (!confirm('Re-approve this store? The owner regains partner access and the store can take packages again.')) return;
+                            try {
+                              await adminApi.approvePartnerStore(s.id, 'Re-approved after suspension');
+                              window.location.reload();
+                            } catch (e: any) { alert(`Re-approve failed: ${e?.message ?? 'unknown'}`); }
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+                        >
+                          Re-approve
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}

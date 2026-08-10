@@ -914,6 +914,72 @@ export class PartnerStoreService {
   }
 
   /**
+   * Admin suspends an APPROVED partner store (founder 2026-08-10: the
+   * partner capability must be reversible, e.g. for stores inactive for
+   * a long stretch or misconduct). Flips:
+   *   1. PartnerStore.status → SUSPENDED (+ acceptingNew off)
+   *   2. User.capabilities.canPartner → false (partner UI disappears)
+   * Re-approval via adminApproveStore restores everything.
+   */
+  async adminSuspendStore(storeId: string, adminUserId: string, note: string) {
+    if (!note?.trim()) {
+      throw new BadRequestException('A suspension reason is required for the audit trail.');
+    }
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Partner store not found.');
+
+    await this.storeRepo.update(storeId, {
+      status:       PartnerStoreStatus.SUSPENDED,
+      acceptingNew: false,
+      reviewNote:   note.trim(),
+      reviewedAt:   new Date(),
+      reviewedBy:   adminUserId,
+    } as any);
+
+    const owner = await this.usersRepo.findOne({ where: { id: store.userId } });
+    if (owner) {
+      await this.usersRepo.update(owner.id, {
+        capabilities: { canSend: owner.capabilities?.canSend ?? true, canPartner: false },
+      });
+    }
+
+    this.logger.log(`Partner store SUSPENDED: storeId=${storeId} owner=${store.userId} admin=${adminUserId} reason=${note}`);
+    return { storeId, status: PartnerStoreStatus.SUSPENDED };
+  }
+
+  /**
+   * Inactivity sweep (founder 2026-08-10): approved stores with no
+   * package received in 60 days stop accepting NEW drop-offs and get
+   * flagged in the review note for admin attention. Full suspension
+   * stays a human decision (adminSuspendStore); this only pauses
+   * intake so dormant shelves stop appearing in store pickers.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async pauseDormantStores() {
+    try {
+      const rows: Array<{ id: string }> = await this.storeRepo.query(
+        `SELECT s.id FROM partner_stores s
+         WHERE s.status = 'approved' AND s."acceptingNew" = true
+           AND s."createdAt" < NOW() - INTERVAL '60 days'
+           AND NOT EXISTS (
+             SELECT 1 FROM store_dropoffs d
+             WHERE (d."pickupStoreId" = s.id OR d."dropoffStoreId" = s.id)
+               AND d."createdAt" > NOW() - INTERVAL '60 days'
+           )`,
+      );
+      for (const r of rows) {
+        await this.storeRepo.update(r.id, {
+          acceptingNew: false,
+          reviewNote:   'Auto-paused: no packages received in 60 days. Admin review recommended (reactivate or suspend).',
+        } as any);
+      }
+      if (rows.length) this.logger.log(`Dormancy sweep: paused intake for ${rows.length} store(s)`);
+    } catch (e: any) {
+      this.logger.warn(`dormancy sweep failed: ${e?.message ?? e}`);
+    }
+  }
+
+  /**
    * Admin rejects a pending partner store application. Status flips to
    * REJECTED; canPartner stays false. User can re-apply with updated docs.
    */

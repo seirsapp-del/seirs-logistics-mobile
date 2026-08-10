@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, ForbiddenException,
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { In, LessThan, Repository } from 'typeorm';
-import { Driver } from './driver.entity';
+import { Driver, DriverStatus } from './driver.entity';
 import { DriverTrip, DriverTripStatus } from './driver-trip.entity';
 import { DriverStatusBroadcast, DriverStatusBroadcastType } from './driver-status-broadcast.entity';
 import { DriverSubscription, DriverSubscriptionStatus } from './driver-subscription.entity';
@@ -403,6 +403,16 @@ export class DriversService {
   async toggleOnline(userId: string, isOnline: boolean) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    // Approval gate (founder 2026-08-10): unapproved drivers could go
+    // online and sit forever without offers, since matching only
+    // considers approved drivers. Fail loudly instead of silently.
+    if (isOnline && driver.status !== DriverStatus.APPROVED) {
+      throw new BadRequestException(
+        'ACCOUNT_UNDER_REVIEW: your driver account is not approved yet. ' +
+        'Complete your KYC documents; approval usually takes 24 hours to 3 business days.',
+      );
+    }
 
     // Spec V8 §2.12 — driver CANNOT go offline while holding active jobs.
     // Otherwise customers' packages get abandoned mid-route.
@@ -871,7 +881,15 @@ export class DriversService {
 
     for (const sub of due) {
       try {
-        const wallet = await this.walletsRepo.findOne({ where: { user: { id: sub.driverId } } });
+        // sub.driverId is the DRIVER row id; wallets hang off the USER.
+        // The old lookup used driverId directly, which never matched, so
+        // every invoice failed "insufficient balance" and Premium never
+        // collected a single charge (audit 2026-08-10).
+        const subDriver = await this.repo.findOne({ where: { id: sub.driverId }, relations: ['user'] });
+        const walletUserId = subDriver?.user?.id;
+        const wallet = walletUserId
+          ? await this.walletsRepo.findOne({ where: { user: { id: walletUserId } } })
+          : null;
         if (!wallet || wallet.balanceKobo < feeKobo) {
           sub.consecutiveFailures += 1;
           sub.lastFailureReason   = 'Insufficient wallet balance';

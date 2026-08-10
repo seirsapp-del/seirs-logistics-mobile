@@ -471,11 +471,25 @@ export class DeliveriesService {
       events.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     } catch { /* handoff_records may not exist yet on very old databases */ }
 
+    // Verified Pro badge (Spec V8 §2.13): the Premium perk promises
+    // customers SEE the badge, so the tracking payload must carry it.
+    let driverIsPro = false;
+    if (delivery.driver) {
+      try {
+        const rows: Array<{ status: string }> = await this.repo.manager.query(
+          `SELECT status FROM driver_subscriptions WHERE "driverId" = $1 LIMIT 1`,
+          [delivery.driver.id],
+        );
+        driverIsPro = rows?.[0]?.status === 'active' || rows?.[0]?.status === 'past_due';
+      } catch { /* subscriptions table not present yet */ }
+    }
+
     const publicDriver = delivery.driver
       ? {
           name:        delivery.driver.user?.name ?? 'Driver',
           vehicleType: delivery.driver.vehicleType ?? null,
           rating:      delivery.driver.rating ?? null,
+          verifiedPro: driverIsPro,
         }
       : null;
 

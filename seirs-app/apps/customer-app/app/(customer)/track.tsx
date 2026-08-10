@@ -193,9 +193,19 @@ export default function TrackScreen() {
                     </Text>
                   </View>
                   <View style={styles.driverInfo}>
-                    <Text style={[styles.driverName, { color: theme.text }]}>
-                      {assignedDriver?.name ?? deliveryData.driver?.user?.name}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={[styles.driverName, { color: theme.text }]}>
+                        {assignedDriver?.name ?? deliveryData.driver?.user?.name}
+                      </Text>
+                      {/* Verified Pro badge: the Premium perk customers
+                          were promised (Spec V8 §2.13), now real. */}
+                      {(deliveryData.driver?.verifiedPro || (assignedDriver as any)?.verifiedPro) && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#0F2B4C', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+                          <Ionicons name="shield-checkmark" size={10} color="#FFBE0B" />
+                          <Text style={{ color: '#FFBE0B', fontSize: 9, fontWeight: '800', letterSpacing: 0.3 }}>PRO</Text>
+                        </View>
+                      )}
+                    </View>
                     <View style={styles.driverMeta}>
                       <Text style={[styles.driverMetaText, { color: theme.textSecond }]}>
                         {assignedDriver?.vehicleType ?? deliveryData.driver?.vehicleType}
