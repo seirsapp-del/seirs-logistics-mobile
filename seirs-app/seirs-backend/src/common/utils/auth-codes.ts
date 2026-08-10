@@ -15,7 +15,7 @@ export const AccountIdPrefix = {
 
 export type AccountIdPrefixType = typeof AccountIdPrefix[keyof typeof AccountIdPrefix];
 
-// Crockford-style alphabet — no I/L/O/0/1 to avoid visual ambiguity in print/voice
+// Crockford-style alphabet - no I/L/O/0/1 to avoid visual ambiguity in print/voice
 const ID_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /**
@@ -38,7 +38,7 @@ export function secureCode(length: number, alphabet: string = ID_ALPHABET): stri
 }
 
 /**
- * Generate a public account identifier — `PREFIX-XXXXXXXX` (8 chars).
+ * Generate a public account identifier - `PREFIX-XXXXXXXX` (8 chars).
  *
  * Uniqueness: the DB unique constraint on users.accountId is the
  * authoritative dedupe layer, and REGISTRATION MUST RETRY on conflict
@@ -62,7 +62,7 @@ export function generateOtp(): string {
 }
 
 /**
- * Generate a UUID-based account ID — used for business/partner where
+ * Generate a UUID-based account ID - used for business/partner where
  * the original implementation already used uuid. Keeping this for parity
  * with existing `BIZ-` records in the DB. uuidv4 is already CSPRNG-based.
  */

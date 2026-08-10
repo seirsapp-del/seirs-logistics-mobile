@@ -36,7 +36,7 @@ export class CreateDeliveryDto {
   // e.g. "Call when at gate, security code 4231", "Leave with reception".
   // Auto-injected into the chat as the first system message on ASSIGNED
   // transition so drivers see it inline without a separate tab. 500 chars
-  // is Uber-style — enough for detail, not enough to write a novel.
+  // is Uber-style - enough for detail, not enough to write a novel.
   @IsOptional()
   @IsString()
   @MaxLength(500)

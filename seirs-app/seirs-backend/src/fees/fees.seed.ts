@@ -1,7 +1,7 @@
 import { Fee, FeeCategory, FeeUnit } from './fee.entity';
 
 // Spec V8 Fee Catalogue initial values. Inserted on first boot if the
-// fees table is empty. Values are admin-editable from there on — never
+// fees table is empty. Values are admin-editable from there on - never
 // re-applied. Add new fees here for greenfield envs; production updates
 // happen through the admin UI.
 export const FEE_SEEDS: Array<Partial<Fee>> = [
@@ -10,7 +10,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Platform cut on every ride fare after Flutterwave deduction.',
     category: FeeCategory.COMMISSION,   unit: FeeUnit.PERCENT,    value: 25 },
   { key: 'driver_commission_packages',  name: 'Driver Commission (packages)',
-    description: 'Platform cut on every package delivery — slightly lower than rides to attract package supply.',
+    description: 'Platform cut on every package delivery - slightly lower than rides to attract package supply.',
     category: FeeCategory.COMMISSION,   unit: FeeUnit.PERCENT,    value: 20 },
 
   // ── Customer-side fees ─────────────────────────────────────────────────
@@ -38,10 +38,10 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
 
   // ── Subscriptions ──────────────────────────────────────────────────────
   { key: 'seirs_plus_subscription',     name: 'SEIRS Plus (customer)',
-    description: 'Customer monthly subscription — free booking fee, priority dispatch, 5% delivery discount.',
+    description: 'Customer monthly subscription - free booking fee, priority dispatch, 5% delivery discount.',
     category: FeeCategory.SUBSCRIPTION, unit: FeeUnit.PER_MONTH,  value: 2000 },
   { key: 'driver_premium_subscription', name: 'Driver Premium',
-    description: 'Driver weekly flat fee as alternative to commission cut — for high-volume drivers who prefer predictability.',
+    description: 'Driver weekly flat fee as alternative to commission cut - for high-volume drivers who prefer predictability.',
     category: FeeCategory.SUBSCRIPTION, unit: FeeUnit.PER_WEEK,   value: 5000 },
 
   // ── Partner ────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
 
   // ── Pool & multi-stop ──────────────────────────────────────────────────
   { key: 'multi_stop_discount',         name: 'Multi-stop Discount (per extra stop)',
-    description: 'Customer discount for each additional stop beyond the first — encourages bundling.',
+    description: 'Customer discount for each additional stop beyond the first - encourages bundling.',
     category: FeeCategory.POOL,         unit: FeeUnit.PERCENT,    value: -10 },
   { key: 'pool_ride_discount',          name: 'Pool Ride Discount',
     description: 'Discount applied when customer accepts corridor-pool matching (Spec V8 §1).',
@@ -70,7 +70,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Annual interest rate on driver wallet advances (₦50-100k).',
     category: FeeCategory.FINANCIAL,    unit: FeeUnit.PERCENT,    value: 7 },
   { key: 'wallet_float_yield',          name: 'Wallet Float Yield (internal)',
-    description: 'Annual yield SEIRS earns on customer pre-funded wallet balances. Internal — never customer-facing.',
+    description: 'Annual yield SEIRS earns on customer pre-funded wallet balances. Internal - never customer-facing.',
     category: FeeCategory.FINANCIAL,    unit: FeeUnit.PERCENT,    value: 8 },
 
   // ── Pricing config ─────────────────────────────────────────────────────
@@ -91,16 +91,16 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     category: FeeCategory.DRIVER_FEE,   unit: FeeUnit.PERCENT,    value: 5 },
 
   // ── Developer Platform tiers ───────────────────────────────────────────
-  { key: 'dev_growth_tier_monthly',     name: 'Dev Platform — Growth Tier',
+  { key: 'dev_growth_tier_monthly',     name: 'Dev Platform - Growth Tier',
     description: 'Monthly subscription. Includes 1,000 deliveries; ₦100/delivery overage.',
     category: FeeCategory.DEV_PLATFORM, unit: FeeUnit.PER_MONTH,  value: 25000 },
-  { key: 'dev_scale_tier_monthly',      name: 'Dev Platform — Scale Tier',
+  { key: 'dev_scale_tier_monthly',      name: 'Dev Platform - Scale Tier',
     description: 'Monthly subscription. Includes 10,000 deliveries; ₦80/delivery overage. 99.9% SLA + dedicated rep.',
     category: FeeCategory.DEV_PLATFORM, unit: FeeUnit.PER_MONTH,  value: 150000 },
-  { key: 'dev_growth_overage',          name: 'Dev Platform — Growth Overage',
+  { key: 'dev_growth_overage',          name: 'Dev Platform - Growth Overage',
     description: 'Per-delivery charge once Growth tier monthly inclusion is exhausted.',
     category: FeeCategory.DEV_PLATFORM, unit: FeeUnit.FLAT_NGN,   value: 100 },
-  { key: 'dev_scale_overage',           name: 'Dev Platform — Scale Overage',
+  { key: 'dev_scale_overage',           name: 'Dev Platform - Scale Overage',
     description: 'Per-delivery charge once Scale tier monthly inclusion is exhausted.',
     category: FeeCategory.DEV_PLATFORM, unit: FeeUnit.FLAT_NGN,   value: 80 },
 ];

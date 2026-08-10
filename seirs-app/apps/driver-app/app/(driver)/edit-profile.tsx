@@ -256,6 +256,14 @@ export default function EditProfileScreen() {
             )}
           </Pressable>
 
+          <Pressable
+            onPress={() => router.push('/(driver)/change-password')}
+            style={[styles.primaryBtn, { backgroundColor: theme.surfaceSecond, marginTop: Spacing.sm }]}
+          >
+            <Lock size={16} color={theme.text} />
+            <Text style={[styles.primaryBtnText, { color: theme.text }]}>Change password</Text>
+          </Pressable>
+
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: Spacing.md }}>
             <Info size={12} color={theme.textThird} style={{ marginTop: 3 }} />
             <Text style={{ flex: 1, fontSize: FontSize.xs, color: theme.textThird, lineHeight: 16 }}>

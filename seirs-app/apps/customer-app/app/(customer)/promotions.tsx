@@ -23,7 +23,7 @@ const PROMO_GRADIENTS = [
   ['#3A86FF', '#1D6AE5'],
   ['#FF6B00', '#C2410C'],
   ['#2EC4B6', '#0D9488'],
-  ['#8B5CF6', '#6D28D9'],
+  ['#0F2B4C', '#1A3A63'],
 ];
 
 export default function PromotionsScreen() {

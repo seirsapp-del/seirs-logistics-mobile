@@ -12,10 +12,10 @@ import { HamburgerButton } from '@/components/HamburgerButton';
 import { driversApi } from '@/services/api';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  delivered:  { label: 'Delivered',   color: '#22C55E', icon: 'checkmark-circle' },
-  in_transit: { label: 'En Route',    color: '#8B5CF6', icon: 'navigate' },
+  delivered:  { label: 'Delivered',   color: '#16A34A', icon: 'checkmark-circle' },
+  in_transit: { label: 'En Route',    color: '#0F2B4C', icon: 'navigate' },
   picked_up:  { label: 'Picked Up',   color: '#FF6B00', icon: 'cube-outline' },
-  assigned:   { label: 'Assigned',    color: '#3A86FF', icon: 'navigate-outline' },
+  assigned:   { label: 'Assigned',    color: '#3A7BD5', icon: 'navigate-outline' },
   cancelled:  { label: 'Cancelled',   color: '#6B7280', icon: 'close-circle-outline' },
 };
 

@@ -20,7 +20,7 @@ export class PromoRedemption {
   @ManyToOne(() => Promotion, p => p.redemptions, { onDelete: 'CASCADE' })
   promotion: Promotion;
 
-  // Optional — when the redemption is bound to a specific delivery.
+  // Optional - when the redemption is bound to a specific delivery.
   @Column({ nullable: true })
   deliveryId: string;
 

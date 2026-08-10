@@ -36,7 +36,7 @@ const ClientEvents = {
 };
 
 @WebSocketGateway({
-  // CORS restricted — origins set via ALLOWED_ORIGINS env var (comma-separated)
+  // CORS restricted - origins set via ALLOWED_ORIGINS env var (comma-separated)
   cors: {
     origin: (origin: string, callback: Function) => {
       const allowed = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3001')
@@ -98,7 +98,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
       client.join(`user:${user.userId}`);
       this.logger.log(`Client ${client.id} connected (userId=${user.userId})`);
     } else {
-      // Unauthenticated connections allowed — they can only join public delivery rooms
+      // Unauthenticated connections allowed - they can only join public delivery rooms
       this.logger.log(`Unauthenticated client connected: ${client.id}`);
     }
   }
@@ -112,7 +112,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.authedClients.delete(client.id);
   }
 
-  // Customer joins a room to track their delivery (public — no auth required)
+  // Customer joins a room to track their delivery (public - no auth required)
   @SubscribeMessage(ClientEvents.JOIN_DELIVERY)
   async joinDeliveryRoom(
     @MessageBody() data: { deliveryId: string },
@@ -130,7 +130,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     await client.leave(`delivery:${data.deliveryId}`);
   }
 
-  // Driver registers as online — requires valid JWT with driver role
+  // Driver registers as online - requires valid JWT with driver role
   @SubscribeMessage(ClientEvents.JOIN_DRIVER_POOL)
   joinDriverPool(
     @MessageBody() data: { driverId: string },
@@ -146,7 +146,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     client.join(`driver:${data.driverId}`);
   }
 
-  // Driver sends GPS ping — verify it's the actual driver, not someone spoofing
+  // Driver sends GPS ping - verify it's the actual driver, not someone spoofing
   @SubscribeMessage(ClientEvents.DRIVER_UPDATE_LOC)
   async updateDriverLocation(
     @MessageBody() data: { driverId: string; deliveryId: string; lat: number; lng: number },
@@ -177,7 +177,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     });
   }
 
-  // Client joins personal notification room — requires auth
+  // Client joins personal notification room - requires auth
   @SubscribeMessage('join:user')
   joinUserRoom(
     @MessageBody() data: { userId: string },
@@ -228,7 +228,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
   /**
    * Server-side broadcast of a driver GPS update to a delivery room.
    * Called by DriversService.updateLocation() so REST GPS pings reach the
-   * customer's tracking screen — without this, only WS-based driver pings
+   * customer's tracking screen - without this, only WS-based driver pings
    * (driver:update-location) would propagate.
    */
   broadcastDriverLocation(deliveryId: string, driverId: string, lat: number, lng: number) {
@@ -289,7 +289,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     return { event: 'joined:admin' };
   }
 
-  /** Called by SosService.trigger() — broadcasts the alert to all admins. */
+  /** Called by SosService.trigger() - broadcasts the alert to all admins. */
   broadcastSosAlert(alert: {
     id:         string;
     userId:     string;
@@ -307,7 +307,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     });
   }
 
-  // Spec V8 §2.14 — driver status broadcast fan-out. Admin always
+  // Spec V8 §2.14 - driver status broadcast fan-out. Admin always
   // receives it; the active delivery's room (so the customer's
   // tracking screen) gets it when deliveryId is bound.
   broadcastDriverStatus(payload: {

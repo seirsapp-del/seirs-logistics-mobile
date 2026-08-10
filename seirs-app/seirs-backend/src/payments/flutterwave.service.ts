@@ -18,7 +18,7 @@ export class FlutterwaveService {
     this.secretKey  = cfg.get<string>('FLUTTERWAVE_SECRET_KEY', '');
     // FLW_WEBHOOK_HASH must match the "Secret Hash" set in the Flutterwave
     // dashboard → Settings → Webhooks. Used to verify inbound webhooks.
-    // (Same env var as the older webhook handler in payments.controller.ts —
+    // (Same env var as the older webhook handler in payments.controller.ts -
     // keep them aligned so a single Railway variable serves both code paths.)
     this.secretHash = cfg.get<string>('FLW_WEBHOOK_HASH', '');
   }
@@ -51,7 +51,7 @@ export class FlutterwaveService {
     name:        string;
     redirectUrl: string;
     meta:        object;
-    // Optional method hint — when set, Flutterwave's widget opens
+    // Optional method hint - when set, Flutterwave's widget opens
     // directly on that tab. When omitted, the user sees all 4 tabs.
     paymentOption?: 'card' | 'banktransfer' | 'ussd' | 'mobilemoney';
   }): Promise<{ paymentLink: string; txRef: string }> {
@@ -110,7 +110,7 @@ export class FlutterwaveService {
   }
 
   // ── Transfer to driver bank account (earnings withdrawal) ────────────────
-  // amount is in naira (major unit), NOT kobo — Flutterwave uses major units for transfers
+  // amount is in naira (major unit), NOT kobo - Flutterwave uses major units for transfers
 
   async transferToBank(params: {
     amountNaira:   number;

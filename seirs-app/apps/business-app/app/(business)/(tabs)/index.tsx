@@ -34,7 +34,7 @@ export default function BusinessDashboard() {
     { label: 'Today\'s Deliveries', value: data?.todayDeliveries ?? 0, icon: 'Package' as const, color: '#3A7BD5' },
     { label: 'Active',              value: data?.activeDeliveries ?? 0, icon: 'Zap'     as const, color: '#16A34A' },
     { label: 'Pending',             value: data?.pendingDeliveries ?? 0, icon: 'Clock'   as const, color: '#D97706' },
-    { label: 'Loyalty Points',      value: data?.loyaltyPoints ?? 0,    icon: 'Star'    as const, color: '#7C3AED' },
+    { label: 'Loyalty Points',      value: data?.loyaltyPoints ?? 0,    icon: 'Star'    as const, color: '#D97706' },
   ];
 
   return (
@@ -175,7 +175,7 @@ function ActionCard({ icon, label, sub, onPress, primary }: {
 function DeliveryRow({ delivery }: { delivery: any }) {
   const colors = useColors();
   const STATUS_COLOR: Record<string, string> = {
-    pending:   '#D97706', assigned: '#3A7BD5', in_transit: '#7C3AED',
+    pending:   '#D97706', assigned: '#3A7BD5', in_transit: '#0F2B4C',
     delivered: '#16A34A', cancelled: '#DC2626',
   };
   const c = STATUS_COLOR[delivery.status] ?? colors.textThird;

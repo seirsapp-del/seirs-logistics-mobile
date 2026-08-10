@@ -172,7 +172,7 @@ export default function AuditLogPage() {
                     </span>
                     {e.target && <span className="text-xs text-gray-400 truncate">{e.target}</span>}
                   </div>
-                  <p className="text-xs text-gray-400 font-mono">{e.ip ?? '—'}</p>
+                  <p className="text-xs text-gray-400 font-mono">{e.ip ?? '-'}</p>
                   <ChevronRight
                     size={14}
                     className={`text-gray-300 transition-transform ${expanded === e.id ? 'rotate-90' : ''}`}

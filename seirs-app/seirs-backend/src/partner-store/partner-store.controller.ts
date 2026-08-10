@@ -47,7 +47,7 @@ export class PartnerStoreController {
   // ── Customer / sender ──────────────────────────────────────────────────
 
   // GET /api/v1/partner-store/capacity/nearby?lat=&lng=&radiusKm=
-  // Customer picks a pickup store — returns capacity bucket so they
+  // Customer picks a pickup store - returns capacity bucket so they
   // see "Plenty / Limited / Full" without exposing exact ops numbers.
   @Get('capacity/nearby')
   nearbyStores(
@@ -83,7 +83,7 @@ export class PartnerStoreController {
   }
 
   // GET /api/v1/partner-store/dropoff/:code
-  // Either dropCode (SDR-XXXXXXXX) or 6-char backup — server treats them the same.
+  // Either dropCode (SDR-XXXXXXXX) or 6-char backup - server treats them the same.
   @Get('dropoff/:code')
   getByCode(@Param('code') code: string) {
     return this.svc.findByCode(code);
@@ -163,7 +163,7 @@ export class PartnerStoreController {
   }
 
   // GET /api/v1/partner-store/store/:storeId/deletion-readiness
-  // Spec V8 — pre-flight blockers before closing a partner store.
+  // Spec V8 - pre-flight blockers before closing a partner store.
   // Returns blockers list (in-store packages, scheduled drop-offs)
   // so the partner-app UI can guide the operator through cleanup.
   @Get('store/:storeId/deletion-readiness')
@@ -194,7 +194,7 @@ export class PartnerStoreController {
     return this.svc.submitPartnerApplication(user.id, body);
   }
 
-  // GET /api/v1/partner-store/my-application — user polls status of their
+  // GET /api/v1/partner-store/my-application - user polls status of their
   // pending application. Returns null if they haven't applied.
   @Get('my-application')
   myApplication(@CurrentUser() user: any) {

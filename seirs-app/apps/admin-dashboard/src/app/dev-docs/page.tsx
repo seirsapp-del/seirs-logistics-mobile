@@ -1,10 +1,10 @@
 'use client';
-// Newer lucide-react dropped the `Github` icon — use `GitBranch` as
+// Newer lucide-react dropped the `Github` icon - use `GitBranch` as
 // the closest semantic equivalent. The button still opens the GitHub
 // repo URL; only the icon glyph changed.
 import { BookOpen, ExternalLink, GitBranch as Github, FileText, Zap } from 'lucide-react';
 
-// Spec V8 Tier 3 — link card to the public docs site. The actual
+// Spec V8 Tier 3 - link card to the public docs site. The actual
 // docs.seirs.app is a separate Vercel project (Mintlify or Nextra);
 // this admin page surfaces it + its publish status + lets staff jump
 // straight to the source repo.
@@ -53,7 +53,7 @@ export default function DevDocsPage() {
         />
         <SectionCard
           title="SDKs"
-          description="@seirs/node, @seirs/php, @seirs/js — install snippets, type defs, sample integrations."
+          description="@seirs/node, @seirs/php, @seirs/js - install snippets, type defs, sample integrations."
           Icon={Github}
         />
         <SectionCard
@@ -70,7 +70,7 @@ export default function DevDocsPage() {
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <p className="text-xs text-yellow-800 leading-relaxed">
-          <strong>Build status:</strong> The docs site is a planned standalone Vercel project. URL above is placeholder — pointing it to a real deployment requires (1) creating the Mintlify/Nextra repo, (2) pushing initial content, (3) configuring DNS for docs.seirs.app. Roadmap: target v1 ship alongside the public <code className="bg-yellow-100 px-1 rounded">/v1/*</code> API surface.
+          <strong>Build status:</strong> The docs site is a planned standalone Vercel project. URL above is placeholder - pointing it to a real deployment requires (1) creating the Mintlify/Nextra repo, (2) pushing initial content, (3) configuring DNS for docs.seirs.app. Roadmap: target v1 ship alongside the public <code className="bg-yellow-100 px-1 rounded">/v1/*</code> API surface.
         </p>
       </div>
     </div>

@@ -15,7 +15,7 @@ import { deliveriesApi } from '@/services/api';
 const URGENCY_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
   instant:   { label: 'Instant',   color: '#EF4444', Icon: Zap  },
   standard:  { label: 'Standard',  color: '#3A7BD5', Icon: Clock },
-  scheduled: { label: 'Scheduled', color: '#8B5CF6', Icon: Clock },
+  scheduled: { label: 'Scheduled', color: '#D97706', Icon: Clock },
 };
 
 const ACCEPT_TIMEOUT_SEC = 45;

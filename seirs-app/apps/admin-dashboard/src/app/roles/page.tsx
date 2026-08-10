@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -26,7 +26,7 @@ interface CatalogueSection {
   items:   Array<{ slug: string; label: string }>;
 }
 
-const COLOR_OPTIONS = ['gray', 'red', 'blue', 'green', 'yellow', 'purple', 'pink', 'cyan', 'orange'];
+const COLOR_OPTIONS = ['gray', 'red', 'blue', 'green', 'yellow', 'pink', 'cyan', 'orange'];
 
 const COLOR_BG: Record<string, string> = {
   gray:   'bg-gray-100 text-gray-700',

@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Register 401 handler — auto-logout when JWT expires
+    // Register 401 handler - auto-logout when JWT expires
     setSessionExpiredHandler(() => {
       setUser(null);
       router.replace('/(auth)/login' as any);
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem('seirs_user', JSON.stringify(merged));
       setUser(merged);
     } catch {
-      /* non-fatal — caller already showed success toast */
+      /* non-fatal - caller already showed success toast */
     }
   };
 

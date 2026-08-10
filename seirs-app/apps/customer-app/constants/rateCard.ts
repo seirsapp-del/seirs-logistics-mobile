@@ -4,14 +4,14 @@
  * the backend admin rate-card API lands, getRateCard() will fetch + cache
  * the live card and fall back to this default when offline.
  *
- * Admin-controlled. NEVER hardcode a fee in screen code — always read
+ * Admin-controlled. NEVER hardcode a fee in screen code - always read
  * from the card so a price change is a single admin save, not a deploy.
  *
  * Spec mirrors seirs-pricing-spec.html. Service fee (15%/18%) is a
  * temporary SEIRS margin line; the long-term spec bakes margin into
  * base + perKm so the customer only sees km/surcharges/VAT.
  *
- * REGIONAL: rates resolve in three layers — state-level override → zone-
+ * REGIONAL: rates resolve in three layers - state-level override → zone-
  * level override → baseline. SEIRS operates in all 37 federating units;
  * admin tunes per region without code changes.
  */
@@ -36,7 +36,7 @@ export interface RideVehicleRate {
   /** Brand-distinct hex used as the icon's tinted background in the
    *  vehicle picker (Uber/Lyft-style colour-per-vehicle). */
   accentColor:   string;
-  /** Square photo URL for the picker thumbnail. Optional — when set, the
+  /** Square photo URL for the picker thumbnail. Optional - when set, the
    *  picker swaps the icon for the image. Currently unused; reserved for
    *  branded SEIRS vehicle illustrations from a designer. */
   photoUrl?:     string;
@@ -47,7 +47,7 @@ export interface RideVehicleRate {
   base:          number;
   /** Labour ₦ per km of route distance (was: combined). Fuel is added via fuelType+kmPerLitre. */
   perKm:         number;
-  /** Fuel type for this vehicle — used by fuelPerKm() to add pump-price pass-through. */
+  /** Fuel type for this vehicle - used by fuelPerKm() to add pump-price pass-through. */
   fuelType:      FuelType;
   /** Vehicle efficiency in km per litre. ∞ for bicycles. */
   kmPerLitre:    number;
@@ -68,7 +68,7 @@ export interface PackageVehicleRate {
   kmPerLitre: number;
 }
 
-/** Today's pump prices — admin updates and every km rate recomputes the same day. */
+/** Today's pump prices - admin updates and every km rate recomputes the same day. */
 export interface FuelPrices {
   petrolNgn: number;
   dieselNgn: number;
@@ -86,7 +86,7 @@ export interface CategorySurcharge {
   pct:               number;
   /** % of the surcharge the driver keeps (admin default 50%). */
   driverSharePct:    number;
-  /** Vehicles this category is NOT allowed on — safety hard-stop. */
+  /** Vehicles this category is NOT allowed on - safety hard-stop. */
   forbiddenVehicles?: readonly string[];
 }
 
@@ -115,17 +115,17 @@ export interface ZoneRule {
   interStateAdjacentPct:   number;
   /** Distant-state crossing (Lagos↔Kano). */
   interStateDistantPct:    number;
-  /** Cross-zone (different geopolitical zone — usually long-distance). */
+  /** Cross-zone (different geopolitical zone - usually long-distance). */
   crossZonePct:            number;
   /** > this many km → flat overnight fee on top of any %. */
   overnightFeeKm:          number;
   overnightFeeNgn:         number;
-  /** Restricted sub-zones (curfew, flood, conflict) — admin lists with %. */
+  /** Restricted sub-zones (curfew, flood, conflict) - admin lists with %. */
   restrictedZoneDefaultPct: number;
 }
 
 /**
- * Per-region overrides — applied on top of the baseline. Any field left
+ * Per-region overrides - applied on top of the baseline. Any field left
  * undefined means "inherit". Two levels: state-level wins over zone-level.
  */
 export interface RegionalOverrides {
@@ -142,7 +142,7 @@ export interface RegionalOverrides {
   restrictedSubZones?: { name: string; surchargePct: number; reason: string }[];
   /** Cultural buffer minutes added to all dwell calcs in this region. */
   dwellBufferMin?: number;
-  /** Reason this region differs — admin-visible explanation. */
+  /** Reason this region differs - admin-visible explanation. */
   reason?:         string;
 }
 
@@ -162,7 +162,7 @@ export interface CancellationRule {
 }
 
 /**
- * Anti-fraud velocity limits — daily caps per customer / driver. New
+ * Anti-fraud velocity limits - daily caps per customer / driver. New
  * accounts (< 30 days) get tighter limits to bound exposure while we
  * build a trust signal. Per payments-spec §8.
  */
@@ -213,7 +213,7 @@ export interface CODRule {
  * declared value above threshold). When opted in, recipient handover
  * REQUIRES typed-name verification + photo (enforced in driver app).
  *
- * DEFAULTED OFF until the claims-handling pipeline is operational —
+ * DEFAULTED OFF until the claims-handling pipeline is operational -
  * accepting premium without a claims process is a refund magnet.
  */
 export interface InsuranceRule {
@@ -224,7 +224,7 @@ export interface InsuranceRule {
   maxCoverageNgn:    number;   // hard ceiling on coverage (and therefore claims)
 }
 
-// Time-guaranteed delivery REMOVED — Nigerian road conditions (traffic,
+// Time-guaranteed delivery REMOVED - Nigerian road conditions (traffic,
 // roadworks, NEPA outage at recipient address, market crowds) make any
 // promise of arrival time a refund magnet. Customers can use "Scheduled"
 // for pickup time but we don't promise arrival windows.
@@ -252,7 +252,7 @@ export interface DiscountsRule {
 export interface RateCard {
   version:       string;
   effectiveFrom: string;
-  vatPct:        number;       // 0.075 — applied on subtotal-after-everything
+  vatPct:        number;       // 0.075 - applied on subtotal-after-everything
   fuelPrices:    FuelPrices;   // baseline pump prices; per-region overrides under regions.zoneOverrides
 
   ride: {
@@ -302,7 +302,7 @@ export const DEFAULT_RATE_CARD: RateCard = {
   vatPct:        0.075,
 
   // Baseline pump prices. Admin updates the moment NNPC announces a
-  // change and every km rate recomputes — no deploy needed. Per-region
+  // change and every km rate recomputes - no deploy needed. Per-region
   // overrides (e.g. SS delta) live under regions.zoneOverrides.*.fuelPrices.
   fuelPrices: {
     petrolNgn: 950,
@@ -317,7 +317,7 @@ export const DEFAULT_RATE_CARD: RateCard = {
       // pre-refactor figures at baseline petrol price of ₦950/L.
       // accentColor used by vehicle-select to tint the icon background so
       // each vehicle has visual distinction (Uber/Lyft pattern). photoUrl
-      // intentionally omitted — the prior Unsplash stock photos looked
+      // intentionally omitted - the prior Unsplash stock photos looked
       // unprofessional. When a designer ships branded vehicle illustrations,
       // re-introduce photoUrl + the picker will swap to image automatically.
       { id: 'okada', label: 'Okada', icon: 'bicycle',   accentColor: '#FF6B00', subKey: 'okadaSub', description: 'Fastest in traffic',    eta: '2 min', base:  450, perKm:  40, fuelType: 'petrol', kmPerLitre: 45, capacityKey: 'capacityRider',  capacityCount:  1, features: ['Fast', 'Cheap'],         shareable: false },
@@ -380,7 +380,7 @@ export const DEFAULT_RATE_CARD: RateCard = {
 
   zone: {
     intraStateLongHaulKm:     100,
-    intraStateLongHaulPct:    0.15,   // long trip within one state — modest bump
+    intraStateLongHaulPct:    0.15,   // long trip within one state - modest bump
     interStateAdjacentPct:    0.20,   // crossing into a neighbour state
     interStateDistantPct:     0.30,   // non-adjacent state crossing
     crossZonePct:             0.40,   // crossing geopolitical zone (NW↔SS, etc.)
@@ -399,7 +399,7 @@ export const DEFAULT_RATE_CARD: RateCard = {
   },
 
   cancellation: {
-    // Pre-assign isn't free — small ₦50 token to deter joyride bookings
+    // Pre-assign isn't free - small ₦50 token to deter joyride bookings
     // (open + cancel + open again to test prices). Admin can drop to 0
     // for a launch promo without code.
     preAssignNgn:    50,
@@ -424,7 +424,7 @@ export const DEFAULT_RATE_CARD: RateCard = {
   },
 
   insurance: {
-    // DEFAULTED OFF — accepting premium without a claims pipeline is a
+    // DEFAULTED OFF - accepting premium without a claims pipeline is a
     // refund magnet. Admin flips to true when claims handling + the
     // photo-at-pickup + typed-name-handover process is live.
     enabled:                   false,
@@ -438,9 +438,9 @@ export const DEFAULT_RATE_CARD: RateCard = {
   // 15-18%, so total stacked discount above ~20% means losing money on
   // the booking. maxTotalPct enforces that wall.
   discounts: {
-    bulkUploadOffPct:           0.05,   // was 10% — only volume customers
-    bulkUploadMinPackages:      50,     // was 25 — protects small batches
-    recurringOffPct:            0.03,   // was 5% — token loyalty perk
+    bulkUploadOffPct:           0.05,   // was 10% - only volume customers
+    bulkUploadMinPackages:      50,     // was 25 - protects small batches
+    recurringOffPct:            0.03,   // was 5% - token loyalty perk
     welcomeOffPct:              0.10,   // was 15%
     welcomeMaxNgn:              300,    // was ₦500
     loyaltyPointValueNgn:       1,
@@ -450,7 +450,7 @@ export const DEFAULT_RATE_CARD: RateCard = {
 
   // Anti-fraud caps. New-account limits tighter than established. Per
   // payments-spec §8 but the "established" spend cap is lowered from
-  // ₦500k to ₦200k for bootstrapped launch — a fraudulent ₦500k
+  // ₦500k to ₦200k for bootstrapped launch - a fraudulent ₦500k
   // transaction is unrecoverable for us.
   velocityLimits: {
     newDeliveriesPerDay:           5,
@@ -463,7 +463,7 @@ export const DEFAULT_RATE_CARD: RateCard = {
     failedPaymentsBeforeLockoutEst: 5,
   },
 
-  // Driver payout policy — reduces transfer-fee waste (Flutterwave charges
+  // Driver payout policy - reduces transfer-fee waste (Flutterwave charges
   // ₦10-50 per Transfer regardless of amount, so tiny payouts are money
   // shredded), absorbs early-tenure fraud risk via holdback.
   payout: {
@@ -473,7 +473,7 @@ export const DEFAULT_RATE_CARD: RateCard = {
     transferFeeFlatNgn:    50,
   },
 
-  // Informational only — admin should track exposure. Every chargeback
+  // Informational only - admin should track exposure. Every chargeback
   // costs SEIRS this much on top of the refunded amount.
   chargeback: {
     chargebackFlatFeeNgn: 4000,
@@ -486,7 +486,7 @@ export const DEFAULT_RATE_CARD: RateCard = {
   zoneOverrides: {
     SW: {
       rateMultiplier: 1.00,
-      reason: 'Baseline — calibrated for SW urban (Lagos/Ibadan/Abeokuta).',
+      reason: 'Baseline - calibrated for SW urban (Lagos/Ibadan/Abeokuta).',
     },
     SE: {
       rateMultiplier: 0.95,
@@ -494,8 +494,8 @@ export const DEFAULT_RATE_CARD: RateCard = {
     },
     SS: {
       rateMultiplier: 1.10,
-      fuelPrices: { petrolNgn: 1050, dieselNgn: 1350 },   // delta region — supply quirks
-      reason: 'Oil delta — security premium + fuel-supply variability.',
+      fuelPrices: { petrolNgn: 1050, dieselNgn: 1350 },   // delta region - supply quirks
+      reason: 'Oil delta - security premium + fuel-supply variability.',
     },
     NC: {
       rateMultiplier: 1.05,
@@ -515,24 +515,24 @@ export const DEFAULT_RATE_CARD: RateCard = {
   // ── Per-state overrides (only states that differ from their zone) ──────
   // Anything not listed inherits its zone's override (which inherits baseline).
   stateOverrides: {
-    LA: { rateMultiplier: 1.10, reason: 'Lagos — traffic + higher cost of living.' },
-    FC: { rateMultiplier: 1.10, reason: 'FCT — institutional demand premium.' },
-    RI: { rateMultiplier: 1.15, reason: 'Port Harcourt — refinery/oil traffic + security.' },
+    LA: { rateMultiplier: 1.10, reason: 'Lagos - traffic + higher cost of living.' },
+    FC: { rateMultiplier: 1.10, reason: 'FCT - institutional demand premium.' },
+    RI: { rateMultiplier: 1.15, reason: 'Port Harcourt - refinery/oil traffic + security.' },
     BO: {
       rateMultiplier: 1.30,
       restrictedSubZones: [
         { name: 'NE corridor (security advisory)', surchargePct: 0.50, reason: 'Active security advisory; admin can refine to specific LGAs.' },
       ],
-      reason: 'Borno — heightened security across most LGAs.',
+      reason: 'Borno - heightened security across most LGAs.',
     },
-    KN: { rateMultiplier: 0.85, reason: 'Kano metro — cheaper than SW baseline.' },
+    KN: { rateMultiplier: 0.85, reason: 'Kano metro - cheaper than SW baseline.' },
   },
 };
 
 // ─── Pure pricing helpers ───────────────────────────────────────────────────
 
 /**
- * Cumulative weight surcharge — adds the full max of every tier the weight
+ * Cumulative weight surcharge - adds the full max of every tier the weight
  * passes through, plus the partial blocks in the active tier. Handling fee
  * is just the active tier's flat (not cumulative).
  */
@@ -596,7 +596,7 @@ export function resolveRegionalOverrides(
   return {
     ...fromZ,
     ...fromS,
-    // Merge vehicle overrides instead of replacing — state can override
+    // Merge vehicle overrides instead of replacing - state can override
     // a single vehicle while inheriting the zone's other rates.
     vehicleOverrides: { ...(fromZ.vehicleOverrides ?? {}), ...(fromS.vehicleOverrides ?? {}) },
     // Same for fuel + restrictedSubZones (concat).
@@ -674,7 +674,7 @@ function zoneSurchargeFor(
       }
     }
   } else if (distKm > card.zone.intraStateLongHaulKm) {
-    // Coords missing — fall back to distance-based heuristic.
+    // Coords missing - fall back to distance-based heuristic.
     pct += card.zone.intraStateLongHaulPct;
     labels.push('longHaul');
   }
@@ -704,7 +704,7 @@ export function insurancePremium(card: RateCard, optedIn: boolean, declaredValue
   return raw;
 }
 
-/** Dwell-fee (post-trip) — for trip-progress integration. */
+/** Dwell-fee (post-trip) - for trip-progress integration. */
 export function dwellFee(card: RateCard, waitMinutes: number): number {
   const billable = Math.max(0, Math.min(card.dwell.capMinutes, waitMinutes) - card.dwell.freeMinutes);
   return billable * card.dwell.perMinuteNgn;
@@ -748,14 +748,14 @@ export function computeDiscounts(
   const welcomeRaw = opts.isWelcome ? Math.round(safeSubtotal * d.welcomeOffPct) : 0;
   const welcome    = Math.min(welcomeRaw, d.welcomeMaxNgn);
 
-  // Loyalty redemption capped per booking — protects against draining a
+  // Loyalty redemption capped per booking - protects against draining a
   // big balance on one trip and leaving us with thin margin.
   const loyaltyPoints = Math.min(Math.max(0, opts.loyaltyPointsToRedeem ?? 0), d.loyaltyMaxPointsPerBooking);
   const loyalty       = loyaltyPoints * d.loyaltyPointValueNgn;
 
   const requested = bulk + recurring + welcome + loyalty;
 
-  // Hard ceilings — first the absolute % cap, then the subtotal itself.
+  // Hard ceilings - first the absolute % cap, then the subtotal itself.
   // SEIRS service fee is 15-18%, so letting total discount exceed ~20%
   // means losing money on the booking. Admin can raise maxTotalPct
   // temporarily for promotional periods if they truly want to.
@@ -789,14 +789,14 @@ export function cancellationFee(
 
 // ─── Fare calculators ──────────────────────────────────────────────────────
 
-/** Coordinates pair — supplied by screens that have map context. */
+/** Coordinates pair - supplied by screens that have map context. */
 export interface Coords { latitude: number; longitude: number }
 
 export interface RideFareResult {
   base:              number;
   /** Distance LABOUR portion (₦). */
   dist:              number;
-  /** Distance FUEL pass-through (₦) — recomputes when admin updates pump price. */
+  /** Distance FUEL pass-through (₦) - recomputes when admin updates pump price. */
   distFuel:          number;
   categorySurcharge: number;
   timeSurcharge:     number;
@@ -930,7 +930,7 @@ export function calcPackageFare(
     extraStops?:    number;
     pickupCoords?:  Coords | null;
     dropoffCoords?: Coords | null;
-    // Discount opts — pass directly so admin can adjust % from the card.
+    // Discount opts - pass directly so admin can adjust % from the card.
     isBulk?:               boolean;
     bulkPackageCount?:     number;
     isRecurring?:          boolean;
@@ -974,7 +974,7 @@ export function calcPackageFare(
   running += codFee;
 
   // Insurance premium (opt-in by declared value above threshold). The
-  // premium covers admin liability when cargo is lost/damaged — claims
+  // premium covers admin liability when cargo is lost/damaged - claims
   // pipeline + photo evidence required before any payout.
   const insurance = insurancePremium(card, (opts.insureDeclaredValueNgn ?? 0) > 0, opts.insureDeclaredValueNgn ?? 0);
   running += insurance;
@@ -983,7 +983,7 @@ export function calcPackageFare(
   const service       = Math.round(running * serviceFeePct);
   running            += service;
 
-  // Apply discounts before VAT — matches spec scenario F (bulk -10%
+  // Apply discounts before VAT - matches spec scenario F (bulk -10%
   // applied before VAT) and ensures the customer pays VAT on the
   // discounted amount, not the gross.
   const discounts = computeDiscounts(card, running, {

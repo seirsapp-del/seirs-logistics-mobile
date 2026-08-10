@@ -70,7 +70,7 @@ export class PaymentsController {
   //                    which tab (card / banktransfer / ussd / mobilemoney)
   //                    opens by default. Omit to show all.
   // - method=wallet  → debits the customer's SEIRS wallet
-  // COD is rejected — Spec V8 §"Confirmed Decisions" removes COD.
+  // COD is rejected - Spec V8 §"Confirmed Decisions" removes COD.
   @UseGuards(JwtAuthGuard, MaintenanceGuard)
   @Post('initiate')
   async initiatePayment(
@@ -87,7 +87,7 @@ export class PaymentsController {
       case PaymentMethod.CARD:
       case PaymentMethod.BANK:
       case PaymentMethod.MOBILE_MONEY:
-        // All Flutterwave-routed methods share one initiation path —
+        // All Flutterwave-routed methods share one initiation path -
         // payment_options on the Flutterwave widget decides the tab.
         return this.paymentsService.initiateCardPayment(delivery, user, {
           paymentOption: body.paymentOption,
@@ -127,7 +127,7 @@ export class PaymentsController {
 
   // ── Driver endpoints ─────────────────────────────────────────────────────
 
-  // GET /api/v1/payments/banks — Nigerian bank list for driver bank setup
+  // GET /api/v1/payments/banks - Nigerian bank list for driver bank setup
   @UseGuards(JwtAuthGuard)
   @Get('banks')
   getNigerianBanks() {
@@ -184,7 +184,7 @@ export class PaymentsController {
     return this.paymentsService.updateBankDetails(user.id, body);
   }
 
-  // ── Flutterwave Webhook (no JWT — Flutterwave server calls this) ───────────
+  // ── Flutterwave Webhook (no JWT - Flutterwave server calls this) ───────────
   // POST /api/v1/payments/webhook/flutterwave
   // Set FLW_WEBHOOK_HASH in your env to the same Secret Hash configured in
   // Flutterwave dashboard → Settings → Webhooks

@@ -30,7 +30,7 @@ export class RoutingService {
   constructor(private readonly cfg: ConfigService) {
     this.apiKey = this.cfg.get<string>('GOOGLE_MAPS_API_KEY') ?? '';
     if (!this.apiKey) {
-      this.logger.warn('GOOGLE_MAPS_API_KEY not set — routing will fall back to haversine distance.');
+      this.logger.warn('GOOGLE_MAPS_API_KEY not set - routing will fall back to haversine distance.');
     }
   }
 
@@ -82,7 +82,7 @@ export class RoutingService {
       };
     }
 
-    // Nearest-neighbour ordering — uses haversine for the comparison
+    // Nearest-neighbour ordering - uses haversine for the comparison
     // (still our best option without paying for the Distance Matrix API).
     const order = this.nearestNeighbourOrder(stops);
 

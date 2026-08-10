@@ -107,6 +107,11 @@ export class DeliveriesService {
   // style timeline. Optional so tests that only stub DeliveriesService
   // don't blow up when this is unset.
   deliveryEventsRepo?:   Repository<DeliveryEvent>;
+  // Wired by DeliveriesModule.onModuleInit. Store-leg deliveries carry a
+  // back-reference from store_dropoffs.deliveryId; driver progress on the
+  // Delivery must advance the dropoff so the partner store + sender see
+  // honest package state instead of a permanent "awaiting driver".
+  storeDropoffsRepo?:    Repository<any>;
 
   constructor(
     @InjectRepository(Delivery) private repo: Repository<Delivery>,
@@ -731,6 +736,57 @@ export class DeliveriesService {
     }
   }
 
+  /**
+   * Store-leg sync (audit 2026-08-10): when a Delivery was minted from a
+   * partner-store dropoff, driver progress must flow back to the dropoff
+   * row so the store dashboard + sender tracking stay honest.
+   *
+   * Mapping: ASSIGNED -> DRIVER_EN_ROUTE, PICKED_UP/IN_TRANSIT ->
+   * IN_TRANSIT, DELIVERED -> COLLECTED (store_to_door, driver handed to
+   * the recipient) or AT_DROPOFF_STORE (store_to_store, destination
+   * store's collection flow takes over). FAILED/CANCELLED puts the
+   * package back in the dispatch queue and clears deliveryId so the
+   * re-dispatch sweep mints a fresh driver leg. Terminal dropoff states
+   * are never regressed.
+   */
+  private async syncStoreDropoff(deliveryId: string, status: DeliveryStatus) {
+    if (!this.storeDropoffsRepo) return;
+    const dropoff = await this.storeDropoffsRepo.findOne({ where: { deliveryId } });
+    if (!dropoff) return;
+    const terminal = ['collected', 'cancelled', 'return_triggered'];
+    if (terminal.includes(dropoff.status)) return;
+
+    const patch: any = {};
+    switch (status) {
+      case DeliveryStatus.ASSIGNED:
+        patch.status = 'driver_en_route';
+        break;
+      case DeliveryStatus.PICKED_UP:
+      case DeliveryStatus.IN_TRANSIT:
+        patch.status = 'in_transit';
+        if (!dropoff.pickedUpByDriverAt) patch.pickedUpByDriverAt = new Date();
+        break;
+      case DeliveryStatus.DELIVERED:
+        if (dropoff.mode === 'store_to_store') {
+          patch.status = 'at_dropoff_store';
+          patch.arrivedAtDropoffStoreAt = new Date();
+        } else {
+          patch.status = 'collected';
+          patch.collectedAt = new Date();
+        }
+        break;
+      case DeliveryStatus.FAILED:
+      case DeliveryStatus.CANCELLED:
+        patch.status = 'awaiting_driver';
+        patch.deliveryId = null;
+        break;
+      default:
+        return;
+    }
+    await this.storeDropoffsRepo.update(dropoff.id, patch);
+    this.logger.log(`store dropoff ${dropoff.dropCode} synced to ${patch.status} (delivery ${status})`);
+  }
+
   async updateStatus(id: string, status: DeliveryStatus, proofPhotoUrl?: string) {
     const delivery = await this.repo.findOne({ where: { id } });
     if (!delivery) throw new NotFoundException('Delivery not found.');
@@ -754,6 +810,12 @@ export class DeliveriesService {
     this.logEvent(id, DeliveryEventType.STATUS_CHANGE, EventActorRole.SYSTEM, {
       meta: { fromStatus, toStatus: status },
     }).catch(() => {});
+
+    // Store-leg dropoffs mirror driver progress. Fire-and-forget: the
+    // delivery transition already committed.
+    this.syncStoreDropoff(id, status).catch((err) =>
+      this.logger.warn(`store dropoff sync failed for ${id}: ${err?.message ?? err}`),
+    );
 
     // If the DELIVERED transition included a proof photo, log a
     // separate PHOTO_ADDED event so the timeline can render the photo

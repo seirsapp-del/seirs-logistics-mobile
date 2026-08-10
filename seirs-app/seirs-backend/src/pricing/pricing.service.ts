@@ -69,7 +69,7 @@ export interface PricingInput {
   scheduledAt?:  Date;             // if undefined, treated as "now"
 
   /**
-   * Preferred — provide coords and the service detects pickup/dropoff
+   * Preferred - provide coords and the service detects pickup/dropoff
    * states + applies the correct zone-surcharge tier + regional rate
    * multiplier. Fall back to the legacy flags below when coords aren't
    * available (e.g. CSV bulk upload with address-only rows).
@@ -98,7 +98,7 @@ export interface PricingInput {
 }
 
 /**
- * Merged regional overrides — baseline ↘ geopolitical zone ↘ state.
+ * Merged regional overrides - baseline ↘ geopolitical zone ↘ state.
  * State-level wins over zone-level.
  */
 interface ResolvedRegion {
@@ -132,7 +132,7 @@ export class PricingService implements OnModuleInit {
   private async seedIfEmpty() {
     const rateCount = await this.rateCardRepo.count();
     if (rateCount === 0) {
-      this.logger.log('Seeding default rate card (v1) — matches pricing-spec.html');
+      this.logger.log('Seeding default rate card (v1) - matches pricing-spec.html');
       const card = this.rateCardRepo.create({
         ...DEFAULT_RATE_CARD,
         activatedAt: new Date(),
@@ -152,7 +152,7 @@ export class PricingService implements OnModuleInit {
   /** Currently-active rate card. There should always be exactly one. */
   async getActiveRateCard(): Promise<RateCard> {
     const card = await this.rateCardRepo.findOne({ where: { isActive: true } });
-    if (!card) throw new NotFoundException('No active rate card — seed the database.');
+    if (!card) throw new NotFoundException('No active rate card - seed the database.');
     return card;
   }
 
@@ -227,7 +227,7 @@ export class PricingService implements OnModuleInit {
   }
 
   /**
-   * State-aware zone-surcharge tier. New in v2 — falls back to v1 flags
+   * State-aware zone-surcharge tier. New in v2 - falls back to v1 flags
    * (input.isInterState / input.isLongDistance / input.isRestrictedZone)
    * when neither coords nor explicit state codes are provided.
    */
@@ -355,7 +355,7 @@ export class PricingService implements OnModuleInit {
     // Dwell fee only applies to OVERAGE past the free threshold. The
     // estimated dwell is already covered by base + stop bonuses; this
     // line is for actual measured overage on completed deliveries.
-    // At booking time it's zero — we'll add it post-delivery.
+    // At booking time it's zero - we'll add it post-delivery.
     const dwellOver      = 0;
 
     const subtotalPreSurcharge = base + distanceLabour + distanceFuel + stopBonuses + dwellOver;
@@ -375,14 +375,14 @@ export class PricingService implements OnModuleInit {
 
     const subtotalPreZone = subtotalPreTime + nightSur + peakSur + weekendSur;
 
-    // State-aware zone surcharge — replaces the flat interState/longDistance
+    // State-aware zone surcharge - replaces the flat interState/longDistance
     // flags with a real tier (intra-state long-haul / inter-state adjacent /
     // inter-state distant / cross-zone) detected from pickup+dropoff states.
     const zr = this.zoneSurchargeForBooking(card, input, pickupState, dropoffState);
     const tierSur       = subtotalPreZone * zr.pct;
     const restrictedSur = subtotalPreZone * (zr.restrictedPct / 100);
     const overnightSur  = zr.flat;
-    // Keep the breakdown shape stable for the booking UI — bucket the
+    // Keep the breakdown shape stable for the booking UI - bucket the
     // tier surcharge into the most appropriate legacy field.
     const labelOfTier = zr.labels.find(l =>
       ['interState','interStateAdjacent','interStateDistant','crossZone','intraStateLongHaul'].includes(l)

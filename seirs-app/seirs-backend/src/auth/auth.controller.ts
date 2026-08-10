@@ -63,7 +63,7 @@ export class AuthController {
     return this.authService.getMe(user.id);
   }
 
-  // Spec V8 §3.6 — sliding-window admin session. Admin tokens issue
+  // Spec V8 §3.6 - sliding-window admin session. Admin tokens issue
   // with a 30-minute TTL; this endpoint extends the window when the
   // admin is actively using the dashboard. Non-admin callers get the
   // platform default (7d) so it's effectively a no-op for them.
@@ -87,7 +87,7 @@ export class AuthController {
   }
 
   // POST /api/v1/auth/change-password
-  // Logged-in password change — requires current password as proof.
+  // Logged-in password change - requires current password as proof.
   // Different from forgot/reset which goes through email link.
   @UseGuards(JwtAuthGuard)
   @Post('change-password')

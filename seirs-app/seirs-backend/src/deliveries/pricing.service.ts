@@ -24,7 +24,7 @@ export interface PriceResult {
   };
 }
 
-// Base rates in Nigerian Naira — adjust per country in Phase 5
+// Base rates in Nigerian Naira - adjust per country in Phase 5
 const BASE_FARE    = 300;
 const PER_KM_RATE  = 80;
 const PLATFORM_CUT = PLATFORM_COMMISSION;

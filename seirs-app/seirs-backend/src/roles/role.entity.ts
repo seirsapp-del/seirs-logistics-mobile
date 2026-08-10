@@ -2,12 +2,12 @@ import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index,
 } from 'typeorm';
 
-// Spec V8 — dynamic admin roles. Replaces the hardcoded AdminSubRole
+// Spec V8 - dynamic admin roles. Replaces the hardcoded AdminSubRole
 // enum with database-stored Role rows so super-admin can create
 // custom job titles + bespoke permission sets without a code deploy.
 //
 // `isSystemRole` flags the 8 seeded baseline roles so they can't be
-// deleted (they're our defaults — custom roles inherit from them
+// deleted (they're our defaults - custom roles inherit from them
 // conceptually but are independent).
 @Entity('roles')
 export class Role {

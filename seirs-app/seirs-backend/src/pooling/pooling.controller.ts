@@ -7,7 +7,7 @@ import { PoolingService } from './pooling.service';
 export class PoolingController {
   constructor(private readonly svc: PoolingService) {}
 
-  // POST /api/v1/pooling/check-fit — internal hook called by matching service
+  // POST /api/v1/pooling/check-fit - internal hook called by matching service
   @Post('check-fit')
   checkFit(@Body() body: any) {
     return this.svc.checkFit(body);

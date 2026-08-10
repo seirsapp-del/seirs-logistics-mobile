@@ -41,7 +41,7 @@ export class FxService implements OnModuleInit {
   async refresh() {
     const key = this.cfg.get<string>('EXCHANGE_RATE_API_KEY');
     if (!key) {
-      this.logger.warn('EXCHANGE_RATE_API_KEY not set — using last known rate');
+      this.logger.warn('EXCHANGE_RATE_API_KEY not set - using last known rate');
       return;
     }
     try {

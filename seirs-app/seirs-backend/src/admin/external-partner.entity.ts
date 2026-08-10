@@ -3,7 +3,7 @@ import {
   UpdateDateColumn, Index,
 } from 'typeorm';
 
-// Spec V8 §3.13 — external partner directory. Backs both /insurance
+// Spec V8 §3.13 - external partner directory. Backs both /insurance
 // and /specialists admin pages. Insurance partners are SEIRS's
 // liability + cargo coverage providers; specialist partners are
 // independent operators with non-standard capabilities (cold chain,
@@ -20,7 +20,7 @@ export enum ExternalPartnerType {
 export enum ExternalPartnerStatus {
   ACTIVE   = 'active',
   PENDING  = 'pending',     // submitted, awaiting verification docs
-  LAPSED   = 'lapsed',      // insurance only — renewal date passed
+  LAPSED   = 'lapsed',      // insurance only - renewal date passed
   PAUSED   = 'paused',      // admin paused for any reason
 }
 

@@ -5,7 +5,7 @@ import { Delivery, PackageSize, UrgencyLevel } from '../deliveries/delivery.enti
 import { DriversService } from '../drivers/drivers.service';
 import { PricingService } from '../deliveries/pricing.service';
 
-// Spec V8 §3.9 — this default will move into the Fee Catalogue once that
+// Spec V8 §3.9 - this default will move into the Fee Catalogue once that
 // module ships, so admins can adjust it live without a redeploy. For now,
 // override via MATCHING_RADIUS_KM env var in Railway.
 const DEFAULT_MATCHING_RADIUS_KM = 15;
@@ -92,7 +92,7 @@ export class MatchingService {
     }
 
     // Premium subscription priority boost (Spec V8 §2.13). Resolved in
-    // parallel for the candidate set — cheap on a per-candidate basis
+    // parallel for the candidate set - cheap on a per-candidate basis
     // since most pools are <30 drivers.
     const premiumIds = await Promise.all(
       nearbyDrivers.map(async (d) => [d.id, await this.driversService.isPremiumActive(d.id)] as const),
@@ -144,15 +144,15 @@ export class MatchingService {
       speedScore     * WEIGHTS.speed    +
       fragileScore   * WEIGHTS.fragile;
 
-    // Spec V8 §2.11 — next-day priority penalty. Drivers who flipped
+    // Spec V8 §2.11 - next-day priority penalty. Drivers who flipped
     // wind-down within 30min of going online get a -0.15 score hit
-    // until end-of-tomorrow. Lower in the ranking, not excluded —
+    // until end-of-tomorrow. Lower in the ranking, not excluded -
     // they'll still get jobs when no penalty-free driver is closer.
     if (driver.priorityPenaltyUntil && new Date(driver.priorityPenaltyUntil) > new Date()) {
       score = Math.max(0, score - 0.15);
     }
 
-    // Spec V8 §2.13 — Driver Premium subscribers get a priority boost
+    // Spec V8 §2.13 - Driver Premium subscribers get a priority boost
     // symmetric to the wind-down penalty. Sized to outrank a 0.5-star
     // rating gap (rating contributes 0.20 weight × 0.1 step = 0.02 max).
     if (isPremium) {

@@ -1,15 +1,15 @@
 /**
- * Hero carousel card data — drives the swipeable card stack on the home
+ * Hero carousel card data - drives the swipeable card stack on the home
  * screen. Card 1 is always the animated SEIRS brand hero (the okada);
  * cards 2-5 cycle through editable content.
  *
  * Tapping a (non-animated) card opens its article view at
- * `/article/[id]` — a full-screen scrollable view with the hero image,
+ * `/article/[id]` - a full-screen scrollable view with the hero image,
  * the title + description, and a long-form body. The optional `ctaKey` /
  * `ctaRoute` render an action button at the bottom of the article so
  * the customer can act on it (Send a package, Open multi-stop, etc.).
  *
- * Until the admin "Hero Cards" CMS lands (Phase 2 — see
+ * Until the admin "Hero Cards" CMS lands (Phase 2 - see
  * components/HeroCarousel.tsx for the swap point), this constant IS the
  * source of truth. Hot-edit a card here to change copy/image; reload to
  * see it.
@@ -19,11 +19,11 @@
  * launch content, swap to Black/Nigerian photos from:
  *
  *   - Nappy.co            https://nappy.co            (curated Black + Brown)
- *   - Pexels — Nigerian   https://www.pexels.com/search/nigerian/
- *   - Unsplash — Lagos    https://unsplash.com/s/photos/lagos
+ *   - Pexels - Nigerian   https://www.pexels.com/search/nigerian/
+ *   - Unsplash - Lagos    https://unsplash.com/s/photos/lagos
  *
  * All three are free for commercial use, no attribution required. Pick
- * a photo, right-click → "Copy image address" — paste into `imageUrl`.
+ * a photo, right-click → "Copy image address" - paste into `imageUrl`.
  */
 
 export type HeroCardKind = 'animated' | 'image';
@@ -39,7 +39,7 @@ export interface HeroCard {
   titleKey?: string;
   descKey?:  string;
   /**
-   * Article body — i18n key returning an array of strings. Each string
+   * Article body - i18n key returning an array of strings. Each string
    * is one "block" rendered by <ArticleBody>. Use a tiny markdown DSL
    * for visual structure:
    *   "## Heading"          → h2 heading
@@ -58,7 +58,7 @@ export interface HeroCard {
   author?:    string;
   /** ISO 8601 publish date. Renders as a relative date ("2 days ago"). */
   publishedAt?: string;
-  /** Optional CTA — kept on the shape for future inline use; the article
+  /** Optional CTA - kept on the shape for future inline use; the article
    *  view currently doesn't render a sticky CTA. */
   ctaKey?:    string;
   ctaRoute?:  string;
@@ -129,7 +129,7 @@ export const HERO_CARDS: HeroCard[] = [
 ];
 
 /**
- * Find a card by ID — used by the article view to render the right
+ * Find a card by ID - used by the article view to render the right
  * content. Returns undefined if the id is unknown (article screen
  * shows a "not found" state).
  */

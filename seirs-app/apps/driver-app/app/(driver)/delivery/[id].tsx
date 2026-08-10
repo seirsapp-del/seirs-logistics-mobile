@@ -66,7 +66,7 @@ interface DeliveryDetail {
 const STATUS_META: Record<string, { label: string; color: string }> = {
   pending:   { label: 'Pending',     color: '#D97706' },
   en_route:  { label: 'En route',    color: '#3A7BD5' },
-  arrived:   { label: 'Arrived',     color: '#7C3AED' },
+  arrived:   { label: 'Arrived',     color: '#0F2B4C' },
   delivered: { label: 'Delivered',   color: '#16A34A' },
   failed:    { label: 'Failed',      color: '#DC2626' },
 };

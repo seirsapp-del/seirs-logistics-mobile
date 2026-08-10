@@ -6,9 +6,9 @@ import { ArrowRightLeft, Info, ArrowRightLeft as ArrowIcon } from 'lucide-react'
 // clear "Not available yet" empty state with a faded design preview of the
 // intended layout. Kept in nav so partner_manager admins know it's coming.
 const PREVIEW_ROWS = [
-  { source: '/shop/lagos-mart',  destination: '/partners/lagos-fresh-market', type: 'Permanent', hits: '—', status: 'Active'   },
-  { source: '/shop/abuja-hub',   destination: '/partners/abuja-superstore',   type: 'Temporary', hits: '—', status: 'Active'   },
-  { source: '/shop/ph-depot',    destination: '/partners/ph-depot-express',   type: 'Permanent', hits: '—', status: 'Inactive' },
+  { source: '/shop/lagos-mart',  destination: '/partners/lagos-fresh-market', type: 'Permanent', hits: '-', status: 'Active'   },
+  { source: '/shop/abuja-hub',   destination: '/partners/abuja-superstore',   type: 'Temporary', hits: '-', status: 'Active'   },
+  { source: '/shop/ph-depot',    destination: '/partners/ph-depot-express',   type: 'Permanent', hits: '-', status: 'Inactive' },
 ];
 
 const STATUS_STYLES: Record<string, string> = {

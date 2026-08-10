@@ -56,7 +56,7 @@ export class DevPlatformService {
     return {
       id:        row.id,
       publicKey: row.publicKey,
-      secret,    // shown ONCE — never returned again
+      secret,    // shown ONCE - never returned again
       mode:      row.mode,
       name:      row.name,
       createdAt: row.createdAt,
@@ -77,9 +77,9 @@ export class DevPlatformService {
     return { revoked: true };
   }
 
-  // ── Spec V8 §3.13 — admin oversight (A48 + A49) ──────────────────────────
+  // ── Spec V8 §3.13 - admin oversight (A48 + A49) ──────────────────────────
 
-  // List all keys across all owners — used by /admin/dev-accounts to
+  // List all keys across all owners - used by /admin/dev-accounts to
   // render the developer-account roll-up. Admins see the suspendedAt /
   // suspendedReason + rateLimitOverridePerMin columns the partner UI
   // hides.
@@ -87,7 +87,7 @@ export class DevPlatformService {
     return this.keysRepo.find({ order: { createdAt: 'DESC' } });
   }
 
-  // A48 — suspend an entire developer account by bulk-flipping every
+  // A48 - suspend an entire developer account by bulk-flipping every
   // key for that owner. Records the reason on each key so when the
   // partner's app fails the guard, ops can answer "why".
   async suspendDeveloperAccount(ownerUserId: string, reason: string, adminId: string) {
@@ -116,7 +116,7 @@ export class DevPlatformService {
     return { resumed: result.affected ?? 0 };
   }
 
-  // A49 — admin sets a per-key rate-limit override. Null = revert to
+  // A49 - admin sets a per-key rate-limit override. Null = revert to
   // platform default (60 req/min). Caller-supplied value is clamped to
   // [1, 100000] for sanity.
   async setKeyRateLimit(keyId: string, limitPerMin: number | null, adminId: string) {
@@ -141,7 +141,7 @@ export class DevPlatformService {
       .getOne();
     if (!row) return null;
 
-    // HMAC verification — recompute signature locally and compare.
+    // HMAC verification - recompute signature locally and compare.
     // In a full implementation, the secret is rebuilt from the stored
     // hash via a separate KMS-style retrieval; for this skeleton we
     // accept any matching prefix and rely on bcrypt.compare against
@@ -178,7 +178,7 @@ export class DevPlatformService {
       .getMany();
   }
 
-  // Enqueue a webhook event for delivery — called by other modules
+  // Enqueue a webhook event for delivery - called by other modules
   // (e.g. when a delivery transitions to "delivered").
   async enqueue(event: string, payload: Record<string, any>) {
     // Fan out to all subscribed endpoints
@@ -200,7 +200,7 @@ export class DevPlatformService {
     return { queued: targets.length };
   }
 
-  // ── Webhook dispatcher cron — Spec V8 Tier 3 ────────────────────────────
+  // ── Webhook dispatcher cron - Spec V8 Tier 3 ────────────────────────────
   // Runs every minute. Picks up pending + retryable deliveries, POSTs
   // signed payloads, advances nextAttemptAt with exponential backoff
   // on failure. Caps at 5 attempts; max backoff 1h.
@@ -251,7 +251,7 @@ export class DevPlatformService {
     const timestamp = Math.floor(Date.now() / 1000);
     const bodyStr   = JSON.stringify({ event: d.event, payload: d.payload, deliveryId: d.id, timestamp });
     // Signature: HMAC-SHA256(secretHash, timestamp + body). We use the
-    // bcrypt hash itself as the signing material — partners verify
+    // bcrypt hash itself as the signing material - partners verify
     // against the same hash they received at create-time. Acceptable
     // for v1 (the bcrypt output is high-entropy); v1.1 will migrate to
     // raw secrets encrypted at rest.

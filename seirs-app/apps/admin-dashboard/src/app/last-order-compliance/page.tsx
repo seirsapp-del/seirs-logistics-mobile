@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { MoonStar, AlertCircle, TrendingUp, TrendingDown, Star } from 'lucide-react';
 
-// Spec V8 §3.12 — driver last-order compliance dashboard. Monitors
+// Spec V8 §3.12 - driver last-order compliance dashboard. Monitors
 // today's acceptance rates so ops can spot drivers who consistently
 // gate the toggle by being too selective. Reads driver list and
 // projects acceptance + last-order activity. Backend will eventually
@@ -39,7 +39,7 @@ export default function LastOrderCompliancePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Bucket the drivers — surfaced backend will compute these properly;
+  // Bucket the drivers - surfaced backend will compute these properly;
   // until then we treat any driver with acceptance under threshold as
   // a compliance concern, and any with last-order toggle activity in
   // the last hour as winding down.
@@ -76,7 +76,7 @@ export default function LastOrderCompliancePage() {
         <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-800">
           <AlertCircle size={16} />
           <span>
-            Acceptance rates and Last Order activity haven&apos;t been wired into the driver entity yet — values will populate once the backend columns ship. The UI is ready and idempotent for that.
+            Acceptance rates and Last Order activity haven&apos;t been wired into the driver entity yet - values will populate once the backend columns ship. The UI is ready and idempotent for that.
           </span>
         </div>
       )}
@@ -108,7 +108,7 @@ export default function LastOrderCompliancePage() {
                   <p className="text-sm font-semibold text-[#0F2B4C] truncate">{d.user?.name ?? 'Driver'}</p>
                   <p className="text-[10px] text-gray-400 font-mono truncate">{d.id}</p>
                 </div>
-                <div className="col-span-2 text-sm text-[#0F2B4C] capitalize">{d.vehicleType ?? '—'}</div>
+                <div className="col-span-2 text-sm text-[#0F2B4C] capitalize">{d.vehicleType ?? '-'}</div>
                 <div className="col-span-2 text-right">
                   {d.rating != null ? (
                     <span className="inline-flex items-center gap-1 text-sm text-[#0F2B4C]">
@@ -116,7 +116,7 @@ export default function LastOrderCompliancePage() {
                       {Number(d.rating).toFixed(1)}
                     </span>
                   ) : (
-                    <span className="text-sm text-gray-400">—</span>
+                    <span className="text-sm text-gray-400">-</span>
                   )}
                 </div>
                 <div className="col-span-2 text-right">
@@ -126,7 +126,7 @@ export default function LastOrderCompliancePage() {
                       {rate}%
                     </span>
                   ) : (
-                    <span className="text-sm text-gray-400">—</span>
+                    <span className="text-sm text-gray-400">-</span>
                   )}
                 </div>
                 <div className="col-span-2 text-right">

@@ -14,7 +14,7 @@ import { PLATFORM_COMMISSION } from '../common/constants/pricing';
  *   pending  → available  (cron: dispute window expired)
  *   available → paid      (cron: payout via Flutterwave Transfer)
  *
- * SEIRS does NOT hold this money — it sits in the SEIRS company bank
+ * SEIRS does NOT hold this money - it sits in the SEIRS company bank
  * account; we just track liability + initiate transfers.
  *
  * See docs/payments-spec.md §⑥.

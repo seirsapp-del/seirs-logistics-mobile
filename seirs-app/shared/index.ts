@@ -1,4 +1,4 @@
-// @seirs/shared — master barrel export
+// @seirs/shared - master barrel export
 export * from './theme/index';
 export * from './models/index';
 export * from './hooks/index';

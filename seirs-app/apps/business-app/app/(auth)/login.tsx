@@ -112,6 +112,9 @@ export default function LoginScreen() {
             <Icon name={showPass ? 'EyeOff' : 'Eye'} size={16} color={theme.textThird} />
           </Pressable>
         </View>
+        <Pressable style={styles.forgotRow} onPress={() => router.push('/(auth)/forgot-password' as any)}>
+          <Text style={[styles.footerLink, { color: theme.accent }]}>Forgot password?</Text>
+        </Pressable>
         <Pressable
           style={[styles.btn, { backgroundColor: theme.primary }, !canSubmit && styles.btnDisabled]}
           onPress={handleLogin}
@@ -160,6 +163,7 @@ const styles = StyleSheet.create({
   btn:        { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   btnDisabled:{ opacity: 0.5 },
   btnText:    { fontWeight: '700', fontSize: 16 },
+  forgotRow:  { alignSelf: 'flex-end', marginTop: -6, marginBottom: 4 },
   footer:     { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
   footerText: { fontSize: 14 },
   footerLink: { fontWeight: '600', fontSize: 14 },

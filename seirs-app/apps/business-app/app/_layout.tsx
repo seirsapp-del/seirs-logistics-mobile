@@ -43,13 +43,18 @@ function NavigationGuard() {
     const inAuth    = segments[0] === '(auth)';
     const inBiz     = segments[0] === '(business)';
     const inPartner = segments[0] === '(partner)';
+    // Deep-linked from the password-reset email (seirsbusiness://
+    // reset-password?token=...). Must stay reachable while signed out.
+    // Cast: expo-router's generated route union lags new files until
+    // the dev server regenerates .expo/types.
+    const inReset   = (segments[0] as string) === 'reset-password';
 
-    if (!isAuthenticated && !inAuth) {
+    if (!isAuthenticated && !inAuth && !inReset) {
       router.replace('/(auth)/onboarding');
       return;
     }
 
-    if (isAuthenticated) {
+    if (isAuthenticated && !inReset) {
       if (businessRole === 'sender' && !inBiz) {
         router.replace('/(business)' as any);
       } else if (businessRole === 'partner' && !inPartner) {

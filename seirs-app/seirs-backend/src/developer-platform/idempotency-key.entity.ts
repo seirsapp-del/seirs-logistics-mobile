@@ -2,7 +2,7 @@ import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Unique, Index,
 } from 'typeorm';
 
-// Spec V8 Tier 3 — Idempotency-Key cache. Partners can retry a POST
+// Spec V8 Tier 3 - Idempotency-Key cache. Partners can retry a POST
 // safely; if we've seen (apiKeyId, idempotencyKey) before within the
 // 24h window, we replay the cached response instead of double-creating.
 // Pattern matches Stripe / Paystack idempotency.
@@ -21,7 +21,7 @@ export class IdempotencyKey {
   @Column({ length: 100 })
   key: string;
 
-  // HTTP method + path — protects against the same key being reused
+  // HTTP method + path - protects against the same key being reused
   // across different endpoints (would be a partner bug).
   @Column({ length: 128 })
   routeSignature: string;

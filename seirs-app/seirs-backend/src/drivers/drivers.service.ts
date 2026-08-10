@@ -13,7 +13,7 @@ import { TrackingGateway } from '../tracking/tracking.gateway';
 import { FeesService } from '../fees/fees.service';
 import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
 
-// Spec V8 §2.1 — recognised KYC document IDs
+// Spec V8 §2.1 - recognised KYC document IDs
 const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
   national_id_front: 'nationalIdFrontUrl',
   national_id_back:  'nationalIdBackUrl',
@@ -60,7 +60,7 @@ export class DriversService {
     const driver = await this.findByUserId(userId);
     if (!driver) return null;
 
-    // Date boundaries — start of today (local server tz) and start of week (Mon).
+    // Date boundaries - start of today (local server tz) and start of week (Mon).
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
@@ -102,7 +102,7 @@ export class DriversService {
       weekEarnings:  Number(weekRow?.sum  ?? 0),
       // balanceKobo is bigint in DB → string at runtime; coerce to number then naira.
       balance:       wallet ? Number(wallet.balanceKobo) / 100 : 0,
-      // Spec V8 §2.11 Last Order surface — UI uses these directly.
+      // Spec V8 §2.11 Last Order surface - UI uses these directly.
       lastOrderMode:        driver.lastOrderMode,
       activeJobsCount,
       // Acceptance-rate calc is a follow-up: needs an offers table to
@@ -112,11 +112,11 @@ export class DriversService {
     };
   }
 
-  // ── Spec V8 §2.11 — Last Order (wind-down) mode ───────────────────────────
+  // ── Spec V8 §2.11 - Last Order (wind-down) mode ───────────────────────────
   // One-way switch: once on, the matching service skips this driver for
   // new assignments. They must complete active jobs and fully sign off
   // before the flag can be cleared. Enforced 80% acceptance gate is
-  // currently informational only — flip to hard-block once the offers
+  // currently informational only - flip to hard-block once the offers
   // table lands and todayAcceptanceRate is populated.
   async setLastOrderMode(userId: string, enabled: boolean) {
     const driver = await this.findByUserId(userId);
@@ -135,7 +135,7 @@ export class DriversService {
       lastOrderEnabledAt: enabled ? now : (null as any),
     };
 
-    // Spec V8 §2.11 — Next-day priority penalty.
+    // Spec V8 §2.11 - Next-day priority penalty.
     // If the driver flips to wind-down within 30 minutes of going
     // online, deprioritise them in matching until end-of-tomorrow.
     // 30-minute threshold mirrors the spec language "within 30min of
@@ -157,7 +157,7 @@ export class DriversService {
     return { lastOrderMode: enabled, priorityPenaltyUntil: updates.priorityPenaltyUntil ?? null };
   }
 
-  // ── Spec V8 §2.18 — Interstate trip declarations ──────────────────────────
+  // ── Spec V8 §2.18 - Interstate trip declarations ──────────────────────────
   async declareInterstateTrip(userId: string, body: {
     fromCity: string; toCity: string; departAt: string; spareCapacityKg: number;
   }) {
@@ -206,7 +206,7 @@ export class DriversService {
       .getMany();
   }
 
-  // Admin board — Spec V8 §3.12. Returns trips with driver + user joined
+  // Admin board - Spec V8 §3.12. Returns trips with driver + user joined
   // for the UI to display "<name> | Lagos → Ibadan | <kg> free".
   listAllInterstateTrips(opts: { status?: DriverTripStatus } = {}) {
     const qb = this.tripsRepo
@@ -234,7 +234,7 @@ export class DriversService {
     return this.tripsRepo.save(trip);
   }
 
-  // ── Spec V8 §2.13 — Auto check-in cron ────────────────────────────────────
+  // ── Spec V8 §2.13 - Auto check-in cron ────────────────────────────────────
   // Drivers who are online but haven't pinged GPS in 5+ min get a silent
   // "are you OK?" push. Helps detect crashed phones, dead batteries,
   // signal black spots. Runs every 5 minutes; once a driver pings back
@@ -311,7 +311,7 @@ export class DriversService {
     };
   }
 
-  // ── Spec V8 §2.9 — Driver tax summary ─────────────────────────────────────
+  // ── Spec V8 §2.9 - Driver tax summary ─────────────────────────────────────
   // Aggregates the driver's delivery earnings by year so the FIRS-filing
   // helper screen (drv.taxDocs) can render a real table. Returns flat
   // JSON; the client can PDF-render if needed.
@@ -350,7 +350,7 @@ export class DriversService {
     };
   }
 
-  // ── Spec V8 §2.14 — Driver status broadcast (network/traffic/help) ─────────
+  // ── Spec V8 §2.14 - Driver status broadcast (network/traffic/help) ─────────
   async recordStatusBroadcast(userId: string, body: {
     type: DriverStatusBroadcastType;
     deliveryId?: string;
@@ -365,7 +365,7 @@ export class DriversService {
     }
 
     // Bind to an active delivery if the driver is mid-trip and one was
-    // supplied — otherwise the broadcast is scoped to the admin room only.
+    // supplied - otherwise the broadcast is scoped to the admin room only.
     let delivery: Delivery | null = null;
     if (body.deliveryId) {
       delivery = await this.deliveriesRepo.findOne({
@@ -414,7 +414,7 @@ export class DriversService {
       );
     }
 
-    // Spec V8 §2.12 — driver CANNOT go offline while holding active jobs.
+    // Spec V8 §2.12 - driver CANNOT go offline while holding active jobs.
     // Otherwise customers' packages get abandoned mid-route.
     if (!isOnline) {
       const activeCount = await this.deliveriesRepo.count({
@@ -448,7 +448,7 @@ export class DriversService {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
 
-    // GPS velocity fraud check — compare with last known position
+    // GPS velocity fraud check - compare with last known position
     if (driver.lastLat != null && driver.lastLng != null && driver.locationUpdatedAt) {
       const elapsedSeconds = (Date.now() - new Date(driver.locationUpdatedAt).getTime()) / 1000;
       if (elapsedSeconds > 0 && elapsedSeconds < 3600) {
@@ -495,7 +495,7 @@ export class DriversService {
       return Promise.resolve([]);
     }
 
-    // Haversine formula — WHERE clause uses parameterized values (:lat, :lng, :radius)
+    // Haversine formula - WHERE clause uses parameterized values (:lat, :lng, :radius)
     // ORDER BY uses validated numeric literals (no user-controlled strings)
     return this.repo
       .createQueryBuilder('driver')
@@ -522,7 +522,7 @@ export class DriversService {
       .getMany();
   }
 
-  // Spec V8 — driver pre-deletion readiness check. Drivers with active
+  // Spec V8 - driver pre-deletion readiness check. Drivers with active
   // deliveries or non-zero wallet balance can't be deleted; the UI
   // surfaces the blockers so the driver knows what to do (complete or
   // hand-off the deliveries; withdraw the balance) before retrying.
@@ -534,7 +534,7 @@ export class DriversService {
 
     const blockers: Array<{ type: string; count: number; action: string }> = [];
 
-    // Active deliveries — anything not yet delivered or cancelled
+    // Active deliveries - anything not yet delivered or cancelled
     const activeCount = await this.deliveriesRepo.count({
       where: [
         { driver: { id: driver.id }, status: DeliveryStatus.ASSIGNED },
@@ -721,7 +721,7 @@ export class DriversService {
     return { approved: approve };
   }
 
-  // Spec V8 §2.1 — record uploaded KYC document URL against the right column.
+  // Spec V8 §2.1 - record uploaded KYC document URL against the right column.
   async updateKycDoc(userId: string, docId: string, url: string) {
     const field = KYC_DOC_FIELD_MAP[docId];
     if (!field) throw new BadRequestException(`Unknown KYC document id: ${docId}`);
@@ -734,7 +734,7 @@ export class DriversService {
     return { docId, saved: true };
   }
 
-  // Spec V8 §2.10 / §2.18 — derive demand zones from recent pickup density
+  // Spec V8 §2.10 / §2.18 - derive demand zones from recent pickup density
   // around the driver's current position. Buckets ~1km grid cells over the
   // last 7 days of completed/active orders. Intensity = order count.
   async getDemandZones(userId: string) {
@@ -874,7 +874,7 @@ export class DriversService {
   }
 
   // Hourly so a sub that comes due at 03:14 fires at 04:00 instead of
-  // waiting for midnight. Idempotent — a row is only charged when its
+  // waiting for midnight. Idempotent - a row is only charged when its
   // nextInvoiceAt is in the past.
   @Cron(CronExpression.EVERY_HOUR)
   async invoiceDueSubscriptions() {

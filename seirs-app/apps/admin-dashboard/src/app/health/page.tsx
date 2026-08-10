@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { Activity, CheckCircle2, AlertCircle, XCircle, RefreshCw } from 'lucide-react';
 
-// Spec V8 §3.11 — system health snapshot. Lightweight ops view that
+// Spec V8 §3.11 - system health snapshot. Lightweight ops view that
 // pings each external dependency and the analytics endpoints to
 // confirm everything responds. Real ops dashboards usually layer this
 // on top of Grafana / Datadog; this surface is for the times an admin
@@ -134,7 +134,7 @@ export default function HealthDashboardPage() {
 
       {/* Footnote */}
       <p className="text-xs text-gray-400 text-center">
-        Lightweight checks only — for deep observability use Grafana / Railway logs / Sentry.
+        Lightweight checks only - for deep observability use Grafana / Railway logs / Sentry.
       </p>
     </div>
   );

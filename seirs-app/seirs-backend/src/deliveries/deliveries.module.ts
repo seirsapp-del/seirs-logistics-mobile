@@ -25,10 +25,11 @@ import { LoyaltyService } from '../loyalty/loyalty.service';
 import { User } from '../users/user.entity';
 import { ChatModule } from '../chat/chat.module';
 import { ChatService } from '../chat/chat.service';
+import { StoreDropoff } from '../partner-store/store-dropoff.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Delivery, DeliveryEvent, User]),
+    TypeOrmModule.forFeature([Delivery, DeliveryEvent, User, StoreDropoff]),
     MatchingModule,
     TrackingModule,
     forwardRef(() => PaymentsModule),
@@ -58,6 +59,7 @@ export class DeliveriesModule implements OnModuleInit {
     private loyaltyService:       LoyaltyService,
     @InjectRepository(User)          private usersRepo:          Repository<User>,
     @InjectRepository(DeliveryEvent) private deliveryEventsRepo: Repository<DeliveryEvent>,
+    @InjectRepository(StoreDropoff)  private storeDropoffsRepo:  Repository<StoreDropoff>,
     private chatService:          ChatService,
     @InjectDataSource()           private readonly ds: DataSource,
   ) {}
@@ -74,6 +76,7 @@ export class DeliveriesModule implements OnModuleInit {
     this.deliveriesService.usersRepoRef         = this.usersRepo;
     this.deliveriesService.chatService          = this.chatService;
     this.deliveriesService.deliveryEventsRepo   = this.deliveryEventsRepo;
+    this.deliveriesService.storeDropoffsRepo    = this.storeDropoffsRepo;
 
     // Give NotificationsService a reference to the gateway for WS delivery
     this.notificationsService.trackingGateway = this.trackingGateway;

@@ -20,7 +20,7 @@ const COVERAGE_LABEL: Record<string, string> = {
 
 const fmtNgn = (n: number) => n > 0
   ? new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n)
-  : '—';
+  : '-';
 
 export default function InsurancePage() {
   const [items,   setItems]   = useState<ExternalPartner[]>([]);
@@ -111,13 +111,13 @@ export default function InsurancePage() {
                       {p.name}
                       {p.websiteUrl && <ExternalLink size={11} className="text-gray-300" />}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{COVERAGE_LABEL[p.meta?.coverageType] ?? p.meta?.coverageType ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.meta?.premium ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{COVERAGE_LABEL[p.meta?.coverageType] ?? p.meta?.coverageType ?? '-'}</td>
+                    <td className="px-4 py-3 text-gray-600">{p.meta?.premium ?? '-'}</td>
                     <td className="px-4 py-3 font-medium text-gray-700">{fmtNgn(Number(p.meta?.coverageLimitNgn ?? 0))}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">
                       {p.meta?.renewalDate
                         ? new Date(p.meta.renewalDate).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })
-                        : '—'}
+                        : '-'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_STYLES[p.status] ?? ''}`}>{p.status}</span>

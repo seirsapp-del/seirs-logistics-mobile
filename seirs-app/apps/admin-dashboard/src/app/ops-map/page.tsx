@@ -152,7 +152,7 @@ export default function OpsMapPage() {
       }
     };
 
-    // Drivers — green online / gray offline (last-known position)
+    // Drivers - green online / gray offline (last-known position)
     drivers.forEach((d) => {
       const show = d.isOnline ? layers.online : layers.offline;
       if (!show) return;
@@ -177,7 +177,7 @@ export default function OpsMapPage() {
       );
     });
 
-    // Pending requests — orange, sized/red-shifted by age
+    // Pending requests - orange, sized/red-shifted by age
     if (layers.requests) {
       pending.forEach((p) => {
         const urgent = p.ageMinutes >= 15;
@@ -199,7 +199,7 @@ export default function OpsMapPage() {
       });
     }
 
-    // Partner stores — navy squares
+    // Partner stores - navy squares
     if (layers.stores) {
       stores.forEach((s) => {
         upsert(
@@ -243,7 +243,7 @@ export default function OpsMapPage() {
     }));
   }, [deliveries, layers.routes]);
 
-  // ── DEMAND heat (24h pickup density — real demand, not driver blur) ──
+  // ── DEMAND heat (24h pickup density - real demand, not driver blur) ──
   useEffect(() => {
     const g = (window as any).google;
     if (!g || !mapRef.current) return;
@@ -265,7 +265,7 @@ export default function OpsMapPage() {
     { key: 'requests', label: 'Requests', count: pending.length, color: '#F59E0B', Icon: AlertTriangle, title: 'Unassigned pickups waiting for a driver (red = waiting 15+ min)' },
     { key: 'stores',   label: 'Stores',   count: stores.length,  color: '#0F2B4C', Icon: Store,     title: 'Partner store locations' },
     { key: 'routes',   label: 'Routes',   count: deliveries.length, color: '#3A7BD5', Icon: Route,  title: 'Active delivery routes' },
-    { key: 'heat',     label: 'Demand',                          color: '#DC2626', Icon: Flame,     title: 'Pickup density over the last 24h — where the volume is' },
+    { key: 'heat',     label: 'Demand',                          color: '#DC2626', Icon: Flame,     title: 'Pickup density over the last 24h - where the volume is' },
   ];
 
   return (

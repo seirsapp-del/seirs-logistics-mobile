@@ -20,19 +20,19 @@ export class SosController {
     return this.svc.trigger(user, body ?? {});
   }
 
-  // PATCH /api/v1/sos/:id/cancel — user cancels their own alert
+  // PATCH /api/v1/sos/:id/cancel - user cancels their own alert
   @Patch(':id/cancel')
   cancel(@Param('id') id: string, @CurrentUser() user: User) {
     return this.svc.cancel(id, user);
   }
 
-  // PATCH /api/v1/sos/:id/resolve — admin marks alert as handled
+  // PATCH /api/v1/sos/:id/resolve - admin marks alert as handled
   @Patch(':id/resolve')
   resolve(@Param('id') id: string, @CurrentUser() user: User) {
     return this.svc.resolve(id, user);
   }
 
-  // GET /api/v1/sos/active — admin dashboard feed
+  // GET /api/v1/sos/active - admin dashboard feed
   @Get('active')
   listActive(@CurrentUser() user: User) {
     return this.svc.listActive(user);

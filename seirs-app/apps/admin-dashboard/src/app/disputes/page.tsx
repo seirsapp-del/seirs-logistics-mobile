@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { Search, Package, Camera, FileText, ChevronRight, AlertCircle, ShieldCheck } from 'lucide-react';
 
-// Spec V8 §3.10 — disputes review surface. Reads the chain-of-custody
+// Spec V8 §3.10 - disputes review surface. Reads the chain-of-custody
 // records emitted by the Identity module and lays them out as a
 // timeline so an admin can see exactly who handed what to whom and
 // when. Each row is one verification event.
@@ -32,8 +32,8 @@ const STAGE_LABEL: Record<string, string> = {
 
 const STAGE_COLOR: Record<string, string> = {
   customer_to_store:   '#3A7BD5',
-  store_to_driver:     '#8B5CF6',
-  driver_to_store:     '#8B5CF6',
+  store_to_driver:     '#D97706',
+  driver_to_store:     '#D97706',
   store_to_recipient:  '#16A34A',
   driver_to_recipient: '#16A34A',
 };
@@ -90,7 +90,7 @@ export default function DisputesPage() {
               value={deliveryId}
               onChange={e => setDeliveryId(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && load()}
-              placeholder="UUID — paste from delivery detail page"
+              placeholder="UUID - paste from delivery detail page"
               className="w-full pl-10 pr-3 py-2 rounded-lg border border-[#E5E7EB] text-sm font-mono focus:outline-none focus:border-[#3A7BD5]"
             />
           </div>

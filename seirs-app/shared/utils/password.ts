@@ -10,7 +10,7 @@
 // Admin accounts use a stricter 12-char rule (enforced separately in the
 // admin dashboard, not via this util).
 //
-// Source of truth — used by every signup, password-reset, and change-password
+// Source of truth - used by every signup, password-reset, and change-password
 // screen across all 3 mobile apps and by the backend's RegisterDto. If you
 // change the rule here, frontend and backend stay in sync automatically.
 
@@ -20,7 +20,7 @@ export const PASSWORD_HELP_TEXT =
   'At least 8 characters with uppercase, lowercase, a number, and a symbol.';
 
 // Matches a password with at least one lowercase, one uppercase, one digit,
-// one special character, and length >= 8. Symbol class deliberately wide —
+// one special character, and length >= 8. Symbol class deliberately wide -
 // includes everything most keyboards produce.
 export const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]).{8,}$/;
@@ -43,7 +43,7 @@ export function validatePassword(password: string): string | null {
   return null;
 }
 
-/** Same rule expressed as a boolean — handy for disabling submit buttons. */
+/** Same rule expressed as a boolean - handy for disabling submit buttons. */
 export function isPasswordValid(password: string): boolean {
   return validatePassword(password) === null;
 }

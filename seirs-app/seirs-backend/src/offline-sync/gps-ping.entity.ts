@@ -2,7 +2,7 @@ import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index,
 } from 'typeorm';
 
-// Spec V8 §2 — every GPS ping the driver app records, including ones
+// Spec V8 §2 - every GPS ping the driver app records, including ones
 // captured offline and uploaded later in batches. recordedAt is the
 // device clock when the ping was taken; createdAt is the server time
 // when it was received. The gap between them shows how long the
@@ -27,7 +27,7 @@ export class GpsPing {
   lng: number;
 
   // Device-time of the ping (when the driver was actually at this
-  // location — may be hours before createdAt if uploaded offline).
+  // location - may be hours before createdAt if uploaded offline).
   @Index()
   @Column()
   recordedAt: Date;

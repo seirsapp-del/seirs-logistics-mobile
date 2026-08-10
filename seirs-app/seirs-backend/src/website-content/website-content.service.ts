@@ -7,7 +7,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebsiteContent, WebContentStatus, WebContentType } from './website-content.entity';
 import { ContactSubmission, ContactStatus, ContactSubject } from './contact-submission.entity';
 
-// Slugs are URL-safe identifiers — lowercase alphanumerics + hyphens,
+// Slugs are URL-safe identifiers - lowercase alphanumerics + hyphens,
 // 2-120 chars. Keep it strict to avoid Next.js dynamic route ambiguity.
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,118}[a-z0-9])?$/;
 
@@ -20,7 +20,7 @@ export class WebsiteContentService implements OnModuleInit {
     @InjectRepository(ContactSubmission) private contactRepo: Repository<ContactSubmission>,
   ) {}
 
-  // ── Spec V8 §3.13 — Public contact form (W7) ─────────────────────────────
+  // ── Spec V8 §3.13 - Public contact form (W7) ─────────────────────────────
 
   async submitContact(input: {
     name: string;
@@ -48,7 +48,7 @@ export class WebsiteContentService implements OnModuleInit {
     });
     const saved = await this.contactRepo.save(row);
 
-    // Email fan-out is a follow-up — for now the row sits in the table
+    // Email fan-out is a follow-up - for now the row sits in the table
     // and admin can pull it from /admin/contact-submissions. When mail
     // routing is wired, dispatch to subject-specific inboxes (support@
     // business@ legal@ etc.) based on `subject`.
@@ -73,7 +73,7 @@ export class WebsiteContentService implements OnModuleInit {
     return this.contactRepo.save(row);
   }
 
-  // Idempotent seed — only inserts rows that don't already exist by
+  // Idempotent seed - only inserts rows that don't already exist by
   // (type, slug, lang). Lets us ship sensible defaults so the website
   // doesn't render an empty /faq or /news on first boot.
   async onModuleInit() {
@@ -125,7 +125,7 @@ export class WebsiteContentService implements OnModuleInit {
     return row;
   }
 
-  // PAGE_BLOCK lookup — returns the row OR null (so the website can
+  // PAGE_BLOCK lookup - returns the row OR null (so the website can
   // fall back to a hardcoded default while CMS is empty).
   async getPageBlock(slug: string, lang = 'en'): Promise<WebsiteContent | null> {
     return this.repo.findOne({
@@ -243,7 +243,7 @@ export class WebsiteContentService implements OnModuleInit {
   }
 }
 
-// ── Seed data — sensible defaults so the website ships non-empty ────────────
+// ── Seed data - sensible defaults so the website ships non-empty ────────────
 const SEED: Array<Partial<WebsiteContent>> = [
   // ── Homepage hero page-block ─────────────────────────────────────────────
   {
@@ -265,7 +265,7 @@ const SEED: Array<Partial<WebsiteContent>> = [
     type:  WebContentType.PAGE_BLOCK,
     slug:  'home_value_2',
     title: 'Pay your way',
-    body:  'Card, bank transfer, USSD, or wallet — all powered by Flutterwave. Earn loyalty points on every delivery.',
+    body:  'Card, bank transfer, USSD, or wallet - all powered by Flutterwave. Earn loyalty points on every delivery.',
     sortOrder: 2,
   },
 
@@ -282,7 +282,7 @@ const SEED: Array<Partial<WebsiteContent>> = [
     type:  WebContentType.FAQ,
     slug:  'what-payment-methods-do-you-accept',
     title: 'What payment methods do you accept?',
-    body:  'Card, bank transfer, USSD, and saved wallet balance — all processed by Flutterwave. We do not accept cash on delivery.',
+    body:  'Card, bank transfer, USSD, and saved wallet balance - all processed by Flutterwave. We do not accept cash on delivery.',
     category: 'payments',
     sortOrder: 2,
   },

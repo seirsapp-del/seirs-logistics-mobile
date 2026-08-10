@@ -20,7 +20,7 @@ export class FeesService implements OnModuleInit {
     private readonly redisService: RedisService,
   ) {}
 
-  // Idempotent seed — only inserts rows that don't already exist by key.
+  // Idempotent seed - only inserts rows that don't already exist by key.
   // Existing fees are NEVER overwritten so production values persist.
   async onModuleInit() {
     const existing  = await this.feesRepo.find({ select: ['key'] });
@@ -35,7 +35,7 @@ export class FeesService implements OnModuleInit {
   }
 
   // ── Public read path (cached) ──────────────────────────────────────────
-  // Returns the live numeric value for a fee. Hot path — used by the
+  // Returns the live numeric value for a fee. Hot path - used by the
   // pricing engine and quote endpoint. Cache TTL keeps DB pressure low
   // while propagating admin edits within 60s.
   async getValue(key: string): Promise<number> {
@@ -51,7 +51,7 @@ export class FeesService implements OnModuleInit {
     return value;
   }
 
-  // Same as getValue but returns 0 instead of throwing — useful for
+  // Same as getValue but returns 0 instead of throwing - useful for
   // optional fees (e.g. zone surcharges) where missing = no surcharge.
   async getValueOr(key: string, fallback: number): Promise<number> {
     try {
@@ -112,7 +112,7 @@ export class FeesService implements OnModuleInit {
       throw new BadRequestException('value must be a finite number');
     }
 
-    // Skip writing if nothing actually changed — don't pollute history
+    // Skip writing if nothing actually changed - don't pollute history
     if (Number(existing.value) === newValue && existing.active === newActive && patch.currentNote == null) {
       return existing;
     }
@@ -138,7 +138,7 @@ export class FeesService implements OnModuleInit {
       lastUpdatedByName: admin.name ?? 'Admin',
     });
 
-    // Invalidate caches — both the per-key entry and the all-active list
+    // Invalidate caches - both the per-key entry and the all-active list
     await this.redisService.del(`${CACHE_KEY_PREFIX}${key}`);
     await this.redisService.del(ALL_CACHE_KEY);
 

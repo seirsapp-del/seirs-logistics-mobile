@@ -60,9 +60,9 @@ export class RateCard {
   vehicleRates: Record<string, {
     baseFareCustomer:    number;   // ₦ connection fee
     baseFareDriver:      number;
-    labourPerKmCustomer: number;   // ₦/km — the stable part
+    labourPerKmCustomer: number;   // ₦/km - the stable part
     labourPerKmDriver:   number;
-    kmPerLitre:          number;   // efficiency — used to compute fuel ₦/km
+    kmPerLitre:          number;   // efficiency - used to compute fuel ₦/km
     fuelType:            'petrol' | 'diesel' | 'none';
     maxPayloadKg:        number;
   }>;
@@ -78,7 +78,7 @@ export class RateCard {
     dwellCapMinutes:          number;   // after this driver can abandon
   };
 
-  /** Weight tiers — extra dwell minutes added on top of category setup. */
+  /** Weight tiers - extra dwell minutes added on top of category setup. */
   @Column({ type: 'jsonb' })
   weightTiers: Array<{
     minKg:        number;
@@ -125,7 +125,7 @@ export class RateCard {
     // ── Always present ────────────────────────────────────────────────
     overnightFeeNgn:          number;
 
-    // ── Legacy (v1) — read only when new fields are missing ───────────
+    // ── Legacy (v1) - read only when new fields are missing ───────────
     intraStatePercent?:       number;
     interStatePercent?:       number;
     longDistancePercent?:     number;
@@ -137,7 +137,7 @@ export class RateCard {
   };
 
   /**
-   * Regional pricing — per-zone and per-state overrides, plus admin-
+   * Regional pricing - per-zone and per-state overrides, plus admin-
    * addable restricted sub-zones. New in v2 (May 2026). Nullable so
    * v1 rate cards keep working; resolveRegionalOverrides() returns {}
    * when missing.
@@ -165,7 +165,7 @@ export class RateCard {
       restrictedSubZones?:       Array<{ name: string; surchargePct: number; reason: string }>;
       reason?:                   string;
     }>>;
-    /** Manually-added restricted areas (curfew, flood, conflict, etc.) — admin-editable. */
+    /** Manually-added restricted areas (curfew, flood, conflict, etc.) - admin-editable. */
     restrictedSubZones?: Array<{
       id:           string;
       name:         string;

@@ -46,6 +46,10 @@ export function Drawer({ visible, onClose }: Props) {
 
   const senderItems: DrawerItem[] = [
     { icon: 'LayoutDashboard', label: t('drawer.businessProfile', { defaultValue: 'Business Profile' }), onPress: () => navigate('/(business)') },
+    // Audit 2026-08-10: the account-editing screen existed but nothing
+    // navigated to it: business users had no way to fix their company
+    // name, RC number, or contact details.
+    { icon: 'Pencil',          label: t('drawer.editProfile',     { defaultValue: 'Edit Business Details' }), onPress: () => navigate('/(business)/edit-profile') },
     { icon: 'Users',           label: t('drawer.teamMembers',     { defaultValue: 'Team Members' }),     onPress: () => navigate('/(business)/team') },
     { icon: 'Banknote',        label: t('drawer.billing',         { defaultValue: 'Billing & Invoices' }), onPress: () => navigate('/(business)/wallet') },
     // Gap 6 (2026-08-09): bulk drop at a partner counter instead of
@@ -74,6 +78,7 @@ export function Drawer({ visible, onClose }: Props) {
 
   const partnerItems: DrawerItem[] = [
     { icon: 'Store',      label: t('drawer.partnerProfile', { defaultValue: 'Partner Profile' }), onPress: () => navigate('/(partner)') },
+    { icon: 'Pencil',     label: t('drawer.editProfile',    { defaultValue: 'Edit Business Details' }), onPress: () => navigate('/(business)/edit-profile') },
     { icon: 'Bell',       label: t('drawer.notifications',  { defaultValue: 'Notifications' }),   onPress: () => navigate('/(business)/notifications') },
     { icon: 'FileText',   label: t('drawer.documents',      { defaultValue: 'Documents' }),       onPress: () => navigate('/(business)/documents') },
     { icon: 'Settings',   label: t('drawer.settings',       { defaultValue: 'Settings' }),        onPress: () => navigate('/(partner)/settings') },

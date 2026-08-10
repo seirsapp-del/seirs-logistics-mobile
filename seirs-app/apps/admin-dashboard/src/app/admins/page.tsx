@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { adminApi } from '@/lib/api';
 import {
@@ -116,7 +116,7 @@ const AVATAR_BG: Record<string, string> = {
   ops_manager:       'bg-blue-600',
   support_agent:     'bg-green-600',
   finance_officer:   'bg-yellow-500',
-  driver_compliance: 'bg-purple-600',
+  driver_compliance: 'bg-[#0F2B4C]',
   media_content:     'bg-pink-500',
   analyst:           'bg-cyan-600',
   partner_manager:   'bg-orange-500',

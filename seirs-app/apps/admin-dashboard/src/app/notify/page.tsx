@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { Send, Users, Truck, Store, AlertCircle, CheckCircle2, Calendar } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
-// Spec V8 §3.13 — push composer for one-off ops broadcasts. Different
-// from the CMS (which schedules editorial content) — this is for
+// Spec V8 §3.13 - push composer for one-off ops broadcasts. Different
+// from the CMS (which schedules editorial content) - this is for
 // real-time messaging like "service paused in Lekki due to flooding".
 //
 // Backend wiring: hits FCM via the existing notifications module once
@@ -19,7 +19,7 @@ const AUDIENCES: Array<{ key: Audience; label: string; sub: string; Icon: any; c
   { key: 'all_customers', label: 'All customers',  sub: 'Everyone with a customer account',  Icon: Users, color: '#3A7BD5' },
   { key: 'all_drivers',   label: 'All drivers',    sub: 'Approved drivers only',              Icon: Truck, color: '#D97706' },
   { key: 'all_partners',  label: 'All partner stores', sub: 'Active partner store accounts',  Icon: Store, color: '#16A34A' },
-  { key: 'specific_zone', label: 'Specific area',  sub: 'Geofence by city or LGA (coming)',   Icon: AlertCircle, color: '#8B5CF6' },
+  { key: 'specific_zone', label: 'Specific area',  sub: 'Geofence by city or LGA (coming)',   Icon: AlertCircle, color: '#0F2B4C' },
 ];
 
 export default function NotifyComposerPage() {
@@ -46,7 +46,7 @@ export default function NotifyComposerPage() {
     setError(null);
     setSent(null);
     try {
-      // Scheduled broadcasts are stored client-side intent only — the
+      // Scheduled broadcasts are stored client-side intent only - the
       // backend `broadcastToAudience` fires immediately. A scheduler cron
       // (queue + delayed publish) is a follow-up; for now scheduled
       // requests fall back to send-now and we surface that in the toast.
@@ -154,7 +154,7 @@ export default function NotifyComposerPage() {
           <textarea
             value={body}
             onChange={e => setBody(e.target.value.slice(0, charLimit))}
-            placeholder="Heavy rain on Admiralty Way — driver pickups in the area are paused until 4pm. Tap to view alternatives."
+            placeholder="Heavy rain on Admiralty Way - driver pickups in the area are paused until 4pm. Tap to view alternatives."
             rows={4}
             className="w-full mt-1 px-3 py-2 rounded-lg border border-[#E5E7EB] text-sm focus:outline-none focus:border-[#3A7BD5]"
           />
@@ -198,7 +198,7 @@ export default function NotifyComposerPage() {
         <p className="text-[10px] font-bold uppercase tracking-wide opacity-60 mb-2">Preview</p>
         <div className="bg-white/10 rounded-lg p-4 space-y-2">
           <p className="font-bold text-sm">{title || 'Notification title'}</p>
-          <p className="text-xs opacity-90">{body || 'Notification message body — appears in the device notification tray and in-app notification center.'}</p>
+          <p className="text-xs opacity-90">{body || 'Notification message body - appears in the device notification tray and in-app notification center.'}</p>
           <p className="text-[10px] opacity-50">to {aud.label}{audience === 'specific_zone' && zone ? ` · ${zone}` : ''}</p>
         </div>
       </div>

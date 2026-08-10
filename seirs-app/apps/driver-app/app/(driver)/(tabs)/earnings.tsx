@@ -119,7 +119,7 @@ export default function EarningsScreen() {
   const STATS = [
     { label: 'This Week',    value: `₦${weekTotal.toLocaleString()}`,                                                Icon: Calendar,   color: theme.primary },
     { label: 'Avg / Trip',   value: `₦${Math.round(totalEarned / Math.max(totalTrips, 1)).toLocaleString()}`,         Icon: TrendingUp, color: '#16A34A' },
-    { label: 'Total Trips',  value: totalTrips.toLocaleString(),                                                      Icon: Receipt,    color: '#8B5CF6' },
+    { label: 'Total Trips',  value: totalTrips.toLocaleString(),                                                      Icon: Receipt,    color: '#0F2B4C' },
     { label: 'Total Earned', value: totalEarned >= 1_000_000 ? `₦${(totalEarned / 1_000_000).toFixed(1)}M` : `₦${totalEarned.toLocaleString()}`, Icon: Ribbon, color: '#FFBE0B' },
   ];
 

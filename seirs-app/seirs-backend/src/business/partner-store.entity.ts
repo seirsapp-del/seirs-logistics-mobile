@@ -3,13 +3,13 @@ import {
 } from 'typeorm';
 
 /**
- * Partner Store lifecycle (Spec V8 hybrid-business — 2026-05-11).
+ * Partner Store lifecycle (Spec V8 hybrid-business - 2026-05-11).
  * Stores moved from instant-active to admin-gated. New applications start
  * PENDING_REVIEW and only flip to APPROVED when an admin reviews KYC docs
  * (storefront photo, CAC reg, address proof) and toggles approval.
  *
- * SUSPENDED — admin temporarily disables (e.g. customer complaints, capacity
- * abuse). REJECTED — application denied; user can re-apply.
+ * SUSPENDED - admin temporarily disables (e.g. customer complaints, capacity
+ * abuse). REJECTED - application denied; user can re-apply.
  */
 export enum PartnerStoreStatus {
   PENDING_REVIEW = 'pending_review',
@@ -67,9 +67,9 @@ export class PartnerStore {
   @Column({ default: true })
   notifyPayout: boolean;
 
-  // 2026-05-11 — two orthogonal flags split from the old single 'status':
-  //   status        — admin-managed approval lifecycle (KYC gate)
-  //   acceptingNew  — partner-managed on/off toggle (operational pause)
+  // 2026-05-11 - two orthogonal flags split from the old single 'status':
+  //   status        - admin-managed approval lifecycle (KYC gate)
+  //   acceptingNew  - partner-managed on/off toggle (operational pause)
   //
   // Old rows with status='active' coexist because we kept varchar; service
   // code treats 'active' as APPROVED. New rows default to PENDING_REVIEW.

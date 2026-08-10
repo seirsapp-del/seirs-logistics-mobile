@@ -19,7 +19,7 @@ export enum DeliveryStopStatus {
  * Delivery itself (legacy single-leg path); the dispatcher reads stops
  * if present, falls back to delivery.dropoffAddress otherwise.
  *
- * `sequenceOrder` is the visit order — set either by the user or by
+ * `sequenceOrder` is the visit order - set either by the user or by
  * Google Directions' `waypoint_order` (auto-optimised route). Driver app
  * walks through these in ascending sequenceOrder.
  *
@@ -97,7 +97,7 @@ export class DeliveryStop {
   @Column({ type: 'text', nullable: true })
   failureReason: string;
 
-  // Proof of delivery — photo URLs (R2) + optional signature.
+  // Proof of delivery - photo URLs (R2) + optional signature.
   @Column({ type: 'jsonb', nullable: true })
   proofPhotoUrls: string[];
 

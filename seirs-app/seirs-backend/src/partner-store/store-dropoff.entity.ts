@@ -2,7 +2,7 @@ import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index,
 } from 'typeorm';
 
-// Spec V8 §3 — three delivery routing modes. The classic door→door
+// Spec V8 §3 - three delivery routing modes. The classic door→door
 // case lives on the existing Delivery entity unchanged; STORE_TO_DOOR
 // and STORE_TO_STORE introduce store-side legs tracked here.
 export enum DropoffMode {
@@ -11,7 +11,7 @@ export enum DropoffMode {
 }
 
 // Lifecycle of a partner-store drop-off. Distinct from DeliveryStatus
-// because the store leg pre-dates the driver leg — the package may sit
+// because the store leg pre-dates the driver leg - the package may sit
 // at the pickup store for hours before a driver collects it.
 export enum DropoffStatus {
   SCHEDULED        = 'scheduled',         // Customer booked, has not yet walked in
@@ -21,8 +21,8 @@ export enum DropoffStatus {
   IN_TRANSIT       = 'in_transit',        // Driver has the package
   AT_DROPOFF_STORE = 'at_dropoff_store',  // (STORE_TO_STORE only) waiting for recipient collection
   AWAITING_COLLECTION = 'awaiting_collection', // Recipient has been notified to come collect
-  COLLECTED        = 'collected',         // Done — recipient took possession
-  RETURN_TRIGGERED = 'return_triggered',  // >72hr overstay — going back to sender
+  COLLECTED        = 'collected',         // Done - recipient took possession
+  RETURN_TRIGGERED = 'return_triggered',  // >72hr overstay - going back to sender
   CANCELLED        = 'cancelled',         // Sender cancelled before drop or while in store
 }
 
@@ -37,7 +37,7 @@ export class StoreDropoff {
   dropCode: string;
 
   // 6-character alphanumeric backup that's typed by hand if QR scan fails.
-  // Same code embedded in the QR — kept separate so we can index on it.
+  // Same code embedded in the QR - kept separate so we can index on it.
   @Index()
   @Column({ length: 6 })
   backupCode: string;
@@ -46,12 +46,12 @@ export class StoreDropoff {
   @Column()
   senderUserId: string;
 
-  // Pickup store — where the sender drops off
+  // Pickup store - where the sender drops off
   @Index()
   @Column()
   pickupStoreId: string;
 
-  // Final destination — either a recipient address (STORE_TO_DOOR) or
+  // Final destination - either a recipient address (STORE_TO_DOOR) or
   // another partner store (STORE_TO_STORE).
   @Column({ type: 'enum', enum: DropoffMode })
   mode: DropoffMode;
@@ -93,7 +93,7 @@ export class StoreDropoff {
   @Column({ type: 'enum', enum: DropoffStatus, default: DropoffStatus.SCHEDULED })
   status: DropoffStatus;
 
-  // Pricing — captured at booking time so quoting is stable
+  // Pricing - captured at booking time so quoting is stable
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   prePaidAmountNgn: number;
 

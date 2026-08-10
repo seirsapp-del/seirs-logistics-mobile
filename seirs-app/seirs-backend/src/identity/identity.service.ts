@@ -32,11 +32,11 @@ export class IdentityService {
   ) {}
 
   // ── SEIRS ID lookup ────────────────────────────────────────────────────
-  // Spec V8 backup-ID flow — partner staff scans recipient's QR (CUST-XXXX)
+  // Spec V8 backup-ID flow - partner staff scans recipient's QR (CUST-XXXX)
   // and the system shows what the registered name SHOULD be so the recipient
   // can speak it and have it typed back for verification.
   //
-  // Returns minimal info — never the email/phone of someone else's account.
+  // Returns minimal info - never the email/phone of someone else's account.
   async lookupBySeirsId(code: string) {
     const normalized = code.trim().toUpperCase();
     if (!/^(CUST|DRV|PART|BIZ)-[A-Z0-9]+$/.test(normalized)) {
@@ -75,7 +75,7 @@ export class IdentityService {
       expiresAt: new Date(Date.now() + OTP_TTL_MIN * 60 * 1000),
     }));
 
-    // Use the existing mail service template path — keeps OTP delivery
+    // Use the existing mail service template path - keeps OTP delivery
     // consistent with auth OTPs (Resend SMTP via @seirs.co)
     await this.mailService
       .sendHandoffOtp(recipient.email, recipient.name, code, deliveryId)
@@ -146,12 +146,12 @@ export class IdentityService {
       .orderBy('o.createdAt', 'DESC')
       .getOne();
 
-    if (!otpRow) throw new ForbiddenException('No valid OTP — issue a new one and try again');
+    if (!otpRow) throw new ForbiddenException('No valid OTP - issue a new one and try again');
 
     const otpMatch = await bcrypt.compare(String(payload.otp), otpRow.codeHash);
     if (!otpMatch) throw new ForbiddenException('OTP did not match');
 
-    // High-value packages require ID photo (Spec V8 — threshold from Fee Catalogue)
+    // High-value packages require ID photo (Spec V8 - threshold from Fee Catalogue)
     const threshold = await this.feesService.getValueOr('high_value_threshold_ngn', 100000);
     if (Number(delivery.price) >= threshold && !payload.idPhotoUrl) {
       throw new BadRequestException(
@@ -187,7 +187,7 @@ export class IdentityService {
 
     const lookup = await this.lookupBySeirsId(payload.seirsCode);
 
-    // The SEIRS ID must belong to the actual recipient on this delivery —
+    // The SEIRS ID must belong to the actual recipient on this delivery -
     // otherwise anyone with their own SEIRS ID could claim someone else's package.
     const recipient = await this.usersRepo.findOne({
       where: { id: recipientUserId },
@@ -231,7 +231,7 @@ export class IdentityService {
     const windowStart = now - 60_000;
     const recent = (this.issueAttempts.get(userId) ?? []).filter(t => t > windowStart);
     if (recent.length >= RATE_LIMIT_PER_MIN) {
-      throw new ForbiddenException('Too many OTP requests — wait 60 seconds and try again');
+      throw new ForbiddenException('Too many OTP requests - wait 60 seconds and try again');
     }
     recent.push(now);
     this.issueAttempts.set(userId, recent);

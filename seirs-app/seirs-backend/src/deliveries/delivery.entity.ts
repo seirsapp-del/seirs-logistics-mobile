@@ -108,13 +108,13 @@ export class Delivery {
   @Column({ type: 'enum', enum: UrgencyLevel, default: UrgencyLevel.STANDARD })
   urgency: UrgencyLevel;
 
-  // Service category code (FK to ServiceCategory.code) — drives suggested
+  // Service category code (FK to ServiceCategory.code) - drives suggested
   // vehicle, dwell time, and category surcharges. Nullable for legacy
   // bookings created before the catalog existed.
   @Column({ nullable: true })
   categoryCode: string;
 
-  // Total weight in kg. Required for new bookings — drives dwell tier,
+  // Total weight in kg. Required for new bookings - drives dwell tier,
   // vehicle safety rules, and pricing. Nullable for legacy rows.
   @Column({ type: 'decimal', precision: 8, scale: 2, nullable: true })
   weightKg: number;
@@ -124,7 +124,7 @@ export class Delivery {
   @Column({ nullable: true })
   vehicleType: string;
 
-  // Pricing — top-line totals. Detailed breakdown in priceBreakdown.
+  // Pricing - top-line totals. Detailed breakdown in priceBreakdown.
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   price: number;
 

@@ -1,15 +1,15 @@
 import { Platform } from 'react-native';
 
-// ─── Seirs Brand Palette — V7 (Navy + Sky Blue) ──────────────────────────────
+// ─── Seirs Brand Palette - V7 (Navy + Sky Blue) ──────────────────────────────
 export const Palette = {
-  // Deep Navy — light mode primary brand
+  // Deep Navy - light mode primary brand
   navy900: '#0A1E36',
   navy800: '#0F2B4C', // ← Light mode primary brand
   navy700: '#1A3A63',
   navy600: '#1E4A80',
   navy500: '#235A9C',
 
-  // Sky Blue — accent / CTA
+  // Sky Blue - accent / CTA
   sky900:  '#1A3D6B',
   sky800:  '#1E4F8C',
   sky700:  '#2563B0',
@@ -66,14 +66,14 @@ export const Palette = {
 export const Colors = {
   light: {
     // Identity
-    primary:       Palette.navy800,   // #0F2B4C — Deep Navy
+    primary:       Palette.navy800,   // #0F2B4C - Deep Navy
     primaryDark:   Palette.navy900,   // #0A1E36
     primaryLight:  Palette.sky50,     // #EBF5FF
-    accent:        Palette.sky500,    // #3A7BD5 — Sky Blue CTA
+    accent:        Palette.sky500,    // #3A7BD5 - Sky Blue CTA
     accentDark:    Palette.sky700,    // #2563B0
 
     // Surfaces
-    background:    Palette.cloud,     // #F5F5F0 — Cloud Dancer 2026
+    background:    Palette.cloud,     // #F5F5F0 - Cloud Dancer 2026
     surface:       Palette.white,     // #FFFFFF
     surfaceSecond: Palette.gray100,   // #F3F4F6
     surfaceThird:  Palette.gray200,   // #E5E7EB
@@ -119,16 +119,16 @@ export const Colors = {
 
     icon: Palette.gray500,
 
-    // Kept for backward compat — maps to accent
+    // Kept for backward compat - maps to accent
     primary2: Palette.sky500,
   },
 
   dark: {
-    // Identity — keep brand sky blue, only one notch lighter than light-mode for AA contrast
-    primary:       Palette.sky500,    // #3A7BD5 — same brand CTA as light mode (4.55:1 on ink900, AA)
+    // Identity - keep brand sky blue, only one notch lighter than light-mode for AA contrast
+    primary:       Palette.sky500,    // #3A7BD5 - same brand CTA as light mode (4.55:1 on ink900, AA)
     primaryDark:   Palette.sky600,    // #2D72CC
     primaryLight:  Palette.ink700,    // #1C2128
-    accent:        Palette.sky400,    // #58A6FF — interactive accent (brighter for taps)
+    accent:        Palette.sky400,    // #58A6FF - interactive accent (brighter for taps)
     accentDark:    Palette.sky500,    // #3A7BD5
 
     // Surfaces
@@ -178,7 +178,7 @@ export const Colors = {
 
     icon: '#8B949E',
 
-    // Kept for backward compat — maps to accent
+    // Kept for backward compat - maps to accent
     primary2: Palette.sky400,
   },
 };

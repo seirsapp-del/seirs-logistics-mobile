@@ -48,10 +48,10 @@ export default function DevUsagePage() {
             <h2 className="text-sm font-semibold text-[#0F2B4C]/70 mb-3">Coming next</h2>
             <ul className="space-y-3">
               {[
-                { icon: BarChart3,    text: 'Top 10 consumers by call volume — leaderboard with daily / monthly toggles' },
-                { icon: AlertTriangle,text: 'Error rate alerts — flag any account with 4xx rate spike >5% over baseline' },
-                { icon: Activity,     text: 'p50 / p95 / p99 latency by endpoint — spot slow regressions early' },
-                { icon: TrendingUp,   text: 'Monthly revenue projection — based on call volumes × tier pricing from Fee Catalogue' },
+                { icon: BarChart3,    text: 'Top 10 consumers by call volume - leaderboard with daily / monthly toggles' },
+                { icon: AlertTriangle,text: 'Error rate alerts - flag any account with 4xx rate spike >5% over baseline' },
+                { icon: Activity,     text: 'p50 / p95 / p99 latency by endpoint - spot slow regressions early' },
+                { icon: TrendingUp,   text: 'Monthly revenue projection - based on call volumes × tier pricing from Fee Catalogue' },
               ].map((item, i) => {
                 const I = item.icon;
                 return (
@@ -69,7 +69,7 @@ export default function DevUsagePage() {
           <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-800">
             <AlertTriangle size={16} className="shrink-0 mt-0.5" />
             <span>
-              Detailed metrics require traffic — once the public <code className="bg-yellow-100 px-1 rounded">/v1/*</code> surface accepts calls and the request middleware starts incrementing per-key counters, charts will populate here.
+              Detailed metrics require traffic - once the public <code className="bg-yellow-100 px-1 rounded">/v1/*</code> surface accepts calls and the request middleware starts incrementing per-key counters, charts will populate here.
             </span>
           </div>
         </>

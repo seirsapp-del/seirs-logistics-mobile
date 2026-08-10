@@ -4,7 +4,7 @@ import {
 } from 'typeorm';
 import { User } from '../users/user.entity';
 
-// Spec V8 §4.2 — recurring delivery templates for business senders.
+// Spec V8 §4.2 - recurring delivery templates for business senders.
 // When the cron fires (daily 1:30 AM Africa/Lagos), any template whose
 // nextRunAt <= now creates a new Delivery from the snapshot payload,
 // debits the business wallet, and schedules the following nextRunAt.
@@ -48,7 +48,7 @@ export class RecurringTemplate {
   minute: number;
 
   // Snapshot of the booking payload to re-create. Same shape as
-  // businessApi.createDelivery — pickup + stops + vehicle + category
+  // businessApi.createDelivery - pickup + stops + vehicle + category
   // + weight + packageDescription + km. Stored as JSONB so we don't
   // hard-couple to the Delivery entity shape.
   @Column({ type: 'jsonb' })

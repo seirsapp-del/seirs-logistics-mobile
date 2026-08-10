@@ -4,7 +4,7 @@ import { Role } from './role.entity';
 // existing admin user keeps working post-migration. Permissions match
 // what the admin middleware enforces page-by-page.
 //
-// These are protected — super_admin cannot delete or rename a system
+// These are protected - super_admin cannot delete or rename a system
 // role, only adjust its permissions if needed. Users wanting custom
 // titles create new roles instead.
 export const SYSTEM_ROLES: Array<Partial<Role>> = [
@@ -19,7 +19,7 @@ export const SYSTEM_ROLES: Array<Partial<Role>> = [
   {
     slug:        'ops_manager',
     name:        'Ops Manager',
-    description: 'Day-to-day operations — deliveries, drivers, partners, ops map, pricing levers.',
+    description: 'Day-to-day operations - deliveries, drivers, partners, ops map, pricing levers.',
     permissions: [
       'overview','ops-map','deliveries','drivers','users','partners','partner-redirects',
       'specialists','analytics','tickets','pricing','fees','disputes','health',
@@ -31,7 +31,7 @@ export const SYSTEM_ROLES: Array<Partial<Role>> = [
   {
     slug:        'support_agent',
     name:        'Support Agent',
-    description: 'Customer-facing support — tickets, user lookups, suggestion review, dispute reads.',
+    description: 'Customer-facing support - tickets, user lookups, suggestion review, dispute reads.',
     permissions: ['tickets','users','suggestions','deliveries','disputes'],
     isSystemRole: true,
     badgeColor:  'green',
@@ -39,7 +39,7 @@ export const SYSTEM_ROLES: Array<Partial<Role>> = [
   {
     slug:        'finance_officer',
     name:        'Finance Officer',
-    description: 'Money and partnerships — wallet, pricing, fees, referrals, insurance commissions, dev platform billing.',
+    description: 'Money and partnerships - wallet, pricing, fees, referrals, insurance commissions, dev platform billing.',
     permissions: ['overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage'],
     isSystemRole: true,
     badgeColor:  'yellow',
@@ -47,7 +47,7 @@ export const SYSTEM_ROLES: Array<Partial<Role>> = [
   {
     slug:        'driver_compliance',
     name:        'Driver Compliance',
-    description: 'Driver vetting and risk — KYC review, fraud queue, duplicate detection, last-order compliance.',
+    description: 'Driver vetting and risk - KYC review, fraud queue, duplicate detection, last-order compliance.',
     permissions: ['drivers','kyc','duplicates','fraud','users','audit-log','interstate','last-order-compliance'],
     isSystemRole: true,
     badgeColor:  'purple',

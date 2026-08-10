@@ -1,7 +1,7 @@
 import { Entity, PrimaryColumn, Column, UpdateDateColumn } from 'typeorm';
 
 // Single-row table; all reads/writes target id='singleton'.
-// Spec V8 §3.4 — admin Fee Catalogue will eventually replace this with a
+// Spec V8 §3.4 - admin Fee Catalogue will eventually replace this with a
 // per-fee row store; for now this captures the full pricing surface
 // the admin page already exposes (vehicles, surge, fuel/fx, zones).
 @Entity('pricing_config')

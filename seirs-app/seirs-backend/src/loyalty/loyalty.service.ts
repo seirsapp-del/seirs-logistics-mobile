@@ -1,4 +1,4 @@
-﻿import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Repository, MoreThan, LessThan } from 'typeorm';
@@ -365,7 +365,7 @@ export class LoyaltyService {
     deliveryId?: string;
   }): Promise<LoyaltyPoint> {
     // Deliberate: deliveryId is REQUIRED. A redemption without a delivery
-    // to apply to would just deduct points with no user-visible benefit —
+    // to apply to would just deduct points with no user-visible benefit -
     // that was the original silent-loss bug. Callers must scope the
     // redemption to a specific booking.
     if (!params.deliveryId) {

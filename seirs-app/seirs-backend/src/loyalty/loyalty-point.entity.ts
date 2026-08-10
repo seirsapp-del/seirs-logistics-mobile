@@ -8,7 +8,7 @@ import { User } from '../users/user.entity';
  * Loyalty points ledger.
  *
  * McDonald's-style: customers earn points for usage, redeem for SEIRS
- * service discounts. Points have NO Naira face value — they are NOT
+ * service discounts. Points have NO Naira face value - they are NOT
  * money, NOT transferable, NOT withdrawable. This positioning keeps
  * SEIRS out of CBN e-money regulation.
  *
@@ -19,7 +19,7 @@ import { User } from '../users/user.entity';
  * Balance = SUM(delta) WHERE expiresAt > NOW()
  *
  * Points expire after 24 months of inactivity (any earn or redeem resets
- * the clock — see loyalty.service.ts for renewal logic).
+ * the clock - see loyalty.service.ts for renewal logic).
  *
  * See docs/payments-spec.md §⑤.
  */

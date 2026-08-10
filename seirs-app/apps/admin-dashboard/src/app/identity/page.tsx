@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ShieldCheck, AlertCircle, RefreshCw, Loader2, CheckCircle2, XCircle,
@@ -318,9 +318,9 @@ function ReviewModal({
               <p>
                 {expiryDate.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
                 {isExpired
-                  ? '  — EXPIRED. Do not approve.'
+                  ? '  - EXPIRED. Do not approve.'
                   : daysToExpiry !== null && daysToExpiry < 30
-                    ? `  — expires in ${daysToExpiry} day${daysToExpiry === 1 ? '' : 's'}`
+                    ? `  - expires in ${daysToExpiry} day${daysToExpiry === 1 ? '' : 's'}`
                     : ''}
               </p>
             </div>
@@ -374,7 +374,7 @@ function ReviewModal({
           {row.revokedReason && (
             <div className="p-3 rounded-lg bg-red-100 border border-red-200 text-sm text-red-900">
               <p className="text-xs font-bold uppercase tracking-wide mb-1">
-                Revoked{row.revokedAt ? ` on ${new Date(row.revokedAt).toLocaleDateString('en-NG')}` : ''} — reason shown to user
+                Revoked{row.revokedAt ? ` on ${new Date(row.revokedAt).toLocaleDateString('en-NG')}` : ''} - reason shown to user
               </p>
               {row.revokedReason}
             </div>

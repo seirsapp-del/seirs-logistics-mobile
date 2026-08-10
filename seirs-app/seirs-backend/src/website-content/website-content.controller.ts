@@ -16,7 +16,7 @@ import { User } from '../users/user.entity';
 export class WebsiteContentController {
   constructor(private readonly svc: WebsiteContentService) {}
 
-  // ── Public reads — used by apps/seirs-website with ISR ───────────────────
+  // ── Public reads - used by apps/seirs-website with ISR ───────────────────
   // No JWT. Cacheable. Returns only PUBLISHED rows.
 
   // GET /api/v1/website/content?type=article&page=1
@@ -86,7 +86,7 @@ export class WebsiteContentController {
     return this.svc.remove(id);
   }
 
-  // ── Public contact form (Spec V8 §3.13 — W7) ─────────────────────────────
+  // ── Public contact form (Spec V8 §3.13 - W7) ─────────────────────────────
   // No auth. Body: { name, email, phone?, subject, message }.
   // Returns { ok: true, id }.
   @Public()

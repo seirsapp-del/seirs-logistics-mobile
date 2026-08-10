@@ -13,9 +13,9 @@ import { MOCK_TRIPS, MOCK_USER } from '@/constants/mockData';
 
 const SHARE_VIA = [
   { id: 'whatsapp', label: 'WhatsApp',    icon: 'logo-whatsapp', color: '#25D366' },
-  { id: 'sms',      label: 'SMS',         icon: 'chatbubble',    color: '#3A86FF' },
+  { id: 'sms',      label: 'SMS',         icon: 'chatbubble',    color: '#3A7BD5' },
   { id: 'copy',     label: 'Copy Link',   icon: 'copy-outline',  color: '#6B7280' },
-  { id: 'more',     label: 'More',        icon: 'share-outline', color: '#8B5CF6' },
+  { id: 'more',     label: 'More',        icon: 'share-outline', color: '#0F2B4C' },
 ];
 
 export default function ShareTripScreen() {

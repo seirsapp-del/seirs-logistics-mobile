@@ -26,7 +26,7 @@ export function getAdminRole(): AdminRoleType | undefined {
   return getUser()?.adminRole;
 }
 
-// Spec V8 — server-provided permissions take precedence over the
+// Spec V8 - server-provided permissions take precedence over the
 // hardcoded enum-based map. Returns null if the session predates
 // dynamic roles (legacy admins) so callers can fall back.
 export function getServerPermissions(): string[] | null {

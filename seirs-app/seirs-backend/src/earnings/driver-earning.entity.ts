@@ -11,7 +11,7 @@ import { Delivery } from '../deliveries/delivery.entity';
  * One row per completed delivery. Tracks the money SEIRS owes a driver and
  * its lifecycle from earned → paid out via Flutterwave Transfers.
  *
- * SEIRS does NOT hold this money — it sits in the SEIRS company bank
+ * SEIRS does NOT hold this money - it sits in the SEIRS company bank
  * account (received from Flutterwave settlement) and is liability-tracked
  * in this ledger. On payout day, a Flutterwave Transfer moves it from
  * SEIRS bank to the driver's verified bank account.
@@ -47,7 +47,7 @@ export class DriverEarning {
   @Column({ name: 'delivery_id', type: 'uuid' })
   deliveryId!: string;
 
-  // Amount the customer paid (gross). Naira, decimal — supports kobo.
+  // Amount the customer paid (gross). Naira, decimal - supports kobo.
   @Column({ name: 'gross_amount', type: 'decimal', precision: 12, scale: 2 })
   grossAmount!: string;
 

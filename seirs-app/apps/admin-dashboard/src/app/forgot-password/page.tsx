@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import { ArrowLeft, Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-// Spec V8 §3 — admin password recovery. Backend branches the email link
+// Spec V8 §3 - admin password recovery. Backend branches the email link
 // by user role so admins receive a web URL instead of a mobile deep link.
 // Page intentionally never reveals whether an email exists in the system.
 export default function ForgotPasswordPage() {
@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
             </>
           )}
         </div>
-        <p className="text-center text-xs text-white/20 mt-6">Seirs Logistics — Internal Admin Tool</p>
+        <p className="text-center text-xs text-white/20 mt-6">Seirs Logistics - Internal Admin Tool</p>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import { User } from '../users/user.entity';
 
 const CANCELLATION_THRESHOLD = 0.5;  // 50% cancellation rate triggers flag
 const FAILED_PAYMENT_THRESHOLD = 5;  // 5+ failed payments triggers flag
-const GPS_MAX_SPEED_KMH = 200;        // 200 km/h — impossible for ground delivery
+const GPS_MAX_SPEED_KMH = 200;        // 200 km/h - impossible for ground delivery
 
 @Injectable()
 export class FraudService {
@@ -50,7 +50,7 @@ export class FraudService {
     }
   }
 
-  // ── GPS velocity anomaly check — called from tracking gateway ──────────────
+  // ── GPS velocity anomaly check - called from tracking gateway ──────────────
 
   async checkGpsAnomaly(userId: string, prevLat: number, prevLng: number, newLat: number, newLng: number, elapsedSeconds: number) {
     const distKm = this.haversine(prevLat, prevLng, newLat, newLng);

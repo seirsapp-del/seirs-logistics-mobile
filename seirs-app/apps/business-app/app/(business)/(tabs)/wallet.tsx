@@ -145,7 +145,7 @@ export default function WalletScreen() {
             borderColor:     isDark ? '#5E3FB1' : '#DDD6FE',
           }]}>
             <View style={styles.loyaltyLeft}>
-              <Icon name="Star" size={20} color="#7C3AED" />
+              <Icon name="Star" size={20} color="#D97706" />
               <View>
                 <Text style={[styles.loyaltyTitle, { color: colors.text }]}>Loyalty Points</Text>
                 <Text style={styles.loyaltySub}>Earn 1 point per ₦500 spent</Text>
@@ -226,10 +226,10 @@ const styles = StyleSheet.create({
   },
   loyaltyLeft:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
   loyaltyTitle:  { fontSize: 14, fontWeight: '700' },
-  loyaltySub:    { fontSize: 11, color: '#7C3AED', marginTop: 2 },
+  loyaltySub:    { fontSize: 11, color: '#D97706', marginTop: 2 },
   loyaltyRight:  { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
-  loyaltyPoints: { fontSize: 28, fontWeight: '900', color: '#7C3AED' },
-  loyaltyLabel:  { fontSize: 13, color: '#7C3AED', fontWeight: '600' },
+  loyaltyPoints: { fontSize: 28, fontWeight: '900', color: '#D97706' },
+  loyaltyLabel:  { fontSize: 13, color: '#D97706', fontWeight: '600' },
   txnsSection:   { padding: 16 },
   sectionTitle:  { fontSize: 16, fontWeight: '700', marginBottom: 14 },
   empty:         { alignItems: 'center', paddingVertical: 40, gap: 12 },

@@ -11,7 +11,7 @@ export class FcmService implements OnModuleInit {
   onModuleInit() {
     const raw = this.cfg.get<string>('FIREBASE_SERVICE_ACCOUNT_JSON');
     if (!raw) {
-      this.logger.warn('FIREBASE_SERVICE_ACCOUNT_JSON not set — push notifications disabled');
+      this.logger.warn('FIREBASE_SERVICE_ACCOUNT_JSON not set - push notifications disabled');
       return;
     }
 
@@ -24,7 +24,7 @@ export class FcmService implements OnModuleInit {
         });
       }
       this.messaging = admin.messaging();
-      this.logger.log('Firebase Admin SDK initialised — push notifications enabled');
+      this.logger.log('Firebase Admin SDK initialised - push notifications enabled');
     } catch (e) {
       this.logger.error(`Firebase init failed: ${e.message}`);
     }

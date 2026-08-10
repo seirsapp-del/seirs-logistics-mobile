@@ -21,7 +21,7 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
   assigned:   '#3A7BD5',
-  in_transit: '#7C3AED',
+  in_transit: '#0F2B4C',
   delivered:  '#16A34A',
   cancelled:  '#DC2626',
 };

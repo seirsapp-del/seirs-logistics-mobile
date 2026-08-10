@@ -18,18 +18,18 @@ export class SosAlert {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // The user who triggered the alert (customer or driver — either can SOS).
+  // The user who triggered the alert (customer or driver - either can SOS).
   @ManyToOne(() => User, { eager: true })
   @JoinColumn()
   user: User;
 
-  // Optional — most SOS events happen during an active delivery so the
+  // Optional - most SOS events happen during an active delivery so the
   // assigned driver / customer of the *other* party also gets notified.
   @ManyToOne(() => Delivery, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn()
   delivery: Delivery | null;
 
-  // GPS at the moment of trigger — vital for dispatching help to the user.
+  // GPS at the moment of trigger - vital for dispatching help to the user.
   @Column({ type: 'double precision', nullable: true })
   lat: number | null;
 

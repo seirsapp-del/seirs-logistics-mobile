@@ -8,7 +8,7 @@ import { INestApplicationContext, Logger } from '@nestjs/common';
 // share rooms. Without this, two Railway pods can't broadcast to the same
 // delivery room.
 //
-// Falls back to default in-process behaviour if Redis is unavailable —
+// Falls back to default in-process behaviour if Redis is unavailable -
 // single-instance deployments keep working without any Redis dependency.
 export class RedisIoAdapter extends IoAdapter {
   private readonly logger = new Logger(RedisIoAdapter.name);
@@ -21,7 +21,7 @@ export class RedisIoAdapter extends IoAdapter {
   async connectToRedis(): Promise<void> {
     const url = process.env.REDIS_URL;
     if (!url) {
-      this.logger.warn('REDIS_URL not set — socket.io running in single-instance mode');
+      this.logger.warn('REDIS_URL not set - socket.io running in single-instance mode');
       return;
     }
 
@@ -39,9 +39,9 @@ export class RedisIoAdapter extends IoAdapter {
     try {
       await Promise.all([pubClient.connect(), subClient.connect()]);
       this.adapterConstructor = createAdapter(pubClient, subClient);
-      this.logger.log('Socket.io Redis adapter connected — multi-instance broadcasting enabled');
+      this.logger.log('Socket.io Redis adapter connected - multi-instance broadcasting enabled');
     } catch (err) {
-      this.logger.warn(`Socket.io Redis adapter failed (${(err as Error).message}) — running in single-instance mode`);
+      this.logger.warn(`Socket.io Redis adapter failed (${(err as Error).message}) - running in single-instance mode`);
       this.adapterConstructor = null;
     }
   }

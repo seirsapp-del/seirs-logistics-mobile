@@ -7,7 +7,7 @@ import { Repository } from 'typeorm';
 import { Request } from 'express';
 import { ApiKey } from './api-key.entity';
 
-// Spec V8 Tier 3 — guard for the /v1/* public surface. Validates the
+// Spec V8 Tier 3 - guard for the /v1/* public surface. Validates the
 // API key from Authorization: Bearer sk_(live|test)_xxx, checks the
 // key is active and the owning account isn't suspended, enforces a
 // sliding per-key rate limit, increments callsToday + lastUsedAt on
@@ -44,7 +44,7 @@ const DEFAULT_LIMIT_PER_MIN = 60;
 export class ApiKeyGuard implements CanActivate {
   private readonly logger = new Logger(ApiKeyGuard.name);
 
-  // In-memory sliding-window rate limit. Per-instance — good enough
+  // In-memory sliding-window rate limit. Per-instance - good enough
   // for single-pod deploys; for multi-pod we'd front this with Redis
   // or a token-bucket gateway. The window resets at 60s rolling.
   private readonly buckets = new Map<string, RateBucket>();
@@ -72,16 +72,16 @@ export class ApiKeyGuard implements CanActivate {
 
     const key = await this.lookupKey(publicKey);
     if (!key)             throw new UnauthorizedException('API key not found.');
-    if (!key.active)      throw new ForbiddenException(`API key inactive${key.suspendedReason ? ` — ${key.suspendedReason}` : ''}.`);
-    if (key.suspendedAt)  throw new ForbiddenException(`Developer account suspended${key.suspendedReason ? ` — ${key.suspendedReason}` : ''}.`);
+    if (!key.active)      throw new ForbiddenException(`API key inactive${key.suspendedReason ? ` - ${key.suspendedReason}` : ''}.`);
+    if (key.suspendedAt)  throw new ForbiddenException(`Developer account suspended${key.suspendedReason ? ` - ${key.suspendedReason}` : ''}.`);
 
     // Per-key sliding-window rate limit
     const limit = key.rateLimitOverridePerMin ?? DEFAULT_LIMIT_PER_MIN;
     this.enforceRate(key.id, limit);
 
-    // Increment usage counter — fire-and-forget so it doesn't slow
+    // Increment usage counter - fire-and-forget so it doesn't slow
     // the request. callsToday is reset at midnight by an admin/cron
-    // (TODO: add that cron — for v1 the counter monotonically grows
+    // (TODO: add that cron - for v1 the counter monotonically grows
     // since last manual reset, which is fine for "calls today" so
     // long as the dashboard shows "since last reset").
     this.keysRepo.update(key.id, {

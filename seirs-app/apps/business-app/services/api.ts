@@ -57,4 +57,8 @@ export const authApi = {
   register:  businessAuthApi.register,
   verifyOtp: businessAuthApi.verifyOtp,
   resendOtp: sharedAuthApi.resendOtp,
+  // Password recovery is role-agnostic on the backend: it looks the
+  // account up by email and deep-links back to the right app's scheme.
+  forgotPassword: sharedAuthApi.forgotPassword,
+  resetPassword:  sharedAuthApi.resetPassword,
 };

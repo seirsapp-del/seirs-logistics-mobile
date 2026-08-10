@@ -32,7 +32,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const CATEGORY_STYLES: Record<string, string> = {
-  ux:      'bg-purple-100 text-purple-700',
+  ux:      'bg-cyan-100 text-cyan-700',
   feature: 'bg-[#0F2B4C]/10 text-[#0F2B4C]',
   bug:     'bg-red-100 text-red-700',
   i18n:    'bg-cyan-100 text-cyan-700',
@@ -198,7 +198,7 @@ function UpdateStatusModal({ suggestion, onClose, onSaved }: {
           <div>
             <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Admin Reply (visible to submitter)</label>
             <textarea value={adminReply} onChange={e => setAdminReply(e.target.value)} rows={4}
-              placeholder="Thanks for the suggestion — we're targeting this for v1.1."
+              placeholder="Thanks for the suggestion - we're targeting this for v1.1."
               className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
           </div>
         </div>

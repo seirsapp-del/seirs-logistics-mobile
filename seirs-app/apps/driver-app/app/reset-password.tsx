@@ -11,7 +11,7 @@ import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword, PASSWORD_HELP_TEXT } from '@seirs/shared';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react-native';
 
-// This screen handles the deep link: seirsmobile://reset-password?token=xxx
+// This screen handles the deep link: seirsdriver://reset-password?token=xxx
 
 export default function ResetPasswordScreen() {
   const router      = useRouter();

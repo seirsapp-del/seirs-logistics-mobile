@@ -79,14 +79,14 @@ export class SosService {
           type:       'sos:peer-alert',
           alertId:    saved.id,
           deliveryId: delivery.id,
-          message:    `${user.name} pressed SOS — SEIRS support has been alerted.`,
+          message:    `${user.name} pressed SOS - SEIRS support has been alerted.`,
         });
 
         // Persistent notification + (when FCM fully wired) push.
         this.notifications
           .create(
             otherUserId,
-            'SOS — SEIRS support alerted',
+            'SOS - SEIRS support alerted',
             `${user.name} pressed SOS during your active trip. Support is engaging.`,
             NotificationType.SOS_ALERT,
             delivery.id,

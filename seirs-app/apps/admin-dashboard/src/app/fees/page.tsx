@@ -178,7 +178,7 @@ export default function FeeCataloguePage() {
       {loading ? (
         <div className="text-center py-20 text-gray-400">Loading fee catalogue…</div>
       ) : fees.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">No fees configured yet — backend seed should have run on first deploy.</div>
+        <div className="text-center py-20 text-gray-400">No fees configured yet - backend seed should have run on first deploy.</div>
       ) : (
         <div className="space-y-6">
           {CATEGORY_ORDER.filter(cat => grouped[cat]?.length).map(cat => (
@@ -322,7 +322,7 @@ export default function FeeCataloguePage() {
                   <History size={12} /> Change history
                 </h3>
                 {history.length === 0 ? (
-                  <p className="text-xs text-gray-400 py-4 text-center">No changes yet — this is the seed value.</p>
+                  <p className="text-xs text-gray-400 py-4 text-center">No changes yet - this is the seed value.</p>
                 ) : (
                   <ol className="space-y-2">
                     {history.map(h => (

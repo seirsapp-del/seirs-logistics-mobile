@@ -3,7 +3,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { LessThanOrEqual, Repository, In, Not } from 'typeorm';
+import { LessThanOrEqual, Repository, In, Not, IsNull } from 'typeorm';
 import { StoreDropoff, DropoffMode, DropoffStatus } from './store-dropoff.entity';
 import { PartnerStore, PartnerStoreStatus } from '../business/partner-store.entity';
 import { PartnerSponsorship, SponsorshipStatus } from './partner-sponsorship.entity';
@@ -15,7 +15,7 @@ import { HandoffMethod, HandoffStage } from '../identity/handoff-record.entity';
 import { MailService } from '../mail/mail.service';
 import { secureCode } from '../common/utils/auth-codes';
 
-// "In store" means physically present at the pickup or dropoff location —
+// "In store" means physically present at the pickup or dropoff location -
 // these statuses count against capacity, accrue storage fees, etc.
 const IN_STORE_STATUSES: DropoffStatus[] = [
   DropoffStatus.RECEIVED_AT_STORE,
@@ -38,7 +38,7 @@ const ACTIVE_STATUSES: DropoffStatus[] = [
   DropoffStatus.RETURN_TRIGGERED,
 ];
 
-// Crockford-style alphabet (no I L O 0 1) — same as auth-codes.ts.
+// Crockford-style alphabet (no I L O 0 1) - same as auth-codes.ts.
 // Crypto-secure code generation via the shared primitive (2026-08-09):
 // Math.random state-recovery would have let an attacker predict drop +
 // backup codes. Alphabet stays no-lookalike for counter reads.
@@ -139,7 +139,30 @@ export class PartnerStoreService {
     }
   }
 
-  // ── Spec V8 §4.11 — Sponsored Placement subscriptions ─────────────────────
+  // Safety net for the bridge above: catches dropoffs whose driver leg
+  // fell through (driver cancelled -> deliveryId cleared by the status
+  // sync), rows created before the bridge shipped, and stores whose
+  // coordinates were backfilled after receive. Idempotent: the bridge
+  // skips anything that already has a deliveryId.
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async redispatchStrandedDropoffs() {
+    try {
+      const stranded = await this.dropoffRepo.find({
+        where: { status: DropoffStatus.AWAITING_DRIVER, deliveryId: IsNull() } as any,
+        take: 25,
+        order: { createdAt: 'ASC' },
+      });
+      if (stranded.length === 0) return;
+      this.logger.log(`re-dispatch sweep: ${stranded.length} stranded dropoff(s)`);
+      for (const d of stranded) {
+        await this.ensureDriverLegDelivery(d.id);
+      }
+    } catch (e: any) {
+      this.logger.warn(`re-dispatch sweep failed: ${e?.message ?? e}`);
+    }
+  }
+
+  // ── Spec V8 §4.11 - Sponsored Placement subscriptions ─────────────────────
 
   async getMySponsorship(userId: string) {
     const store = await this.getStoreForUser(userId);
@@ -183,7 +206,7 @@ export class PartnerStoreService {
       row.endedAt        = null;
       row.consecutiveFailures = 0;
       row.lastFailureReason   = null;
-      // If they're reactivating mid-cycle, don't double-charge — only
+      // If they're reactivating mid-cycle, don't double-charge - only
       // reset the invoice clock if they have no prior bill.
       if (!row.lastInvoicedAt) {
         row.lastInvoicedFeeKobo = monthlyFeeKobo;
@@ -206,7 +229,7 @@ export class PartnerStoreService {
     return this.sponsorshipRepo.save(row);
   }
 
-  // Helper — find the partner store backing this user. Reuses the same
+  // Helper - find the partner store backing this user. Reuses the same
   // user.partnerStoreId pattern as scanPackage / getInventory etc.
   private async getStoreForUser(userId: string): Promise<PartnerStore> {
     const user = await this.usersRepo.findOne({ where: { id: userId } });
@@ -216,7 +239,7 @@ export class PartnerStoreService {
     return store;
   }
 
-  // Monthly invoice cron — runs hourly so a sponsorship that comes due
+  // Monthly invoice cron - runs hourly so a sponsorship that comes due
   // mid-day still gets billed promptly. Flutterwave subscription pull
   // isn't wired yet (that's a Phase 2 payments task); for now we just
   // record the snapshot + advance nextInvoiceAt so the audit trail
@@ -286,7 +309,7 @@ export class PartnerStoreService {
       throw new BadRequestException('STORE_TO_DOOR requires recipientAddress');
     }
 
-    // Capacity preflight — refuse the booking up-front rather than letting
+    // Capacity preflight - refuse the booking up-front rather than letting
     // the customer walk in and get rejected at the counter.
     const cap = await this.getCapacity(body.pickupStoreId);
     if (cap.full) {
@@ -356,7 +379,7 @@ export class PartnerStoreService {
   }) {
     const dropoff = await this.findByCode(body.code);
     if (dropoff.status !== DropoffStatus.SCHEDULED) {
-      throw new BadRequestException(`Cannot receive — current status is ${dropoff.status}`);
+      throw new BadRequestException(`Cannot receive - current status is ${dropoff.status}`);
     }
 
     // Validate the staff actually works at this store
@@ -365,7 +388,7 @@ export class PartnerStoreService {
       throw new ForbiddenException('You are not registered as staff for the pickup store');
     }
 
-    // Verify sender via identity module — uses the same OTP path drivers
+    // Verify sender via identity module - uses the same OTP path drivers
     // use to verify recipients. Stage = CUSTOMER_TO_STORE (sender → store).
     await this.identityService.verifyHandoff({
       deliveryId: dropoff.id, // we use dropoff id as the delivery id for handoff records pre-driver
@@ -373,7 +396,7 @@ export class PartnerStoreService {
       method:     HandoffMethod.PHYSICAL_ID,
       fromUserId: dropoff.senderUserId,
       idType:     'sender_otp',
-      idNumber:   dropoff.senderUserId, // last-4 will store last-4 of user UUID — adequate for audit
+      idNumber:   dropoff.senderUserId, // last-4 will store last-4 of user UUID - adequate for audit
       otp:        body.senderOtp,
       proofPhotoUrl: body.receivedPhotoUrl,
     } as any);
@@ -396,7 +419,7 @@ export class PartnerStoreService {
 
   // Partner staff at the dropoff store releases package to recipient
   // after identity verification. Two paths supported (physical ID + OTP,
-  // or SEIRS ID + typed name) — same as Spec V8 §1.17.
+  // or SEIRS ID + typed name) - same as Spec V8 §1.17.
   async releaseToRecipient(staffUserId: string, body: {
     code:               string;
     method:             HandoffMethod;
@@ -412,7 +435,7 @@ export class PartnerStoreService {
   }) {
     const dropoff = await this.findByCode(body.code);
     if (![DropoffStatus.AT_DROPOFF_STORE, DropoffStatus.AWAITING_COLLECTION].includes(dropoff.status)) {
-      throw new BadRequestException(`Cannot release — current status is ${dropoff.status}`);
+      throw new BadRequestException(`Cannot release - current status is ${dropoff.status}`);
     }
 
     const releaseStoreId = dropoff.dropoffStoreId ?? dropoff.pickupStoreId;
@@ -423,7 +446,7 @@ export class PartnerStoreService {
 
     if (!dropoff.recipientUserId) {
       throw new BadRequestException(
-        'Recipient is unknown — only registered SEIRS users can collect via this flow',
+        'Recipient is unknown - only registered SEIRS users can collect via this flow',
       );
     }
 
@@ -652,7 +675,7 @@ export class PartnerStoreService {
   }
 
   // ── Partner store deletion readiness ───────────────────────────────────
-  // Spec V8 — partner can't shut down their store while there are
+  // Spec V8 - partner can't shut down their store while there are
   // packages in custody. Returns a structured blocker list so the UI
   // can guide them: "Return these N overstays first" / "Release these
   // M packages awaiting collection".
@@ -669,7 +692,7 @@ export class PartnerStoreService {
       blockers.push({
         type:   'in_store_packages',
         count:  inStore,
-        action: `Release the ${inStore} package${inStore === 1 ? '' : 's'} currently in your store before closing — either to recipients (use Release flow) or back to senders (mark return).`,
+        action: `Release the ${inStore} package${inStore === 1 ? '' : 's'} currently in your store before closing - either to recipients (use Release flow) or back to senders (mark return).`,
       });
     }
 
@@ -966,7 +989,7 @@ export class PartnerStoreService {
    *   1. PartnerStore.status   → APPROVED
    *   2. User.capabilities.canPartner → true
    *
-   * Idempotent — calling on an already-approved store is a no-op.
+   * Idempotent - calling on an already-approved store is a no-op.
    */
   async adminApproveStore(storeId: string, adminUserId: string, note?: string) {
     const store = await this.storeRepo.findOne({ where: { id: storeId } });

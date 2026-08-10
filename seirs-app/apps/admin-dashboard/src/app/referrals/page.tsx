@@ -62,9 +62,9 @@ export default function ReferralsPage() {
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Referrals',     value: summary?.totalReferrals?.toLocaleString() ?? '—', icon: Users,      color: 'text-[#3A7BD5]' },
-          { label: 'Month-to-Date',       value: summary?.monthToDate?.toLocaleString() ?? '—',     icon: Gift,       color: 'text-green-600' },
-          { label: 'Credited %',          value: rows.length > 0 ? `${conversion}%` : '—',          icon: TrendingUp, color: 'text-yellow-600' },
+          { label: 'Total Referrals',     value: summary?.totalReferrals?.toLocaleString() ?? '-', icon: Users,      color: 'text-[#3A7BD5]' },
+          { label: 'Month-to-Date',       value: summary?.monthToDate?.toLocaleString() ?? '-',     icon: Gift,       color: 'text-green-600' },
+          { label: 'Credited %',          value: rows.length > 0 ? `${conversion}%` : '-',          icon: TrendingUp, color: 'text-yellow-600' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">

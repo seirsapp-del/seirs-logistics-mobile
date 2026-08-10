@@ -49,7 +49,7 @@ export class BusinessController {
 
   // Stop-level driver transitions. The driver app POSTs these as the
   // driver walks through the multi-stop route. Driver auth/identity is
-  // checked at the matching/dispatch layer — here we accept the request
+  // checked at the matching/dispatch layer - here we accept the request
   // from any authenticated user and let the service validate ownership.
   @Post('business/deliveries/:deliveryId/stops/:stopId/arrived')
   markStopArrived(@Param('deliveryId') deliveryId: string, @Param('stopId') stopId: string) {
@@ -112,7 +112,7 @@ export class BusinessController {
     return this.svc.getLoyalty(user.id);
   }
 
-  // Spec V8 — B13 Cancel a scheduled/pending delivery.
+  // Spec V8 - B13 Cancel a scheduled/pending delivery.
   // Body: { reason?: string }. Owner/manager/dispatcher allowed.
   @Post('business/deliveries/:id/cancel')
   cancelDelivery(
@@ -123,7 +123,7 @@ export class BusinessController {
     return this.svc.cancelMyDelivery(user.id, id, body?.reason);
   }
 
-  // Spec V8 — B21 Business profile editor.
+  // Spec V8 - B21 Business profile editor.
   // GET returns the full BusinessAccount snapshot + caller's teamRole.
   // PATCH owner-only; takes any subset of the editable fields.
   @Get('business/account')

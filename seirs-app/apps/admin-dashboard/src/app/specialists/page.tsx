@@ -103,9 +103,9 @@ export default function SpecialistsPage() {
                   <tr key={s.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setEditing(s)}>
                     <td className="px-4 py-3 font-medium text-[#0F2B4C]">{s.name}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{s.meta?.specialty ?? '—'}</span>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{s.meta?.specialty ?? '-'}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{(s.meta?.serviceAreas ?? []).join(', ') || '—'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{(s.meta?.serviceAreas ?? []).join(', ') || '-'}</td>
                     <td className="px-4 py-3">
                       <span className="flex items-center gap-1 text-gray-600">
                         <Star size={12} className="text-yellow-400 fill-yellow-400" />

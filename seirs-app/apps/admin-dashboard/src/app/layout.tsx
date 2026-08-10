@@ -4,7 +4,7 @@ import NavWrapper from '@/components/NavWrapper';
 
 export const metadata: Metadata = {
   title: 'Seirs Admin',
-  description: 'Seirs Logistics Platform — Admin Dashboard',
+  description: 'Seirs Logistics Platform - Admin Dashboard',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

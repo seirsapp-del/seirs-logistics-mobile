@@ -75,7 +75,7 @@ export default function FraudPage() {
                         {TYPE_LABELS[flag.type] ?? flag.type}
                       </span>
                     </div>
-                    <p className="text-sm text-[#0F2B4C]/60">{flag.user?.name} — {flag.user?.email}</p>
+                    <p className="text-sm text-[#0F2B4C]/60">{flag.user?.name} - {flag.user?.email}</p>
                     {flag.details && (
                       <pre className="mt-2 text-xs bg-[#F5F5F0] rounded-lg p-2 text-[#0F2B4C]/50 overflow-x-auto border border-[#E5E7EB]">
                         {JSON.stringify(flag.details, null, 2)}

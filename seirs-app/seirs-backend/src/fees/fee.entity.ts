@@ -28,10 +28,10 @@ export enum FeeCategory {
 }
 
 // Single source of truth for every editable price/multiplier in SEIRS.
-// Spec V8 §3.9 — Admin Fee Catalogue.
+// Spec V8 §3.9 - Admin Fee Catalogue.
 @Entity('fees')
 export class Fee {
-  // Stable code-friendly identifier — referenced from backend services
+  // Stable code-friendly identifier - referenced from backend services
   // (e.g. PricingService reads 'customer_booking_fee'). Never rename.
   @PrimaryColumn({ length: 64 })
   key: string;

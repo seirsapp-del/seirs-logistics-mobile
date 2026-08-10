@@ -36,7 +36,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
     this.client.on('error', () => {
       if (!this.loggedUnavailable) {
-        this.logger.warn('Redis unavailable — running without cache (GPS & tracking still work via DB)');
+        this.logger.warn('Redis unavailable - running without cache (GPS & tracking still work via DB)');
         this.loggedUnavailable = true;
       }
     });

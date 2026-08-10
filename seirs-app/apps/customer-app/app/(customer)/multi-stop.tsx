@@ -58,7 +58,7 @@ export default function MultiStopScreen() {
     });
   };
 
-  const DOT_COLORS = ['#22C55E', '#3A86FF', '#FF6B00', '#8B5CF6', '#FFBE0B', '#EF4444'];
+  const DOT_COLORS = ['#16A34A', '#3A7BD5', '#FF6B00', '#0F2B4C', '#FFBE0B', '#EF4444'];
 
   const canContinue = stops[0].address.trim() && stops[stops.length - 1].address.trim();
 

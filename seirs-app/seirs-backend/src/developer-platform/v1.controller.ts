@@ -6,7 +6,7 @@ import { Request, Response } from 'express';
 import { ApiKeyGuard } from './api-key.guard';
 import { V1Service, V1OrderInput, V1QuoteInput } from './v1.service';
 
-// Spec V8 Tier 3 — public Developer Platform API. All requests
+// Spec V8 Tier 3 - public Developer Platform API. All requests
 // authenticated via the ApiKeyGuard (Bearer sk_(live|test)_xxx).
 //
 // Stable URL prefix: /v1/*  (excluded from the api/v1 global prefix

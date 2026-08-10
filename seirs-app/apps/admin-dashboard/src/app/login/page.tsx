@@ -196,7 +196,7 @@ function LoginForm() {
           )}
         </div>
 
-        <p className="text-center text-xs text-white/20 mt-6">Seirs Logistics — Internal Admin Tool</p>
+        <p className="text-center text-xs text-white/20 mt-6">Seirs Logistics - Internal Admin Tool</p>
       </div>
     </div>
   );

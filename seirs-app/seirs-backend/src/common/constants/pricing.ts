@@ -1,6 +1,6 @@
 /**
  * Platform commission rate.
- * Single source of truth — change here to adjust across pricing, payments,
+ * Single source of truth - change here to adjust across pricing, payments,
  * and admin analytics.
  *
  * Per Master Spec V7 §3.4 and §3.5: Seirs takes 30% of net fare

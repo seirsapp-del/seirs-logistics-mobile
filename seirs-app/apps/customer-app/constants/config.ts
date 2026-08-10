@@ -1,6 +1,6 @@
 // Set USE_LOCAL_BACKEND=true to point at a local NestJS instance running
 // on your dev machine. Otherwise the app talks to Railway, which is what
-// you almost always want — including from `npx expo run:android` builds
+// you almost always want - including from `npx expo run:android` builds
 // on a phone that can't reach your laptop's local IP.
 const USE_LOCAL_BACKEND = false;
 const LOCAL_IP = 'localhost'; // relies on `adb reverse tcp:3000 tcp:3000` for phone→laptop

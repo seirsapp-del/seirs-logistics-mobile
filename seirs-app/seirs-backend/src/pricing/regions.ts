@@ -1,5 +1,5 @@
 /**
- * Nigerian region taxonomy for the backend — mirrors the customer-app's
+ * Nigerian region taxonomy for the backend - mirrors the customer-app's
  * constants/regions.ts and admin-dashboard's lib/nigerianStates.ts.
  *
  * Used by PricingService.computePrice to detect state crossings from
@@ -7,7 +7,7 @@
  *
  * Bounding boxes are approximate (±20km at borders). When the backend
  * eventually adds a PostGIS state-polygon table, swap detectStateFromCoords
- * for a real ST_Contains query — interface stays the same.
+ * for a real ST_Contains query - interface stays the same.
  */
 
 export type GeopoliticalZone = 'NW' | 'NE' | 'NC' | 'SW' | 'SE' | 'SS';

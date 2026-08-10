@@ -4,12 +4,12 @@ import {
 } from 'typeorm';
 import { Driver } from './driver.entity';
 
-// Spec V8 §2.13 — Driver Premium (D35).
+// Spec V8 §2.13 - Driver Premium (D35).
 // Drivers opt into a weekly flat fee (fee catalogue key:
 // driver_premium_subscription, ₦5,000/week at launch) in exchange for:
-//   - Priority matching (+0.15 score boost — outranks rating gap)
+//   - Priority matching (+0.15 score boost - outranks rating gap)
 //   - "Verified Pro" badge on customer-facing rating screen
-//   - (Future) commission swap — keep 100% of fares
+//   - (Future) commission swap - keep 100% of fares
 //
 // Lifecycle:
 //   active   → cron pulls fee from wallet weekly; failure on insufficient

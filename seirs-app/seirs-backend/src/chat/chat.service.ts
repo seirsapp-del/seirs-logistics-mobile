@@ -140,7 +140,7 @@ export class ChatService {
     // TTL policy: delivery chats close for new messages 1 hour after
     // the delivered timestamp. Terminal failures close immediately.
     // The full history stays readable (list() is unaffected) and is
-    // never deleted — this is a WRITE gate only, so PII exposure stays
+    // never deleted - this is a WRITE gate only, so PII exposure stays
     // frozen at the moment the trip context ends.
     //
     // Admin override: when support is investigating an issue, an admin

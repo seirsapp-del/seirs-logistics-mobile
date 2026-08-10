@@ -71,7 +71,7 @@ function isAllowed(role: string | undefined, permission: string): boolean {
 
 /**
  * Returns true when the role is recognised by our permission map.
- * Older admin tokens may only carry role='admin' (legacy) — those should
+ * Older admin tokens may only carry role='admin' (legacy) - those should
  * fail open (let the page render and let the backend enforce real perms),
  * never redirect, to avoid a redirect loop.
  */
@@ -83,14 +83,14 @@ export function middleware(request: NextRequest) {
   const token        = request.cookies.get('seirs_admin_token')?.value;
   const { pathname } = request.nextUrl;
   const isLoginPage  = pathname === '/login';
-  // Spec V8 §3 — admin password recovery is reachable without a session
+  // Spec V8 §3 - admin password recovery is reachable without a session
   const isPublicAuthPage = pathname === '/forgot-password' || pathname === '/reset-password';
   // Public tracking page: anyone with a tracking code can view a delivery's
   // timeline + live status without a login. This is the DHL-side of SEIRS
   // tracking. Same reason share.seirs.app/{code} URLs work in a browser.
   const isPublicTrackingPage = pathname === '/track' || pathname.startsWith('/track/');
 
-  // Unauthenticated — send to login (unless already on a public page)
+  // Unauthenticated - send to login (unless already on a public page)
   if (!token && !isLoginPage && !isPublicAuthPage && !isPublicTrackingPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
@@ -98,7 +98,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Already authenticated — skip login page
+  // Already authenticated - skip login page
   if (token && isLoginPage) {
     return NextResponse.redirect(new URL('/', request.url));
   }
@@ -122,14 +122,14 @@ export function middleware(request: NextRequest) {
 
       if (permission && !isAllowed(role, permission)) {
         // Forbidden: redirect to dashboard root if accessible, else just allow
-        // (never redirect to /login — that loops with the auth check above).
+        // (never redirect to /login - that loops with the auth check above).
         if (isAllowed(role, 'overview') && pathname !== '/') {
           const url = request.nextUrl.clone();
           url.pathname = '/';
           url.searchParams.set('denied', '1');
           return NextResponse.redirect(url);
         }
-        // No safe redirect target — let the page render with a "denied" banner
+        // No safe redirect target - let the page render with a "denied" banner
       }
     }
   }

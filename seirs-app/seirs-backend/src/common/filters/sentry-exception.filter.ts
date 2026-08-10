@@ -17,7 +17,7 @@ export class SentryExceptionFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
     // Only send 5xx (server faults) + uncaught non-HTTP errors to Sentry.
-    // 4xx are client errors — noisy and not actionable.
+    // 4xx are client errors - noisy and not actionable.
     const shouldReport =
       !(exception instanceof HttpException) || status >= 500;
 

@@ -9,10 +9,10 @@ import { User } from '../users/user.entity';
  *
  * SEIRS NEVER stores raw card numbers. Flutterwave tokenizes the card on
  * first successful payment and returns a reusable token (string like
- * `flw_tok_abc123`). We persist the token + display metadata only — the
+ * `flw_tok_abc123`). We persist the token + display metadata only - the
  * token is opaque to us; only Flutterwave can resolve it back to a card.
  *
- * Charges go through FlutterwaveService.chargeWithToken() — this keeps
+ * Charges go through FlutterwaveService.chargeWithToken() - this keeps
  * SEIRS entirely out of PCI-DSS scope.
  *
  * Distinct from the `PaymentMethod` ENUM in payment.entity.ts (which lists
@@ -31,7 +31,7 @@ export class SavedCard {
   @Column({ name: 'user_id', type: 'uuid' })
   userId!: string;
 
-  // Flutterwave's reusable card token. Treat as opaque + secret-ish — only
+  // Flutterwave's reusable card token. Treat as opaque + secret-ish - only
   // the backend uses it when initiating charges; never expose to clients.
   @Column({ name: 'flutterwave_token', type: 'varchar', length: 200 })
   flutterwaveToken!: string;
@@ -39,7 +39,7 @@ export class SavedCard {
   @Column({ type: 'varchar', length: 4 })
   last4!: string;
 
-  // 'visa' | 'mastercard' | 'verve' | 'amex' | etc — lowercase.
+  // 'visa' | 'mastercard' | 'verve' | 'amex' | etc - lowercase.
   @Column({ type: 'varchar', length: 20 })
   brand!: string;
 

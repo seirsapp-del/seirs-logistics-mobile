@@ -9,7 +9,7 @@ import {
 import { Driver } from './driver.entity';
 import { Delivery } from '../deliveries/delivery.entity';
 
-// Spec V8 §2.14 — three-tap driver status broadcast for flaky networks.
+// Spec V8 §2.14 - three-tap driver status broadcast for flaky networks.
 // Driver picks one of: network bad / stuck in traffic / need help.
 // Persisted here so admin can review the trail; fans out via WS to
 // admin room + active delivery room so the customer's tracking screen
@@ -29,7 +29,7 @@ export class DriverStatusBroadcast {
   @ManyToOne(() => Driver, { eager: false, onDelete: 'CASCADE' })
   driver: Driver;
 
-  // Optional — broadcasts during an active trip are scoped to that
+  // Optional - broadcasts during an active trip are scoped to that
   // delivery so only that customer's tracking screen receives the WS.
   @ManyToOne(() => Delivery, { eager: false, nullable: true, onDelete: 'SET NULL' })
   delivery: Delivery | null;

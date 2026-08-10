@@ -38,7 +38,7 @@ export class RegisterDto {
   @IsISO8601()
   termsAcceptedAt?: string;
 
-  // Spec V8 §1.13 — captured at registration via deep-link query param.
+  // Spec V8 §1.13 - captured at registration via deep-link query param.
   // Reward fulfilment moves into the referral module in a later batch;
   // for now the value is just stored on the user record for attribution.
   @IsOptional()

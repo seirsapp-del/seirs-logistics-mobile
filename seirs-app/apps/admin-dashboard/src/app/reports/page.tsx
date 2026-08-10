@@ -67,7 +67,7 @@ async function fetchReport(key: ReportKey): Promise<any[]> {
   switch (key) {
     case 'delivery_performance': {
       const data = await adminApi.analytics.deliveriesByStatus();
-      // Normalise — backend may return either an object or an array of {status,count}.
+      // Normalise - backend may return either an object or an array of {status,count}.
       if (Array.isArray(data)) return data;
       return Object.entries(data ?? {}).map(([status, count]) => ({ status, count }));
     }
@@ -147,7 +147,7 @@ export default function ReportsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100">
-                <span><span className="font-medium text-gray-700">Last run:</span> {lastRun[r.key] ?? '—'}</span>
+                <span><span className="font-medium text-gray-700">Last run:</span> {lastRun[r.key] ?? '-'}</span>
               </div>
               <button
                 onClick={() => generate(r.key, r.title)}

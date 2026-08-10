@@ -10,7 +10,7 @@ import {
 const STATUS_COLORS: Record<string, string> = {
   pending:    '#F59E0B',
   assigned:   '#3B82F6',
-  picked_up:  '#8B5CF6',
+  picked_up:  '#0F2B4C',
   in_transit: '#06B6D4',
   delivered:  '#10B981',
   failed:     '#EF4444',
@@ -185,7 +185,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Spec V8 — vehicle + category breakdown */}
+            {/* Spec V8 - vehicle + category breakdown */}
             <div className="grid grid-cols-2 gap-6">
               <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
                 <h2 className="text-sm font-semibold text-[#0F2B4C]/60 mb-4">Deliveries by Vehicle</h2>

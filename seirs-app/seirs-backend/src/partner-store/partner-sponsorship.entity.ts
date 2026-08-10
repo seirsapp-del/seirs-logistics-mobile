@@ -4,7 +4,7 @@ import {
 } from 'typeorm';
 import { PartnerStore } from '../business/partner-store.entity';
 
-// Spec V8 §4.11 — sponsored placement subscription.
+// Spec V8 §4.11 - sponsored placement subscription.
 // Each PartnerStore has at most ONE PartnerSponsorship row. When
 // ACTIVE, the store appears pinned at the top of the customer map
 // + drop-off picker for its service area. Monthly fee is read live
@@ -42,7 +42,7 @@ export class PartnerSponsorship {
   endedAt: Date | null;
 
   // Snapshot of the monthly fee at last invoice. The "live" current
-  // price for the UI comes from FeesService — this is what was actually
+  // price for the UI comes from FeesService - this is what was actually
   // billed for audit purposes.
   @Column({ type: 'integer', default: 0 })
   lastInvoicedFeeKobo: number;
@@ -60,7 +60,7 @@ export class PartnerSponsorship {
   invoiceCount: number;
 
   // Audit: count of failed Flutterwave subscription pulls. We do NOT
-  // auto-pause on first failure — many failures are transient (3DS
+  // auto-pause on first failure - many failures are transient (3DS
   // re-auth, network). After 3 consecutive fails the cron pauses
   // the row and emails the partner.
   @Column({ default: 0 })

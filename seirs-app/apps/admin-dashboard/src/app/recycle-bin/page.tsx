@@ -25,7 +25,7 @@ interface PendingDeletion {
 }
 
 const fmtRelative = (iso: string | null): string => {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const ms = new Date(iso).getTime() - Date.now();
   const days = Math.round(ms / (24 * 60 * 60 * 1000));
   if (days === 0) return 'today';
@@ -36,7 +36,7 @@ const fmtRelative = (iso: string | null): string => {
 };
 
 const fmtDate = (iso: string | null): string =>
-  iso ? new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  iso ? new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
 
 export default function RecycleBinPage() {
   const [rows, setRows]       = useState<PendingDeletion[]>([]);
@@ -98,8 +98,8 @@ export default function RecycleBinPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Pending deletions', value: loading ? '—' : rows.length,       icon: Trash2,     color: 'text-[#0F2B4C]' },
-          { label: 'Purging within 3 days', value: loading ? '—' : urgentCount,   icon: AlertTriangle, color: urgentCount > 0 ? 'text-red-600' : 'text-gray-400' },
+          { label: 'Pending deletions', value: loading ? '-' : rows.length,       icon: Trash2,     color: 'text-[#0F2B4C]' },
+          { label: 'Purging within 3 days', value: loading ? '-' : urgentCount,   icon: AlertTriangle, color: urgentCount > 0 ? 'text-red-600' : 'text-gray-400' },
           { label: 'Grace window',          value: '30 days',                     icon: Clock,      color: 'text-[#3A7BD5]' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
@@ -167,7 +167,7 @@ export default function RecycleBinPage() {
                         <Link href={`/users/${r.id}`} className="font-medium text-[#0F2B4C] hover:text-[#3A7BD5]">{r.name}</Link>
                         <div className="text-xs text-gray-500">{r.email}</div>
                       </td>
-                      <td className="px-4 py-3 text-xs font-mono text-gray-600">{r.accountId ?? '—'}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-gray-600">{r.accountId ?? '-'}</td>
                       <td className="px-4 py-3 text-xs">
                         <div className="text-gray-700">{fmtDate(r.deletionRequestedAt)}</div>
                         <div className="text-gray-400">{fmtRelative(r.deletionRequestedAt)}</div>
@@ -176,11 +176,11 @@ export default function RecycleBinPage() {
                         {r.deletionRequestedBy === 'self' ? (
                           <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">Self</span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">Admin</span>
+                          <span className="px-2 py-0.5 rounded-full bg-[#0F2B4C]/10 text-[#0F2B4C] font-medium">Admin</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-600 max-w-xs truncate" title={r.deletionReason ?? ''}>
-                        {r.deletionReason ?? '—'}
+                        {r.deletionReason ?? '-'}
                       </td>
                       <td className="px-4 py-3 text-xs">
                         <div className={`font-semibold ${urgent ? 'text-red-700' : 'text-gray-700'}`}>{fmtRelative(r.deletionScheduledAt)}</div>

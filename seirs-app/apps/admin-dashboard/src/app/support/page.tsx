@@ -10,7 +10,7 @@
  *
  * Access-gated at the backend (super_admin or support_agent). This
  * page renders for any admin, and the API rejects the queue fetch
- * with 403 for anyone else — surfaced inline as an empty state.
+ * with 403 for anyone else - surfaced inline as an empty state.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {

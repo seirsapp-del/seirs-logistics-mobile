@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-// Spec V8 §2 — multi-drop route optimisation. Pure TSP is NP-hard;
+// Spec V8 §2 - multi-drop route optimisation. Pure TSP is NP-hard;
 // a greedy nearest-neighbour heuristic gives ~25% worse than optimal
 // on average but completes in O(n²) which is fine for n ≤ 50 stops
 // (vehicle drop caps in spec). Recalculates per drop + on traffic
@@ -70,7 +70,7 @@ export class MultiDropRoutingService {
     };
   }
 
-  // Recalculate when traffic shifts >15% — swap remaining unvisited
+  // Recalculate when traffic shifts >15% - swap remaining unvisited
   // stops to the new optimal order based on current driver position.
   recomputeFromCurrentPosition(currentLat: number, currentLng: number, remainingStops: Stop[]): OptimizedRoute {
     return this.optimize(

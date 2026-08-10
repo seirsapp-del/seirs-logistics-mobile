@@ -9,7 +9,7 @@ interface CreateTicketInput {
   description: string;
   category?:   string;
   // Optional priority hint from the client. Backend may override based on
-  // category (e.g. driver behaviour → HIGH) — see resolvePriority.
+  // category (e.g. driver behaviour → HIGH) - see resolvePriority.
   priority?:   TicketPriority;
   // Free-form metadata. We keep tripId in the description for now so the
   // admin queue can search/filter on it without a new column.
@@ -35,7 +35,7 @@ export class TicketsService {
   async createForUser(user: User, input: CreateTicketInput): Promise<SupportTicket> {
     const description = [
       input.description,
-      input.tripId ? `\n\n— Linked trip: ${input.tripId}` : '',
+      input.tripId ? `\n\n- Linked trip: ${input.tripId}` : '',
     ].join('').trim();
 
     const ticket = this.repo.create({

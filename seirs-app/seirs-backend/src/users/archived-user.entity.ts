@@ -2,17 +2,17 @@ import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index,
 } from 'typeorm';
 
-// Spec V8 — NDPR Article 17 right to erasure. After 30 days in
+// Spec V8 - NDPR Article 17 right to erasure. After 30 days in
 // soft-deleted state (isActive=false), the daily cron migrates a user
 // here with reduced PII and hard-deletes from the main `users` table.
 //
 // What we keep (legal hold):
-//   - originalUserId   — link audit_logs / disputes still referencing them
-//   - emailHash        — sha256 of original email; lets us answer
+//   - originalUserId   - link audit_logs / disputes still referencing them
+//   - emailHash        - sha256 of original email; lets us answer
 //                        "did this address ever have an account?" without
 //                        retaining the address itself (NDPR pseudonymisation)
-//   - role + accountId — needed for ops queries about historical activity
-//   - timestamps       — when they joined, when soft-deleted, when archived
+//   - role + accountId - needed for ops queries about historical activity
+//   - timestamps       - when they joined, when soft-deleted, when archived
 //
 // What we discard (NDPR purge):
 //   - Real name, phone, address, profile photo, any free-text PII

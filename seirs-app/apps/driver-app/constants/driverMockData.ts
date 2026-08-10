@@ -106,7 +106,7 @@ export const MOCK_DRIVER_DELIVERIES = [
     price:       2100,
     driverEarnings: 0,
     date:        '2026-04-22T16:45:00Z',
-    duration:    '—',
+    duration:    '-',
     trackingCode: 'SRS-IK34GH56',
     rating:      null,
     ratingComment: null,
@@ -152,7 +152,7 @@ export const MOCK_DRIVER_EARNINGS = [
   { id: 'e3',  type: 'debit',  label: 'Withdrawal',      amount: 5000, date: '2026-04-23', tripId: null,   status: 'success' },
   { id: 'e4',  type: 'credit', label: 'Trip Payout',     amount: 1520, date: '2026-04-20', tripId: 'del4', status: 'success' },
   { id: 'e5',  type: 'credit', label: 'Trip Payout',     amount: 3840, date: '2026-04-18', tripId: 'del5', status: 'success' },
-  { id: 'e6',  type: 'credit', label: 'Bonus — Weekend', amount: 500,  date: '2026-04-14', tripId: null,   status: 'success' },
+  { id: 'e6',  type: 'credit', label: 'Bonus - Weekend', amount: 500,  date: '2026-04-14', tripId: null,   status: 'success' },
   { id: 'e7',  type: 'debit',  label: 'Withdrawal',      amount: 10000,date: '2026-04-10', tripId: null,   status: 'success' },
 ];
 
@@ -190,7 +190,7 @@ export const MOCK_DRIVER_MESSAGES = [
     messages: [
       { id: 'm1', text: 'Hello, I am on my way to your pickup location.',            from: 'me',       time: '10:24 AM' },
       { id: 'm2', text: 'Okay, I will be outside in 2 minutes.',                    from: 'customer', time: '10:25 AM' },
-      { id: 'm3', text: 'I am 3 minutes away. Silver Corolla — plate LND 423 GH.',  from: 'me',       time: '10:26 AM' },
+      { id: 'm3', text: 'I am 3 minutes away. Silver Corolla - plate LND 423 GH.',  from: 'me',       time: '10:26 AM' },
       { id: 'm4', text: 'Please hurry, I have a meeting.',                          from: 'customer', time: '10:28 AM' },
     ],
   },

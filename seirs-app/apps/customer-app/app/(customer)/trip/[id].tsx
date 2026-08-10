@@ -14,12 +14,12 @@ import { Button } from '@/components/ui/Button';
 import { deliveriesApi } from '@/services/api';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  pending:     { label: 'Pending',     color: '#3A86FF', icon: 'time-outline' },
-  assigned:    { label: 'Assigned',    color: '#3A86FF', icon: 'navigate-outline' },
+  pending:     { label: 'Pending',     color: '#3A7BD5', icon: 'time-outline' },
+  assigned:    { label: 'Assigned',    color: '#3A7BD5', icon: 'navigate-outline' },
   picked_up:   { label: 'Picked Up',   color: '#FF6B00', icon: 'cube-outline' },
-  in_transit:  { label: 'In Transit',  color: '#8B5CF6', icon: 'navigate' },
+  in_transit:  { label: 'In Transit',  color: '#0F2B4C', icon: 'navigate' },
   in_progress: { label: 'In Progress', color: '#FF6B00', icon: 'car-outline' },
-  completed:   { label: 'Completed',   color: '#22C55E', icon: 'checkmark-circle' },
+  completed:   { label: 'Completed',   color: '#16A34A', icon: 'checkmark-circle' },
   cancelled:   { label: 'Cancelled',   color: '#6B7280', icon: 'close-circle-outline' },
   failed:      { label: 'Failed',      color: '#EF4444', icon: 'alert-circle-outline' },
 };

@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { Driver } from './driver.entity';
 
-// Spec V8 §2.18 — driver declares an upcoming intercity trip. Matching
+// Spec V8 §2.18 - driver declares an upcoming intercity trip. Matching
 // service surfaces orphan packages whose pickup + dropoff lie along the
 // declared corridor. Admin board (Spec V8 §3.12) catalogues active
 // trips for ops to manually pair when auto-match misses.
@@ -38,7 +38,7 @@ export class DriverTrip {
   @Column({ type: 'timestamptz' })
   departAt: Date;
 
-  // Spare load the driver can take above their existing route — in kg.
+  // Spare load the driver can take above their existing route - in kg.
   @Column({ type: 'decimal', precision: 7, scale: 2, default: 0 })
   spareCapacityKg: number;
 

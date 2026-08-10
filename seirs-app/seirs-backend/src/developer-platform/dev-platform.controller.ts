@@ -50,8 +50,8 @@ export class DevPlatformController {
     return this.svc.getUsageStats(user.id);
   }
 
-  // ── Spec V8 §3.13 — Admin oversight (A48 + A49) ─────────────────────────
-  // Admin-only — reuses the same /dev-platform path tree so the existing
+  // ── Spec V8 §3.13 - Admin oversight (A48 + A49) ─────────────────────────
+  // Admin-only - reuses the same /dev-platform path tree so the existing
   // adminApi.devPlatform helpers extend naturally.
 
   @UseGuards(AdminGuard)
@@ -82,7 +82,7 @@ export class DevPlatformController {
   }
 
   // PATCH /api/v1/dev-platform/admin/keys/:keyId/rate-limit
-  // Body: { limitPerMin: number | null }  — null = revert to default
+  // Body: { limitPerMin: number | null }  - null = revert to default
   @UseGuards(AdminGuard)
   @Patch('admin/keys/:keyId/rate-limit')
   setKeyRateLimit(

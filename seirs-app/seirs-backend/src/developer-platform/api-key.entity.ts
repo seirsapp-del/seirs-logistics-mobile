@@ -2,7 +2,7 @@ import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index,
 } from 'typeorm';
 
-// Spec V8 Tier 3 — Developer Platform API key. Live + test variants
+// Spec V8 Tier 3 - Developer Platform API key. Live + test variants
 // distinguished by prefix (sk_live_xxx vs sk_test_xxx). HMAC secret
 // is required on every request as X-SEIRS-Signature; the key alone
 // can be revealed in the dashboard but the secret is shown ONCE on
@@ -21,7 +21,7 @@ export class ApiKey {
   @Column({ unique: true, length: 48 })
   publicKey: string;
 
-  // bcrypt hash of the HMAC signing secret — never store raw
+  // bcrypt hash of the HMAC signing secret - never store raw
   @Column({ select: false })
   secretHash: string;
 
@@ -34,7 +34,7 @@ export class ApiKey {
   @Column()
   name: string;
 
-  // Comma-separated CIDR list — empty means no restriction
+  // Comma-separated CIDR list - empty means no restriction
   @Column({ default: '' })
   ipAllowlist: string;
 
@@ -47,13 +47,13 @@ export class ApiKey {
   @Column({ default: true })
   active: boolean;
 
-  // Spec V8 §3.13 — admin override on the default per-key rate limit
+  // Spec V8 §3.13 - admin override on the default per-key rate limit
   // (60 req/min). Null means use default. Lets ops grant a high-volume
   // partner more headroom without changing the platform-wide limit.
   @Column({ type: 'integer', nullable: true })
   rateLimitOverridePerMin: number | null;
 
-  // Spec V8 §3.13 — set when admin suspends the owning developer
+  // Spec V8 §3.13 - set when admin suspends the owning developer
   // account (the whole organisation, not just one key). Surfaces in
   // the admin dev-accounts UI so ops can see why a key isn't firing.
   @Column({ type: 'text', nullable: true })

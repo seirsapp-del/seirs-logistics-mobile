@@ -13,7 +13,7 @@ import { DeliveryStatus } from './delivery.entity';
 export class DeliveriesController {
   constructor(private readonly deliveriesService: DeliveriesService) {}
 
-  // POST /api/v1/deliveries/quote — get price before booking
+  // POST /api/v1/deliveries/quote - get price before booking
   // Maintenance-guarded so we don't show prices for trips that can't be booked.
   @UseGuards(MaintenanceGuard)
   @Post('quote')
@@ -21,14 +21,14 @@ export class DeliveriesController {
     return this.deliveriesService.getQuote(dto);
   }
 
-  // POST /api/v1/deliveries — create delivery
+  // POST /api/v1/deliveries - create delivery
   @UseGuards(MaintenanceGuard)
   @Post()
   create(@Body() dto: CreateDeliveryDto, @CurrentUser() user: User) {
     return this.deliveriesService.create(dto, user);
   }
 
-  // GET /api/v1/deliveries?page=1&limit=20 — customer's delivery history
+  // GET /api/v1/deliveries?page=1&limit=20 - customer's delivery history
   @Get()
   myDeliveries(
     @CurrentUser() user: User,
@@ -65,13 +65,13 @@ export class DeliveriesController {
     return this.deliveriesService.getFeaturedPromotion();
   }
 
-  // GET /api/v1/deliveries/driver — active deliveries assigned to this driver
+  // GET /api/v1/deliveries/driver - active deliveries assigned to this driver
   @Get('driver')
   driverDeliveries(@CurrentUser() user: User) {
     return this.deliveriesService.findActiveByDriverUserId(user.id);
   }
 
-  // GET /api/v1/deliveries/available?lat=&lng=&radiusKm= — pending unassigned
+  // GET /api/v1/deliveries/available?lat=&lng=&radiusKm= - pending unassigned
   // jobs the driver could claim. Sorted by distance when lat/lng given.
   @Get('available')
   availableJobs(
@@ -85,7 +85,7 @@ export class DeliveriesController {
     return this.deliveriesService.findAvailable(numLat, numLng, radiusKm, limit);
   }
 
-  // GET /api/v1/deliveries/track/:code — public tracking by code (no login required)
+  // GET /api/v1/deliveries/track/:code - public tracking by code (no login required)
   @Public()
   @Get('track/:code')
   track(@Param('code') code: string) {
@@ -143,7 +143,7 @@ export class DeliveriesController {
     return this.deliveriesService.updateStatus(id, body.status, body.proofPhotoUrl);
   }
 
-  // GET /api/v1/deliveries/:id — single delivery with driver + breakdown
+  // GET /api/v1/deliveries/:id - single delivery with driver + breakdown
   // Must come AFTER all literal-segment routes above so they don't get
   // caught by :id.
   @Get(':id')
@@ -151,13 +151,13 @@ export class DeliveriesController {
     return this.deliveriesService.findByIdForUser(id, user.id);
   }
 
-  // POST /api/v1/deliveries/:id/email-receipt — resend the receipt email
+  // POST /api/v1/deliveries/:id/email-receipt - resend the receipt email
   @Post(':id/email-receipt')
   emailReceipt(@Param('id') id: string, @CurrentUser() user: User) {
     return this.deliveriesService.emailReceipt(id, user.id);
   }
 
-  // POST /api/v1/deliveries/:id/claim — driver picks up an unassigned job
+  // POST /api/v1/deliveries/:id/claim - driver picks up an unassigned job
   @Post(':id/claim')
   claim(@Param('id') id: string, @CurrentUser() user: User) {
     return this.deliveriesService.claimByDriver(id, user.id);

@@ -42,7 +42,7 @@ export class PaymentsService {
       where: { userId },
       order: { isDefault: 'DESC', createdAt: 'DESC' },
     });
-    // Strip the Flutterwave token from API responses — opaque + sensitive.
+    // Strip the Flutterwave token from API responses - opaque + sensitive.
     return cards.map(({ flutterwaveToken: _t, ...rest }) => rest as any);
   }
 
@@ -165,14 +165,14 @@ export class PaymentsService {
     }
 
     // Pull the card token from the completed transaction. If Flutterwave
-    // didn't return a token (unusual — some card types don't tokenize),
+    // didn't return a token (unusual - some card types don't tokenize),
     // fail loudly so we don't refund silently without a saved card.
     const cardMeta = await this.flutterwaveService.fetchCardTokenFromTransaction(verified.transactionId);
     if (!cardMeta?.token) {
       throw new BadRequestException('Card was charged but no reusable token was issued. Refund will still process.');
     }
 
-    // Save the card first — losing the token would be worse than a
+    // Save the card first - losing the token would be worse than a
     // failed refund (which ops can retry manually).
     await this.saveCardToken(userId, {
       token:    cardMeta.token,
@@ -183,7 +183,7 @@ export class PaymentsService {
       holder:   cardMeta.holder,
     });
 
-    // Refund the verification charge. Best-effort — if the refund API
+    // Refund the verification charge. Best-effort - if the refund API
     // fails, admin can trigger manually from Flutterwave dashboard, but
     // the card is already saved for the user.
     let refunded = false;
@@ -271,7 +271,7 @@ export class PaymentsService {
     return { authorizationUrl: paymentLink, reference: txRef, paymentId: payment.id };
   }
 
-  // COD — recorded as pending until driver confirms delivery
+  // COD - recorded as pending until driver confirms delivery
   async initiateCOD(delivery: Delivery, customer: User): Promise<Payment> {
     const payment = this.paymentsRepo.create({
       customer,
@@ -285,7 +285,7 @@ export class PaymentsService {
     return this.paymentsRepo.save(payment);
   }
 
-  // Wallet payment — deduct from customer wallet immediately
+  // Wallet payment - deduct from customer wallet immediately
   async payFromWallet(delivery: Delivery, customer: User): Promise<Payment> {
     const amountKobo = toKobo(delivery.price);
 
@@ -375,7 +375,7 @@ export class PaymentsService {
     return payment;
   }
 
-  // ── Escrow release — called when delivery is completed ────────────────────
+  // ── Escrow release - called when delivery is completed ────────────────────
 
   /**
    * Platform commission as a fraction (0.30 = 30%). Admin-tunable via
@@ -450,7 +450,7 @@ export class PaymentsService {
     );
   }
 
-  // ── Admin manual refund — Spec V8 §3.13 (closes A23) ─────────────────────
+  // ── Admin manual refund - Spec V8 §3.13 (closes A23) ─────────────────────
   // Wraps refundEscrow so the existing failure-driven path stays the
   // single source of truth. The reason is logged for audit.
   async manualRefund(args: {
@@ -486,7 +486,7 @@ export class PaymentsService {
     return { ok: true, refundedAtIso: new Date().toISOString() };
   }
 
-  // ── Refund escrow — called when delivery fails or cancels ────────────────
+  // ── Refund escrow - called when delivery fails or cancels ────────────────
 
   async refundEscrow(deliveryId: string, customerUserId: string): Promise<void> {
     const payment = await this.paymentsRepo.findOne({
@@ -526,7 +526,7 @@ export class PaymentsService {
       escrowStatus: EscrowStatus.REFUNDED,
     });
 
-    // Loyalty points awarded on the original payment must be clawed back —
+    // Loyalty points awarded on the original payment must be clawed back -
     // we don't want users farming points by paying then disputing.
     try {
       await this.loyaltyService.clawbackForDelivery(deliveryId);
@@ -560,7 +560,7 @@ export class PaymentsService {
       throw new BadRequestException('Please add a bank account before withdrawing.');
     }
 
-    // Deduct from wallet first — refund if transfer fails
+    // Deduct from wallet first - refund if transfer fails
     await this.dataSource.transaction(async (manager) => {
       await manager.update(Wallet, wallet.id, {
         balanceKobo: wallet.balanceKobo - amountKobo,
@@ -578,7 +578,7 @@ export class PaymentsService {
     });
 
     if (!success) {
-      // Restore wallet balance — transfer failed
+      // Restore wallet balance - transfer failed
       await this.walletsRepo.update(wallet.id, {
         balanceKobo: wallet.balanceKobo,
       });
@@ -587,7 +587,7 @@ export class PaymentsService {
 
     this.logger.log(`Withdrawal of ₦${amountNaira} sent to ${wallet.bankAccountNumber} (ref: ${reference})`);
 
-    // Flag large withdrawals for fraud review (async — non-blocking)
+    // Flag large withdrawals for fraud review (async - non-blocking)
     if (this.fraudService) {
       this.fraudService.checkWithdrawal(userId, amountKobo).catch(() => {});
     }

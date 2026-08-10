@@ -1,10 +1,10 @@
 /**
- * Nigerian region taxonomy for admin UI — mirrors the customer-app's
+ * Nigerian region taxonomy for admin UI - mirrors the customer-app's
  * constants/regions.ts but without bboxes/adjacency (admin doesn't need
  * runtime state detection; it just renders editors).
  *
  * Keep this in sync with the customer-app file when geopolitical zones
- * or state codes change (rare — these are political boundaries).
+ * or state codes change (rare - these are political boundaries).
  */
 
 export type GeopoliticalZone = 'NW' | 'NE' | 'NC' | 'SW' | 'SE' | 'SS';

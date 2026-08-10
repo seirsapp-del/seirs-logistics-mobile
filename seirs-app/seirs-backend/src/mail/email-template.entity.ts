@@ -6,13 +6,13 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-// Spec V8 §3.13 — admin-editable email template store. MailService
+// Spec V8 §3.13 - admin-editable email template store. MailService
 // consults this table on send; if no row exists for a key, it falls
 // back to the hardcoded default in mail.service.ts. Variables are
 // substituted as {{name}} {{otp}} etc. at render time.
 @Entity('email_templates')
 export class EmailTemplate {
-  // Logical key, e.g. "email_verification" — matches the seedKey list
+  // Logical key, e.g. "email_verification" - matches the seedKey list
   // in EmailTemplatesService so the admin UI knows what to show.
   @PrimaryColumn()
   key: string;
@@ -29,7 +29,7 @@ export class EmailTemplate {
   @Column({ type: 'jsonb', default: () => `'[]'` })
   vars: string[];
 
-  // false means "use the in-code default" — the row exists for audit
+  // false means "use the in-code default" - the row exists for audit
   // but won't be picked up by the renderer. Admin can flip without
   // deleting the override draft.
   @Column({ default: true })

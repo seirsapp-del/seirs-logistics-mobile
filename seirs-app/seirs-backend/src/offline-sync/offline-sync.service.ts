@@ -60,7 +60,7 @@ export class OfflineSyncService {
     return { accepted: rows.length, rejected };
   }
 
-  // Reconstruct a delivery's GPS trail from stored pings — used by
+  // Reconstruct a delivery's GPS trail from stored pings - used by
   // the customer trip-progress timeline and admin disputes view.
   async getTrail(deliveryId: string, since?: Date) {
     const where: any = { deliveryId };

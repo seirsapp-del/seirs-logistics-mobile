@@ -17,11 +17,11 @@ export function Section({ title, children }: { title: string; children: React.Re
   );
 }
 
-// Key/value field. Renders "—" when value is null/undefined/empty string so
+// Key/value field. Renders "-" when value is null/undefined/empty string so
 // missing data reads as intentional rather than broken.
 export function Field({ label, value }: { label: string; value: any }) {
-  const display = value === null || value === undefined || value === '' ? '—' : String(value);
-  const isEmpty = display === '—';
+  const display = value === null || value === undefined || value === '' ? '-' : String(value);
+  const isEmpty = display === '-';
   return (
     <div>
       <div className="text-xs text-gray-400">{label}</div>

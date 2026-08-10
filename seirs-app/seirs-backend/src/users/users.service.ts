@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Repository, IsNull, Not, LessThan, MoreThan } from 'typeorm';
@@ -375,7 +375,7 @@ export class UsersService implements OnModuleInit {
   }
 
   // Cancel a pending self-deletion. Called from the customer app banner
-  // "Your account will delete on X — Cancel?". No password re-entry needed
+  // "Your account will delete on X - Cancel?". No password re-entry needed
   // since the JWT already proves identity.
   async cancelDeletion(userId: string) {
     const user = await this.repo.findOne({ where: { id: userId } });

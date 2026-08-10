@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { RolesService } from './roles.service';
 
-// Spec V8 — admin role management. Super-admin-only; protected by
+// Spec V8 - admin role management. Super-admin-only; protected by
 // AdminGuard at the route level. UI gates the create/delete actions
 // further to super_admin via permission slug 'roles'.
 @UseGuards(JwtAuthGuard, AdminGuard)

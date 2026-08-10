@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Partner Store Applications — admin approval queue.
+ * Partner Store Applications - admin approval queue.
  *
  * Spec V8 hybrid-account (2026-05-11). Lists every PartnerStore that's
  * sitting in PENDING_REVIEW. Each card shows the user's KYC docs (storefront
@@ -60,7 +60,7 @@ export default function PartnerApplicationsPage() {
   };
 
   const reject = async (id: string) => {
-    const note = prompt('Rejection reason (required — applicant will see this so they know what to fix):');
+    const note = prompt('Rejection reason (required - applicant will see this so they know what to fix):');
     if (!note?.trim()) return;
     setBusyId(id);
     try {
@@ -178,7 +178,7 @@ function DocSlot({ label, url, required }: { label: string; url: string | null; 
         <ImageIcon size={20} className="mx-auto text-gray-300 mb-2" strokeWidth={1.5} />
         <div className="text-xs font-medium text-gray-500">{label}</div>
         <div className="text-[11px] text-gray-400 mt-0.5">
-          {required ? 'Required — missing' : 'Not provided (optional)'}
+          {required ? 'Required - missing' : 'Not provided (optional)'}
         </div>
       </div>
     );

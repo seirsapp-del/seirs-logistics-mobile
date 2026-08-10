@@ -16,12 +16,12 @@ import { deliveriesApi } from '@/services/api';
 
 // Display config minus the label (label is looked up via t('status.<key>')).
 const STATUS_CONFIG: Record<string, { color: string; icon: string }> = {
-  pending:     { color: '#3A86FF', icon: 'time-outline' },
-  assigned:    { color: '#3A86FF', icon: 'navigate-outline' },
+  pending:     { color: '#3A7BD5', icon: 'time-outline' },
+  assigned:    { color: '#3A7BD5', icon: 'navigate-outline' },
   picked_up:   { color: '#FF6B00', icon: 'cube-outline' },
-  in_transit:  { color: '#8B5CF6', icon: 'navigate' },
+  in_transit:  { color: '#0F2B4C', icon: 'navigate' },
   in_progress: { color: '#FF6B00', icon: 'car-outline' },
-  completed:   { color: '#22C55E', icon: 'checkmark-circle' },
+  completed:   { color: '#16A34A', icon: 'checkmark-circle' },
   cancelled:   { color: '#6B7280', icon: 'close-circle-outline' },
   failed:      { color: '#EF4444', icon: 'alert-circle-outline' },
 };

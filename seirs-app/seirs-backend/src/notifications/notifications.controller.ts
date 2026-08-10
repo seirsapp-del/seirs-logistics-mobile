@@ -69,7 +69,7 @@ export class NotificationsController {
   }
 
   // POST /api/v1/notifications/broadcast  (admin only)
-  // Spec V8 §3.13 — ops broadcast composer endpoint. Fans out one push
+  // Spec V8 §3.13 - ops broadcast composer endpoint. Fans out one push
   // to every user in the chosen audience. Returns { recipients, pushed }.
   @UseGuards(AdminGuard)
   @Post('broadcast')

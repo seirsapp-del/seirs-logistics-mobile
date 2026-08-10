@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Truck, MapPin, ArrowRight, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
-// Spec V8 §3.12 — interstate trip board. Surfaces driver-declared
+// Spec V8 §3.12 - interstate trip board. Surfaces driver-declared
 // intercity trips so ops can match orphaned long-haul packages or
 // override allocations.
 interface InterstateTrip {

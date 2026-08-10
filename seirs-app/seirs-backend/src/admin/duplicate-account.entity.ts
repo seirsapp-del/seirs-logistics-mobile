@@ -3,7 +3,7 @@ import {
   UpdateDateColumn, Index, Unique,
 } from 'typeorm';
 
-// Spec V8 §3.13 — admin-side duplicate account candidate. Created by
+// Spec V8 §3.13 - admin-side duplicate account candidate. Created by
 // AdminService.scanForDuplicates() and resolved manually by an admin
 // reviewing the /duplicates page (merge → loser is soft-flagged
 // merged_into the primary; dismiss → leave both untouched).
@@ -19,7 +19,7 @@ export enum DuplicateReason {
   EMAIL_LOOKALIKE   = 'email_lookalike',     // same domain, similar local-part
   SAME_PHONE        = 'same_phone',
   NAME_PHONE_MATCH  = 'name_phone_match',
-  NIN_MATCH         = 'nin_match',           // future — when NIN ingested
+  NIN_MATCH         = 'nin_match',           // future - when NIN ingested
 }
 
 @Entity('duplicate_accounts')
@@ -29,7 +29,7 @@ export class DuplicateAccountCandidate {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // The older account — the one the admin should keep on merge.
+  // The older account - the one the admin should keep on merge.
   // Convention: lower createdAt = primary.
   @Index()
   @Column({ type: 'uuid' })
@@ -39,7 +39,7 @@ export class DuplicateAccountCandidate {
   @Column({ type: 'uuid' })
   duplicateUserId: string;
 
-  // Denormalised for fast list rendering — kept in sync on scan.
+  // Denormalised for fast list rendering - kept in sync on scan.
   @Column() primaryName:      string;
   @Column() primaryEmail:     string;
   @Column({ nullable: true }) primaryPhone: string;
@@ -47,7 +47,7 @@ export class DuplicateAccountCandidate {
   @Column() duplicateEmail:   string;
   @Column({ nullable: true }) duplicatePhone: string;
 
-  // 0.0 - 1.0 — higher = more confident the match is a real duplicate.
+  // 0.0 - 1.0 - higher = more confident the match is a real duplicate.
   @Column({ type: 'decimal', precision: 3, scale: 2 })
   matchScore: number;
 

@@ -2,11 +2,11 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 
 
 // Verification methods tracked for audit per Spec V8 §1.17.
 export enum HandoffMethod {
-  PHYSICAL_ID = 'physical_id',  // ID document + email OTP — primary path
-  SEIRS_ID    = 'seirs_id',     // SEIRS Verified ID + typed-name signature — backup for recipients without ID
+  PHYSICAL_ID = 'physical_id',  // ID document + email OTP - primary path
+  SEIRS_ID    = 'seirs_id',     // SEIRS Verified ID + typed-name signature - backup for recipients without ID
 }
 
-// Where in the chain of custody this handoff occurred — feeds the
+// Where in the chain of custody this handoff occurred - feeds the
 // liability matrix used by adm.disputes.
 export enum HandoffStage {
   CUSTOMER_TO_STORE   = 'customer_to_store',
@@ -24,7 +24,7 @@ export enum HandoffStage {
 
 // Append-only chain-of-custody record. One row per successful transition.
 // Failed verifications are NOT stored here (they're rate-limited at the
-// service layer instead — storing failures invites a fishing oracle).
+// service layer instead - storing failures invites a fishing oracle).
 @Entity('handoff_records')
 export class HandoffRecord {
   @PrimaryGeneratedColumn('uuid')
@@ -48,11 +48,11 @@ export class HandoffRecord {
   @Column({ nullable: true })
   toUserId: string;
 
-  // Typed full name as digital signature — Nigerian Evidence Act §84
+  // Typed full name as digital signature - Nigerian Evidence Act §84
   @Column({ nullable: true })
   signatureName: string;
 
-  // Reference to a proof photo (R2 URL) — nullable when method bypasses photo
+  // Reference to a proof photo (R2 URL) - nullable when method bypasses photo
   @Column({ nullable: true })
   proofPhotoUrl: string;
 

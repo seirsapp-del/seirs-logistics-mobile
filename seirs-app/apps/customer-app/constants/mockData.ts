@@ -65,7 +65,7 @@ import { calcRideFare as _calcRideFare, calcPackageFare as _calcPackageFare } fr
 import { getActiveRateCard } from '@/hooks/use-rate-card';
 export { RIDE_VEHICLES, PACKAGE_VEHICLES, codHandlingFee, insurancePremium, dwellFee, cancellationFee, computeDiscounts, activeTimeSurcharges, resolveRegionalOverrides, fuelPerKm } from './rateCard';
 export type { Coords, RideFareResult, PackageFareResult, RegionalOverrides, DiscountOpts, DiscountResult } from './rateCard';
-// Curried wrappers — read the *live* rate card at call time so admin
+// Curried wrappers - read the *live* rate card at call time so admin
 // publishes propagate the next time a screen renders, no app restart.
 export const calcRideFare    = (vehicleId: string, distKm: number, shared: boolean, opts: Parameters<typeof _calcRideFare>[4]    = {}) => _calcRideFare(getActiveRateCard(), vehicleId, distKm, shared, opts);
 export const calcPackageFare = (vehicleId: string, distKm: number, kg: number,      opts: Parameters<typeof _calcPackageFare>[4] = {}) => _calcPackageFare(getActiveRateCard(), vehicleId, distKm, kg, opts);
@@ -150,7 +150,7 @@ export const MOCK_TRIPS = [
     dropoffLat: 6.4685, dropoffLng: 3.5852,
     price: 4800,
     date: '2026-04-28T09:00:00Z',
-    duration: '—',
+    duration: '-',
     distance: '18.6 km',
     driver: MOCK_DRIVERS[0],
     vehicleType: 'economy',
@@ -167,7 +167,7 @@ export const MOCK_TRIPS = [
     dropoffLat: 6.5712, dropoffLng: 3.3661,
     price: 2100,
     date: '2026-04-22T16:45:00Z',
-    duration: '—',
+    duration: '-',
     distance: '7.1 km',
     driver: null,
     vehicleType: 'economy',
@@ -287,7 +287,7 @@ export const HELP_FAQS = [
 ];
 
 // Kept for backwards compat with the few screens that still import it,
-// but prefer DEFAULT_MAP_REGION below — it doesn't assume the user is in
+// but prefer DEFAULT_MAP_REGION below - it doesn't assume the user is in
 // Lagos. The map zooms to GPS as soon as Location resolves anyway.
 export const LAGOS_COORDS = {
   latitude: 6.5244,
@@ -296,7 +296,7 @@ export const LAGOS_COORDS = {
   longitudeDelta: 0.04,
 };
 
-// Country-centre fallback (Nigeria) with wide zoom — used as the initial
+// Country-centre fallback (Nigeria) with wide zoom - used as the initial
 // MapView region until the device GPS resolves or pickup/dropoff is set.
 // Doesn't bias the user to any one region.
 export const DEFAULT_MAP_REGION = {

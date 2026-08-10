@@ -31,7 +31,7 @@ export class DevPlatformModule implements OnModuleInit {
     private readonly deliveriesService:  DeliveriesService,
   ) {}
 
-  // Lazy wire — DeliveriesModule can't import DevPlatformModule (circular)
+  // Lazy wire - DeliveriesModule can't import DevPlatformModule (circular)
   // but DevPlatformModule imports DeliveriesModule, so we set the
   // optional property on the deliveries service here.
   onModuleInit() {

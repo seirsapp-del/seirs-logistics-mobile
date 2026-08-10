@@ -2,7 +2,7 @@ import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index,
 } from 'typeorm';
 
-// Spec V8 Tier 3 — webhook subscription. Owner registers a URL +
+// Spec V8 Tier 3 - webhook subscription. Owner registers a URL +
 // list of events they want notified about; backend POSTs signed
 // payloads on each event.
 @Entity('webhook_endpoints')
@@ -69,7 +69,7 @@ export class WebhookDelivery {
   @Column({ nullable: true })
   deliveredAt: Date;
 
-  // Set by the retry cron — pending rows fire when nextAttemptAt <= now.
+  // Set by the retry cron - pending rows fire when nextAttemptAt <= now.
   // Null = "fire on next cron tick".
   @Index()
   @Column({ type: 'timestamptz', nullable: true })

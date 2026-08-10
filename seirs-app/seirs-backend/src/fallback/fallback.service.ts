@@ -32,7 +32,7 @@ export class FallbackService {
     private trackingGateway:    TrackingGateway,
   ) {}
 
-  // Central fallback handler — called by multiple triggers
+  // Central fallback handler - called by multiple triggers
   async handle(delivery: Delivery, reason: FallbackReason): Promise<FallbackResult> {
     this.logger.log(`Fallback triggered for delivery ${delivery.id}. Reason: ${reason}`);
 
@@ -47,7 +47,7 @@ export class FallbackService {
     }
 
     // Step 2: Escalate to partner logistics API
-    this.logger.log(`No driver available for ${delivery.id} — escalating to partner`);
+    this.logger.log(`No driver available for ${delivery.id} - escalating to partner`);
     const partnerDelivery = await this.partnersService.dispatchToPartner(delivery);
 
     if (partnerDelivery) {
@@ -70,9 +70,9 @@ export class FallbackService {
       };
     }
 
-    // Step 3: All options exhausted — mark as pending with admin alert
+    // Step 3: All options exhausted - mark as pending with admin alert
     // This is expected when no drivers are online and no partner companies are configured.
-    this.logger.warn(`All fallback options exhausted for delivery ${delivery.id} — returned to pending`);
+    this.logger.warn(`All fallback options exhausted for delivery ${delivery.id} - returned to pending`);
     await this.deliveriesRepo.update(delivery.id, {
       status: DeliveryStatus.PENDING,
     });

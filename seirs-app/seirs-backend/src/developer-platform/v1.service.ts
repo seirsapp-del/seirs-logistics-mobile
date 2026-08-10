@@ -12,7 +12,7 @@ import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { IdempotencyKey } from './idempotency-key.entity';
 import { AuthedApiKey } from './api-key.guard';
 
-// Spec V8 Tier 3 — V1 public API service. Wraps the internal services
+// Spec V8 Tier 3 - V1 public API service. Wraps the internal services
 // with sandbox routing + the publicly-stable request/response shape.
 // Internal entities (Delivery, etc.) are NOT exposed directly; we
 // always serialize to a curated DTO so internal schema changes don't
@@ -44,7 +44,7 @@ export interface V1OrderInput {
   categoryCode?:   string;
   weightKg?:       number;
   packageDescription?: string;
-  externalReference?:  string;  // partner's own order ID — round-tripped
+  externalReference?:  string;  // partner's own order ID - round-tripped
   scheduledAt?:    string;       // ISO; null = ASAP
 }
 
@@ -89,7 +89,7 @@ export class V1Service {
       throw new BadRequestException('Idempotency-Key already used on a different endpoint.');
     }
     if (row.expiresAt && row.expiresAt < new Date()) {
-      // Expired — purge and treat as new
+      // Expired - purge and treat as new
       this.idemRepo.delete(row.id).catch(() => {});
       return null;
     }
@@ -112,7 +112,7 @@ export class V1Service {
     if (res.affected) this.logger.log(`Purged ${res.affected} expired idempotency keys`);
   }
 
-  // ── Quote — works the same in live + test mode ───────────────────────────
+  // ── Quote - works the same in live + test mode ───────────────────────────
 
   async quote(input: V1QuoteInput) {
     if (!input.pickup || !input.dropoff) {
@@ -139,7 +139,7 @@ export class V1Service {
     };
   }
 
-  // ── Create order — sandbox returns a mock; live routes through
+  // ── Create order - sandbox returns a mock; live routes through
   // BusinessService.createDelivery so the same wallet/route/multi-stop
   // path serves partners and direct customers identically.
 
@@ -186,7 +186,7 @@ export class V1Service {
       };
     }
 
-    // ── LIVE — debits wallet, creates delivery, dispatches to matcher
+    // ── LIVE - debits wallet, creates delivery, dispatches to matcher
     const created = await this.businessService.createDelivery(apiKey.ownerUserId, {
       pickupAddress: input.pickup.address,
       pickupLat:     input.pickup.lat,
@@ -215,7 +215,7 @@ export class V1Service {
 
   async getOrder(apiKey: AuthedApiKey, orderId: string): Promise<V1OrderResponse> {
     if (apiKey.mode === 'test') {
-      // Sandbox orders aren't persisted — return a not-found unless the
+      // Sandbox orders aren't persisted - return a not-found unless the
       // ID has the sandbox_ prefix, in which case fabricate a stable
       // "pending" snapshot so partner code can poll without surprises.
       if (orderId.startsWith('sandbox_')) {

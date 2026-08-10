@@ -1,4 +1,4 @@
-// MUST stay at the very top — Sentry patches http/express/etc. on import
+// MUST stay at the very top - Sentry patches http/express/etc. on import
 // and any module loaded before it will be invisible to the SDK.
 import './common/instrument';
 
@@ -16,7 +16,7 @@ async function bootstrap() {
 
   if (isProduction && process.env.SYNC_DB === 'true') {
     console.warn(
-      '\n⚠️  WARNING: SYNC_DB=true in production — TypeORM will auto-alter tables on startup.\n' +
+      '\n⚠️  WARNING: SYNC_DB=true in production - TypeORM will auto-alter tables on startup.\n' +
       '   This can cause data loss if entities changed. Remove SYNC_DB after first deploy.\n',
     );
   }
@@ -27,7 +27,7 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Security headers — applied before all routes
+  // Security headers - applied before all routes
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -52,7 +52,7 @@ async function bootstrap() {
     exclude: ['v1/(.*)', 'v1'],
   });
 
-  // In production, uploads go to Cloudflare R2 — local static serving is dev-only
+  // In production, uploads go to Cloudflare R2 - local static serving is dev-only
   if (!isProduction) {
     app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
   }
@@ -73,7 +73,7 @@ async function bootstrap() {
 
   // Capture every unhandled exception to Sentry + return safe JSON.
   // Registered after pipes so validation errors still surface as 4xx
-  // through the framework (not reported — see filter for 5xx gating).
+  // through the framework (not reported - see filter for 5xx gating).
   app.useGlobalFilters(new SentryExceptionFilter());
 
   // Restrict CORS to declared origins. Set ALLOWED_ORIGINS as a comma

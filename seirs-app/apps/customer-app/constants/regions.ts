@@ -1,10 +1,10 @@
 /**
- * Nigerian region taxonomy — 36 states + FCT, grouped into 6 geopolitical
+ * Nigerian region taxonomy - 36 states + FCT, grouped into 6 geopolitical
  * zones. Used by the rate card to apply per-region pricing overrides,
  * detect state crossings for inter-state surcharges, and centre the map
  * on the user's actual region instead of defaulting to Lagos.
  *
- * State bounding boxes are approximate (±20km at borders) — good enough
+ * State bounding boxes are approximate (±20km at borders) - good enough
  * for state detection at fare-calc time on the customer-app. Backend
  * does the precise polygon check with PostGIS for billing.
  */
@@ -26,7 +26,7 @@ export interface NigerianState {
   zone:        GeopoliticalZone;
   /** Approximate bbox in WGS84: [latMin, latMax, lngMin, lngMax]. */
   bbox:        [number, number, number, number];
-  /** Capital city coords — used to centre the map when the state is known but no GPS. */
+  /** Capital city coords - used to centre the map when the state is known but no GPS. */
   capitalCoords: { latitude: number; longitude: number };
 }
 
@@ -100,10 +100,10 @@ const STATE_BY_CODE = NIGERIAN_STATES.reduce<Record<string, NigerianState>>((acc
   return acc;
 }, {});
 
-// ─── State adjacency (shared border) — used for inter-state surcharge tier ──
+// ─── State adjacency (shared border) - used for inter-state surcharge tier ──
 
 /**
- * Each state lists its land-border neighbours. Adjacency is symmetric — if
+ * Each state lists its land-border neighbours. Adjacency is symmetric - if
  * KN: [KT, JI, BA, KD] then KT: [...KN, ...] etc.
  *
  * Source: Nigerian Federal Government state border maps. International
@@ -177,7 +177,7 @@ export function statesInZone(zone: GeopoliticalZone): NigerianState[] {
  * Detect the Nigerian state containing the given coordinates by bounding-
  * box check. Returns null if outside Nigeria or no bbox matches. When
  * multiple bboxes overlap (border regions), returns the smallest matching
- * one — typically the more specific state.
+ * one - typically the more specific state.
  *
  * Accuracy: ±20 km at state borders. Good enough for inter-state surcharge
  * tiering. For billing-grade accuracy, ask backend (which uses PostGIS).
@@ -192,7 +192,7 @@ export function detectStateFromCoords(latitude: number, longitude: number): Stat
   }
   if (matches.length === 0) return null;
   if (matches.length === 1) return matches[0].code;
-  // Multiple overlap — prefer the smaller bbox (more specific).
+  // Multiple overlap - prefer the smaller bbox (more specific).
   matches.sort((a, b) => {
     const aArea = (a.bbox[1] - a.bbox[0]) * (a.bbox[3] - a.bbox[2]);
     const bArea = (b.bbox[1] - b.bbox[0]) * (b.bbox[3] - b.bbox[2]);
@@ -202,7 +202,7 @@ export function detectStateFromCoords(latitude: number, longitude: number): Stat
 }
 
 /**
- * Whether two states share a land border. Symmetric — order doesn't matter.
+ * Whether two states share a land border. Symmetric - order doesn't matter.
  * Same-state check returns false (use === for that).
  */
 export function areStatesAdjacent(a: StateCode | null, b: StateCode | null): boolean {
@@ -217,7 +217,7 @@ export function getStateZone(code: StateCode | null): GeopoliticalZone | null {
 }
 
 /**
- * "Same metro" check — two coords are within ~5 km of each other AND in
+ * "Same metro" check - two coords are within ~5 km of each other AND in
  * the same state. Used to decide whether a trip qualifies for intra-city
  * (no surcharge) vs intra-state-long-haul (small surcharge).
  */
@@ -230,7 +230,7 @@ export function isSameMetro(
   return detectStateFromCoords(lat1, lng1) === detectStateFromCoords(lat2, lng2);
 }
 
-/** Haversine distance in km — accurate enough for our zone checks. */
+/** Haversine distance in km - accurate enough for our zone checks. */
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const toRad = (d: number) => d * Math.PI / 180;

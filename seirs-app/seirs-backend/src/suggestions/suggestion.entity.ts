@@ -22,7 +22,7 @@ export enum SuggestionCategory {
   OTHER     = 'other',
 }
 
-// Spec V8 §3.13 — customer + driver feedback/feature-request channel.
+// Spec V8 §3.13 - customer + driver feedback/feature-request channel.
 // Submitters: any authenticated user. Voters: any authenticated user
 // (one vote per suggestion per user, tracked via SuggestionVote).
 @Entity('suggestions')

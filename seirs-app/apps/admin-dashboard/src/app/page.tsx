@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import {
@@ -382,13 +382,13 @@ function TargetsCard({ targets, onSave }: { targets: any; onSave: (p: { revenueN
 
 // Channel breakdown pie. Colour palette maps to source: customer_app is
 // SEIRS blue, business_app is emerald, partner_store is amber, developer_api
-// is purple. Anything unknown falls back to gray.
+// is navy. Anything unknown falls back to gray.
 function ChannelDonut({ data }: { data: Array<{ source: string; count: number }> }) {
   const COLOURS: Record<string, string> = {
     customer_app:  '#3A7BD5',
     business_app:  '#10B981',
     partner_store: '#F59E0B',
-    developer_api: '#8B5CF6',
+    developer_api: '#0F2B4C',
   };
   const LABELS: Record<string, string> = {
     customer_app:  'Customer app',
@@ -439,7 +439,7 @@ function ActivityStat({ label, value, color }: { label: string; value: number; c
 }
 
 // Speed-of-service card. Colour thresholds are ops-tuned: green below `good`,
-// amber between good and bad, red above bad. Renders "—" when we have no
+// amber between good and bad, red above bad. Renders "-" when we have no
 // sample data yet so an empty platform doesn't look broken.
 function SosCard({ label, seconds, good, bad }: { label: string; seconds: number | null; good: number; bad: number }) {
   const fmtDur = (s: number) => {
@@ -455,7 +455,7 @@ function SosCard({ label, seconds, good, bad }: { label: string; seconds: number
   return (
     <div>
       <div className={`text-xl font-bold ${colour}`}>
-        {seconds == null ? '—' : fmtDur(seconds)}
+        {seconds == null ? '-' : fmtDur(seconds)}
       </div>
       <div className="text-xs text-[#0F2B4C]/50 mt-1 leading-tight">{label}</div>
       <div className="text-xs text-[#0F2B4C]/30 mt-0.5">

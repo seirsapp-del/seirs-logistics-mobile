@@ -71,7 +71,7 @@ export class MailService {
   private smtpTransporter: nodemailer.Transporter | null = null;
 
   constructor(private readonly cfg: ConfigService) {
-    // ── Resend HTTP API (preferred — works on Railway/Heroku/etc) ────────────
+    // ── Resend HTTP API (preferred - works on Railway/Heroku/etc) ────────────
     // Cloud platforms commonly block outbound SMTP (port 465/587), so we use
     // Resend's HTTPS API directly. No domain verification needed if you keep
     // the default `Seirs <onboarding@resend.dev>` from-address. To send from
@@ -102,7 +102,7 @@ export class MailService {
     }
 
     this.logger.error(
-      'No mail credentials configured — set RESEND_API_KEY (or MAIL_HOST/MAIL_USER/MAIL_PASS). ' +
+      'No mail credentials configured - set RESEND_API_KEY (or MAIL_HOST/MAIL_USER/MAIL_PASS). ' +
       'OTP and password-reset emails will NOT be delivered.',
     );
   }
@@ -153,7 +153,7 @@ export class MailService {
       return;
     }
 
-    this.logger.warn(`[MAIL-NOOP] Would send "${subject}" to ${to} — no transport configured`);
+    this.logger.warn(`[MAIL-NOOP] Would send "${subject}" to ${to} - no transport configured`);
   }
 
   // ── Email verification OTP ──────────────────────────────────────────────────
@@ -176,10 +176,25 @@ export class MailService {
 
   // ── Password reset ──────────────────────────────────────────────────────────
 
-  async sendPasswordReset(to: string, name: string, token: string, audience: 'mobile' | 'admin' = 'mobile') {
+  // Audience picks the deep-link scheme. Audit 2026-08-10: every reset
+  // email used a single DEEP_LINK_BASE defaulting to seirsmobile:/, a
+  // scheme NO app registers (customer = seirscustomer, driver =
+  // seirsdriver, business = seirsbusiness), so tapping Reset Password
+  // opened nothing on any phone. 'mobile' kept as a legacy alias for
+  // customer.
+  async sendPasswordReset(
+    to: string, name: string, token: string,
+    audience: 'mobile' | 'admin' | 'customer' | 'driver' | 'business' = 'customer',
+  ) {
+    const SCHEMES: Record<string, string> = {
+      customer: this.cfg.get<string>('DEEP_LINK_BASE_CUSTOMER', 'seirscustomer:/'),
+      mobile:   this.cfg.get<string>('DEEP_LINK_BASE_CUSTOMER', 'seirscustomer:/'),
+      driver:   this.cfg.get<string>('DEEP_LINK_BASE_DRIVER',   'seirsdriver:/'),
+      business: this.cfg.get<string>('DEEP_LINK_BASE_BUSINESS', 'seirsbusiness:/'),
+    };
     const resetUrl = audience === 'admin'
       ? `${this.cfg.get<string>('ADMIN_WEB_URL', 'https://seirs-admin.vercel.app')}/reset-password?token=${token}`
-      : `${this.cfg.get<string>('DEEP_LINK_BASE', 'seirsmobile:/')}/reset-password?token=${token}`;
+      : `${SCHEMES[audience] ?? SCHEMES.customer}/reset-password?token=${token}`;
 
     const html = baseTemplate(`
       <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Reset your password</h2>
@@ -201,7 +216,7 @@ export class MailService {
     const html = baseTemplate(`
       <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Welcome to Seirs! 🎉</h2>
       <p>Hi ${name},</p>
-      <p>Your Seirs account is ready. You can now send and track packages across Africa and Europe — fast, affordable, and reliable.</p>
+      <p>Your Seirs account is ready. You can now send and track packages across Africa and Europe - fast, affordable, and reliable.</p>
       <p><strong>What you can do:</strong></p>
       <ul style="padding-left:20px;color:#374151">
         <li>Send packages with real-time tracking</li>
@@ -226,7 +241,7 @@ export class MailService {
     const html = baseTemplate(`
       <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Driver on the way!</h2>
       <p>Hi ${name},</p>
-      <p>Great news — a driver has been assigned to your delivery.</p>
+      <p>Great news - a driver has been assigned to your delivery.</p>
       <table style="background:#F9FAFB;border-radius:8px;padding:16px 20px;width:100%;margin:16px 0">
         <tr><td style="color:#6B7280;font-size:13px">Tracking Code</td>
             <td style="font-weight:bold;text-align:right">${trackingCode}</td></tr>
@@ -251,7 +266,7 @@ export class MailService {
       <p style="font-size:13px;color:#6B7280">Track your delivery in the Seirs app for live updates.</p>
     `);
 
-    await this.send(to, `Package picked up — ${trackingCode}`, html);
+    await this.send(to, `Package picked up - ${trackingCode}`, html);
   }
 
   // ── Delivery completed ───────────────────────────────────────────────────────
@@ -261,14 +276,14 @@ export class MailService {
       <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Package delivered! ${statusBadge('Delivered', '#16A34A')}</h2>
       <p>Hi ${name},</p>
       <p>Your package <strong>${trackingCode}</strong> has been successfully delivered. 🎉</p>
-      <p>How was your experience? Open the Seirs app to rate your driver — it helps us improve!</p>
+      <p>How was your experience? Open the Seirs app to rate your driver - it helps us improve!</p>
       <p style="font-size:13px;color:#9CA3AF;margin-top:24px">Thank you for choosing Seirs Logistics.</p>
     `);
 
-    await this.send(to, `Delivered — ${trackingCode}`, html);
+    await this.send(to, `Delivered - ${trackingCode}`, html);
   }
 
-  // Receipt resend — triggered by the customer tapping "Email receipt" on
+  // Receipt resend - triggered by the customer tapping "Email receipt" on
   // the in-app receipt screen. Plain-text fare breakdown for reliability.
   async sendDeliveryReceipt(
     to: string,
@@ -280,7 +295,7 @@ export class MailService {
   ) {
     const formattedDate = completedAt
       ? new Date(completedAt).toLocaleString('en-NG', { dateStyle: 'long', timeStyle: 'short' })
-      : '—';
+      : '-';
     const html = baseTemplate(`
       <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Your SEIRS receipt</h2>
       <p>Hi ${name},</p>
@@ -295,7 +310,7 @@ export class MailService {
       <p style="font-size:13px;color:#9CA3AF">Keep this email for your records. Reply to support@seirs.co if anything looks wrong.</p>
     `);
 
-    await this.send(to, `Receipt — ${trackingCode}`, html);
+    await this.send(to, `Receipt - ${trackingCode}`, html);
   }
 
   // ── Delivery failed ──────────────────────────────────────────────────────────
@@ -309,7 +324,7 @@ export class MailService {
       <p>Please contact <a href="mailto:support@seirs.co" style="color:${BRAND_BLUE}">support@seirs.co</a> if you need help.</p>
     `);
 
-    await this.send(to, `Delivery failed — ${trackingCode}`, html);
+    await this.send(to, `Delivery failed - ${trackingCode}`, html);
   }
 
   // ── Driver approved ──────────────────────────────────────────────────────────
@@ -325,7 +340,7 @@ export class MailService {
         <li>Tap <strong>"Go Online"</strong> on your home screen</li>
         <li>Start receiving delivery jobs near you</li>
       </ol>
-      <p style="font-size:13px;color:#9CA3AF">Earn more with Seirs — fast payouts, real-time support.</p>
+      <p style="font-size:13px;color:#9CA3AF">Earn more with Seirs - fast payouts, real-time support.</p>
     `);
 
     await this.send(to, 'Your Seirs driver account is approved!', html);
@@ -346,7 +361,7 @@ export class MailService {
     await this.send(to, 'Update on your Seirs driver application', html);
   }
 
-  // ── Handoff OTP (Spec V8 §1.17 — recipient verification at pickup) ──────────
+  // ── Handoff OTP (Spec V8 §1.17 - recipient verification at pickup) ──────────
 
   async sendHandoffOtp(to: string, name: string, otp: string, deliveryRef: string) {
     const html = baseTemplate(`
@@ -359,7 +374,7 @@ export class MailService {
                     font-weight:bold;color:${BRAND_NAVY}">${otp}</div>
       </div>
       <p style="font-size:13px;color:#9CA3AF">Delivery reference: ${deliveryRef}</p>
-      <p style="font-size:13px;color:#9CA3AF">Never share this code over the phone with anyone claiming to be Seirs support — we will never ask for it.</p>
+      <p style="font-size:13px;color:#9CA3AF">Never share this code over the phone with anyone claiming to be Seirs support - we will never ask for it.</p>
     `);
 
     await this.send(to, 'Your Seirs pickup verification code', html);

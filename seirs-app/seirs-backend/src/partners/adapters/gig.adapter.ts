@@ -3,7 +3,7 @@ import { IPartnerAdapter, PartnerBookingResult, PartnerQuote, PartnerTrackingRes
 import { Delivery } from '../../deliveries/delivery.entity';
 import { PricingService } from '../../deliveries/pricing.service';
 
-// GIG Logistics — Nigeria's largest logistics company
+// GIG Logistics - Nigeria's largest logistics company
 // API docs: https://giglogistics.com/api (illustrative)
 export class GigAdapter implements IPartnerAdapter {
   slug = 'gig';

@@ -25,7 +25,7 @@ export class Partner {
   name: string; // e.g. "GIG Logistics", "Kobo360", "DHL Express"
 
   @Column()
-  slug: string; // e.g. 'gig', 'kobo360', 'dhl' — used for adapter lookup
+  slug: string; // e.g. 'gig', 'kobo360', 'dhl' - used for adapter lookup
 
   @Column({ type: 'enum', enum: PartnerStatus, default: PartnerStatus.TESTING })
   status: PartnerStatus;

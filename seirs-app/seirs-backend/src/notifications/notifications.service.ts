@@ -26,7 +26,7 @@ export class NotificationsService {
    * Called by mobile apps after the user grants notification permission
    * on app launch / login. The token may be:
    *   - A native FCM token (Firebase Messaging)
-   *   - An Expo push token (ExponentPushToken[xxx]) — backend's FcmService
+   *   - An Expo push token (ExponentPushToken[xxx]) - backend's FcmService
    *     supports both because we send via Expo's push service in dev and
    *     FCM directly in production.
    * Empty/null tokens clear the field (e.g. on logout).
@@ -186,7 +186,7 @@ export class NotificationsService {
     return this.create(
       driverId,
       'New Delivery Job!',
-      `Earn ₦${Math.round(earnings).toLocaleString()} — package ${trackingCode} is ready for pickup.`,
+      `Earn ₦${Math.round(earnings).toLocaleString()} - package ${trackingCode} is ready for pickup.`,
       NotificationType.JOB_REQUEST,
       deliveryId,
       trackingCode,
@@ -202,7 +202,7 @@ export class NotificationsService {
     );
   }
 
-  // ── Admin broadcast — Spec V8 §3.13 ──────────────────────────────────────
+  // ── Admin broadcast - Spec V8 §3.13 ──────────────────────────────────────
   // Fan-out for ops events (service interruptions, weather alerts).
   // Resolves the audience to a user-id list, persists one notification
   // row per recipient (so they show up in the in-app notification
@@ -235,7 +235,7 @@ export class NotificationsService {
       await this.repo.save(rows);
     }
 
-    // FCM push — best-effort, ignore individual failures.
+    // FCM push - best-effort, ignore individual failures.
     let pushed = 0;
     const tokens = recipients.map(r => r.fcmToken).filter((t): t is string => !!t);
     await Promise.all(tokens.map(async token => {
@@ -243,12 +243,12 @@ export class NotificationsService {
       if (!stale) pushed++;
     }));
 
-    this.logger.log(`Broadcast to ${audience}${zone ? `:${zone}` : ''} — ${recipients.length} users, ${pushed} pushed`);
+    this.logger.log(`Broadcast to ${audience}${zone ? `:${zone}` : ''} - ${recipients.length} users, ${pushed} pushed`);
     return { recipients: recipients.length, pushed };
   }
 
   private async resolveAudience(audience: BroadcastAudience, zone?: string): Promise<Array<Pick<User, 'id' | 'fcmToken'>>> {
-    // 'specific_zone' is a future-ship — Geo-fence by city/LGA needs an
+    // 'specific_zone' is a future-ship - Geo-fence by city/LGA needs an
     // Address index, which isn't there yet. For now treat it as all
     // customers so the endpoint behaves predictably.
     if (audience === 'all_drivers') {

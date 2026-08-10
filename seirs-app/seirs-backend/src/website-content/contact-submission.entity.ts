@@ -2,7 +2,7 @@ import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index,
 } from 'typeorm';
 
-// Spec V8 §3.13 — public website contact form ingest. Persisted so
+// Spec V8 §3.13 - public website contact form ingest. Persisted so
 // ops can see every inbound enquiry even if email delivery fails,
 // and emailed to the appropriate inbox (support / business / legal)
 // based on subject. Doesn't require auth; throttled at the controller.
@@ -56,7 +56,7 @@ export class ContactSubmission {
   @Column({ type: 'text', nullable: true })
   userAgent: string;
 
-  // Admin reply note — surfaced in /admin/tickets follow-up flows later.
+  // Admin reply note - surfaced in /admin/tickets follow-up flows later.
   @Column({ type: 'text', nullable: true })
   internalNote: string;
 

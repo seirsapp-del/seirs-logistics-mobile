@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EmailTemplate } from './email-template.entity';
 
-// Spec V8 §3.13 — admin-editable email template store.
+// Spec V8 §3.13 - admin-editable email template store.
 //
 // MailService consults this on every transactional send. If no active
 // override exists for a key, the in-code default in mail.service.ts is
@@ -45,28 +45,28 @@ export const SEED_TEMPLATES: TemplateSeed[] = [
   },
   {
     key:      'delivery_assigned',
-    name:     'Delivery — Driver Assigned',
+    name:     'Delivery - Driver Assigned',
     subject:  'Your driver is on the way',
     bodyHtml: `<p>Hi {{name}},</p><p>{{driverName}} has been assigned to pick up your package <b>{{trackingCode}}</b>.</p>`,
     vars:     ['name', 'trackingCode', 'driverName'],
   },
   {
     key:      'delivery_picked_up',
-    name:     'Delivery — Picked Up',
+    name:     'Delivery - Picked Up',
     subject:  'Your package is in transit',
     bodyHtml: `<p>Hi {{name}},</p><p>Your package <b>{{trackingCode}}</b> is on its way to the recipient.</p>`,
     vars:     ['name', 'trackingCode'],
   },
   {
     key:      'delivery_complete',
-    name:     'Delivery — Complete',
+    name:     'Delivery - Complete',
     subject:  'Your delivery is complete',
     bodyHtml: `<p>Hi {{name}},</p><p>Your package <b>{{trackingCode}}</b> has been delivered. Tap inside the app to rate your driver.</p>`,
     vars:     ['name', 'trackingCode'],
   },
   {
     key:      'delivery_failed',
-    name:     'Delivery — Failed',
+    name:     'Delivery - Failed',
     subject:  'Delivery attempt failed',
     bodyHtml: `<p>Hi {{name}},</p><p>We could not complete delivery of <b>{{trackingCode}}</b>. Our support team will be in touch.</p>`,
     vars:     ['name', 'trackingCode'],
@@ -102,7 +102,7 @@ export class EmailTemplatesService implements OnModuleInit {
     @InjectRepository(EmailTemplate) private repo: Repository<EmailTemplate>,
   ) {}
 
-  // Idempotent seed — inserts the canonical SEED_TEMPLATES on first
+  // Idempotent seed - inserts the canonical SEED_TEMPLATES on first
   // boot. Existing rows are left alone so admin edits survive.
   async onModuleInit() {
     const count = await this.repo.count();
@@ -141,7 +141,7 @@ export class EmailTemplatesService implements OnModuleInit {
 
   // ── Admin ─────────────────────────────────────────────────────────────────
   // The admin UI merges this with SEED_TEMPLATES to render the editor
-  // catalogue — so unseeded templates still show in the list.
+  // catalogue - so unseeded templates still show in the list.
   async listForAdmin() {
     const rows = await this.repo.find();
     const byKey = new Map(rows.map(r => [r.key, r]));

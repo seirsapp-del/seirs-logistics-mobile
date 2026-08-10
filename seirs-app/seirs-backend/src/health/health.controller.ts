@@ -5,21 +5,21 @@ import { Public } from '../common/decorators/public.decorator';
 import { PricingService } from '../pricing/pricing.service';
 
 /**
- * GET /api/v1/health — public liveness + readiness probe.
+ * GET /api/v1/health - public liveness + readiness probe.
  *
  * Returns 200 with diagnostic JSON. Used by:
  *   - Railway healthcheck (set HEALTHCHECK_PATH=/api/v1/health in service settings)
  *   - Admin dashboard health page (`adm.healthDash`)
  *   - Manual `curl` smoke tests after a deploy
  *
- * Database round-trip is best-effort — a 500 here means TypeORM can't talk
+ * Database round-trip is best-effort - a 500 here means TypeORM can't talk
  * to Postgres, which is the most common reason for production outages
  * (Railway database restart, exhausted connection pool, etc.).
  *
  * Pricing block (post-2026-05-12) verifies the rate card + service catalog
  * seed completed AND the pricing math returns a sensible result for a
  * canned input. If `pricing.status !== "ok"` after a deploy, the
- * multi-stop booking flow will reject every request — fix immediately.
+ * multi-stop booking flow will reject every request - fix immediately.
  */
 @Controller('health')
 export class HealthController {

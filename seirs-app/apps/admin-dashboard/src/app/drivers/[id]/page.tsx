@@ -26,7 +26,7 @@ const DELIVERY_STATUS_COLORS: Record<string, string> = {
   pending:    'bg-yellow-100 text-yellow-800',
   delivered:  'bg-green-100 text-green-700',
   assigned:   'bg-blue-100 text-blue-700',
-  in_transit: 'bg-purple-100 text-purple-700',
+  in_transit: 'bg-cyan-100 text-cyan-700',
   cancelled:  'bg-gray-100 text-gray-500',
   failed:     'bg-red-100 text-red-700',
 };
@@ -78,8 +78,8 @@ export default function DriverDetailPage() {
     auditLog, fraudFlags,
   } = data;
 
-  const fmtDate = (d: any) => d ? new Date(d).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-  const fmtDateShort = (d: any) => d ? new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const fmtDate = (d: any) => d ? new Date(d).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+  const fmtDateShort = (d: any) => d ? new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -165,7 +165,7 @@ export default function DriverDetailPage() {
                   <FileText size={14} /> Vehicle Document
                 </a>
               ) : (
-                <span className="flex items-center gap-2 text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg"><FileText size={14} /> Vehicle doc — not uploaded</span>
+                <span className="flex items-center gap-2 text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg"><FileText size={14} /> Vehicle doc - not uploaded</span>
               )}
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function DriverDetailPage() {
           </Section>
         )}
 
-        {/* Identity verification — PII-gated reveal flow */}
+        {/* Identity verification - PII-gated reveal flow */}
         {identity && (
           <Section title="Identity verification">
             <Field label="Latest submission" value={identity.status} />

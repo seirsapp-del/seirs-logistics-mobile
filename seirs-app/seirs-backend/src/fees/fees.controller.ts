@@ -8,23 +8,23 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 
 // Two surfaces in one controller:
-//   1) Public read (GET /api/v1/fees) — clients can render price breakdowns
-//   2) Admin CRUD (GET/PATCH /api/v1/admin/fees/*) — Fee Catalogue UI
+//   1) Public read (GET /api/v1/fees) - clients can render price breakdowns
+//   2) Admin CRUD (GET/PATCH /api/v1/admin/fees/*) - Fee Catalogue UI
 //
-// Spec V8 §3.9 — Admin Fee Catalogue.
+// Spec V8 §3.9 - Admin Fee Catalogue.
 @Controller()
 export class FeesController {
   constructor(private readonly feesService: FeesService) {}
 
   // ── Public ─────────────────────────────────────────────────────────────
-  // GET /api/v1/fees — all active fees, cached 60s.
+  // GET /api/v1/fees - all active fees, cached 60s.
   @Public()
   @Get('fees')
   listPublic() {
     return this.feesService.getAllActive();
   }
 
-  // GET /api/v1/fees/:key — single fee value (public; cache-friendly).
+  // GET /api/v1/fees/:key - single fee value (public; cache-friendly).
   @Public()
   @Get('fees/:key')
   async getOnePublic(@Param('key') key: string) {

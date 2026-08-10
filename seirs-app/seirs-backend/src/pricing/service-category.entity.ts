@@ -3,12 +3,12 @@ import {
 } from 'typeorm';
 
 /**
- * Service category — what the business is shipping. Drives suggested
+ * Service category - what the business is shipping. Drives suggested
  * vehicle, dwell time, and category surcharges. Admin-editable from the
  * dashboard. Each booking references the category by `code`.
  *
  * Defaults seeded from seirs-pricing-spec.html (v1 12 May 2026). The
- * Nigerian reviewer may adjust before launch — see /admin/service-catalog.
+ * Nigerian reviewer may adjust before launch - see /admin/service-catalog.
  */
 @Entity('service_categories')
 export class ServiceCategory {

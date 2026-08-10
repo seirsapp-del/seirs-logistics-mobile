@@ -1,5 +1,5 @@
 /**
- * Default seed for the pricing system — matches seirs-pricing-spec.html
+ * Default seed for the pricing system - matches seirs-pricing-spec.html
  * v1 (12 May 2026). On first boot, the PricingService seeds these rows
  * if no active RateCard or ServiceCategory rows exist. The Nigerian
  * reviewer's JSON later overrides these via /admin/rate-card.
@@ -11,7 +11,7 @@
 export const DEFAULT_RATE_CARD = {
   version: 1,
   isActive: true,
-  changeReason: 'Initial seed — matches seirs-pricing-spec.html v1',
+  changeReason: 'Initial seed - matches seirs-pricing-spec.html v1',
 
   fuelPrices: {
     petrolPerLitreNgn: 950,
@@ -82,7 +82,7 @@ export const DEFAULT_RATE_CARD = {
   ],
 
   dwellBuffers: {
-    baselineMinutes: 2,   // every stop — Nigerian cultural buffer
+    baselineMinutes: 2,   // every stop - Nigerian cultural buffer
     estateMinutes:   2,   // compound / gated estate
     marketMinutes:   3,   // open market / stall
     govtMinutes:     5,   // government building / bank
@@ -114,24 +114,24 @@ export const DEFAULT_RATE_CARD = {
     restrictedZones:          [],
   },
 
-  // Regional pricing — six geopolitical zones + per-state overrides +
+  // Regional pricing - six geopolitical zones + per-state overrides +
   // admin-addable sub-zones. Matches customer-app's DEFAULT_RATE_CARD
   // (constants/rateCard.ts) so locally-computed quotes equal backend.
   regions: {
     zoneOverrides: {
-      SW: { rateMultiplier: 1.00, reason: 'Baseline — calibrated for SW urban (Lagos/Ibadan/Abeokuta).' },
+      SW: { rateMultiplier: 1.00, reason: 'Baseline - calibrated for SW urban (Lagos/Ibadan/Abeokuta).' },
       SE: { rateMultiplier: 0.95, reason: 'Lower wages + denser urban network.' },
-      SS: { rateMultiplier: 1.10, fuelPrices: { petrolNgn: 1050, dieselNgn: 1350 }, reason: 'Oil delta — security + fuel supply quirks.' },
+      SS: { rateMultiplier: 1.10, fuelPrices: { petrolNgn: 1050, dieselNgn: 1350 }, reason: 'Oil delta - security + fuel supply quirks.' },
       NC: { rateMultiplier: 1.05, reason: 'FCT premium + longer rural routes.' },
       NW: { rateMultiplier: 0.90, reason: 'Lower wage base + cheaper fuel access (Kano hub).' },
       NE: { rateMultiplier: 1.15, dwellBufferMin: 3, reason: 'Security premium (parts of Borno/Yobe/Adamawa).' },
     },
     stateOverrides: {
-      LA: { rateMultiplier: 1.10, reason: 'Lagos — traffic + higher cost of living.' },
-      FC: { rateMultiplier: 1.10, reason: 'FCT — institutional demand premium.' },
-      RI: { rateMultiplier: 1.15, reason: 'Port Harcourt — refinery/oil traffic + security.' },
-      BO: { rateMultiplier: 1.30, reason: 'Borno — heightened security across most LGAs.' },
-      KN: { rateMultiplier: 0.85, reason: 'Kano metro — cheaper than SW baseline.' },
+      LA: { rateMultiplier: 1.10, reason: 'Lagos - traffic + higher cost of living.' },
+      FC: { rateMultiplier: 1.10, reason: 'FCT - institutional demand premium.' },
+      RI: { rateMultiplier: 1.15, reason: 'Port Harcourt - refinery/oil traffic + security.' },
+      BO: { rateMultiplier: 1.30, reason: 'Borno - heightened security across most LGAs.' },
+      KN: { rateMultiplier: 0.85, reason: 'Kano metro - cheaper than SW baseline.' },
     },
     restrictedSubZones: [
       {
@@ -271,11 +271,11 @@ export const DEFAULT_SERVICE_CATEGORIES: Array<{
     setupDwellMinutes: 18, surchargePercent: 20,
     safetyRules: {
       blockedVehicles: ['bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small'],
-      warningCopy: 'Lumber requires a large truck — long loads are unsafe on smaller vehicles.',
+      warningCopy: 'Lumber requires a large truck - long loads are unsafe on smaller vehicles.',
     },
     sortOrder: 11 },
 
-  { code: 'house_move_single', name: 'House move — single item',
+  { code: 'house_move_single', name: 'House move - single item',
     examples: 'Sofa, fridge, wardrobe, bed',
     suggestedVehicles: ['van', 'truck_small'],
     setupDwellMinutes: 20, surchargePercent: 25,
@@ -285,13 +285,13 @@ export const DEFAULT_SERVICE_CATEGORIES: Array<{
     },
     sortOrder: 12 },
 
-  { code: 'house_move_full', name: 'House move — full unit',
+  { code: 'house_move_full', name: 'House move - full unit',
     examples: 'Studio / 1BR / 2BR / 3BR relocation',
     suggestedVehicles: ['truck_large'],
     setupDwellMinutes: 60, surchargePercent: 40,
     safetyRules: {
       blockedVehicles: ['bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small'],
-      warningCopy: 'Full house moves require a large truck and admin approval — contact support.',
+      warningCopy: 'Full house moves require a large truck and admin approval - contact support.',
     },
     sortOrder: 13 },
 
@@ -316,7 +316,7 @@ export const DEFAULT_SERVICE_CATEGORIES: Array<{
     sortOrder: 15 },
 
   { code: 'other', name: 'Other / Special',
-    examples: 'Anything not listed — free text',
+    examples: 'Anything not listed - free text',
     suggestedVehicles: ['car', 'van'],
     setupDwellMinutes: 5, surchargePercent: 0,
     safetyRules: {

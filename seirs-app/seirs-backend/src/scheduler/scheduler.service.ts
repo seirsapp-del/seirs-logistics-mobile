@@ -33,7 +33,7 @@ export class SchedulerService {
 
     if (!stalled.length) return;
 
-    this.logger.warn(`Found ${stalled.length} stalled deliveries — triggering fallback`);
+    this.logger.warn(`Found ${stalled.length} stalled deliveries - triggering fallback`);
 
     for (const delivery of stalled) {
       if (this.fallbackService) {

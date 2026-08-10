@@ -17,7 +17,7 @@ export enum PromoStatus {
   PAUSED    = 'paused',
 }
 
-// Spec V8 §3.13 + customer §1.13 — promo code redemption store.
+// Spec V8 §3.13 + customer §1.13 - promo code redemption store.
 @Entity('promotions')
 export class Promotion {
   @PrimaryGeneratedColumn('uuid')
@@ -43,7 +43,7 @@ export class Promotion {
   @Column({ type: 'integer', nullable: true })
   maxDiscountKobo: number | null;
 
-  // Optional floor — promo only applies if subtotal >= this kobo amount.
+  // Optional floor - promo only applies if subtotal >= this kobo amount.
   @Column({ type: 'integer', default: 0 })
   minSubtotalKobo: number;
 

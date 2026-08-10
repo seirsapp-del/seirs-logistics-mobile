@@ -50,7 +50,7 @@ export class AuthService {
 
   // Must stay in sync with shared/utils/password.ts (frontend source of truth)
   // and the @Matches() rule on register.dto.ts. Requires: 8+ chars, uppercase,
-  // lowercase, digit, AND symbol (not OR — Flutterwave-style policy).
+  // lowercase, digit, AND symbol (not OR - Flutterwave-style policy).
   private static readonly PASSWORD_REGEX =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]).{8,}$/;
   private static readonly PASSWORD_HELP =
@@ -85,13 +85,13 @@ export class AuthService {
 
   /**
    * Canonicalise email so one inbox = one account, regardless of `+` aliases.
-   * 2026-05-11 — closes the abuse loophole where a single user could create
+   * 2026-05-11 - closes the abuse loophole where a single user could create
    * unlimited accounts via `me+a@gmail.com`, `me+b@gmail.com`, etc. (each
    * delivering to the same inbox so each passes OTP).
    *
    * Strips `+suffix` for providers that ignore it: Gmail, iCloud, FastMail.
    * Yahoo uses `-` as their alias separator; we strip that for yahoo.com too.
-   * Other providers (Outlook, custom domains) get pass-through — `+` may be
+   * Other providers (Outlook, custom domains) get pass-through - `+` may be
    * a literal valid character in their addressing.
    */
   static canonicalEmail(raw: string): string {
@@ -158,7 +158,7 @@ export class AuthService {
       const driver = this.driversRepo.create({
         user,
         vehicleType:    dto.vehicleType,
-        // Spec V8 §2.9 — driver referral attribution. Same code shape
+        // Spec V8 §2.9 - driver referral attribution. Same code shape
         // as customers (8-char uppercase). Stored on both the user
         // and driver row for downstream reward fulfilment.
         referredByCode: dto.referralCode?.trim().toUpperCase() || null,
@@ -259,7 +259,7 @@ export class AuthService {
 
     // New soft-delete flow leaves isActive=true during the grace window;
     // the presence of deletionScheduledAt is what signals pending deletion.
-    // Bans set isActive=false without deletionScheduledAt — those still
+    // Bans set isActive=false without deletionScheduledAt - those still
     // fail login. Merged accounts fail with a specific message.
     if (!user.isActive) {
       if (user.mergedIntoUserId) {
@@ -291,7 +291,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    // Successful password match — reset failed attempt counter but leave
+    // Successful password match - reset failed attempt counter but leave
     // any pending deletion untouched. The app surfaces the deletion state
     // via `pendingDeletion` in the auth response and the user cancels
     // explicitly via /users/me/cancel-deletion.
@@ -423,15 +423,21 @@ export class AuthService {
       passwordResetExpiry: expiry,
     });
 
-    // Admins receive a web URL (admin dashboard); everyone else gets the
-    // seirsmobile:// deep link that opens the app's reset screen.
-    const audience = user.role === UserRole.ADMIN ? 'admin' : 'mobile';
+    // Admins receive a web URL (admin dashboard); everyone else gets a
+    // deep link in THEIR app's scheme. One email = one account = one
+    // role, so the role fully determines which app to open: driver ->
+    // seirsdriver, business (businessAccountId set) -> seirsbusiness,
+    // else customer.
+    const audience =
+      user.role === UserRole.ADMIN  ? 'admin' :
+      user.role === UserRole.DRIVER ? 'driver' :
+      user.businessAccountId        ? 'business' : 'customer';
     await this.mailService.sendPasswordReset(user.email, user.name, token, audience);
 
     return { message: 'If that email exists, a reset link has been sent.' };
   }
 
-  // Spec V8 — logged-in password change. Requires current password as
+  // Spec V8 - logged-in password change. Requires current password as
   // proof so a stolen session token alone can't lock the user out.
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const user = await this.usersRepo
@@ -541,13 +547,13 @@ export class AuthService {
 
     // Every business signup gets a sender business account (the bulk-dispatch
     // wallet + recurring deliveries surface). Partner mode is *additive* on
-    // top — applied for later via the Settings upgrade flow.
+    // top - applied for later via the Settings upgrade flow.
     const biz = this.bizRepo.create({
       ownerId:         user.id,
       companyName:     data.companyName ?? data.name,
       rcNumber:        data.rcNumber ?? '',
       businessAddress: data.businessAddress ?? '',
-      // Structured parts (2026-05-11) — sent by the new register UI; older
+      // Structured parts (2026-05-11) - sent by the new register UI; older
       // clients omit them, which is fine because the columns are nullable.
       state:           data.state ?? null,
       city:            data.city ?? null,
@@ -560,7 +566,7 @@ export class AuthService {
 
     // If they ALSO picked "I'm a Partner Store" at signup, queue the partner
     // application as PENDING_REVIEW. canPartner stays false until admin
-    // approves — backwards-compatible with the existing one-role-per-signup
+    // approves - backwards-compatible with the existing one-role-per-signup
     // mental model while unlocking the path for the new hybrid pattern.
     if (isPartnerSignup) {
       const store = this.storeRepo.create({
@@ -687,10 +693,10 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
-  // Spec V8 §3.6 — sliding-window refresh for admin sessions. Called
+  // Spec V8 §3.6 - sliding-window refresh for admin sessions. Called
   // from /auth/refresh on user activity so an actively-working admin
   // doesn't get bounced mid-action. Non-admins also get a fresh token
-  // (cheap, harmless — keeps the helper generic for all clients).
+  // (cheap, harmless - keeps the helper generic for all clients).
   async refreshToken(userId: string) {
     const user = await this.usersRepo.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('Account not found.');
@@ -700,13 +706,13 @@ export class AuthService {
 
   private async buildAuthResponse(user: User) {
     const payload = { sub: user.id, email: user.email, role: user.role, adminRole: user.adminRole };
-    // Spec V8 §3.6 — admin sessions must time out at 30min. Other
+    // Spec V8 §3.6 - admin sessions must time out at 30min. Other
     // user roles keep the platform default (7d) so customers don't
     // get bounced to login every time they reopen the app.
     const isAdmin = user.role === UserRole.ADMIN;
     const token   = this.jwtService.sign(payload, isAdmin ? { expiresIn: '30m' } : {});
 
-    // Spec V8 — resolve dynamic role permissions if assigned. The
+    // Spec V8 - resolve dynamic role permissions if assigned. The
     // admin client uses this to render the sidebar + gate page access
     // without hardcoding the permission map.
     let roleSlug:    string | null = null;

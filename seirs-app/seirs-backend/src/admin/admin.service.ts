@@ -1,4 +1,4 @@
-﻿import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, MoreThan, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -636,7 +636,7 @@ export class AdminService {
     // ── Monthly target vs actual ──
     // Targets stored in platform_config; actuals summed for the current
     // calendar month. Returns pct as an integer 0-999 (can exceed 100 when
-    // month is running hot — that's a feature, not a bug).
+    // month is running hot - that's a feature, not a bug).
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const [targetRows, monthRevenueRaw, monthDeliveryCount] = await Promise.all([
       this.configRepo.find({

@@ -3,9 +3,9 @@ import {
   UpdateDateColumn, Index, Unique,
 } from 'typeorm';
 
-// Spec V8 — public website CMS. Distinct from CmsItem (which targets
+// Spec V8 - public website CMS. Distinct from CmsItem (which targets
 // in-app banners/stories/promotions); WebsiteContent powers the
-// marketing site at seirs.app — news articles, FAQ, changelog, and
+// marketing site at seirs.app - news articles, FAQ, changelog, and
 // the inline "page block" copy chunks that replace hardcoded headers
 // on the homepage / how-it-works pages.
 //
@@ -13,11 +13,11 @@ import {
 // Next.js ISR (revalidate: 60), so a publish appears within ~1 min.
 
 export enum WebContentType {
-  ARTICLE     = 'article',       // /news/[slug] — blog + news + press
+  ARTICLE     = 'article',       // /news/[slug] - blog + news + press
   CHANGELOG   = 'changelog',     // /changelog page entries
   FAQ         = 'faq',           // /faq page entries
-  PAGE_BLOCK  = 'page_block',    // inline copy block — slug = "home_hero", etc.
-  JOB_LISTING = 'job_listing',   // /careers/[slug] — open roles
+  PAGE_BLOCK  = 'page_block',    // inline copy block - slug = "home_hero", etc.
+  JOB_LISTING = 'job_listing',   // /careers/[slug] - open roles
 }
 
 export enum WebContentStatus {
@@ -45,7 +45,7 @@ export class WebsiteContent {
   slug: string;
 
   @Column({ type: 'varchar', length: 8, default: 'en' })
-  lang: string;        // 'en' | 'yo' | 'ig' | 'ha' — schema-ready for i18n; UI ships en-only
+  lang: string;        // 'en' | 'yo' | 'ig' | 'ha' - schema-ready for i18n; UI ships en-only
 
   @Column()
   title: string;
@@ -63,7 +63,7 @@ export class WebsiteContent {
   @Column({ type: 'text', nullable: true })
   coverImageUrl: string | null;
 
-  // SEO meta — falls back to title + excerpt when blank.
+  // SEO meta - falls back to title + excerpt when blank.
   @Column({ type: 'text', nullable: true })
   seoTitle: string | null;
 
@@ -79,7 +79,7 @@ export class WebsiteContent {
   @Column({ type: 'varchar', length: 20, default: WebContentStatus.DRAFT })
   status: WebContentStatus;
 
-  // For SCHEDULED rows — the cron flips them to PUBLISHED when this ≤ now.
+  // For SCHEDULED rows - the cron flips them to PUBLISHED when this ≤ now.
   @Column({ type: 'timestamptz', nullable: true })
   publishAt: Date | null;
 

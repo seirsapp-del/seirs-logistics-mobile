@@ -56,7 +56,7 @@ export async function reportError(error: unknown, opts: ReportOptions = {}): Pro
       body: JSON.stringify(payload),
     });
   } catch {
-    // Swallow — never let the reporter itself crash the app.
+    // Swallow - never let the reporter itself crash the app.
   }
 }
 
@@ -66,7 +66,7 @@ export function installGlobalErrorHandler(): void {
   if (_installed) return;
   _installed = true;
 
-  // React Native's ErrorUtils — the original handler still fires (red
+  // React Native's ErrorUtils - the original handler still fires (red
   // box in dev, app crash in production); we just piggyback to report.
   const ErrorUtils: any = (global as any).ErrorUtils;
   if (ErrorUtils?.setGlobalHandler) {

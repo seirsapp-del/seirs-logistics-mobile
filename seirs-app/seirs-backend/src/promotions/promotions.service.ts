@@ -106,7 +106,7 @@ export class PromotionsService {
   async remove(id: string) {
     const row = await this.getOne(id);
     if (row.usageCount > 0) {
-      throw new ForbiddenException('Cannot delete a promotion that has been used — pause it instead.');
+      throw new ForbiddenException('Cannot delete a promotion that has been used - pause it instead.');
     }
     await this.repo.remove(row);
     return { ok: true };

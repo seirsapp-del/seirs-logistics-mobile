@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PoolGroup } from './pool-group.entity';
 
-const POOL_TIME_CAP_PCT  = 20;   // Spec V8 §1 — insertion can add at most +20% time
+const POOL_TIME_CAP_PCT  = 20;   // Spec V8 §1 - insertion can add at most +20% time
 const CORRIDOR_RADIUS_KM = 1;    // Pickup/dropoff must lie within 1km of route
 const MAX_ACTIVE_LEGS    = 4;    // Sliding capacity bound
 
@@ -35,7 +35,7 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 }
 
 // Perpendicular distance from a point to the great-circle line between
-// two endpoints. Approximation via cross-track distance — good enough
+// two endpoints. Approximation via cross-track distance - good enough
 // at city scale where the line is nearly straight.
 function pointToLineKm(
   pLat: number, pLng: number,
@@ -88,7 +88,7 @@ export class PoolingService {
       );
       if (dropoffOff > CORRIDOR_RADIUS_KM) continue;
 
-      // Time cap check — projected ETA after insertion can't exceed
+      // Time cap check - projected ETA after insertion can't exceed
       // initialEtaMinutes by more than POOL_TIME_CAP_PCT.
       const projected = g.currentEtaMinutes + input.newLegEtaMinutes;
       const cap = g.initialEtaMinutes * (1 + POOL_TIME_CAP_PCT / 100);

@@ -78,7 +78,7 @@ export class PricingController {
   @Put('admin/rate-card')
   async publishRateCard(@Body() body: Partial<RateCard> & { changeReason: string; activatedBy: string }) {
     if (!body.changeReason) {
-      throw new BadRequestException('changeReason is required — explain what changed and why.');
+      throw new BadRequestException('changeReason is required - explain what changed and why.');
     }
 
     // Deactivate the current active card and increment version.

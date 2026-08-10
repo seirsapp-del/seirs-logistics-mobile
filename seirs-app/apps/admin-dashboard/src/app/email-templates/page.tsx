@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Mail, Save, Eye, AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
-// Spec V8 §3.13 — admin-editable transactional email templates.
+// Spec V8 §3.13 - admin-editable transactional email templates.
 // Reads /admin/email-templates: defaults come from the in-code seed,
 // overrides come from the email_templates table. Saving a draft
 // upserts an override row that the mail renderer picks up on next send.
@@ -188,7 +188,7 @@ export default function EmailTemplatesPage() {
                     checked={active}
                     onChange={e => { setActive(e.target.checked); setSaved(false); }}
                   />
-                  Override is <b>active</b> — uncheck to revert to in-code default without losing this draft
+                  Override is <b>active</b> - uncheck to revert to in-code default without losing this draft
                 </label>
 
                 <div className="flex gap-2">

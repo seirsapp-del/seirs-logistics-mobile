@@ -16,7 +16,7 @@ export class RolesService implements OnModuleInit {
     @InjectRepository(User) private usersRepo: Repository<User>,
   ) {}
 
-  // Idempotent — only inserts roles whose slug isn't already present.
+  // Idempotent - only inserts roles whose slug isn't already present.
   // Existing system roles are NEVER overwritten so any custom permission
   // tweaks an admin made stick.
   async onModuleInit() {
@@ -88,7 +88,7 @@ export class RolesService implements OnModuleInit {
     const usersWithRole = await this.usersRepo.count({ where: { roleId: id } });
     if (usersWithRole > 0) {
       throw new BadRequestException(
-        `Cannot delete — ${usersWithRole} user${usersWithRole === 1 ? '' : 's'} still assigned to this role. Reassign them first.`,
+        `Cannot delete - ${usersWithRole} user${usersWithRole === 1 ? '' : 's'} still assigned to this role. Reassign them first.`,
       );
     }
 
@@ -119,7 +119,7 @@ export class RolesService implements OnModuleInit {
           .getCount();
         if (otherSupers === 0) {
           throw new ForbiddenException(
-            'Cannot demote the last Super Admin — promote someone else first.',
+            'Cannot demote the last Super Admin - promote someone else first.',
           );
         }
       }

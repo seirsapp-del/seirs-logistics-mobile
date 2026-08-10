@@ -9,7 +9,7 @@ import { LoyaltyService } from './loyalty.service';
  *   POST /loyalty/redeem    → redeem points (₦500 off, free delivery, etc.)
  *
  * Internal earn calls (delivery_complete, referral_bonus, rate_driver) are
- * triggered by other services — not exposed publicly to prevent grinding.
+ * triggered by other services - not exposed publicly to prevent grinding.
  */
 @UseGuards(JwtAuthGuard)
 @Controller('loyalty')

@@ -87,9 +87,9 @@ export default function PartnersPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Partners', value: loading ? '—' : stats.total, icon: Store },
-          { label: 'Approved',       value: loading ? '—' : stats.approved, icon: Package },
-          { label: 'Pending Review', value: loading ? '—' : stats.pending, icon: MapPin },
+          { label: 'Total Partners', value: loading ? '-' : stats.total, icon: Store },
+          { label: 'Approved',       value: loading ? '-' : stats.approved, icon: Package },
+          { label: 'Pending Review', value: loading ? '-' : stats.pending, icon: MapPin },
         ].map(({ label, value, icon: Icon }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[#0F2B4C]/8 flex items-center justify-center">
@@ -209,10 +209,10 @@ export default function PartnersPage() {
                     <td className="px-4 py-3 font-medium text-[#0F2B4C]">{s.storeName}</td>
                     <td className="px-4 py-3 text-gray-600 flex items-center gap-1">
                       <MapPin size={12} className="text-gray-400 shrink-0" />
-                      <span className="truncate max-w-xs">{s.storeAddress || '—'}</span>
+                      <span className="truncate max-w-xs">{s.storeAddress || '-'}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.maxCapacity ?? '—'}/day</td>
+                    <td className="px-4 py-3 text-gray-600">{s.phone || '-'}</td>
+                    <td className="px-4 py-3 text-gray-600">{s.maxCapacity ?? '-'}/day</td>
                     <td className="px-4 py-3 text-gray-600 text-xs">{s.openTime}–{s.closeTime}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[s.status] ?? STATUS_STYLES.rejected}`}>

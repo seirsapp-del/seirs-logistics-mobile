@@ -10,7 +10,7 @@ const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-yellow-100 text-yellow-800',
   delivered:  'bg-green-100 text-green-700',
   assigned:   'bg-blue-100 text-blue-700',
-  in_transit: 'bg-purple-100 text-purple-700',
+  in_transit: 'bg-cyan-100 text-cyan-700',
   cancelled:  'bg-gray-100 text-gray-500',
   failed:     'bg-red-100 text-red-700',
 };
@@ -87,7 +87,7 @@ export default function UserDetailPage() {
     finally { setSaving(false); }
   };
 
-  // Spec V8 §3.13 — NDPR admin tools (A32 + A33)
+  // Spec V8 §3.13 - NDPR admin tools (A32 + A33)
   const exportData = async () => {
     try {
       const bundle = await adminApi.ndpr.exportUser(id);
@@ -127,8 +127,8 @@ export default function UserDetailPage() {
     auditLog, driverRecord, fraudFlags,
   } = data;
 
-  const fmtDate = (d: any) => d ? new Date(d).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-  const fmtDateShort = (d: any) => d ? new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const fmtDate = (d: any) => d ? new Date(d).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+  const fmtDateShort = (d: any) => d ? new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -144,7 +144,7 @@ export default function UserDetailPage() {
               <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${
                 user.role === 'customer' ? 'bg-blue-100 text-blue-700' :
                 user.role === 'driver'   ? 'bg-orange-100 text-orange-700' :
-                                           'bg-purple-100 text-purple-700'
+                                           'bg-[#0F2B4C] text-white'
               }`}>{user.role}</span>
               {user.isActive !== false ? (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
@@ -215,7 +215,7 @@ export default function UserDetailPage() {
               <button
                 onClick={promoteToAdmin}
                 disabled={saving}
-                className="text-sm px-4 py-2 rounded-lg font-medium bg-purple-100 text-purple-700 hover:bg-purple-200"
+                className="text-sm px-4 py-2 rounded-lg font-medium bg-[#0F2B4C]/10 text-[#0F2B4C] hover:bg-[#0F2B4C]/20"
               >
                 Promote to Admin
               </button>
@@ -230,7 +230,7 @@ export default function UserDetailPage() {
             <button
               onClick={exportData}
               className="text-sm px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
-              title="NDPR Article 24 — right to data portability"
+              title="NDPR Article 24 - right to data portability"
             >
               Export NDPR data
             </button>
@@ -269,7 +269,7 @@ export default function UserDetailPage() {
           <Field label="Home address" value={user.homeAddress ? [user.homeAddress.street, user.homeAddress.city, user.homeAddress.state].filter(Boolean).join(', ') : null} />
         </Section>
 
-        {/* Identity verification — document URLs are PII-redacted in the
+        {/* Identity verification - document URLs are PII-redacted in the
             initial response. Reveal is a separate role-gated + audit-logged
             action; see IdentityDocsReveal component below. */}
         {identity && (
@@ -286,7 +286,7 @@ export default function UserDetailPage() {
           </Section>
         )}
 
-        {/* Financial — bank fields only for drivers. Customers pay via
+        {/* Financial - bank fields only for drivers. Customers pay via
             Flutterwave Inline (card/USSD), never direct debit, so a bank
             row on a customer is meaningless and leaks unnecessary PII. */}
         <Section title="Financial">
@@ -303,10 +303,10 @@ export default function UserDetailPage() {
         {driverRecord && (
           <Section title="Driver record">
             <Field label="Status" value={driverRecord.status} />
-            <Field label="Vehicle" value={`${driverRecord.vehicleType ?? '—'} · ${driverRecord.vehiclePlate ?? 'no plate'}`} />
+            <Field label="Vehicle" value={`${driverRecord.vehicleType ?? '-'} · ${driverRecord.vehiclePlate ?? 'no plate'}`} />
             <Field label="Online" value={driverRecord.isOnline ? 'Yes' : 'No'} />
             <Field label="Rating" value={driverRecord.rating != null ? `${Number(driverRecord.rating).toFixed(1)} ★` : null} />
-            <Field label="Total deliveries" value={driverRecord.totalDeliveries?.toLocaleString?.() ?? '—'} />
+            <Field label="Total deliveries" value={driverRecord.totalDeliveries?.toLocaleString?.() ?? '-'} />
             <Field label="Last location update" value={fmtDate(driverRecord.locationUpdatedAt)} />
           </Section>
         )}

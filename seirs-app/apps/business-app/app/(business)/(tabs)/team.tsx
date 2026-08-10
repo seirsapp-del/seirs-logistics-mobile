@@ -17,7 +17,7 @@ const TEAM_ROLES = [
 const ROLE_COLOR: Record<string, string> = {
   owner:      '#0F2B4C',
   manager:    '#3A7BD5',
-  dispatcher: '#7C3AED',
+  dispatcher: '#16A34A',
   viewer:     '#6B7280',
 };
 

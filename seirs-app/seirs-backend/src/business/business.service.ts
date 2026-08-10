@@ -89,7 +89,7 @@ export class BusinessService {
     private dataSource: DataSource,
   ) {}
 
-  // ── Spec V8 §4.2 — Recurring Delivery Templates ───────────────────────────
+  // ── Spec V8 §4.2 - Recurring Delivery Templates ───────────────────────────
 
   async createRecurringTemplate(userId: string, body: {
     name: string;
@@ -203,7 +203,7 @@ export class BusinessService {
     return next;
   }
 
-  // Cron — every 5 minutes scan for due templates, fire each, schedule
+  // Cron - every 5 minutes scan for due templates, fire each, schedule
   // the next run. Failures bump errorCount + lastError so the owner
   // can see them in the UI; we don't disable on a single failure.
   @Cron('*/5 * * * *')
@@ -495,7 +495,7 @@ export class BusinessService {
         // after topping up.
         throw new BadRequestException(
           `Wallet was debited by another booking while you were submitting. ` +
-          `Current balance: ₦${liveBalance.toFixed(2)} — needed ₦${total.toFixed(2)}.`,
+          `Current balance: ₦${liveBalance.toFixed(2)} - needed ₦${total.toFixed(2)}.`,
         );
       }
 
@@ -592,7 +592,7 @@ export class BusinessService {
         businessAccountId: biz.id,
         type:           'debit',
         amount:         total,
-        description:    `Delivery — ${dto.stops.length} stop(s), ${dto.vehicleType}, ${category.name}`,
+        description:    `Delivery - ${dto.stops.length} stop(s), ${dto.vehicleType}, ${category.name}`,
         reference:      trackingCode,
         balanceBefore:  balBefore,
         balanceAfter:   balAfter,
@@ -643,7 +643,7 @@ export class BusinessService {
   }
 
   /**
-   * Driver tapped "Delivered" — recipient has the package. Stamps
+   * Driver tapped "Delivered" - recipient has the package. Stamps
    * deliveredAt. If this was the last stop, flips the parent Delivery
    * to delivered + stamps actualCompletedAt.
    */
@@ -696,7 +696,7 @@ export class BusinessService {
   }
 
   /**
-   * Bulk CSV upload — PREVIEW step.
+   * Bulk CSV upload - PREVIEW step.
    *
    * Parses incoming rows against the spec §⑬ schema (booking_ref,
    * pickup_address, recipient_*, dropoff_address, category, weight_kg,
@@ -780,7 +780,7 @@ export class BusinessService {
         errors.push(`vehicle_override "${vehicleOverride}" is not a known vehicle type`);
       }
 
-      // Geocoding — only if address fields validated
+      // Geocoding - only if address fields validated
       let pickup: ParsedRow['pickup'] = { address: pickupAddress };
       let drop:   ParsedRow['drop']   = { address: dropAddress };
       if (pickupAddress) {
@@ -997,7 +997,7 @@ export class BusinessService {
       where: { id: memberId, businessAccountId: biz.id },
     });
     if (!member) throw new NotFoundException('Team member not found.');
-    // Spec V8 §4.6 — owner row can't be removed via this endpoint
+    // Spec V8 §4.6 - owner row can't be removed via this endpoint
     // (gets removed automatically when the account is closed).
     if (member.teamRole === 'owner') {
       throw new ForbiddenException('Cannot remove the account owner via this endpoint.');
@@ -1006,9 +1006,9 @@ export class BusinessService {
     return { message: 'Team member removed.' };
   }
 
-  // Spec V8 §4.6 — team-role gate. Owner detected by biz.ownerId match;
+  // Spec V8 §4.6 - team-role gate. Owner detected by biz.ownerId match;
   // other roles by email match against a BusinessTeamMember row (members
-  // aren't stored with userId — they can sign up before/after being
+  // aren't stored with userId - they can sign up before/after being
   // invited, and we match on email at join time). Throws
   // ForbiddenException with TEAM_ROLE_REQUIRED if the caller's role
   // isn't in `allowed`.
@@ -1029,7 +1029,7 @@ export class BusinessService {
     }
   }
 
-  // ─── Business Sender: Cancel scheduled delivery (Spec V8 — B13) ──────────
+  // ─── Business Sender: Cancel scheduled delivery (Spec V8 - B13) ──────────
   async cancelMyDelivery(userId: string, deliveryId: string, reason?: string) {
     const biz = await this.getBizAccount(userId);
     await this.requireTeamRole(userId, biz.id, ['owner', 'manager', 'dispatcher']);
@@ -1044,7 +1044,7 @@ export class BusinessService {
     }
     if (![DeliveryStatus.PENDING, DeliveryStatus.ASSIGNED].includes(delivery.status as any)) {
       throw new BadRequestException(
-        `Cannot cancel a ${delivery.status} delivery — only pending or assigned orders can be cancelled.`,
+        `Cannot cancel a ${delivery.status} delivery - only pending or assigned orders can be cancelled.`,
       );
     }
 
@@ -1053,7 +1053,7 @@ export class BusinessService {
     return { ok: true, status: 'cancelled' };
   }
 
-  // ─── Business profile editor (Spec V8 — B21) ────────────────────────────
+  // ─── Business profile editor (Spec V8 - B21) ────────────────────────────
   async getBusinessProfile(userId: string) {
     const biz = await this.getBizAccount(userId);
     const myRole = await this.lookupMyTeamRole(userId, biz.id);

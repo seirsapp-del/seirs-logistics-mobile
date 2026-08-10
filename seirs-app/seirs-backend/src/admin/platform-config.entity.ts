@@ -9,12 +9,12 @@ import {
  * (returned with isEditable: false to the UI).
  *
  * Keys in use:
- *   support_email          — public support inbox shown on the website
- *   max_active_deliveries  — soft cap; matching service refuses new pickups above this
- *   maintenance_mode       — 'on' | 'off'; when 'on' the apps render a maintenance screen
- *   platform_name          — display name (read-only; literally "Seirs Logistics")
- *   default_currency       — read-only at launch; FX is v1.1
- *   default_timezone       — read-only
+ *   support_email          - public support inbox shown on the website
+ *   max_active_deliveries  - soft cap; matching service refuses new pickups above this
+ *   maintenance_mode       - 'on' | 'off'; when 'on' the apps render a maintenance screen
+ *   platform_name          - display name (read-only; literally "Seirs Logistics")
+ *   default_currency       - read-only at launch; FX is v1.1
+ *   default_timezone       - read-only
  */
 @Entity('platform_config')
 export class PlatformConfig {

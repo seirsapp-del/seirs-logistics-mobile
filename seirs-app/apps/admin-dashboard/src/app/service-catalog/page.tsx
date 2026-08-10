@@ -7,7 +7,7 @@
  * the safety rules that block or warn certain vehicles.
  *
  * Saves are per-row via PUT /admin/service-catalog/:code. No versioning
- * here — categories are simple enough that history isn't worth the
+ * here - categories are simple enough that history isn't worth the
  * extra UI. Apps refresh from /config/service-catalog within 5 min.
  */
 'use client';

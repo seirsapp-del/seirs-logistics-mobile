@@ -1,4 +1,4 @@
-﻿import {
+import {
   Controller, Get, Post, Patch, Delete, Param, Body,
   UseGuards, Query, Req, BadRequestException,
 } from '@nestjs/common';
@@ -583,7 +583,7 @@ export class AdminController {
     return this.adminService.reopenDeliveryChat(id, admin, body ?? { reason: '' }, req.ip);
   }
 
-  // POST /api/v1/admin/deliveries/:id/close-chat — end a re-open early.
+  // POST /api/v1/admin/deliveries/:id/close-chat - end a re-open early.
   @Post('deliveries/:id/close-chat')
   closeReopenedChat(
     @Param('id') id: string,
