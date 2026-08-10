@@ -11,12 +11,15 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { HELP_FAQS } from '@/constants/mockData';
 
 // Labels resolved via t() at render so language switches reflect live.
+// Chips map to the FAQ topic tags directly (audit 2026-08-10: the old
+// keyword matchers never actually filtered anything; safety could not
+// match at all).
 const TOPICS = [
-  { icon: 'car-outline',          labelKey: 'trips',    filter: (q: string) => q.toLowerCase().includes('cancel') || q.toLowerCase().includes('driver') },
-  { icon: 'wallet-outline',       labelKey: 'payments', filter: (q: string) => q.toLowerCase().includes('top up') || q.toLowerCase().includes('payment') },
-  { icon: 'star-outline',         labelKey: 'rewards',  filter: (q: string) => q.toLowerCase().includes('reward') || q.toLowerCase().includes('point') },
-  { icon: 'shield-outline',       labelKey: 'safety',   filter: (q: string) => false },
-  { icon: 'person-outline',       labelKey: 'account',  filter: (q: string) => q.toLowerCase().includes('account') || q.toLowerCase().includes('profile') },
+  { icon: 'cube-outline',   labelKey: 'trips',    tag: 'Deliveries' },
+  { icon: 'wallet-outline', labelKey: 'payments', tag: 'Payments' },
+  { icon: 'star-outline',   labelKey: 'rewards',  tag: 'Rewards' },
+  { icon: 'shield-outline', labelKey: 'safety',   tag: 'Safety' },
+  { icon: 'person-outline', labelKey: 'account',  tag: 'Account' },
 ];
 
 export default function HelpScreen() {
@@ -31,8 +34,9 @@ export default function HelpScreen() {
   const [topic,      setTopic]      = useState<string | null>(null);
 
   const filteredFaqs = HELP_FAQS.filter(faq => {
+    const matchesTopic = !topic || (faq as any).topic === topic;
     const matchesQuery = !query.trim() || faq.q.toLowerCase().includes(query.toLowerCase()) || faq.a.toLowerCase().includes(query.toLowerCase());
-    return matchesQuery;
+    return matchesTopic && matchesQuery;
   });
 
   return (
@@ -69,14 +73,13 @@ export default function HelpScreen() {
         {/* Quick contact */}
         <View style={styles.contactRow}>
           {[
-            // Chat 5 (2026-08-09): live chat is no longer coming soon.
-            // Opens the in-app support inbox; a new ticket lands the user
-            // straight in a thread with a SEIRS agent.
-            { icon: 'chatbubble-ellipses-outline', label: 'Live Chat',  sub: '6am–10pm WAT reply', color: '#3A86FF',
-              onPress: () => router.push('/(customer)/support' as any) },
-            { icon: 'call-outline',                label: 'Call Us',    sub: '0700-SEIRS-01',    color: '#22C55E',
+            // Straight to a NEW ticket (founder 2026-08-10: no bouncing
+            // through the Messages tab). Brand palette: sky/green/navy.
+            { icon: 'chatbubble-ellipses-outline', label: 'Live Chat',  sub: '6am–10pm WAT reply', color: '#3A7BD5',
+              onPress: () => router.push('/(customer)/support/new' as any) },
+            { icon: 'call-outline',                label: 'Call Us',    sub: '0700-SEIRS-01',    color: '#16A34A',
               onPress: () => Linking.openURL('tel:07007347701').catch(() => Alert.alert('Could not open dialer')) },
-            { icon: 'mail-outline',                label: 'Email',      sub: 'support@seirs.app', color: '#8B5CF6',
+            { icon: 'mail-outline',                label: 'Email',      sub: 'support@seirs.app', color: '#0F2B4C',
               onPress: () => Linking.openURL('mailto:support@seirs.app').catch(() => Alert.alert('Could not open email')) },
           ].map(c => (
             <Pressable
@@ -99,19 +102,20 @@ export default function HelpScreen() {
             <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('help2.browseByCategory')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topicRow}>
               {TOPICS.map(topicItem => {
-                const label = t(`help2.${topicItem.labelKey}`);
+                const label  = t(`help2.${topicItem.labelKey}`);
+                const active = topic === topicItem.tag;
                 return (
                   <Pressable
                     key={topicItem.labelKey}
                     style={[
                       styles.topicChip,
-                      { borderColor: topic === label ? theme.primary : theme.border },
-                      topic === label && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
+                      { borderColor: active ? theme.primary : theme.border },
+                      active && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
                     ]}
-                    onPress={() => setTopic(prev => prev === label ? null : label)}
+                    onPress={() => setTopic(prev => prev === topicItem.tag ? null : topicItem.tag)}
                   >
-                    <Ionicons name={topicItem.icon as any} size={14} color={topic === label ? theme.primary : theme.textSecond} />
-                    <Text style={[styles.topicText, { color: topic === label ? theme.primary : theme.textSecond }]}>{label}</Text>
+                    <Ionicons name={topicItem.icon as any} size={14} color={active ? theme.primary : theme.textSecond} />
+                    <Text style={[styles.topicText, { color: active ? theme.primary : theme.textSecond }]}>{label}</Text>
                   </Pressable>
                 );
               })}

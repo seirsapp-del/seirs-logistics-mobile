@@ -270,13 +270,20 @@ export const SAVED_CARDS = [
   { id: 'card2', last4: '8874', brand: 'Mastercard', expiry: '12/26', isDefault: false },
 ];
 
+// Verified against the live system 2026-08-10 (founder audit): the old
+// answers included an invented ₦200/3-minute cancellation fee and a
+// "top up my wallet" flow that violates the customers-never-hold-NGN
+// policy (Wallet is Rewards; customers pay per delivery).
 export const HELP_FAQS = [
-  { q: 'How do I cancel a ride?', a: 'You can cancel a ride within 3 minutes of booking without any charge. After 3 minutes, a ₦200 cancellation fee applies.' },
-  { q: 'How do I top up my wallet?', a: 'Go to Wallet → Top Up. You can fund your wallet via bank transfer, card, or USSD.' },
-  { q: 'What happens if my driver doesn\'t show up?', a: 'If your driver cancels or does not arrive, you will not be charged. You can request another driver immediately.' },
-  { q: 'How do I report a lost item?', a: 'Go to your trip history, open the trip, and tap "Report Issue". Select "Lost Item" and describe it.' },
-  { q: 'How are prices calculated?', a: 'Prices are based on distance, estimated travel time, vehicle type, and current demand. You always see the price before confirming.' },
-  { q: 'Is my payment secure?', a: 'Yes. All card payments are processed by Flutterwave with 3D Secure. We do not store full card details on our servers.' },
+  { topic: 'Deliveries', q: 'How do I cancel a delivery?', a: 'Open the delivery from your history and tap Cancel while it is still pending or waiting for a driver. If a driver is already carrying your package, contact support from the delivery instead so it can be resolved properly.' },
+  { topic: 'Payments',   q: 'How do I pay for a delivery?', a: 'You pay per delivery at booking: card, bank transfer, or USSD, all processed by Flutterwave. Save a card once for one-tap payment next time. SEIRS does not hold a cash balance for you; your Rewards points are separate and never expire while you stay active.' },
+  { topic: 'Deliveries', q: 'What happens if no driver comes?', a: 'If no driver accepts or your driver cancels, you are not charged and can rebook immediately. You can also redirect a delivery to a nearby SEIRS partner store for the recipient to collect.' },
+  { topic: 'Deliveries', q: 'How do I report a problem or lost item?', a: 'Open the delivery in your history and tap Report Issue, or start a support conversation from the menu with your tracking code. Support replies during working hours (6am to 10pm WAT).' },
+  { topic: 'Payments',   q: 'How are prices calculated?', a: 'Prices are based on distance, package size, and vehicle type. You always see the full price before confirming, and every delivery has an itemised receipt.' },
+  { topic: 'Payments',   q: 'Is my payment secure?', a: 'Yes. All card payments are processed by Flutterwave with 3D Secure. SEIRS never stores your full card details; saved cards are stored as secure Flutterwave tokens.' },
+  { topic: 'Rewards',    q: 'How do Rewards points work?', a: 'You earn points on every completed delivery, with higher tiers earning faster. Redeem points for delivery discounts in the Rewards tab. Points are not cash and cannot be withdrawn.' },
+  { topic: 'Account',    q: 'Do I need to verify my identity?', a: 'No, verification is optional. Verifying unlocks higher-value deliveries, interstate sending, and extra protections. Email verification at signup is all you need to start.' },
+  { topic: 'Safety',     q: 'What if I feel unsafe during a delivery?', a: 'Use SOS from the menu: it alerts SEIRS with your live location immediately. Chats with your driver are logged, drivers only ever see your first name, and packages are verified with codes at every handoff.' },
 ];
 
 // Kept for backwards compat with the few screens that still import it,
