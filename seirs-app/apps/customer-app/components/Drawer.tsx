@@ -37,29 +37,20 @@ export function Drawer({ visible, onClose }: Props) {
     }, 220);
   };
 
+  // Founder decision 2026-08-10 (mirrors the driver app): the drawer is
+  // the quick-tools menu; account management lives in the Profile tab.
+  // 11 items trimmed to 5, plus SOS added for safety parity with the
+  // driver app (never more than one tap away).
   const items: DrawerItem[] = [
-    { icon: 'User',       label: t('drawer.profile',       { defaultValue: 'Profile' }),         onPress: () => navigate('/(customer)/profile') },
-    { icon: 'CreditCard', label: t('drawer.paymentMethods',{ defaultValue: 'Payment Methods' }), onPress: () => navigate('/(customer)/payment-methods') },
-    // Point at the rewritten /rewards catalogue with real API + correct
-    // thresholds. The old /loyalty screen had hardcoded values and misleading
-    // numbers; keeping the drawer aimed there was the biggest UX bug on the
-    // menu. loyalty.tsx now redirects to /rewards so any stale link resolves.
-    { icon: 'Gift',       label: t('drawer.rewards',       { defaultValue: 'Rewards & Points' }),onPress: () => navigate('/(customer)/rewards') },
     { icon: 'QrCode',     label: t('drawer.seirsId',       { defaultValue: 'My SEIRS ID' }),     onPress: () => navigate('/(customer)/seirs-id') },
     { icon: 'Users',      label: t('drawer.poolPrefs',     { defaultValue: 'Ride Pool Preferences' }), onPress: () => navigate('/(customer)/pool-preferences') },
-    // Label honesty: this only opens the notification settings screen, not
-    // a full settings hub. Renamed so users don't tap expecting language +
-    // privacy + theme in one place.
-    { icon: 'Bell',       label: t('drawer.notificationSettings', { defaultValue: 'Notification Settings' }), onPress: () => navigate('/(customer)/notification-settings') },
-    { icon: 'Globe',      label: t('drawer.language',      { defaultValue: 'Language' }),        onPress: () => navigate('/(customer)/language') },
-    { icon: 'HelpCircle', label: t('drawer.help',          { defaultValue: 'Help & FAQ' }),      onPress: () => navigate('/(customer)/help') },
-    { icon: 'Lock',       label: t('drawer.privacy',       { defaultValue: 'Privacy Policy' }),  onPress: () => navigate('/(customer)/privacy') },
     { icon: 'Send',       label: t('drawer.sendMultiple',  { defaultValue: 'Send Multiple' }),   onPress: () => navigate('/(customer)/business') },
-    // Chat 5: in-app support chat replaces the old tel: link. Users can
-    // still see the support hotline inside the ticket flow if they prefer
-    // to call.
+    // Straight to a NEW ticket (founder 2026-08-10: the old path bounced
+    // through the Messages tab first).
     { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }),
-      onPress: () => navigate('/(customer)/support') },
+      onPress: () => navigate('/(customer)/support/new') },
+    { icon: 'AlertTriangle', label: t('drawer.sos', { defaultValue: 'SOS Emergency' }),
+      onPress: () => navigate('/(customer)/sos') },
   ];
 
   return (

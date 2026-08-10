@@ -67,7 +67,9 @@ export function Drawer({ visible, onClose }: Props) {
     // buttons found in live testing 2026-08-09).
     { icon: 'HelpCircle',      label: t('drawer.help',            { defaultValue: 'Help & FAQ' }),      onPress: () => { onClose(); Linking.openURL('https://seirs.co/faq'); } },
     { icon: 'Lock',            label: t('drawer.privacy',         { defaultValue: 'Privacy Policy' }),  onPress: () => { onClose(); Linking.openURL('https://seirs.co/privacy-policy'); } },
-    { icon: 'MessageCircle',   label: t('drawer.contactSupport',  { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support') },
+    // Straight to a NEW ticket (founder 2026-08-10: the old path
+    // bounced through the Messages tab first).
+    { icon: 'MessageCircle',   label: t('drawer.contactSupport',  { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support/new') },
   ];
 
   const partnerItems: DrawerItem[] = [
@@ -78,7 +80,7 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'Globe',      label: t('drawer.language',       { defaultValue: 'Language' }),        onPress: () => navigate('/(partner)/language') },
     { icon: 'HelpCircle', label: t('drawer.help',           { defaultValue: 'Help & FAQ' }),     onPress: () => { onClose(); Linking.openURL('https://seirs.co/faq'); } },
     { icon: 'Lock',       label: t('drawer.privacy',        { defaultValue: 'Privacy Policy' }), onPress: () => { onClose(); Linking.openURL('https://seirs.co/privacy-policy'); } },
-    { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support') },
+    { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support/new') },
   ];
 
   const displayName = isPartner ? (user?.storeName ?? 'Partner Store')

@@ -91,12 +91,10 @@ export default function ProfileScreen() {
     {
       title: t('profile.sectionActivity'),
       items: [
-        { icon: 'receipt-outline',   label: t('profile.myTrips'),     sub: t('profile.myTripsSub',  { count: completedTrips ?? 0 }), onPress: () => router.push('/(customer)/history' as any) },
-        // Wallet list item removed: it pointed to the same screen as Rewards
-        // and customers do not hold NGN so "Wallet ₦0 balance" was misleading.
-        // See [[feedback_wallet_is_rewards]].
-        { icon: 'star-outline',      label: t('profile.rewards'),     sub: t('profile.rewardsSub',  { points: (loyaltyPoints ?? 0).toLocaleString(), tier: loyaltyTier ?? '-' }), onPress: () => router.push('/(customer)/rewards') },
-        { icon: 'gift-outline',      label: t('profile.referEarn'),   sub: t('profile.referEarnSub'),     onPress: () => router.push('/(customer)/referral') },
+        // My Trips + Rewards rows removed (founder 2026-08-10): the
+        // stats above are tappable and the bottom tabs own both. The
+        // Refer & Earn row is gone too; the referral banner below the
+        // menu is the single entry.
         { icon: 'ticket-outline',    label: t('profile.promotions'),  sub: t('profile.promotionsSub', { count: activePromos ?? 0 }), onPress: () => router.push('/(customer)/promotions') },
       ],
     },
@@ -111,11 +109,11 @@ export default function ProfileScreen() {
     {
       title: t('profile.sectionSupport'),
       items: [
+        // One help entry, not two: the old "Live Chat" row went to the
+        // exact same help screen. Live chat now means a real ticket.
         { icon: 'help-circle-outline',   label: t('profile.helpCenter'), sub: t('profile.helpCenterSub'), onPress: () => router.push('/(customer)/help') },
-        // Live chat pending. for launch, route users to the ticket flow
-        // (or WhatsApp support if that's the interim channel). Never
-        // dead-end a support request. Update the target once /support-chat lands.
-        { icon: 'chatbubble-outline',    label: t('profile.liveChat'),   sub: t('profile.liveChatSub'),   onPress: () => router.push('/(customer)/help') },
+        { icon: 'chatbubble-outline',    label: t('profile.liveChat'),   sub: t('profile.liveChatSub'),   onPress: () => router.push('/(customer)/support/new' as any) },
+        { icon: 'alert-circle-outline',  label: t('profile.sos', { defaultValue: 'SOS Emergency' }), sub: t('profile.sosSub', { defaultValue: 'Immediate help with live location' }), onPress: () => router.push('/(customer)/sos' as any), danger: true },
         { icon: 'document-text-outline', label: t('profile.terms'),      sub: t('profile.termsSub'),      onPress: () => Linking.openURL('https://seirs.co/terms').catch(() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))) },
       ],
     },
@@ -132,13 +130,16 @@ export default function ProfileScreen() {
             <HamburgerButton />
             <Text style={[styles.title, { color: theme.text }]}>{t('profile.title')}</Text>
           </View>
+          {/* Bell to the notification INBOX (was a gear to settings;
+              settings already has its row under Preferences). Matches
+              the driver profile header. */}
           <Pressable
             style={[styles.settingsBtn, { backgroundColor: theme.surfaceSecond }]}
-            onPress={() => router.push('/(customer)/notification-settings')}
+            onPress={() => router.push('/notifications' as any)}
             accessibilityRole="button"
-            accessibilityLabel={t('profile.notificationSettings')}
+            accessibilityLabel={t('profile.notifications')}
           >
-            <Ionicons name="settings-outline" size={20} color={theme.text} />
+            <Ionicons name="notifications-outline" size={20} color={theme.text} />
           </Pressable>
         </View>
 
@@ -197,16 +198,22 @@ export default function ProfileScreen() {
               (see [[feedback_wallet_is_rewards]]): tier is the natural
               at-a-glance value alongside Trips and Points.
               Falls back to '-' while real data loads. NEVER mock values. */}
+          {/* Tappable stats replace the old My Trips + Rewards menu
+              rows (founder 2026-08-10). */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
             {[
-              { label: t('profile.statTrips'),  value: completedTrips != null ? `${completedTrips}` : '-' },
-              { label: t('profile.statPoints'), value: loyaltyPoints  != null ? loyaltyPoints.toLocaleString() : '-' },
-              { label: t('profile.statTier'),   value: loyaltyTier ? loyaltyTier.charAt(0).toUpperCase() + loyaltyTier.slice(1) : '-' },
+              { label: t('profile.statTrips'),  value: completedTrips != null ? `${completedTrips}` : '-', route: '/(customer)/history' },
+              { label: t('profile.statPoints'), value: loyaltyPoints  != null ? loyaltyPoints.toLocaleString() : '-', route: '/(customer)/rewards' },
+              { label: t('profile.statTier'),   value: loyaltyTier ? loyaltyTier.charAt(0).toUpperCase() + loyaltyTier.slice(1) : '-', route: '/(customer)/rewards' },
             ].map((s, i) => (
-              <View key={s.label} style={[styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
+              <Pressable
+                key={s.label}
+                style={({ pressed }) => [styles.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: theme.border }, pressed && { opacity: 0.6 }]}
+                onPress={() => router.push(s.route as any)}
+              >
                 <Text style={[styles.statValue, { color: theme.text }]}>{s.value}</Text>
                 <Text style={[styles.statLabel, { color: theme.textSecond }]}>{s.label}</Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         </View>

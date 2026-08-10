@@ -73,9 +73,13 @@ export default function BusinessTabsLayout() {
         name="wallet"
         options={{ title: 'Wallet', tabBarIcon: ({ focused }) => <TabIcon name="Wallet" focused={focused} /> }}
       />
+      {/* Team is drawer-only now (founder 2026-08-10: six tabs felt
+          cramped; team management is low-frequency). href: null hides
+          it from the bar while keeping the route alive for the
+          drawer's "Team Members" entry. */}
       <Tabs.Screen
         name="team"
-        options={{ title: 'Team', tabBarIcon: ({ focused }) => <TabIcon name="Users" focused={focused} /> }}
+        options={{ href: null }}
       />
     </Tabs>
   );
