@@ -66,12 +66,14 @@ export default function DriverHelpScreen() {
         {/* Quick contact */}
         <View style={styles.contactRow}>
           {[
-            // Chat 5 (2026-08-09): Live Chat is now the in-app support inbox.
-            { icon: 'chatbubble-ellipses-outline', label: 'Live Chat', sub: '6am–10pm WAT reply', color: '#3A86FF',
-              onPress: () => router.push('/(driver)/support' as any) },
-            { icon: 'call-outline',                label: 'Call Us',   sub: '0700-SEIRS-01',    color: '#22C55E',
+            // Straight to a NEW ticket (founder 2026-08-10: the old
+            // route bounced through the Messages tab first). Brand
+            // palette only: sky / green / navy.
+            { icon: 'chatbubble-ellipses-outline', label: 'Live Chat', sub: '6am–10pm WAT reply', color: '#3A7BD5',
+              onPress: () => router.push('/(driver)/support/new' as any) },
+            { icon: 'call-outline',                label: 'Call Us',   sub: '0700-SEIRS-01',    color: '#16A34A',
               onPress: () => Linking.openURL('tel:07007347701').catch(() => {}) },
-            { icon: 'mail-outline',                label: 'Email',     sub: 'drivers@seirs.app',color: '#8B5CF6',
+            { icon: 'mail-outline',                label: 'Email',     sub: 'drivers@seirs.app',color: '#0F2B4C',
               onPress: () => Linking.openURL('mailto:drivers@seirs.app').catch(() => {}) },
           ].map(c => (
             <Pressable

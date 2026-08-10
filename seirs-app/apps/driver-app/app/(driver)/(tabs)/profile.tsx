@@ -53,6 +53,12 @@ export default function DriverProfileScreen() {
   const isOnline    = !!driverData?.isOnline;
   const vehicleSub  = [driverData?.vehicleType, driverData?.plateNumber].filter(Boolean).join(' · ') || 'View vehicle details';
 
+  // Final structure (founder decision 2026-08-10): Profile is THE
+  // account hub. Ratings + Trip History rows are gone because the
+  // stats above are tappable; Withdraw row gone because the balance
+  // card IS the withdraw entry; Notifications row gone because the
+  // header bell owns it. Documents + SOS deliberately duplicated from
+  // the drawer (founder wants them reachable from both).
   const MENU_SECTIONS: MenuSection[] = [
     {
       title: 'Account',
@@ -60,24 +66,21 @@ export default function DriverProfileScreen() {
         { icon: 'person-outline',           label: 'Edit Profile',     sub: 'Name, photo, contact details', route: '/(driver)/edit-profile' },
         { icon: 'shield-checkmark-outline', label: 'KYC Verification', sub: 'Documents & verification',   route: '/(driver)/kyc' },
         { icon: 'car-outline',              label: 'My Vehicle',        sub: vehicleSub,                   route: '/(driver)/vehicle' },
-        { icon: 'star-outline',             label: 'My Ratings',        sub: ratingCount > 0 ? `${rating.toFixed(1)} average from ${ratingCount}` : 'No ratings yet', route: '/(driver)/ratings' },
       ],
     },
     {
       title: 'Earnings',
       items: [
-        { icon: 'cash-outline',            label: 'Earnings & Wallet', sub: `₦${available.toLocaleString()} withdrawable`, route: '/(driver)/earnings' },
-        { icon: 'arrow-up-circle-outline', label: 'Withdraw Earnings', sub: 'Transfer to bank account',    route: '/(driver)/withdrawal' },
-        { icon: 'business-outline',        label: 'Payout Bank Account', sub: 'Manage where you get paid', route: '/(driver)/add-bank' },
+        { icon: 'cash-outline',     label: 'Earnings & Wallet',   sub: 'Charts, calendar, history', route: '/(driver)/earnings' },
+        { icon: 'business-outline', label: 'Payout Bank Account', sub: 'Manage where you get paid', route: '/(driver)/add-bank' },
       ],
     },
     {
       title: 'Work',
       items: [
-        { icon: 'calendar-outline',      label: 'My Schedule',    sub: 'Set working hours',         route: '/(driver)/schedule' },
-        { icon: 'receipt-outline',       label: 'Trip History',   sub: 'View past deliveries',      route: '/(driver)/history' },
-        { icon: 'notifications-outline', label: 'Notifications',  sub: '',                          route: '/(driver)/notifications', badge: unread > 0 ? String(unread) : undefined },
-        { icon: 'rocket-outline',        label: 'SEIRS Premium',  sub: 'Priority matching + badge', route: '/(driver)/subscription' },
+        { icon: 'calendar-outline',       label: 'My Schedule',   sub: 'Set working hours',           route: '/(driver)/schedule' },
+        { icon: 'rocket-outline',         label: 'SEIRS Premium', sub: 'Priority matching + badge',   route: '/(driver)/subscription' },
+        { icon: 'document-text-outline',  label: 'Documents',     sub: 'Statements, contracts, letters', route: '/(driver)/tax-docs' },
       ],
     },
     {
@@ -90,10 +93,8 @@ export default function DriverProfileScreen() {
     {
       title: 'Support',
       items: [
-        // One entry, not two (founder 2026-08-10: Help Center and
-        // Contact Support overlapped). FAQs answer the common cases;
-        // the help screen links into live support chat for the rest.
         { icon: 'help-circle-outline', label: 'Help & Support', sub: 'FAQs and live chat', route: '/(driver)/help' },
+        { icon: 'alert-circle-outline', label: 'SOS Emergency', sub: 'Immediate help with live location', route: '/(driver)/sos', danger: true },
       ],
     },
   ];
@@ -185,17 +186,22 @@ export default function DriverProfileScreen() {
             </Pressable>
           )}
 
-          {/* Stats */}
+          {/* Stats. Tappable: each opens its detail screen, replacing
+              the old Trip History + My Ratings menu rows. */}
           <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
             {[
-              { label: 'Total Trips',  value: totalTrips.toLocaleString(), icon: 'navigate-outline' },
-              { label: 'Rating',       value: ratingCount > 0 ? rating.toFixed(1) : '-', icon: 'star-outline' },
-              { label: 'Total Earned', value: allTime >= 1_000_000 ? `₦${(allTime / 1_000_000).toFixed(1)}M` : `₦${allTime.toLocaleString()}`, icon: 'trending-up-outline' },
+              { label: 'Total Trips',  value: totalTrips.toLocaleString(), route: '/(driver)/history' },
+              { label: 'Rating',       value: ratingCount > 0 ? rating.toFixed(1) : '-', route: '/(driver)/ratings' },
+              { label: 'Total Earned', value: allTime >= 1_000_000 ? `₦${(allTime / 1_000_000).toFixed(1)}M` : `₦${allTime.toLocaleString()}`, route: '/(driver)/earnings' },
             ].map(s => (
-              <View key={s.label} style={styles.statItem}>
+              <Pressable
+                key={s.label}
+                style={({ pressed }) => [styles.statItem, pressed && { opacity: 0.6 }]}
+                onPress={() => router.push(s.route as any)}
+              >
                 <Text style={[styles.statValue, { color: theme.text }]}>{s.value}</Text>
                 <Text style={[styles.statLabel, { color: theme.textThird }]}>{s.label}</Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         </View>

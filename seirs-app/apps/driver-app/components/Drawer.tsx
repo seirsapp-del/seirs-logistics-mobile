@@ -36,31 +36,21 @@ export function Drawer({ visible, onClose }: Props) {
     }, 220);
   };
 
-  // "Earnings" is deliberately NOT here: it is already a bottom tab, and
-  // a second entry point for the same screen reads as a duplicate.
+  // Founder decision 2026-08-10: the drawer is the WORK TOOLS menu.
+  // Account management (money, ratings, schedule, KYC, settings, help)
+  // lives in exactly one place: the Profile tab. 16 items trimmed to 8;
+  // each function has one clear home, except safety/handoff items that
+  // are deliberately duplicated (SEIRS ID, SOS, Documents in Profile).
   const items: DrawerItem[] = [
-    { icon: 'User',       label: t('drawer.profile',       { defaultValue: 'Profile' }),               onPress: () => navigate('/(driver)/profile') },
-    { icon: 'Wallet',     label: t('drawer.payouts',       { defaultValue: 'Withdraw Earnings' }),     onPress: () => navigate('/(driver)/withdrawal') },
     { icon: 'QrCode',     label: t('drawer.seirsId',       { defaultValue: 'My SEIRS ID' }),           onPress: () => navigate('/(driver)/seirs-id') },
     { icon: 'Map',        label: t('drawer.interstate',    { defaultValue: 'Interstate Trip' }),       onPress: () => navigate('/(driver)/interstate') },
     { icon: 'Moon',       label: t('drawer.lastOrder',     { defaultValue: 'Wind Down (Last Order)' }),onPress: () => navigate('/(driver)/last-order') },
-    { icon: 'Star',       label: t('drawer.ratings',       { defaultValue: 'Ratings' }),               onPress: () => navigate('/(driver)/ratings') },
-    // General documents hub (founder direction 2026-08-09): earnings
-    // statements + any official doc admin sends (contracts, letters).
     { icon: 'FileText',   label: t('drawer.documents',     { defaultValue: 'Documents' }),             onPress: () => navigate('/(driver)/tax-docs') },
-    { icon: 'Calendar',   label: t('drawer.schedule',      { defaultValue: 'Schedule' }),              onPress: () => navigate('/(driver)/schedule') },
-    { icon: 'Bell',       label: t('drawer.notifications', { defaultValue: 'Notifications' }),         onPress: () => navigate('/(driver)/notification-settings') },
     { icon: 'Globe',      label: t('drawer.language',      { defaultValue: 'Language' }),              onPress: () => navigate('/(driver)/language') },
     { icon: 'BookOpen',   label: t('drawer.codeOfConduct', { defaultValue: 'Driver Code of Conduct' }), onPress: () => navigate('/(driver)/code-of-conduct') },
-    // The partner-insurer list lives on the KYC screen (collapsible
-    // "Need vehicle insurance?" section), not in Help & FAQ.
-    { icon: 'Shield',     label: t('drawer.insurance',     { defaultValue: 'Insurance Partners' }),    onPress: () => navigate('/(driver)/kyc') },
-    { icon: 'HelpCircle', label: t('drawer.help',          { defaultValue: 'Help & FAQ' }),            onPress: () => navigate('/(driver)/help') },
-    { icon: 'Lock',       label: t('drawer.privacy',       { defaultValue: 'Privacy Policy' }),        onPress: () => navigate('/(driver)/privacy') },
-    // Chat 5: in-app support inbox. Replaces the old shortcut to /help
-    // so drivers can escalate a stuck delivery to a support agent
-    // without leaving the app or calling.
-    { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }),   onPress: () => navigate('/(driver)/support') },
+    // Straight to a NEW ticket: the founder found the old path (drawer
+    // -> Messages tab -> tap Support -> new ticket) two hops too many.
+    { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }),   onPress: () => navigate('/(driver)/support/new') },
     { icon: 'AlertTriangle', label: t('drawer.sos',         { defaultValue: 'SOS Emergency' }),         onPress: () => navigate('/(driver)/sos') },
   ];
 
