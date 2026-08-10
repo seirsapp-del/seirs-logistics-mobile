@@ -7,6 +7,7 @@ import { DeliveryEvent, DeliveryEventType, EventActorRole } from './delivery-eve
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
 import { User } from '../users/user.entity';
+import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 // Vehicle-tuned average speeds for Lagos street conditions (km/h).
 // Deliberately conservative: matches lived experience of standstill
@@ -254,10 +255,21 @@ export class DeliveriesService {
    * If `lat`/`lng` are provided, results are sorted by distance ascending
    * using the Haversine formula. Otherwise newest-first.
    */
-  findAvailable(lat?: number, lng?: number, radiusKm: number = 25, limit: number = 30) {
+  /**
+   * Available jobs feed (production audit 2026-08-10, three fixes):
+   *   1. NO customer PII: the old version leftJoinAndSelect'd the full
+   *      customer user row (email, phone, everything) to every browsing
+   *      driver. Now the payload is a sanitized job DTO with no
+   *      customer object at all: identity is revealed on acceptance.
+   *   2. distance_km actually reaches the client: getMany() silently
+   *      dropped the raw select, so the app always rendered "? km".
+   *   3. youEarnNgn: the driver's NET (delivery.driverEarnings, with a
+   *      commission-based fallback), so the card never shows the gross
+   *      fare as if it were the driver's pay.
+   */
+  async findAvailable(lat?: number, lng?: number, radiusKm: number = 25, limit: number = 30) {
     const q = this.repo
       .createQueryBuilder('d')
-      .leftJoinAndSelect('d.customer', 'customer')
       .where('d.status = :status', { status: DeliveryStatus.PENDING })
       .andWhere('d.driver IS NULL');
 
@@ -293,7 +305,29 @@ export class DeliveriesService {
       q.orderBy('d.createdAt', 'DESC');
     }
 
-    return q.limit(safeLimit).getMany();
+    const { entities, raw } = await q.limit(safeLimit).getRawAndEntities();
+
+    return entities.map((d, i) => {
+      const price = Number(d.price ?? 0);
+      const net   = d.driverEarnings != null
+        ? Number(d.driverEarnings)
+        : +(price * (1 - PLATFORM_COMMISSION)).toFixed(2);
+      const rawDist = raw[i]?.distance_km;
+      return {
+        id:             d.id,
+        trackingCode:   d.trackingCode,
+        pickupAddress:  d.pickupAddress,
+        dropoffAddress: d.dropoffAddress,
+        packageSize:    d.packageSize ?? null,
+        vehicleType:    d.vehicleType ?? null,
+        urgency:        (d as any).urgency ?? null,
+        status:         d.status,
+        priceNgn:       price,
+        youEarnNgn:     net,
+        distanceKm:     rawDist != null ? +Number(rawDist).toFixed(1) : null,
+        createdAt:      d.createdAt,
+      };
+    });
   }
 
   // Return the customer's most-used pickup + dropoff addresses in the last

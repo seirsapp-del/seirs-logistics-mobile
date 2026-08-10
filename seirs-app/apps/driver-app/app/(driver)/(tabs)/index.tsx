@@ -12,7 +12,8 @@ import {
 import MapView, { PROVIDER_GOOGLE, Circle, Marker } from 'react-native-maps';
 import { Drawer } from '@/components/Drawer';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { io, Socket } from 'socket.io-client';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -28,7 +29,7 @@ const URGENCY_COLOR: Record<string, string> = {
   instant:  '#EF4444',
 };
 
-const GOAL_TARGET = 50000;
+// Default only; the real target is the driver's own saved goal.
 
 export default function DriverHomeScreen() {
   const router      = useRouter();
@@ -40,6 +41,8 @@ export default function DriverHomeScreen() {
   const [isOnline,   setIsOnline]   = useState(false);
   const [toggling,   setToggling]   = useState(false);
   const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [activeDeliveries, setActiveDeliveries] = useState<any[]>([]);
+  const [weeklyGoal, setWeeklyGoal] = useState(50000);
   const [loading,    setLoading]    = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [driverData, setDriverData] = useState<any>(null);
@@ -78,11 +81,15 @@ export default function DriverHomeScreen() {
   const fetchDeliveries = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      // Available jobs near this driver (sorted by distance). Backend
-      // returns pending unassigned deliveries within 25 km of the
-      // driver's last known position.
-      const res = await driversApi.getAvailableJobs(driverData?.lastLat, driverData?.lastLng);
+      // Two feeds (audit 2026-08-10): available jobs are UNASSIGNED, so
+      // the active-job card could never appear when derived from them.
+      // The driver's own active deliveries come from /deliveries/driver.
+      const [res, mine] = await Promise.all([
+        driversApi.getAvailableJobs(driverData?.lastLat, driverData?.lastLng).catch(() => []),
+        driversApi.myDeliveries().catch(() => []),
+      ]);
       setDeliveries(res ?? []);
+      setActiveDeliveries(mine ?? []);
     } catch {
       setDeliveries([]);
     } finally {
@@ -171,13 +178,21 @@ export default function DriverHomeScreen() {
   // No fake defaults: a new driver has no rating, not a pretend 4.8.
   const rating        = Number(driverData?.rating        ?? 0);
   const tripCount     = Number(driverData?.totalTrips    ?? 0);
-  const goalPct       = Math.min((weekEarnings / GOAL_TARGET) * 100, 100);
+  const goalPct       = Math.min((weekEarnings / weeklyGoal) * 100, 100);
   const walletBal     = Number(driverData?.balance       ?? 0);
 
-  const activeJobs = deliveries.filter(d => d.status === 'assigned' || d.status === 'picked_up');
+  const activeJobs = activeDeliveries.filter(d => d.status === 'assigned' || d.status === 'picked_up' || d.status === 'in_transit');
   const activeJob  = activeJobs[0];
   const isPooled   = activeJobs.length > 1;
   const pendingJobs = deliveries.filter(d => d.status === 'pending').slice(0, 3);
+
+  // Same device-stored goal the Earnings tab edits: home used to
+  // hardcode ₦50k regardless of the driver's own target.
+  useFocusEffect(useCallback(() => {
+    AsyncStorage.getItem('seirs_weekly_goal_ngn')
+      .then(v => { const n = Number(v); if (Number.isFinite(n) && n >= 1000) setWeeklyGoal(n); })
+      .catch(() => {});
+  }, []));
 
   const navGrad: [string, string] = isDark
     ? ['#0D1117', '#161B22']
@@ -322,7 +337,7 @@ export default function DriverHomeScreen() {
             <View style={[styles.goalTrack, { backgroundColor: theme.surfaceSecond }]}>
               <View style={[styles.goalFill, { width: `${goalPct}%`, backgroundColor: goalPct >= 100 ? '#16A34A' : '#D97706' }]} />
             </View>
-            <Text style={[styles.widgetSub, { color: theme.textThird }]}>{Math.round(goalPct)}% of ₦50k</Text>
+            <Text style={[styles.widgetSub, { color: theme.textThird }]}>{Math.round(goalPct)}% of ₦{(weeklyGoal / 1000).toFixed(0)}k</Text>
           </View>
 
           {/* Rating */}
@@ -331,8 +346,12 @@ export default function DriverHomeScreen() {
               <Star size={18} color="#FFBE0B" strokeWidth={1.75} />
             </View>
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Rating</Text>
-            <Text style={[styles.widgetValue, { color: rating < 3.5 ? '#EF4444' : theme.text }]}>{rating.toFixed(1)}</Text>
-            {rating < 3.5 && <Text style={[styles.ratingWarn, { color: '#EF4444' }]}>Below threshold</Text>}
+            {/* Dash for unrated drivers: "0.0 Below threshold" scared
+                every new driver for no reason. */}
+            <Text style={[styles.widgetValue, { color: rating > 0 && rating < 3.5 ? '#EF4444' : theme.text }]}>
+              {rating > 0 ? rating.toFixed(1) : '-'}
+            </Text>
+            {rating > 0 && rating < 3.5 && <Text style={[styles.ratingWarn, { color: '#EF4444' }]}>Below threshold</Text>}
             <Text style={[styles.widgetSub, { color: theme.textThird }]}>{tripCount} trips</Text>
           </Pressable>
 
@@ -429,17 +448,28 @@ export default function DriverHomeScreen() {
                   </Text>
                 </View>
                 <View style={styles.jobInfo}>
-                  <Text style={[styles.jobCustomer, { color: theme.text }]}>{job.customer?.name ?? 'Customer'}</Text>
+                  {/* Audit 2026-08-10: package info instead of the
+                      customer's name (privacy: identity reveals on
+                      acceptance), and the DROPOFF is finally shown so
+                      drivers can judge where the trip ends. */}
+                  <Text style={[styles.jobCustomer, { color: theme.text }]}>
+                    {[job.packageSize, job.vehicleType].filter(Boolean).join(' · ') || 'Package delivery'}
+                  </Text>
                   <View style={styles.addrRow}>
-                    <MapPin size={12} color={theme.textThird} strokeWidth={1.75} />
+                    <MapPin size={12} color="#16A34A" strokeWidth={1.75} />
                     <Text style={[styles.jobAddr, { color: theme.textSecond }]} numberOfLines={1}>{job.pickupAddress}</Text>
+                  </View>
+                  <View style={styles.addrRow}>
+                    <MapPin size={12} color="#EF4444" strokeWidth={1.75} />
+                    <Text style={[styles.jobAddr, { color: theme.textSecond }]} numberOfLines={1}>{job.dropoffAddress}</Text>
                   </View>
                 </View>
                 <View style={styles.jobRight}>
-                  <Text style={[styles.jobFare, { color: theme.primary }]}>₦{(job.driverEarnings ?? job.price ?? 0).toLocaleString()}</Text>
+                  <Text style={[styles.earnLabel, { color: theme.textThird }]}>You earn</Text>
+                  <Text style={[styles.jobFare, { color: theme.primary }]}>₦{Number(job.youEarnNgn ?? job.driverEarnings ?? 0).toLocaleString()}</Text>
                   <View style={styles.distRow}>
                     <Clock size={12} color={theme.textThird} strokeWidth={1.75} />
-                    <Text style={[styles.jobDist, { color: theme.textThird }]}>{job.distanceKm ?? '?'} km</Text>
+                    <Text style={[styles.jobDist, { color: theme.textThird }]}>{job.distanceKm != null ? `${job.distanceKm} km` : 'nearby'}</Text>
                   </View>
                 </View>
                 <ChevronRight size={16} color={theme.textThird} strokeWidth={1.75} />
@@ -524,6 +554,7 @@ const styles = StyleSheet.create({
   jobCustomer:   { fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
   jobAddr:       { fontSize: FontSize.xs, flex: 1 },
   jobRight:      { alignItems: 'flex-end', gap: 4 },
+  earnLabel:     { fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: FontWeight.semibold as any },
   jobFare:       { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
   distRow:       { flexDirection: 'row', alignItems: 'center', gap: 3 },
   jobDist:       { fontSize: FontSize.xs },
