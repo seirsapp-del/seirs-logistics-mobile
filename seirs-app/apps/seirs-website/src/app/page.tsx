@@ -55,37 +55,10 @@ function HeroIllustration() {
         </div>
       </div>
 
-      {/* Floating location pins */}
-      <div className="absolute top-6 left-8 animate-float-reverse">
-        <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl p-3 flex items-center gap-2">
-          <div className="w-6 h-6 bg-sky rounded-full flex items-center justify-center flex-shrink-0">
-            <MapPin size={12} className="text-white" />
-          </div>
-          <div>
-            <div className="text-white text-xs font-semibold">Lagos Island</div>
-            <div className="text-white/60 text-[10px]">Pickup point</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute bottom-10 right-6 animate-float" style={{ animationDelay: "2s" }}>
-        <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl p-3 flex items-center gap-2">
-          <div className="w-6 h-6 bg-success-green rounded-full flex items-center justify-center flex-shrink-0">
-            <CheckCircle size={12} className="text-white" />
-          </div>
-          <div>
-            <div className="text-white text-xs font-semibold">Delivered</div>
-            <div className="text-white/60 text-[10px]">Lekki Phase 1</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute top-1/3 right-2 animate-pulse-slow">
-        <div className="bg-warning-amber/30 border border-warning-amber/50 rounded-xl p-2.5 flex items-center gap-2">
-          <Truck size={14} className="text-warning-amber" />
-          <div className="text-white text-xs font-semibold">En route</div>
-        </div>
-      </div>
+      {/* Floating demo chips removed (founder 2026-08-10: the fake
+          "Lagos Island / Lekki Phase 1" pins read as cheap). The hero
+          gets real photography in the imagery pass; until then the
+          illustration stands alone. */}
 
       {/* Abstract geometric circles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
