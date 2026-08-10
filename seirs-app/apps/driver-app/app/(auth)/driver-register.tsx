@@ -7,8 +7,8 @@ import {
 // Canonical legal docs live on the marketing site so they stay in sync
 // across web + all 3 mobile apps without bundling text. Driver Code of
 // Conduct is contained within the Terms of Service for now.
-const TERMS_URL   = 'https://seirs.co/terms-of-service';
-const PRIVACY_URL = 'https://seirs.co/privacy-policy';
+const TERMS_URL   = 'https://seirs-website.vercel.app/terms-of-service';
+const PRIVACY_URL = 'https://seirs-website.vercel.app/privacy-policy';
 import {
   ArrowLeft, User, Mail, Phone, Truck, Bike, Car, Van,
   CheckSquare, Square, AlertCircle,

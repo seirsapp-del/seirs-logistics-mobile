@@ -14,7 +14,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 
 const LAST_UPDATED = '9 August 2026';
-const TERMS_URL = 'https://seirs.co/terms-of-service';
+const TERMS_URL = 'https://seirs-website.vercel.app/terms-of-service';
 
 interface Section {
   title: string;

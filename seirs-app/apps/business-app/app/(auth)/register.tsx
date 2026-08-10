@@ -21,8 +21,8 @@ import {
 
 // Canonical legal docs live on the marketing site so they stay in sync
 // across web + all 3 mobile apps without bundling text.
-const TERMS_URL   = 'https://seirs.co/terms-of-service';
-const PRIVACY_URL = 'https://seirs.co/privacy-policy';
+const TERMS_URL   = 'https://seirs-website.vercel.app/terms-of-service';
+const PRIVACY_URL = 'https://seirs-website.vercel.app/privacy-policy';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';

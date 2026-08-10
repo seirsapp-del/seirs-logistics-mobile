@@ -69,8 +69,8 @@ export function Drawer({ visible, onClose }: Props) {
     // Canonical FAQ + legal copies live on the marketing site; open in
     // browser rather than shipping stub screens with no onPress (dead
     // buttons found in live testing 2026-08-09).
-    { icon: 'HelpCircle',      label: t('drawer.help',            { defaultValue: 'Help & FAQ' }),      onPress: () => { onClose(); Linking.openURL('https://seirs.co/faq'); } },
-    { icon: 'Lock',            label: t('drawer.privacy',         { defaultValue: 'Privacy Policy' }),  onPress: () => { onClose(); Linking.openURL('https://seirs.co/privacy-policy'); } },
+    { icon: 'HelpCircle',      label: t('drawer.help',            { defaultValue: 'Help & FAQ' }),      onPress: () => { onClose(); Linking.openURL('https://seirs-website.vercel.app/faq'); } },
+    { icon: 'Lock',            label: t('drawer.privacy',         { defaultValue: 'Privacy Policy' }),  onPress: () => { onClose(); Linking.openURL('https://seirs-website.vercel.app/privacy-policy'); } },
     // Straight to a NEW ticket (founder 2026-08-10: the old path
     // bounced through the Messages tab first).
     { icon: 'MessageCircle',   label: t('drawer.contactSupport',  { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support/new') },
@@ -83,8 +83,8 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'FileText',   label: t('drawer.documents',      { defaultValue: 'Documents' }),       onPress: () => navigate('/(business)/documents') },
     { icon: 'Settings',   label: t('drawer.settings',       { defaultValue: 'Settings' }),        onPress: () => navigate('/(partner)/settings') },
     { icon: 'Globe',      label: t('drawer.language',       { defaultValue: 'Language' }),        onPress: () => navigate('/(partner)/language') },
-    { icon: 'HelpCircle', label: t('drawer.help',           { defaultValue: 'Help & FAQ' }),     onPress: () => { onClose(); Linking.openURL('https://seirs.co/faq'); } },
-    { icon: 'Lock',       label: t('drawer.privacy',        { defaultValue: 'Privacy Policy' }), onPress: () => { onClose(); Linking.openURL('https://seirs.co/privacy-policy'); } },
+    { icon: 'HelpCircle', label: t('drawer.help',           { defaultValue: 'Help & FAQ' }),     onPress: () => { onClose(); Linking.openURL('https://seirs-website.vercel.app/faq'); } },
+    { icon: 'Lock',       label: t('drawer.privacy',        { defaultValue: 'Privacy Policy' }), onPress: () => { onClose(); Linking.openURL('https://seirs-website.vercel.app/privacy-policy'); } },
     { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support/new') },
   ];
 

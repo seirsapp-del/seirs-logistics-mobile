@@ -25,7 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MapPin, Phone, Clock, Search, Store, ExternalLink, Navigation } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.seirs.app/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://seirs-logistics-mobile-production.up.railway.app/api/v1';
 
 interface PartnerStoreDTO {
   id:            string;

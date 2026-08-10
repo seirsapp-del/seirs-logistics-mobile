@@ -10,7 +10,7 @@ const BRAND_NAVY = '#0F2B4C';
 // Hosted on the marketing site (apps/seirs-website/public/). Email
 // clients need an https-hosted image; inline SVG and data URIs are
 // stripped by Gmail.
-const LOGO_WHITE_URL = 'https://seirs.co/seirs-logo-white.png';
+const LOGO_WHITE_URL = 'https://seirs-website.vercel.app/seirs-logo-white.png';
 
 function baseTemplate(content: string): string {
   return `
@@ -49,11 +49,11 @@ function baseTemplate(content: string): string {
                   You're receiving this because you have a SEIRS account.
                 </p>
                 <p style="margin:0;font-size:12px">
-                  <a href="https://seirs.co/faq" style="color:${BRAND_BLUE};text-decoration:none">Help centre</a>
+                  <a href="https://seirs-website.vercel.app/faq" style="color:${BRAND_BLUE};text-decoration:none">Help centre</a>
                   &nbsp;·&nbsp;
-                  <a href="https://seirs.co/contact" style="color:${BRAND_BLUE};text-decoration:none">Contact support</a>
+                  <a href="https://seirs-website.vercel.app/contact" style="color:${BRAND_BLUE};text-decoration:none">Contact support</a>
                   &nbsp;·&nbsp;
-                  <a href="https://seirs.co/privacy-policy" style="color:${BRAND_BLUE};text-decoration:none">Privacy</a>
+                  <a href="https://seirs-website.vercel.app/privacy-policy" style="color:${BRAND_BLUE};text-decoration:none">Privacy</a>
                 </p>
               </td>
             </tr>
@@ -206,7 +206,7 @@ export class MailService {
     const app = audience === 'mobile' ? 'customer' : audience;
     const resetUrl = audience === 'admin'
       ? `${this.cfg.get<string>('ADMIN_WEB_URL', 'https://seirs-admin.vercel.app')}/reset-password?token=${token}`
-      : `${this.cfg.get<string>('WEBSITE_URL', 'https://seirs.co')}/reset-password?token=${token}&app=${app}`;
+      : `${this.cfg.get<string>('WEBSITE_URL', 'https://seirs-website.vercel.app')}/reset-password?token=${token}&app=${app}`;
 
     const html = baseTemplate(`
       <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Reset your password</h2>
@@ -329,7 +329,7 @@ export class MailService {
         <tr><td style="padding:12px 0;border-top:1px solid #E5E7EB"><strong>Total paid</strong></td>
             <td align="right" style="padding:12px 0;border-top:1px solid #E5E7EB"><strong>₦${totalNaira.toLocaleString()}</strong></td></tr>
       </table>
-      <p style="font-size:13px;color:#9CA3AF">Keep this email for your records. Reply to support@seirs.co if anything looks wrong.</p>
+      <p style="font-size:13px;color:#9CA3AF">Keep this email for your records. Contact us from the Help centre if anything looks wrong.</p>
     `);
 
     await this.send(to, `Receipt - ${trackingCode}`, html);
@@ -343,7 +343,7 @@ export class MailService {
       <p>Hi ${name},</p>
       <p>Unfortunately, your delivery <strong>${trackingCode}</strong> could not be completed.</p>
       <p>Our team is looking into this. If you paid by card or wallet, a refund will be processed within 3-5 business days.</p>
-      <p>Please contact <a href="mailto:support@seirs.co" style="color:${BRAND_BLUE}">support@seirs.co</a> if you need help.</p>
+      <p>Please <a href="https://seirs-website.vercel.app/contact" style="color:${BRAND_BLUE}">contact support</a> if you need help.</p>
     `);
 
     await this.send(to, `Delivery failed - ${trackingCode}`, html);
@@ -377,7 +377,7 @@ export class MailService {
       <p>We reviewed your driver application and unfortunately we couldn't approve it at this time.</p>
       ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
       <p>You can re-apply with updated documents by opening the Seirs app and going to <strong>Profile → KYC Verification</strong>.</p>
-      <p>If you think this is a mistake, contact <a href="mailto:support@seirs.co" style="color:${BRAND_BLUE}">support@seirs.co</a>.</p>
+      <p>If you think this is a mistake, <a href="https://seirs-website.vercel.app/contact" style="color:${BRAND_BLUE}">contact support</a>.</p>
     `);
 
     await this.send(to, 'Update on your Seirs driver application', html);

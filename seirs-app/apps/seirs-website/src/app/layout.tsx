@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import "../styles/globals.css";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_NG",
-    url: "https://seirs.co",
+    url: "https://seirs-website.vercel.app",
     siteName: "Seirs Logistics",
     title: "Seirs Logistics, Nigeria's Smartest Last-Mile Delivery Platform",
     description:

@@ -21,7 +21,7 @@ import {
   Camera, User, Store, Info, RefreshCw,
 } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.seirs.app/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://seirs-logistics-mobile-production.up.railway.app/api/v1';
 
 interface DeliveryEventDTO {
   id:          string;
