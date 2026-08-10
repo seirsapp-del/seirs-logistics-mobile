@@ -355,11 +355,12 @@ export default function DriverHomeScreen() {
             <Text style={[styles.widgetSub, { color: theme.textThird }]}>{tripCount} trips</Text>
           </Pressable>
 
-          {/* Demand heatmap mini-map. Used to navigate to /(driver)/active
-              but that screen requires a delivery id: clicking it with no
-              id left the spinner forever. The map below is the whole
-              widget; no destination needed today. */}
-          <View style={[styles.widgetCard, styles.heatmapWidget, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          {/* Demand heatmap mini-map. Tap opens the full Hotspots screen
+              (founder green-light 2026-08-10) with the ranked zones +
+              navigate-to-zone. */}
+          <Pressable
+            onPress={() => router.push('/(driver)/hotspots' as any)}
+            style={[styles.widgetCard, styles.heatmapWidget, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.widgetIcon}>
               <MapPin size={18} color="#EF4444" strokeWidth={1.75} />
             </View>
@@ -406,7 +407,7 @@ export default function DriverHomeScreen() {
                 <Text style={[styles.heatmapPlaceholder, { color: theme.textThird }]}>Go online to see demand</Text>
               )}
             </View>
-          </View>
+          </Pressable>
         </ScrollView>
 
         {/* ── Available jobs ────────────────────────────────────────────── */}
