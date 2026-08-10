@@ -6,10 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useState } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
-import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Circle, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { driversApi } from '@/services/api';
+import { driversApi, dropoffApi } from '@/services/api';
 
 /**
  * Hotspots: full-screen demand map so drivers know where to position
@@ -21,6 +21,12 @@ import { driversApi } from '@/services/api';
 interface Zone {
   latitude: number; longitude: number; radiusM: number;
   intensity: number; orderCount: number;
+}
+
+interface StorePin {
+  id: string; storeName: string; storeAddress: string;
+  openTime: string | null; closeTime: string | null;
+  lat: number | null; lng: number | null; distanceKm: number | null;
 }
 
 const zoneColor = (i: number) =>
@@ -47,6 +53,7 @@ export default function HotspotsScreen() {
   const isDark = cs === 'dark';
 
   const [zones,   setZones]   = useState<Zone[]>([]);
+  const [stores,  setStores]  = useState<StorePin[]>([]);
   const [me,      setMe]      = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,15 +61,19 @@ export default function HotspotsScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const [zonesRes, meRes] = await Promise.all([
+        const meRes = await driversApi.me().catch(() => null);
+        const lat = meRes?.lastLat != null ? Number(meRes.lastLat) : undefined;
+        const lng = meRes?.lastLng != null ? Number(meRes.lastLng) : undefined;
+        const [zonesRes, storesRes] = await Promise.all([
           driversApi.demandZones().catch(() => ({ zones: [] as Zone[] })),
-          driversApi.me().catch(() => null),
+          // Partner stores matter to drivers too: store pickups and
+          // drop-offs are real job legs (founder 2026-08-10).
+          dropoffApi.directory(lat, lng).catch(() => ({ items: [] as StorePin[] })),
         ]);
         if (cancelled) return;
         setZones(zonesRes?.zones ?? []);
-        if (meRes?.lastLat != null && meRes?.lastLng != null) {
-          setMe({ lat: Number(meRes.lastLat), lng: Number(meRes.lastLng) });
-        }
+        setStores((storesRes?.items ?? []).filter(s => s.lat != null && s.lng != null));
+        if (lat != null && lng != null) setMe({ lat, lng });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -70,7 +81,7 @@ export default function HotspotsScreen() {
     return () => { cancelled = true; };
   }, []));
 
-  const navigateTo = (z: Zone) => {
+  const navigateTo = (z: { latitude: number; longitude: number }) => {
     const dest = `${z.latitude},${z.longitude}`;
     const url = Platform.OS === 'android'
       ? `google.navigation:q=${dest}`
@@ -137,6 +148,31 @@ export default function HotspotsScreen() {
                 strokeWidth={1}
               />
             ))}
+            {/* Partner stores (navy pins): tap the callout to navigate.
+                Store pickup + drop-off legs are real driver work. */}
+            {stores.map(s => (
+              <Marker
+                key={s.id}
+                coordinate={{ latitude: s.lat!, longitude: s.lng! }}
+                pinColor="#0F2B4C"
+                onCalloutPress={() => navigateTo({ latitude: s.lat!, longitude: s.lng! })}
+              >
+                <Callout>
+                  <View style={{ maxWidth: 220, padding: 4 }}>
+                    <Text style={{ fontWeight: '700', fontSize: 13, color: '#0F2B4C' }}>{s.storeName}</Text>
+                    <Text style={{ fontSize: 11, color: '#555', marginTop: 2 }}>{s.storeAddress}</Text>
+                    {(s.openTime || s.closeTime) && (
+                      <Text style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
+                        Open {s.openTime ?? '?'}–{s.closeTime ?? '?'}
+                      </Text>
+                    )}
+                    <Text style={{ fontSize: 11, color: '#3A7BD5', marginTop: 4, fontWeight: '600' }}>
+                      Tap to navigate
+                    </Text>
+                  </View>
+                </Callout>
+              </Marker>
+            ))}
           </MapView>
 
           {/* Legend */}
@@ -145,6 +181,7 @@ export default function HotspotsScreen() {
               { c: '#16A34A', l: 'Steady' },
               { c: '#D97706', l: 'Medium' },
               { c: '#EF4444', l: 'High' },
+              { c: '#0F2B4C', l: 'Store' },
             ].map(x => (
               <View key={x.l} style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: x.c }]} />

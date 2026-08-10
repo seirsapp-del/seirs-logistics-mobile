@@ -18,6 +18,7 @@ export {
   earningsApi,
   supportApi,
   documentsApi,
+  dropoffApi,
 } from '@seirs/shared/services/api';
 
 export type {

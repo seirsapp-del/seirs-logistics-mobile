@@ -314,6 +314,63 @@ export default function DriverHomeScreen() {
           </Pressable>
         )}
 
+        {/* ── Demand map: full-width, top of the fold (founder
+            2026-08-10: it was buried as the 4th card in a horizontal
+            scroll). Tap opens the Hotspots screen. */}
+        <Pressable
+          onPress={() => router.push('/(driver)/hotspots' as any)}
+          style={[styles.bigMapCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
+        >
+          <View style={styles.bigMapHead}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <MapPin size={16} color="#EF4444" strokeWidth={1.75} />
+              <Text style={[styles.bigMapTitle, { color: theme.text }]}>Demand Hotspots</Text>
+            </View>
+            <Text style={[styles.bigMapCta, { color: theme.primary }]}>Open map</Text>
+          </View>
+          <View style={[styles.bigMapBox, { backgroundColor: theme.surfaceSecond }]}>
+            {driverData?.lastLat && driverData?.lastLng ? (
+              <MapView
+                provider={PROVIDER_GOOGLE}
+                style={{ width: '100%', height: '100%' }}
+                pointerEvents="none"
+                liteMode={true}
+                initialRegion={{
+                  latitude:  Number(driverData.lastLat),
+                  longitude: Number(driverData.lastLng),
+                  latitudeDelta:  0.05,
+                  longitudeDelta: 0.05,
+                }}
+              >
+                <Marker
+                  coordinate={{ latitude: Number(driverData.lastLat), longitude: Number(driverData.lastLng) }}
+                  pinColor="#3A7BD5"
+                />
+                {demandZones.map((z, i) => {
+                  const fill = z.intensity > 0.66
+                    ? 'rgba(239,68,68,0.35)'
+                    : z.intensity > 0.33
+                    ? 'rgba(217,119,6,0.30)'
+                    : 'rgba(22,163,74,0.25)';
+                  return (
+                    <Circle
+                      key={i}
+                      center={{ latitude: z.latitude, longitude: z.longitude }}
+                      radius={z.radiusM}
+                      fillColor={fill}
+                      strokeWidth={0}
+                    />
+                  );
+                })}
+              </MapView>
+            ) : (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={[styles.heatmapPlaceholder, { color: theme.textThird }]}>Go online to see demand around you</Text>
+              </View>
+            )}
+          </View>
+        </Pressable>
+
         {/* ── Widgets row ──────────────────────────────────────────────── */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.widgetRow} contentContainerStyle={styles.widgetContent}>
 
@@ -355,59 +412,6 @@ export default function DriverHomeScreen() {
             <Text style={[styles.widgetSub, { color: theme.textThird }]}>{tripCount} trips</Text>
           </Pressable>
 
-          {/* Demand heatmap mini-map. Tap opens the full Hotspots screen
-              (founder green-light 2026-08-10) with the ranked zones +
-              navigate-to-zone. */}
-          <Pressable
-            onPress={() => router.push('/(driver)/hotspots' as any)}
-            style={[styles.widgetCard, styles.heatmapWidget, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <View style={styles.widgetIcon}>
-              <MapPin size={18} color="#EF4444" strokeWidth={1.75} />
-            </View>
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Demand Map</Text>
-            <View style={[styles.heatmapBox, { backgroundColor: theme.surfaceSecond, overflow: 'hidden' }]}>
-              {driverData?.lastLat && driverData?.lastLng ? (
-                <MapView
-                  provider={PROVIDER_GOOGLE}
-                  style={{ width: '100%', height: '100%' }}
-                  pointerEvents="none"
-                  liteMode={true}
-                  initialRegion={{
-                    latitude:  Number(driverData.lastLat),
-                    longitude: Number(driverData.lastLng),
-                    latitudeDelta:  0.04,
-                    longitudeDelta: 0.04,
-                  }}
-                >
-                  {/* Driver marker */}
-                  <Marker
-                    coordinate={{ latitude: Number(driverData.lastLat), longitude: Number(driverData.lastLng) }}
-                    pinColor="#3A7BD5"
-                  />
-                  {/* Demand zones from backend GET /drivers/demand-zones -
-                      colour ramps with intensity (red = hottest). */}
-                  {demandZones.map((z, i) => {
-                    const fill = z.intensity > 0.66
-                      ? 'rgba(239,68,68,0.35)'   // hot: red
-                      : z.intensity > 0.33
-                      ? 'rgba(245,158,11,0.30)'  // warm: orange
-                      : 'rgba(22,163,74,0.25)';  // cool: green
-                    return (
-                      <Circle
-                        key={i}
-                        center={{ latitude: z.latitude, longitude: z.longitude }}
-                        radius={z.radiusM}
-                        fillColor={fill}
-                        strokeWidth={0}
-                      />
-                    );
-                  })}
-                </MapView>
-              ) : (
-                <Text style={[styles.heatmapPlaceholder, { color: theme.textThird }]}>Go online to see demand</Text>
-              )}
-            </View>
-          </Pressable>
         </ScrollView>
 
         {/* ── Available jobs ────────────────────────────────────────────── */}
@@ -520,6 +524,12 @@ const styles = StyleSheet.create({
   activeAddr:    { fontSize: FontSize.sm, flex: 1 },
 
   widgetRow:     { marginTop: Spacing.md },
+
+  bigMapCard:  { marginHorizontal: Spacing.md, marginTop: Spacing.md, borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden' },
+  bigMapHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: 10 },
+  bigMapTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
+  bigMapCta:   { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
+  bigMapBox:   { height: 150 },
   widgetContent: { paddingHorizontal: Spacing.md, gap: Spacing.sm },
   widgetCard:    { width: 130, borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: 4 },
   walletWidget:  { width: 150 },

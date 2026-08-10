@@ -1054,6 +1054,21 @@ export const partnerApi = {
 
 // ─── Customer-side store drop-off (Spec V8 §3 async flow) ──────────────────
 export const dropoffApi = {
+  // Public partner-store directory (approved + accepting stores, safe
+  // fields only). lat/lng adds Haversine distanceKm + nearest-first sort.
+  directory: (lat?: number, lng?: number, q?: string) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append('lat', String(lat));
+    if (lng != null) params.append('lng', String(lng));
+    if (q)           params.append('q', q);
+    const qs = params.toString();
+    return request<{ total: number; items: Array<{
+      id: string; storeName: string; storeAddress: string; phone: string | null;
+      operatingDays: string | null; openTime: string | null; closeTime: string | null;
+      lat: number | null; lng: number | null; distanceKm: number | null;
+    }> }>('GET', `/partner-store/directory${qs ? `?${qs}` : ''}`);
+  },
+
   // Browse partner stores near a location, with capacity bucket exposed
   // (Plenty / Limited / Full) so the customer doesn't see ops numbers.
   listCapacityNearby: (lat?: number, lng?: number, radiusKm = 10) => {
