@@ -8,6 +8,7 @@ import { StoreDropoff, DropoffMode, DropoffStatus } from './store-dropoff.entity
 import { PartnerStore, PartnerStoreStatus } from '../business/partner-store.entity';
 import { PartnerSponsorship, SponsorshipStatus } from './partner-sponsorship.entity';
 import { User } from '../users/user.entity';
+import { Delivery } from '../deliveries/delivery.entity';
 import { FeesService } from '../fees/fees.service';
 import { IdentityService } from '../identity/identity.service';
 import { HandoffMethod, HandoffStage } from '../identity/handoff-record.entity';
@@ -59,10 +60,84 @@ export class PartnerStoreService {
     @InjectRepository(PartnerStore)         private storeRepo:       Repository<PartnerStore>,
     @InjectRepository(User)                 private usersRepo:       Repository<User>,
     @InjectRepository(PartnerSponsorship)   private sponsorshipRepo: Repository<PartnerSponsorship>,
+    @InjectRepository(Delivery)             private deliveriesRepo:  Repository<Delivery>,
     private readonly feesService:    FeesService,
     private readonly identityService: IdentityService,
     private readonly mailService:    MailService,
   ) {}
+
+  /**
+   * Bridge to the driver world (audit 2026-08-10): a package flipping
+   * to AWAITING_DRIVER used to sit in a queue NO driver could see,
+   * because nothing created a Delivery for the driver leg. This
+   * creates it: pickup = the store, dropoff = the recipient's door
+   * (STORE_TO_DOOR) or the destination store (STORE_TO_STORE), price =
+   * what the sender pre-paid, so the job flows into the available-jobs
+   * feed and matching like any other delivery.
+   *
+   * Skipped (with a warning) when the store has no coordinates: those
+   * stores are already flagged on the admin ops map for backfill.
+   */
+  private async ensureDriverLegDelivery(dropoffId: string) {
+    try {
+      const dropoff = await this.dropoffRepo.findOne({ where: { id: dropoffId } });
+      if (!dropoff || (dropoff as any).deliveryId) return;
+
+      const store = await this.storeRepo.findOne({ where: { id: dropoff.pickupStoreId } });
+      if (!store) return;
+      if ((store as any).storeLat == null || (store as any).storeLng == null) {
+        this.logger.warn(`driver-leg skipped for dropoff ${dropoffId}: store ${store.id} has no coordinates`);
+        return;
+      }
+
+      let destAddress = dropoff.recipientAddress;
+      let destLat: number | null = null;
+      let destLng: number | null = null;
+      if (dropoff.dropoffStoreId) {
+        const destStore = await this.storeRepo.findOne({ where: { id: dropoff.dropoffStoreId } });
+        if (destStore) {
+          destAddress = `${destStore.storeName}, ${destStore.storeAddress}`;
+          destLat = (destStore as any).storeLat != null ? Number((destStore as any).storeLat) : null;
+          destLng = (destStore as any).storeLng != null ? Number((destStore as any).storeLng) : null;
+        }
+      }
+      if (!destAddress) return;
+
+      // Unique tracking code with retry (same discipline as deliveries).
+      let trackingCode = '';
+      for (let i = 0; i < 5; i++) {
+        const candidate = 'SRS-' + secureCode(8);
+        const clash = await this.deliveriesRepo.findOne({ where: { trackingCode: candidate }, select: ['id'] });
+        if (!clash) { trackingCode = candidate; break; }
+      }
+      if (!trackingCode) return;
+
+      const price = Number(dropoff.prePaidAmountNgn ?? 0) > 0
+        ? Number(dropoff.prePaidAmountNgn)
+        : await this.feesService.getValueOr('store_leg_fallback_fee', 1500);
+
+      const delivery = (await this.deliveriesRepo.save(this.deliveriesRepo.create({
+        trackingCode,
+        customer:           { id: dropoff.senderUserId } as any,
+        pickupAddress:      `${store.storeName}, ${store.storeAddress}`,
+        pickupLat:          Number((store as any).storeLat),
+        pickupLng:          Number((store as any).storeLng),
+        dropoffAddress:     destAddress,
+        dropoffLat:         destLat as any,
+        dropoffLng:         destLng as any,
+        packageDescription: (dropoff as any).description ?? 'Partner-store package',
+        weightKg:           dropoff.weightKg as any,
+        price:              price as any,
+        driverEarnings:     +(price * 0.7).toFixed(2) as any,
+        vehicleType:        'motorcycle',
+      } as any))) as unknown as Delivery;
+
+      await this.dropoffRepo.update(dropoffId, { deliveryId: delivery.id } as any);
+      this.logger.log(`driver-leg delivery ${delivery.trackingCode} created for dropoff ${dropoff.dropCode}`);
+    } catch (e: any) {
+      this.logger.warn(`driver-leg creation failed for dropoff ${dropoffId}: ${e?.message ?? e}`);
+    }
+  }
 
   // ── Spec V8 §4.11 — Sponsored Placement subscriptions ─────────────────────
 
@@ -310,8 +385,10 @@ export class PartnerStoreService {
       receivedPhotoUrl:  body.receivedPhotoUrl,
     });
 
-    // Move forward into the dispatch queue
+    // Move forward into the dispatch queue AND create the driver-leg
+    // delivery so drivers can actually see and claim it.
     await this.dropoffRepo.update(dropoff.id, { status: DropoffStatus.AWAITING_DRIVER });
+    await this.ensureDriverLegDelivery(dropoff.id);
     return this.findById(dropoff.id);
   }
 

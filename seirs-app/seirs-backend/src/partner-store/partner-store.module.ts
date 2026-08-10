@@ -7,6 +7,7 @@ import { StoreDropoff } from './store-dropoff.entity';
 import { PartnerStore } from '../business/partner-store.entity';
 import { PartnerSponsorship } from './partner-sponsorship.entity';
 import { User } from '../users/user.entity';
+import { Delivery } from '../deliveries/delivery.entity';
 import { FeesModule } from '../fees/fees.module';
 import { IdentityModule } from '../identity/identity.module';
 import { MailModule } from '../mail/mail.module';
@@ -20,7 +21,7 @@ import { MailModule } from '../mail/mail.module';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship]),
+    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery]),
     FeesModule,
     IdentityModule,
     MailModule,
@@ -57,6 +58,13 @@ export class PartnerStoreModule implements OnModuleInit {
       await this.ds.query(`
         ALTER TABLE "store_dropoffs"
           ADD COLUMN IF NOT EXISTS "returnFeePaidAt" timestamptz NULL
+      `);
+      // Link to the driver-leg Delivery created when the package hits
+      // AWAITING_DRIVER (2026-08-10: store packages used to sit in a
+      // queue no driver could see).
+      await this.ds.query(`
+        ALTER TABLE "store_dropoffs"
+          ADD COLUMN IF NOT EXISTS "deliveryId" uuid NULL
       `);
       // Optional recipient email so no-account recipients can receive
       // the collection OTP by email (no SMS per launch policy).

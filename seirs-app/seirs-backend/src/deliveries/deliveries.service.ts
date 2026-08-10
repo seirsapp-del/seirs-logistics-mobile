@@ -537,6 +537,10 @@ export class DeliveriesService {
       status:         delivery.status,
       pickupAddress:  delivery.pickupAddress,
       dropoffAddress: delivery.dropoffAddress,
+      // Coords power the customer's redirect-to-store picker (stores
+      // sorted nearest to the ACTUAL dropoff, not the customer's phone).
+      dropoffLat:     delivery.dropoffLat != null ? Number(delivery.dropoffLat) : null,
+      dropoffLng:     delivery.dropoffLng != null ? Number(delivery.dropoffLng) : null,
       packageSize:    delivery.packageSize,
       vehicleType:    delivery.vehicleType,
       assignedAt:     delivery.assignedAt,
@@ -589,6 +593,25 @@ export class DeliveriesService {
     const redirectable = ['assigned', 'picked_up', 'in_transit'];
     if (!redirectable.includes(String(delivery.status))) {
       throw new NotFoundException('This delivery can no longer be redirected.');
+    }
+
+    // Anti-abuse (founder 2026-08-10): ONE redirect per delivery. The
+    // feature exists for "recipient not available", not for steering a
+    // driver around town. A second change goes through support.
+    try {
+      const prior: any[] = await this.repo.manager.query(
+        `SELECT 1 FROM delivery_events
+          WHERE "deliveryId" = $1 AND meta->>'kind' = 'redirect_to_store' LIMIT 1`,
+        [deliveryId],
+      );
+      if (prior.length > 0) {
+        throw new NotFoundException(
+          'This delivery was already redirected once. Contact support for further changes.',
+        );
+      }
+    } catch (e) {
+      if (e instanceof NotFoundException) throw e;
+      /* events table missing on very old DBs: skip the guard */
     }
 
     // Destination store checks via raw SQL (avoids importing the

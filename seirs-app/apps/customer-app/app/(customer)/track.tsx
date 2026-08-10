@@ -6,6 +6,8 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
-import { deliveriesApi } from '@/services/api';
+import { deliveriesApi, dropoffApi } from '@/services/api';
 
 // Labels looked up via t(`tracking.step${cap}`) at render so language
 // switches reflect live.
@@ -25,11 +27,12 @@ const STATUS_CONFIG: Record<string, {
   gradient: readonly [string, string];
   icon: string;
 }> = {
-  pending:    { labelKey: 'tracking.stepPending',   step: 1, gradient: ['#3A86FF', '#1D6AE5'], icon: 'search' },
-  assigned:   { labelKey: 'tracking.stepAssigned',  step: 2, gradient: ['#3A86FF', '#1A56CC'], icon: 'navigate' },
-  picked_up:  { labelKey: 'tracking.stepPickedUp',  step: 3, gradient: ['#FF6B00', '#C2410C'], icon: 'cube' },
-  in_transit: { labelKey: 'tracking.stepInTransit', step: 4, gradient: ['#8B5CF6', '#6D28D9'], icon: 'navigate' },
-  delivered:  { labelKey: 'tracking.stepDelivered', step: 5, gradient: ['#22C55E', '#15803D'], icon: 'checkmark-circle' },
+  // Brand palette only (audit 2026-08-10: purple + off-brand blues removed).
+  pending:    { labelKey: 'tracking.stepPending',   step: 1, gradient: ['#3A7BD5', '#2A5FA8'], icon: 'search' },
+  assigned:   { labelKey: 'tracking.stepAssigned',  step: 2, gradient: ['#3A7BD5', '#1F4E8C'], icon: 'navigate' },
+  picked_up:  { labelKey: 'tracking.stepPickedUp',  step: 3, gradient: ['#FFBE0B', '#D99E00'], icon: 'cube' },
+  in_transit: { labelKey: 'tracking.stepInTransit', step: 4, gradient: ['#0F2B4C', '#1A3A63'], icon: 'navigate' },
+  delivered:  { labelKey: 'tracking.stepDelivered', step: 5, gradient: ['#16A34A', '#15803D'], icon: 'checkmark-circle' },
   failed:     { labelKey: 'tracking.stepFailed',    step: 0, gradient: ['#EF4444', '#B91C1C'], icon: 'alert-circle' },
   cancelled:  { labelKey: 'tracking.stepCancelled', step: 0, gradient: ['#6B7280', '#4B5563'], icon: 'close-circle' },
 };
@@ -48,6 +51,54 @@ export default function TrackScreen() {
   const [deliveryData, setDeliveryData] = useState<any>(null);
   const [searching,    setSearching]    = useState(false);
   const [notFound,     setNotFound]     = useState(false);
+  const [redirectOpen,  setRedirectOpen]  = useState(false);
+  const [redirectStores, setRedirectStores] = useState<any[]>([]);
+  const [redirectBusy,  setRedirectBusy]  = useState(false);
+
+  // Mid-flight rescue (founder 2026-08-10): when the RECIPIENT is not
+  // available, the customer can redirect the drop-off to a partner
+  // store NEAR THE ORIGINAL DROPOFF (not near the customer's phone).
+  // One redirect per delivery: the backend rejects a second attempt.
+  const openRedirect = async () => {
+    setRedirectOpen(true);
+    try {
+      const res = await dropoffApi.directory(
+        deliveryData?.dropoffLat ?? undefined,
+        deliveryData?.dropoffLng ?? undefined,
+      );
+      setRedirectStores((res?.items ?? []).slice(0, 8));
+    } catch {
+      setRedirectStores([]);
+    }
+  };
+
+  const confirmRedirect = (store: any) => {
+    Alert.alert(
+      'Redirect to this store?',
+      `${store.storeName}\n${store.storeAddress}\n\nUse this only when the recipient cannot receive the package. ` +
+      `The driver will deliver to this store instead, and the recipient collects it with their code. ` +
+      `You can only redirect once per delivery.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Redirect',
+          onPress: async () => {
+            setRedirectBusy(true);
+            try {
+              await deliveriesApi.redirectToStore(deliveryData.id, store.id);
+              setRedirectOpen(false);
+              Alert.alert('Redirected', `The driver now delivers to ${store.storeName}. The recipient collects with their code.`);
+              handleSearch();
+            } catch (e: any) {
+              Alert.alert('Could not redirect', e?.message ?? 'Please try again or contact support.');
+            } finally {
+              setRedirectBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const { driverLocation, deliveryStatus, assignedDriver, isConnected } =
     useDeliveryTracking(deliveryId);
@@ -231,6 +282,24 @@ export default function TrackScreen() {
               </View>
             )}
 
+            {/* Recipient-not-available rescue: redirect to a partner
+                store near the dropoff. Mid-flight statuses only. */}
+            {['assigned', 'picked_up', 'in_transit'].includes(String(currentStatus)) && (
+              <Pressable
+                onPress={openRedirect}
+                style={[styles.redirectBtn, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
+              >
+                <Ionicons name="storefront-outline" size={18} color={theme.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.redirectTitle, { color: theme.text }]}>Recipient not available?</Text>
+                  <Text style={[styles.redirectSub, { color: theme.textSecond }]}>
+                    Redirect the drop-off to a partner store near the destination.
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
+              </Pressable>
+            )}
+
             {/* Delivery details */}
             <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
               <Text style={[styles.cardTitle, { color: theme.text }]}>Delivery Details</Text>
@@ -279,6 +348,50 @@ export default function TrackScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Store picker: nearest to the ORIGINAL dropoff first */}
+      <Modal visible={redirectOpen} transparent animationType="slide" onRequestClose={() => setRedirectOpen(false)}>
+        <View style={styles.redirectOverlay}>
+          <View style={[styles.redirectCard, { backgroundColor: theme.surface }]}>
+            <View style={styles.redirectHandle} />
+            <Text style={[styles.redirectModalTitle, { color: theme.text }]}>Redirect to a partner store</Text>
+            <Text style={[styles.redirectModalSub, { color: theme.textSecond }]}>
+              For when the recipient cannot receive the package. Stores are sorted nearest to the delivery address.
+              One redirect per delivery.
+            </Text>
+            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+              {redirectStores.length === 0 ? (
+                <Text style={[styles.redirectModalSub, { color: theme.textThird, paddingVertical: 20, textAlign: 'center' }]}>
+                  No partner stores available near the destination right now.
+                </Text>
+              ) : redirectStores.map(s => (
+                <Pressable
+                  key={s.id}
+                  disabled={redirectBusy}
+                  onPress={() => confirmRedirect(s)}
+                  style={[styles.redirectStoreRow, { borderBottomColor: theme.border }]}
+                >
+                  <View style={[styles.redirectStoreIcon, { backgroundColor: theme.primary + '15' }]}>
+                    <Ionicons name="storefront-outline" size={18} color={theme.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.redirectStoreName, { color: theme.text }]}>{s.storeName}</Text>
+                    <Text style={[styles.redirectStoreAddr, { color: theme.textSecond }]} numberOfLines={1}>{s.storeAddress}</Text>
+                    <Text style={[styles.redirectStoreMeta, { color: theme.textThird }]}>
+                      {s.distanceKm != null ? `${Number(s.distanceKm).toFixed(1)} km from drop-off` : ''}
+                      {(s.openTime || s.closeTime) ? ` · Open ${s.openTime ?? '?'}–${s.closeTime ?? '?'}` : ''}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Pressable style={[styles.redirectClose, { backgroundColor: theme.surfaceSecond }]} onPress={() => setRedirectOpen(false)}>
+              <Text style={{ color: theme.text, fontWeight: FontWeight.semibold }}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -343,4 +456,20 @@ const styles = StyleSheet.create({
   placeholderIconWrap:{ width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.xs },
   placeholderTitle:   { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
   placeholderDesc:    { fontSize: FontSize.sm, textAlign: 'center', lineHeight: 22 },
+
+  redirectBtn:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginHorizontal: Spacing.md, marginBottom: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+  redirectTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  redirectSub:   { fontSize: FontSize.xs, marginTop: 2, lineHeight: 16 },
+
+  redirectOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  redirectCard:       { borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm },
+  redirectHandle:     { width: 40, height: 4, borderRadius: 2, backgroundColor: '#D1D1D6', alignSelf: 'center', marginBottom: 4 },
+  redirectModalTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  redirectModalSub:   { fontSize: FontSize.xs, lineHeight: 17 },
+  redirectStoreRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md, borderBottomWidth: 0.5 },
+  redirectStoreIcon:  { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
+  redirectStoreName:  { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  redirectStoreAddr:  { fontSize: FontSize.xs, marginTop: 1 },
+  redirectStoreMeta:  { fontSize: 10, marginTop: 2 },
+  redirectClose:      { height: 46, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.xs },
 });
