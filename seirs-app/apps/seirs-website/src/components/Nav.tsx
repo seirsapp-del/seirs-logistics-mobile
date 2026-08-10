@@ -77,9 +77,10 @@ export default function Nav() {
             ))}
           </div>
 
-          {/* Desktop CTA + lang switcher */}
+          {/* Desktop CTA. Language switcher hidden until real translations
+              ship (founder 2026-08-10: a dropdown that changes nothing
+              reads as broken). Re-add <LangSwitcher /> when content lands. */}
           <div className="hidden md:flex items-center gap-2">
-            <LangSwitcher />
             <Link
               href="/contact"
               className="bg-sky text-white font-semibold text-sm px-5 py-2.5 rounded-btn hover:opacity-90 transition-opacity"
@@ -113,9 +114,6 @@ export default function Nav() {
                 {link.label}
               </Link>
             ))}
-            <div className="px-4 pt-3">
-              <LangSwitcher />
-            </div>
             <div className="pt-3 pb-1">
               <Link
                 href="/contact"
