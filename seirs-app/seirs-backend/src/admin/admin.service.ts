@@ -1116,6 +1116,57 @@ export class AdminService {
 
   // ── Drivers ───────────────────────────────────────────────────────────────
 
+  // Query-derived compliance stats (audit 2026-08-11): honest numbers
+  // from existing tables instead of waiting for dedicated columns.
+  // offersToday  = job_request notifications pinged to the driver's user
+  // acceptedToday = deliveries the driver took on today (Africa/Lagos day)
+  // acceptance    = accepted/offers (null when no offers: no fake 100%s)
+  async driverComplianceStats() {
+    const rows: any[] = await this.driversRepo.manager.query(`
+      SELECT d.id,
+             u.name                                             AS "driverName",
+             d."vehicleType",
+             d.rating,
+             d."isOnline",
+             COALESCE(offers.cnt, 0)::int                       AS "offersToday",
+             COALESCE(taken.cnt, 0)::int                        AS "acceptedToday",
+             last_job."lastDeliveryAt"
+        FROM drivers d
+        JOIN users u ON u.id = d."userId"
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) AS cnt FROM notifications n
+           WHERE n."userId" = d."userId" AND n.type = 'job_request'
+             AND n."createdAt" >= date_trunc('day', NOW() AT TIME ZONE 'Africa/Lagos') AT TIME ZONE 'Africa/Lagos'
+        ) offers ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) AS cnt FROM deliveries dv
+           WHERE dv."driverId" = d.id
+             AND dv."assignedAt" >= date_trunc('day', NOW() AT TIME ZONE 'Africa/Lagos') AT TIME ZONE 'Africa/Lagos'
+        ) taken ON true
+        LEFT JOIN LATERAL (
+          SELECT MAX(dv."assignedAt") AS "lastDeliveryAt" FROM deliveries dv
+           WHERE dv."driverId" = d.id
+        ) last_job ON true
+       ORDER BY u.name ASC
+       LIMIT 200
+    `);
+    return {
+      drivers: rows.map(r => ({
+        id:               r.id,
+        name:             r.driverName,
+        vehicleType:      r.vehicleType,
+        rating:           r.rating != null ? Number(r.rating) : null,
+        isOnline:         !!r.isOnline,
+        offersToday:      r.offersToday,
+        acceptedToday:    r.acceptedToday,
+        todayAcceptanceRate: r.offersToday > 0
+          ? Math.round((r.acceptedToday / r.offersToday) * 100)
+          : null,
+        lastDeliveryAt:   r.lastDeliveryAt ?? null,
+      })),
+    };
+  }
+
   async getDrivers(page: number, limit: number, status?: string) {
     const qb = this.driversRepo
       .createQueryBuilder('d')

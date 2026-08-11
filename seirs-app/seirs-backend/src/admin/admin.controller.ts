@@ -143,6 +143,15 @@ export class AdminController {
     return this.adminService.getDrivers(q.page ?? 1, q.limit ?? 20, q.status);
   }
 
+  // GET /api/v1/admin/driver-compliance
+  // Query-derived acceptance stats (no schema changes): offers = job
+  // pings sent to the driver today, accepted = deliveries taken today,
+  // lastDeliveryAt = most recent job. Powers last-order-compliance.
+  @Get('driver-compliance')
+  driverCompliance() {
+    return this.adminService.driverComplianceStats();
+  }
+
   // GET /api/v1/admin/drivers/:id
   @Get('drivers/:id')
   getDriverDetail(@Param('id') id: string) {
