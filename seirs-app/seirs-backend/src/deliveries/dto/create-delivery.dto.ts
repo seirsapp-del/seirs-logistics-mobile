@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { PackageSize, UrgencyLevel } from '../delivery.entity';
 
 export class CreateDeliveryDto {
@@ -41,4 +41,13 @@ export class CreateDeliveryDto {
   @IsString()
   @MaxLength(500)
   deliveryInstructions?: string;
+
+  // Sender-declared package value in NGN (optional). At or above the
+  // Fee Catalogue's high_value_threshold_ngn it makes the driver-side
+  // handoff signature MANDATORY on delivery (founder policy 2026-08-10:
+  // high-value only) and feeds future insurance cover.
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  declaredValueNgn?: number;
 }

@@ -119,6 +119,13 @@ export class Delivery {
   @Column({ type: 'decimal', precision: 8, scale: 2, nullable: true })
   weightKg: number;
 
+  // Sender-declared package value in NGN (optional). At or above the
+  // Fee Catalogue's high_value_threshold_ngn the driver-side handoff
+  // signature becomes mandatory on the DELIVERED transition (founder
+  // policy 2026-08-10: high-value only). Also feeds future insurance.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  declaredValueNgn: number | null;
+
   // Vehicle the booking was placed for. Drives base fare + km rate.
   // Nullable for legacy rows that didn't capture this explicitly.
   @Column({ nullable: true })

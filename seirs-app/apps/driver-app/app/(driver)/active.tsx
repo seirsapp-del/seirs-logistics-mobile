@@ -133,6 +133,28 @@ export default function ActiveDeliveryScreen() {
         ]);
         return;
       }
+      // High-value packages (founder policy 2026-08-10): recipient must
+      // be identity-verified before DELIVERED. The backend refuses the
+      // transition without a handoff record, so the "already verified"
+      // path is safe to offer.
+      if (delivery.requiresRecipientVerification) {
+        Alert.alert(
+          'High-value package',
+          'This delivery requires recipient verification: physical ID + email code, or SEIRS ID + typed name.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Verify Recipient',
+              onPress: () => router.push({
+                pathname: '/(driver)/signature',
+                params:   { deliveryId: delivery.id },
+              } as any),
+            },
+            { text: 'Already verified: Delivered', onPress: () => doUpdate(nextStatus) },
+          ],
+        );
+        return;
+      }
       Alert.alert('Confirm Delivery', 'Has the package been handed to the recipient?', [
         { text: 'Cancel', style: 'cancel' },
         // Gap 5 QR: verify the right package meets the right recipient
@@ -163,6 +185,34 @@ export default function ActiveDeliveryScreen() {
       await deliveriesApi.updateStatus(delivery.id, nextStatus as any, photoUrl);
       if (nextStatus === 'delivered') {
         stopBroadcast();
+        // Spec V8 anti-theft trunk check: if the driver still has OTHER
+        // active packages on board (multi-leg run), photo-confirm the
+        // remaining cargo before riding off. Best-effort check: if the
+        // lookup fails we fall through to the normal completion alert.
+        let remainingActive = 0;
+        try {
+          const mine = await driversApi.myDeliveries();
+          remainingActive = (Array.isArray(mine) ? mine : []).filter((d: any) =>
+            d.id !== delivery.id && ['assigned', 'picked_up', 'in_transit'].includes(d.status),
+          ).length;
+        } catch { /* fall through */ }
+        if (remainingActive > 0) {
+          Alert.alert(
+            'Trunk check',
+            `Delivered ${delivery.trackingCode}. You still have ${remainingActive} package${remainingActive > 1 ? 's' : ''} on board: take a quick photo of the remaining cargo. It protects YOU in any dispute.`,
+            [
+              {
+                text: 'Take Trunk Photo',
+                onPress: () => router.replace({
+                  pathname: '/(driver)/trunk-check',
+                  params:   { deliveryId: delivery.id, remaining: String(remainingActive) },
+                } as any),
+              },
+              { text: 'Skip (not recommended)', style: 'cancel', onPress: () => router.replace('/(driver)' as any) },
+            ],
+          );
+          return;
+        }
         Alert.alert(
           'Delivery Complete!',
           `You've successfully delivered ${delivery.trackingCode}.\n\nPayment will be credited to your wallet shortly.`,

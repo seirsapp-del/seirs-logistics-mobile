@@ -2,7 +2,7 @@ import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert, Activi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
-import { ArrowLeft, Copy, Shield, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, Copy, Shield, CheckCircle, AlertTriangle, RefreshCw, Package, ChevronRight } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -152,6 +152,26 @@ export default function SeirsIdScreen() {
           ))}
         </View>
 
+        {/* Recipient handoff surface (audit 2026-08-10): the full
+            collect-a-package identity screen existed but nothing
+            navigated to it. SEIRS ID is the identity home, so the
+            entry lives here. */}
+        <Pressable
+          style={[styles.receiveRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          onPress={() => router.push('/(customer)/recipient-id' as any)}
+        >
+          <View style={[styles.receiveIcon, { backgroundColor: theme.primary + '15' }]}>
+            <Package size={18} color={theme.primary} strokeWidth={1.75} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.receiveTitle, { color: theme.text }]}>Receiving a package?</Text>
+            <Text style={[styles.receiveSub, { color: theme.textSecond }]}>
+              Open your collection pass: ID + email code, or SEIRS ID + typed name.
+            </Text>
+          </View>
+          <ChevronRight size={18} color={theme.textThird} />
+        </Pressable>
+
         <Pressable
           style={[styles.alert, { backgroundColor: '#FEF9C3', borderColor: '#FDE68A' }]}
           onPress={() => Alert.alert(
@@ -195,6 +215,11 @@ const styles = StyleSheet.create({
   howStep:  { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
   howStepText:{ color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
   howText:  { flex: 1, fontSize: FontSize.sm, lineHeight: 19 },
+
+  receiveRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
+  receiveIcon:  { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
+  receiveTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  receiveSub:   { fontSize: FontSize.xs, lineHeight: 17, marginTop: 1 },
 
   alert:    { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, alignItems: 'center' },
   alertRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs },

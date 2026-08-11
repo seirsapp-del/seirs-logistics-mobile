@@ -118,6 +118,12 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "delivery_stops"
           ADD COLUMN IF NOT EXISTS "stopCode" varchar(12) NULL
       `);
+      // High-value handoff policy (2026-08-10): sender-declared value
+      // drives the mandatory signature gate on DELIVERED.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "declaredValueNgn" numeric(12,2) NULL
+      `);
       // Partial unique index: every non-null stop code must be unique
       // platform-wide (recipient N can only ever claim stop N). Legacy
       // null rows are exempt.

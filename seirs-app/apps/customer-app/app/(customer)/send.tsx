@@ -157,6 +157,9 @@ export default function SendScreen() {
   // code 4231"). Auto-posted into the chat as a system message when a
   // driver is assigned so it is impossible to miss.
   const [instructions, setInstructions] = useState('');
+  // Sender-declared package value (optional). At/above the catalogue
+  // high-value threshold the driver must ID-verify the recipient.
+  const [declaredValue, setDeclaredValue] = useState('');
   const [pickup,      setPickup]      = useState<PickedAddress | null>(null);
   const [dropoff,     setDropoff]     = useState<PickedAddress | null>(null);
   const [vehicleId,   setVehicleId]   = useState<VehicleId>('motorcycle');
@@ -389,6 +392,7 @@ export default function SendScreen() {
                            : undefined,
         codAmountNgn:    codAmountNgn || undefined,
         deliveryInstructions: instructions.trim() || undefined,
+        declaredValueNgn: Number(declaredValue) > 0 ? Number(declaredValue) : undefined,
       } as any);
       router.replace('/(customer)/history' as any);
     } catch (e: any) {
@@ -569,6 +573,18 @@ export default function SendScreen() {
                 keyboardType="decimal-pad"
                 value={weightKg}
                 onChangeText={setWeightKg}
+              />
+
+              <Text style={[styles.label, { color: theme.textSecond }]}>
+                {t('send.declaredValue', { defaultValue: 'Package value in ₦ (optional)' })}
+              </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
+                placeholder={t('send.declaredValuePlaceholder', { defaultValue: 'e.g. 150000. High-value packages get ID-verified handoff.' })}
+                placeholderTextColor={theme.textThird}
+                keyboardType="number-pad"
+                value={declaredValue}
+                onChangeText={setDeclaredValue}
               />
 
               <Text style={[styles.label, { color: theme.textSecond }]}>

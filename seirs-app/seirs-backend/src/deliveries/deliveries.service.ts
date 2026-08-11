@@ -556,6 +556,13 @@ export class DeliveriesService {
       driver:         publicDriver,
       etaMinutes:     etaMinutes,
       etaAsOf:        etaMinutes != null ? new Date().toISOString() : null,
+      // High-value flag only, never the amount: the public tracking
+      // page must not advertise what a package is worth. Drives the
+      // driver app's mandatory Verify Recipient step, and on the
+      // tracking page it reads as a security feature.
+      requiresRecipientVerification:
+        Number(delivery.declaredValueNgn ?? 0) > 0 &&
+        Number(delivery.declaredValueNgn) >= await this.getHighValueThreshold(),
       events:         events.map(e => ({
         id:          e.id,
         type:        e.type,
@@ -736,6 +743,21 @@ export class DeliveriesService {
     }
   }
 
+  // Catalogue-driven threshold for the high-value handoff gate.
+  // Falls back to the founder's target default when the fees row is
+  // missing so the gate never silently disables.
+  private async getHighValueThreshold(): Promise<number> {
+    try {
+      const rows = await this.repo.manager.query(
+        `SELECT "value" FROM "fees" WHERE "key" = 'high_value_threshold_ngn' LIMIT 1`,
+      );
+      const v = Number(rows?.[0]?.value);
+      return Number.isFinite(v) && v > 0 ? v : 100000;
+    } catch {
+      return 100000;
+    }
+  }
+
   /**
    * Store-leg sync (audit 2026-08-10): when a Delivery was minted from a
    * partner-store dropoff, driver progress must flow back to the dropoff
@@ -792,6 +814,29 @@ export class DeliveriesService {
     if (!delivery) throw new NotFoundException('Delivery not found.');
 
     const fromStatus = delivery.status;
+
+    // High-value handoff gate (founder policy 2026-08-10: high-value
+    // ONLY). At or above the catalogue threshold, DELIVERED requires a
+    // verified driver_to_recipient handoff record (physical ID + email
+    // OTP, or SEIRS ID + typed-name signature). A proof photo alone is
+    // not enough when the package is worth real money. Handoff records
+    // only exist for successful verifications, so existence = verified.
+    if (status === DeliveryStatus.DELIVERED && Number(delivery.declaredValueNgn ?? 0) > 0) {
+      const threshold = await this.getHighValueThreshold();
+      if (Number(delivery.declaredValueNgn) >= threshold) {
+        const rows = await this.repo.manager.query(
+          `SELECT id FROM "handoff_records" WHERE "deliveryId" = $1 AND "stage" = 'driver_to_recipient' LIMIT 1`,
+          [id],
+        );
+        if (!rows?.length) {
+          const { BadRequestException } = await import('@nestjs/common');
+          throw new BadRequestException(
+            `High-value package (₦${Number(delivery.declaredValueNgn).toLocaleString()} declared): ` +
+            'verify the recipient before completing. Tap "Verify Recipient" and finish ID + OTP or SEIRS ID + typed signature.',
+          );
+        }
+      }
+    }
 
     const timestamps: Partial<Delivery> = { status };
     if (status === DeliveryStatus.ASSIGNED)   timestamps.assignedAt  = new Date();
