@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import {
   Store,
   Banknote,
@@ -20,7 +20,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Partner Stores",
   description:
-    "Turn your shop into a Seirs drop-off point. Earn ₦500 per package collected, drive foot traffic, get paid weekly. Open to existing Nigerian businesses with shopfront space.",
+    "Turn your shop into a Seirs drop-off point. Earn a per-package fee on everything you handle, drive foot traffic, and see every naira itemised in your in-app statements. Open to existing Nigerian businesses with shopfront space.",
 };
 
 function FeatureCard({
@@ -99,10 +99,10 @@ export default async function ForPartnerStoresPage() {
       <section className="py-16 bg-white border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <StatBlock value="₦500" label="Per package collected" />
-            <StatBlock value="Weekly" label="Automatic payouts" />
+            <StatBlock value="Per-package" label="Fee on every handoff" />
+            <StatBlock value="Itemised" label="In-app statements" />
             <StatBlock value="₦0" label="Setup or monthly fee" />
-            <StatBlock value="48 hrs" label="Average approval time" />
+            <StatBlock value="Fast" label="Application review" />
           </div>
         </div>
       </section>
@@ -124,13 +124,13 @@ export default async function ForPartnerStoresPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FeatureCard
               icon={Banknote}
-              title="Earn ₦500 per package"
-              body="Every package a customer drops off or picks up at your shop earns you ₦500, credited to your Seirs wallet the moment the handoff completes."
+              title="Earn on every package"
+              body="Every package your shop receives, holds, or releases earns a fee, recorded on your statement the moment the handoff completes. Storage fees apply when senders overstay: also yours."
             />
             <FeatureCard
               icon={Calendar}
-              title="Weekly payouts to your bank"
-              body="Earnings auto-transfer to your linked Nigerian bank account every Friday. No paperwork, no chase-ups, no minimum balance to withdraw."
+              title="Every naira accounted for"
+              body="Your earnings ledger lives in the app: every package, every fee, every day of storage, itemised. Payout details are agreed at onboarding: no chasing anyone for what you are owed."
             />
             <FeatureCard
               icon={Footprints}
@@ -269,50 +269,30 @@ export default async function ForPartnerStoresPage() {
       <section className="py-20 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <p className="section-label mb-3">Real Numbers</p>
-            <h2 className="section-title mb-4">What partners typically earn</h2>
+            <p className="section-label mb-3">How Earnings Build</p>
+            <h2 className="section-title mb-4">Simple math, no surprises</h2>
           </div>
 
+          {/* Honesty rule 2026-08-11: the previous version invented
+              monthly earnings "based on last quarter's partner data" for
+              a network that hasn't launched. Real partner earnings take
+              this slot once real partners have real quarters. */}
           <div className="bg-off-white rounded-2xl border border-gray-200 p-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-              <div>
-                <div className="text-text-muted text-xs uppercase tracking-wider font-semibold mb-2">
-                  Light traffic shop
+            <div className="space-y-4 max-w-xl mx-auto">
+              {[
+                { n: "1", text: "You earn a per-package fee on every drop-off, hold, and collection your shop handles: the exact rate is agreed at onboarding, in writing." },
+                { n: "2", text: "Senders who overstay the free storage window pay daily storage fees: those are yours too." },
+                { n: "3", text: "Every package and fee appears on your in-app statement the moment it happens. The busier your street, the more your shelf earns." },
+              ].map((s) => (
+                <div key={s.n} className="flex items-start gap-4">
+                  <div className="w-8 h-8 bg-navy text-white font-bold text-sm rounded-lg flex items-center justify-center flex-shrink-0">{s.n}</div>
+                  <p className="text-text-dark text-sm leading-relaxed pt-1">{s.text}</p>
                 </div>
-                <div className="text-navy font-extrabold text-3xl mb-1">
-                  ₦15,000
-                </div>
-                <div className="text-text-muted text-xs">
-                  /month · ~30 packages/wk
-                </div>
-              </div>
-              <div className="md:border-x border-gray-200 md:px-6">
-                <div className="text-text-muted text-xs uppercase tracking-wider font-semibold mb-2">
-                  Steady neighbourhood spot
-                </div>
-                <div className="text-success-green font-extrabold text-3xl mb-1">
-                  ₦40,000
-                </div>
-                <div className="text-text-muted text-xs">
-                  /month · ~80 packages/wk
-                </div>
-              </div>
-              <div>
-                <div className="text-text-muted text-xs uppercase tracking-wider font-semibold mb-2">
-                  Busy main-road shop
-                </div>
-                <div className="text-sky font-extrabold text-3xl mb-1">
-                  ₦80,000+
-                </div>
-                <div className="text-text-muted text-xs">
-                  /month · ~160 packages/wk
-                </div>
-              </div>
+              ))}
             </div>
             <p className="text-text-muted text-xs text-center mt-6">
-              Indicative monthly earnings based on partner-store data from Lagos
-              and Abuja over the last quarter. Actuals depend on your location,
-              hours, and customer volume nearby.
+              We publish real partner earning figures once our first partners have
+              real months behind them: not before.
             </p>
           </div>
         </div>

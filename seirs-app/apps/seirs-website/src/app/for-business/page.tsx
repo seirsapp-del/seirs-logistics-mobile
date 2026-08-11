@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import {
   Briefcase,
   Upload,
@@ -207,7 +207,7 @@ export default async function ForBusinessPage() {
                 For neighbourhood shops who run a Seirs drop-off / pickup point.
               </p>
               <ul className="space-y-3">
-                <CheckRow>Earn ₦500 per package collected</CheckRow>
+                <CheckRow>Earn a per-package fee on every handoff</CheckRow>
                 <CheckRow>Capacity dashboard, accept what you have room for</CheckRow>
                 <CheckRow>QR scan-in / scan-out for every package</CheckRow>
                 <CheckRow>Weekly automatic payout to your bank</CheckRow>
