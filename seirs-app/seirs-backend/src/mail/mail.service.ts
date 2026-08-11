@@ -214,7 +214,7 @@ export class MailService {
       <p>We received a request to reset the password on your SEIRS account. Tap the button below to choose a new one.</p>
       ${primaryButton(resetUrl, 'Reset Password')}
       <p style="font-size:13px;color:#6B7280;margin:4px 0 20px">
-        This link works once and expires in <strong>1 hour</strong>.
+        This link works once and expires in <strong>30 minutes</strong>.
         If the button doesn't open, copy this link into your browser:<br/>
         <a href="${resetUrl}" style="color:${BRAND_BLUE};font-size:12px;word-break:break-all">${resetUrl}</a>
       </p>

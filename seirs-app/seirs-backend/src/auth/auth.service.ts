@@ -416,7 +416,9 @@ export class AuthService {
     if (!user) return { message: 'If that email exists, a reset link has been sent.' };
 
     const token  = uuidv4();
-    const expiry = new Date(Date.now() + 60 * 60 * 1000);
+    // 30 minutes (founder 2026-08-11: an hour of validity is more
+    // runway than a stolen inbox deserves). Token is single-use.
+    const expiry = new Date(Date.now() + 30 * 60 * 1000);
 
     await this.usersRepo.update(user.id, {
       passwordResetToken:  token,
