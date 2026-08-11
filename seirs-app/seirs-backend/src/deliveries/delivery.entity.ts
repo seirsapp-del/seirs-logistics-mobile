@@ -150,6 +150,29 @@ export class Delivery {
   @Column({ type: 'varchar', length: 80, nullable: true })
   fallbackNeighbourName: string | null;
 
+  // Failed-delivery flow (founder matrix 2026-08-11). Driver reports
+  // nobody-home -> sender gets a 5-minute response window -> explicit
+  // choice or automatic fallback (high-value always redirects to the
+  // nearest partner store, never gate/neighbour).
+  @Column({ type: 'timestamptz', nullable: true })
+  arrivalIssueAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  senderResponseBy: Date | null;
+
+  // 'wait' | 'neighbour' | 'gate' | 'store' | 'auto_store'
+  @Column({ type: 'varchar', length: 12, nullable: true })
+  arrivalResolution: string | null;
+
+  // Redirect transport fee owed when a failed delivery is rerouted to a
+  // partner store. Store identity + collection details stay masked on
+  // the tracking payload until it is settled (pay-to-release).
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  redirectFeeNgn: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  redirectFeePaidAt: Date | null;
+
   // Requested pickup time for scheduled bookings; NULL = Send Now.
   // Before 2026-08-11 the client collected a slot but nothing stored
   // it: scheduled bookings dispatched immediately. Now the dispatch

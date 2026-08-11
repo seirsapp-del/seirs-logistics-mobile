@@ -46,6 +46,9 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'night_window_end_hour',       name: 'Night Window End (hour 0-23)',
     description: 'Hour of day (Africa/Lagos) when the night window closes. Value is an HOUR, not naira.',
     category: FeeCategory.SURGE,        unit: FeeUnit.FLAT_NGN,   value: 5 },
+  { key: 'failed_delivery_redirect_fee', name: 'Failed-Delivery Redirect Fee',
+    description: 'Transport fee owed when a failed door delivery is rerouted to a partner store (nobody home, no sender response). Store identity + collection code stay hidden until settled.',
+    category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.FLAT_NGN,   value: 1000 },
 
   // ── Subscriptions ──────────────────────────────────────────────────────
   { key: 'seirs_plus_subscription',     name: 'SEIRS Plus (customer)',

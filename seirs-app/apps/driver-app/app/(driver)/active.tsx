@@ -532,6 +532,35 @@ export default function ActiveDeliveryScreen() {
               ? <ActivityIndicator color="#fff" />
               : <Text style={styles.actionBtnText}>{stepConfig.action}</Text>}
           </Pressable>
+          {/* Failed-delivery flow (2026-08-11): opens the sender's
+              5-minute window; instructions arrive as chat messages. */}
+          {['picked_up', 'in_transit'].includes(String(delivery.status)) && (
+            <Pressable
+              style={{ alignItems: 'center', paddingVertical: 10 }}
+              onPress={() => Alert.alert(
+                'Nobody available to receive?',
+                'The sender gets 5 minutes to respond: wait, neighbour, gate, or partner store. Their answer arrives in this delivery\'s chat. If they stay silent, follow the fallback message.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Notify sender',
+                    onPress: async () => {
+                      try {
+                        await deliveriesApi.arrivalIssue(delivery.id);
+                        Alert.alert('Sender notified', 'Watch the chat: their answer or the fallback instruction lands there within 5 minutes.');
+                      } catch (e: any) {
+                        Alert.alert('Could not notify', e?.message ?? 'Try again.');
+                      }
+                    },
+                  },
+                ],
+              )}
+            >
+              <Text style={{ color: theme.textSecond, fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any }}>
+                Nobody available to receive?
+              </Text>
+            </Pressable>
+          )}
         </View>
       )}
     </SafeAreaView>

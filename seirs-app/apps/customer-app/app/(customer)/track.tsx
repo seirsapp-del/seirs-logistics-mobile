@@ -282,6 +282,61 @@ export default function TrackScreen() {
               </View>
             )}
 
+            {/* URGENT: driver is at the door, nobody home. The sender's
+                5-minute response window (failed-delivery flow 2026-08-11).
+                Silence = the booked fallback applies automatically. */}
+            {deliveryData?.arrivalIssueAt && !deliveryData?.arrivalResolution &&
+              deliveryData?.senderResponseBy && new Date(deliveryData.senderResponseBy) > new Date() && (
+              <View style={[styles.card, { backgroundColor: '#FEF3C7', borderWidth: 1.5, borderColor: '#F59E0B' }]}>
+                <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold as any, color: '#92400E', marginBottom: 4 }}>
+                  Driver is at the door: nobody to receive
+                </Text>
+                <Text style={{ fontSize: FontSize.sm, color: '#92400E', marginBottom: Spacing.md, lineHeight: 19 }}>
+                  Choose within 5 minutes or your booked fallback applies automatically.
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
+                  {([
+                    { key: 'wait',      label: 'Receiver is coming: wait' },
+                    { key: 'neighbour', label: 'Leave with neighbour' },
+                    { key: 'gate',      label: 'Leave at gate' },
+                    { key: 'store',     label: 'Send to partner store' },
+                  ] as const)
+                    .filter(o => !(deliveryData?.requiresRecipientVerification && (o.key === 'gate' || o.key === 'neighbour')))
+                    .map(o => (
+                      <Pressable
+                        key={o.key}
+                        style={{ backgroundColor: '#92400E', borderRadius: Radius.lg, paddingHorizontal: 14, paddingVertical: 10 }}
+                        onPress={async () => {
+                          try {
+                            await deliveriesApi.arrivalResponse(deliveryData.id, o.key);
+                            Alert.alert('Driver notified', 'Your choice went straight to the driver\'s chat.');
+                            handleSearch();
+                          } catch (e: any) {
+                            Alert.alert('Could not send', e?.message ?? 'Try again.');
+                          }
+                        }}
+                      >
+                        <Text style={{ color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold as any }}>{o.label}</Text>
+                      </Pressable>
+                    ))}
+                </View>
+              </View>
+            )}
+
+            {/* Redirect fee owed: the pay-to-release notice. */}
+            {deliveryData?.redirectFeeOwedNgn > 0 && (
+              <View style={[styles.card, { backgroundColor: theme.surface, borderWidth: 1.5, borderColor: '#F59E0B' }, Shadows.sm]}>
+                <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold as any, color: theme.text, marginBottom: 4 }}>
+                  Package waiting at a partner store
+                </Text>
+                <Text style={{ fontSize: FontSize.sm, color: theme.textSecond, lineHeight: 19 }}>
+                  Nobody was available at the door, so your package is safe at a nearby SEIRS partner store.
+                  A redirect fee of ₦{Number(deliveryData.redirectFeeOwedNgn).toLocaleString()} (plus any storage days)
+                  applies. Contact support from the app to settle it and receive the pickup location and collection code.
+                </Text>
+              </View>
+            )}
+
             {/* Recipient-not-available rescue: redirect to a partner
                 store near the dropoff. Mid-flight statuses only. */}
             {['assigned', 'picked_up', 'in_transit'].includes(String(currentStatus)) && (

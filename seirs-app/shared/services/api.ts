@@ -261,6 +261,14 @@ export const deliveriesApi = {
     ),
   get: (id: string) => request<any>('GET', `/deliveries/${id}`),
   track: (code: string) => request<any>('GET', `/deliveries/track/${code}`, undefined, false),
+  // Failed-delivery flow (2026-08-11): driver opens the 5-minute sender
+  // window; sender answers wait | neighbour | gate | store.
+  arrivalIssue: (id: string) =>
+    request<{ senderResponseBy: string; windowMinutes?: number; alreadyOpen?: boolean }>(
+      'POST', `/deliveries/${id}/arrival-issue`,
+    ),
+  arrivalResponse: (id: string, action: 'wait' | 'neighbour' | 'gate' | 'store') =>
+    request<{ resolved: string }>('POST', `/deliveries/${id}/arrival-response`, { action }),
   updateStatus: (id: string, status: string, proofPhotoUrl?: string) =>
     request<any>('PATCH', `/deliveries/${id}/status`, { status, ...(proofPhotoUrl ? { proofPhotoUrl } : {}) }),
   rate: (id: string, rating: number, comment?: string) =>

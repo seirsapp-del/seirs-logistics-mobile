@@ -138,6 +138,15 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "fallbackPref" varchar(12) NULL,
           ADD COLUMN IF NOT EXISTS "fallbackNeighbourName" varchar(80) NULL
       `);
+      // Failed-delivery flow (2026-08-11): arrival window + redirect fee.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "arrivalIssueAt" timestamptz NULL,
+          ADD COLUMN IF NOT EXISTS "senderResponseBy" timestamptz NULL,
+          ADD COLUMN IF NOT EXISTS "arrivalResolution" varchar(12) NULL,
+          ADD COLUMN IF NOT EXISTS "redirectFeeNgn" numeric(12,2) NULL,
+          ADD COLUMN IF NOT EXISTS "redirectFeePaidAt" timestamptz NULL
+      `);
       // Night ops (2026-08-11): real scheduled dispatch + night fee.
       await this.ds.query(`
         ALTER TABLE "deliveries"

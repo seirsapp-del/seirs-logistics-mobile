@@ -120,6 +120,27 @@ export class DeliveriesController {
     return this.deliveriesService.redirectToStore(id, user.id, body.storeId);
   }
 
+  // POST /api/v1/deliveries/:id/arrival-issue
+  // Driver arrived, nobody available. Opens the sender's 5-minute
+  // response window and fires the sender notification.
+  @Post(':id/arrival-issue')
+  arrivalIssue(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.reportArrivalIssue(id, user.id);
+  }
+
+  // POST /api/v1/deliveries/:id/arrival-response  { action }
+  // Sender's answer inside the window: wait | neighbour | gate | store.
+  // High-value packages refuse gate/neighbour server-side.
+  @Post(':id/arrival-response')
+  arrivalResponse(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: { action: string },
+  ) {
+    if (!body?.action) throw new BadRequestException('action is required.');
+    return this.deliveriesService.respondToArrivalIssue(id, user.id, body.action);
+  }
+
   // POST /api/v1/deliveries/:id/scan-verify  { scannedCode }
   // Gap 5 evidence trail: the driver's QR scan at hand-off is verified
   // server-side and logged to delivery_events (SCAN type) so disputes

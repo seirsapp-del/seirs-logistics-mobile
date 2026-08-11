@@ -630,16 +630,30 @@ export class DeliveriesService {
     const driverLng = delivery.driver?.lastLng  ?? null;
     const etaMinutes = computeEtaMinutes(delivery, driverLat, driverLng);
 
+    // Pay-to-release (founder 2026-08-11): a failed delivery rerouted to
+    // a partner store keeps the store's identity + location hidden until
+    // the redirect fee is settled. The public tracking payload is the
+    // reveal surface, so the mask lives here.
+    const feeLocked = Number(delivery.redirectFeeNgn ?? 0) > 0 && !delivery.redirectFeePaidAt;
+
     return {
       id:             delivery.id,
       trackingCode:   delivery.trackingCode,
       status:         delivery.status,
       pickupAddress:  delivery.pickupAddress,
-      dropoffAddress: delivery.dropoffAddress,
+      dropoffAddress: feeLocked
+        ? 'SEIRS Partner Store (settle the redirect fee to reveal the pickup location)'
+        : delivery.dropoffAddress,
       // Coords power the customer's redirect-to-store picker (stores
       // sorted nearest to the ACTUAL dropoff, not the customer's phone).
-      dropoffLat:     delivery.dropoffLat != null ? Number(delivery.dropoffLat) : null,
-      dropoffLng:     delivery.dropoffLng != null ? Number(delivery.dropoffLng) : null,
+      dropoffLat:     feeLocked ? null : (delivery.dropoffLat != null ? Number(delivery.dropoffLat) : null),
+      dropoffLng:     feeLocked ? null : (delivery.dropoffLng != null ? Number(delivery.dropoffLng) : null),
+      // Failed-delivery window state for the customer app's response
+      // sheet + the driver app's waiting view.
+      arrivalIssueAt:     delivery.arrivalIssueAt ?? null,
+      senderResponseBy:   delivery.senderResponseBy ?? null,
+      arrivalResolution:  delivery.arrivalResolution ?? null,
+      redirectFeeOwedNgn: feeLocked ? Number(delivery.redirectFeeNgn) : null,
       packageSize:    delivery.packageSize,
       vehicleType:    delivery.vehicleType,
       assignedAt:     delivery.assignedAt,
@@ -687,6 +701,217 @@ export class DeliveriesService {
    *     model as return-to-sender until tokenized charging lands).
    *   - Driver is notified through the chat system message + WS.
    */
+  // ── Failed-delivery flow (founder matrix 2026-08-11) ─────────────────
+  // Driver reports nobody-home. Sender gets 5 minutes to respond with a
+  // choice; silence resolves to the booked fallback, with high-value
+  // packages always redirecting to the nearest partner store.
+
+  private static readonly ARRIVAL_WINDOW_MIN = 5;
+
+  async reportArrivalIssue(deliveryId: string, driverUserId: string) {
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['driver', 'driver.user', 'customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.driver?.user?.id !== driverUserId) {
+      throw new NotFoundException('Delivery not found.'); // no oracle
+    }
+    if (!['picked_up', 'in_transit'].includes(String(delivery.status))) {
+      const { BadRequestException } = await import('@nestjs/common');
+      throw new BadRequestException('Report nobody-home only while carrying the package.');
+    }
+    if (delivery.arrivalIssueAt && delivery.senderResponseBy && new Date(delivery.senderResponseBy) > new Date()) {
+      return { senderResponseBy: delivery.senderResponseBy, alreadyOpen: true };
+    }
+
+    const senderResponseBy = new Date(Date.now() + DeliveriesService.ARRIVAL_WINDOW_MIN * 60 * 1000);
+    await this.repo.update(deliveryId, {
+      arrivalIssueAt: new Date(),
+      senderResponseBy,
+      arrivalResolution: null,
+    } as any);
+
+    this.logEvent(deliveryId, DeliveryEventType.STATUS_CHANGE, EventActorRole.DRIVER, {
+      actorUserId: driverUserId,
+      description: 'Driver arrived: receiver not available. Sender has 5 minutes to respond.',
+      meta: { kind: 'arrival_no_receiver' },
+    }).catch(() => {});
+
+    if (this.notificationsService && delivery.customer?.id) {
+      this.notificationsService.create(
+        delivery.customer.id,
+        'Driver is at the door: nobody to receive',
+        `Your driver arrived for ${delivery.trackingCode} but nobody is available. Open the app within ${DeliveriesService.ARRIVAL_WINDOW_MIN} minutes to choose: wait, neighbour, gate, or partner store. Silence = your booked fallback.`,
+        'status_update',
+        delivery.id,
+        delivery.trackingCode,
+      ).catch(() => {});
+    }
+    if (this.chatService) {
+      this.chatService
+        .insertSystemMessage(deliveryId, 'status', 'Driver reports nobody available to receive. Sender has 5 minutes to respond before the fallback applies.')
+        .catch(() => {});
+    }
+    if (this.trackingGateway) this.trackingGateway.broadcastStatusChange(deliveryId, delivery.status);
+
+    return { senderResponseBy, windowMinutes: DeliveriesService.ARRIVAL_WINDOW_MIN };
+  }
+
+  async respondToArrivalIssue(deliveryId: string, customerId: string, action: string) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const delivery = await this.repo.findOne({ where: { id: deliveryId }, relations: ['customer'] });
+    if (!delivery || delivery.customer?.id !== customerId) {
+      throw new NotFoundException('Delivery not found.');
+    }
+    if (!delivery.arrivalIssueAt) {
+      throw new BadRequestException('No open arrival issue on this delivery.');
+    }
+    if (delivery.arrivalResolution) {
+      throw new BadRequestException('This arrival was already resolved.');
+    }
+    const allowed = ['wait', 'neighbour', 'gate', 'store'];
+    if (!allowed.includes(action)) throw new BadRequestException('Unknown action.');
+
+    // High-value: gate/neighbour are never acceptable (founder policy).
+    if (Number(delivery.declaredValueNgn ?? 0) > 0) {
+      const threshold = await this.getHighValueThreshold();
+      if (Number(delivery.declaredValueNgn) >= threshold && (action === 'gate' || action === 'neighbour')) {
+        throw new BadRequestException('High-value packages cannot go to the gate or a neighbour. Choose wait or partner store.');
+      }
+    }
+
+    if (action === 'store') {
+      await this.autoRedirectToNearestStore(delivery, 'store');
+    } else {
+      await this.repo.update(deliveryId, { arrivalResolution: action } as any);
+    }
+
+    this.logEvent(deliveryId, DeliveryEventType.STATUS_CHANGE, EventActorRole.CUSTOMER, {
+      actorUserId: customerId,
+      description: `Sender responded to arrival issue: ${action}`,
+      meta: { kind: 'arrival_response', action },
+    }).catch(() => {});
+
+    if (this.chatService) {
+      const msg = {
+        wait:      'Sender says: receiver is coming, please wait a moment.',
+        neighbour: `Sender says: leave it with the neighbour${delivery.fallbackNeighbourName ? ` (${delivery.fallbackNeighbourName})` : ''}. Take a photo.`,
+        gate:      'Sender says: leave it at the gate with a photo. Sender accepts the risk.',
+        store:     'Sender says: take it to the assigned partner store.',
+      }[action];
+      if (msg) this.chatService.insertSystemMessage(deliveryId, 'status', msg).catch(() => {});
+    }
+    if (this.trackingGateway) this.trackingGateway.broadcastStatusChange(deliveryId, delivery.status);
+
+    return { resolved: action };
+  }
+
+  // Silence resolves the window: booked fallback for normal packages,
+  // nearest partner store for high-value or hand-only bookings.
+  @Cron(CronExpression.EVERY_MINUTE)
+  async resolveExpiredArrivalWindows() {
+    try {
+      const due = await this.repo
+        .createQueryBuilder('d')
+        .leftJoinAndSelect('d.customer', 'customer')
+        .where('d.arrivalIssueAt IS NOT NULL')
+        .andWhere('d.arrivalResolution IS NULL')
+        .andWhere('d.senderResponseBy < NOW()')
+        .andWhere(`d.status IN ('picked_up', 'in_transit')`)
+        .take(20)
+        .getMany();
+
+      for (const d of due) {
+        let resolution = d.fallbackPref ?? 'hand_only';
+        const declared = Number(d.declaredValueNgn ?? 0);
+        if (declared > 0) {
+          const threshold = await this.getHighValueThreshold();
+          if (declared >= threshold) resolution = 'store';
+        }
+        if (resolution === 'hand_only' || resolution === 'store') {
+          await this.autoRedirectToNearestStore(d, 'auto_store').catch(async (e) => {
+            this.logger.warn(`auto-redirect failed for ${d.id}: ${e?.message ?? e}; leaving window open`);
+            // Push the window forward so the sweep retries rather than
+            // hammering every minute forever.
+            await this.repo.update(d.id, { senderResponseBy: new Date(Date.now() + 10 * 60 * 1000) } as any);
+          });
+        } else {
+          await this.repo.update(d.id, { arrivalResolution: resolution } as any);
+          if (this.chatService) {
+            const msg = resolution === 'neighbour'
+              ? `No response from sender: booked fallback applies. Leave with the neighbour${d.fallbackNeighbourName ? ` (${d.fallbackNeighbourName})` : ''} and take a photo.`
+              : 'No response from sender: booked fallback applies. Leave at the gate and take a photo.';
+            this.chatService.insertSystemMessage(d.id, 'status', msg).catch(() => {});
+          }
+        }
+      }
+    } catch (e: any) {
+      this.logger.warn(`arrival-window sweep failed: ${e?.message ?? e}`);
+    }
+  }
+
+  // Nearest approved store to the delivery's dropoff becomes the new
+  // destination; the redirect fee is recorded and the tracking payload
+  // masks the store until it is settled (pay-to-release).
+  private async autoRedirectToNearestStore(delivery: Delivery, resolution: 'store' | 'auto_store') {
+    const { BadRequestException } = await import('@nestjs/common');
+    if (delivery.dropoffLat == null || delivery.dropoffLng == null) {
+      throw new BadRequestException('Delivery has no dropoff coordinates.');
+    }
+    const stores: any[] = await this.repo.manager.query(
+      `SELECT id, "storeName", "storeAddress", "storeLat", "storeLng",
+              (6371 * acos(LEAST(1, GREATEST(-1,
+                cos(radians($1)) * cos(radians("storeLat")) *
+                cos(radians("storeLng") - radians($2)) +
+                sin(radians($1)) * sin(radians("storeLat"))
+              )))) AS distance_km
+         FROM partner_stores
+        WHERE status IN ('approved', 'active') AND "acceptingNew" = true
+          AND "storeLat" IS NOT NULL AND "storeLng" IS NOT NULL
+        ORDER BY distance_km ASC
+        LIMIT 1`,
+      [Number(delivery.dropoffLat), Number(delivery.dropoffLng)],
+    );
+    const store = stores[0];
+    if (!store) throw new BadRequestException('No partner store available nearby.');
+
+    const fee = this.feesServiceRef
+      ? await this.feesServiceRef.getValueOr('failed_delivery_redirect_fee', 1000)
+      : 1000;
+    const prevAddress = delivery.dropoffAddress;
+
+    await this.repo.update(delivery.id, {
+      dropoffAddress:    `${store.storeName}, ${store.storeAddress}`,
+      dropoffLat:        store.storeLat != null ? Number(store.storeLat) : delivery.dropoffLat,
+      dropoffLng:        store.storeLng != null ? Number(store.storeLng) : delivery.dropoffLng,
+      arrivalResolution: resolution,
+      redirectFeeNgn:    fee,
+    } as any);
+
+    this.logEvent(delivery.id, DeliveryEventType.ADMIN_NOTE, EventActorRole.SYSTEM, {
+      description: `Failed delivery rerouted to partner store ${store.storeName} (${Number(store.distance_km).toFixed(1)} km from drop-off). Redirect fee ₦${fee} owed.`,
+      meta: { kind: 'auto_redirect_store', storeId: store.id, prevAddress, feeNgn: fee, resolution },
+    }).catch(() => {});
+
+    if (this.chatService) {
+      this.chatService
+        .insertSystemMessage(delivery.id, 'status', `Take the package to ${store.storeName}, ${store.storeAddress}. The receiver collects it there after settling the redirect fee.`)
+        .catch(() => {});
+    }
+    if (this.notificationsService && delivery.customer?.id) {
+      this.notificationsService.create(
+        delivery.customer.id,
+        'Package rerouted to a partner store',
+        `Nobody was available for ${delivery.trackingCode}, so it is heading to a nearby SEIRS partner store for safe keeping. A redirect fee of ₦${fee.toLocaleString()} plus any storage days applies: settle it in the app to see the pickup location and collection details.`,
+        'status_update',
+        delivery.id,
+        delivery.trackingCode,
+      ).catch(() => {});
+    }
+    if (this.trackingGateway) this.trackingGateway.broadcastStatusChange(delivery.id, delivery.status);
+  }
+
   async redirectToStore(deliveryId: string, customerId: string, storeId: string) {
     const delivery = await this.repo.findOne({
       where: { id: deliveryId },
