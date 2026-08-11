@@ -23,42 +23,78 @@ import {
   Globe,
 } from "lucide-react";
 
-/* ── Hero geometric illustration ── */
+/* ── Hero scene: bespoke okada illustration in the logo's own visual
+   language (founder 2026-08-11: no warehouses, no stock photos; the
+   brand mark's bold-stroke stick-okada extended into a street scene).
+   Same geometry rules as SeirsMarkBold: fat round strokes, circle
+   wheels, the yellow package as the star. ── */
 function HeroIllustration() {
   return (
-    <div className="relative w-full h-full min-h-[340px] flex items-center justify-center">
-      {/* Central delivery icon backdrop */}
-      <div className="relative z-10">
-        {/* Main package shape */}
-        <div className="animate-float">
-          <svg width="220" height="200" viewBox="0 0 220 200" fill="none">
-            {/* Delivery truck body */}
-            <rect x="20" y="80" width="140" height="80" rx="8" fill="white" fillOpacity="0.15" stroke="white" strokeOpacity="0.3" strokeWidth="1.5" />
-            {/* Truck cab */}
-            <rect x="140" y="100" width="55" height="60" rx="6" fill="white" fillOpacity="0.15" stroke="white" strokeOpacity="0.3" strokeWidth="1.5" />
-            {/* Windshield */}
-            <rect x="148" y="108" width="35" height="24" rx="3" fill="white" fillOpacity="0.25" />
-            {/* Wheels */}
-            <circle cx="55" cy="165" r="16" fill="white" fillOpacity="0.2" stroke="white" strokeOpacity="0.4" strokeWidth="2" />
-            <circle cx="55" cy="165" r="8" fill="white" fillOpacity="0.3" />
-            <circle cx="155" cy="165" r="16" fill="white" fillOpacity="0.2" stroke="white" strokeOpacity="0.4" strokeWidth="2" />
-            <circle cx="155" cy="165" r="8" fill="white" fillOpacity="0.3" />
-            {/* Package on truck */}
-            <rect x="45" y="90" width="50" height="50" rx="4" fill="white" fillOpacity="0.25" stroke="white" strokeOpacity="0.5" strokeWidth="1.5" />
-            <line x1="70" y1="90" x2="70" y2="140" stroke="white" strokeOpacity="0.4" strokeWidth="1.5" />
-            <line x1="45" y1="115" x2="95" y2="115" stroke="white" strokeOpacity="0.4" strokeWidth="1.5" />
-            {/* Signal / tracking dots */}
-            <circle cx="185" cy="70" r="5" fill="#3A7BD5" />
-            <circle cx="185" cy="70" r="10" fill="#3A7BD5" fillOpacity="0.3" />
-            <circle cx="185" cy="70" r="16" fill="#3A7BD5" fillOpacity="0.15" />
-          </svg>
-        </div>
-      </div>
+    <div className="relative w-full h-full min-h-[380px] flex items-center justify-center">
+      <svg width="440" height="360" viewBox="0 0 440 360" fill="none" className="max-w-full h-auto">
+        {/* Lagos skyline silhouette */}
+        <g fill="white" fillOpacity="0.07">
+          <rect x="18"  y="90"  width="42" height="130" rx="4" />
+          <rect x="70"  y="60"  width="54" height="160" rx="4" />
+          <rect x="134" y="110" width="38" height="110" rx="4" />
+          <rect x="300" y="80"  width="48" height="140" rx="4" />
+          <rect x="358" y="120" width="40" height="100" rx="4" />
+        </g>
+        {/* Lit windows: brand yellow, sparse */}
+        <g fill="#FFBE0B" fillOpacity="0.55">
+          <rect x="84"  y="78"  width="8" height="8" rx="2" />
+          <rect x="102" y="106" width="8" height="8" rx="2" />
+          <rect x="314" y="98"  width="8" height="8" rx="2" />
+          <rect x="30"  y="112" width="8" height="8" rx="2" />
+        </g>
 
-      {/* Floating demo chips removed (founder 2026-08-10: the fake
-          "Lagos Island / Lekki Phase 1" pins read as cheap). The hero
-          gets real photography in the imagery pass; until then the
-          illustration stands alone. */}
+        {/* Dashed route line: pickup -> rider -> destination */}
+        <path
+          d="M 40 268 C 120 240, 180 296, 240 262 S 380 226, 408 252"
+          stroke="#3A7BD5" strokeWidth="3" strokeDasharray="2 12" strokeLinecap="round" fill="none"
+        />
+        {/* Pickup pin */}
+        <circle cx="40" cy="268" r="9" fill="#3A7BD5" />
+        <circle cx="40" cy="268" r="4" fill="white" />
+        {/* Destination pin: delivered green */}
+        <circle cx="408" cy="252" r="11" fill="#16A34A" />
+        <path d="M 403 252 l 4 4 l 7 -8" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+
+        {/* Okada + rider: the SeirsMarkBold language, scene-sized */}
+        <g className="animate-float" stroke="white" strokeWidth="13" strokeLinecap="round">
+          {/* wheels */}
+          <circle cx="165" cy="292" r="26" fill="none" />
+          <circle cx="269" cy="292" r="26" fill="none" />
+          {/* frame */}
+          <path d="M 165 292 L 205 258 L 251 258 L 269 292" fill="none" strokeLinejoin="round" />
+          {/* rider: torso + head + arm reaching the bars */}
+          <path d="M 214 258 L 226 210" />
+          <path d="M 226 210 L 258 224" />
+          <circle cx="230" cy="190" r="14" fill="white" stroke="none" />
+        </g>
+        {/* The yellow package riding pillion: the brand's hero object */}
+        <g className="animate-float">
+          <rect x="176" y="222" width="34" height="30" rx="6" fill="#FFBE0B" />
+          <line x1="193" y1="222" x2="193" y2="252" stroke="#0F2B4C" strokeWidth="3" />
+          <line x1="176" y1="237" x2="210" y2="237" stroke="#0F2B4C" strokeWidth="3" />
+        </g>
+
+        {/* Motion whiskers behind the okada */}
+        <g stroke="white" strokeOpacity="0.35" strokeWidth="5" strokeLinecap="round">
+          <line x1="96"  y1="270" x2="128" y2="270" />
+          <line x1="82"  y1="288" x2="122" y2="288" />
+          <line x1="100" y1="306" x2="126" y2="306" />
+        </g>
+
+        {/* Street */}
+        <line x1="20" y1="330" x2="420" y2="330" stroke="white" strokeOpacity="0.25" strokeWidth="4" strokeLinecap="round" />
+        <g stroke="#FFBE0B" strokeOpacity="0.7" strokeWidth="4" strokeLinecap="round">
+          <line x1="60"  y1="330" x2="84"  y2="330" />
+          <line x1="150" y1="330" x2="174" y2="330" />
+          <line x1="240" y1="330" x2="264" y2="330" />
+          <line x1="330" y1="330" x2="354" y2="330" />
+        </g>
+      </svg>
 
       {/* Abstract geometric circles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
@@ -255,9 +291,9 @@ export default async function HomePage() {
             {/* Left: copy */}
             <div>
               <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-6">
-                <div className="w-2 h-2 bg-success-green rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-[#FFBE0B] rounded-full animate-pulse" />
                 <span className="text-white/80 text-xs font-medium">
-                  Now live across Lagos & Abuja
+                  Launching in Lagos: join the first wave
                 </span>
               </div>
 
@@ -266,7 +302,7 @@ export default async function HomePage() {
                   <>
                     Nigeria&apos;s Smartest
                     <br />
-                    <span className="text-sky">Last-Mile Delivery</span>
+                    <span className="text-[#FFBE0B]">Last-Mile Delivery</span>
                     <br />
                     Platform
                   </>
@@ -305,13 +341,16 @@ export default async function HomePage() {
                 </span>
               </div>
 
-              {/* Stats row */}
+              {/* Value props, not vanity metrics. Honesty rule 2026-08-11:
+                  the old fake stats (10,000+ deliveries, 99.2% on-time)
+                  claimed history a pre-launch platform does not have, and
+                  an on-time percentage is a promise we never make. */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
-                  { value: "10,000+", label: "Deliveries" },
-                  { value: "500+", label: "Drivers" },
-                  { value: "200+", label: "Partner Stores" },
-                  { value: "99.2%", label: "On-Time Rate" },
+                  { value: "24/7", label: "Pickups, day & night" },
+                  { value: "Live", label: "GPS tracking" },
+                  { value: "Verified", label: "ID-checked drivers" },
+                  { value: "Escrow", label: "Pay on delivery" },
                 ].map((stat) => (
                   <div
                     key={stat.label}
