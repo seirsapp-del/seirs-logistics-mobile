@@ -91,6 +91,33 @@ export class WebsiteContentService implements OnModuleInit {
     // on an empty table): prod already has rows, so missing slots are
     // inserted by slug like the Fee Catalogue's missing-key sweep.
     await this.ensureImageSlots();
+    // Category story articles (founder 2026-08-11): each What-We-Move
+    // tile links to an admin-editable article about that trade's real
+    // situation and how SEIRS helps. Same missing-slug sweep.
+    await this.ensureStoryArticles();
+  }
+
+  private async ensureStoryArticles() {
+    try {
+      const existing = await this.repo.find({
+        where: { type: WebContentType.ARTICLE },
+        select: ['slug'],
+      });
+      const have = new Set(existing.map(r => r.slug));
+      const missing = STORY_ARTICLES.filter(s => !have.has(s.slug!));
+      if (missing.length === 0) return;
+      await this.repo.save(missing.map(s => this.repo.create({
+        type:        WebContentType.ARTICLE,
+        lang:        'en',
+        category:    'impact',
+        status:      WebContentStatus.PUBLISHED,
+        publishedAt: new Date(),
+        ...s,
+      })));
+      this.logger.log(`Seeded ${missing.length} category story article(s)`);
+    } catch (e: any) {
+      this.logger.warn(`story-article seed skipped: ${e?.message ?? e}`);
+    }
   }
 
   // ── Admin-managed image slots (founder 2026-08-11) ────────────────────
@@ -360,6 +387,54 @@ const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
     excerpt: 'story tile. Cement bags and cables loaded for a building site, keke/small truck. 4:3. Midjourney file: move-building.' },
   { slug: 'img_move_animals',   title: 'What we move: live animals',
     excerpt: 'story tile. Healthy chickens in a ventilated transport crate, market setting. 4:3. Midjourney file: move-animals.' },
+];
+
+// ── Category story articles (founder 2026-08-11): the What-We-Move
+// tiles each link to one of these. Admin-editable like any article;
+// covers start on the tile's placeholder image and upgrade with it.
+// Statistics are framed with attribution and soft language: we cite
+// widely-reported figures, never invent SEIRS numbers.
+const STORY_ARTICLES: Array<Partial<WebsiteContent>> = [
+  { slug: 'moving-farm-produce', title: 'Farm produce: beating the clock from harvest to plate',
+    excerpt: 'Up to 40% of Nigeria\'s fresh produce spoils before anyone eats it. Faster, direct last-mile trips are part of the answer.',
+    coverImageUrl: '/placeholders/move-farm.jpg',
+    body: 'The FAO has estimated that as much as 40% of the fresh food Nigeria grows never reaches a plate: it spoils in transit, in storage, or waiting for a buyer. For a smallholder farmer, that is not a statistic, it is half a season\'s income rotting in a basket.\n\nThe biggest enemy is time. Every hour between harvest and kitchen costs freshness, and traditional distribution routes: farm to aggregator to market to hawker to home, add hours at every hop.\n\nSEIRS shortens the chain. A farmer or market seller books a rider directly from the app, the buyer tracks the trip live, and produce moves farm-to-buyer in one leg instead of four. Partner stores act as neighbourhood collection points so a working customer never misses a perishable delivery. We will not pretend an okada solves the cold-chain problem alone: but cutting the journey from all day to under two hours keeps real food out of the waste heap.' },
+  { slug: 'moving-market-traders', title: 'Market traders: every stall is now a citywide shop',
+    excerpt: 'Lagos market traders sell face to face. Delivery turns a stall in Balogun into a shop the whole city can buy from.',
+    coverImageUrl: '/placeholders/move-trader.jpg',
+    body: 'Nigeria\'s markets are engines: Balogun, Onitsha Main Market, Kano\'s Kurmi, and thousands of neighbourhood stalls between them. But a stall only earns from the people who walk past it.\n\nSocial commerce changed the selling: WhatsApp status, Instagram pages, phone orders. What did not change is the delivery problem: traders lose sales daily because "how will it reach you?" has no good answer, and unreliable dispatch eats the profit on the sales they do make.\n\nWith SEIRS a trader books from the stall in under a minute, the buyer pays into escrow so nobody is chasing transfers on trust, and the trader watches the package to the customer\'s door. Recurring templates handle the weekly restock runs. The stall stays where it is: the customers no longer have to.' },
+  { slug: 'moving-tailors-fashion', title: 'Tailors and aso-ebi: delivered before the party',
+    excerpt: 'A tailor\'s reputation dies the day the outfit arrives late. Reliable delivery is part of the craft now.',
+    coverImageUrl: '/placeholders/move-tailor.jpg',
+    body: 'Every Nigerian knows the tailor deadline drama: the wedding is Saturday, the aso-ebi was promised Thursday, and by Friday night someone is sitting in traffic holding a nylon bag and praying.\n\nFashion is one of Nigeria\'s fastest-growing creative industries, powered by tens of thousands of independent tailors and small labels. Their bottleneck is rarely the sewing: it is the last mile, done by okada negotiation at the roadside with no tracking and no recourse.\n\nSEIRS gives a tailor the same delivery machinery a big brand has: booked in the app, priced upfront, tracked by the customer, proof photo at handoff, and a receiver name so the package goes to the celebrant\'s sister and not a stranger at the gate. The craft deserves an arrival as sharp as the outfit.' },
+  { slug: 'moving-furniture-woodwork', title: 'Furniture and woodwork: from bench to new flat',
+    excerpt: 'Carpenters build for the whole city but deliver on borrowed trucks. Bigger vehicles on the platform change that.',
+    coverImageUrl: '/placeholders/move-wood.jpg',
+    body: 'From Mushin workshops to Aba\'s furniture clusters, Nigerian carpenters and woodworkers supply homes, offices, and churches across every city. The making is world-class. The moving is chaos: flag down a truck, negotiate, hope.\n\nA chair scratched in transit is a refund. A wardrobe delivered a day late is an angry landlord and a lost referral. Craftspeople carry all of that risk with no system behind them.\n\nSEIRS puts vans and trucks on the same platform as okadas: a workshop books the vehicle the job actually needs, the buyer sees the trip live, and the handoff is photographed. House-move categories cover single items to full moves. The woodworker goes back to the bench: the platform handles the road.' },
+  { slug: 'moving-hot-food', title: 'Hot food: amala that arrives still steaming',
+    excerpt: 'Food delivery is a trust business. Live tracking and short direct trips keep the food and the promise warm.',
+    coverImageUrl: '/placeholders/move-food.jpg',
+    body: 'Nigeria\'s food business runs on buka pride: the amala must land soft, the jollof must arrive with smoke still in it. Every cold delivery is a customer who never orders again.\n\nSmall food businesses: bukas, home kitchens, small chops caterers, mostly cannot afford their own riders, and shared dispatch means the food waits while other errands finish.\n\nSEIRS trips are direct: one pickup, one drop, live on the map, priced from a hot-food rate card that respects the clock. The 24/7 network matters here too: night market runs and owambe caterers work when the city eats, not when an office closes. Warm food, warm reviews.' },
+  { slug: 'moving-medical-supplies', title: 'Medical supplies: deliveries that cannot wait',
+    excerpt: 'When the package is medicine, logistics is healthcare. Verified riders and custody records treat it that way.',
+    coverImageUrl: '/placeholders/move-medical.jpg',
+    body: 'Sometimes the package is paracetamol. Sometimes it is a diabetic\'s insulin, a mother\'s antimalarials, or the test results a clinic is waiting on. Nigeria\'s pharmacies increasingly deliver: what they need is a network that understands the stakes.\n\nMedical deliveries on SEIRS ride a dedicated category: ID-verified riders, chain-of-custody records on handoff, receiver names so medicine reaches the patient or their named carer, and partner-store fallbacks so a missed knock never means a lost prescription.\n\nWe are honest about our limits: we are couriers, not a cold-chain pharma operation. But for the everyday medical mile: pharmacy to home, lab to clinic, reliably and fast at any hour, that mile is exactly what we built.' },
+  { slug: 'moving-electronics', title: 'Electronics: handled like eggs, tracked like money',
+    excerpt: 'Phones and laptops are the most-stolen cargo on the road. Escrow, ID handoffs, and custody records protect both ends.',
+    coverImageUrl: '/placeholders/move-electronics.jpg',
+    body: 'Computer Village moves a nation\'s worth of phones and laptops, and every seller has the same two nightmares: the package that "never arrived", and the buyer who claims it never did.\n\nHigh-value electronics are where delivery trust breaks down: cash-on-delivery scams, swapped devices, riders who vanish. The result is that sellers restrict delivery to buyers they already know, which is no way to grow.\n\nSEIRS was built for exactly this cargo. Payment sits in escrow until delivery is confirmed. High-value packages REQUIRE an identity-verified handoff: physical ID plus an emailed code, or SEIRS ID plus a typed name, before the driver can even mark it delivered. The fragile-electronics category prices careful handling in, and every step lands in an audit trail both sides can see.' },
+  { slug: 'moving-documents', title: 'Documents: signatures across the city in an hour',
+    excerpt: 'Contracts, certificates, tenders: paper still runs Nigeria. It deserves a courier with an audit trail.',
+    coverImageUrl: '/placeholders/move-documents.jpg',
+    body: 'For all the talk of going digital, Nigeria still runs on paper: signed contracts, original certificates, tender submissions with 4 PM deadlines, court filings that must be physically stamped.\n\nA missing document is not an inconvenience: it is a lost contract, a missed admission, a case adjourned. Yet most documents travel with whoever was available, no record, no recourse.\n\nOn SEIRS a document rides its own category: sealed, tracked, delivered to a NAMED receiver with the handoff logged. The sender watches the envelope cross the city in real time and holds proof of exactly who took delivery and when. Paper with a paper trail.' },
+  { slug: 'moving-building-materials', title: 'Building materials: cement and cable, straight to site',
+    excerpt: 'Construction stalls when materials do not show. Right-sized vehicles and tracked runs keep sites moving.',
+    coverImageUrl: '/placeholders/move-building.jpg',
+    body: 'Anyone who has built in Nigeria knows the rhythm: the workmen are on site, the money is burning daily, and everything is waiting for a delivery that "is coming". Materials logistics is where budgets and timelines go to die.\n\nSites need odd loads at odd times: ten bags of cement now, a coil of cable at noon, tiles on Saturday. Owning a truck for that makes no sense: begging for one every morning makes even less.\n\nSEIRS puts keke, vans, and trucks a booking away, priced by distance and load on the building-materials rate card. The site engineer tracks the run instead of phoning around, and the receipt lands itemised for the project file. The blocks arrive: the day\'s work happens.' },
+  { slug: 'moving-live-animals', title: 'Live animals: yes, even the Christmas chicken',
+    excerpt: 'From day-old chicks to the December goat, animal transport is real Nigerian logistics: done humanely and honestly.',
+    coverImageUrl: '/placeholders/move-animals.jpg',
+    body: 'Every December, Nigeria\'s roads fill with chickens and goats heading to family pots, and all year round poultry farmers move day-old chicks, layers, and broilers between farms and markets. It is real commerce: rarely treated like it.\n\nAnimals are cargo that breathes. Heat, delay, and rough handling are not just cruel, they are losses: a stressed bird is a lighter bird, and a dead one is money gone.\n\nSEIRS carries live animals as their own declared category: the rider knows what they are carrying before they accept, trips are direct rather than pooled with other errands, and the short-leg model keeps time-in-transit low. From the farm gate to the market cage, or the Christmas chicken to grandma\'s compound: booked, tracked, and arriving on its feet.' },
 ];
 
 // ── Seed data - sensible defaults so the website ships non-empty ────────────

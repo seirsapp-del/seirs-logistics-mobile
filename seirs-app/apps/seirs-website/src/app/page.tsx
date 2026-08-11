@@ -602,19 +602,19 @@ export default async function HomePage() {
           </Reveal>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { slot: img.img_move_farm,        title: "Farm produce",       story: "Mile 12 baskets, still fresh at the door" },
-              { slot: img.img_move_trader,      title: "Market traders",     story: "Balogun stalls shipping city-wide" },
-              { slot: img.img_move_tailor,      title: "Tailors & fashion",  story: "Aso-ebi delivered before the party" },
-              { slot: img.img_move_wood,        title: "Furniture & wood",   story: "From the sawmill bench to the new flat" },
-              { slot: img.img_move_food,        title: "Hot food",           story: "Amala that arrives still steaming" },
-              { slot: img.img_move_medical,     title: "Medical supplies",   story: "Prescriptions that cannot wait" },
-              { slot: img.img_move_electronics, title: "Electronics",        story: "Phones and laptops, handled like eggs" },
-              { slot: img.img_move_documents,   title: "Documents",          story: "Signed contracts across town in an hour" },
-              { slot: img.img_move_building,    title: "Building materials", story: "Cement and cable straight to site" },
-              { slot: img.img_move_animals,     title: "Live animals",       story: "Yes: even the Christmas chicken" },
+              { slot: img.img_move_farm,        title: "Farm produce",       story: "Mile 12 baskets, still fresh at the door",   slug: "moving-farm-produce" },
+              { slot: img.img_move_trader,      title: "Market traders",     story: "Balogun stalls shipping city-wide",           slug: "moving-market-traders" },
+              { slot: img.img_move_tailor,      title: "Tailors & fashion",  story: "Aso-ebi delivered before the party",          slug: "moving-tailors-fashion" },
+              { slot: img.img_move_wood,        title: "Furniture & wood",   story: "From the sawmill bench to the new flat",      slug: "moving-furniture-woodwork" },
+              { slot: img.img_move_food,        title: "Hot food",           story: "Amala that arrives still steaming",           slug: "moving-hot-food" },
+              { slot: img.img_move_medical,     title: "Medical supplies",   story: "Prescriptions that cannot wait",              slug: "moving-medical-supplies" },
+              { slot: img.img_move_electronics, title: "Electronics",        story: "Phones and laptops, handled like eggs",       slug: "moving-electronics" },
+              { slot: img.img_move_documents,   title: "Documents",          story: "Signed contracts across town in an hour",     slug: "moving-documents" },
+              { slot: img.img_move_building,    title: "Building materials", story: "Cement and cable straight to site",           slug: "moving-building-materials" },
+              { slot: img.img_move_animals,     title: "Live animals",       story: "Yes: even the Christmas chicken",             slug: "moving-live-animals" },
             ].map((t, i) => (
               <Reveal key={t.title} delay={(i % 5) * 90}>
-                <div className="group relative rounded-card overflow-hidden bg-navy aspect-[4/5]">
+                <Link href={`/news/${t.slug}`} className="group relative rounded-card overflow-hidden bg-navy aspect-[4/5] block focus-visible:ring-2 focus-visible:ring-sky">
                   {t.slot && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={t.slot} alt={t.title}
@@ -625,11 +625,16 @@ export default async function HomePage() {
                     <div className="w-8 h-1 bg-[#FFBE0B] rounded-full mb-2" />
                     <h3 className="text-white font-bold text-sm leading-tight">{t.title}</h3>
                     <p className="text-white/70 text-xs leading-snug mt-1">{t.story}</p>
+                    <p className="text-[#FFBE0B] text-[11px] font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Read the story</p>
                   </div>
-                </div>
+                </Link>
               </Reveal>
             ))}
           </div>
+          <p className="text-center text-text-muted text-sm mt-8">
+            Each tile opens the real story: the situation, the waste, and how we&apos;re
+            helping. All of it lives in the newsroom and is editable by the team.
+          </p>
         </div>
       </section>
 
@@ -648,10 +653,13 @@ export default async function HomePage() {
             </div>
           </Reveal>
           <div className="flex flex-wrap items-end justify-center gap-8">
+            {/* Founder privacy rule 2026-08-11: never real accounts on
+                marketing surfaces (the profile shot showed a real name
+                + the SEIRS ID is a collection credential). Demo-account
+                captures in light + dark replace these next session. */}
             {[
               { src: "/app-shots/driver-earnings.png", label: "Earnings, transparent", lift: "lg:translate-y-4" },
               { src: "/app-shots/driver-home.png",     label: "The driver hub",        lift: "" },
-              { src: "/app-shots/driver-profile.png",  label: "Profile & compliance",  lift: "lg:translate-y-4" },
             ].map((p, i) => (
               <Reveal key={p.src} delay={i * 140}>
                 <div className={`flex flex-col items-center gap-3 ${p.lift}`}>
