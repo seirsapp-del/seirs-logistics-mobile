@@ -441,8 +441,14 @@ export default async function HomePage() {
               <h2 className="text-3xl md:text-4xl font-extrabold text-navy leading-tight mb-4">
                 Built for Nigerian Businesses
               </h2>
-              <p className="text-text-muted text-lg leading-relaxed mb-8">
+              <p className="text-text-muted text-lg leading-relaxed mb-6">
                 Whether you ship 10 parcels a day or 10,000 a month, Seirs scales with you. Manage your entire logistics operation from one dashboard, no spreadsheets, no chasing drivers.
+              </p>
+              <p className="text-text-muted text-base leading-relaxed mb-8">
+                Every booking is priced from a transparent rate card: base fare, distance,
+                weight, and any surcharges itemised line by line before you pay. Your team
+                books from one shared wallet with roles and limits you control, and every
+                delivery lands in a monthly statement your accountant will actually like.
               </p>
               <Link
                 href="/contact"
@@ -452,21 +458,14 @@ export default async function HomePage() {
                 <ChevronRight size={18} />
               </Link>
 
-              {/* Social proof */}
-              <div className="mt-8 p-5 bg-off-white rounded-card border border-gray-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle size={16} className="text-success-green" />
-                  <span className="text-navy font-semibold text-sm">
-                    Trusted by Nigerian businesses
-                  </span>
-                </div>
-                <p className="text-text-muted text-sm">
-                  E-commerce brands, FMCG distributors, pharmacies, and fashion retailers use Seirs to power their last-mile delivery.
-                </p>
-              </div>
+              {img.img_business_owner && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img.img_business_owner} alt="Nigerian business owner preparing orders"
+                  className="mt-8 w-full rounded-card object-cover max-h-64" loading="lazy" />
+              )}
             </div>
 
-            {/* Right: feature grid */}
+            {/* Right: feature grid. Every card describes a shipped feature. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FeatureCard
                 icon={Upload}
@@ -485,18 +484,18 @@ export default async function HomePage() {
               />
               <FeatureCard
                 icon={Gift}
-                title="Loyalty Rewards"
-                description="Earn ₦10 per point on every delivery. Redeem points against future orders, the more you send, the more you save."
+                title="Recurring Templates"
+                description="Same route every Tuesday? Save it once and rebook it in two taps, schedule included."
               />
               <FeatureCard
                 icon={Zap}
-                title="API Access"
-                description="Plug Seirs directly into your e-commerce platform, ERP, or custom backend via our REST API."
+                title="Multi-Stop Runs"
+                description="One pickup, many drop-offs. Route-optimised automatically, each stop with its own verification code."
               />
               <FeatureCard
                 icon={Headphones}
-                title="Dedicated Support"
-                description="Business accounts get a dedicated account manager and priority support with a 2-hour response SLA."
+                title="Direct Support"
+                description="A real support inbox inside the app: open a ticket, get a human, keep the whole thread in one place."
               />
             </div>
           </div>
@@ -511,32 +510,41 @@ export default async function HomePage() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <p className="text-sky font-semibold text-sm tracking-widest uppercase mb-3">
+            <p className="text-[#FFBE0B] font-semibold text-sm tracking-widest uppercase mb-3">
               Driver Opportunities
             </p>
             <h2 className="text-3xl md:text-4xl font-extrabold text-white leading-tight mb-4">
               Earn on Your Schedule
             </h2>
             <p className="text-white/65 text-lg max-w-2xl mx-auto">
-              Join over 500 verified drivers across Nigeria who use Seirs to build a flexible, rewarding income. You set your hours, we bring the deliveries.
+              Okada, keke, car, van, or truck: you set your hours, we bring the deliveries.
+              Be one of the first riders on the platform and grow with it.
             </p>
           </div>
+
+          {img.img_driver_portrait && (
+            <div className="flex justify-center mb-14">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.img_driver_portrait} alt="SEIRS delivery rider"
+                className="rounded-card object-cover max-h-96 shadow-2xl" loading="lazy" />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-16">
             <DriverBenefit
               icon={DollarSign}
-              title="Weekly Payouts"
-              description="Your earnings are calculated and paid out every Monday, directly to your Nigerian bank account. No delays, no excuses."
+              title="Your Money, Your Timing"
+              description="Every delivery credits your wallet the moment it completes. Withdraw to your Nigerian bank account whenever you want, or let the daily payout run send it automatically."
             />
             <DriverBenefit
               icon={Truck}
-              title="Vehicle Flexibility"
-              description="Ride a motorcycle, drive a car, or operate a truck. Seirs supports all vehicle types, earn more with larger vehicles."
+              title="Night Pays Extra"
+              description="Deliveries run 24/7 and night pickups carry a night fee that goes to you in full. Ride when the city needs you: you decide, always."
             />
             <DriverBenefit
               icon={Smartphone}
-              title="In-App Earnings Tracking"
-              description="See your earnings, completed deliveries, and rating in real time. Full transparency, always."
+              title="See Everything"
+              description="Earnings, completed trips, ratings, and a demand map showing where the orders are, live in the app. Full transparency, always."
             />
           </div>
 
@@ -569,6 +577,124 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── TRACKING + ESCROW: the trust story ── */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <p className="section-label mb-3">Built on Proof</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-navy leading-tight mb-6">
+                Every package watched.
+                <br />Every naira protected.
+              </h2>
+              <p className="text-text-muted text-lg leading-relaxed mb-6">
+                From the moment a driver accepts your booking, the package writes its own
+                diary: accepted, picked up, en route, delivered, each step logged with time
+                and place on a timeline anyone with the tracking code can follow.
+              </p>
+              <p className="text-text-muted text-base leading-relaxed mb-6">
+                Your money is protected the same way. Payment sits in escrow while the
+                package travels, and the driver is paid only when delivery is confirmed:
+                with a proof photo, and for high-value packages, an identity-verified
+                handoff. If a delivery fails, the escrow returns to you.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  "Live GPS position and honest arrival estimates: never promises",
+                  "Proof photo required on every single delivery",
+                  "High-value packages: recipient must be ID-verified before handover",
+                  "Failed or cancelled? Escrow refunds automatically",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-3">
+                    <CheckCircle size={18} className="text-success-green flex-shrink-0 mt-0.5" />
+                    <span className="text-text-dark text-sm leading-relaxed">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="relative rounded-card overflow-hidden bg-navy min-h-[320px] flex items-end"
+              style={img.img_lagos_dusk ? { backgroundImage: `url(${img.img_lagos_dusk})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+              <div className="absolute inset-0 bg-navy/50" />
+              <div className="relative p-8">
+                <p className="text-white/70 text-xs font-semibold tracking-widest uppercase mb-2">On the timeline</p>
+                <div className="space-y-2.5">
+                  {[
+                    { label: "Driver assigned", time: "2:14 PM", done: true },
+                    { label: "Package picked up", time: "2:31 PM", done: true },
+                    { label: "En route: Ikeja to Yaba", time: "2:38 PM", done: true },
+                    { label: "Delivered: proof photo saved", time: "3:05 PM", done: true },
+                  ].map((s) => (
+                    <div key={s.label} className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2.5">
+                      <CheckCircle size={15} className="text-[#FFBE0B] flex-shrink-0" />
+                      <span className="text-white text-sm flex-1">{s.label}</span>
+                      <span className="text-white/50 text-xs">{s.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── NIGHT OPS ── */}
+      <section className="relative py-28 overflow-hidden"
+        style={{ background: "linear-gradient(160deg, #0A1E36, #0F2B4C)" }}>
+        {img.img_night_rider && (
+          <div aria-hidden className="absolute inset-0 bg-cover bg-center opacity-30"
+            style={{ backgroundImage: `url(${img.img_night_rider})` }} />
+        )}
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-[#FFBE0B] font-semibold text-sm tracking-widest uppercase mb-4">Day and Night</p>
+          <h2 className="text-3xl md:text-5xl font-extrabold text-white leading-tight mb-6">
+            Lagos doesn&apos;t sleep.
+            <br />Neither does SEIRS.
+          </h2>
+          <p className="text-white/70 text-lg leading-relaxed max-w-2xl mx-auto mb-8">
+            Book a pickup for 2 AM and it happens at 2 AM. Deliveries run round the clock,
+            because markets open before dawn and interstate roads belong to the night.
+            Night pickups carry a small night fee, and every naira of it goes to the rider
+            who showed up while the city slept.
+          </p>
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-5 py-2">
+            <div className="w-2 h-2 bg-[#FFBE0B] rounded-full" />
+            <span className="text-white/80 text-sm">Riders choose their own hours: nobody is ever forced onto the road</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── RECEIVER SYSTEM ── */}
+      <section className="py-24 bg-off-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <p className="section-label mb-3">Made for Nigeria</p>
+            <h2 className="section-title mb-4">Anyone you trust can collect</h2>
+            <p className="section-sub max-w-2xl mx-auto">
+              Your neighbour signs for packages. Security collects at the gate. Your cousin
+              is home when you are not. SEIRS is built for how Nigerians actually receive
+              things, safely.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <PartnerBenefit
+              icon={Users}
+              title="Name Your Receiver"
+              description="Tell us who is collecting when you book: any first and last name you trust. The driver confirms the name at the door, no app needed on their side."
+            />
+            <PartnerBenefit
+              icon={Shield}
+              title="Codes You Control"
+              description="For extra security the collection code emails YOU, and you forward it to whoever is picking up. No code, no package."
+            />
+            <PartnerBenefit
+              icon={MapPin}
+              title="Your Fallback, Your Rules"
+              description="Nobody home? You chose the plan at booking: hand-to-receiver only, a named neighbour, the gate with photo proof, or a partner store nearby."
+            />
+          </div>
+        </div>
+      </section>
+
       {/* ── PARTNER STORES ── */}
       <section id="partner-stores" className="py-24 bg-off-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -576,9 +702,8 @@ export default async function HomePage() {
             <p className="section-label mb-3">Store Partnerships</p>
             <h2 className="section-title mb-4">Turn Your Store Into a Pickup Point</h2>
             <p className="section-sub mb-4">
-              Earn{" "}
-              <span className="font-bold text-navy">&#8358;500 per package collected</span>.
-              Accept packages on behalf of customers and get paid every Monday.
+              Earn on every package your store receives, holds, or releases: with
+              transparent per-package statements inside the app.
             </p>
             <p className="text-text-muted text-base max-w-xl mx-auto">
               Perfect for pharmacies, convenience stores, supermarkets, and any retail business that wants to earn extra revenue without adding extra work.
@@ -589,7 +714,7 @@ export default async function HomePage() {
             <PartnerBenefit
               icon={DollarSign}
               title="Extra Income"
-              description="Earn ₦500 per successfully collected package. High-volume partner stores earn ₦40,000+ per month in passive income on top of their regular sales."
+              description="A per-package fee on everything you handle, plus storage fees when senders overstay. Foot traffic comes free: every collection walks a new customer into your shop."
             />
             <PartnerBenefit
               icon={Users}
@@ -622,13 +747,13 @@ export default async function HomePage() {
                 },
                 {
                   step: "3",
-                  title: "You scan and release",
-                  desc: "Scan the customer's QR code to confirm collection. ₦500 is credited to your store account instantly.",
+                  title: "You verify and release",
+                  desc: "Check the collector's code or ID in the app, snap the handoff, done. The whole exchange takes under a minute.",
                 },
                 {
                   step: "4",
-                  title: "Weekly payout to your bank",
-                  desc: "Every Monday, your accumulated balance is transferred directly to your linked bank account.",
+                  title: "Every package on your statement",
+                  desc: "Your earnings ledger lives in the app: every package, every fee, itemised. No chasing anyone for what you're owed.",
                 },
               ].map((item) => (
                 <div key={item.step} className="flex gap-4 items-start">
@@ -655,54 +780,62 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ── */}
+      {/* ── THE SEIRS STANDARD ──
+          Replaces the invented testimonials (fabricated people on a
+          pre-launch site would be exactly the "cheap" tell we're
+          killing). Real customer stories take this slot after launch. */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <p className="section-label mb-3">Real Stories</p>
-            <h2 className="section-title mb-4">What Our Users Say</h2>
-            <p className="section-sub">
-              Thousands of Nigerians rely on Seirs every day. Here&apos;s what some of them think.
+            <p className="section-label mb-3">Our Promises</p>
+            <h2 className="section-title mb-4">The SEIRS Standard</h2>
+            <p className="section-sub max-w-2xl mx-auto">
+              We are new, and we would rather earn your trust than borrow it. These are the
+              rules we hold ourselves to on every single delivery.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <TestimonialCard
-              quote="We used to spend 3 hours every morning booking deliveries one by one. With Seirs, we upload our CSV and everything is dispatched in 15 minutes. Our team actually shows up to work happy now."
-              name="Adaeze Okafor"
-              role="Operations Manager, Fashion Retailer"
-              location="Lagos"
-              rating={5}
-            />
-            <TestimonialCard
-              quote="I drive for Seirs after my regular job on Tuesdays and Saturdays. Last month I made ₦67,000 extra. The app is clean, the payouts are always on time Monday morning, I don't even have to chase anybody."
-              name="Emeka Nwosu"
-              role="Part-time Driver"
-              location="Ikeja, Lagos"
-              rating={5}
-            />
-            <TestimonialCard
-              quote="I travel a lot and I used to miss deliveries. Now the package goes to the pharmacy two streets from my house and I collect it whenever I'm ready. The scanning takes literally 5 seconds. Brilliant idea."
-              name="Fatima Sule"
-              role="Customer"
-              location="Abuja"
-              rating={5}
-            />
+            {[
+              {
+                title: "No fake promises",
+                body: "We never guarantee arrival times: this is Lagos, and anyone who promises you 4:15 PM is lying. We show you the live position and an honest estimate instead.",
+              },
+              {
+                title: "Proof over trust",
+                body: "Photo on every delivery. ID checks on everything valuable. A timeline you can audit. When something goes wrong, the record already exists.",
+              },
+              {
+                title: "Fair to the people who carry it",
+                body: "Riders keep the majority of every fare, night fees go to them in full, and nobody is ranked, punished, or pushed to ride when they don't want to.",
+              },
+            ].map((p) => (
+              <div key={p.title} className="bg-off-white rounded-card p-8 border border-gray-100">
+                <div className="w-10 h-1.5 bg-[#FFBE0B] rounded-full mb-5" />
+                <h3 className="text-navy font-bold text-lg mb-3">{p.title}</h3>
+                <p className="text-text-muted text-sm leading-relaxed">{p.body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* ── CTA BANNER ── */}
       <section
-        className="py-20"
+        className="relative py-20 overflow-hidden"
         style={{ background: "linear-gradient(135deg, #0F2B4C, #1a3a5c)" }}
       >
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        {img.img_handoff_hands && (
+          <div aria-hidden className="absolute inset-0 bg-cover bg-center opacity-20"
+            style={{ backgroundImage: `url(${img.img_handoff_hands})` }} />
+        )}
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">
             Ready to simplify your logistics?
           </h2>
           <p className="text-white/65 text-lg mb-8 max-w-xl mx-auto">
-            Join thousands of Nigerian businesses and individuals who trust Seirs for fast, reliable last-mile delivery.
+            Be part of the first wave: senders, riders, and partner stores building
+            Nigeria&apos;s most honest delivery network.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -728,9 +861,9 @@ export default async function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16">
             {[
               { icon: Shield, label: "NDPR Compliant" },
-              { icon: CheckCircle, label: "CBN Payment Partner" },
-              { icon: Star, label: "4.9★ Average Rating" },
-              { icon: BarChart3, label: "99.2% On-Time Rate" },
+              { icon: CheckCircle, label: "Payments by Flutterwave" },
+              { icon: Star, label: "Escrow-Protected Deliveries" },
+              { icon: BarChart3, label: "ID-Verified Drivers" },
             ].map(({ icon: Icon, label }) => (
               <div
                 key={label}
