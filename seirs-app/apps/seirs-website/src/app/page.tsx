@@ -1,5 +1,6 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { getPageBlock, getImageSlots } from "@/lib/cms";
+import { Reveal } from "@/components/Reveal";
 import {
   Package,
   Truck,
@@ -401,27 +402,33 @@ export default async function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
-            <StepCard
-              number={1}
-              title="Create a Delivery"
-              description="Add your pickup and drop-off address, describe your package, and pay instantly from your Seirs wallet. Bulk orders? Upload a CSV and process hundreds at once."
-              icon={Package}
-              imageUrl={img.img_step_book}
-            />
-            <StepCard
-              number={2}
-              title="Driver Picks Up"
-              description="A verified, background-checked driver is automatically assigned and dispatched to your pickup location in minutes. You get their name, photo, and live location."
-              icon={Truck}
-              imageUrl={img.img_step_pickup}
-            />
-            <StepCard
-              number={3}
-              title="Real-Time Tracking"
-              description="Track every step of the journey on the map in real time. Get push notifications at each milestone, dispatched, picked up, nearby, delivered."
-              icon={MapPin}
-              imageUrl={img.img_step_delivered}
-            />
+            <Reveal delay={0}>
+              <StepCard
+                number={1}
+                title="Create a Delivery"
+                description="Add your pickup and drop-off address, describe your package, and pay instantly from your Seirs wallet. Bulk orders? Upload a CSV and process hundreds at once."
+                icon={Package}
+                imageUrl={img.img_step_book}
+              />
+            </Reveal>
+            <Reveal delay={120}>
+              <StepCard
+                number={2}
+                title="Driver Picks Up"
+                description="A verified, background-checked driver is automatically assigned and dispatched to your pickup location in minutes. You get their name, photo, and live location."
+                icon={Truck}
+                imageUrl={img.img_step_pickup}
+              />
+            </Reveal>
+            <Reveal delay={240}>
+              <StepCard
+                number={3}
+                title="Real-Time Tracking"
+                description="Track every step of the journey on the map in real time. Get push notifications at each milestone, dispatched, picked up, nearby, delivered."
+                icon={MapPin}
+                imageUrl={img.img_step_delivered}
+              />
+            </Reveal>
           </div>
 
           {/* Connector line (desktop) */}
@@ -436,7 +443,7 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             {/* Left: text */}
-            <div>
+            <Reveal><div>
               <p className="section-label mb-3">Business Accounts</p>
               <h2 className="text-3xl md:text-4xl font-extrabold text-navy leading-tight mb-4">
                 Built for Nigerian Businesses
@@ -463,10 +470,10 @@ export default async function HomePage() {
                 <img src={img.img_business_owner} alt="Nigerian business owner preparing orders"
                   className="mt-8 w-full rounded-card object-cover max-h-64" loading="lazy" />
               )}
-            </div>
+            </div></Reveal>
 
             {/* Right: feature grid. Every card describes a shipped feature. */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Reveal delay={120}><div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FeatureCard
                 icon={Upload}
                 title="Bulk CSV Upload"
@@ -497,7 +504,7 @@ export default async function HomePage() {
                 title="Direct Support"
                 description="A real support inbox inside the app: open a ticket, get a human, keep the whole thread in one place."
               />
-            </div>
+            </div></Reveal>
           </div>
         </div>
       </section>

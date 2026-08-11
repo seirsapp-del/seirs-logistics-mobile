@@ -67,11 +67,39 @@ export async function getPageBlock(slug: string, lang = 'en'): Promise<WebsiteCo
   return safeFetch<WebsiteContent>(`/website/page-block/${encodeURIComponent(slug)}?lang=${lang}`);
 }
 
-// Admin-managed image slots: { img_hero_rider: url, ... }. Sections
-// fall back to built-in artwork for any missing key, so an empty map
-// (or an API outage) never breaks the page.
+// Self-hosted placeholder per slot (founder 2026-08-11: show the full
+// layout with stand-in photos now; real Midjourney images uploaded via
+// Admin > Website > Page Blocks override these the moment they exist).
+export const SLOT_PLACEHOLDERS: Record<string, string> = {
+  img_hero_rider:       '/placeholders/hero-rider.jpg',
+  img_step_book:        '/placeholders/step-book.jpg',
+  img_step_pickup:      '/placeholders/step-pickup.jpg',
+  img_step_delivered:   '/placeholders/step-delivered.jpg',
+  img_business_owner:   '/placeholders/business-owner.jpg',
+  img_driver_portrait:  '/placeholders/driver-portrait.jpg',
+  img_night_rider:      '/placeholders/night-rider.jpg',
+  img_partner_store:    '/placeholders/partner-store.jpg',
+  img_interstate:       '/placeholders/interstate.jpg',
+  img_handoff_hands:    '/placeholders/handoff-hands.jpg',
+  img_lagos_dusk:       '/placeholders/lagos-dusk.jpg',
+  img_business_csv:     '/placeholders/business-csv.jpg',
+  img_business_team:    '/placeholders/business-team.jpg',
+  img_driver_earnings:  '/placeholders/driver-earnings.jpg',
+  img_driver_kyc:       '/placeholders/driver-kyc.jpg',
+  img_store_counter:    '/placeholders/store-counter.jpg',
+  img_store_shelf:      '/placeholders/store-shelf.jpg',
+  img_careers_team:     '/placeholders/careers-team.jpg',
+  img_contact_lagos:    '/placeholders/contact-lagos.jpg',
+  img_testimonial_band: '/placeholders/testimonial-band.jpg',
+  img_app_hand:         '/placeholders/app-hand.jpg',
+};
+
+// Admin-managed image slots: { img_hero_rider: url, ... }. Placeholders
+// fill every slot until the admin uploads the real image; an API outage
+// therefore still renders a fully-imaged page.
 export async function getImageSlots(): Promise<Record<string, string>> {
-  return (await safeFetch<Record<string, string>>('/website/image-slots')) ?? {};
+  const live = (await safeFetch<Record<string, string>>('/website/image-slots')) ?? {};
+  return { ...SLOT_PLACEHOLDERS, ...live };
 }
 
 // ─── Markdown → HTML ───────────────────────────────────────────────────────
