@@ -202,17 +202,13 @@ function ResetForm() {
   );
 }
 
+// No masthead of its own: the page renders under the site Nav, which
+// already carries the SEIRS lockup (founder 2026-08-11: logo twice in a
+// row read as repetition).
 function CardShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="min-h-screen bg-slate-100">
-      <div className="bg-[#0F2B4C] px-4 py-5">
-        <div className="mx-auto flex max-w-xl items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/seirs-logo-white.png" alt="SEIRS" className="h-9 w-9" />
-          <span className="text-lg font-black tracking-[0.25em] text-white">SEIRS</span>
-        </div>
-      </div>
-      <div className="mx-auto max-w-xl px-4 py-10">
+      <div className="mx-auto max-w-xl px-4 py-12">
         <div className="rounded-2xl bg-white p-8 shadow-sm">{children}</div>
         <p className="mt-6 text-center text-xs text-slate-400">
           Need help? <Link href="/contact" className="text-[#3A7BD5] underline">Contact support</Link>

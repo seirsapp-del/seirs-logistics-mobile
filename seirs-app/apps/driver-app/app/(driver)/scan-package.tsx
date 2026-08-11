@@ -17,10 +17,24 @@
  * delivery_events SCAN type.
  */
 import { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Vibration, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Vibration, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
+
+// Guarded camera require (live find 2026-08-11): a top-level
+// `import from 'expo-camera'` crashes the ENTIRE app bundle with
+// "Cannot find native module 'ExpoCamera'" on any installed build that
+// predates the camera dependency: expo-router eagerly evaluates every
+// route file in dev. When the module is missing the screen falls back
+// to typing the code by hand; the next native rebuild restores scanning.
+let CameraView: any = null;
+let useCameraPermissions: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const cam = require('expo-camera');
+  CameraView = cam.CameraView;
+  useCameraPermissions = cam.useCameraPermissions;
+} catch { /* camera not compiled into this build */ }
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
@@ -34,9 +48,14 @@ export default function ScanPackageScreen() {
   const expected = (params.code ?? '').trim().toUpperCase();
   const deliveryId = params.deliveryId ?? '';
 
-  const [permission, requestPermission] = useCameraPermissions();
+  // Module presence never changes at runtime, so this conditional hook
+  // takes the same branch on every render.
+  const [permission, requestPermission] = useCameraPermissions
+    ? useCameraPermissions()
+    : [null as any, () => {}];
   const [result,   setResult]   = useState<'idle' | 'match' | 'mismatch'>('idle');
   const [lastSeen, setLastSeen] = useState('');
+  const [manualCode, setManualCode] = useState('');
   const cooldown = useRef(false);
 
   const onBarcode = ({ data }: { data: string }) => {
@@ -68,6 +87,54 @@ export default function ScanPackageScreen() {
       }, 1800);
     }
   };
+
+  // Manual fallback when the camera module is not in this build: same
+  // verification logic, driver types the code printed under the QR.
+  if (!CameraView) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
+        <View style={{ padding: Spacing.lg, gap: Spacing.md }}>
+          <Pressable onPress={() => router.back()} hitSlop={10} style={{ alignSelf: 'flex-start' }}>
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </Pressable>
+          <Text style={[styles.permTitle, { color: theme.text, textAlign: 'left' }]}>Verify package code</Text>
+          <Text style={[styles.permBody, { color: theme.textSecond, textAlign: 'left' }]}>
+            Scanning is not available in this app build. Ask the customer for the code under their
+            package QR and type it here.
+          </Text>
+          <TextInput
+            style={{
+              borderWidth: 1.5, borderColor: theme.border, borderRadius: Radius.lg,
+              backgroundColor: theme.surfaceSecond, color: theme.text,
+              paddingHorizontal: 14, paddingVertical: 12, fontSize: FontSize.md,
+              letterSpacing: 2, fontWeight: FontWeight.bold as any,
+            }}
+            placeholder="SRS-XXXXXXXX"
+            placeholderTextColor={theme.textThird}
+            autoCapitalize="characters"
+            value={manualCode}
+            onChangeText={setManualCode}
+          />
+          <Pressable
+            style={[styles.permBtn, { backgroundColor: theme.primary, alignSelf: 'stretch', alignItems: 'center' }]}
+            onPress={() => onBarcode({ data: manualCode })}
+          >
+            <Text style={styles.permBtnText}>Verify code</Text>
+          </Pressable>
+          {result === 'match' && (
+            <Text style={{ color: '#16A34A', fontWeight: FontWeight.bold as any }}>
+              Package verified: {expected}. Hand it over and confirm delivery.
+            </Text>
+          )}
+          {result === 'mismatch' && (
+            <Text style={{ color: '#DC2626', fontWeight: FontWeight.bold as any }}>
+              Wrong package: typed {lastSeen || 'nothing'}, expected {expected}. Do not hand over.
+            </Text>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!permission) {
     return (
