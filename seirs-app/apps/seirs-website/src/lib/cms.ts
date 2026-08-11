@@ -92,6 +92,16 @@ export const SLOT_PLACEHOLDERS: Record<string, string> = {
   img_contact_lagos:    '/placeholders/contact-lagos.jpg',
   img_testimonial_band: '/placeholders/testimonial-band.jpg',
   img_app_hand:         '/placeholders/app-hand.jpg',
+  img_move_farm:        '/placeholders/move-farm.jpg',
+  img_move_trader:      '/placeholders/move-trader.jpg',
+  img_move_tailor:      '/placeholders/move-tailor.jpg',
+  img_move_wood:        '/placeholders/move-wood.jpg',
+  img_move_food:        '/placeholders/move-food.jpg',
+  img_move_medical:     '/placeholders/move-medical.jpg',
+  img_move_electronics: '/placeholders/move-electronics.jpg',
+  img_move_documents:   '/placeholders/move-documents.jpg',
+  img_move_building:    '/placeholders/move-building.jpg',
+  img_move_animals:     '/placeholders/move-animals.jpg',
 };
 
 // Admin-managed image slots: { img_hero_rider: url, ... }. Placeholders

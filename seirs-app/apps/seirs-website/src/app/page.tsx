@@ -584,6 +584,89 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── WHAT NIGERIA MOVES: the storytelling mosaic (founder
+          2026-08-11). Every tile is a REAL service category from the
+          app's catalogue: farmers, traders, tailors, carpenters, and
+          everything in between. Nothing international: we move Nigeria. */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Reveal>
+            <div className="text-center mb-14">
+              <p className="section-label mb-3">Every Trade, Every Street</p>
+              <h2 className="section-title mb-4">What Nigeria moves, we move</h2>
+              <p className="section-sub max-w-2xl mx-auto">
+                These are not stock categories: every one of them is a real option in the
+                app, priced on its own rate card, handled its own way.
+              </p>
+            </div>
+          </Reveal>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {[
+              { slot: img.img_move_farm,        title: "Farm produce",       story: "Mile 12 baskets, still fresh at the door" },
+              { slot: img.img_move_trader,      title: "Market traders",     story: "Balogun stalls shipping city-wide" },
+              { slot: img.img_move_tailor,      title: "Tailors & fashion",  story: "Aso-ebi delivered before the party" },
+              { slot: img.img_move_wood,        title: "Furniture & wood",   story: "From the sawmill bench to the new flat" },
+              { slot: img.img_move_food,        title: "Hot food",           story: "Amala that arrives still steaming" },
+              { slot: img.img_move_medical,     title: "Medical supplies",   story: "Prescriptions that cannot wait" },
+              { slot: img.img_move_electronics, title: "Electronics",        story: "Phones and laptops, handled like eggs" },
+              { slot: img.img_move_documents,   title: "Documents",          story: "Signed contracts across town in an hour" },
+              { slot: img.img_move_building,    title: "Building materials", story: "Cement and cable straight to site" },
+              { slot: img.img_move_animals,     title: "Live animals",       story: "Yes: even the Christmas chicken" },
+            ].map((t, i) => (
+              <Reveal key={t.title} delay={(i % 5) * 90}>
+                <div className="group relative rounded-card overflow-hidden bg-navy aspect-[4/5]">
+                  {t.slot && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={t.slot} alt={t.title}
+                      className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-60 group-hover:scale-105 transition-all duration-500" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <div className="w-8 h-1 bg-[#FFBE0B] rounded-full mb-2" />
+                    <h3 className="text-white font-bold text-sm leading-tight">{t.title}</h3>
+                    <p className="text-white/70 text-xs leading-snug mt-1">{t.story}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── THE APPS, FOR REAL: actual screenshots off the actual phone,
+          in CSS device frames. No mockups, no fakes. ── */}
+      <section className="py-24 bg-off-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Reveal>
+            <div className="text-center mb-14">
+              <p className="section-label mb-3">Straight From the Phone</p>
+              <h2 className="section-title mb-4">The apps, exactly as they are</h2>
+              <p className="section-sub max-w-2xl mx-auto">
+                These are real screenshots from the live driver app: not mockups. The
+                customer and business apps join them here as their screens are captured.
+              </p>
+            </div>
+          </Reveal>
+          <div className="flex flex-wrap items-end justify-center gap-8">
+            {[
+              { src: "/app-shots/driver-earnings.png", label: "Earnings, transparent", lift: "lg:translate-y-4" },
+              { src: "/app-shots/driver-home.png",     label: "The driver hub",        lift: "" },
+              { src: "/app-shots/driver-profile.png",  label: "Profile & compliance",  lift: "lg:translate-y-4" },
+            ].map((p, i) => (
+              <Reveal key={p.src} delay={i * 140}>
+                <div className={`flex flex-col items-center gap-3 ${p.lift}`}>
+                  <div className="rounded-[2rem] border-[6px] border-navy bg-navy shadow-2xl overflow-hidden w-[220px]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.src} alt={p.label} className="w-full h-auto block" loading="lazy" />
+                  </div>
+                  <span className="text-text-muted text-xs font-semibold">{p.label}</span>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── TRACKING + ESCROW: the trust story ── */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

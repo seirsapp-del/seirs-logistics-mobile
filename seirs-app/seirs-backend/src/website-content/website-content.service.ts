@@ -338,6 +338,28 @@ const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
     excerpt: 'homepage testimonial section backdrop. Soft-focus Lagos street life, okada + danfo energy. 21:9, heavily blurred/darkened. Midjourney file: testimonial-band.' },
   { slug: 'img_app_hand',       title: 'Download band: phone in hand',
     excerpt: 'app-download band. Hand holding a phone seen from behind at an angle (screen NOT visible; the real app screenshot is composited separately). 4:3. Midjourney file: app-hand.' },
+  // Batch 3 (founder 2026-08-11: storytelling - what Nigeria moves,
+  // mirroring the app's real service categories; nothing international).
+  { slug: 'img_move_farm',      title: 'What we move: farm produce',
+    excerpt: 'homepage "What Nigeria Moves" tile. Fresh produce baskets at a Lagos market stall, dawn light. 4:3. Midjourney file: move-farm.' },
+  { slug: 'img_move_trader',    title: 'What we move: market traders',
+    excerpt: 'story tile. Market trader packing customer orders in her stall, fabrics and goods around. 4:3. Midjourney file: move-trader.' },
+  { slug: 'img_move_tailor',    title: 'What we move: tailors + fashion',
+    excerpt: 'story tile. Tailor folding finished aso-ebi outfits into a delivery bag, sewing machine behind. 4:3. Midjourney file: move-tailor.' },
+  { slug: 'img_move_wood',      title: 'What we move: furniture + woodwork',
+    excerpt: 'story tile. Carpenter finishing a chair in his workshop, wood shavings, warm light. 4:3. Midjourney file: move-wood.' },
+  { slug: 'img_move_food',      title: 'What we move: hot food',
+    excerpt: 'story tile. Steaming Nigerian food (jollof/amala) being sealed into a delivery pack. 4:3. Midjourney file: move-food.' },
+  { slug: 'img_move_medical',   title: 'What we move: medical supplies',
+    excerpt: 'story tile. Pharmacist handing over a sealed medicine package at the counter. 4:3. Midjourney file: move-medical.' },
+  { slug: 'img_move_electronics', title: 'What we move: fragile + electronics',
+    excerpt: 'story tile. Phone/laptop being bubble-wrapped carefully on a shop counter. 4:3. Midjourney file: move-electronics.' },
+  { slug: 'img_move_documents', title: 'What we move: documents',
+    excerpt: 'story tile. Envelope and stamped documents handed across an office desk. 4:3. Midjourney file: move-documents.' },
+  { slug: 'img_move_building',  title: 'What we move: building materials',
+    excerpt: 'story tile. Cement bags and cables loaded for a building site, keke/small truck. 4:3. Midjourney file: move-building.' },
+  { slug: 'img_move_animals',   title: 'What we move: live animals',
+    excerpt: 'story tile. Healthy chickens in a ventilated transport crate, market setting. 4:3. Midjourney file: move-animals.' },
 ];
 
 // ── Seed data - sensible defaults so the website ships non-empty ────────────

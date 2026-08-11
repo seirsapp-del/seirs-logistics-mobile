@@ -40,11 +40,13 @@ const contactCards = [
     iconColor: "text-success-green",
   },
   {
+    // Honesty fix 2026-08-11: the old card dialed a placeholder number
+    // (+234 800 000 0000). In-app tickets are the real urgent channel.
     icon: Phone,
-    label: "Phone Support",
-    value: "+234 800 000 0000",
-    href: "tel:+2348000000000",
-    desc: "Mon–Fri, 8am–6pm WAT. For urgent delivery issues.",
+    label: "Urgent Delivery Issues",
+    value: "In-app support",
+    href: "/how-it-works",
+    desc: "Open Contact Support inside any SEIRS app: tickets reach our team directly, with your delivery attached.",
     color: "bg-warning-amber/10",
     iconColor: "text-warning-amber",
   },
