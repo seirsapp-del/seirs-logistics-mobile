@@ -3,24 +3,23 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { MoonStar, AlertCircle, TrendingUp, TrendingDown, Star } from 'lucide-react';
 
-// Spec V8 §3.12 - driver last-order compliance dashboard. Monitors
-// today's acceptance rates so ops can spot drivers who consistently
-// gate the toggle by being too selective. Reads driver list and
-// projects acceptance + last-order activity. Backend will eventually
-// expose these as first-class fields; for now we derive from totals.
+// Spec V8 §3.12 - driver last-order compliance dashboard. Real
+// query-derived numbers since 2026-08-11: offers = job pings sent to
+// the driver today, accepted = jobs taken today, rate = the honest
+// ratio (null when no offers: no fake 100%s).
 
 interface DriverRow {
-  id:                 string;
-  user?:              { name?: string };
-  vehicleType?:       string;
-  rating?:            number;
-  totalDeliveries?:   number;
-  isOnline?:          boolean;
-  // These come once the backend last-order columns ship; defaults handle absence
-  todayAcceptanceRate?: number;
+  id:                   string;
+  name?:                string;
+  user?:                { name?: string };
+  vehicleType?:         string | null;
+  rating?:              number | null;
+  isOnline?:            boolean;
+  offersToday?:         number;
+  acceptedToday?:       number;
+  todayAcceptanceRate?: number | null;
+  lastDeliveryAt?:      string | null;
   lastOrderActiveAt?:   string;
-  todayDeclinedCount?:  number;
-  todayAcceptedCount?:  number;
 }
 
 const ACCEPTANCE_THRESHOLD = 80;
@@ -30,11 +29,8 @@ export default function LastOrderCompliancePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    adminApi.drivers(1)
-      .then(res => {
-        const list = res?.drivers ?? [];
-        setDrivers(Array.isArray(list) ? list : []);
-      })
+    adminApi.driverCompliance()
+      .then(res => setDrivers(Array.isArray(res?.drivers) ? res.drivers : []))
       .catch(() => setDrivers([]))
       .finally(() => setLoading(false));
   }, []);
@@ -71,12 +67,13 @@ export default function LastOrderCompliancePage() {
         <SummaryCard label="Currently Winding Down" value={windingDown.length} accent="#16A34A" />
       </div>
 
-      {/* Notice when backend isn't populated */}
+      {/* Rates are null until a driver has received at least one job
+          ping today: honest dashes beat invented 100%s. */}
       {!loading && drivers.length > 0 && drivers.every(d => d.todayAcceptanceRate == null) && (
         <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-800">
           <AlertCircle size={16} />
           <span>
-            Acceptance rates and Last Order activity haven&apos;t been wired into the driver entity yet - values will populate once the backend columns ship. The UI is ready and idempotent for that.
+            No job offers have gone out yet today, so acceptance rates show as dashes. They fill in as dispatch pings drivers.
           </span>
         </div>
       )}
@@ -105,8 +102,10 @@ export default function LastOrderCompliancePage() {
             return (
               <div key={d.id} className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-[#F3F4F6] items-center">
                 <div className="col-span-4">
-                  <p className="text-sm font-semibold text-[#0F2B4C] truncate">{d.user?.name ?? 'Driver'}</p>
-                  <p className="text-[10px] text-gray-400 font-mono truncate">{d.id}</p>
+                  <p className="text-sm font-semibold text-[#0F2B4C] truncate">{d.name ?? d.user?.name ?? 'Driver'}</p>
+                  <p className="text-[10px] text-gray-400 font-mono truncate">
+                    {d.offersToday != null ? `${d.acceptedToday ?? 0}/${d.offersToday} offers today` : d.id}
+                  </p>
                 </div>
                 <div className="col-span-2 text-sm text-[#0F2B4C] capitalize">{d.vehicleType ?? '-'}</div>
                 <div className="col-span-2 text-right">

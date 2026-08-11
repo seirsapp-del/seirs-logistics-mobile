@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
-import { getPageBlock } from "@/lib/cms";
+import { getPageBlock, getImageSlots } from "@/lib/cms";
 
 export const revalidate = 60;
 
@@ -106,7 +106,7 @@ function StepRow({
 }
 
 export default async function ForDriversPage() {
-  const hero = await getPageBlock('hero_for_drivers');
+  const [hero, img] = await Promise.all([getPageBlock('hero_for_drivers'), getImageSlots()]);
   return (
     <>
       <PageHero
@@ -136,11 +136,23 @@ export default async function ForDriversPage() {
               Built for drivers, not just dispatchers
             </h2>
             <p className="section-sub">
-              We talked to over 100 Lagos and Abuja dispatch riders before
-              writing a single line of the driver app. The result: a platform
-              that respects your time and pays you what you earn.
+              Built around how dispatch riders actually work in Lagos: a
+              platform that respects your time and pays you what you earn.
             </p>
           </div>
+
+          {(img.img_driver_earnings || img.img_driver_kyc) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
+              {img.img_driver_earnings && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img.img_driver_earnings} alt="Rider checking earnings" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
+              )}
+              {img.img_driver_kyc && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img.img_driver_kyc} alt="Driver verification" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FeatureCard
@@ -160,8 +172,8 @@ export default async function ForDriversPage() {
             />
             <FeatureCard
               icon={ShieldCheck}
-              title="Verified senders, insured trips"
-              body="Every customer is identity-verified before they can book. Every trip is covered by our platform insurance, you're never out of pocket if something goes wrong."
+              title="Protected handoffs"
+              body="Proof photo on every delivery, ID-verified handoffs on high-value packages, and a full chain-of-custody record. When there's a dispute, the evidence already exists on your side."
             />
             <FeatureCard
               icon={Award}

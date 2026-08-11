@@ -478,6 +478,12 @@ export const adminApi = {
     releaseHeld:       (id: string) => req<any>(`/admin/wallet/earnings/${id}/release`, { method: 'PATCH' }),
   },
 
+  driverCompliance: () => req<{ drivers: Array<{
+    id: string; name: string; vehicleType: string | null; rating: number | null;
+    isOnline: boolean; offersToday: number; acceptedToday: number;
+    todayAcceptanceRate: number | null; lastDeliveryAt: string | null;
+  }> }>('/admin/driver-compliance'),
+
   referrals: {
     list:    () => req<any[]>('/admin/referrals'),
     summary: () => req<{ totalReferrals: number; monthToDate: number }>('/admin/referrals/summary'),
