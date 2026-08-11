@@ -78,14 +78,62 @@ export class WebsiteContentService implements OnModuleInit {
   // doesn't render an empty /faq or /news on first boot.
   async onModuleInit() {
     const existing = await this.repo.count();
-    if (existing > 0) return;
-    const rows = SEED.map(s => this.repo.create({
-      ...s,
-      status:      WebContentStatus.PUBLISHED,
-      publishedAt: new Date(),
-    }));
-    await this.repo.save(rows);
-    this.logger.log(`Seeded ${rows.length} website content rows`);
+    if (existing === 0) {
+      const rows = SEED.map(s => this.repo.create({
+        ...s,
+        status:      WebContentStatus.PUBLISHED,
+        publishedAt: new Date(),
+      }));
+      await this.repo.save(rows);
+      this.logger.log(`Seeded ${rows.length} website content rows`);
+    }
+    // Image slots seed independently of the main seed (which only runs
+    // on an empty table): prod already has rows, so missing slots are
+    // inserted by slug like the Fee Catalogue's missing-key sweep.
+    await this.ensureImageSlots();
+  }
+
+  // ── Admin-managed image slots (founder 2026-08-11) ────────────────────
+  // Every marketing-site image is a PAGE_BLOCK row with an img_* slug:
+  // title = human label, excerpt = what-goes-where instructions shown in
+  // the admin UI, coverImageUrl = the image. Admin swaps images without
+  // a deploy; the site falls back to its built-in illustration when a
+  // slot is empty.
+  private async ensureImageSlots() {
+    try {
+      const existing = await this.repo.find({
+        where: { type: WebContentType.PAGE_BLOCK },
+        select: ['slug'],
+      });
+      const have = new Set(existing.map(r => r.slug));
+      const missing = IMAGE_SLOTS.filter(s => !have.has(s.slug));
+      if (missing.length === 0) return;
+      await this.repo.save(missing.map(s => this.repo.create({
+        type:        WebContentType.PAGE_BLOCK,
+        lang:        'en',
+        status:      WebContentStatus.PUBLISHED,
+        publishedAt: new Date(),
+        body:        s.excerpt!,
+        ...s,
+      })));
+      this.logger.log(`Seeded ${missing.length} website image slot(s)`);
+    } catch (e: any) {
+      this.logger.warn(`image-slot seed skipped: ${e?.message ?? e}`);
+    }
+  }
+
+  // Public: all image slots in one shot for the website renderer.
+  async getImageSlots(): Promise<Record<string, string>> {
+    const rows = await this.repo
+      .createQueryBuilder('c')
+      .where('c.type = :t', { t: WebContentType.PAGE_BLOCK })
+      .andWhere(`c.slug LIKE 'img_%'`)
+      .andWhere('c.status = :s', { s: WebContentStatus.PUBLISHED })
+      .andWhere('c.coverImageUrl IS NOT NULL')
+      .getMany();
+    const map: Record<string, string> = {};
+    for (const r of rows) map[r.slug] = r.coverImageUrl!;
+    return map;
   }
 
   // ── Public-facing reads (no auth) ─────────────────────────────────────────
@@ -242,6 +290,34 @@ export class WebsiteContentService implements OnModuleInit {
     this.logger.log(`Published ${due.length} scheduled content rows`);
   }
 }
+
+// ── Image slots: one row per marketing-site image (founder 2026-08-11).
+// excerpt doubles as the admin's what-goes-where instruction card AND
+// the generation brief (matches Desktop\seirs-image-prompts.txt names).
+const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
+  { slug: 'img_hero_rider',     title: 'Homepage hero: okada rider',
+    excerpt: 'Full-width homepage hero backdrop. Okada rider with yellow delivery box, Lagos dusk. Wide 21:9. Midjourney file: hero-rider. Falls back to the drawn okada scene when empty.' },
+  { slug: 'img_step_book',      title: 'How It Works step 1: booking',
+    excerpt: 'How-it-works card 1 (homepage + how-it-works page). Hands booking on a phone in a Lagos shop. 4:3. Midjourney file: step-book.' },
+  { slug: 'img_step_pickup',    title: 'How It Works step 2: pickup',
+    excerpt: 'How-it-works card 2. Rider receiving a yellow-taped parcel at a gate, golden hour. 4:3. Midjourney file: step-pickup.' },
+  { slug: 'img_step_delivered', title: 'How It Works step 3: delivered',
+    excerpt: 'How-it-works card 3. Recipient receiving a parcel at the door, warm light. 4:3. Midjourney file: step-delivered.' },
+  { slug: 'img_business_owner', title: 'For Business: shop owner packing',
+    excerpt: 'For Businesses section (homepage + for-business page). Businesswoman packing orders in her small shop. 16:9. Midjourney file: business-owner.' },
+  { slug: 'img_driver_portrait', title: 'For Drivers: courier portrait',
+    excerpt: 'For Drivers section (homepage + for-drivers page). Proud courier holding helmet beside his motorcycle, dusk. Portrait 3:4. Midjourney file: driver-portrait.' },
+  { slug: 'img_night_rider',    title: '24/7 section: night rider',
+    excerpt: 'The night-delivery section. Rider on a quiet Lagos street at night under warm shop lights. 16:9. Midjourney file: night-rider.' },
+  { slug: 'img_partner_store',  title: 'Partner Stores: shopkeeper handoff',
+    excerpt: 'Partner Stores section (homepage + for-partner-stores page). Shopkeeper handing a parcel across the counter. 16:9. Midjourney file: partner-store.' },
+  { slug: 'img_interstate',     title: 'Coverage band: interstate dawn',
+    excerpt: 'Interstate/coverage band. Lone motorcycle with cargo box on an open highway at dawn. Wide 21:9. Midjourney file: interstate.' },
+  { slug: 'img_handoff_hands',  title: 'CTA band: package handoff close-up',
+    excerpt: 'Call-to-action band background. Close-up of hands exchanging a yellow-taped package. Wide 21:9, will be darkened for text overlay. Midjourney file: handoff-hands.' },
+  { slug: 'img_lagos_dusk',     title: 'Story band: Lagos aerial dusk',
+    excerpt: 'About/story band background. Aerial Lagos at dusk, Third Mainland Bridge light trails. Wide 21:9, will be darkened for text overlay. Midjourney file: lagos-dusk.' },
+];
 
 // ── Seed data - sensible defaults so the website ships non-empty ────────────
 const SEED: Array<Partial<WebsiteContent>> = [

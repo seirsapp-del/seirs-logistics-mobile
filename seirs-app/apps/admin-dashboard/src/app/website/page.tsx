@@ -236,6 +236,19 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
     finally { setUploading(false); }
   };
 
+  // Founder 2026-08-11: images INSIDE articles. Uploads to R2 and
+  // appends the markdown image tag to the body; move it wherever the
+  // story needs it.
+  const [bodyUploading, setBodyUploading] = useState(false);
+  const uploadBodyImage = async (file: File) => {
+    setBodyUploading(true); setErr(null);
+    try {
+      const { url } = await adminApi.upload.image(file);
+      setBody(prev => `${prev.trimEnd()}\n\n![image](${url})\n`);
+    } catch (e: any) { setErr(e?.message ?? 'Upload failed'); }
+    finally { setBodyUploading(false); }
+  };
+
   const save = async () => {
     setSaving(true); setErr(null);
     try {
@@ -319,6 +332,12 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
                 <code className="bg-gray-100 px-1 rounded">hero_for_partner_stores</code>,{' '}
                 <code className="bg-gray-100 px-1 rounded">hero_how_it_works</code>.
                 Upload a hero image on any of these to change the corresponding page&apos;s hero backdrop.
+                <span className="block mt-1">
+                  Rows starting with <code className="bg-gray-100 px-1 rounded">img_</code> are the site&apos;s
+                  IMAGE SLOTS: each one&apos;s description tells you exactly what goes where (section, aspect
+                  ratio, and the matching Midjourney file name). Upload the image on the slot and the site
+                  updates within a minute; leave a slot empty and the site shows its built-in artwork.
+                </span>
               </div>
             )}
           </div>
@@ -334,9 +353,16 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
           <div>
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Body (Markdown)</label>
-              <button onClick={() => setShowPrev(p => !p)} className="text-xs text-[#3A7BD5] font-semibold flex items-center gap-1">
-                <Eye size={12} /> {showPrev ? 'Hide preview' : 'Preview'}
-              </button>
+              <div className="flex items-center gap-3">
+                <label className="text-xs text-[#3A7BD5] font-semibold cursor-pointer hover:underline">
+                  {bodyUploading ? 'Uploading…' : '+ Insert image'}
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadBodyImage(f); e.target.value = ''; }} />
+                </label>
+                <button onClick={() => setShowPrev(p => !p)} className="text-xs text-[#3A7BD5] font-semibold flex items-center gap-1">
+                  <Eye size={12} /> {showPrev ? 'Hide preview' : 'Preview'}
+                </button>
+              </div>
             </div>
             <textarea value={body} onChange={e => setBody(e.target.value)} rows={10}
               placeholder="# Header&#10;&#10;Paragraph copy. **Bold**, *italic*, [link](https://...).&#10;&#10;- bullet&#10;- bullet"

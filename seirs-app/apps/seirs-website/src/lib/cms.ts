@@ -67,6 +67,13 @@ export async function getPageBlock(slug: string, lang = 'en'): Promise<WebsiteCo
   return safeFetch<WebsiteContent>(`/website/page-block/${encodeURIComponent(slug)}?lang=${lang}`);
 }
 
+// Admin-managed image slots: { img_hero_rider: url, ... }. Sections
+// fall back to built-in artwork for any missing key, so an empty map
+// (or an API outage) never breaks the page.
+export async function getImageSlots(): Promise<Record<string, string>> {
+  return (await safeFetch<Record<string, string>>('/website/image-slots')) ?? {};
+}
+
 // ─── Markdown → HTML ───────────────────────────────────────────────────────
 // Server-rendered subset matching the admin preview. Handles headers,
 // bold, italic, links, ordered / unordered lists, paragraphs. Good
@@ -88,6 +95,15 @@ export function renderMarkdown(md: string): string {
     if (/^### /.test(line)) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h3>${inline(line.slice(4))}</h3>`); continue; }
     if (/^## /.test(line))  { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h2>${inline(line.slice(3))}</h2>`); continue; }
     if (/^# /.test(line))   { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h1>${inline(line.slice(2))}</h1>`); continue; }
+    // Block-level image: ![alt](url) on its own line (founder
+    // 2026-08-11: images inside news articles; the admin editor's
+    // "+ Insert image" emits exactly this shape).
+    const img = line.match(/^!\[(.*?)\]\((.+?)\)$/);
+    if (img) {
+      if (inList) { out.push('</ul>'); inList = false; }
+      out.push(`<img src="${img[2]}" alt="${img[1]}" class="w-full rounded-xl my-6" loading="lazy" />`);
+      continue;
+    }
     if (/^- /.test(line)) {
       if (!inList) { out.push('<ul>'); inList = true; }
       out.push(`<li>${inline(line.slice(2))}</li>`);

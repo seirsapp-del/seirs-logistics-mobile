@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { getPageBlock } from "@/lib/cms";
+import { getPageBlock, getImageSlots } from "@/lib/cms";
 import {
   Package,
   Truck,
@@ -106,30 +106,41 @@ function HeroIllustration() {
   );
 }
 
-/* ── Step Card ── */
+/* ── Step Card. Photo slot on top when the admin has uploaded one
+   (Admin > Website > Page Blocks > img_step_*); icon-only otherwise. ── */
 function StepCard({
   number,
   title,
   description,
   icon: Icon,
+  imageUrl,
 }: {
   number: number;
   title: string;
   description: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
+  imageUrl?: string;
 }) {
   return (
-    <div className="relative bg-white rounded-card p-8 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
-      <div className="absolute -top-4 -left-2">
-        <div className="w-8 h-8 bg-navy text-white font-black text-sm rounded-lg flex items-center justify-center shadow-lg">
-          {number}
+    <div className="relative bg-white rounded-card shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 overflow-hidden">
+      {imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={imageUrl} alt="" className="w-full h-44 object-cover" loading="lazy" />
+      )}
+      <div className="relative p-8">
+        <div className="absolute -top-4 left-6">
+          <div className="w-8 h-8 bg-navy text-white font-black text-sm rounded-lg flex items-center justify-center shadow-lg">
+            {number}
+          </div>
         </div>
+        {!imageUrl && (
+          <div className="w-14 h-14 bg-sky/10 rounded-xl flex items-center justify-center mb-5">
+            <Icon size={26} className="text-sky" />
+          </div>
+        )}
+        <h3 className={`text-navy font-bold text-lg mb-2 ${imageUrl ? 'mt-4' : ''}`}>{title}</h3>
+        <p className="text-text-muted text-sm leading-relaxed">{description}</p>
       </div>
-      <div className="w-14 h-14 bg-sky/10 rounded-xl flex items-center justify-center mb-5">
-        <Icon size={26} className="text-sky" />
-      </div>
-      <h3 className="text-navy font-bold text-lg mb-2">{title}</h3>
-      <p className="text-text-muted text-sm leading-relaxed">{description}</p>
     </div>
   );
 }
@@ -252,7 +263,7 @@ export default async function HomePage() {
   // Inline-editable hero block, falls back to the hardcoded copy below
   // when the CMS row is missing or unreachable, so marketing can edit
   // without breaking the page.
-  const hero = await getPageBlock('home_hero');
+  const [hero, img] = await Promise.all([getPageBlock('home_hero'), getImageSlots()]);
 
   return (
     <>
@@ -267,11 +278,11 @@ export default async function HomePage() {
             when the CMS row is unset so marketing can add/remove without
             a code deploy. Kept darkened (opacity 25) so foreground text
             stays readable regardless of the uploaded image. */}
-        {hero?.coverImageUrl && (
+        {(img.img_hero_rider || hero?.coverImageUrl) && (
           <div
             aria-hidden
             className="absolute inset-0 bg-cover bg-center opacity-25"
-            style={{ backgroundImage: `url(${hero.coverImageUrl})` }}
+            style={{ backgroundImage: `url(${img.img_hero_rider ?? hero?.coverImageUrl})` }}
           />
         )}
         {/* Background pattern */}
@@ -395,18 +406,21 @@ export default async function HomePage() {
               title="Create a Delivery"
               description="Add your pickup and drop-off address, describe your package, and pay instantly from your Seirs wallet. Bulk orders? Upload a CSV and process hundreds at once."
               icon={Package}
+              imageUrl={img.img_step_book}
             />
             <StepCard
               number={2}
               title="Driver Picks Up"
               description="A verified, background-checked driver is automatically assigned and dispatched to your pickup location in minutes. You get their name, photo, and live location."
               icon={Truck}
+              imageUrl={img.img_step_pickup}
             />
             <StepCard
               number={3}
               title="Real-Time Tracking"
               description="Track every step of the journey on the map in real time. Get push notifications at each milestone, dispatched, picked up, nearby, delivered."
               icon={MapPin}
+              imageUrl={img.img_step_delivered}
             />
           </div>
 

@@ -39,6 +39,15 @@ export class WebsiteContentController {
     return this.svc.getBySlug(slug, lang ?? 'en');
   }
 
+  // GET /api/v1/website/image-slots
+  // All admin-managed marketing images in one map { img_slug: url }.
+  // Website sections fall back to built-in art for missing keys.
+  @Public()
+  @Get('website/image-slots')
+  imageSlots() {
+    return this.svc.getImageSlots();
+  }
+
   // GET /api/v1/website/page-block/:slug?lang=en
   // Returns the block OR a 404. Website pages use this to drop in
   // inline-editable copy chunks; they fall back to hardcoded copy
