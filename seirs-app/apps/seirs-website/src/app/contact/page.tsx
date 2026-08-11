@@ -282,6 +282,17 @@ export default function ContactPage() {
 
           {/* Right: info panels */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Lagos imagery slot (admin-swappable: img_contact_lagos).
+                Client page, so the placeholder ships directly and the
+                admin's slot upload replaces the file at the same path
+                convention when integrated server-side later. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/placeholders/contact-lagos.jpg"
+              alt="Lagos street"
+              className="w-full rounded-card object-cover max-h-56 shadow-sm"
+              loading="lazy"
+            />
             {/* Location */}
             <div className="bg-white rounded-card shadow-sm border border-gray-100 p-6">
               <div className="flex items-center gap-3 mb-4">

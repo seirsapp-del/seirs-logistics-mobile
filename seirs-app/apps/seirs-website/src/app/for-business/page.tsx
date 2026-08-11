@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
-import { getPageBlock } from "@/lib/cms";
+import { getPageBlock, getImageSlots } from "@/lib/cms";
 
 // ISR: refetch the CMS-editable hero image every 60s so marketing
 // changes appear within a minute without a redeploy.
@@ -61,7 +61,7 @@ function CheckRow({ children }: { children: string }) {
 }
 
 export default async function ForBusinessPage() {
-  const hero = await getPageBlock('hero_for_business');
+  const [hero, img] = await Promise.all([getPageBlock('hero_for_business'), getImageSlots()]);
   return (
     <>
       <PageHero
@@ -120,6 +120,19 @@ export default async function ForBusinessPage() {
             </h2>
           </div>
 
+          {(img.img_business_csv || img.img_business_team) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
+              {img.img_business_csv && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img.img_business_csv} alt="Bulk order preparation" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
+              )}
+              {img.img_business_team && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img.img_business_team} alt="Team reviewing orders" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FeatureCard
               icon={Upload}
@@ -154,7 +167,7 @@ export default async function ForBusinessPage() {
             <FeatureCard
               icon={Clock}
               title="Same-day & scheduled"
-              body="Dispatch instantly or pre-book up to 7 days ahead. Pre-booked orders go to the matching engine 30 minutes before pickup time."
+              body="Dispatch instantly or pre-book up to 7 days ahead, any hour: deliveries run 24/7. Pre-booked orders go to the matching engine 15 minutes before pickup time."
             />
             <FeatureCard
               icon={TrendingUp}

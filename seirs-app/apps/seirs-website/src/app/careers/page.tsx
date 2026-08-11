@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link';
 import { Briefcase, MapPin, ArrowRight } from 'lucide-react';
-import { listContent, fmtDate } from '@/lib/cms';
+import { listContent, fmtDate, getImageSlots } from '@/lib/cms';
 
 export const revalidate = 60;
 
@@ -12,12 +12,19 @@ export const metadata = {
 const DEFAULT_LOCATION = 'Lagos, Nigeria';
 
 export default async function CareersPage() {
-  const roles = await listContent('job_listing', { pageSize: 50 });
+  const [roles, img] = await Promise.all([
+    listContent('job_listing', { pageSize: 50 }),
+    getImageSlots(),
+  ]);
 
   return (
     <>
-      <section className="bg-gradient-to-br from-navy via-[#1a3a5c] to-navy text-white pt-28 pb-16">
-        <div className="max-w-4xl mx-auto px-6 text-center">
+      <section className="relative overflow-hidden bg-gradient-to-br from-navy via-[#1a3a5c] to-navy text-white pt-28 pb-16">
+        {img.img_careers_team && (
+          <div aria-hidden className="absolute inset-0 bg-cover bg-center opacity-25"
+            style={{ backgroundImage: `url(${img.img_careers_team})` }} />
+        )}
+        <div className="relative max-w-4xl mx-auto px-6 text-center">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4">Build SEIRS with us</h1>
           <p className="text-white/70 text-lg max-w-2xl mx-auto">
             We&apos;re building the logistics rail that every Nigerian e-commerce, restaurant, and trader plugs into. If that sounds like your kind of problem, take a look below.

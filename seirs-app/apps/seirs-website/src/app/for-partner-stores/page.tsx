@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
-import { getPageBlock } from "@/lib/cms";
+import { getPageBlock, getImageSlots } from "@/lib/cms";
 
 export const revalidate = 60;
 
@@ -74,7 +74,7 @@ function CheckRow({ children }: { children: string }) {
 }
 
 export default async function ForPartnerStoresPage() {
-  const hero = await getPageBlock('hero_for_partner_stores');
+  const [hero, img] = await Promise.all([getPageBlock('hero_for_partner_stores'), getImageSlots()]);
   return (
     <>
       <PageHero
@@ -87,7 +87,7 @@ export default async function ForPartnerStoresPage() {
             <span className="text-sky">Seirs drop-off point.</span>
           </>
         }
-        subtitle="Already running a kiosk, supermarket, pharmacy, or any neighbourhood shopfront? Become a Seirs Partner Store. Earn for every package you collect, drive foot traffic, get paid weekly. No upfront cost."
+        subtitle="Already running a kiosk, supermarket, pharmacy, or any neighbourhood shopfront? Become a Seirs Partner Store. Earn for every package you handle, drive foot traffic, and watch every naira on your statement. No upfront cost."
         icon={Store}
         primaryCtaLabel="Apply to be a partner"
         primaryCtaHref="/contact"
@@ -106,6 +106,21 @@ export default async function ForPartnerStoresPage() {
           </div>
         </div>
       </section>
+
+      {(img.img_store_counter || img.img_store_shelf) && (
+        <section className="py-10 bg-white">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {img.img_store_counter && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={img.img_store_counter} alt="Receiving parcels at the counter" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
+            )}
+            {img.img_store_shelf && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={img.img_store_shelf} alt="Package shelf" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Why it works */}
       <section className="py-20 bg-off-white">
@@ -154,8 +169,8 @@ export default async function ForPartnerStoresPage() {
             />
             <FeatureCard
               icon={ShieldCheck}
-              title="Insured packages"
-              body="All packages held at your shop are covered by Seirs insurance, so you&apos;re never personally liable for damage or loss while in your custody."
+              title="Protected custody"
+              body="Every package you hold is logged with photos, codes, and a chain-of-custody record. If something goes wrong that isn&apos;t your doing, the evidence is already on your side."
             />
             <FeatureCard
               icon={TrendingUp}
@@ -300,7 +315,7 @@ export default async function ForPartnerStoresPage() {
 
       <PageCta
         title="Turn your shop into income"
-        subtitle="Apply now. Our partner team will get back to you within 24 hours with the next steps."
+        subtitle="Apply now. Our partner team reviews every application personally and gets back to you with the next steps."
         primaryLabel="Apply to be a partner"
         primaryHref="/contact"
       />
