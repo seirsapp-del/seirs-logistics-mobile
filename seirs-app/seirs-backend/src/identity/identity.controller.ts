@@ -24,9 +24,11 @@ export class IdentityController {
   @Post('handoff/:deliveryId/issue-otp')
   issueOtp(
     @Param('deliveryId') deliveryId: string,
-    @Body() body: { recipientUserId: string },
+    @Body() body: { recipientUserId?: string },
   ) {
-    return this.identityService.issueHandoffOtp(deliveryId, body.recipientUserId);
+    // No recipientUserId = receiver has no account; code goes to the
+    // sender's email to forward (founder 2026-08-11).
+    return this.identityService.issueHandoffOtp(deliveryId, body?.recipientUserId);
   }
 
   // POST /api/v1/identity/handoff/:deliveryId/verify

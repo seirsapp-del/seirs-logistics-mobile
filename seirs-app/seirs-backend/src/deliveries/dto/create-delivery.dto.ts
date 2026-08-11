@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { PackageSize, UrgencyLevel } from '../delivery.entity';
 
 export class CreateDeliveryDto {
@@ -50,4 +50,28 @@ export class CreateDeliveryDto {
   @IsNumber()
   @Min(0)
   declaredValueNgn?: number;
+
+  // Requested pickup time (ISO string) for scheduled bookings. Omitted
+  // = Send Now. Server-validated: must be in the future and within 7
+  // days (night-ops build 2026-08-11; slots are 24/7 per founder).
+  @IsOptional()
+  @IsString()
+  scheduledFor?: string;
+
+  // Receiver system (founder 2026-08-11): who is collecting, how to
+  // verify them, and what to do when nobody answers the door.
+  @IsOptional() @IsString() @MaxLength(60)
+  receiverFirstName?: string;
+
+  @IsOptional() @IsString() @MaxLength(60)
+  receiverLastName?: string;
+
+  @IsOptional() @IsIn(['name', 'code', 'id'])
+  receiverVerifyPref?: string;
+
+  @IsOptional() @IsIn(['hand_only', 'neighbour', 'gate', 'store'])
+  fallbackPref?: string;
+
+  @IsOptional() @IsString() @MaxLength(80)
+  fallbackNeighbourName?: string;
 }

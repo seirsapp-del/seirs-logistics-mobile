@@ -1127,9 +1127,12 @@ export const identityApi = {
     request<{ seirsId: string; name: string; profilePhoto: string | null; verified: boolean }>(
       'GET', `/identity/lookup/${encodeURIComponent(code)}`,
     ),
-  issueHandoffOtp: (deliveryId: string, recipientUserId: string) =>
+  // recipientUserId optional: without it the code emails the SENDER,
+  // who forwards it to whoever is collecting (no-account receivers).
+  issueHandoffOtp: (deliveryId: string, recipientUserId?: string) =>
     request<{ sent: boolean; expiresInMinutes: number }>(
-      'POST', `/identity/handoff/${deliveryId}/issue-otp`, { recipientUserId },
+      'POST', `/identity/handoff/${deliveryId}/issue-otp`,
+      recipientUserId ? { recipientUserId } : {},
     ),
   verifyHandoff: (deliveryId: string, payload: {
     stage:        string;

@@ -24,7 +24,7 @@ import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { Illustration } from '@/components/Illustration';
 import {
   ArrowLeft, ArrowRight, Truck, Calendar, CreditCard,
-  Camera, X, CheckCircle, Zap,
+  Camera, X, CheckCircle, Zap, Moon,
 } from 'lucide-react-native';
 
 const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
@@ -101,23 +101,29 @@ function buildScheduledFor(isoDate: string, hour: number): Date {
   return dt;
 }
 
-// Scheduled-pickup window: 5 AM – 9 PM, 1-hour slots (17 total).
-// Drivers go online at 4 AM so they have ~1hr buffer to reach the
-// pickup point by the earliest 5 AM slot. "Send Now" stays 24/7 -
-// only this scheduled list is gated.
-const TIME_SLOTS = Array.from({ length: 17 }, (_, i) => {
-  const hour = 5 + i; // 5 → 21
-  const label = hour < 12
-    ? `${hour} AM`
-    : hour === 12
-      ? '12 PM'
-      : `${hour - 12} PM`;
-  return { hour, label };
+// Scheduled pickups run 24/7 (founder 2026-08-11: Lagos and Kano never
+// sleep; drivers self-select via the online toggle). Slots in the
+// night window carry a surcharge that goes to the driver in full; the
+// percentage and window hours are admin-editable Fee Catalogue rows
+// (night_fee_pct, night_window_start_hour, night_window_end_hour).
+const NIGHT_START = 21; // display fallback; server reads the catalogue
+const NIGHT_END   = 5;
+const TIME_SLOTS = Array.from({ length: 24 }, (_, hour) => {
+  const label = hour === 0
+    ? '12 AM'
+    : hour < 12
+      ? `${hour} AM`
+      : hour === 12
+        ? '12 PM'
+        : `${hour - 12} PM`;
+  const night = hour >= NIGHT_START || hour < NIGHT_END;
+  return { hour, label, night };
 });
 
 const TODAY_ISO       = new Date().toISOString().slice(0, 10);
+// Matches the server cap (create() rejects anything past 7 days).
 const MAX_BOOK_AHEAD  = (() => {
-  const d = new Date(); d.setDate(d.getDate() + 30);
+  const d = new Date(); d.setDate(d.getDate() + 7);
   return d.toISOString().slice(0, 10);
 })();
 
@@ -160,6 +166,11 @@ export default function SendScreen() {
   // Sender-declared package value (optional). At/above the catalogue
   // high-value threshold the driver must ID-verify the recipient.
   const [declaredValue, setDeclaredValue] = useState('');
+  // Receiver system (founder 2026-08-11): who collects + fallback plan.
+  const [receiverFirst,  setReceiverFirst]  = useState('');
+  const [receiverLast,   setReceiverLast]   = useState('');
+  const [fallbackPref,   setFallbackPref]   = useState<'hand_only' | 'neighbour' | 'gate' | 'store'>('hand_only');
+  const [neighbourName,  setNeighbourName]  = useState('');
   const [pickup,      setPickup]      = useState<PickedAddress | null>(null);
   const [dropoff,     setDropoff]     = useState<PickedAddress | null>(null);
   const [vehicleId,   setVehicleId]   = useState<VehicleId>('motorcycle');
@@ -393,6 +404,10 @@ export default function SendScreen() {
         codAmountNgn:    codAmountNgn || undefined,
         deliveryInstructions: instructions.trim() || undefined,
         declaredValueNgn: Number(declaredValue) > 0 ? Number(declaredValue) : undefined,
+        receiverFirstName: receiverFirst.trim() || undefined,
+        receiverLastName:  receiverLast.trim() || undefined,
+        fallbackPref,
+        fallbackNeighbourName: fallbackPref === 'neighbour' ? (neighbourName.trim() || undefined) : undefined,
       } as any);
       router.replace('/(customer)/history' as any);
     } catch (e: any) {
@@ -574,6 +589,74 @@ export default function SendScreen() {
                 value={weightKg}
                 onChangeText={setWeightKg}
               />
+
+              <Text style={[styles.label, { color: theme.textSecond }]}>
+                {t('send.receiverName', { defaultValue: 'Who is receiving? (optional)' })}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
+                  placeholder={t('send.receiverFirst', { defaultValue: 'First name' })}
+                  placeholderTextColor={theme.textThird}
+                  value={receiverFirst}
+                  onChangeText={setReceiverFirst}
+                />
+                <TextInput
+                  style={[styles.input, { flex: 1, backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
+                  placeholder={t('send.receiverLast', { defaultValue: 'Last name' })}
+                  placeholderTextColor={theme.textThird}
+                  value={receiverLast}
+                  onChangeText={setReceiverLast}
+                />
+              </View>
+              <Text style={{ fontSize: FontSize.xs, color: theme.textThird, marginTop: -Spacing.xs, marginBottom: Spacing.sm }}>
+                {t('send.receiverHint', { defaultValue: 'The driver confirms this first name at handoff. Anyone you trust can collect: a neighbour, security, family.' })}
+              </Text>
+
+              <Text style={[styles.label, { color: theme.textSecond }]}>
+                {t('send.fallbackLabel', { defaultValue: 'If nobody is available' })}
+              </Text>
+              <View style={styles.chipRow}>
+                {([
+                  { key: 'hand_only', label: t('send.fbHand',      { defaultValue: 'Hand to receiver only' }) },
+                  { key: 'neighbour', label: t('send.fbNeighbour', { defaultValue: 'Leave with neighbour' }) },
+                  { key: 'gate',      label: t('send.fbGate',      { defaultValue: 'Leave at gate' }) },
+                  { key: 'store',     label: t('send.fbStore',     { defaultValue: 'Drop at partner store' }) },
+                ] as const).map(opt => {
+                  const active = fallbackPref === opt.key;
+                  const hv = Number(declaredValue) > 0 && Number(declaredValue) >= 100000;
+                  const blocked = hv && (opt.key === 'gate' || opt.key === 'neighbour');
+                  if (blocked && active) setTimeout(() => setFallbackPref('hand_only'), 0);
+                  return (
+                    <Pressable
+                      key={opt.key}
+                      disabled={blocked}
+                      style={[styles.timeChip, {
+                        backgroundColor: active ? theme.accent : theme.surfaceSecond,
+                        borderColor: active ? theme.accent : theme.border,
+                        opacity: blocked ? 0.4 : 1,
+                      }]}
+                      onPress={() => setFallbackPref(opt.key)}
+                    >
+                      <Text style={[styles.timeChipText, { color: active ? '#fff' : theme.text }]}>{opt.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {Number(declaredValue) >= 100000 && (
+                <Text style={{ fontSize: FontSize.xs, color: theme.textThird, marginBottom: Spacing.sm }}>
+                  {t('send.hvFallbackNote', { defaultValue: 'High-value packages cannot be left at the gate or with a neighbour.' })}
+                </Text>
+              )}
+              {fallbackPref === 'neighbour' && (
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
+                  placeholder={t('send.neighbourName', { defaultValue: "Neighbour or security's name" })}
+                  placeholderTextColor={theme.textThird}
+                  value={neighbourName}
+                  onChangeText={setNeighbourName}
+                />
+              )}
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
                 {t('send.declaredValue', { defaultValue: 'Package value in ₦ (optional)' })}
@@ -763,7 +846,10 @@ export default function SendScreen() {
                               style={[styles.timeChip, { backgroundColor: active ? theme.accent : theme.surfaceSecond, borderColor: active ? theme.accent : theme.border }]}
                               onPress={() => setScheduledHour(slot.hour)}
                             >
-                              <Text style={[styles.timeChipText, { color: active ? '#fff' : theme.text }]}>{slot.label}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                                <Text style={[styles.timeChipText, { color: active ? '#fff' : theme.text }]}>{slot.label}</Text>
+                                {slot.night && <Moon size={10} color={active ? '#fff' : theme.textThird} strokeWidth={2} />}
+                              </View>
                             </Pressable>
                           );
                         })}
@@ -774,6 +860,14 @@ export default function SendScreen() {
                           <Calendar size={16} color={theme.accent} strokeWidth={1.75} />
                           <Text style={[styles.scheduleSummaryText, { color: theme.text }]}>
                             {t('send.scheduledForPrefix')} {buildScheduledFor(scheduledDate, scheduledHour).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </Text>
+                        </View>
+                      )}
+                      {scheduledHour != null && (scheduledHour >= NIGHT_START || scheduledHour < NIGHT_END) && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.xs }}>
+                          <Moon size={13} color={theme.textThird} strokeWidth={1.75} />
+                          <Text style={{ fontSize: FontSize.xs, color: theme.textThird, flex: 1 }}>
+                            {t('send.nightFeeNote', { defaultValue: 'Night pickup: a night fee applies and goes to your driver in full.' })}
                           </Text>
                         </View>
                       )}

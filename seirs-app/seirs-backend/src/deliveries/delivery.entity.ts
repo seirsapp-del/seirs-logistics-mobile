@@ -126,6 +126,44 @@ export class Delivery {
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   declaredValueNgn: number | null;
 
+  // Receiver system (founder 2026-08-11): Nigerians routinely have
+  // neighbours/security collect packages. The sender names the receiver
+  // at booking; the typed-name handoff check matches THIS first name
+  // instead of the account holder's registered name when present.
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  receiverFirstName: string | null;
+
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  receiverLastName: string | null;
+
+  // How the sender wants the receiver verified: 'name' (driver asks the
+  // first name and types it), 'code' (emailed to the SENDER to forward),
+  // 'id' (physical ID check). High-value packages ignore 'name'.
+  @Column({ type: 'varchar', length: 12, nullable: true })
+  receiverVerifyPref: string | null;
+
+  // Fallback when nobody answers: 'hand_only' | 'neighbour' | 'gate' |
+  // 'store'. High-value packages may only be hand_only or store.
+  @Column({ type: 'varchar', length: 12, nullable: true })
+  fallbackPref: string | null;
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  fallbackNeighbourName: string | null;
+
+  // Requested pickup time for scheduled bookings; NULL = Send Now.
+  // Before 2026-08-11 the client collected a slot but nothing stored
+  // it: scheduled bookings dispatched immediately. Now the dispatch
+  // cron holds matching until 15 minutes before this time, and the
+  // night-fee window is evaluated against it.
+  @Column({ type: 'timestamptz', nullable: true })
+  scheduledFor: Date | null;
+
+  // Night surcharge applied at booking (NGN, passed to the driver in
+  // full). Kept as its own column so receipts + statements can show it
+  // as a separate line and admin analytics can track night volume.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  nightFeeNgn: number | null;
+
   // Vehicle the booking was placed for. Drives base fare + km rate.
   // Nullable for legacy rows that didn't capture this explicitly.
   @Column({ nullable: true })

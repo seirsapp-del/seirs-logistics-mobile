@@ -36,6 +36,17 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Auto-applied multiplier on base fare during demand spikes. Platform keeps 50% of the surge slice.',
     category: FeeCategory.SURGE,        unit: FeeUnit.PERCENT,    value: 150 },
 
+  // ── Night operations (founder 2026-08-11: 24/7 scheduling) ─────────────
+  { key: 'night_fee_pct',               name: 'Night Delivery Fee',
+    description: 'Surcharge on pickups requested inside the night window. Passed to the driver in FULL to encourage night coverage (Lagos and Kano never sleep; interstate runs overnight). Set 0 to disable.',
+    category: FeeCategory.SURGE,        unit: FeeUnit.PERCENT,    value: 15 },
+  { key: 'night_window_start_hour',     name: 'Night Window Start (hour 0-23)',
+    description: 'Hour of day (Africa/Lagos) when the night window opens. Value is an HOUR, not naira.',
+    category: FeeCategory.SURGE,        unit: FeeUnit.FLAT_NGN,   value: 21 },
+  { key: 'night_window_end_hour',       name: 'Night Window End (hour 0-23)',
+    description: 'Hour of day (Africa/Lagos) when the night window closes. Value is an HOUR, not naira.',
+    category: FeeCategory.SURGE,        unit: FeeUnit.FLAT_NGN,   value: 5 },
+
   // ── Subscriptions ──────────────────────────────────────────────────────
   { key: 'seirs_plus_subscription',     name: 'SEIRS Plus (customer)',
     description: 'Customer monthly subscription - free booking fee, priority dispatch, 5% delivery discount.',

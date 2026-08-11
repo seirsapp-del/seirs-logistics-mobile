@@ -53,15 +53,17 @@ const LAGOS = { latitude: 6.5244, longitude: 3.3792, latitudeDelta: 0.1, longitu
 // Visit order: pickup → stop1 → stop2 → ... → stopN.
 const STEPS = ['What & Vehicle', 'Pickup & Stops', 'Schedule & Summary'] as const;
 
-// 5 AM – 9 PM scheduling window per Spec V8 operating hours.
-const TIME_SLOTS = Array.from({ length: 17 }, (_, i) => {
-  const hour = 5 + i;
-  const label = hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
+// Scheduling runs 24/7 (founder 2026-08-11: Lagos and Kano never
+// sleep; drivers self-select). Night slots carry a driver-incentive
+// surcharge; knobs are admin-editable Fee Catalogue rows.
+const TIME_SLOTS = Array.from({ length: 24 }, (_, hour) => {
+  const label = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
   return { hour, label };
 });
 const TODAY_ISO     = new Date().toISOString().slice(0, 10);
+// Matches the server cap (7 days).
 const MAX_BOOK_AHEAD = (() => {
-  const d = new Date(); d.setDate(d.getDate() + 30);
+  const d = new Date(); d.setDate(d.getDate() + 7);
   return d.toISOString().slice(0, 10);
 })();
 

@@ -26,10 +26,13 @@ import { User } from '../users/user.entity';
 import { ChatModule } from '../chat/chat.module';
 import { ChatService } from '../chat/chat.service';
 import { StoreDropoff } from '../partner-store/store-dropoff.entity';
+import { FeesModule } from '../fees/fees.module';
+import { FeesService } from '../fees/fees.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Delivery, DeliveryEvent, User, StoreDropoff]),
+    FeesModule,
     MatchingModule,
     TrackingModule,
     forwardRef(() => PaymentsModule),
@@ -60,6 +63,7 @@ export class DeliveriesModule implements OnModuleInit {
     @InjectRepository(User)          private usersRepo:          Repository<User>,
     @InjectRepository(DeliveryEvent) private deliveryEventsRepo: Repository<DeliveryEvent>,
     @InjectRepository(StoreDropoff)  private storeDropoffsRepo:  Repository<StoreDropoff>,
+    private feesService:          FeesService,
     private chatService:          ChatService,
     @InjectDataSource()           private readonly ds: DataSource,
   ) {}
@@ -77,6 +81,7 @@ export class DeliveriesModule implements OnModuleInit {
     this.deliveriesService.chatService          = this.chatService;
     this.deliveriesService.deliveryEventsRepo   = this.deliveryEventsRepo;
     this.deliveriesService.storeDropoffsRepo    = this.storeDropoffsRepo;
+    this.deliveriesService.feesServiceRef       = this.feesService;
 
     // Give NotificationsService a reference to the gateway for WS delivery
     this.notificationsService.trackingGateway = this.trackingGateway;
@@ -123,6 +128,24 @@ export class DeliveriesModule implements OnModuleInit {
       await this.ds.query(`
         ALTER TABLE "deliveries"
           ADD COLUMN IF NOT EXISTS "declaredValueNgn" numeric(12,2) NULL
+      `);
+      // Receiver system (2026-08-11): sender-named receiver + prefs.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "receiverFirstName" varchar(60) NULL,
+          ADD COLUMN IF NOT EXISTS "receiverLastName" varchar(60) NULL,
+          ADD COLUMN IF NOT EXISTS "receiverVerifyPref" varchar(12) NULL,
+          ADD COLUMN IF NOT EXISTS "fallbackPref" varchar(12) NULL,
+          ADD COLUMN IF NOT EXISTS "fallbackNeighbourName" varchar(80) NULL
+      `);
+      // Night ops (2026-08-11): real scheduled dispatch + night fee.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "scheduledFor" timestamptz NULL
+      `);
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "nightFeeNgn" numeric(12,2) NULL
       `);
       // Partial unique index: every non-null stop code must be unique
       // platform-wide (recipient N can only ever claim stop N). Legacy

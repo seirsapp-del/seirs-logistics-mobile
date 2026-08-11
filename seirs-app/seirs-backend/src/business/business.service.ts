@@ -528,6 +528,11 @@ export class BusinessService {
         estimatedTotalMinutes: totalEtaMin,
         optimizedWaypointOrder: dto.optimizedWaypointOrder ?? null,
         routeWasAutoOptimized:  !!dto.routeWasAutoOptimized,
+        // Night-ops build 2026-08-11: the slot used to be priced (rate
+        // cards see scheduledAt) but never STORED, so scheduled business
+        // bookings surfaced to drivers immediately. Persisting it lets
+        // the available-jobs feed hold them until 15 min before the slot.
+        scheduledFor: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
         status: DeliveryStatus.PENDING,
         source: DeliverySource.BUSINESS_APP,
       } as any);

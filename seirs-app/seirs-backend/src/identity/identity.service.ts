@@ -59,10 +59,26 @@ export class IdentityService {
   // Generates a 6-digit OTP, hashes it, persists with 10min expiry,
   // emails the recipient. Rate-limited to 3/min per recipient to deter
   // abuse without blocking real retries.
-  async issueHandoffOtp(deliveryId: string, recipientUserId: string) {
-    this.checkRateLimit(recipientUserId);
+  //
+  // No recipientUserId (founder 2026-08-11): receivers often have no
+  // SEIRS account (neighbours, security, family collect packages). The
+  // code then goes to the SENDER's email; they forward it to whoever is
+  // collecting - the Amazon one-time-PIN pattern. Verification still
+  // records against the sender's user id, which is who verifyHandoff
+  // resolves as the OTP owner.
+  async issueHandoffOtp(deliveryId: string, recipientUserId?: string) {
+    let resolvedId = recipientUserId;
+    if (!resolvedId) {
+      const delivery = await this.deliveriesRepo.findOne({
+        where: { id: deliveryId },
+        relations: ['customer'],
+      });
+      if (!delivery?.customer?.id) throw new NotFoundException('Delivery or sender not found');
+      resolvedId = delivery.customer.id;
+    }
+    this.checkRateLimit(resolvedId);
 
-    const recipient = await this.usersRepo.findOne({ where: { id: recipientUserId } });
+    const recipient = await this.usersRepo.findOne({ where: { id: resolvedId } });
     if (!recipient) throw new NotFoundException('Recipient not found');
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -70,7 +86,7 @@ export class IdentityService {
 
     await this.otpRepo.save(this.otpRepo.create({
       deliveryId,
-      recipientUserId,
+      recipientUserId: resolvedId,
       codeHash,
       expiresAt: new Date(Date.now() + OTP_TTL_MIN * 60 * 1000),
     }));
@@ -197,10 +213,28 @@ export class IdentityService {
       throw new ForbiddenException('This SEIRS ID does not belong to the package recipient');
     }
 
-    // Typed name must match the registered name (case-insensitive, whitespace-tolerant)
+    // Typed-name match (founder 2026-08-11): when the sender named a
+    // receiver at booking, the driver asks for the FIRST NAME and types
+    // it themselves (nobody touches the driver's phone). Matches the
+    // declared receiver's first name, their full name, or the account
+    // holder's registered name - whichever the collector answers with.
     const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
-    if (norm(payload.typedName) !== norm(recipient.name)) {
-      throw new ForbiddenException('Typed name did not match the registered name on this SEIRS ID');
+    const typed = norm(payload.typedName);
+    const declaredFirst = (delivery as any).receiverFirstName ? norm((delivery as any).receiverFirstName) : null;
+    const declaredFull  = declaredFirst
+      ? norm(`${(delivery as any).receiverFirstName} ${(delivery as any).receiverLastName ?? ''}`)
+      : null;
+    const accountNorm   = norm(recipient.name);
+    const accountFirst  = accountNorm.split(' ')[0];
+    const matches = declaredFirst
+      ? (typed === declaredFirst || typed === declaredFull)
+      : (typed === accountNorm || typed === accountFirst);
+    if (!matches) {
+      throw new ForbiddenException(
+        declaredFirst
+          ? 'Typed name did not match the receiver named on this booking'
+          : 'Typed name did not match the registered name on this SEIRS ID',
+      );
     }
 
     const record = await this.recordRepo.save(this.recordRepo.create({

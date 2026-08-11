@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Repository, MoreThan } from 'typeorm';
 import { secureCode } from '../common/utils/auth-codes';
 import { Delivery, DeliveryStatus } from './delivery.entity';
@@ -112,6 +113,9 @@ export class DeliveriesService {
   // Delivery must advance the dropoff so the partner store + sender see
   // honest package state instead of a permanent "awaiting driver".
   storeDropoffsRepo?:    Repository<any>;
+  // Wired by DeliveriesModule.onModuleInit. Night-fee knobs live in the
+  // Fee Catalogue (admin-tunable per founder rule 2026-08-11).
+  feesServiceRef?:       any;
 
   constructor(
     @InjectRepository(Delivery) private repo: Repository<Delivery>,
@@ -155,24 +159,111 @@ export class DeliveriesService {
       trackingCode = generateTrackingCode();
     }
 
+    // High-value packages can never be gate-drops or unnamed-neighbour
+    // drops (founder policy 2026-08-11): hand to receiver or partner
+    // store only, otherwise the mandatory signature has a hole in it.
+    if (Number(dto.declaredValueNgn ?? 0) > 0 && this.feesServiceRef) {
+      const hvThreshold = await this.feesServiceRef.getValueOr('high_value_threshold_ngn', 100000);
+      if (Number(dto.declaredValueNgn) >= hvThreshold &&
+          (dto.fallbackPref === 'gate' || dto.fallbackPref === 'neighbour')) {
+        const { BadRequestException } = await import('@nestjs/common');
+        throw new BadRequestException(
+          'High-value packages cannot be left at the gate or with a neighbour. Choose "hand to receiver" or "partner store" as the fallback.',
+        );
+      }
+    }
+
+    // Scheduled pickups (night-ops build 2026-08-11): 24/7 slots per
+    // founder decision, server-validated so a modified client cannot
+    // book the past or the far future. Before this build the slot never
+    // reached the database and scheduled bookings dispatched instantly.
+    let scheduledFor: Date | null = null;
+    if (dto.scheduledFor) {
+      const parsed = new Date(dto.scheduledFor);
+      const { BadRequestException } = await import('@nestjs/common');
+      if (Number.isNaN(parsed.getTime())) {
+        throw new BadRequestException('scheduledFor is not a valid date.');
+      }
+      const now = Date.now();
+      if (parsed.getTime() < now - 5 * 60 * 1000) {
+        throw new BadRequestException('Pickup time is in the past. Choose a future slot or use Send Now.');
+      }
+      if (parsed.getTime() > now + 7 * 24 * 60 * 60 * 1000) {
+        throw new BadRequestException('Pickups can be scheduled at most 7 days ahead.');
+      }
+      scheduledFor = parsed;
+    }
+
+    // Night fee (founder 2026-08-11): surcharge on pickups whose
+    // effective time falls in the night window, passed to the driver IN
+    // FULL to encourage night coverage. All three knobs are admin rows.
+    let nightFee = 0;
+    if (this.feesServiceRef) {
+      try {
+        const pct   = await this.feesServiceRef.getValueOr('night_fee_pct', 15);
+        const start = await this.feesServiceRef.getValueOr('night_window_start_hour', 21);
+        const end   = await this.feesServiceRef.getValueOr('night_window_end_hour', 5);
+        const effective = scheduledFor ?? new Date();
+        // Africa/Lagos = UTC+1, no DST.
+        const hour = (effective.getUTCHours() + 1) % 24;
+        const inWindow = start > end ? (hour >= start || hour < end) : (hour >= start && hour < end);
+        if (pct > 0 && inWindow) nightFee = +(pricing.price * (pct / 100)).toFixed(2);
+      } catch { /* night fee is best-effort; base pricing always stands */ }
+    }
+
     const delivery = this.repo.create({
       ...dto,
+      scheduledFor,
       trackingCode,
       customer,
       distanceKm,
-      price:          pricing.price,
-      driverEarnings: pricing.driverEarnings,
+      price:          +(pricing.price + nightFee).toFixed(2),
+      driverEarnings: +(pricing.driverEarnings + nightFee).toFixed(2),
+      nightFeeNgn:    nightFee > 0 ? nightFee : null,
       status:         DeliveryStatus.PENDING,
     });
 
     const saved = await this.repo.save(delivery);
 
-    // Trigger auto-matching asynchronously (don't block the response)
-    this.runAutoMatch(saved).catch((err) =>
-      this.logger.error(`Auto-match failed for ${saved.id}: ${err.message}`)
-    );
+    // Immediate bookings dispatch now; scheduled ones are held by the
+    // dispatch cron until 15 minutes before their slot.
+    const dispatchNow = !scheduledFor || scheduledFor.getTime() <= Date.now() + 15 * 60 * 1000;
+    if (dispatchNow) {
+      this.runAutoMatch(saved).catch((err) =>
+        this.logger.error(`Auto-match failed for ${saved.id}: ${err.message}`)
+      );
+    } else {
+      this.logger.log(`Delivery ${saved.trackingCode} scheduled for ${scheduledFor!.toISOString()}; dispatch deferred`);
+    }
 
     return saved;
+  }
+
+  // Dispatch sweep for scheduled pickups: every 5 minutes, kick off
+  // matching for PENDING driverless bookings whose slot is within 15
+  // minutes. Idempotent: runAutoMatch on an already-matched delivery is
+  // a no-op because matching skips non-PENDING rows.
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async dispatchDueScheduled() {
+    if (!this.matchingService) return;
+    try {
+      const due = await this.repo
+        .createQueryBuilder('d')
+        .where('d.status = :status', { status: DeliveryStatus.PENDING })
+        .andWhere('d.driver IS NULL')
+        .andWhere(`d.scheduledFor IS NOT NULL`)
+        .andWhere(`d.scheduledFor <= NOW() + interval '15 minutes'`)
+        .take(50)
+        .getMany();
+      for (const d of due) {
+        this.runAutoMatch(d).catch((err) =>
+          this.logger.error(`Scheduled dispatch failed for ${d.id}: ${err.message}`),
+        );
+      }
+      if (due.length) this.logger.log(`Dispatched ${due.length} scheduled pickup(s)`);
+    } catch (e: any) {
+      this.logger.warn(`scheduled dispatch sweep failed: ${e?.message ?? e}`);
+    }
   }
 
   private async runAutoMatch(delivery: Delivery) {
@@ -276,7 +367,10 @@ export class DeliveriesService {
     const q = this.repo
       .createQueryBuilder('d')
       .where('d.status = :status', { status: DeliveryStatus.PENDING })
-      .andWhere('d.driver IS NULL');
+      .andWhere('d.driver IS NULL')
+      // Scheduled pickups surface 15 minutes before their slot, not
+      // hours early (night-ops build 2026-08-11).
+      .andWhere(`(d.scheduledFor IS NULL OR d.scheduledFor <= NOW() + interval '15 minutes')`);
 
     const safeLat = Number(lat);
     const safeLng = Number(lng);
@@ -825,7 +919,10 @@ export class DeliveriesService {
       const threshold = await this.getHighValueThreshold();
       if (Number(delivery.declaredValueNgn) >= threshold) {
         const rows = await this.repo.manager.query(
-          `SELECT id FROM "handoff_records" WHERE "deliveryId" = $1 AND "stage" = 'driver_to_recipient' LIMIT 1`,
+          `SELECT id FROM "handoff_records"
+           WHERE "deliveryId" = $1 AND "stage" = 'driver_to_recipient'
+             AND "method" IN ('physical_id', 'seirs_id')
+           LIMIT 1`,
           [id],
         );
         if (!rows?.length) {

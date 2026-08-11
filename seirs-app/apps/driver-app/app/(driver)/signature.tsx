@@ -48,20 +48,21 @@ export default function DriverSignatureScreen() {
   const [error,         setError]         = useState('');
 
   const requestOtp = async () => {
-    if (!recipientUserId) {
-      Alert.alert(
-        'Cannot send OTP',
-        'Recipient does not have a SEIRS account. Use the SEIRS-ID path with their typed signature instead.',
-      );
-      return;
-    }
     setLoading(true);
     try {
-      const res = await identityApi.issueHandoffOtp(deliveryId, recipientUserId);
+      // Without a recipient account the code emails the SENDER, who
+      // forwards it to whoever is collecting (founder 2026-08-11:
+      // neighbours and security collect packages all the time).
+      const res = await identityApi.issueHandoffOtp(deliveryId, recipientUserId || undefined);
       setOtpSent(true);
-      Alert.alert('OTP sent', `Recipient will receive a 6-digit code by email. Expires in ${res.expiresInMinutes} minutes.`);
+      Alert.alert(
+        'Code sent',
+        recipientUserId
+          ? `Recipient will receive a 6-digit code by email. Expires in ${res.expiresInMinutes} minutes.`
+          : `A 6-digit code was emailed to the SENDER: they forward it to whoever is collecting. Expires in ${res.expiresInMinutes} minutes.`,
+      );
     } catch (e: any) {
-      Alert.alert('Could not send OTP', e?.message ?? 'Try again.');
+      Alert.alert('Could not send code', e?.message ?? 'Try again.');
     } finally {
       setLoading(false);
     }
