@@ -317,6 +317,27 @@ const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
     excerpt: 'Call-to-action band background. Close-up of hands exchanging a yellow-taped package. Wide 21:9, will be darkened for text overlay. Midjourney file: handoff-hands.' },
   { slug: 'img_lagos_dusk',     title: 'Story band: Lagos aerial dusk',
     excerpt: 'About/story band background. Aerial Lagos at dusk, Third Mainland Bridge light trails. Wide 21:9, will be darkened for text overlay. Midjourney file: lagos-dusk.' },
+  // Batch 2 (founder 2026-08-11: audience pages need their own imagery).
+  { slug: 'img_business_csv',   title: 'For Business page: bulk orders desk',
+    excerpt: 'for-business page, CSV/bulk section. Laptop + neat parcel stack on a Lagos shop back-office desk. 16:9. Midjourney file: business-csv.' },
+  { slug: 'img_business_team',  title: 'For Business page: team at work',
+    excerpt: 'for-business page, team-roles section. Two colleagues reviewing orders on a tablet in a small business. 16:9. Midjourney file: business-team.' },
+  { slug: 'img_driver_earnings', title: 'For Drivers page: payday moment',
+    excerpt: 'for-drivers page, earnings section. Rider checking his phone with a satisfied look, parked roadside. 4:3. Midjourney file: driver-earnings.' },
+  { slug: 'img_driver_kyc',     title: 'For Drivers page: verification',
+    excerpt: 'for-drivers page, get-verified section. Close-up of hands holding a Nigerian driver licence and phone. 4:3. Midjourney file: driver-kyc.' },
+  { slug: 'img_store_counter',  title: 'Partner Stores page: receiving counter',
+    excerpt: 'for-partner-stores page, how-receiving-works section. Parcels being logged at a shop counter. 16:9. Midjourney file: store-counter.' },
+  { slug: 'img_store_shelf',    title: 'Partner Stores page: package shelf',
+    excerpt: 'for-partner-stores page, storage section. Tidy shelf of yellow-taped parcels in a shop corner. 4:3. Midjourney file: store-shelf.' },
+  { slug: 'img_careers_team',   title: 'Careers page: the team',
+    excerpt: 'careers page hero band. Young Nigerian tech team collaborating in a bright office. 21:9, darkened for text overlay. Midjourney file: careers-team.' },
+  { slug: 'img_contact_lagos',  title: 'Contact page: Lagos street',
+    excerpt: 'contact page side image. Colourful Lagos market street, welcoming daytime energy. 3:4. Midjourney file: contact-lagos.' },
+  { slug: 'img_testimonial_band', title: 'Testimonials: community backdrop',
+    excerpt: 'homepage testimonial section backdrop. Soft-focus Lagos street life, okada + danfo energy. 21:9, heavily blurred/darkened. Midjourney file: testimonial-band.' },
+  { slug: 'img_app_hand',       title: 'Download band: phone in hand',
+    excerpt: 'app-download band. Hand holding a phone seen from behind at an angle (screen NOT visible; the real app screenshot is composited separately). 4:3. Midjourney file: app-hand.' },
 ];
 
 // ── Seed data - sensible defaults so the website ships non-empty ────────────
