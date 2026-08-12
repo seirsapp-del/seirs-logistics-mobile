@@ -94,6 +94,25 @@ export class WebsiteContent {
   @Column({ default: 0 })
   sortOrder: number;
 
+  /**
+   * Feature this story on the customer app home carousel (the slides
+   * after the animated okada). Admin ticks this per article, so the
+   * carousel is curated rather than "whatever was published last".
+   * Publishing alone does NOT put a story in front of every customer.
+   * The app takes the newest few featured items and falls back to its
+   * built-in cards when none are flagged.
+   */
+  @Index()
+  @Column({ default: false })
+  featureInApp: boolean;
+
+  /**
+   * Optional short pill label drawn on the carousel card ("NEW OUTLET",
+   * "PROMO"). Falls back to the category when blank.
+   */
+  @Column({ type: 'varchar', length: 24, nullable: true })
+  featureBadge: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

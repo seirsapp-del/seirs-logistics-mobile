@@ -143,10 +143,20 @@ export default function DriverProfileScreen() {
         {/* Profile card */}
         <View style={[styles.profileCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <View style={styles.profileTop}>
-            <View style={[styles.avatarWrap, { borderColor: theme.primary + '50' }]}>
+            {/* Tap the avatar to open edit-profile (photo picker lives
+                there). A driver's face is a safety feature: the customer
+                waiting on the street matches it against whoever walks up,
+                so this is prompted harder than on the customer side.
+                See the missing-photo banner below. */}
+            <Pressable
+              style={[styles.avatarWrap, { borderColor: theme.primary + '50' }]}
+              onPress={() => router.push('/(driver)/edit-profile' as any)}
+              accessibilityRole="button"
+              accessibilityLabel={user?.profilePhoto ? 'Change profile photo' : 'Add your profile photo'}
+            >
               <Avatar name={displayName} uri={user?.profilePhoto} size={72} />
               <View style={[styles.onlineDot, { backgroundColor: isOnline ? '#16A34A' : '#9CA3AF', borderColor: theme.surface }]} />
-            </View>
+            </Pressable>
             <View style={{ flex: 1 }}>
               <Text style={[styles.driverName, { color: theme.text }]}>{displayName}</Text>
               <Text style={[styles.driverPhone, { color: theme.textSecond }]}>{user?.phone ?? ''}</Text>
@@ -171,6 +181,27 @@ export default function DriverProfileScreen() {
               </View>
             </View>
           </View>
+
+          {/* Missing-photo prompt. Customers are told to check the face
+              of whoever collects their package, which only works if the
+              face is there. Persistent (not dismissible) until a photo
+              is set, but it does not block earning: a driver mid-shift
+              should not be locked out over a portrait. */}
+          {!user?.profilePhoto && (
+            <Pressable
+              onPress={() => router.push('/(driver)/edit-profile' as any)}
+              style={[styles.photoPrompt, { backgroundColor: '#F59E0B14', borderTopColor: theme.border }]}
+            >
+              <Ionicons name="camera-outline" size={18} color="#B45309" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.photoPromptTitle, { color: theme.text }]}>Add your photo</Text>
+                <Text style={[styles.photoPromptBody, { color: theme.textSecond }]}>
+                  Customers check your face before handing over a package. A clear photo gets you accepted faster.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
+            </Pressable>
+          )}
 
           {/* SEIRS ID row. Tap opens QR modal so drivers can show it to
               customers for in-person identity match, or share with support
@@ -344,6 +375,9 @@ const styles = StyleSheet.create({
   profileTop:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md },
   avatarWrap:  { position: 'relative', width: 78, height: 78, borderRadius: 39, borderWidth: 2.5, justifyContent: 'center', alignItems: 'center' },
   onlineDot:   { position: 'absolute', bottom: 2, right: 2, width: 14, height: 14, borderRadius: 7, borderWidth: 2 },
+  photoPrompt:      { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderTopWidth: 1 },
+  photoPromptTitle: { fontSize: 13, fontWeight: '700' },
+  photoPromptBody:  { fontSize: 11.5, lineHeight: 16, marginTop: 1 },
   driverName:  { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
   driverPhone: { fontSize: FontSize.sm, marginTop: 2, marginBottom: 6 },
   badgeRow:    { flexDirection: 'row', gap: Spacing.sm },

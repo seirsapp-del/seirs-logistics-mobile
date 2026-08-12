@@ -192,6 +192,38 @@ export class WebsiteContentService implements OnModuleInit {
     return { items, total, page, pageSize };
   }
 
+  /**
+   * Slides for the customer-app home carousel. Deliberately narrow:
+   * only PUBLISHED stories an admin ticked featureInApp, newest first,
+   * and only the fields a card needs. The app keeps its built-in cards
+   * as the fallback, so an empty result is a normal state (nothing
+   * featured this week), not an error.
+   */
+  async listFeaturedCards(limit = 4, lang = 'en') {
+    const rows = await this.repo.find({
+      where: {
+        featureInApp: true,
+        status:       WebContentStatus.PUBLISHED,
+        lang,
+      },
+      order: { sortOrder: 'ASC', publishedAt: 'DESC' },
+      take:  limit,
+    });
+
+    return {
+      items: rows.map(r => ({
+        id:            r.id,
+        slug:          r.slug,
+        title:         r.title,
+        excerpt:       r.excerpt,
+        coverImageUrl: r.coverImageUrl,
+        category:      r.category,
+        badge:         r.featureBadge ?? r.category ?? null,
+        publishedAt:   r.publishedAt,
+      })),
+    };
+  }
+
   async getBySlug(slug: string, lang = 'en') {
     const row = await this.repo.findOne({
       where: { slug, lang, status: WebContentStatus.PUBLISHED },
@@ -254,6 +286,8 @@ export class WebsiteContentService implements OnModuleInit {
       seoDescription: body.seoDescription ?? null,
       category:       body.category       ?? null,
       sortOrder:      body.sortOrder      ?? 0,
+      featureInApp:   body.featureInApp   ?? false,
+      featureBadge:   body.featureBadge   ?? null,
       authorUserId:   adminId,
       publishAt:      at,
       publishedAt:    status === WebContentStatus.PUBLISHED ? now : null,
@@ -276,6 +310,8 @@ export class WebsiteContentService implements OnModuleInit {
     if (body.seoDescription !== undefined) row.seoDescription = body.seoDescription;
     if (body.category       !== undefined) row.category       = body.category;
     if (body.sortOrder      !== undefined) row.sortOrder      = body.sortOrder;
+    if (body.featureInApp   !== undefined) row.featureInApp   = body.featureInApp;
+    if (body.featureBadge   !== undefined) row.featureBadge   = body.featureBadge;
     if (body.lang           !== undefined) row.lang           = body.lang;
     if (body.publishAt      !== undefined) row.publishAt      = body.publishAt ? new Date(body.publishAt) : null;
 

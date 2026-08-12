@@ -10,6 +10,7 @@ import { Delivery, DeliveryStatus, PackageSize, UrgencyLevel, DeliverySource } f
 import { DriverEarning } from '../earnings/driver-earning.entity';
 import { Wallet } from '../payments/wallet.entity';
 import { StoreDropoff, DropoffMode, DropoffStatus } from '../partner-store/store-dropoff.entity';
+import { LoyaltyPoint } from '../loyalty/loyalty-point.entity';
 import { AccountIdPrefix, generateAccountId, secureCode } from '../common/utils/auth-codes';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
@@ -56,6 +57,7 @@ export class DemoDataService {
     @InjectRepository(DriverEarning)  private earningRepo:  Repository<DriverEarning>,
     @InjectRepository(Wallet)         private walletRepo:   Repository<Wallet>,
     @InjectRepository(StoreDropoff)   private dropoffRepo:  Repository<StoreDropoff>,
+    @InjectRepository(LoyaltyPoint)   private loyaltyRepo:  Repository<LoyaltyPoint>,
   ) {}
 
   async seedDemoAccounts() {
@@ -104,6 +106,8 @@ export class DemoDataService {
     const deliveries = await this.ensureDemoDeliveries(customer, driver);
 
     await this.ensureDemoDropoffs(customer, business);
+
+    await this.ensureDemoLoyalty(customer);
 
     this.logger.log('Demo accounts seeded/refreshed (password rotated)');
     return {
@@ -322,6 +326,52 @@ export class DemoDataService {
   // ── Store drop-offs (capacity dashboard realism) ────────────────────────
   // Terminal-ish statuses only (RECEIVED_AT_STORE / AWAITING_COLLECTION):
   // never AWAITING_DRIVER, which would make a real driver see a fake job.
+
+  /**
+   * Loyalty ledger for the demo customer. Without this the home screen
+   * reads "0 pts" next to six completed deliveries, which is both a bad
+   * screenshot and an inconsistent story (founder spotted it 2026-08-12).
+   *
+   * Written as real ledger rows rather than a balance override, so the
+   * points behave exactly like earned ones everywhere they surface:
+   * history list, tier calculation, redemption. Deliberately kept in
+   * Bronze range: the tier pill only shows above Bronze, and a demo
+   * account flashing Platinum would misrepresent what a new customer
+   * can expect.
+   */
+  private async ensureDemoLoyalty(customer: User) {
+    const existing = await this.loyaltyRepo.count({ where: { userId: customer.id } });
+    if (existing > 0) return;
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime());
+    expiresAt.setMonth(expiresAt.getMonth() + 24);
+
+    const daysAgo = (d: number) => new Date(now.getTime() - d * 24 * 60 * 60 * 1000);
+
+    const rows = [
+      { delta: 45, reason: 'delivery_complete' as const, note: 'Lekki to Victoria Island',  at: daysAgo(31) },
+      { delta: 60, reason: 'delivery_complete' as const, note: 'Lekki to Ikeja',            at: daysAgo(24) },
+      { delta: 10, reason: 'rate_driver' as const,       note: 'Rated a driver',            at: daysAgo(24) },
+      { delta: 55, reason: 'delivery_complete' as const, note: 'Lekki to Surulere',         at: daysAgo(17) },
+      { delta: 40, reason: 'delivery_complete' as const, note: 'Lekki to Yaba',             at: daysAgo(9)  },
+      { delta: 10, reason: 'rate_driver' as const,       note: 'Rated a driver',            at: daysAgo(9)  },
+      { delta: 65, reason: 'delivery_complete' as const, note: 'Lekki to Ajah',             at: daysAgo(4)  },
+      { delta: 50, reason: 'delivery_complete' as const, note: 'Lekki to Lekki Phase 1',    at: daysAgo(1)  },
+    ];
+
+    for (const r of rows) {
+      const entry = this.loyaltyRepo.create({
+        userId:    customer.id,
+        delta:     r.delta,
+        reason:    r.reason,
+        note:      r.note,
+        expiresAt,
+        createdAt: r.at,
+      } as any);
+      await this.loyaltyRepo.save(entry);
+    }
+  }
 
   private async ensureDemoDropoffs(customer: User, business: BusinessAccount) {
     const store = await this.storeRepo.findOne({ where: { userId: business.ownerId } });

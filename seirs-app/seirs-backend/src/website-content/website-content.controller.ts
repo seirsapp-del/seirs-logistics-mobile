@@ -39,6 +39,19 @@ export class WebsiteContentController {
     return this.svc.getBySlug(slug, lang ?? 'en');
   }
 
+  // GET /api/v1/website/featured-cards?limit=4
+  // Curated slides for the customer app home carousel. Only stories an
+  // admin ticked "feature in app" come back, newest first. Public: the
+  // home screen renders before a session is restored.
+  @Public()
+  @Get('website/featured-cards')
+  featuredCards(
+    @Query('limit', new DefaultValuePipe(4), ParseIntPipe) limit: number = 4,
+    @Query('lang') lang?: string,
+  ) {
+    return this.svc.listFeaturedCards(Math.min(Math.max(limit, 1), 8), lang ?? 'en');
+  }
+
   // GET /api/v1/website/image-slots
   // All admin-managed marketing images in one map { img_slug: url }.
   // Website sections fall back to built-in art for missing keys.

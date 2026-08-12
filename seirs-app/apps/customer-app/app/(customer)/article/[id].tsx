@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, Image, StatusBar, Share,
-  Animated as RNAnimated, Dimensions,
+  View, Text, Pressable, StyleSheet, Image, StatusBar, Share, Linking,
+  ActivityIndicator, Animated as RNAnimated, Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +15,7 @@ import { ArticleBody } from '@/components/ArticleBody';
 import { findHeroCardById, HERO_CARDS, type HeroCard } from '@/constants/heroCards';
 import { useBookmarks } from '@/hooks/use-bookmarks';
 import { calcReadingMinutes, relativeDate } from '@/utils/articleMeta';
+import { storiesApi } from '@/services/api';
 
 /**
  * Article view: opened when a customer taps a hero carousel card.
@@ -30,14 +31,31 @@ import { calcReadingMinutes, relativeDate } from '@/utils/articleMeta';
  *   - "More from SEIRS" horizontal scroll of other articles at the bottom
  *   - No sticky CTA: intentionally a reading experience, not a funnel
  *
- * Data source: HERO_CARDS constant for now. When the CMS lands (Phase 2),
- * swap `findHeroCardById` for a backend fetch + swap `HERO_CARDS` (for
- * "More from SEIRS") for a backend query.
+ * Two data sources, chosen by the id:
+ *   - "cms:<slug>"  a story written in the admin dashboard, fetched
+ *                   live. Same article the website shows, so it also
+ *                   offers "Read on the website" at the end.
+ *   - anything else the built-in HERO_CARDS constant (offline fallback
+ *                   cards, i18n-keyed).
  */
 
 const HERO_HEIGHT = 280;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MORE_CARD_WIDTH = 220;
+const WEBSITE = 'https://seirs-website.vercel.app';
+const CMS_PREFIX = 'cms:';
+
+/**
+ * CMS bodies are one string; ArticleBody wants one entry per block.
+ * Blank-line separated, which is what the admin editor produces and
+ * what markdown means by a paragraph break.
+ */
+function splitBody(body: string): string[] {
+  return body
+    .split(/\n\s*\n/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
 
 export default function ArticleScreen() {
   const router  = useRouter();
@@ -49,14 +67,49 @@ export default function ArticleScreen() {
   const { id }  = useLocalSearchParams<{ id: string }>();
   const { isBookmarked, toggle: toggleBookmark } = useBookmarks();
 
-  const card = findHeroCardById(id);
+  // A "cms:<slug>" id means an admin-authored story: fetch it. Local
+  // fallback cards resolve synchronously from the constant.
+  const cmsSlug = id?.startsWith(CMS_PREFIX) ? id.slice(CMS_PREFIX.length) : null;
+  const [cmsCard,  setCmsCard]  = useState<HeroCard | null>(null);
+  const [cmsBody,  setCmsBody]  = useState<string[]>([]);
+  const [cmsState, setCmsState] = useState<'idle' | 'loading' | 'error'>(cmsSlug ? 'loading' : 'idle');
+
+  useEffect(() => {
+    if (!cmsSlug) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const story = await storiesApi.bySlug(cmsSlug);
+        if (cancelled) return;
+        setCmsCard({
+          id:          `${CMS_PREFIX}${story.slug}`,
+          kind:        'image',
+          imageUrl:    story.coverImageUrl ?? undefined,
+          badge:       (story.category ?? '').replace(/_/g, ' ') || undefined,
+          title:       story.title,
+          desc:        story.excerpt ?? undefined,
+          author:      'SEIRS',
+          publishedAt: story.publishedAt ?? undefined,
+        });
+        setCmsBody(splitBody(story.body ?? ''));
+        setCmsState('idle');
+      } catch {
+        if (!cancelled) setCmsState('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [cmsSlug]);
+
+  const card = cmsSlug ? cmsCard : findHeroCardById(id);
 
   // Body is an array of strings (one per "block": see ArticleBody for
   // the DSL). returnObjects:true lets a single key hold a list.
   const body = card?.bodyKey
     ? (t(card.bodyKey, { returnObjects: true, defaultValue: [] }) as string[])
     : [];
-  const paragraphs = Array.isArray(body) ? body : [String(body)];
+  const paragraphs = cmsSlug
+    ? cmsBody
+    : (Array.isArray(body) ? body : [String(body)]);
 
   // Meta: author + relative date + reading time. All from i18n so
   // locale switches reflect live.
@@ -82,6 +135,19 @@ export default function ArticleScreen() {
     extrapolate: 'clamp',
   });
 
+  // CMS fetch in flight: a spinner beats a "not found" flash on a slow
+  // Lagos connection.
+  if (cmsSlug && cmsState === 'loading') {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={styles.notFoundWrap}>
+          <ActivityIndicator color={theme.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // Not-found state: defensive (e.g. an article id removed from the
   // CMS while a customer has the URL deep-linked).
   if (!card) {
@@ -100,16 +166,21 @@ export default function ArticleScreen() {
 
   const bookmarked = isBookmarked(card.id);
 
+  // Raw CMS text wins over the i18n key, same rule as the carousel card.
+  const titleText = card.title ?? (card.titleKey ? t(card.titleKey) : undefined);
+  const descText  = card.desc  ?? (card.descKey  ? t(card.descKey)  : undefined);
+  const badgeText = card.badge ?? (card.badgeKey ? t(card.badgeKey) : undefined);
+  // CMS stories exist on the website too, so a share can carry a real
+  // link. Built-in fallback cards have no public URL: text only.
+  const webUrl = cmsSlug ? `${WEBSITE}/news/${cmsSlug}` : null;
+
   const handleShare = async () => {
     try {
-      const title = card.titleKey ? t(card.titleKey) : 'SEIRS';
-      const desc  = card.descKey  ? t(card.descKey)  : '';
-      // Until deep links are wired, a richer text-only share gets the
-      // gist across in WhatsApp / Twitter / etc. URL placeholder kept
-      // for the future when articles are reachable by link.
+      const title = titleText ?? 'SEIRS';
+      const desc  = descText  ?? '';
       await Share.share({
         title,
-        message: `${title}${desc ? `\n\n${desc}` : ''}\n\nvia SEIRS`,
+        message: `${title}${desc ? `\n\n${desc}` : ''}${webUrl ? `\n\n${webUrl}` : ''}\n\nvia SEIRS`,
       });
     } catch { /* user cancelled */ }
   };
@@ -192,14 +263,14 @@ export default function ArticleScreen() {
 
         {/* ── Article header ───────────────────────────────────────────── */}
         <View style={styles.headerWrap}>
-          {card.badgeKey ? (
+          {badgeText ? (
             <View style={[styles.badge, { backgroundColor: card.badgeColor ?? theme.accent }]}>
-              <Text style={styles.badgeText}>{t(card.badgeKey)}</Text>
+              <Text style={styles.badgeText}>{badgeText}</Text>
             </View>
           ) : null}
 
-          {card.titleKey ? (
-            <Text style={[styles.title, { color: theme.text }]}>{t(card.titleKey)}</Text>
+          {titleText ? (
+            <Text style={[styles.title, { color: theme.text }]}>{titleText}</Text>
           ) : null}
 
           {/* Meta row: author · relative date · X min read */}
@@ -217,8 +288,8 @@ export default function ArticleScreen() {
             </Text>
           </View>
 
-          {card.descKey ? (
-            <Text style={[styles.lede, { color: theme.textSecond }]}>{t(card.descKey)}</Text>
+          {descText ? (
+            <Text style={[styles.lede, { color: theme.textSecond }]}>{descText}</Text>
           ) : null}
         </View>
 
@@ -232,6 +303,19 @@ export default function ArticleScreen() {
             <ArticleBody body={paragraphs} />
           )}
         </View>
+
+        {/* Link out to the same story on the website: shareable, and
+            the web page carries the images the app view trims. */}
+        {webUrl ? (
+          <Pressable
+            onPress={() => Linking.openURL(webUrl)}
+            style={[styles.webLink, { borderColor: theme.border, backgroundColor: theme.surface }]}
+          >
+            <Ionicons name="globe-outline" size={16} color={theme.accent} />
+            <Text style={[styles.webLinkText, { color: theme.accent }]}>Read this on the SEIRS website</Text>
+            <Ionicons name="open-outline" size={14} color={theme.accent} />
+          </Pressable>
+        ) : null}
 
         {/* ── More from SEIRS ──────────────────────────────────────────── */}
         {moreArticles.length > 0 ? (
@@ -353,6 +437,14 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
   },
   bodyEmpty: { fontSize: FontSize.base, fontStyle: 'italic' },
+
+  webLink: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginHorizontal: Spacing.md, marginTop: Spacing.lg,
+    paddingVertical: 12, paddingHorizontal: Spacing.md,
+    borderRadius: Radius.lg, borderWidth: 1,
+  },
+  webLinkText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 
   moreWrap: {
     marginTop: Spacing.xl,

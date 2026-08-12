@@ -1137,7 +1137,27 @@ export interface StoryDTO {
   publishedAt:    string | null;
 }
 
+/**
+ * A story an admin ticked "feature in app": becomes a slide on the
+ * customer home carousel. Trimmed down from StoryDTO because a card
+ * never renders the body.
+ */
+export interface FeaturedCardDTO {
+  id:            string;
+  slug:          string;
+  title:         string;
+  excerpt:       string | null;
+  coverImageUrl: string | null;
+  category:      string | null;
+  badge:         string | null;
+  publishedAt:   string | null;
+}
+
 export const storiesApi = {
+  featured: (limit = 4) =>
+    request<{ items: FeaturedCardDTO[] }>(
+      'GET', `/website/featured-cards?limit=${limit}`, undefined, false,
+    ),
   list: (pageSize = 20) =>
     request<{ items: StoryDTO[]; total: number }>(
       'GET', `/website/content?type=article&pageSize=${pageSize}`, undefined, false,

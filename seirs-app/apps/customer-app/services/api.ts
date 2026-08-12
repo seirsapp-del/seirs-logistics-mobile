@@ -33,6 +33,7 @@ export {
 
 export type {
   StoryDTO,
+  FeaturedCardDTO,
   ChatMessageDTO,
   ChatConversationDTO,
   ServiceCategory,

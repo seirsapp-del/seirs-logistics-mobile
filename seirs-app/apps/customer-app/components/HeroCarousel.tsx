@@ -6,7 +6,8 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { HomeHeroAnimated } from './HomeHeroAnimated';
 import { HeroCardImage } from './HeroCardImage';
-import { HERO_CARDS, type HeroCard } from '@/constants/heroCards';
+import { type HeroCard } from '@/constants/heroCards';
+import { useHeroCards } from '@/hooks/use-hero-cards';
 
 /**
  * Horizontal swipeable card stack: the Joyn / Netflix "featured cards"
@@ -45,8 +46,11 @@ export function HeroCarousel() {
   // dot indicator + activeIndex always track the REAL card (clone is
   // invisible to the user). When the user/auto reaches the clone, we
   // silently snap back to real index 0.
-  const data = useMemo<HeroCard[]>(() => [...HERO_CARDS, HERO_CARDS[0]], []);
-  const REAL_COUNT = HERO_CARDS.length;
+  // Slides come from the admin CMS, with the built-in cards as the
+  // offline/cold-start fallback (see hooks/use-hero-cards.ts).
+  const cards = useHeroCards();
+  const data = useMemo<HeroCard[]>(() => [...cards, cards[0]], [cards]);
+  const REAL_COUNT = cards.length;
 
   const listRef = useRef<FlatList<HeroCard>>(null);
   // displayedIndex is what's visually showing (0..REAL_COUNT, where
@@ -56,6 +60,15 @@ export function HeroCarousel() {
   const activeIndex = displayedIndex >= REAL_COUNT ? 0 : displayedIndex;
   const [paused, setPaused] = useState(false);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // The CMS fetch lands a moment after mount and can change the slide
+  // count. Snap back to the brand card so the index, the dots, and the
+  // scroll offset cannot disagree (a stale index past the new end makes
+  // scrollToIndex throw and freezes the auto-advance).
+  useEffect(() => {
+    setDisplayedIndex(0);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [cards]);
 
   // Auto-advance: uses displayedIndex (can hit the clone), then the
   // momentum-end handler silently jumps back to real 0 if needed.
@@ -120,6 +133,9 @@ export function HeroCarousel() {
             badgeColor={item.badgeColor}
             titleKey={item.titleKey}
             descKey={item.descKey}
+            badge={item.badge}
+            title={item.title}
+            desc={item.desc}
             onPress={() => openArticle(item)}
           />
         )}
@@ -154,7 +170,7 @@ export function HeroCarousel() {
       {/* Dot indicators: based on activeIndex (clone never lights up).
           Active dot is wider (pill) for modern feel. */}
       <View style={styles.dotsRow}>
-        {HERO_CARDS.map((_, i) => {
+        {cards.map((_, i) => {
           const isActive = i === activeIndex;
           return (
             <View

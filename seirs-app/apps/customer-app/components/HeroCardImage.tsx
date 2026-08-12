@@ -22,16 +22,26 @@ interface Props {
   badgeColor?: string;       // hex for the pill background
   titleKey?:   string;       // i18n key for the title
   descKey?:    string;       // i18n key for the description
+  // Raw text from the CMS. Wins over the matching *Key prop: admin-authored
+  // copy is already in its final wording and must not go through i18next
+  // (a title containing a colon would be read as a namespace lookup).
+  badge?:      string;
+  title?:      string;
+  desc?:       string;
   onPress?:    () => void;
 }
 
 export function HeroCardImage({
-  imageUrl, badgeKey, badgeColor, titleKey, descKey, onPress,
+  imageUrl, badgeKey, badgeColor, titleKey, descKey, badge, title, desc, onPress,
 }: Props) {
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
   const { t }  = useTranslation();
+
+  const badgeText = badge ?? (badgeKey ? t(badgeKey) : undefined);
+  const titleText = title ?? (titleKey ? t(titleKey) : undefined);
+  const descText  = desc  ?? (descKey  ? t(descKey)  : undefined);
 
   return (
     <Pressable
@@ -70,18 +80,18 @@ export function HeroCardImage({
       />
 
       {/* Badge pill (top-left) */}
-      {badgeKey ? (
+      {badgeText ? (
         <View style={[styles.badge, { backgroundColor: badgeColor ?? theme.accent }]}>
-          <Text style={styles.badgeText}>{t(badgeKey)}</Text>
+          <Text style={styles.badgeText}>{badgeText}</Text>
         </View>
       ) : null}
 
       {/* Title + description + chevron (bottom) */}
       <View style={styles.contentBlock}>
-        {titleKey ? <Text style={styles.title} numberOfLines={2}>{t(titleKey)}</Text> : null}
+        {titleText ? <Text style={styles.title} numberOfLines={2}>{titleText}</Text> : null}
         <View style={styles.descRow}>
-          {descKey ? (
-            <Text style={styles.desc} numberOfLines={2}>{t(descKey)}</Text>
+          {descText ? (
+            <Text style={styles.desc} numberOfLines={2}>{descText}</Text>
           ) : <View style={{ flex: 1 }} />}
           {onPress ? (
             <Ionicons name="chevron-forward" size={20} color="#fff" />

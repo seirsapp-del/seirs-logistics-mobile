@@ -146,7 +146,22 @@ export default function ProfileScreen() {
         {/* User card */}
         <View style={[styles.userCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <View style={styles.userCardTop}>
-            <Avatar name={displayName} uri={user?.profilePhoto} size={68} />
+            {/* Tapping the avatar opens edit-profile, where the photo
+                picker already lives. The camera badge is the discovery
+                cue: without it nobody knew a photo could be uploaded
+                (founder 2026-08-12). Badge hides once a photo is set. */}
+            <Pressable
+              onPress={() => router.push('/(customer)/edit-profile' as any)}
+              accessibilityRole="button"
+              accessibilityLabel={user?.profilePhoto ? t('profile.changePhoto', { defaultValue: 'Change profile photo' }) : t('profile.addPhoto', { defaultValue: 'Add a profile photo' })}
+            >
+              <Avatar name={displayName} uri={user?.profilePhoto} size={68} />
+              {!user?.profilePhoto && (
+                <View style={[styles.photoBadge, { backgroundColor: theme.accent, borderColor: theme.surface }]}>
+                  <Ionicons name="camera" size={12} color="#fff" />
+                </View>
+              )}
+            </Pressable>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <Text style={[styles.userName, { color: theme.text }]}>{displayName || '-'}</Text>
@@ -345,6 +360,7 @@ const styles = StyleSheet.create({
 
   userCard:    { marginHorizontal: Spacing.md, borderRadius: Radius.xxl, borderWidth: 1, marginBottom: Spacing.md, overflow: 'hidden' },
   userCardTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md },
+  photoBadge:  { position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   userName:    { fontSize: FontSize.md, fontWeight: FontWeight.bold },
   userEmail:   { fontSize: FontSize.xs, marginTop: 2 },
   userPhone:   { fontSize: FontSize.xs, marginTop: 1 },

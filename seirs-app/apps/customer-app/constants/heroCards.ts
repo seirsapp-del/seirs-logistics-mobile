@@ -9,10 +9,12 @@
  * `ctaRoute` render an action button at the bottom of the article so
  * the customer can act on it (Send a package, Open multi-stop, etc.).
  *
- * Until the admin "Hero Cards" CMS lands (Phase 2 - see
- * components/HeroCarousel.tsx for the swap point), this constant IS the
- * source of truth. Hot-edit a card here to change copy/image; reload to
- * see it.
+ * As of 2026-08-12 the admin CMS drives this carousel: any article
+ * ticked "feature in app" becomes a slide (see hooks/use-hero-cards.ts).
+ * The constant below is now the FALLBACK, shown when the device is
+ * offline, on cold start before the fetch lands, or when no story is
+ * currently featured. Keep it evergreen: no dated promos here, since
+ * changing it needs an app release.
  *
  * ── IMAGE SOURCES (for real-people-of-colour content) ──────────────────
  * The placeholders below use picsum.photos because it's reliable. For
@@ -38,6 +40,14 @@ export interface HeroCard {
   badgeColor?: string;
   titleKey?: string;
   descKey?:  string;
+  /**
+   * Raw (already-authored) text, used by CMS-sourced cards where the
+   * copy comes from the admin dashboard rather than a translation
+   * file. Takes precedence over the *Key fields when present.
+   */
+  badge?:    string;
+  title?:    string;
+  desc?:     string;
   /**
    * Article body - i18n key returning an array of strings. Each string
    * is one "block" rendered by <ArticleBody>. Use a tiny markdown DSL

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Globe, Plus, Search, Loader2, AlertCircle, RefreshCw, X, Trash2,
-  ImageIcon, Eye, Save, Calendar,
+  ImageIcon, Eye, Save, Calendar, Smartphone,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -22,6 +22,8 @@ interface Row {
   excerpt:         string | null;
   body:            string;
   coverImageUrl:   string | null;
+  featureInApp?:   boolean;
+  featureBadge?:   string | null;
   seoTitle:        string | null;
   seoDescription:  string | null;
   category:        string | null;
@@ -168,6 +170,11 @@ export default function WebsiteCmsPage() {
                   {r.category && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#3A7BD5]/10 text-[#3A7BD5] font-medium">{r.category}</span>
                   )}
+                  {r.featureInApp && (
+                    <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-[#C2410C]/10 text-[#C2410C] font-bold flex items-center gap-1">
+                      <Smartphone size={10} /> In app
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs font-mono text-gray-400 mt-0.5">/{r.slug}</p>
               </div>
@@ -210,6 +217,8 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   const [seoDesc,   setSeoDesc]   = useState(row?.seoDescription ?? '');
   const [category,  setCategory]  = useState(row?.category ?? (defaultType === 'article' ? 'news' : ''));
   const [sortOrder, setSortOrder] = useState(String(row?.sortOrder ?? 0));
+  const [featureInApp, setFeatureInApp] = useState(row?.featureInApp ?? false);
+  const [featureBadge, setFeatureBadge] = useState(row?.featureBadge ?? '');
   const [status,    setStatus]    = useState(row?.status ?? 'draft');
   const [publishAt, setPublishAt] = useState(row?.publishAt ? toLocalInput(row.publishAt) : '');
   const [uploading, setUploading] = useState(false);
@@ -261,6 +270,8 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
         seoDescription: seoDesc        || null,
         category:       category       || null,
         sortOrder:      Number(sortOrder) || 0,
+        featureInApp,
+        featureBadge:   featureBadge.trim() || null,
         status,
         publishAt:      publishAt ? new Date(publishAt).toISOString() : null,
       };
@@ -430,6 +441,47 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Sort order (lower shows first)</label>
               <input value={sortOrder} onChange={e => setSortOrder(e.target.value)} type="number"
                 className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+            </div>
+          )}
+
+          {/* Home-carousel curation. Publishing puts a story on the
+              website; this puts it on the slides every customer sees
+              when they open the app, so it is a separate deliberate
+              tick rather than an automatic consequence. */}
+          {type === 'article' && (
+            <div className="border border-[#E5E7EB] rounded-lg p-3 bg-[#F9FAFB]">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={featureInApp}
+                  onChange={e => setFeatureInApp(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-[#3A7BD5]"
+                />
+                <span>
+                  <span className="block text-sm font-bold text-[#0F2B4C]">Feature on the app home carousel</span>
+                  <span className="block text-xs text-gray-500 mt-0.5">
+                    Shows as a slide in the customer app, after the SEIRS okada card. Newest four featured
+                    stories appear. Needs a cover image, and the story must be published.
+                  </span>
+                </span>
+              </label>
+
+              {featureInApp && (
+                <div className="mt-3 pl-6">
+                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Card label (optional)</label>
+                  <input
+                    value={featureBadge}
+                    onChange={e => setFeatureBadge(e.target.value.slice(0, 24))}
+                    placeholder="e.g. NEW OUTLET, PROMO. Blank uses the category."
+                    className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]"
+                  />
+                  {!cover && (
+                    <p className="text-xs text-[#B45309] mt-2">
+                      No cover image yet. Featured cards without one render as a plain navy slide.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

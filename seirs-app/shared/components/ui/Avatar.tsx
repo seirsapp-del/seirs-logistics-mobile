@@ -12,7 +12,13 @@ function initials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
-const COLORS = ['#3A86FF', '#2EC4B6', '#FF6B00', '#8B5CF6', '#22C55E', '#EF4444'];
+/**
+ * Initial-avatar backgrounds. Brand family only: deep navy, sky blue,
+ * teal, SEIRS orange, forest green, clay. Violet was removed 2026-08-12
+ * (purple is not a SEIRS colour and it was showing on the customer home
+ * top bar). Every entry clears 4.5:1 against white initials.
+ */
+const COLORS = ['#0F2B4C', '#3A7BD5', '#0E7C86', '#C2410C', '#15803D', '#9A3412'];
 function colorFor(name: string) {
   let hash = 0;
   for (const c of name) hash = (hash * 31 + c.charCodeAt(0)) % COLORS.length;

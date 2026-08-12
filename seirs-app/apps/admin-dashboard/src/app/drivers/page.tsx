@@ -94,6 +94,12 @@ function DriversContent() {
                       <td className="px-4 py-3">
                         <a href={`/drivers/${d.id}`} className="font-medium text-[#0F2B4C] hover:text-[#3A7BD5] transition-colors">{d.user?.name}</a>
                         <div className="text-xs text-[#0F2B4C]/40">{d.user?.email}</div>
+                        {/* A customer is told to check the driver's face
+                            before handing over a package, so a missing
+                            photo is an onboarding gap worth chasing. */}
+                        {!d.user?.profilePhoto && (
+                          <div className="text-[10px] text-[#B45309] mt-0.5">No profile photo</div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         {d.user?.accountId ? (
