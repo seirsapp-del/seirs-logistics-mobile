@@ -37,7 +37,7 @@ export default function TransactionDetailsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+      <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
 
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: theme.border }]}>

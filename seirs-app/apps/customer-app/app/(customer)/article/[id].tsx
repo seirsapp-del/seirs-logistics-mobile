@@ -157,7 +157,7 @@ export default function ArticleScreen() {
             end={{ x: 0, y: 1 }}
             style={[StyleSheet.absoluteFill, { height: 130 }]}
           />
-          <SafeAreaView edges={['top']} style={styles.heroOverlay}>
+          <SafeAreaView edges={['top', 'bottom']} style={styles.heroOverlay}>
             <Pressable
               style={[styles.iconBtn, { backgroundColor: 'rgba(0,0,0,0.45)' }]}
               onPress={() => router.back()}

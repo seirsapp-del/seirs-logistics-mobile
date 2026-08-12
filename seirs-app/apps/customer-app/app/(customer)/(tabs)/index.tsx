@@ -255,10 +255,10 @@ export default function CustomerHomeScreen() {
         </ScrollView>
 
         {/* ── Primary actions ──────────────────────────────────────────────
-            Two large tiles, side-by-side. These are the only two reasons a
-            customer opens the app: send something, or get a ride. Big tap
-            targets, vehicle icon, price hint anchored to the cheapest
-            option for each mode (admin can tune via rate card). */}
+            Two tiles in the content flow. These replaced the floating
+            circles (founder 2026-08-12), which hovered over the Recent
+            Trips list and covered the delivery amounts. Same two
+            actions, nothing obscured. */}
         <View style={styles.actionRow}>
           <Pressable
             style={[styles.actionTile, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
@@ -370,64 +370,11 @@ export default function CustomerHomeScreen() {
 
       </ScrollView>
 
-      {/* ── Floating Action Buttons (Send + Ride) ──────────────────────────
-          Bottom-right corner, two stacked compact pills. Icon-only at
-          rest. On tap, each expands leftward to show its label briefly
-          while we navigate: satisfying tap feedback. The whole pair
-          slides off-screen when the user scrolls DOWN through the recent
-          trips, and slides back in on scroll-up. No full-width bar means
-          the trip list is never blocked. */}
-      <Animated.View
-        pointerEvents="box-none"
-        style={[
-          styles.fabPair,
-          { bottom: 16 + insets.bottom, transform: [{ translateX: fabTranslate }] },
-        ]}
-      >
-        <Animated.View style={[styles.fabRow, { width: sendWidth, backgroundColor: theme.primary }, Shadows.md]}>
-          <Pressable
-            style={styles.fabPressable}
-            onPress={() => animateAndGo('send')}
-            accessibilityRole="button"
-            accessibilityLabel={t('home.sendPackage')}
-          >
-            <Package size={22} color="#fff" strokeWidth={2.25} />
-            <Animated.Text
-              numberOfLines={1}
-              style={[
-                styles.fabLabel,
-                {
-                  opacity: sendWidth.interpolate({ inputRange: [56, 120, 180], outputRange: [0, 0.4, 1] }),
-                },
-              ]}
-            >
-              {t('home.sendPackage')}
-            </Animated.Text>
-          </Pressable>
-        </Animated.View>
-
-        <Animated.View style={[styles.fabRow, { width: rideWidth, backgroundColor: theme.accent }, Shadows.md]}>
-          <Pressable
-            style={styles.fabPressable}
-            onPress={() => animateAndGo('ride')}
-            accessibilityRole="button"
-            accessibilityLabel={t('home.requestRide')}
-          >
-            <Car size={22} color="#fff" strokeWidth={2.25} />
-            <Animated.Text
-              numberOfLines={1}
-              style={[
-                styles.fabLabel,
-                {
-                  opacity: rideWidth.interpolate({ inputRange: [56, 120, 180], outputRange: [0, 0.4, 1] }),
-                },
-              ]}
-            >
-              {t('home.requestRide')}
-            </Animated.Text>
-          </Pressable>
-        </Animated.View>
-      </Animated.View>
+      {/* Floating Send / Ride circles removed (founder 2026-08-12):
+          they hovered over the Recent Trips list and covered the
+          delivery amounts on the rows behind them. The two tiles in the
+          content flow above carry the same actions without obscuring
+          anything. */}
 
       {/* ── Hamburger Drawer ────────────────────────────────────────────── */}
       <Drawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />

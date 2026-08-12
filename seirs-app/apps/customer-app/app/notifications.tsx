@@ -104,7 +104,7 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={[styles.headerBar, { borderBottomColor: theme.border }]}>
         <Pressable onPress={() => router.back()} style={[styles.backCircle, { backgroundColor: theme.surface }]}>

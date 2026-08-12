@@ -258,7 +258,7 @@ export default function ActiveDeliveryScreen() {
   const statusIndex = STATUS_STEPS.findIndex(s => s.key === delivery.status);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={[styles.headerBar, { borderBottomColor: theme.border }]}>
         {!isDone && (

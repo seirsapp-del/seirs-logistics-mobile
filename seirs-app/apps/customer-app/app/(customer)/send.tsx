@@ -447,7 +447,7 @@ export default function SendScreen() {
       </MapView>
 
       {/* Floating header */}
-      <SafeAreaView edges={['top']} style={styles.topBar}>
+      <SafeAreaView edges={['top', 'bottom']} style={styles.topBar}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surface }, Shadows.sm]} onPress={back}>
           <ArrowLeft size={20} color={theme.text} strokeWidth={2} />
         </Pressable>

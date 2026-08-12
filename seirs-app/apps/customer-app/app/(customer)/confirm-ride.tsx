@@ -250,7 +250,7 @@ export default function ConfirmRideScreen() {
         )}
       </MapView>
 
-      <SafeAreaView edges={['top']} style={styles.topBar}>
+      <SafeAreaView edges={['top', 'bottom']} style={styles.topBar}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surface }, Shadows.sm]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
