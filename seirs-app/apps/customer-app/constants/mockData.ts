@@ -296,14 +296,16 @@ export const LAGOS_COORDS = {
   longitudeDelta: 0.04,
 };
 
-// Country-centre fallback (Nigeria) with wide zoom - used as the initial
-// MapView region until the device GPS resolves or pickup/dropoff is set.
-// Doesn't bias the user to any one region.
+// Initial MapView region until device GPS resolves or pickup/dropoff is
+// set. Lagos, not the country centre (founder 2026-08-12): the old
+// wide-zoom centroid rendered as empty land near the Niger border,
+// which reads as broken. Lagos is where the users are, and the map
+// still snaps to real GPS the moment it resolves.
 export const DEFAULT_MAP_REGION = {
-  latitude: 9.0820,
-  longitude: 8.6753,
-  latitudeDelta: 8,
-  longitudeDelta: 8,
+  latitude: 6.5244,
+  longitude: 3.3792,
+  latitudeDelta: 0.12,
+  longitudeDelta: 0.12,
 };
 
 export const POPULAR_LOCATIONS = [

@@ -109,7 +109,7 @@
     "description": "Description",
     "descPlaceholder": "Describe the package contents...",
     "category": "Category",
-    "weightKg": "Weight (kg) — optional",
+    "weightKg": "Weight (kg), required",
     "pickupAddress": "Pickup address",
     "dropoffAddress": "Dropoff address",
     "mapPreview": "Map preview",

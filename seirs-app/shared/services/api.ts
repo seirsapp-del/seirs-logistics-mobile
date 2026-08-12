@@ -1120,6 +1120,32 @@ export const dropoffApi = {
 };
 
 // ─── Fees (Spec V8 §3.9. public read of Fee Catalogue) ────────────────────
+/**
+ * SEIRS stories + offers (founder 2026-08-12). The same admin-published
+ * content the marketing site shows, read inside the app: news, offers,
+ * and promotions, with a link out to the full page on the website.
+ * Public endpoint, so it works before sign-in too.
+ */
+export interface StoryDTO {
+  id:             string;
+  slug:           string;
+  title:          string;
+  excerpt:        string | null;
+  body:           string;
+  coverImageUrl:  string | null;
+  category:       string | null;
+  publishedAt:    string | null;
+}
+
+export const storiesApi = {
+  list: (pageSize = 20) =>
+    request<{ items: StoryDTO[]; total: number }>(
+      'GET', `/website/content?type=article&pageSize=${pageSize}`, undefined, false,
+    ),
+  bySlug: (slug: string) =>
+    request<StoryDTO>('GET', `/website/content/${encodeURIComponent(slug)}`, undefined, false),
+};
+
 export const feesApi = {
   list: () => request<Array<{
     key: string; name: string; description: string; category: string;

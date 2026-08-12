@@ -356,6 +356,13 @@ export default function SendScreen() {
   const next = () => {
     if (step === 0 && photos.length === 0) { setError(t('send.errPhotoMissing')); return; }
     if (step === 0 && !category)           { setError(t('send.errCategoryMissing')); return; }
+    // Weight is REQUIRED (founder 2026-08-12): the driver picks a
+    // vehicle from it, so a blank weight means a rider turning up to a
+    // load their okada cannot carry. An estimate is fine, silence is not.
+    if (step === 0 && !(parseFloat(weightKg) > 0)) {
+      setError(t('send.errWeightMissing', { defaultValue: 'Enter the weight in kg. An estimate is fine: your driver picks the right vehicle from it.' }));
+      return;
+    }
     if (step === 1 && !pickup)  { setError(t('send.errPickupMissing')); return; }
     if (step === 1 && !dropoff) { setError(t('send.errDropoffMissing')); return; }
     if (step === 1 && !scheduleNow && scheduledHour == null) {

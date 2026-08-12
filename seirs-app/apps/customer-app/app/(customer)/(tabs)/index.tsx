@@ -229,29 +229,30 @@ export default function CustomerHomeScreen() {
             </Text>
           </Pressable>
 
+          {/* Stories: real SEIRS news + offers, read in the app
+              (founder 2026-08-12). Was a dead "coming soon" alert. */}
           <Pressable
             style={[styles.chip, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))}
+            onPress={() => router.push('/(customer)/stories' as any)}
           >
             <Newspaper size={14} color={theme.textSecond} strokeWidth={1.75} />
             <Text style={[styles.chipText, { color: theme.textSecond }]}>{t('home.stories')}</Text>
           </Pressable>
 
+          {/* Alerts: the actual notification centre (driver assigned,
+              package picked up, arriving). Used to open notification
+              SETTINGS, which is not what "Alerts" promises. */}
           <Pressable
             style={[styles.chip, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() => router.push('/(customer)/notification-settings' as any)}
+            onPress={() => router.push('/notifications' as any)}
           >
             <Bell size={14} color={theme.textSecond} strokeWidth={1.75} />
             <Text style={[styles.chipText, { color: theme.textSecond }]}>{t('home.alerts')}</Text>
           </Pressable>
 
-          <Pressable
-            style={[styles.chip, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))}
-          >
-            <TrendingUp size={14} color={theme.textSecond} strokeWidth={1.75} />
-            <Text style={[styles.chipText, { color: theme.textSecond }]}>{t('home.suggestions')}</Text>
-          </Pressable>
+          {/* "Suggestions" removed (founder 2026-08-12): it was a dead
+              "coming soon" alert and nobody could say what it would ever
+              show. A chip that promises nothing is worse than no chip. */}
         </ScrollView>
 
         {/* ── Primary actions ──────────────────────────────────────────────

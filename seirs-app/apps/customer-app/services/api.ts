@@ -16,6 +16,7 @@ export {
   sosApi,
   offlineSyncApi,
   feesApi,
+  storiesApi,
   partnerApi,
   configApi,
   pricingApi,
@@ -31,6 +32,7 @@ export {
 } from '@seirs/shared/services/api';
 
 export type {
+  StoryDTO,
   ChatMessageDTO,
   ChatConversationDTO,
   ServiceCategory,
