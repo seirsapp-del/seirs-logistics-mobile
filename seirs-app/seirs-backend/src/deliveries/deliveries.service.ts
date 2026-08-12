@@ -60,6 +60,44 @@ function computeEtaMinutes(
   return Math.max(1, Math.round(raw));
 }
 
+/**
+ * Strip event metadata down to what an anonymous tracker may see
+ * (security review 2026-08-12).
+ *
+ * /deliveries/track/:code takes no auth: the code travels through
+ * WhatsApp, gets forwarded, screenshotted, and pasted into groups.
+ * Handoff events carried the recipient's typed signature name, so
+ * passing meta through verbatim published a named third party to
+ * anyone holding the code, with nothing rendering it. The endpoint
+ * already refused to return email and phone; meta was the hole in
+ * that rule.
+ *
+ * proofPhotoUrl stays public on purpose: the website tracking page
+ * renders it as delivery proof, and the delivery-level proofPhotoUrl
+ * is public for the same reason. Whether proof photos belong on an
+ * unauthenticated page at all is a founder call, not a silent change.
+ *
+ * Allow-list, not a block-list: a new field added to an event upstream
+ * must be consciously opened up rather than silently exposed.
+ */
+const PUBLIC_EVENT_META_KEYS = new Set([
+  'stage',        // which leg of the chain of custody
+  'method',       // how identity was confirmed (otp, signature, id)
+  'status',       // status transitions
+  'vehicleType',
+  'reason',       // failure/cancellation reason label
+  'photoUrl',     // delivery proof, rendered by the tracking page
+]);
+
+function publicSafeEventMeta(meta: any): Record<string, any> | null {
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return null;
+  const safe: Record<string, any> = {};
+  for (const key of Object.keys(meta)) {
+    if (PUBLIC_EVENT_META_KEYS.has(key)) safe[key] = meta[key];
+  }
+  return Object.keys(safe).length > 0 ? safe : null;
+}
+
 // Human-readable label for a handoff record surfaced on the tracking
 // timeline. The stage values mirror HandoffStage from identity module
 // but kept as strings here to avoid a cross-module type import.
@@ -678,7 +716,7 @@ export class DeliveriesService {
         description: e.description,
         lat:         e.lat != null ? Number(e.lat) : null,
         lng:         e.lng != null ? Number(e.lng) : null,
-        meta:        e.meta,
+        meta:        publicSafeEventMeta(e.meta),
         createdAt:   e.createdAt,
       })),
     };
