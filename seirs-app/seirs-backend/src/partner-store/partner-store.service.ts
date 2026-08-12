@@ -666,6 +666,7 @@ export class PartnerStoreService {
         const distanceRaw = hasUserLoc ? raw[i]?.distance_km : null;
         return {
           id:            s.id,
+          storeCode:     s.storeCode,       // public shop reference, safe to print + quote
           storeName:     s.storeName,
           storeAddress:  s.storeAddress,
           phone:         s.phone,           // published storefront line, safe for a marketing page
@@ -1018,8 +1019,14 @@ export class PartnerStoreService {
     const store = await this.storeRepo.findOne({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Partner store not found.');
 
+    // Mint the public store code on first approval and never again: it
+    // goes on shelf labels and into customers' hands, so re-approving
+    // after a suspension must not change it.
+    const storeCode = store.storeCode ?? await this.uniqueStoreCode();
+
     await this.storeRepo.update(storeId, {
       status:     PartnerStoreStatus.APPROVED,
+      storeCode,
       reviewNote: note ?? null,
       reviewedAt: new Date(),
       reviewedBy: adminUserId,
@@ -1032,8 +1039,22 @@ export class PartnerStoreService {
       });
     }
 
-    this.logger.log(`Partner store APPROVED: storeId=${storeId} owner=${store.userId} admin=${adminUserId}`);
-    return { storeId, status: PartnerStoreStatus.APPROVED };
+    this.logger.log(`Partner store APPROVED: storeId=${storeId} code=${storeCode} owner=${store.userId} admin=${adminUserId}`);
+    return { storeId, storeCode, status: PartnerStoreStatus.APPROVED };
+  }
+
+  /**
+   * PART-XXXX with the no-lookalike alphabet, unique platform-wide.
+   * The DB unique index is the authority; this retries so a collision
+   * is an invisible regenerate rather than a failed approval.
+   */
+  private async uniqueStoreCode(): Promise<string> {
+    for (let i = 0; i < 5; i++) {
+      const candidate = 'PART-' + secureCode(4);
+      const clash = await this.storeRepo.findOne({ where: { storeCode: candidate }, select: ['id'] });
+      if (!clash) return candidate;
+    }
+    return 'PART-' + secureCode(6);
   }
 
   /**

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Store, Plus, Search, MapPin, Package, Store as StoreIcon } from 'lucide-react';
+import { Store, Plus, Search, MapPin, Package, Store as StoreIcon, AlertTriangle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 // Faded design-preview rows shown when there are ZERO real partner stores.
@@ -206,10 +206,26 @@ export default function PartnersPage() {
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((s: any) => (
                   <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-[#0F2B4C]">{s.storeName}</td>
-                    <td className="px-4 py-3 text-gray-600 flex items-center gap-1">
-                      <MapPin size={12} className="text-gray-400 shrink-0" />
-                      <span className="truncate max-w-xs">{s.storeAddress || '-'}</span>
+                    <td className="px-4 py-3 font-medium text-[#0F2B4C]">
+                      {s.storeName}
+                      {s.storeCode && (
+                        <span className="block text-[10px] font-mono text-gray-400 mt-0.5">{s.storeCode}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <MapPin size={12} className="text-gray-400 shrink-0" />
+                        <span className="truncate max-w-xs">{s.storeAddress || '-'}</span>
+                      </span>
+                      {/* A store with no coordinates is invisible on every
+                          map AND its drop-offs never become driver jobs
+                          (the driver-leg bridge skips it). Surfaced here
+                          because nobody reads server logs. */}
+                      {(s.storeLat == null || s.storeLng == null) && (
+                        <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded px-1.5 py-0.5">
+                          <AlertTriangle size={10} /> No map location: cannot dispatch
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{s.phone || '-'}</td>
                     <td className="px-4 py-3 text-gray-600">{s.maxCapacity ?? '-'}/day</td>

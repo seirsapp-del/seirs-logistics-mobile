@@ -47,8 +47,12 @@ export default function PartnerDashboard() {
           <View style={styles.headerRow}>
             <View>
               <Text style={styles.partnerLabel}>Partner Store</Text>
-              <Text style={styles.storeName}>{user?.storeName ?? user?.name}</Text>
-              <Text style={styles.partnerId}>{user?.accountId ?? 'PART-XXXXXXXX'}</Text>
+              <Text style={styles.storeName}>{data?.storeName ?? user?.storeName ?? user?.name}</Text>
+              {/* The SHOP's public code, not the owner's account ID
+                  (2026-08-12): this line used to print the BIZ- account
+                  ID behind a PART- placeholder, which read as though the
+                  account and the shop were the same thing. */}
+              <Text style={styles.partnerId}>{data?.storeCode ?? 'Code pending approval'}</Text>
             </View>
             <Pressable style={styles.logoutBtn} onPress={() => setDrawerOpen(true)}>
               <Icon name="Menu" size={20} color="#fff" strokeWidth={1.5} />

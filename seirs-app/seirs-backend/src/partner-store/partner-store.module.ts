@@ -45,6 +45,25 @@ export class PartnerStoreModule implements OnModuleInit {
         ALTER TABLE "partner_stores"
           ADD COLUMN IF NOT EXISTS "storeLng" numeric(9,6) NULL
       `);
+      // Public store code (2026-08-12): identifies the physical shop on
+      // labels, in the customer picker, and to support.
+      await this.ds.query(`
+        ALTER TABLE "partner_stores"
+          ADD COLUMN IF NOT EXISTS "storeCode" varchar(12) NULL
+      `);
+      await this.ds.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS "partner_stores_store_code_uniq"
+          ON "partner_stores" ("storeCode") WHERE "storeCode" IS NOT NULL
+      `);
+      // Backfill: stores approved before codes existed still need one,
+      // since customers are already being sent to them. Postgres-side so
+      // it is a single statement regardless of how many rows exist.
+      await this.ds.query(`
+        UPDATE "partner_stores"
+           SET "storeCode" = 'PART-' || upper(substr(md5(random()::text || id::text), 1, 4))
+         WHERE "storeCode" IS NULL
+           AND status IN ('approved', 'active')
+      `);
       // Storage-policy columns (2026-08-09): once-only overstay warning
       // stamp + flat return fee owed/paid tracking.
       await this.ds.query(`

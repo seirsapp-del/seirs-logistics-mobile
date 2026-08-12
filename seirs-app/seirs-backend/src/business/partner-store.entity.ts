@@ -27,6 +27,17 @@ export class PartnerStore {
   @Column()
   userId: string;
 
+  // Public store code (founder 2026-08-12), e.g. PART-4KX9. Identifies
+  // the PHYSICAL SHOP, not its owner: the owner keeps their BIZ- SEIRS
+  // ID, which never mutates. Printed on shelf labels, shown in the
+  // customer's store picker, and quoted to support, so a shop can be
+  // referenced without exposing the owner's account. Random rather than
+  // derived from name or area, so it survives a rename or a move.
+  // Minted on admin approval; NULL while an application is pending.
+  @Index({ unique: true })
+  @Column({ type: 'varchar', length: 12, nullable: true })
+  storeCode: string | null;
+
   @Column()
   storeName: string;
 

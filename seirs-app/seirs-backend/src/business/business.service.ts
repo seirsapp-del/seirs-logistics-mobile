@@ -1157,6 +1157,13 @@ export class BusinessService {
       weekEarnings,
       maxCapacity:     store.maxCapacity,
       recentPackages,
+      // Identity of the SHOP (2026-08-12), distinct from the owner's
+      // BIZ- account ID. The dashboard used to print the account ID
+      // under "Partner Store", which read as though it were a partner
+      // identifier. hasLocation surfaces the dispatch-blocking gap.
+      storeCode:   (store as any).storeCode ?? null,
+      storeName:   store.storeName,
+      hasLocation: (store as any).storeLat != null && (store as any).storeLng != null,
     };
   }
 
