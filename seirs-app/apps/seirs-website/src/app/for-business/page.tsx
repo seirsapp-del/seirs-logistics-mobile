@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
 import { getPageBlock, getImageSlots } from "@/lib/cms";
+import { StoryRow } from "@/components/StoryRow";
 
 // ISR: refetch the CMS-editable hero image every 60s so marketing
 // changes appear within a minute without a redeploy.
@@ -120,18 +121,34 @@ export default async function ForBusinessPage() {
             </h2>
           </div>
 
-          {(img.img_business_csv || img.img_business_team) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
-              {img.img_business_csv && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={img.img_business_csv} alt="Bulk order preparation" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
-              )}
-              {img.img_business_team && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={img.img_business_team} alt="Team reviewing orders" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
-              )}
-            </div>
-          )}
+          {/* Story rows: the morning dispatch, then the team around it. */}
+          <div className="space-y-16 mb-20">
+            <StoryRow
+              imageUrl={img.img_business_csv}
+              alt="Preparing the morning's orders"
+              eyebrow="The morning rush"
+              title="One upload instead of one hundred bookings"
+              body="Most shops start the day the same way: a list of orders on paper or WhatsApp, and someone spending an hour arranging riders. Drop that list in as a spreadsheet and every delivery is created, priced, and dispatched together."
+              points={[
+                'Nigerian phone formats and addresses validated before dispatch',
+                'Recurring routes saved once and rebooked in two taps',
+                'Multi-stop runs sequenced automatically, each stop with its own code',
+              ]}
+            />
+            <StoryRow
+              imageUrl={img.img_business_team}
+              alt="Team reviewing orders together"
+              flip
+              eyebrow="Your team"
+              title="Everyone dispatches, nobody guesses"
+              body="Add your manager and dispatchers with their own logins and permissions. One shared wallet funds the work, every booking is attributed to whoever made it, and the whole month lands in one itemised statement."
+              points={[
+                'Roles from owner to viewer, with spending visibility per person',
+                'Every action carries an audit trail for your records',
+                'Receipts itemised down to base fare, distance, and surcharges',
+              ]}
+            />
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FeatureCard

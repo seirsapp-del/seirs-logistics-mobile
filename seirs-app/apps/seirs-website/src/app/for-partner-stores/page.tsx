@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
 import { getPageBlock, getImageSlots } from "@/lib/cms";
+import { StoryRow } from "@/components/StoryRow";
 
 export const revalidate = 60;
 
@@ -107,20 +108,36 @@ export default async function ForPartnerStoresPage() {
         </div>
       </section>
 
-      {(img.img_store_counter || img.img_store_shelf) && (
-        <section className="py-10 bg-white">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {img.img_store_counter && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={img.img_store_counter} alt="Receiving parcels at the counter" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
-            )}
-            {img.img_store_shelf && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={img.img_store_shelf} alt="Package shelf" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
-            )}
-          </div>
-        </section>
-      )}
+      {/* Story rows: what actually happens behind your counter. */}
+      <section className="py-16 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+          <StoryRow
+            imageUrl={img.img_store_counter}
+            alt="Logging a parcel at the shop counter"
+            eyebrow="At the counter"
+            title="A customer walks in, you scan, they leave"
+            body="Someone drops a package at your shop or comes to collect one. You open the app, scan the code, take the photo it asks for, and the handoff is recorded. Ten seconds of work, and the fee lands on your statement before the customer is out the door."
+            points={[
+              'Any staff member can be shown the whole flow in ten minutes',
+              'The app tells you who the package belongs to and who may collect it',
+              'Every scan is logged, so nothing depends on anyone remembering',
+            ]}
+          />
+          <StoryRow
+            imageUrl={img.img_store_shelf}
+            alt="Shelf of packages waiting for collection"
+            flip
+            eyebrow="Behind the counter"
+            title="You always know what you are holding"
+            body="Packages sit on your shelf with a clock running on each one. The capacity board shows how many you hold, how long each has been there, and which ones need to move: no guessing, no packages lost behind the fridge for three weeks."
+            points={[
+              'Set your own capacity so you are never over-filled',
+              'Pause new drop-offs with one tap on a busy day',
+              'Storage beyond the free window earns you a holding fee',
+            ]}
+          />
+        </div>
+      </section>
 
       {/* Why it works */}
       <section className="py-20 bg-off-white">

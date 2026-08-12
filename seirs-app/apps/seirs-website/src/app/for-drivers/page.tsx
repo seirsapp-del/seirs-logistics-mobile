@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
 import { getPageBlock, getImageSlots } from "@/lib/cms";
+import { StoryRow } from "@/components/StoryRow";
 
 export const revalidate = 60;
 
@@ -141,18 +142,35 @@ export default async function ForDriversPage() {
             </p>
           </div>
 
-          {(img.img_driver_earnings || img.img_driver_kyc) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
-              {img.img_driver_earnings && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={img.img_driver_earnings} alt="Rider checking earnings" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
-              )}
-              {img.img_driver_kyc && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={img.img_driver_kyc} alt="Driver verification" className="w-full rounded-card object-cover max-h-64" loading="lazy" />
-              )}
-            </div>
-          )}
+          {/* Story rows: images and words alternate down the page rather
+              than stacking in a block above the cards. */}
+          <div className="space-y-16 mb-20">
+            <StoryRow
+              imageUrl={img.img_driver_earnings}
+              alt="Rider checking his earnings"
+              eyebrow="The money"
+              title="Your money moves when you do"
+              body="Every completed delivery credits your wallet immediately: no waiting for a Friday batch, no minimum balance, no calling anyone to ask where your money is. Withdraw to your bank whenever you want, or let the daily payout run send it for you."
+              points={[
+                'Earnings visible per trip, with the platform cut shown plainly',
+                'Night pickups carry a night fee that goes to you in full',
+                'Instant withdrawal available once earnings are a day old',
+              ]}
+            />
+            <StoryRow
+              imageUrl={img.img_driver_kyc}
+              alt="Driver verification documents"
+              flip
+              eyebrow="Getting started"
+              title="Verified once, then you ride"
+              body="Sign up with your licence, NIN and vehicle details. Our compliance team reviews your documents, and once you are approved the jobs start reaching you. You keep browsing the app while you wait, so nothing is a black box."
+              points={[
+                'Okada, keke, car, van, or truck: bring what you already ride',
+                'Documents stay encrypted and are only opened for compliance review',
+                'You choose your hours entirely: the online toggle is always yours',
+              ]}
+            />
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FeatureCard
