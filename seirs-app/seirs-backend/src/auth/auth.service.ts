@@ -523,10 +523,18 @@ export class AuthService {
       return { requiresOtp: true, email, message: 'Verification code re-sent.' };
     }
 
-    const hashed    = await bcrypt.hash(data.password, 12);
-    const accountId = generateUuidAccountId(
-      data.accountType === 'partner' ? AccountIdPrefix.PARTNER : AccountIdPrefix.BUSINESS,
-    );
+    const hashed = await bcrypt.hash(data.password, 12);
+    // Always BIZ-, never PART- (cleanup 2026-08-12). Partner is a
+    // CAPABILITY of a business account, not a separate kind of account:
+    // the SEIRS ID is printed on receipts and package labels, so it must
+    // not change when a business is later approved to hold packages.
+    // A store's own public identity is its storeCode (PART-XXXX on the
+    // partner_stores row), which is a property of the shop, not the
+    // company. The old branch minted a PART- SEIRS ID for anyone posting
+    // accountType 'partner'; no client ever sent it, so nothing in
+    // production carries such an ID, but it was a live trap for the next
+    // developer.
+    const accountId = generateUuidAccountId(AccountIdPrefix.BUSINESS);
 
     // Hybrid-account redesign (2026-05-11): every new business signup gets
     // canSend=true (instant). canPartner stays false until they apply via
