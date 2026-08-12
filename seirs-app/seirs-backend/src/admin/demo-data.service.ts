@@ -81,9 +81,14 @@ export class DemoDataService {
       bank: { bankCode: '058', bankAccountNumber: '0123456789', bankAccountName: 'EMEKA NWACHUKWU' },
     });
 
+    // Business accounts carry the BIZ- prefix, exactly like a real
+    // signup through the business app. Partner is a CAPABILITY on the
+    // same account, so the SEIRS ID never mutates when they are approved
+    // to hold packages (it is printed on receipts and package labels).
     const storeOwner = await this.upsertUser({
       email: 'demo.store@seirs.co', firstName: 'Yusuf', lastName: 'Garba',
       phone: '08071234569', role: UserRole.CUSTOMER, passwordHash,
+      accountIdPrefix: AccountIdPrefix.BUSINESS,
       homeAddress: {
         label: 'Shop', street: '12 Allen Avenue', city: 'Ikeja', state: 'Lagos',
         coords: { lat: IKEJA.lat, lng: IKEJA.lng },
@@ -117,6 +122,8 @@ export class DemoDataService {
   private async upsertUser(opts: {
     email: string; firstName: string; lastName: string; phone: string;
     role: UserRole; passwordHash: string;
+    /** Overrides the role-derived prefix (business accounts are BIZ-). */
+    accountIdPrefix?: string;
     homeAddress?: User['homeAddress'];
     identityVerified?: boolean; identityDocType?: string;
     bank?: { bankCode: string; bankAccountNumber: string; bankAccountName: string };
@@ -137,7 +144,8 @@ export class DemoDataService {
     };
 
     if (!user) {
-      const prefix = opts.role === UserRole.DRIVER ? AccountIdPrefix.DRIVER : AccountIdPrefix.CUSTOMER;
+      const prefix = opts.accountIdPrefix
+        ?? (opts.role === UserRole.DRIVER ? AccountIdPrefix.DRIVER : AccountIdPrefix.CUSTOMER);
       const accountId = await this.uniqueAccountId(prefix);
       user = this.usersRepo.create({ email: opts.email, accountId, ...patch });
     } else {
