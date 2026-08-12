@@ -1179,6 +1179,52 @@ export const storiesApi = {
     request<StoryDTO>('GET', `/website/content/${encodeURIComponent(slug)}`, undefined, false),
 };
 
+/**
+ * Google Maps lookups, proxied through our backend (security review
+ * 2026-08-12). The apps previously called Google directly with a key
+ * compiled into their source, which anyone could extract from the
+ * installed app and spend on our account. The key now lives only in
+ * server configuration.
+ *
+ * Responses come back in Google's own shape, so callers that used to
+ * fetch Google directly only had to change the URL.
+ *
+ * Unrelated to the Maps SDK key in app.json, which draws the map itself
+ * and is restricted by package name plus signing certificate.
+ */
+export const mapsApi = {
+  directions: (params: { origin: string; destination: string; mode?: string; waypoints?: string }) => {
+    const qs = new URLSearchParams({ origin: params.origin, destination: params.destination });
+    if (params.mode)      qs.set('mode', params.mode);
+    if (params.waypoints) qs.set('waypoints', params.waypoints);
+    return request<any>('GET', `/maps/directions?${qs.toString()}`);
+  },
+
+  autocomplete: (params: {
+    input: string; components?: string; location?: string; radius?: string; types?: string;
+  }) => {
+    const qs = new URLSearchParams({ input: params.input });
+    if (params.components) qs.set('components', params.components);
+    if (params.location)   qs.set('location',   params.location);
+    if (params.radius)     qs.set('radius',     params.radius);
+    if (params.types)      qs.set('types',      params.types);
+    return request<any>('GET', `/maps/places/autocomplete?${qs.toString()}`);
+  },
+
+  placeDetails: (placeId: string, fields?: string) => {
+    const qs = new URLSearchParams({ placeId });
+    if (fields) qs.set('fields', fields);
+    return request<any>('GET', `/maps/places/details?${qs.toString()}`);
+  },
+
+  geocode: (params: { address?: string; latlng?: string }) => {
+    const qs = new URLSearchParams();
+    if (params.address) qs.set('address', params.address);
+    if (params.latlng)  qs.set('latlng',  params.latlng);
+    return request<any>('GET', `/maps/geocode?${qs.toString()}`);
+  },
+};
+
 export const feesApi = {
   list: () => request<Array<{
     key: string; name: string; description: string; category: string;

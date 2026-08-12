@@ -17,8 +17,10 @@ import {
   View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { Icon } from '@/components/Icon';
+import { mapsApi } from '@/services/api';
 
-const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
+// Places lookups go through our backend (security review 2026-08-12):
+// the Google key is no longer shipped inside the app.
 
 interface Prediction {
   place_id:       string;
@@ -57,13 +59,7 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
       // autocomplete prioritises matches that contain the state's name. Also
       // restrict to Nigeria via `components=country:ng`.
       const query = state ? `${text}, ${state}, Nigeria` : `${text}, Nigeria`;
-      const url =
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-        `?input=${encodeURIComponent(query)}` +
-        `&components=country:ng` +
-        `&language=en&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.autocomplete({ input: query, components: 'country:ng' });
       if (json.status === 'OK') {
         setPredictions((json.predictions ?? []).map((p: any) => ({
           place_id:       p.place_id,
@@ -97,13 +93,7 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
     // never blocks the address being saved.
     if (!onCoordsResolved) return;
     try {
-      const detailsUrl =
-        `https://maps.googleapis.com/maps/api/place/details/json` +
-        `?place_id=${encodeURIComponent(p.place_id)}` +
-        `&fields=geometry` +
-        `&key=${MAPS_KEY}`;
-      const res  = await fetch(detailsUrl);
-      const json = await res.json();
+      const json = await mapsApi.placeDetails(p.place_id, 'geometry');
       const loc  = json?.result?.geometry?.location;
       if (loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
         onCoordsResolved(loc.lat, loc.lng);

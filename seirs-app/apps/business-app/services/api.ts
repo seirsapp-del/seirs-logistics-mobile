@@ -21,6 +21,7 @@ export {
   identityApi,
   userVerificationApi,
   feesApi,
+  mapsApi,
   configApi,
   pricingApi,
   usersApi,

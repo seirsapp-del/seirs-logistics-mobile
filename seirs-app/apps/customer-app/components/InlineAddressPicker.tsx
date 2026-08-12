@@ -18,8 +18,10 @@ import { useState, useRef, useCallback } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import type { PickedAddress } from '@/components/AddressPicker';
+import { mapsApi } from '@/services/api';
 
-const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
+// Places and geocoding go through our backend (security review
+// 2026-08-12): the Google key is no longer shipped inside the app.
 
 interface Prediction {
   place_id:       string;
@@ -53,12 +55,7 @@ export default function InlineAddressPicker({ label, dotColor, value, onSelect, 
       // No country filter: autocomplete works globally and Google biases
       // results by the requesting IP region. Add `&location=lat,lng
       // &radius=50000` later if we want explicit Lagos bias.
-      const url =
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-        `?input=${encodeURIComponent(text)}` +
-        `&language=en&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.autocomplete({ input: text });
       if (json.status === 'OK') {
         setPredictions((json.predictions ?? []).map((p: any) => ({
           place_id:       p.place_id,
@@ -80,11 +77,7 @@ export default function InlineAddressPicker({ label, dotColor, value, onSelect, 
   const pick = async (p: Prediction) => {
     setSearching(true);
     try {
-      const url =
-        `https://maps.googleapis.com/maps/api/place/details/json` +
-        `?place_id=${p.place_id}&fields=geometry,formatted_address&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.placeDetails(p.place_id, 'geometry,formatted_address');
       if (json.status !== 'OK') return;
       const loc = json.result.geometry.location;
       const picked: PickedAddress = {
@@ -125,8 +118,7 @@ export default function InlineAddressPicker({ label, dotColor, value, onSelect, 
 
       let address = 'Current location';
       try {
-        const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${MAPS_KEY}`);
-        const j = await r.json();
+        const j = await mapsApi.geocode({ latlng: `${lat},${lng}` });
         address = j.results?.[0]?.formatted_address ?? address;
       } catch { /* keep label */ }
 

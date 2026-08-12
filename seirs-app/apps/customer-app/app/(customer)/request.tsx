@@ -19,7 +19,10 @@ import { type PickedAddress } from '@/components/AddressPicker';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 
-const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
+import { mapsApi } from '@/services/api';
+
+// Places and geocoding go through our backend (security review
+// 2026-08-12): the Google key is no longer shipped inside the app.
 
 type Field = 'pickup' | 'dropoff';
 
@@ -112,13 +115,7 @@ export default function RequestDriverScreen() {
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
-      // Global autocomplete: Google biases by requesting IP region.
-      const url =
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-        `?input=${encodeURIComponent(text)}` +
-        `&language=en&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.autocomplete({ input: text });
       if (json.status === 'OK') {
         setPredictions((json.predictions ?? []).map((p: any) => ({
           place_id:       p.place_id,
@@ -145,11 +142,7 @@ export default function RequestDriverScreen() {
   const selectPrediction = async (p: Prediction) => {
     setSearching(true);
     try {
-      const url =
-        `https://maps.googleapis.com/maps/api/place/details/json` +
-        `?place_id=${p.place_id}&fields=geometry,formatted_address&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.placeDetails(p.place_id, 'geometry,formatted_address');
       if (json.status !== 'OK') return;
       const loc = json.result.geometry.location;
       const picked: PickedAddress = {
@@ -184,8 +177,7 @@ export default function RequestDriverScreen() {
       // Reverse geocode (Geocoding API may not be enabled: fall back to friendly label).
       let address = 'Current location';
       try {
-        const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${MAPS_KEY}`);
-        const j = await r.json();
+        const j = await mapsApi.geocode({ latlng: `${lat},${lng}` });
         address = j.results?.[0]?.formatted_address ?? address;
       } catch { /* keep label */ }
 

@@ -39,7 +39,7 @@ import { Calendar as RNCalendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import {
-  businessApi, configApi, pricingApi,
+  businessApi, configApi, pricingApi, mapsApi,
   type ServiceCategory, type RateCard, type PriceBreakdown,
 } from '@/services/api';
 import { useBusinessStore, type DeliveryStop } from '@/store/businessStore';
@@ -47,8 +47,9 @@ import { VehicleIcon, type VehicleType } from '@seirs/shared';
 import { useMultiStopDirections } from '@/components/useMultiStopDirections';
 import { useColors, useTheme } from '@/context/ThemeContext';
 
-const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
-const LAGOS = { latitude: 6.5244, longitude: 3.3792, latitudeDelta: 0.1, longitudeDelta: 0.1 };
+// Places and geocoding go through our backend (security review
+// 2026-08-12): the Google key is no longer shipped inside the app.
+const LAGOS ={ latitude: 6.5244, longitude: 3.3792, latitudeDelta: 0.1, longitudeDelta: 0.1 };
 
 // Visit order: pickup → stop1 → stop2 → ... → stopN.
 const STEPS = ['What & Vehicle', 'Pickup & Stops', 'Schedule & Summary'] as const;
@@ -314,12 +315,7 @@ export default function NewDeliveryScreen() {
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
-      const url =
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-        `?input=${encodeURIComponent(text)}` +
-        `&language=en&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.autocomplete({ input: text });
       if (json.status === 'OK') {
         setPredictions((json.predictions ?? []).map((p: any) => ({
           place_id:       p.place_id,
@@ -349,9 +345,7 @@ export default function NewDeliveryScreen() {
   const selectPrediction = async (p: Prediction) => {
     setSearching(true);
     try {
-      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${p.place_id}&fields=geometry,formatted_address&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.placeDetails(p.place_id, 'geometry,formatted_address');
       if (json.status !== 'OK') return;
       const loc = json.result.geometry.location;
       const address = json.result.formatted_address ?? `${p.main_text}, ${p.secondary_text}`;
@@ -383,8 +377,7 @@ export default function NewDeliveryScreen() {
       const { latitude: lat, longitude: lng } = pos.coords;
       let address = 'Current location';
       try {
-        const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${MAPS_KEY}`);
-        const j = await r.json();
+        const j = await mapsApi.geocode({ latlng: `${lat},${lng}` });
         address = j.results?.[0]?.formatted_address ?? address;
       } catch { /* keep label */ }
 

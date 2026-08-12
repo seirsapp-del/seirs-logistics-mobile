@@ -16,6 +16,7 @@ export {
   sosApi,
   offlineSyncApi,
   feesApi,
+  mapsApi,
   storiesApi,
   partnerApi,
   configApi,

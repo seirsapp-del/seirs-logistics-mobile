@@ -18,6 +18,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { FraudModule } from './fraud/fraud.module';
 import { BulkModule } from './bulk/bulk.module';
 import { RoutingModule } from './routing/routing.module';
+import { MapsModule } from './maps/maps.module';
 import { MailModule } from './mail/mail.module';
 import { UploadModule } from './upload/upload.module';
 import { BusinessModule } from './business/business.module';
@@ -99,6 +100,7 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
     FraudModule,
     BulkModule,
     RoutingModule,
+    MapsModule,
     MailModule,
     UploadModule,
     BusinessModule,

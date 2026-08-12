@@ -18,11 +18,12 @@ import { Search, MapPin, Navigation } from 'lucide-react-native';
 import { useState, useRef, useCallback } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { mapsApi } from '@/services/api';
 
-// Android Maps key (Places + Directions enabled). Reverse-geocoding falls
-// back to a Places-API "find nearby" call below since the Geocoding API
-// isn't enabled on this Cloud project.
-const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
+// Places and geocoding now go through our backend (security review
+// 2026-08-12). The Google key used to sit in this file, which meant it
+// shipped inside the installed app where anyone could extract it and
+// spend it on our account. It lives in server configuration now.
 
 // Nigeria centre as fallback
 const DEFAULT_REGION = { latitude: 6.5244, longitude: 3.3792, latitudeDelta: 0.15, longitudeDelta: 0.15 };
@@ -60,14 +61,9 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
-      // Global autocomplete: Google biases by requesting IP region.
-      const url =
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-        `?input=${encodeURIComponent(text)}` +
-        `&key=${MAPS_KEY}` +
-        `&language=en`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      // Global autocomplete: deliveries can go anywhere, unlike account
+      // registration which is Nigeria-only.
+      const json = await mapsApi.autocomplete({ input: text });
       if (json.status === 'OK') {
         setPredictions(
           (json.predictions ?? []).map((p: any) => ({
@@ -98,13 +94,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
     setPredictions([]);
     setSearching(true);
     try {
-      const url =
-        `https://maps.googleapis.com/maps/api/place/details/json` +
-        `?place_id=${p.place_id}` +
-        `&fields=geometry,formatted_address` +
-        `&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.placeDetails(p.place_id, 'geometry,formatted_address');
       if (json.status === 'OK') {
         const loc = json.result.geometry.location;
         const picked: PickedAddress = {
@@ -154,11 +144,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
       const { latitude: lat, longitude: lng } = pos.coords;
 
       // Reverse geocode
-      const url =
-        `https://maps.googleapis.com/maps/api/geocode/json` +
-        `?latlng=${lat},${lng}&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.geocode({ latlng: `${lat},${lng}` });
       const address = json.results?.[0]?.formatted_address ?? 'Current location';
 
       const picked: PickedAddress = { address, lat, lng };
@@ -281,10 +267,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
                 setPinned({ lat, lng });
                 setMapRegion(r => ({ ...r, latitude: lat, longitude: lng }));
                 // Reverse geocode the tapped point
-                fetch(
-                  `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${MAPS_KEY}`
-                )
-                  .then(r => r.json())
+                mapsApi.geocode({ latlng: `${lat},${lng}` })
                   .then(json => {
                     const address = json.results?.[0]?.formatted_address ?? 'Pinned location';
                     setQuery(address);

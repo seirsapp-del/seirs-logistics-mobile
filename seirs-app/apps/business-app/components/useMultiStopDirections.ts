@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { mapsApi } from '@/services/api';
 
-// Same key as useDirectionsPolyline: Directions API + Places enabled in
-// the same Google Cloud project.
-const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
+// Directions now go through our backend (security review 2026-08-12).
+// The Google key used to sit in this file, which meant it shipped inside
+// the installed app where anyone could extract it and spend it on our
+// account. It lives in server configuration now.
 
 export interface LatLng { latitude: number; longitude: number }
 
@@ -131,17 +133,15 @@ export function useMultiStopDirections(
         // the response gives us the new order (indices into our input
         // waypoints array).
         const waypointParam = waypoints.length > 0
-          ? `&waypoints=${optimize ? 'optimize:true|' : ''}` +
+          ? `${optimize ? 'optimize:true|' : ''}` +
             waypoints.map(w => `${w.latitude},${w.longitude}`).join('|')
-          : '';
-        const url =
-          `https://maps.googleapis.com/maps/api/directions/json` +
-          `?origin=${origin.latitude},${origin.longitude}` +
-          `&destination=${destination.latitude},${destination.longitude}` +
-          waypointParam +
-          `&mode=${mode}&key=${MAPS_KEY}`;
-        const res  = await fetch(url);
-        const json = await res.json();
+          : undefined;
+        const json = await mapsApi.directions({
+          origin:      `${origin.latitude},${origin.longitude}`,
+          destination: `${destination.latitude},${destination.longitude}`,
+          mode,
+          waypoints:   waypointParam,
+        });
         if (cancelled) return;
         const route = json?.routes?.[0];
         if (!route) return;

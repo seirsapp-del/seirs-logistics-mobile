@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { deliveriesApi, uploadApi } from '@/services/api';
+import { deliveriesApi, uploadApi, mapsApi } from '@/services/api';
 import { type PickedAddress } from '@/components/AddressPicker';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
@@ -27,7 +27,8 @@ import {
   Camera, X, CheckCircle, Zap, Moon,
 } from 'lucide-react-native';
 
-const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
+// Places and geocoding go through our backend (security review
+// 2026-08-12): the Google key is no longer shipped inside the app.
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 // Category labels are looked up at render via t(`send.${labelKey}`) so
@@ -262,13 +263,7 @@ export default function SendScreen() {
     if (text.length < 3) { setPredictions([]); return; }
     setSearching(true);
     try {
-      // Global autocomplete: Google biases by requesting IP region.
-      const url =
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-        `?input=${encodeURIComponent(text)}` +
-        `&language=en&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.autocomplete({ input: text });
       if (json.status === 'OK') {
         setPredictions((json.predictions ?? []).map((p: any) => ({
           place_id:       p.place_id,
@@ -291,9 +286,7 @@ export default function SendScreen() {
   const selectPrediction = async (p: Prediction) => {
     setSearching(true);
     try {
-      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${p.place_id}&fields=geometry,formatted_address&key=${MAPS_KEY}`;
-      const res  = await fetch(url);
-      const json = await res.json();
+      const json = await mapsApi.placeDetails(p.place_id, 'geometry,formatted_address');
       if (json.status !== 'OK') return;
       const loc = json.result.geometry.location;
       const picked: PickedAddress = {
@@ -318,8 +311,7 @@ export default function SendScreen() {
       const { latitude: lat, longitude: lng } = pos.coords;
       let address = 'Current location';
       try {
-        const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${MAPS_KEY}`);
-        const j = await r.json();
+        const j = await mapsApi.geocode({ latlng: `${lat},${lng}` });
         address = j.results?.[0]?.formatted_address ?? address;
       } catch {}
       const picked: PickedAddress = { address, lat, lng };

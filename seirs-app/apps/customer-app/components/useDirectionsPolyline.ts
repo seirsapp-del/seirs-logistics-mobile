@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { mapsApi } from '@/services/api';
 
-// Android Maps key: also has Directions + Places APIs enabled in the
-// Google Cloud project. (The previous key here returned REQUEST_DENIED.)
-const MAPS_KEY = 'AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM';
+// Directions now go through our backend (security review 2026-08-12).
+// The Google key used to sit in this file, which meant it shipped inside
+// the installed app where anyone could extract it and spend it on our
+// account. It lives in server configuration now.
 
 export interface LatLng {
   latitude: number;
@@ -101,15 +103,11 @@ export function useDirectionsPolyline(
 
     (async () => {
       try {
-        const url =
-          `https://maps.googleapis.com/maps/api/directions/json` +
-          `?origin=${from.latitude},${from.longitude}` +
-          `&destination=${to.latitude},${to.longitude}` +
-          `&mode=${mode}` +
-          `&key=${MAPS_KEY}`;
-
-        const res  = await fetch(url);
-        const json = await res.json();
+        const json = await mapsApi.directions({
+          origin:      `${from.latitude},${from.longitude}`,
+          destination: `${to.latitude},${to.longitude}`,
+          mode,
+        });
         if (cancelled) return;
 
         const route = json?.routes?.[0];

@@ -15,6 +15,7 @@ export {
   sosApi,
   offlineSyncApi,
   feesApi,
+  mapsApi,
   earningsApi,
   supportApi,
   documentsApi,
