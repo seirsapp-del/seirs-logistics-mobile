@@ -150,6 +150,26 @@ export class Delivery {
   @Column({ type: 'varchar', length: 80, nullable: true })
   fallbackNeighbourName: string | null;
 
+  /**
+   * WHO actually took the package, recorded at the moment of delivery
+   * (founder 2026-08-12: the proof photo exists so admin can settle a
+   * dispute, and "the package was delivered" is a weak answer when the
+   * question is "delivered to whom").
+   *
+   * Distinct from fallbackPref/fallbackNeighbourName above, which is
+   * what the SENDER said should happen if nobody answers. This is what
+   * the driver reports DID happen.
+   *
+   * 'recipient' | 'other'
+   */
+  @Column({ type: 'varchar', length: 12, nullable: true })
+  receivedByRelation: string | null;
+
+  // Name the driver was given by whoever accepted it. Only meaningful
+  // when receivedByRelation is not 'recipient'.
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  receivedByName: string | null;
+
   // Failed-delivery flow (founder matrix 2026-08-11). Driver reports
   // nobody-home -> sender gets a 5-minute response window -> explicit
   // choice or automatic fallback (high-value always redirects to the

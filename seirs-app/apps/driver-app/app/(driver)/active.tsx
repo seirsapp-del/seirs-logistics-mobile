@@ -1,6 +1,7 @@
 import {
   View, Text, Pressable, StyleSheet,
   ScrollView, ActivityIndicator, Alert, Image,
+  Platform, Modal, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,6 +41,10 @@ export default function ActiveDeliveryScreen() {
   const [updating,   setUpdating]   = useState(false);
   const [proofUri,   setProofUri]   = useState<string | null>(null);
   const [proofReady, setProofReady] = useState(false);
+  // Android has no Alert.prompt, so third-party acceptance collects the
+  // name in a small modal instead.
+  const [showReceiverPrompt, setShowReceiverPrompt] = useState(false);
+  const [receiverName,       setReceiverName]       = useState('');
   const [myPos,      setMyPos]      = useState<{ lat: number; lng: number } | null>(null);
 
   const locationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -155,7 +160,12 @@ export default function ActiveDeliveryScreen() {
         );
         return;
       }
-      Alert.alert('Confirm Delivery', 'Has the package been handed to the recipient?', [
+      // Who took it? Recorded on the delivery so a later dispute has an
+      // answer to "delivered to whom", not just "delivered" (founder
+      // 2026-08-12). Handing to somebody other than the recipient needs
+      // their name, and the backend refuses it outright for high-value
+      // packages: those go back to a partner store instead.
+      Alert.alert('Who received the package?', 'This is recorded on the delivery record.', [
         { text: 'Cancel', style: 'cancel' },
         // Gap 5 QR: verify the right package meets the right recipient
         // before confirming. Customer shows their package QR; driver
@@ -167,14 +177,51 @@ export default function ActiveDeliveryScreen() {
             params:   { code: delivery.trackingCode ?? '', deliveryId: delivery.id },
           } as any),
         },
-        { text: 'Yes, Delivered', onPress: () => doUpdate(nextStatus) },
+        { text: 'Someone else', onPress: promptReceiverName },
+        { text: 'The recipient', onPress: () => doUpdate(nextStatus, { relation: 'recipient' }) },
       ]);
     } else {
       doUpdate(nextStatus);
     }
   };
 
-  const doUpdate = async (nextStatus: string) => {
+  /**
+   * Someone other than the recipient accepted it: a gateman, a neighbour,
+   * a colleague at reception. Extremely common here, and the case a
+   * dispute is most likely to turn on, so the name goes on the record.
+   * Alert.prompt is iOS-only, so Android gets a dedicated small screen.
+   */
+  const promptReceiverName = () => {
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Who accepted it?',
+        'Their name, as they gave it to you.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Confirm Delivered',
+            onPress: (name?: string) => {
+              const clean = (name ?? '').trim();
+              if (!clean) {
+                Alert.alert('Name needed', 'Record who took the package. It is what settles a dispute later.');
+                return;
+              }
+              doUpdate('delivered', { relation: 'other', name: clean });
+            },
+          },
+        ],
+        'plain-text',
+      );
+      return;
+    }
+    setReceiverName('');
+    setShowReceiverPrompt(true);
+  };
+
+  const doUpdate = async (
+    nextStatus: string,
+    receivedBy?: { relation: string; name?: string },
+  ) => {
     setUpdating(true);
     try {
       let photoUrl: string | undefined;
@@ -182,7 +229,7 @@ export default function ActiveDeliveryScreen() {
         const uploaded = await uploadApi.file(proofUri);
         photoUrl = uploaded.url;
       }
-      await deliveriesApi.updateStatus(delivery.id, nextStatus as any, photoUrl);
+      await deliveriesApi.updateStatus(delivery.id, nextStatus as any, photoUrl, receivedBy);
       if (nextStatus === 'delivered') {
         stopBroadcast();
         // Spec V8 anti-theft trunk check: if the driver still has OTHER
@@ -563,11 +610,64 @@ export default function ActiveDeliveryScreen() {
           )}
         </View>
       )}
+
+      {/* Third-party acceptance (Android). Someone other than the
+          recipient took the package: gateman, neighbour, reception.
+          Their name is what a dispute turns on later. */}
+      <Modal
+        visible={showReceiverPrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowReceiverPrompt(false)}
+      >
+        <View style={styles.receiverBackdrop}>
+          <View style={[styles.receiverCard, { backgroundColor: theme.surface }]}>
+            <Text style={[styles.receiverTitle, { color: theme.text }]}>Who accepted it?</Text>
+            <Text style={[styles.receiverBody, { color: theme.textSecond }]}>
+              Their name, as they gave it to you. This goes on the delivery record.
+            </Text>
+            <TextInput
+              value={receiverName}
+              onChangeText={setReceiverName}
+              placeholder="e.g. Musa, the gateman"
+              placeholderTextColor={theme.textThird}
+              autoFocus
+              style={[styles.receiverInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surfaceSecond }]}
+            />
+            <View style={styles.receiverActions}>
+              <Pressable
+                style={styles.receiverBtn}
+                onPress={() => setShowReceiverPrompt(false)}
+              >
+                <Text style={{ color: theme.textSecond, fontWeight: FontWeight.semibold as any }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.receiverBtn, { backgroundColor: theme.primary, borderRadius: Radius.md }]}
+                onPress={() => {
+                  const clean = receiverName.trim();
+                  if (!clean) return;
+                  setShowReceiverPrompt(false);
+                  doUpdate('delivered', { relation: 'other', name: clean });
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: FontWeight.bold as any }}>Confirm Delivered</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  receiverBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
+  receiverCard:     { width: '100%', maxWidth: 380, borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm },
+  receiverTitle:    { fontSize: FontSize.lg, fontWeight: FontWeight.bold as any },
+  receiverBody:     { fontSize: FontSize.sm, lineHeight: 19 },
+  receiverInput:    { borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: FontSize.base, marginTop: 4 },
+  receiverActions:  { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.sm },
+  receiverBtn:      { paddingVertical: 10, paddingHorizontal: 16 },
   headerBar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
   backCircle:   { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   headerCenter: { alignItems: 'center', gap: 2 },

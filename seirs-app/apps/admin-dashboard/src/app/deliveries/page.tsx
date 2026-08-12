@@ -99,6 +99,13 @@ function DeliveriesContent() {
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${STATUS_COLORS[d.status] ?? 'bg-[#0F2B4C]/5'}`}>
                           {d.status.replace('_', ' ')}
                         </span>
+                        {/* Who actually took it. "Delivered" is a weak
+                            answer when a customer disputes receipt. */}
+                        {d.status === 'delivered' && d.receivedByRelation === 'other' && d.receivedByName && (
+                          <div className="text-[10px] text-[#B45309] mt-1">
+                            Left with {d.receivedByName}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-semibold text-[#0F2B4C]">₦{d.price?.toLocaleString()}</td>
                       <td className="px-4 py-3 text-[#0F2B4C]/40 text-xs">

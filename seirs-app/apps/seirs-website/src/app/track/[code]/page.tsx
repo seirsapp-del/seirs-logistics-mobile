@@ -286,15 +286,11 @@ export default function PublicTrackingPage() {
                         {meta.label(e)}
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-400">{formatTime(e.createdAt)}</div>
-                      {e.meta?.photoUrl && (
-                        <a href={e.meta.photoUrl} target="_blank" rel="noreferrer">
-                          <img
-                            src={e.meta.photoUrl}
-                            alt="proof"
-                            className="mt-2 h-28 w-28 rounded-lg border border-slate-200 object-cover"
-                          />
-                        </a>
-                      )}
+                      {/* Proof photos are no longer served to this page
+                          (founder 2026-08-12): they are dispute evidence
+                          for admin, and they usually show the recipient's
+                          gate or door, which should not travel with a
+                          forwarded tracking code. */}
                     </div>
                   </div>
                 );

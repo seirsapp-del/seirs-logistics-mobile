@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Repository, MoreThan } from 'typeorm';
@@ -72,10 +72,11 @@ function computeEtaMinutes(
  * already refused to return email and phone; meta was the hole in
  * that rule.
  *
- * proofPhotoUrl stays public on purpose: the website tracking page
- * renders it as delivery proof, and the delivery-level proofPhotoUrl
- * is public for the same reason. Whether proof photos belong on an
- * unauthenticated page at all is a founder call, not a silent change.
+ * Proof photos are out too (founder 2026-08-12): their purpose is
+ * evidence for admin when a delivery is disputed, not public display.
+ * They routinely show somebody's gate or front door, and a forwarded
+ * tracking code carries them to whoever ends up holding the link.
+ * Admin dispute tooling reads the record directly and is unaffected.
  *
  * Allow-list, not a block-list: a new field added to an event upstream
  * must be consciously opened up rather than silently exposed.
@@ -86,7 +87,6 @@ const PUBLIC_EVENT_META_KEYS = new Set([
   'status',       // status transitions
   'vehicleType',
   'reason',       // failure/cancellation reason label
-  'photoUrl',     // delivery proof, rendered by the tracking page
 ]);
 
 function publicSafeEventMeta(meta: any): Record<string, any> | null {
@@ -698,7 +698,11 @@ export class DeliveriesService {
       pickedUpAt:     delivery.pickedUpAt,
       deliveredAt:    delivery.deliveredAt,
       createdAt:      delivery.createdAt,
-      proofPhotoUrl:  delivery.proofPhotoUrl,
+      // Proof photo is deliberately absent from the public payload
+      // (founder 2026-08-12). It is dispute evidence for admin, and it
+      // usually shows the recipient's gate or door, so it does not
+      // belong on a page anyone holding a forwarded code can open.
+      // Delivered/undelivered is still visible via status.
       driver:         publicDriver,
       etaMinutes:     etaMinutes,
       etaAsOf:        etaMinutes != null ? new Date().toISOString() : null,
@@ -1187,11 +1191,58 @@ export class DeliveriesService {
     this.logger.log(`store dropoff ${dropoff.dropCode} synced to ${patch.status} (delivery ${status})`);
   }
 
-  async updateStatus(id: string, status: DeliveryStatus, proofPhotoUrl?: string) {
+  async updateStatus(
+    id: string,
+    status: DeliveryStatus,
+    proofPhotoUrl?: string,
+    receivedBy?: { relation?: string; name?: string },
+  ) {
     const delivery = await this.repo.findOne({ where: { id } });
     if (!delivery) throw new NotFoundException('Delivery not found.');
 
     const fromStatus = delivery.status;
+
+    /**
+     * Proof photo is mandatory to close a delivery (founder 2026-08-12).
+     *
+     * The driver app already refused to submit without one, but the rule
+     * lived only in the app: anything else reaching this method (the
+     * developer API, a patched build, a direct call) could mark a package
+     * DELIVERED with no evidence at all. A rule that decides disputes has
+     * to be enforced where the data is written, not where it is typed.
+     *
+     * Accepts a photo already on the record so a retry after a dropped
+     * connection does not force the driver to photograph a package they
+     * have already handed over.
+     */
+    if (status === DeliveryStatus.DELIVERED && !proofPhotoUrl && !delivery.proofPhotoUrl) {
+      throw new BadRequestException(
+        'A delivery cannot be completed without a proof photo. Take one at the drop-off point.',
+      );
+    }
+
+    /**
+     * Third-party acceptance. High-value packages may only be handed to
+     * the recipient themselves, matching the existing failed-delivery
+     * matrix where high value always redirects to a partner store rather
+     * than a gate or a neighbour. Leaving a valuable package with a
+     * gateman is exactly the loss we would be paying out on.
+     */
+    const relation = receivedBy?.relation;
+    if (status === DeliveryStatus.DELIVERED && relation && relation !== 'recipient') {
+      const threshold = await this.getHighValueThreshold();
+      if (Number(delivery.declaredValueNgn ?? 0) >= threshold && Number(delivery.declaredValueNgn ?? 0) > 0) {
+        throw new BadRequestException(
+          'High-value package: it may only be handed to the recipient in person. ' +
+          'If they are unavailable, report the arrival issue and it will be redirected to a partner store.',
+        );
+      }
+      if (!receivedBy?.name?.trim()) {
+        throw new BadRequestException(
+          'Record the name of whoever accepted the package. It is what settles a dispute later.',
+        );
+      }
+    }
 
     // High-value handoff gate (founder policy 2026-08-10: high-value
     // ONLY). At or above the catalogue threshold, DELIVERED requires a
@@ -1225,6 +1276,10 @@ export class DeliveriesService {
     if (status === DeliveryStatus.DELIVERED) {
       timestamps.deliveredAt = new Date();
       if (proofPhotoUrl) timestamps.proofPhotoUrl = proofPhotoUrl;
+      if (relation) {
+        timestamps.receivedByRelation = relation;
+        timestamps.receivedByName = relation === 'recipient' ? null : (receivedBy?.name?.trim() ?? null);
+      }
     }
 
     await this.repo.update(id, timestamps);

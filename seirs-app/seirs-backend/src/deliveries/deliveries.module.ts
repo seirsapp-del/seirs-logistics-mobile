@@ -147,6 +147,14 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "redirectFeeNgn" numeric(12,2) NULL,
           ADD COLUMN IF NOT EXISTS "redirectFeePaidAt" timestamptz NULL
       `);
+      // Who actually accepted the package (2026-08-12). The proof photo
+      // answers "was it delivered"; this answers "to whom", which is the
+      // question an actual dispute turns on.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "receivedByRelation" varchar(12) NULL,
+          ADD COLUMN IF NOT EXISTS "receivedByName" varchar(80) NULL
+      `);
       // Night ops (2026-08-11): real scheduled dispatch + night fee.
       await this.ds.query(`
         ALTER TABLE "deliveries"

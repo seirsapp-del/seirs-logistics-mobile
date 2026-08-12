@@ -269,8 +269,21 @@ export const deliveriesApi = {
     ),
   arrivalResponse: (id: string, action: 'wait' | 'neighbour' | 'gate' | 'store') =>
     request<{ resolved: string }>('POST', `/deliveries/${id}/arrival-response`, { action }),
-  updateStatus: (id: string, status: string, proofPhotoUrl?: string) =>
-    request<any>('PATCH', `/deliveries/${id}/status`, { status, ...(proofPhotoUrl ? { proofPhotoUrl } : {}) }),
+  // receivedBy records WHO took the package (founder 2026-08-12): the
+  // proof photo shows it was delivered, this answers delivered to whom,
+  // which is the question a dispute actually turns on.
+  updateStatus: (
+    id: string,
+    status: string,
+    proofPhotoUrl?: string,
+    receivedBy?: { relation: string; name?: string },
+  ) =>
+    request<any>('PATCH', `/deliveries/${id}/status`, {
+      status,
+      ...(proofPhotoUrl ? { proofPhotoUrl } : {}),
+      ...(receivedBy?.relation ? { receivedByRelation: receivedBy.relation } : {}),
+      ...(receivedBy?.name     ? { receivedByName:     receivedBy.name }     : {}),
+    }),
   rate: (id: string, rating: number, comment?: string) =>
     request<any>('POST', `/deliveries/${id}/rate`, { rating, comment }),
   emailReceipt: (id: string) =>

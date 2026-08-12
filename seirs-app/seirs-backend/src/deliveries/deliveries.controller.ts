@@ -168,9 +168,19 @@ export class DeliveriesController {
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
-    @Body() body: { status: DeliveryStatus; proofPhotoUrl?: string },
+    @Body() body: {
+      status: DeliveryStatus;
+      proofPhotoUrl?: string;
+      // Who actually took the package. Recorded for dispute resolution:
+      // "delivered" is a weak answer to "delivered to whom".
+      receivedByRelation?: string;
+      receivedByName?: string;
+    },
   ) {
-    return this.deliveriesService.updateStatus(id, body.status, body.proofPhotoUrl);
+    return this.deliveriesService.updateStatus(id, body.status, body.proofPhotoUrl, {
+      relation: body.receivedByRelation,
+      name:     body.receivedByName,
+    });
   }
 
   // GET /api/v1/deliveries/:id - single delivery with driver + breakdown
