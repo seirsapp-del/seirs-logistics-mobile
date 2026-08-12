@@ -51,6 +51,32 @@ function generateDropCode(): string {
   return 'SDR-' + secureCode(8);
 }
 
+/**
+ * Neighbourhood from a full street address, for the anonymous
+ * directory: "12 Allen Avenue, Ikeja, Lagos" -> "Ikeja, Lagos".
+ * Deliberately drops the street + number so a visitor can tell the
+ * shop is nearby without being handed its door.
+ */
+function areaOf(address: string | null | undefined): string {
+  if (!address) return 'Nigeria';
+  const parts = address.split(',').map(p => p.trim()).filter(Boolean);
+  return parts.length <= 1 ? parts[0] ?? 'Nigeria' : parts.slice(-2).join(', ');
+}
+
+/** Open right now in Africa/Lagos (UTC+1, no DST). */
+function isOpenNow(days: string[] | null, open: string, close: string): boolean {
+  try {
+    const now  = new Date();
+    const lagos = new Date(now.getTime() + 60 * 60 * 1000);
+    const dow  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][lagos.getUTCDay()];
+    if (Array.isArray(days) && days.length && !days.includes(dow)) return false;
+    const mins = lagos.getUTCHours() * 60 + lagos.getUTCMinutes();
+    const [oh, om] = (open  ?? '08:00').split(':').map(Number);
+    const [ch, cm] = (close ?? '18:00').split(':').map(Number);
+    return mins >= oh * 60 + om && mins < ch * 60 + cm;
+  } catch { return false; }
+}
+
 @Injectable()
 export class PartnerStoreService {
   private readonly logger = new Logger(PartnerStoreService.name);
@@ -606,6 +632,8 @@ export class PartnerStoreService {
     offset:  number;
     lat?:    number;
     lng?:    number;
+    /** Signed-in callers see exact address/coords/phone; anonymous do not. */
+    precise?: boolean;
   }) {
     const qb = this.storeRepo
       .createQueryBuilder('s')
@@ -664,12 +692,35 @@ export class PartnerStoreService {
       offset: opts.offset ?? 0,
       items:  entities.map((s, i) => {
         const distanceRaw = hasUserLoc ? raw[i]?.distance_km : null;
+
+        // Anonymous callers get area-level detail only (founder
+        // 2026-08-12): a shop holding other people's packages must not
+        // be locatable, phone-able, and hours-readable by someone who
+        // never signed in. Signed-in callers get the full record because
+        // they need it to actually go there, and an account is
+        // traceable in a way anonymous scraping is not.
+        if (!opts.precise) {
+          return {
+            id:           s.id,
+            storeCode:    s.storeCode,
+            storeName:    s.storeName,
+            area:         areaOf(s.storeAddress),
+            openNow:      isOpenNow(s.operatingDays, s.openTime, s.closeTime),
+            // Coarsened to ~1km so the map shows a neighbourhood, not a door.
+            approxLat:    s.storeLat != null ? Math.round(Number(s.storeLat) * 100) / 100 : null,
+            approxLng:    s.storeLng != null ? Math.round(Number(s.storeLng) * 100) / 100 : null,
+            distanceKm:   distanceRaw != null ? Math.round(Number(distanceRaw)) : null,
+            preciseRequiresSignIn: true,
+          };
+        }
+
         return {
           id:            s.id,
           storeCode:     s.storeCode,       // public shop reference, safe to print + quote
           storeName:     s.storeName,
           storeAddress:  s.storeAddress,
-          phone:         s.phone,           // published storefront line, safe for a marketing page
+          phone:         s.phone,
+          storefrontPhotoUrl: s.storefrontPhotoUrl ?? null, // helps a customer recognise the shop on arrival
           operatingDays: s.operatingDays,
           openTime:      s.openTime,
           closeTime:     s.closeTime,
@@ -1019,6 +1070,23 @@ export class PartnerStoreService {
     const store = await this.storeRepo.findOne({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Partner store not found.');
 
+    // Hard requirements before a shop may hold other people's packages
+    // (founder decision 2026-08-12). Coordinates: without them the store
+    // is invisible on every map and its drop-offs silently never become
+    // driver jobs. Storefront photo: customers and drivers must be able
+    // to recognise the shop on arrival, and it is our evidence that a
+    // real premises was reviewed.
+    if (store.storeLat == null || store.storeLng == null) {
+      throw new BadRequestException(
+        'This store has no map location. Ask the partner to re-enter their address using the address suggestions (not free text) so coordinates are captured, then approve.',
+      );
+    }
+    if (!store.storefrontPhotoUrl) {
+      throw new BadRequestException(
+        'This store has no storefront photo. It is required before approval so customers and drivers can recognise the shop.',
+      );
+    }
+
     // Mint the public store code on first approval and never again: it
     // goes on shelf labels and into customers' hands, so re-approving
     // after a suspension must not change it.
@@ -1041,6 +1109,73 @@ export class PartnerStoreService {
 
     this.logger.log(`Partner store APPROVED: storeId=${storeId} code=${storeCode} owner=${store.userId} admin=${adminUserId}`);
     return { storeId, storeCode, status: PartnerStoreStatus.APPROVED };
+  }
+
+  /**
+   * Store closure (founder decision 2026-08-12). A shop cannot simply
+   * vanish while holding other people's packages, so closing is a
+   * WIND-DOWN, not a switch:
+   *
+   *   1. New drop-offs stop immediately (acceptingNew = false).
+   *   2. Packages already on the shelf must be collected or moved.
+   *   3. Only when the shelf is empty does the store go inactive.
+   *
+   * The store code is retired permanently and never reissued, so labels
+   * and receipts printed years ago still resolve to the right shop.
+   */
+  async beginStoreClosure(storeId: string, requestedByUserId: string, reason?: string) {
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Partner store not found.');
+
+    const staff = await this.usersRepo.findOne({ where: { id: requestedByUserId } });
+    const isOwner = store.userId === requestedByUserId;
+    const isAdmin = staff?.role === 'admin';
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException('Only the store owner or an admin can close a store.');
+    }
+
+    // Stop the inflow first, whatever else happens below.
+    await this.storeRepo.update(storeId, { acceptingNew: false } as any);
+
+    const held = await this.dropoffRepo.count({
+      where: [
+        { pickupStoreId:  storeId, status: In(IN_STORE_STATUSES) },
+        { dropoffStoreId: storeId, status: In(IN_STORE_STATUSES) },
+      ],
+    });
+
+    if (held > 0) {
+      return {
+        storeId,
+        closed: false,
+        packagesRemaining: held,
+        message:
+          `Store is now refusing new drop-offs. ${held} package${held === 1 ? '' : 's'} still on the shelf: ` +
+          'each must be collected by its recipient or moved to another store before the shop can close.',
+      };
+    }
+
+    await this.storeRepo.update(storeId, {
+      status:     PartnerStoreStatus.SUSPENDED,
+      reviewNote: reason?.trim() || 'Closed by owner',
+      reviewedAt: new Date(),
+      reviewedBy: requestedByUserId,
+    } as any);
+
+    const owner = await this.usersRepo.findOne({ where: { id: store.userId } });
+    if (owner) {
+      await this.usersRepo.update(owner.id, {
+        capabilities: { canSend: owner.capabilities?.canSend ?? true, canPartner: false },
+      });
+    }
+
+    this.logger.log(`Partner store CLOSED: storeId=${storeId} code=${store.storeCode} by=${requestedByUserId}`);
+    return {
+      storeId,
+      closed: true,
+      packagesRemaining: 0,
+      message: 'Store closed. Its store code is retired and will not be reissued.',
+    };
   }
 
   /**

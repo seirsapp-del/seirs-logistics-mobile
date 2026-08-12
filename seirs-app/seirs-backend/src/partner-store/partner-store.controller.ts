@@ -14,21 +14,38 @@ import { HandoffMethod } from '../identity/handoff-record.entity';
 export class PartnerStoreController {
   constructor(private readonly svc: PartnerStoreService) {}
 
+  // POST /api/v1/partner-store/:storeId/close  { reason? }
+  // Owner (or admin) winds a shop down. Refuses to finish while
+  // packages are still on the shelf; returns how many remain.
+  @Post(':storeId/close')
+  closeStore(
+    @Param('storeId') storeId: string,
+    @CurrentUser() user: any,
+    @Body() body: { reason?: string },
+  ) {
+    return this.svc.beginStoreClosure(storeId, user.id, body?.reason);
+  }
+
   // ── Public discovery ───────────────────────────────────────────────────
 
   // GET /api/v1/partner-store/directory?q=&limit=&offset=&lat=&lng=
-  // Public "find a partner store near you" list. Powers the marketing
-  // website /find-a-partner page. Returns only approved + accepting
-  // stores. Public-safe fields only (no owner phone, no KYC doc URLs,
-  // no capacity numbers).
   //
-  // Optional `q` filters by name + address prefix.
-  // Optional `lat` + `lng` (visitor geolocation) triggers Haversine
-  // distance sort. Response items include `distanceKm` when the visitor
-  // granted location; null otherwise.
+  // SECURITY (founder 2026-08-12): this list used to publish every
+  // approved store's EXACT street address, phone, coordinates, and
+  // opening hours to anonymous visitors. In the Nigerian threat model
+  // that is a shopping list: which shops hold packages, precisely
+  // where, and when they are closed. Shops holding other people's goods
+  // must not be enumerable by people who have never signed in.
+  //
+  // Anonymous callers now get AREA-LEVEL results only (shop name, city,
+  // whether it is open now). Signing in reveals the exact address,
+  // coordinates, phone, and storefront photo, because a customer
+  // choosing a drop-off point genuinely needs them - and an account is
+  // traceable, which anonymous scraping is not.
   @Public()
   @Get('directory')
   publicDirectory(
+    @CurrentUser() user: any,
     @Query('q')                                              q?: string,
     @Query('limit',  new DefaultValuePipe(30),  ParseIntPipe) limit?: number,
     @Query('offset', new DefaultValuePipe(0),   ParseIntPipe) offset?: number,
@@ -41,6 +58,7 @@ export class PartnerStoreController {
       offset: offset!,
       lat:    lat != null && lat !== '' ? Number(lat) : undefined,
       lng:    lng != null && lng !== '' ? Number(lng) : undefined,
+      precise: !!user?.id,
     });
   }
 
