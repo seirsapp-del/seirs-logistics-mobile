@@ -123,7 +123,7 @@ function StepCard({
   imageUrl?: string;
 }) {
   return (
-    <div className="relative bg-white rounded-card shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 overflow-hidden">
+    <div className="lift relative bg-white rounded-card shadow-sm border border-gray-100 overflow-hidden">
       {imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={imageUrl} alt="" className="w-full h-44 object-cover" loading="lazy" />
@@ -157,7 +157,7 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className="flex items-start gap-4 p-5 bg-off-white rounded-card hover:bg-gray-50 transition-colors duration-150">
+    <div className="lift flex items-start gap-4 p-5 bg-off-white rounded-card hover:bg-white">
       <div className="w-11 h-11 bg-navy/10 rounded-xl flex items-center justify-center flex-shrink-0">
         <Icon size={22} className="text-navy" />
       </div>
@@ -242,7 +242,7 @@ function PartnerBenefit({
   description: string;
 }) {
   return (
-    <div className="flex flex-col items-center text-center p-6 bg-white rounded-card shadow-sm border border-gray-100">
+    <div className="lift flex flex-col items-center text-center p-6 bg-white rounded-card shadow-sm border border-gray-100">
       <div className="w-14 h-14 bg-sky/10 rounded-2xl flex items-center justify-center mb-4">
         <Icon size={26} className="text-sky" />
       </div>
@@ -342,16 +342,20 @@ export default async function HomePage() {
                 </Link>
               </div>
 
-              {/* Translation cue, browsers (Chrome / Edge / Safari / Firefox)
-                  auto-detect and offer to translate the page to the user's
-                  language. This banner just makes that affordance visible
-                  for users who don't know the browser feature exists. */}
-              <div className="inline-flex items-center gap-2.5 bg-white/5 border border-white/15 rounded-lg px-3 py-2 mb-8">
-                <Globe size={14} className="text-sky flex-shrink-0" strokeWidth={1.75} />
+              {/* Honesty pass 2026-08-12: the old banner implied the SITE
+                  ships in four languages. Truth: the APPS carry Yoruba /
+                  Igbo / Hausa translations (improving, see the language
+                  story), and this site is English with browser
+                  translation. Say exactly that. */}
+              <Link
+                href="/news/speaking-nigerian-languages"
+                className="inline-flex items-center gap-2.5 bg-white/5 border border-white/15 rounded-lg px-3 py-2 mb-8 hover:bg-white/10 transition-colors"
+              >
+                <Globe size={14} className="text-[#FFBE0B] flex-shrink-0" strokeWidth={1.75} />
                 <span className="text-white/65 text-xs">
-                  Available in Yoruba, Igbo, Hausa &amp; 100+ more, your browser will translate
+                  The apps speak Yoruba, Igbo and Hausa. Read how we&apos;re improving that
                 </span>
-              </div>
+              </Link>
 
               {/* Value props, not vanity metrics. Honesty rule 2026-08-11:
                   the old fake stats (10,000+ deliveries, 99.2% on-time)
@@ -614,7 +618,7 @@ export default async function HomePage() {
               { slot: img.img_move_animals,     title: "Live animals",       story: "Yes: even the Christmas chicken",             slug: "moving-live-animals" },
             ].map((t, i) => (
               <Reveal key={t.title} delay={(i % 5) * 90}>
-                <Link href={`/news/${t.slug}`} className="group relative rounded-card overflow-hidden bg-navy aspect-[4/5] block focus-visible:ring-2 focus-visible:ring-sky">
+                <Link href={`/news/${t.slug}`} className="lift group relative rounded-card overflow-hidden bg-navy aspect-[4/5] block focus-visible:ring-2 focus-visible:ring-sky">
                   {t.slot && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={t.slot} alt={t.title}

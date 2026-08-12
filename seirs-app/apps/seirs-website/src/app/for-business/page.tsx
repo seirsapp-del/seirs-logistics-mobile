@@ -37,7 +37,7 @@ function FeatureCard({
   body: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-7 shadow-sm h-full">
+    <div className="lift bg-white rounded-2xl border border-gray-200 p-7 shadow-sm h-full">
       <div className="w-11 h-11 rounded-xl bg-sky/15 flex items-center justify-center mb-4">
         <Icon size={20} className="text-sky" strokeWidth={1.75} />
       </div>
@@ -171,8 +171,8 @@ export default async function ForBusinessPage() {
             />
             <FeatureCard
               icon={TrendingUp}
-              title="Loyalty discounts"
-              body="Volume tiers automatically unlock 5%, 15% off platform fees as your monthly delivery count grows. Top tier: dedicated account manager."
+              title="Loyalty points"
+              body="Every delivery earns points, and your tier raises the rate you earn at. Points come off future bookings: the more you ship, the faster they build."
             />
             <FeatureCard
               icon={Building2}

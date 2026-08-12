@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import {
   Truck,
   Wallet,
@@ -35,7 +35,7 @@ function FeatureCard({
   body: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-7 shadow-sm h-full">
+    <div className="lift bg-white rounded-2xl border border-gray-200 p-7 shadow-sm h-full">
       <div className="w-11 h-11 rounded-xl bg-sky/15 flex items-center justify-center mb-4">
         <Icon size={20} className="text-sky" strokeWidth={1.75} />
       </div>

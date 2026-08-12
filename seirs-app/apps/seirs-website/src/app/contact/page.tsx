@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { Mail, Phone, MapPin, Send, CheckCircle, Building2, Truck, Store, MessageSquare } from "lucide-react";
@@ -118,7 +118,7 @@ export default function ContactPage() {
             <a
               key={card.label}
               href={card.href}
-              className="bg-white rounded-card p-5 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 block"
+              className="lift bg-white rounded-card p-5 shadow-sm border border-gray-100 block"
             >
               <div
                 className={`w-11 h-11 ${card.color} rounded-xl flex items-center justify-center mb-4`}

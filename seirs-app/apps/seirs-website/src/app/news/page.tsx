@@ -15,6 +15,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   product_update: 'Product',
   guide:          'Guide',
   story:          'Story',
+  impact:         'Impact',
 };
 
 export default async function NewsPage() {
@@ -38,11 +39,11 @@ export default async function NewsPage() {
                 <Link
                   key={a.id}
                   href={`/news/${a.slug}`}
-                  className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
+                  className="group bg-white rounded-xl border border-gray-200 overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
                 >
                   {a.coverImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={a.coverImageUrl} alt={a.title} className="w-full h-48 object-cover bg-gray-100" />
+                    <img src={a.coverImageUrl} alt={a.title} className="w-full h-48 object-cover bg-gray-100 transition-transform duration-500 group-hover:scale-105" />
                   ) : (
                     <div className="w-full h-48 bg-gradient-to-br from-navy to-sky" />
                   )}
