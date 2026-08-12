@@ -912,6 +912,27 @@ export class DeliveriesService {
     if (this.trackingGateway) this.trackingGateway.broadcastStatusChange(delivery.id, delivery.status);
   }
 
+  /**
+   * Start payment for an outstanding failed-delivery redirect fee
+   * (founder matrix 2026-08-11: "they will have to pay before they see
+   * the location"). Sender-only; the payment path itself validates the
+   * amount and refuses double-payment.
+   */
+  async startRedirectFeePayment(deliveryId: string, customerId: string) {
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.customer?.id !== customerId) {
+      throw new NotFoundException('Delivery not found.'); // no oracle
+    }
+    if (!this.paymentsService) {
+      throw new NotFoundException('Payments are unavailable right now.');
+    }
+    return this.paymentsService.initiateRedirectFeePayment(delivery, delivery.customer);
+  }
+
   async redirectToStore(deliveryId: string, customerId: string, storeId: string) {
     const delivery = await this.repo.findOne({
       where: { id: deliveryId },

@@ -4,7 +4,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { Payment, PaymentMethod, PaymentStatus, EscrowStatus } from './payment.entity';
+import { Payment, PaymentMethod, PaymentStatus, EscrowStatus, PaymentPurpose } from './payment.entity';
 import { Wallet } from './wallet.entity';
 import { SavedCard } from './saved-card.entity';
 import { FlutterwaveService } from './flutterwave.service';
@@ -271,6 +271,59 @@ export class PaymentsService {
     return { authorizationUrl: paymentLink, reference: txRef, paymentId: payment.id };
   }
 
+  /**
+   * Failed-delivery redirect fee (founder matrix 2026-08-11). When a
+   * package is rerouted to a partner store because nobody could receive
+   * it, the sender owes a transport fee before the store's identity and
+   * the collection code are revealed. This is NOT escrow money: it is
+   * purpose=REDIRECT_FEE so escrow release/refund never touch it and no
+   * loyalty points are awarded a second time.
+   */
+  async initiateRedirectFeePayment(delivery: Delivery, customer: User): Promise<{
+    authorizationUrl: string;
+    reference:        string;
+    amountNgn:        number;
+  }> {
+    const amount = Number(delivery.redirectFeeNgn ?? 0);
+    if (!(amount > 0)) {
+      throw new BadRequestException('No redirect fee is outstanding on this delivery.');
+    }
+    if (delivery.redirectFeePaidAt) {
+      throw new BadRequestException('This redirect fee has already been paid.');
+    }
+
+    const txRef = `SRS-RDR-${uuidv4().slice(0, 8).toUpperCase()}`;
+    const { paymentLink } = await this.flutterwaveService.initializePayment({
+      txRef,
+      amount,
+      currency:    'NGN',
+      email:       customer.email,
+      phone:       customer.phone ?? '',
+      name:        customer.name,
+      redirectUrl: 'seirsmobile://payment-callback',
+      meta: {
+        purpose:      'redirect_fee',
+        deliveryId:   delivery.id,
+        trackingCode: delivery.trackingCode,
+        customerId:   customer.id,
+      },
+    });
+
+    await this.paymentsRepo.save(this.paymentsRepo.create({
+      customer,
+      delivery,
+      amountKobo:        toKobo(amount),
+      method:            PaymentMethod.CARD,
+      status:            PaymentStatus.PENDING,
+      purpose:           PaymentPurpose.REDIRECT_FEE,
+      provider:          'flutterwave',
+      providerReference: txRef,
+      authorizationUrl:  paymentLink,
+    }));
+
+    return { authorizationUrl: paymentLink, reference: txRef, amountNgn: amount };
+  }
+
   // COD - recorded as pending until driver confirms delivery
   async initiateCOD(delivery: Delivery, customer: User): Promise<Payment> {
     const payment = this.paymentsRepo.create({
@@ -329,6 +382,26 @@ export class PaymentsService {
     const result = await this.flutterwaveService.verifyByTxRef(txRef);
 
     if (result.success) {
+      // Redirect fees settle outright: they are owed to SEIRS + the
+      // holding store, never escrowed for a driver, and they must not
+      // award loyalty points or tokenize a card a second time. Paying
+      // one unlocks the store identity on the tracking payload.
+      if (payment.purpose === PaymentPurpose.REDIRECT_FEE) {
+        await this.paymentsRepo.update(payment.id, {
+          status:                   PaymentStatus.SUCCESS,
+          flutterwaveTransactionId: result.transactionId,
+        });
+        payment.status = PaymentStatus.SUCCESS;
+        if (payment.delivery?.id) {
+          await this.dataSource.query(
+            `UPDATE deliveries SET "redirectFeePaidAt" = NOW() WHERE id = $1 AND "redirectFeePaidAt" IS NULL`,
+            [payment.delivery.id],
+          );
+        }
+        this.logger.log(`Redirect fee settled: ${txRef} (₦${result.amount})`);
+        return payment;
+      }
+
       await this.paymentsRepo.update(payment.id, {
         status:                    PaymentStatus.SUCCESS,
         escrowStatus:              EscrowStatus.HELD,
@@ -395,7 +468,7 @@ export class PaymentsService {
 
   async releaseEscrow(deliveryId: string, driverUserId: string): Promise<void> {
     const payment = await this.paymentsRepo.findOne({
-      where: { delivery: { id: deliveryId }, status: PaymentStatus.SUCCESS },
+      where: { delivery: { id: deliveryId }, status: PaymentStatus.SUCCESS, purpose: PaymentPurpose.DELIVERY },
     });
 
     if (!payment) {
@@ -459,7 +532,7 @@ export class PaymentsService {
     reason: string;
   }): Promise<{ ok: true; refundedAtIso: string }> {
     const payment = await this.paymentsRepo.findOne({
-      where: { delivery: { id: args.deliveryId } },
+      where: { delivery: { id: args.deliveryId }, purpose: PaymentPurpose.DELIVERY },
       relations: ['delivery', 'delivery.customer'],
     });
     if (!payment) {
@@ -490,7 +563,7 @@ export class PaymentsService {
 
   async refundEscrow(deliveryId: string, customerUserId: string): Promise<void> {
     const payment = await this.paymentsRepo.findOne({
-      where: { delivery: { id: deliveryId }, status: PaymentStatus.SUCCESS },
+      where: { delivery: { id: deliveryId }, status: PaymentStatus.SUCCESS, purpose: PaymentPurpose.DELIVERY },
     });
 
     if (!payment || payment.escrowStatus !== EscrowStatus.HELD) return;
@@ -554,6 +627,15 @@ export class PaymentsService {
 
     if (!wallet || wallet.balanceKobo < amountKobo) {
       throw new BadRequestException('Insufficient wallet balance.');
+    }
+
+    // Demo/marketing accounts carry a STAGED balance that was never
+    // paid for by a customer. Paying it out would move real money out
+    // of the SEIRS account (2026-08-12 security review).
+    if ((wallet.user as any)?.isDemo) {
+      throw new BadRequestException(
+        'This is a demo account. Its balance is staged for screenshots and cannot be withdrawn.',
+      );
     }
 
     if (!wallet.bankAccountNumber || !wallet.bankCode) {

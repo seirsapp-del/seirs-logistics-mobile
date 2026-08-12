@@ -32,7 +32,13 @@ import { PLATFORM_COMMISSION } from '../common/constants/pricing';
  * Triggered only via POST /admin/demo-data/seed (admin-dashboard button).
  */
 
-export const DEMO_PASSWORD = 'SeirsDemo2026!';
+// No hardcoded credential (2026-08-12 security review): a fixed
+// password committed to source is a standing backdoor into three live,
+// APPROVED accounts. A fresh one is generated per seed and returned
+// ONCE in the API response for the admin to copy. Re-seeding rotates it.
+function generateDemoPassword(): string {
+  return `Demo-${secureCode(5)}-${secureCode(5)}!`;
+}
 
 const LAGOS = { lat: 6.5244, lng: 3.3792 };     // Lagos Island reference
 const IKEJA = { lat: 6.6018, lng: 3.3515 };     // driver's home base
@@ -53,7 +59,8 @@ export class DemoDataService {
   ) {}
 
   async seedDemoAccounts() {
-    const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
+    const password = generateDemoPassword();
+    const passwordHash = await bcrypt.hash(password, 12);
 
     // Names approved by the founder 2026-08-12, one per major ethnic
     // group per the standing sample-data rule: Yoruba female customer,
@@ -93,9 +100,9 @@ export class DemoDataService {
 
     await this.ensureDemoDropoffs(customer, business);
 
-    this.logger.log('Demo accounts seeded/refreshed');
+    this.logger.log('Demo accounts seeded/refreshed (password rotated)');
     return {
-      password: DEMO_PASSWORD,
+      password,
       accounts: {
         customer: { email: customer.email, name: customer.name, accountId: customer.accountId },
         driver:   { email: driverUser.email, name: driverUser.name, accountId: driverUser.accountId },
@@ -121,6 +128,8 @@ export class DemoDataService {
       name, firstName: opts.firstName, lastName: opts.lastName,
       phone: opts.phone, role: opts.role, password: opts.passwordHash,
       emailVerified: true, isActive: true,
+      // The flag every money/dispatch guard checks.
+      isDemo: true,
       homeAddress: opts.homeAddress ?? null,
       identityVerifiedAt: opts.identityVerified ? new Date() : null,
       identityDocType: opts.identityDocType ?? null,

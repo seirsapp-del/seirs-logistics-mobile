@@ -502,6 +502,9 @@ export class DriversService {
       .leftJoinAndSelect('driver.user', 'user')
       .where('driver.isOnline = true')
       .andWhere('driver.status = :status', { status: 'approved' })
+      // Demo/marketing accounts must never receive a real customer's
+      // delivery (2026-08-12 security review).
+      .andWhere('user.isDemo = false')
       .andWhere(
         `(6371 * acos(LEAST(1, GREATEST(-1,
           cos(radians(:lat)) * cos(radians(driver.lastLat)) *

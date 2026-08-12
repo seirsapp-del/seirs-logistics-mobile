@@ -110,6 +110,16 @@ export class User {
   @Column({ default: false })
   emailVerified: boolean;
 
+  // Marketing/demo account (2026-08-12). Seeded by the admin's Demo
+  // Accounts button so screenshots never show a real user. Treated as
+  // RADIOACTIVE by every money and dispatch path: demo drivers are
+  // excluded from matching, demo stores from the public directory, and
+  // withdrawals are refused outright. Without these guards a seeded
+  // account with a staged wallet balance would be a real payout hole.
+  @Index()
+  @Column({ default: false })
+  isDemo: boolean;
+
   // Spec V8 NDPR. soft-delete bookkeeping. Set when user calls
   // DELETE /users/me; cleared if they sign in within 30 days. The
   // daily archive cron uses this + isActive=false to decide who to

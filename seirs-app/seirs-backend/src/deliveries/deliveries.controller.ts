@@ -120,6 +120,15 @@ export class DeliveriesController {
     return this.deliveriesService.redirectToStore(id, user.id, body.storeId);
   }
 
+  // POST /api/v1/deliveries/:id/redirect-fee/pay
+  // Settles the failed-delivery redirect fee. Returns a Flutterwave
+  // hosted-page URL; on confirmation the store identity + collection
+  // code unmask on the tracking payload and the store may release.
+  @Post(':id/redirect-fee/pay')
+  payRedirectFee(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.startRedirectFeePayment(id, user.id);
+  }
+
   // POST /api/v1/deliveries/:id/arrival-issue
   // Driver arrived, nobody available. Opens the sender's 5-minute
   // response window and fires the sender notification.

@@ -444,6 +444,24 @@ export class PartnerStoreService {
       throw new ForbiddenException('You are not registered as staff for the release store');
     }
 
+    // Pay-to-release (founder matrix 2026-08-11): a package that landed
+    // here through a failed-delivery redirect stays behind the counter
+    // until the sender settles the transport fee. Store staff see why,
+    // so they can tell the customer what to do rather than guessing.
+    if (dropoff.deliveryId) {
+      const rows = await this.deliveriesRepo.query(
+        `SELECT "redirectFeeNgn", "redirectFeePaidAt" FROM deliveries WHERE id = $1 LIMIT 1`,
+        [dropoff.deliveryId],
+      );
+      const owed = Number(rows?.[0]?.redirectFeeNgn ?? 0);
+      if (owed > 0 && !rows?.[0]?.redirectFeePaidAt) {
+        throw new BadRequestException(
+          `This package was redirected here and the sender still owes the ₦${owed.toLocaleString()} transfer fee. ` +
+          'Ask them to settle it in the SEIRS app, then scan again.',
+        );
+      }
+    }
+
     if (!dropoff.recipientUserId) {
       throw new BadRequestException(
         'Recipient is unknown - only registered SEIRS users can collect via this flow',
@@ -592,7 +610,12 @@ export class PartnerStoreService {
     const qb = this.storeRepo
       .createQueryBuilder('s')
       .where('s."acceptingNew" = true')
-      .andWhere('s.status IN (:...allowed)', { allowed: ['approved', 'active'] });
+      .andWhere('s.status IN (:...allowed)', { allowed: ['approved', 'active'] })
+      // Demo/marketing stores must never appear to real customers
+      // choosing a drop-off point (2026-08-12 security review).
+      .andWhere(
+        `NOT EXISTS (SELECT 1 FROM users u WHERE u.id = s."userId"::uuid AND u."isDemo" = true)`,
+      );
 
     if (opts.q && opts.q.trim()) {
       const term = `%${opts.q.trim()}%`;

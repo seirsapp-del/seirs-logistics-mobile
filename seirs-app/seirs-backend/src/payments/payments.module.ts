@@ -38,6 +38,13 @@ export class PaymentsModule implements OnModuleInit {
       `ALTER TABLE "wallets" ADD COLUMN IF NOT EXISTS "pendingBankAccountName" character varying`,
       `ALTER TABLE "wallets" ADD COLUMN IF NOT EXISTS "pendingBankRequestedAt" timestamptz`,
       `ALTER TABLE "wallets" ADD COLUMN IF NOT EXISTS "pendingBankTicketId" uuid`,
+      // Demo/marketing accounts (2026-08-12 security review): dispatch,
+      // directory, and withdrawal guards all read this flag.
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "isDemo" boolean NOT NULL DEFAULT false`,
+      `CREATE INDEX IF NOT EXISTS "users_is_demo_idx" ON "users" ("isDemo")`,
+      // What a payment is FOR: keeps the failed-delivery redirect fee
+      // from being mistaken for the fare and released to a driver.
+      `ALTER TABLE "payments" ADD COLUMN IF NOT EXISTS "purpose" character varying(16) NOT NULL DEFAULT 'delivery'`,
     ];
     for (const sql of alters) {
       try { await this.dataSource.query(sql); }

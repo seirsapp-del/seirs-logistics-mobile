@@ -27,6 +27,19 @@ export enum EscrowStatus {
   REFUNDED = 'refunded',  // delivery failed → returned to customer
 }
 
+/**
+ * What a payment row is FOR (2026-08-12). Until this existed, every
+ * payment attached to a delivery was assumed to be the delivery fare:
+ * a second charge on the same delivery (e.g. the failed-delivery
+ * redirect fee) would have been picked up by escrow release and paid
+ * out to the driver, and would have awarded loyalty points a second
+ * time. Escrow paths filter on DELIVERY explicitly.
+ */
+export enum PaymentPurpose {
+  DELIVERY     = 'delivery',      // the fare: escrow-held, released to driver
+  REDIRECT_FEE = 'redirect_fee',  // failed-delivery reroute to a partner store
+}
+
 @Entity('payments')
 export class Payment {
   @PrimaryGeneratedColumn('uuid')
@@ -55,6 +68,10 @@ export class Payment {
 
   @Column({ type: 'enum', enum: EscrowStatus, nullable: true })
   escrowStatus: EscrowStatus;
+
+  // Defaults to DELIVERY so every historical row keeps its meaning.
+  @Column({ type: 'varchar', length: 16, default: PaymentPurpose.DELIVERY })
+  purpose: PaymentPurpose;
 
   // Flutterwave tx_ref (used for verification and refunds)
   @Column({ nullable: true })
