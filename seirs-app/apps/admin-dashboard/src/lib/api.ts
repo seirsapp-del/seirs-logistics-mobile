@@ -566,4 +566,15 @@ export const adminApi = {
         method: 'PATCH', body: JSON.stringify({ status }),
       }),
   },
+
+  // Marketing/demo accounts (founder 2026-08-11): one button seeds 3
+  // permanent fake accounts (customer/driver/partner store) so
+  // screenshots and demos never show real user data.
+  demoData: {
+    seed: () => req<{
+      password: string;
+      accounts: Record<'customer' | 'driver' | 'business', { email: string; name: string; accountId: string }>;
+      demoDeliveriesCreated: number;
+    }>('/admin/demo-data/seed', { method: 'POST' }),
+  },
 };

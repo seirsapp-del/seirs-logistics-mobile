@@ -236,7 +236,7 @@ export class MailService {
 
   async sendWelcome(to: string, name: string) {
     const html = baseTemplate(`
-      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Welcome to Seirs! 🎉</h2>
+      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Welcome to Seirs!</h2>
       <p>Hi ${name},</p>
       <p>Your Seirs account is ready. You can now send and track packages across Africa and Europe - fast, affordable, and reliable.</p>
       <p><strong>What you can do:</strong></p>
@@ -297,7 +297,7 @@ export class MailService {
     const html = baseTemplate(`
       <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Package delivered! ${statusBadge('Delivered', '#16A34A')}</h2>
       <p>Hi ${name},</p>
-      <p>Your package <strong>${trackingCode}</strong> has been successfully delivered. 🎉</p>
+      <p>Your package <strong>${trackingCode}</strong> has been successfully delivered.</p>
       <p>How was your experience? Open the Seirs app to rate your driver - it helps us improve!</p>
       <p style="font-size:13px;color:#9CA3AF;margin-top:24px">Thank you for choosing Seirs Logistics.</p>
     `);

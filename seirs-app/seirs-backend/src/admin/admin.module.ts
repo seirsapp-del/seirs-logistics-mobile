@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { DemoDataService } from './demo-data.service';
 import { User } from '../users/user.entity';
 import { ArchivedUser } from '../users/archived-user.entity';
 import { UsersModule } from '../users/users.module';
@@ -23,6 +24,10 @@ import { PlatformConfig } from './platform-config.entity';
 import { DriverEarning } from '../earnings/driver-earning.entity';
 import { LoyaltyPoint } from '../loyalty/loyalty-point.entity';
 import { IdentityVerification } from '../user-verification/user-verification.entity';
+import { BusinessAccount } from '../business/business-account.entity';
+import { PartnerStore } from '../business/partner-store.entity';
+import { Wallet } from '../payments/wallet.entity';
+import { StoreDropoff } from '../partner-store/store-dropoff.entity';
 
 @Module({
   imports: [
@@ -31,6 +36,7 @@ import { IdentityVerification } from '../user-verification/user-verification.ent
       CmsItem, SupportTicket, AuditLogEntry, PricingConfig,
       DuplicateAccountCandidate, ExternalPartner,
       PlatformConfig, DriverEarning, LoyaltyPoint, IdentityVerification,
+      BusinessAccount, PartnerStore, Wallet, StoreDropoff,
     ]),
     FraudModule,
     MailModule,
@@ -40,7 +46,7 @@ import { IdentityVerification } from '../user-verification/user-verification.ent
     UsersModule,
   ],
   controllers: [AdminController],
-  providers: [AdminService],
+  providers: [AdminService, DemoDataService],
   exports: [AdminService],
 })
 export class AdminModule {}

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { Lock } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
 
@@ -128,7 +129,9 @@ export function IdentityDocsReveal({ userId }: { userId: string }) {
   return (
     <div className="p-4 border border-gray-200 bg-gray-50 rounded-lg">
       <div className="flex items-start gap-3">
-        <div className="text-2xl">🔒</div>
+        <div className="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+          <Lock size={16} className="text-gray-600" />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-[#0F2B4C]">Identity documents</div>
           <div className="text-xs text-gray-600 mt-0.5">

@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
+import { DemoDataService } from './demo-data.service';
 import { PartnerStoreService } from '../partner-store/partner-store.service';
 import { DriversService } from '../drivers/drivers.service';
 import { DriverTripStatus } from '../drivers/driver-trip.entity';
@@ -25,6 +26,7 @@ export class AdminController {
     private readonly partnerStoreService: PartnerStoreService,
     private readonly driversService:      DriversService,
     private readonly paymentsService:     PaymentsService,
+    private readonly demoDataService:     DemoDataService,
   ) {}
 
   // ── Overview ──────────────────────────────────────────────────────────────
@@ -32,6 +34,14 @@ export class AdminController {
   // GET /api/v1/admin/stats
   @Get('stats')
   getStats() { return this.adminService.getDashboardStats(); }
+
+  // POST /api/v1/admin/demo-data/seed
+  // Stages 3 permanent, fully-populated fake accounts (customer/driver/
+  // partner store, one per major ethnic group per the sample-data rule)
+  // for marketing screenshots and demos. Never runs automatically -
+  // triggered only from the admin dashboard's Settings page. Idempotent.
+  @Post('demo-data/seed')
+  seedDemoData() { return this.demoDataService.seedDemoAccounts(); }
 
   // GET /api/v1/admin/dashboard/live
   // Live ops pulse. Powers the anomalies panel, speed-of-service cards,

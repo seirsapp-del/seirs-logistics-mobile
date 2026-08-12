@@ -97,6 +97,8 @@ export default function SettingsPage() {
         onSaved={load}
       />
 
+      <DemoDataCard />
+
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
           <Settings size={15} className="text-[#0F2B4C]" />
@@ -355,6 +357,83 @@ function FeaturedPromotionCard({ raw, onSaved }: { raw: string; onSaved: () => P
             </button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* Demo/marketing accounts (founder 2026-08-11). One click stages 3
+   permanent fake accounts - customer, driver, partner store, one per
+   Nigeria's three major ethnic groups per the sample-data rule - fully
+   populated with delivery history, ratings, and a wallet balance. Use
+   these to sign in on the phone for marketing screenshots so a real
+   user's name or SEIRS ID never appears on a public surface. */
+function DemoDataCard() {
+  const [busy, setBusy]   = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    password: string;
+    accounts: Record<'customer' | 'driver' | 'business', { email: string; name: string; accountId: string }>;
+  } | null>(null);
+
+  const seed = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await adminApi.demoData.seed();
+      setResult(r);
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not seed demo accounts');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+        <Sparkles size={15} className="text-[#0F2B4C]" />
+        <span className="text-sm font-semibold text-[#0F2B4C]">Demo Marketing Accounts</span>
+      </div>
+      <div className="p-4 space-y-3">
+        <p className="text-xs text-gray-500 leading-relaxed">
+          Stages 3 permanent fake accounts (customer, driver, partner store) with realistic
+          delivery history, ratings, and a wallet balance: sign in on the phone with these for
+          marketing screenshots or demos. Real accounts should never appear on a public surface.
+          Safe to run again any time; it refreshes the data without duplicating anything.
+        </p>
+        <button
+          onClick={seed}
+          disabled={busy}
+          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-[#0F2B4C] text-white rounded-lg hover:bg-[#3A7BD5] disabled:opacity-50"
+        >
+          <Sparkles size={12} />
+          {busy ? 'Seeding…' : result ? 'Refresh Demo Accounts' : 'Seed Demo Accounts'}
+        </button>
+
+        {error && (
+          <div className="text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="grid grid-cols-3 divide-x divide-gray-100">
+              {(['customer', 'driver', 'business'] as const).map((k) => (
+                <div key={k} className="p-3">
+                  <div className="text-[10px] uppercase font-bold text-gray-400 tracking-wide mb-1">{k}</div>
+                  <div className="text-xs font-semibold text-[#0F2B4C]">{result.accounts[k].name}</div>
+                  <div className="text-[10px] font-mono text-gray-500 mt-0.5">{result.accounts[k].email}</div>
+                  <div className="text-[10px] font-mono text-gray-400">{result.accounts[k].accountId}</div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-gray-50 px-3 py-2 text-[11px] text-gray-600 border-t border-gray-100">
+              Shared password for all three: <code className="bg-white border border-gray-200 px-1.5 py-0.5 rounded font-mono">{result.password}</code>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

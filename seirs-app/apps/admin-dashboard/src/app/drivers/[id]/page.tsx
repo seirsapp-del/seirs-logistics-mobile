@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bike, Car, Truck, FileText, Star, MapPin, IdCard } from 'lucide-react';
+import { Bike, Car, Truck, FileText, Star, MapPin, IdCard, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
@@ -113,16 +113,16 @@ export default function DriverDetailPage() {
               )}
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {driver.user?.emailVerified && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">✓ Email verified</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><CheckCircle2 size={12} /> Email verified</span>
                 )}
                 {driver.user?.identityVerifiedAt && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    ✓ ID verified ({driver.user.identityDocType ?? 'doc'})
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <CheckCircle2 size={12} /> ID verified ({driver.user.identityDocType ?? 'doc'})
                   </span>
                 )}
                 {(fraudFlags?.length ?? 0) > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-                    ⚠ {fraudFlags.length} fraud flag{fraudFlags.length === 1 ? '' : 's'}
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                    <AlertTriangle size={12} /> {fraudFlags.length} fraud flag{fraudFlags.length === 1 ? '' : 's'}
                   </span>
                 )}
               </div>

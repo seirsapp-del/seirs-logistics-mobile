@@ -19,7 +19,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
-import { Save, RefreshCw, AlertCircle, History, TrendingUp, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Save, RefreshCw, AlertCircle, History, TrendingUp, Loader2, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import {
   NIGERIAN_STATES,
   GEOPOLITICAL_ZONES,
@@ -201,8 +201,8 @@ export default function PricingPage() {
 
       {/* Alerts */}
       {success && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-          ✓ {success}
+        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+          <CheckCircle2 size={16} /> {success}
         </div>
       )}
       {error && (
