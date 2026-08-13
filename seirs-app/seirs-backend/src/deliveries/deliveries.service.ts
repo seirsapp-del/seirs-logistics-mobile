@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Repository, MoreThan } from 'typeorm';
 import { secureCode } from '../common/utils/auth-codes';
-import { Delivery, DeliveryStatus } from './delivery.entity';
+import { Delivery, DeliveryStatus, PackageSize, UrgencyLevel } from './delivery.entity';
 import { DeliveryEvent, DeliveryEventType, EventActorRole } from './delivery-event.entity';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
@@ -177,11 +177,40 @@ export class DeliveriesService {
       dto.dropoffLat, dto.dropoffLng,
     );
 
+    /**
+     * The customer app describes a package by weight, category and
+     * chosen vehicle; the business app and developer API send the older
+     * size/urgency/fragile triple. Fill in whichever half is missing so
+     * both callers price identically (2026-08-13).
+     *
+     * Size comes from weight because that is what the sender actually
+     * knows. Thresholds match the app's own vehicle recommendation, so a
+     * customer is not quoted for a size the app never showed them.
+     */
+    const weight = Number(dto.weightKg ?? 0);
+    const packageSize: PackageSize =
+      dto.packageSize ??
+      (weight > 20 ? PackageSize.LARGE
+        : weight > 5 ? PackageSize.MEDIUM
+        : PackageSize.SMALL);
+
+    // Default STANDARD rather than inferring INSTANT from Send Now: the
+    // app quotes the customer a fare before this runs, and silently
+    // upgrading the urgency here would charge them more than the screen
+    // they agreed to. Urgency-based pricing needs the app to ask first.
+    const urgency: UrgencyLevel = dto.urgency ?? UrgencyLevel.STANDARD;
+
+    const isFragile =
+      dto.isFragile ?? /fragile|glass|electronic/i.test(dto.packageCategory ?? '');
+
+    const packageDescription =
+      (dto.packageDescription ?? dto.description ?? '').trim();
+
     const pricing = this.pricingService.calculate({
       distanceKm,
-      packageSize: dto.packageSize,
-      urgency:     dto.urgency,
-      isFragile:   dto.isFragile,
+      packageSize,
+      urgency,
+      isFragile,
     });
 
     // Collision-safe tracking code: at ~1M deliveries the birthday
@@ -251,6 +280,19 @@ export class DeliveriesService {
 
     const delivery = this.repo.create({
       ...dto,
+      // Resolved values win over whatever the caller did or did not send.
+      packageSize,
+      urgency,
+      isFragile,
+      packageDescription,
+      // The app calls it packageCategory; the column is categoryCode.
+      categoryCode:   dto.packageCategory ?? null,
+      weightKg:       dto.weightKg ?? null,
+      packagePhotos:  Array.isArray(dto.packagePhotos) && dto.packagePhotos.length > 0
+                        ? dto.packagePhotos
+                        : null,
+      paymentMethod:  dto.paymentMethod ?? null,
+      codAmountNgn:   dto.codAmountNgn ?? null,
       scheduledFor,
       trackingCode,
       customer,
@@ -259,7 +301,9 @@ export class DeliveriesService {
       driverEarnings: +(pricing.driverEarnings + nightFee).toFixed(2),
       nightFeeNgn:    nightFee > 0 ? nightFee : null,
       status:         DeliveryStatus.PENDING,
-    });
+      // create() resolves to its array overload when the literal is cast,
+      // so the cast goes on the result instead.
+    } as any) as unknown as Delivery;
 
     const saved = await this.repo.save(delivery);
 

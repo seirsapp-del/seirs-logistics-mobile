@@ -119,6 +119,27 @@ export class Delivery {
   @Column({ type: 'decimal', precision: 8, scale: 2, nullable: true })
   weightKg: number;
 
+  /**
+   * Photos of the package taken by the sender at booking (2026-08-13).
+   * The customer app has always REQUIRED at least one before it lets the
+   * booking continue, but there was nowhere to put them, so they were
+   * uploaded and then discarded. That destroyed the sender's own
+   * evidence of what they handed over, which is the first thing anyone
+   * asks for in a damage dispute.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  packagePhotos: string[] | null;
+
+  // How the sender chose to pay ('card', 'cash', 'wallet'). Recorded for
+  // reconciliation; the authoritative record is still the payment row.
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  paymentMethod: string | null;
+
+  // Cash to collect from the recipient on delivery, when the sender is
+  // using cash on delivery.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  codAmountNgn: number | null;
+
   // Sender-declared package value in NGN (optional). At or above the
   // Fee Catalogue's high_value_threshold_ngn the driver-side handoff
   // signature becomes mandatory on the DELIVERED transition (founder

@@ -155,6 +155,15 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "receivedByRelation" varchar(12) NULL,
           ADD COLUMN IF NOT EXISTS "receivedByName" varchar(80) NULL
       `);
+      // Booking inputs the customer app always sent but the API silently
+      // dropped (2026-08-13): the package photos it forces the sender to
+      // take, the payment method, and the cash-on-delivery amount.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "packagePhotos" jsonb NULL,
+          ADD COLUMN IF NOT EXISTS "paymentMethod" varchar(16) NULL,
+          ADD COLUMN IF NOT EXISTS "codAmountNgn" numeric(12,2) NULL
+      `);
       // Night ops (2026-08-11): real scheduled dispatch + night fee.
       await this.ds.query(`
         ALTER TABLE "deliveries"
