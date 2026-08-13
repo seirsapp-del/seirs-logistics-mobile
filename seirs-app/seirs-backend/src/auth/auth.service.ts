@@ -416,9 +416,12 @@ export class AuthService {
     if (!user) return { message: 'If that email exists, a reset link has been sent.' };
 
     const token  = uuidv4();
-    // 30 minutes (founder 2026-08-11: an hour of validity is more
-    // runway than a stolen inbox deserves). Token is single-use.
-    const expiry = new Date(Date.now() + 30 * 60 * 1000);
+    // 15 minutes (founder 2026-08-13: "anything password related should
+    // be short time for security reasons", tightened from 30). A reset
+    // link is a bearer key to the account: the window only needs to
+    // cover reading one email, and every extra minute is runway for
+    // whoever else is sitting in that inbox. Token is single-use.
+    const expiry = new Date(Date.now() + 15 * 60 * 1000);
 
     await this.usersRepo.update(user.id, {
       passwordResetToken:  token,

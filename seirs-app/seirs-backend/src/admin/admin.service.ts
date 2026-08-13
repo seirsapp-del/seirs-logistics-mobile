@@ -1061,7 +1061,16 @@ export class AdminService {
     // If a roleId was passed, also email the new admin a password reset
     // link so they can set their own password on first sign-in.
     if (data.roleId || !data.password) {
-      this.usersRepo.update(user.id, { passwordResetToken: crypto.randomBytes(32).toString('hex'), passwordResetExpiry: new Date(Date.now() + 24 * 3600_000) }).catch(() => {});
+      // 1 hour, not 24 (founder 2026-08-13). A staff invite is a key to
+      // an account with dashboard access, and it sits in an inbox until
+      // used. A day of validity is a day for it to be forwarded, synced
+      // to a shared machine, or found. An hour covers "I am adding you
+      // now, check your email"; anything longer is convenience bought
+      // with the most privileged accounts we issue.
+      this.usersRepo.update(user.id, {
+        passwordResetToken:  crypto.randomBytes(32).toString('hex'),
+        passwordResetExpiry: new Date(Date.now() + 3600_000),
+      }).catch(() => {});
     }
 
     const { password: _pw, ...safe } = user as any;

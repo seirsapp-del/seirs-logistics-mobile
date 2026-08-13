@@ -5,6 +5,8 @@ import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
+import { isSuperAdminFromUser } from '@/lib/rbac';
+import { getUser } from '@/lib/auth';
 import { AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -27,6 +29,7 @@ export default function UserDetailPage() {
   const [saving,  setSaving]  = useState(false);
   const [hardDeleteOpen, setHardDeleteOpen] = useState(false);
   const confirm               = useConfirm();
+  const superAdmin            = isSuperAdminFromUser(getUser());
 
   useEffect(() => {
     adminApi.user(id).then(setData).catch(() => {}).finally(() => setLoading(false));
@@ -212,7 +215,13 @@ export default function UserDetailPage() {
                 {user.role === 'driver' ? 'Change to Customer' : 'Change to Driver'}
               </button>
             )}
-            {user.role === 'customer' && (
+            {/* Super admins only. The API has always refused admin
+                promotion from anyone else, so for other staff this was a
+                button offering full platform access that failed on
+                click. Showing an action someone cannot take is both bad
+                UX and an invitation to go looking for a way around it
+                (founder 2026-08-13). */}
+            {user.role === 'customer' && superAdmin && (
               <button
                 onClick={promoteToAdmin}
                 disabled={saving}
