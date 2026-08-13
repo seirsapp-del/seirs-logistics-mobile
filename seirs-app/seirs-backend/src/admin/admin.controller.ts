@@ -13,6 +13,7 @@ import { DuplicateStatus } from './duplicate-account.entity';
 import { ExternalPartnerType } from './external-partner.entity';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
+import { SuperAdminGuard } from '../common/guards/super-admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { FraudFlagStatus } from '../fraud/fraud-flag.entity';
 import { ContentType, ContentStatus } from './cms-item.entity';
@@ -40,6 +41,10 @@ export class AdminController {
   // partner store, one per major ethnic group per the sample-data rule)
   // for marketing screenshots and demos. Never runs automatically -
   // triggered only from the admin dashboard's Settings page. Idempotent.
+  // Super admin only: this creates an APPROVED driver and an approved
+  // partner store, and returns a working password for all three demo
+  // logins. That is a set of live credentials, not a fixture.
+  @UseGuards(SuperAdminGuard)
   @Post('demo-data/seed')
   seedDemoData() { return this.demoDataService.seedDemoAccounts(); }
 
@@ -98,6 +103,10 @@ export class AdminController {
   // POST /api/v1/admin/admins/:id/offboard
   // Spec V8. graceful offboarding. Rejects with the blocker list
   // unless { force: true } is passed. Audit-logged.
+  // Super admin only: removing a colleague's access is the mirror image
+  // of granting it, and one disgruntled editor should not be able to
+  // lock out the finance team.
+  @UseGuards(SuperAdminGuard)
   @Post('admins/:id/offboard')
   offboard(
     @Param('id') id: string,
@@ -108,7 +117,24 @@ export class AdminController {
     return this.adminService.offboardAdmin(id, admin, body ?? {}, req.ip);
   }
 
-  // POST /api/v1/admin/admins
+  /**
+   * POST /api/v1/admin/admins
+   *
+   * SUPER ADMIN ONLY (2026-08-13). This endpoint takes an adminRole in
+   * the body and creates a staff account with it. Behind plain
+   * AdminGuard, any staff member at all could call it with
+   * adminRole: 'super_admin' and mint themselves an account that
+   * outranks every other control in the dashboard.
+   *
+   * That is privilege escalation, and it silently defeats the approval
+   * gates on content, fees and pricing: rather than asking for approval,
+   * create a second account that never needs it. Found while adding
+   * those gates and closed the same day.
+   *
+   * changeUserRole is already gated inside the service for admin-level
+   * changes; creating one from scratch was the way around it.
+   */
+  @UseGuards(SuperAdminGuard)
   @Post('admins')
   createAdmin(@Body() body: {
     name?: string;
@@ -263,6 +289,11 @@ export class AdminController {
   getPricing() { return this.adminService.getPricingConfig(); }
 
   // PATCH /api/v1/admin/pricing
+  // Super admin only (2026-08-13). Base fare, per-km rate, platform cut
+  // and surge all reprice live deliveries the instant they change, and a
+  // wrong platform cut misprices every trip until someone spots it in
+  // the numbers. Reading pricing stays open so finance staff can work.
+  @UseGuards(SuperAdminGuard)
   @Patch('pricing')
   updatePricing(@Body() body: any) {
     return this.adminService.updatePricingConfig(body);

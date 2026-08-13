@@ -4,6 +4,7 @@ import {
 import { FeesService } from './fees.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
+import { SuperAdminGuard } from '../common/guards/super-admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 
@@ -52,7 +53,10 @@ export class FeesController {
   }
 
   // PATCH /api/v1/admin/fees/:key  { value?, active?, currentNote? }
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  // Super admin only (2026-08-13). Every fee here is priced into live
+  // deliveries the moment it changes, so this is not a review-later
+  // decision. Reading stays open to admin staff; rewriting does not.
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Patch('admin/fees/:key')
   update(
     @Param('key') key: string,
