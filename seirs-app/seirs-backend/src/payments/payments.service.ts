@@ -561,18 +561,40 @@ export class PaymentsService {
 
   // ── Refund escrow - called when delivery fails or cancels ────────────────
 
-  async refundEscrow(deliveryId: string, customerUserId: string): Promise<void> {
+  /**
+   * @param withholdNgn Amount to keep back rather than return, used by
+   *   customer cancellation so the agreed cancellation fee is actually
+   *   collected instead of merely displayed. Clamped to the payment, so
+   *   a fee larger than what was paid can never invert into a charge.
+   */
+  async refundEscrow(
+    deliveryId: string,
+    customerUserId: string,
+    withholdNgn = 0,
+  ): Promise<void> {
     const payment = await this.paymentsRepo.findOne({
       where: { delivery: { id: deliveryId }, status: PaymentStatus.SUCCESS, purpose: PaymentPurpose.DELIVERY },
     });
 
     if (!payment || payment.escrowStatus !== EscrowStatus.HELD) return;
 
-    if (payment.method === PaymentMethod.CARD && payment.flutterwaveTransactionId) {
+    const withholdKobo = Math.min(
+      Math.max(0, toKobo(Math.max(0, withholdNgn))),
+      payment.amountKobo,
+    );
+    const refundKobo = payment.amountKobo - withholdKobo;
+    if (withholdKobo > 0) {
+      this.logger.log(
+        `Withholding ₦${toNaira(withholdKobo)} of ₦${toNaira(payment.amountKobo)} ` +
+        `on delivery ${deliveryId} (cancellation fee).`,
+      );
+    }
+
+    if (refundKobo > 0 && payment.method === PaymentMethod.CARD && payment.flutterwaveTransactionId) {
       try {
         await this.flutterwaveService.refundTransaction(
           payment.flutterwaveTransactionId,
-          toNaira(payment.amountKobo),
+          toNaira(refundKobo),
         );
         this.logger.log(`Card refund issued via Flutterwave for delivery ${deliveryId}`);
       } catch (e) {
@@ -580,7 +602,7 @@ export class PaymentsService {
       }
     }
 
-    if (payment.method === PaymentMethod.WALLET) {
+    if (refundKobo > 0 && payment.method === PaymentMethod.WALLET) {
       await this.dataSource.transaction(async (manager) => {
         const wallet = await manager.findOne(Wallet, {
           where: { user: { id: customerUserId } },
@@ -588,7 +610,7 @@ export class PaymentsService {
         });
         if (wallet) {
           await manager.update(Wallet, wallet.id, {
-            balanceKobo: wallet.balanceKobo + payment.amountKobo,
+            balanceKobo: wallet.balanceKobo + refundKobo,
           });
         }
       });

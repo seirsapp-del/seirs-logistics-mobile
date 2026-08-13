@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { MOCK_TRIPS, MOCK_DRIVERS, dwellFee, cancellationFee } from '@/constants/mockData';
+import { MOCK_TRIPS, MOCK_DRIVERS, dwellFee } from '@/constants/mockData';
 import { getActiveRateCard } from '@/hooks/use-rate-card';
 import { SOCKET_URL } from '@/constants/config';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
@@ -189,15 +189,63 @@ export default function TripProgressScreen() {
     router.push({ pathname: '/(customer)/rate/[driverId]', params: { driverId: driver.id } });
   };
 
-  // Cancellation tier: escalates with trip stage so the customer pays
-  // more the further along the booking is. Values come from the live
-  // rate card so admin can tune without a deploy. currentStep:
-  //   0 = assigned, pre-pickup → postAssign fee
-  //   1 = picked_up, en-route to dropoff → midRoute
-  //   2+= in_transit / delivered → no cancel (handled by hiding the link)
-  const cancelStage: 'postAssign' | 'midRoute' = currentStep <= 0 ? 'postAssign' : 'midRoute';
-  const cancelFee   = cancellationFee(rateCard, cancelStage);
-  const canCancel   = currentStep < 2;
+  /**
+   * Cancellation (audit 2026-08-14).
+   *
+   * This used to price the fee from the bundled client rate card and, on
+   * confirm, navigate to the home tab. No request was ever sent: the
+   * delivery stayed live, the driver kept riding to a pickup the customer
+   * believed was called off, and the fee they had just agreed to was
+   * never charged.
+   *
+   * The server is the only thing that knows what stage the delivery is
+   * really at and what the active rate card says, so both the quote and
+   * the cancel come from it. The link is hidden until the quote arrives
+   * rather than guessing a price we might not honour.
+   */
+  const [cancelQuote, setCancelQuote] = useState<{
+    cancellable: boolean; feeNgn: number; reason: string;
+  } | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  useEffect(() => {
+    if (!params.id || !hasParams) return;
+    let alive = true;
+    deliveriesApi.cancelQuote(params.id)
+      .then(q => { if (alive) setCancelQuote(q); })
+      .catch(() => { if (alive) setCancelQuote(null); });
+    return () => { alive = false; };
+  }, [params.id, hasParams, currentStep]);
+
+  const cancelFee = cancelQuote?.feeNgn ?? 0;
+  const canCancel = !!cancelQuote?.cancellable && !cancelling;
+
+  const doCancel = async () => {
+    setCancelling(true);
+    try {
+      const res = await deliveriesApi.cancel(params.id);
+      Alert.alert(
+        t('tripProgress2.cancelledTitle', { defaultValue: 'Trip cancelled' }),
+        res.feeNgn > 0
+          ? t('tripProgress2.cancelledWithFee', {
+              defaultValue: 'Your trip is cancelled. A ₦{{fee}} cancellation fee was kept from your refund.',
+              fee: res.feeNgn.toLocaleString(),
+            })
+          : t('tripProgress2.cancelledFree', {
+              defaultValue: 'Your trip is cancelled and you have been refunded in full.',
+            }),
+        [{ text: t('common.ok'), onPress: () => router.replace('/(customer)/(tabs)' as any) }],
+      );
+    } catch (e: any) {
+      Alert.alert(
+        t('tripProgress2.cancelFailedTitle', { defaultValue: 'Could not cancel' }),
+        e?.message ?? t('common.tryAgain', { defaultValue: 'Please try again.' }),
+      );
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const handleCancel = () => {
     Alert.alert(
       t('tripProgress2.cancelTitle'),
@@ -206,10 +254,7 @@ export default function TripProgressScreen() {
         : t('tripProgress2.cancelConfirmFree'),
       [
         { text: t('common.no'), style: 'cancel' },
-        {
-          text: t('common.yes'), style: 'destructive',
-          onPress: () => router.replace('/(customer)/(tabs)' as any),
-        },
+        { text: t('common.yes'), style: 'destructive', onPress: doCancel },
       ],
     );
   };
@@ -437,8 +482,10 @@ export default function TripProgressScreen() {
           </Pressable>
         )}
 
-        {/* Cancel link: pre-/mid-route only. Once in_transit (step 2+)
-            the trip is already moving so we don't expose a cancel path. */}
+        {/* Cancel link: shown only when the server says this delivery is
+            still cancellable and at the price it quoted. Once the driver
+            holds the package it stops being a cancellation and becomes a
+            return, which support handles. */}
         {canCancel && (
           <Pressable onPress={handleCancel} style={styles.cancelLink}>
             <Text style={[styles.cancelLinkText, { color: theme.error ?? '#DC2626' }]}>

@@ -165,9 +165,14 @@ export class DeliveriesController {
   }
 
   // PATCH /api/v1/deliveries/:id/status
+  //
+  // Driver-only progress endpoint. The guard below authenticates but does
+  // not authorise, so the actor is passed down and checked against the
+  // delivery's assigned driver in the service: this route moves escrow.
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
+    @CurrentUser() user: User,
     @Body() body: {
       status: DeliveryStatus;
       proofPhotoUrl?: string;
@@ -180,7 +185,23 @@ export class DeliveriesController {
     return this.deliveriesService.updateStatus(id, body.status, body.proofPhotoUrl, {
       relation: body.receivedByRelation,
       name:     body.receivedByName,
-    });
+    }, user.id);
+  }
+
+  // POST /api/v1/deliveries/:id/cancel - customer cancels their own booking
+  @Post(':id/cancel')
+  cancel(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: { reason?: string },
+  ) {
+    return this.deliveriesService.cancelByCustomer(id, user.id, body?.reason);
+  }
+
+  // GET /api/v1/deliveries/:id/cancel-quote - what cancelling costs right now
+  @Get(':id/cancel-quote')
+  cancelQuote(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.getCancellationQuote(id, user.id);
   }
 
   // GET /api/v1/deliveries/:id - single delivery with driver + breakdown

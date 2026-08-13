@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Repository, MoreThan } from 'typeorm';
@@ -1240,9 +1240,49 @@ export class DeliveriesService {
     status: DeliveryStatus,
     proofPhotoUrl?: string,
     receivedBy?: { relation?: string; name?: string },
+    actorUserId?: string,
   ) {
-    const delivery = await this.repo.findOne({ where: { id } });
+    const delivery = await this.repo.findOne({
+      where: { id },
+      relations: ['driver', 'driver.user'],
+    });
     if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    /**
+     * Authorisation (audit 2026-08-14).
+     *
+     * This route carries a JWT guard, which proves the caller is *a* user
+     * and nothing more. It was accepting a delivery id from the body of
+     * any authenticated account and moving that delivery to any status,
+     * so any signed-up customer could mark a stranger's package DELIVERED
+     * (releasing escrow to the driver, card refund window closed) or
+     * CANCELLED (refunding escrow and killing an in-flight job). The
+     * delivery id is a UUID, but obscurity is not an access control.
+     *
+     * `actorUserId` is supplied by the HTTP layer only. Internal service
+     * callers pass nothing and stay trusted, which is why this is opt-in
+     * rather than a required argument.
+     */
+    if (actorUserId) {
+      const driverUserId = delivery.driver?.user?.id;
+      if (!driverUserId || driverUserId !== actorUserId) {
+        throw new ForbiddenException(
+          'Only the driver assigned to this delivery can update its status.',
+        );
+      }
+      // The driver's app walks assigned -> picked_up -> in_transit ->
+      // delivered, and reports failures. Cancellation is the customer's
+      // call and goes through cancelByCustomer, which prices it.
+      const driverMaySet: DeliveryStatus[] = [
+        DeliveryStatus.PICKED_UP,
+        DeliveryStatus.IN_TRANSIT,
+        DeliveryStatus.DELIVERED,
+        DeliveryStatus.FAILED,
+      ];
+      if (!driverMaySet.includes(status)) {
+        throw new ForbiddenException(`A driver cannot move a delivery to ${status}.`);
+      }
+    }
 
     const fromStatus = delivery.status;
 
@@ -1489,13 +1529,149 @@ export class DeliveriesService {
     ) {
       const updated = await this.repo.findOne({ where: { id }, relations: ['customer'] });
       if (updated?.customer?.id) {
+        // A cancellation fee agreed by the customer is withheld from the
+        // refund. cancelByCustomer writes it before flipping the status,
+        // so it is on the row by the time we read it here. Failures leave
+        // it null and the customer is refunded in full, which is the side
+        // to err on.
+        const withholdNgn =
+          status === DeliveryStatus.CANCELLED
+            ? Number(updated.cancellationFeeNgn ?? 0) || 0
+            : 0;
         this.paymentsService
-          .refundEscrow(id, updated.customer.id)
+          .refundEscrow(id, updated.customer.id, withholdNgn)
           .catch((err) => this.logger.error(`Escrow refund failed: ${err.message}`));
       }
     }
 
     return this.repo.findOne({ where: { id } });
+  }
+
+  /**
+   * Cancellation pricing, read off the active rate card so admin retunes
+   * it without a deploy. Falls back to the seeded defaults if the card is
+   * missing or malformed, in the same shape as getHighValueThreshold.
+   */
+  private async getCancellationRules(): Promise<{
+    preAssignNgn: number; postAssignNgn: number; driverShareNgn: number;
+  }> {
+    const fallback = { preAssignNgn: 50, postAssignNgn: 300, driverShareNgn: 200 };
+    try {
+      const rows = await this.repo.manager.query(
+        `SELECT "feeRules" FROM "rate_cards" WHERE "isActive" = true LIMIT 1`,
+      );
+      const r = rows?.[0]?.feeRules ?? {};
+      const num = (v: any, d: number) => {
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 ? n : d;
+      };
+      return {
+        preAssignNgn:   num(r.cancelPreAssignCustomer,  fallback.preAssignNgn),
+        postAssignNgn:  num(r.cancelPostAssignCustomer, fallback.postAssignNgn),
+        driverShareNgn: num(r.cancelPostAssignDriver,   fallback.driverShareNgn),
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  /**
+   * What cancelling this delivery costs, right now.
+   *
+   * Stages, and why they are drawn here:
+   *   PENDING  - nothing has been dispatched. Token fee only, which
+   *              exists to deter book-and-cancel price probing.
+   *   ASSIGNED - a driver is already riding to the pickup on their own
+   *              fuel. They are compensated out of the fee.
+   *   PICKED_UP and beyond - not a cancellation. Somebody else is
+   *              holding the customer's property; getting it back is a
+   *              return-to-sender, priced separately and handled by
+   *              support. The customer app used to quote an invented
+   *              ₦500 "mid-route" fee here, which existed in no rate
+   *              card and was never charged.
+   */
+  async getCancellationQuote(deliveryId: string, userId: string) {
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.customer?.id !== userId) {
+      throw new ForbiddenException('This delivery belongs to another account.');
+    }
+
+    const rules = await this.getCancellationRules();
+    const status = delivery.status;
+
+    if (status === DeliveryStatus.PENDING) {
+      return {
+        cancellable: true,
+        stage:       'pre_assign',
+        feeNgn:      rules.preAssignNgn,
+        reason:      'No driver has been dispatched yet.',
+      };
+    }
+    if (status === DeliveryStatus.ASSIGNED) {
+      return {
+        cancellable: true,
+        stage:       'post_assign',
+        feeNgn:      rules.postAssignNgn,
+        reason:      'A driver is already on the way to your pickup.',
+      };
+    }
+    return {
+      cancellable: false,
+      stage:       'too_late',
+      feeNgn:      0,
+      reason:
+        status === DeliveryStatus.PICKED_UP || status === DeliveryStatus.IN_TRANSIT
+          ? 'The driver already has your package. Contact support to arrange a return.'
+          : `This delivery is already ${status}.`,
+    };
+  }
+
+  /**
+   * The customer cancels their own booking.
+   *
+   * Before this existed the customer app showed a cancellation dialog
+   * quoting a live rate-card fee, and on confirm it navigated to the home
+   * tab. Nothing was sent anywhere: the delivery stayed active, the
+   * driver kept riding to a pickup the customer believed was called off,
+   * and the fee the customer had just agreed to was never charged.
+   *
+   * Routing through updateStatus rather than a direct repo write is
+   * deliberate. That is where escrow refunds, the WS broadcast, the
+   * chat system message, the event log and partner webhooks all hang off
+   * the transition.
+   */
+  async cancelByCustomer(deliveryId: string, userId: string, reason?: string) {
+    const quote = await this.getCancellationQuote(deliveryId, userId);
+    if (!quote.cancellable) {
+      throw new BadRequestException(quote.reason);
+    }
+
+    const rules = await this.getCancellationRules();
+    const driverShare = quote.stage === 'post_assign' ? rules.driverShareNgn : 0;
+
+    await this.repo.update(deliveryId, {
+      cancellationFeeNgn:    quote.feeNgn,
+      cancelledAt:           new Date(),
+      cancellationReason:    (reason ?? '').slice(0, 200) || null,
+    } as any);
+
+    this.logger.warn(
+      `CUSTOMER_CANCEL deliveryId=${deliveryId} user=${userId} stage=${quote.stage} ` +
+      `feeNgn=${quote.feeNgn} driverShareNgn=${driverShare} reason="${(reason ?? '').slice(0, 200)}"`,
+    );
+
+    await this.updateStatus(deliveryId, DeliveryStatus.CANCELLED);
+
+    return {
+      ok:             true as const,
+      status:         'cancelled',
+      feeNgn:         quote.feeNgn,
+      driverShareNgn: driverShare,
+    };
   }
 
   async findById(id: string) {

@@ -13,8 +13,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { PACKAGE_VEHICLES, RIDE_VEHICLES, MOCK_DRIVERS, calcRideFare, cancellationFee, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
-import { getActiveRateCard } from '@/hooks/use-rate-card';
+import { PACKAGE_VEHICLES, RIDE_VEHICLES, MOCK_DRIVERS, calcRideFare, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { deliveriesApi, paymentsApi, loyaltyApi, type SavedCard } from '@/services/api';
 
 export default function ConfirmRideScreen() {
@@ -190,22 +189,17 @@ export default function ConfirmRideScreen() {
     }
   };
 
-  // Cancellation fee uses the live rate card, not the bundled default,
-  // so admin price changes propagate without a deploy.
-  const cancelFee = cancellationFee(getActiveRateCard(), 'preAssign');
-  const handleCancel = () => {
-    const msg = cancelFee > 0
-      ? t('confirmRide.cancelConfirmWithFee', { fee: cancelFee.toLocaleString() })
-      : t('confirmRide.cancelConfirmFree');
-    Alert.alert(
-      t('confirmRide.cancelTitle'),
-      msg,
-      [
-        { text: t('common.no'), style: 'cancel' },
-        { text: t('common.yes'), style: 'destructive', onPress: () => router.back() },
-      ],
-    );
-  };
+  /**
+   * Backing out of this screen (audit 2026-08-14).
+   *
+   * This warned about a ₦50 cancellation fee, but nothing has been
+   * booked yet: the delivery is only created in handleConfirm below.
+   * There was no delivery to cancel and no fee was ever charged, so the
+   * warning was threatening a customer with an invented charge for
+   * changing their mind at the quote screen. Backing out here is free
+   * because there is nothing to back out of.
+   */
+  const handleCancel = () => router.back();
 
   // ── Map background ──────────────────────────────────────────────────────
   const pickupLat  = Number(params.pickupLat  ?? '0') || null;
@@ -393,11 +387,11 @@ export default function ConfirmRideScreen() {
             />
           </View>
 
-          {/* Cancel link: pre-assign cancellation, free at this stage by default. */}
+          {/* Back out of the quote. Nothing is booked until Confirm, so
+              this carries no fee and must not imply one. */}
           <Pressable onPress={handleCancel} style={styles.cancelLink}>
             <Text style={[styles.cancelLinkText, { color: theme.error ?? '#DC2626' }]}>
               {t('confirmRide.cancelLink')}
-              {cancelFee > 0 ? ` (₦${cancelFee.toLocaleString()})` : ''}
             </Text>
           </Pressable>
         </BottomSheetScrollView>

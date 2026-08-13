@@ -1,5 +1,6 @@
 import {
   Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger,
+  Inject, forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
@@ -16,6 +17,7 @@ import { MailService } from '../mail/mail.service';
 import { PricingService } from '../pricing/pricing.service';
 import { RoutingService } from '../routing/routing.service';
 import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery.entity';
+import { DeliveriesService } from '../deliveries/deliveries.service';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
 import { secureCode } from '../common/utils/auth-codes';
 
@@ -87,6 +89,8 @@ export class BusinessService {
     private pricing: PricingService,
     private routing: RoutingService,
     private dataSource: DataSource,
+    @Inject(forwardRef(() => DeliveriesService))
+    private deliveriesService: DeliveriesService,
   ) {}
 
   // ── Spec V8 §4.2 - Recurring Delivery Templates ───────────────────────────
@@ -1053,8 +1057,15 @@ export class BusinessService {
       );
     }
 
-    await this.deliveriesRepo.update(delivery.id, { status: DeliveryStatus.CANCELLED });
     this.logger.warn(`BUSINESS_CANCEL deliveryId=${deliveryId} byUser=${userId} reason="${(reason ?? '').slice(0, 200)}"`);
+
+    // Route through DeliveriesService rather than writing the column
+    // directly (audit 2026-08-14). The direct write skipped every side
+    // effect that hangs off the transition: the escrow refund above all,
+    // so a business that cancelled a paid booking got no money back, but
+    // also the WS broadcast, the chat system message, the delivery event
+    // log and the partner webhook fan-out.
+    await this.deliveriesService.updateStatus(delivery.id, DeliveryStatus.CANCELLED);
     return { ok: true, status: 'cancelled' };
   }
 

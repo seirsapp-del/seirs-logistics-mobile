@@ -288,6 +288,22 @@ export const deliveriesApi = {
     request<any>('POST', `/deliveries/${id}/rate`, { rating, comment }),
   emailReceipt: (id: string) =>
     request<{ sent: boolean }>('POST', `/deliveries/${id}/email-receipt`),
+  // What cancelling costs right now. The fee is priced server-side off
+  // the active rate card: never quote a cancellation fee from the
+  // bundled client rate card, which can be months out of date.
+  cancelQuote: (id: string) =>
+    request<{
+      cancellable: boolean;
+      stage:       'pre_assign' | 'post_assign' | 'too_late';
+      feeNgn:      number;
+      reason:      string;
+    }>('GET', `/deliveries/${id}/cancel-quote`),
+  // Customer cancels their own booking. Withholds the quoted fee from
+  // the escrow refund and releases the driver.
+  cancel: (id: string, reason?: string) =>
+    request<{ ok: true; status: string; feeNgn: number; driverShareNgn: number }>(
+      'POST', `/deliveries/${id}/cancel`, { reason },
+    ),
   // Driver-initiated claim of an unassigned pending job.
   claim: (id: string) =>
     request<any>('POST', `/deliveries/${id}/claim`),

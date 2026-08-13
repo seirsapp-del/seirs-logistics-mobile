@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { BusinessController } from './business.controller';
@@ -15,6 +15,7 @@ import { PricingModule } from '../pricing/pricing.module';
 import { RoutingModule } from '../routing/routing.module';
 import { Delivery } from '../deliveries/delivery.entity';
 import { DeliveryStop } from '../deliveries/delivery-stop.entity';
+import { DeliveriesModule } from '../deliveries/deliveries.module';
 
 @Module({
   imports: [
@@ -34,6 +35,10 @@ import { DeliveryStop } from '../deliveries/delivery-stop.entity';
     MailModule,
     PricingModule,
     RoutingModule,
+    // Business cancellation reuses the delivery transition so escrow
+    // refunds and the rest of the side effects fire. forwardRef because
+    // PricingModule already closes a cycle back to this module.
+    forwardRef(() => DeliveriesModule),
   ],
   controllers: [BusinessController],
   providers:   [BusinessService],

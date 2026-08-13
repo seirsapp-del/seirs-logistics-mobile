@@ -173,6 +173,14 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "deliveries"
           ADD COLUMN IF NOT EXISTS "nightFeeNgn" numeric(12,2) NULL
       `);
+      // Customer cancellation (2026-08-14): the fee that was quoted in
+      // the app but never priced, stored, or charged.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "cancellationFeeNgn" numeric(12,2) NULL,
+          ADD COLUMN IF NOT EXISTS "cancelledAt" timestamptz NULL,
+          ADD COLUMN IF NOT EXISTS "cancellationReason" varchar(200) NULL
+      `);
       // Partial unique index: every non-null stop code must be unique
       // platform-wide (recipient N can only ever claim stop N). Legacy
       // null rows are exempt.

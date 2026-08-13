@@ -214,6 +214,19 @@ export class Delivery {
   @Column({ type: 'timestamptz', nullable: true })
   redirectFeePaidAt: Date | null;
 
+  // Cancellation record (audit 2026-08-14). The apps quoted a fee off the
+  // rate card and then only navigated away: nothing was stored and
+  // nothing was charged. The fee is now priced server-side, kept here for
+  // the receipt and for disputes, and withheld from the escrow refund.
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  cancellationFeeNgn: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  cancelledAt: Date | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  cancellationReason: string | null;
+
   // Requested pickup time for scheduled bookings; NULL = Send Now.
   // Before 2026-08-11 the client collected a slot but nothing stored
   // it: scheduled bookings dispatched immediately. Now the dispatch
