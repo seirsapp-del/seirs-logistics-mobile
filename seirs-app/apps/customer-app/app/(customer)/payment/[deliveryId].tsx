@@ -62,7 +62,9 @@ export default function PaymentScreen() {
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
 
-  const [selectedId, setSelectedId] = useState<PickerId>('card');
+  // One route to checkout: Flutterwave, card tab open by default. Its
+  // own page carries bank transfer and USSD, so we no longer ask first.
+  const selectedId: PickerId = 'card';
   const [loading,    setLoading]    = useState(false);
   const [verifying,  setVerifying]  = useState(false);
   const [error,      setError]      = useState('');
@@ -138,7 +140,7 @@ export default function PaymentScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={[styles.backText, { color: theme.primary }]}>← Back</Text>
           </Pressable>
-          <Text style={[styles.title, { color: theme.text }]}>Choose Payment</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Payment</Text>
         </View>
 
         {/* Amount card */}
@@ -148,75 +150,21 @@ export default function PaymentScreen() {
           <Text style={styles.amountNote}>Funds held in escrow: released after delivery</Text>
         </View>
 
-        {/* Payment methods */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Payment Method</Text>
-          {METHODS.map((m) => {
-            const on = selectedId === m.id;
-            return (
-              <Pressable
-                key={m.id}
-                style={[
-                  styles.methodCard,
-                  {
-                    backgroundColor: on ? theme.primary + '12' : theme.surface,
-                    borderColor:     on ? theme.primary : theme.border,
-                  },
-                  Shadows.sm,
-                ]}
-                onPress={() => setSelectedId(m.id)}
-              >
-                <m.Icon size={24} color={on ? theme.primary : theme.text} strokeWidth={1.5} style={styles.methodIcon} />
-                <View style={styles.methodInfo}>
-                  <Text style={[styles.methodLabel, { color: theme.text }]}>{m.label}</Text>
-                  <Text style={[styles.methodDesc,  { color: theme.textSecond }]}>{m.desc}</Text>
-                </View>
-                <View style={[
-                  styles.radio,
-                  {
-                    borderColor:     on ? theme.primary : theme.border,
-                    backgroundColor: on ? theme.primary : 'transparent',
-                  },
-                ]} />
-              </Pressable>
-            );
-          })}
+        {/* No method picker (founder 2026-08-13). We route everything to
+            Flutterwave, and Flutterwave's own checkout already lists
+            card, bank transfer and USSD. Asking the customer to choose
+            here just made them choose twice, and one of the options was
+            broken. If we ever add a second processor, the choice belongs
+            here again. */}
+        <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
+          <Text style={[styles.noticeText, { color: theme.text }]}>
+            You will be taken to Flutterwave&apos;s secure checkout, where you can pay by card, bank
+            transfer or USSD. Come back to the app afterwards and we confirm it automatically.
+          </Text>
+          <Text style={[styles.noticeText, { color: theme.textSecond, marginTop: 6, fontSize: 12 }]}>
+            Pay by card and it is saved for one tap next time. Manage saved cards in Settings, Payment Methods.
+          </Text>
         </View>
-
-        {selectedId === 'card' && (
-          <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
-            <Text style={[styles.noticeText, { color: theme.text }]}>
-              You&apos;ll be redirected to Flutterwave&apos;s secure card form. Return to the app after payment to confirm.
-            </Text>
-            <Text style={[styles.noticeText, { color: theme.textSecond, marginTop: 6, fontSize: 12 }]}>
-              Your card will be saved securely for one-tap reuse next time. Manage saved cards in Settings → Payment Methods.
-            </Text>
-          </View>
-        )}
-
-        {selectedId === 'bank_transfer' && (
-          <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
-            <Text style={[styles.noticeText, { color: theme.text }]}>
-              Flutterwave will generate a one-time virtual account number for this transfer. Send the exact amount from your bank app: the order confirms automatically when funds land.
-            </Text>
-          </View>
-        )}
-
-        {selectedId === 'ussd' && (
-          <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
-            <Text style={[styles.noticeText, { color: theme.text }]}>
-              Pick your bank on the next screen and dial the code from any phone: no smartphone or internet required for the transfer itself.
-            </Text>
-          </View>
-        )}
-
-        {selectedId === 'wallet' && (
-          <View style={[styles.noticeBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
-            <Text style={[styles.noticeText, { color: theme.text }]}>
-              Charged instantly to your SEIRS wallet: no Flutterwave roundtrip.
-            </Text>
-          </View>
-        )}
 
         {error ? <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text> : null}
 
@@ -242,7 +190,7 @@ export default function PaymentScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.payBtnText}>
-                Pay ₦{Number(price ?? 0).toLocaleString()}
+                Continue to payment · ₦{Number(price ?? 0).toLocaleString()}
               </Text>
             )}
           </Pressable>
