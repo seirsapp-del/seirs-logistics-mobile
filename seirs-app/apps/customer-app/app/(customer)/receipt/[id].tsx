@@ -58,27 +58,44 @@ export default function ReceiptScreen() {
 
   // Real delivery payloads use camelCase fields directly from the API.
   const totalAmount = Number(trip.totalAmount ?? trip.price ?? 0);
+
+  /**
+   * Receipt lines are REAL or ABSENT (audit 2026-08-13).
+   *
+   * Each row previously fell back to a made-up share of the total: 34%
+   * base, 45% distance, 12% time, 9% service. Whenever the API sent no
+   * breakdown, which is the normal case, the customer received a receipt
+   * itemising charges that were never calculated. A receipt is a
+   * financial document people keep, forward, and submit for expenses,
+   * so inventing its line items is the worst place in the app to do it.
+   *
+   * Rows now appear only when the backend actually sends them. With no
+   * breakdown the receipt states the single total it genuinely knows.
+   */
   const breakdown = (trip.breakdown ?? {}) as { base?: number; distance?: number; time?: number; service?: number };
-  const fareRows = [
-    { label: 'Base fare',    amount: Number(breakdown.base     ?? Math.round(totalAmount * 0.34)) },
-    { label: 'Distance fee', amount: Number(breakdown.distance ?? Math.round(totalAmount * 0.45)) },
-    { label: 'Time fee',     amount: Number(breakdown.time     ?? Math.round(totalAmount * 0.12)) },
-    { label: 'Service fee',  amount: Number(breakdown.service  ?? Math.round(totalAmount * 0.09)) },
-  ];
+  const fareRows = ([
+    breakdown.base     != null ? { label: 'Base fare',    amount: Number(breakdown.base) }     : null,
+    breakdown.distance != null ? { label: 'Distance fee', amount: Number(breakdown.distance) } : null,
+    breakdown.time     != null ? { label: 'Time fee',     amount: Number(breakdown.time) }     : null,
+    breakdown.service  != null ? { label: 'Service fee',  amount: Number(breakdown.service) }  : null,
+  ].filter(Boolean)) as Array<{ label: string; amount: number }>;
 
   const trackingCode    = trip.trackingCode    ?? trip.id;
   const pickupAddress   = trip.pickupAddress   ?? trip.pickup?.address   ?? '-';
   const dropoffAddress  = trip.dropoffAddress  ?? trip.dropoff?.address  ?? '-';
   const distance        = trip.distance        ?? '-';
   const duration        = trip.duration        ?? '-';
-  const paymentMethod   = trip.paymentMethod   ?? 'wallet';
+  // Never default to 'wallet': customers hold no naira balance with us,
+  // so a receipt claiming "paid via wallet" describes a product that
+  // does not exist (audit 2026-08-13).
+  const paymentMethod   = trip.paymentMethod   ?? '';
   const completedDate   = trip.deliveredAt     ?? trip.completedAt       ?? trip.createdAt;
   const rating          = trip.rating          ?? trip.driverRating      ?? null;
 
   const onShare = async () => {
     try {
       await Share.share({
-        message: `SEIRS receipt ${trackingCode}: ₦${totalAmount.toLocaleString()} paid via ${paymentMethod}`,
+        message: `SEIRS receipt ${trackingCode}: ₦${totalAmount.toLocaleString()}${paymentMethod ? ` paid by ${paymentMethod.replace('_', ' ')}` : ''}`,
       });
     } catch {}
   };
@@ -183,7 +200,9 @@ export default function ReceiptScreen() {
 
             {/* Fare */}
             <View style={styles.fareSection}>
-              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Fare Breakdown</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>
+                {fareRows.length > 0 ? 'Fare Breakdown' : 'Amount'}
+              </Text>
               {fareRows.map(row => (
                 <View key={row.label} style={styles.fareRow}>
                   <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{row.label}</Text>
@@ -194,12 +213,14 @@ export default function ReceiptScreen() {
                 <Text style={[styles.totalLabel, { color: theme.text }]}>Total Paid</Text>
                 <Text style={[styles.totalAmt,   { color: theme.primary }]}>₦{totalAmount.toLocaleString()}</Text>
               </View>
-              <View style={[styles.payBadge, { backgroundColor: theme.surfaceSecond }]}>
-                <Ionicons name="wallet-outline" size={14} color={theme.textSecond} />
-                <Text style={[styles.payBadgeText, { color: theme.textSecond }]}>
-                  Paid via {String(paymentMethod).charAt(0).toUpperCase() + String(paymentMethod).slice(1)}
-                </Text>
-              </View>
+              {paymentMethod ? (
+                <View style={[styles.payBadge, { backgroundColor: theme.surfaceSecond }]}>
+                  <Ionicons name="card-outline" size={14} color={theme.textSecond} />
+                  <Text style={[styles.payBadgeText, { color: theme.textSecond }]}>
+                    Paid by {String(paymentMethod).replace('_', ' ')}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
