@@ -132,6 +132,19 @@ export default function TripDetailsScreen() {
   const isCompleted = trip.status === 'completed' || trip.status === 'delivered';
   const isCancelled = trip.status === 'cancelled';
 
+  // Stage timestamps and who actually took the package. All optional:
+  // an in-flight trip has no delivery time, and most deliveries go to
+  // the recipient themselves.
+  const pickedUpAt = raw.pickedUpAt ?? null;
+  const deliveredAt = raw.deliveredAt ?? null;
+  const receivedBy =
+    raw.receivedByRelation && raw.receivedByRelation !== 'recipient'
+      ? (raw.receivedByName ?? null)
+      : null;
+
+  const formatTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
+
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('en-NG', {
       weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
@@ -159,16 +172,31 @@ export default function TripDetailsScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-          {/* Status banner */}
-          <View style={[styles.statusBanner, { backgroundColor: status.color + '15', borderColor: status.color + '30' }]}>
-            <View style={[styles.statusIconWrap, { backgroundColor: status.color + '25' }]}>
+          {/* Status banner.
+
+              Tints are theme-aware. A flat 15% wash of the status colour
+              reads correctly on white and all but disappears on a dark
+              surface, which is how a screen ends up "designed for light
+              and tolerated in dark". Dark mode gets a heavier tint and a
+              stronger border so the banner keeps the same visual weight
+              in both (founder 2026-08-13). */}
+          <View style={[
+            styles.statusBanner,
+            {
+              backgroundColor: status.color + (isDark ? '2E' : '15'),
+              borderColor:     status.color + (isDark ? '66' : '30'),
+            },
+          ]}>
+            <View style={[styles.statusIconWrap, { backgroundColor: status.color + (isDark ? '44' : '25') }]}>
               <Ionicons name={status.icon as any} size={22} color={status.color} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.statusLabel, { color: status.color }]}>{status.label}</Text>
               <Text style={[styles.statusDate, { color: theme.textSecond }]}>{formatDate(trip.date)}</Text>
             </View>
-            <Text style={[styles.trackCode, { color: theme.textThird }]}>{trip.trackingCode}</Text>
+            <Text style={[styles.trackCode, { color: theme.textSecond }]} selectable>
+              {trip.trackingCode}
+            </Text>
           </View>
 
           {/* Route card */}
@@ -180,14 +208,29 @@ export default function TripDetailsScreen() {
                 <View style={[styles.routeLine, { backgroundColor: theme.border }]} />
                 <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
               </View>
+              {/* Each stop carries its real timestamp when we have one,
+                  so the card answers "when was it collected" and "when
+                  did it arrive" rather than just listing two addresses.
+                  Absent times simply do not render. */}
               <View style={styles.routeAddresses}>
                 <View style={styles.addrBlock}>
                   <Text style={[styles.addrLabel, { color: theme.textThird }]}>Pickup</Text>
                   <Text style={[styles.addrText, { color: theme.text }]}>{trip.pickupAddress}</Text>
+                  {pickedUpAt && (
+                    <Text style={[styles.addrTime, { color: theme.textSecond }]}>
+                      Collected {formatTime(pickedUpAt)}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.addrBlock}>
                   <Text style={[styles.addrLabel, { color: theme.textThird }]}>Drop-off</Text>
                   <Text style={[styles.addrText, { color: theme.text }]}>{trip.dropoffAddress}</Text>
+                  {deliveredAt ? (
+                    <Text style={[styles.addrTime, { color: theme.textSecond }]}>
+                      Delivered {formatTime(deliveredAt)}
+                      {receivedBy ? ` · left with ${receivedBy}` : ''}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
             </View>
@@ -364,6 +407,7 @@ const styles = StyleSheet.create({
   addrBlock:      { gap: 2 },
   addrLabel:      { fontSize: FontSize.xs, textTransform: 'uppercase', letterSpacing: 0.4 },
   addrText:       { fontSize: FontSize.base, fontWeight: FontWeight.medium },
+  addrTime:       { fontSize: FontSize.xs, marginTop: 3 },
 
   metaRow:     { flexDirection: 'row', alignItems: 'center', paddingTop: Spacing.md, marginTop: Spacing.md, borderTopWidth: 1 },
   metaItem:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
