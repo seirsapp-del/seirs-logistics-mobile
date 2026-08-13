@@ -27,11 +27,29 @@ interface PickerEntry {
   backendMethod: 'card' | 'bank_transfer' | 'wallet';
 }
 
+/**
+ * Customer payment methods. All three go to Flutterwave.
+ *
+ * "Seirs Wallet" was a fourth option and has been removed (founder
+ * 2026-08-13) for two reasons, either of which alone is enough:
+ *
+ *   1. Customers do not hold a naira balance with SEIRS. Holding
+ *      customer funds is a licensed activity under CBN rules and we are
+ *      not licensed. Customers earn Rewards, which are points, and
+ *      points do not pay a fare.
+ *   2. It was broken. The entry carried flutterwave: null, so choosing
+ *      it skipped the payment provider entirely and navigated straight
+ *      to tracking, leaving an unpaid delivery looking paid. This is
+ *      what the founder hit when "clicking pay didn't take me to any
+ *      payment platform".
+ *
+ * The driver and partner ledgers are unaffected: those are real money
+ * owed for work done, and they belong in those apps, not here.
+ */
 const METHODS: PickerEntry[] = [
   { id: 'card',          Icon: CreditCard, label: 'Card',          desc: 'Pay with a Nigerian Visa, Mastercard, or Verve card', flutterwave: 'card',         backendMethod: 'card' },
   { id: 'bank_transfer', Icon: Landmark,   label: 'Bank Transfer', desc: 'Get a one-time account number to transfer to',         flutterwave: 'banktransfer', backendMethod: 'bank_transfer' },
   { id: 'ussd',          Icon: Smartphone, label: 'USSD',          desc: 'Dial a code from your bank app or any phone',           flutterwave: 'ussd',         backendMethod: 'card' },
-  { id: 'wallet',        Icon: Wallet,     label: 'Seirs Wallet',  desc: 'Use your existing SEIRS wallet balance',                flutterwave: null,           backendMethod: 'wallet' },
 ];
 
 export default function PaymentScreen() {
@@ -62,6 +80,16 @@ export default function PaymentScreen() {
         selected.flutterwave ?? undefined,
       );
       if (res.error) throw new Error(res.error);
+
+      // A method that reaches Flutterwave but comes back with no
+      // checkout URL means the payment never started. Say so instead of
+      // navigating to tracking, which would show an unpaid delivery as
+      // though it were paid (founder 2026-08-13).
+      if (selected.flutterwave && !res.authorizationUrl) {
+        throw new Error(
+          'Could not open the payment page. Your card has not been charged. Try again, or choose another method.',
+        );
+      }
 
       if (selected.flutterwave && res.authorizationUrl) {
         pendingTxRef.current = res.reference ?? null;

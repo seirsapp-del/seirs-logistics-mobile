@@ -60,10 +60,21 @@ import { PACKAGE_VEHICLES, calcPackageFare } from '@/constants/mockData';
 const VEHICLES = PACKAGE_VEHICLES;
 type VehicleId = typeof PACKAGE_VEHICLES[number]['id'];
 
+/**
+ * Customers pay by card or bank transfer. Nothing else.
+ *
+ * "SEIRS Wallet" was listed here and must not be (founder 2026-08-13):
+ * customers do not hold a naira balance with us. Holding customer funds
+ * is a licensed activity under CBN rules and we are not licensed for it.
+ * What customers have is Rewards, which is points, and points never pay
+ * a fare. The driver and partner ledgers are a different thing entirely,
+ * and are real money owed for work done.
+ *
+ * Cash on delivery is also gone: we are not running COD at launch.
+ */
 const PAYMENT_METHODS = [
   { id: 'card',          labelKey: 'payCard'         },
   { id: 'bank_transfer', labelKey: 'payBankTransfer' },
-  { id: 'wallet',        labelKey: 'payWallet'       },
 ] as const;
 type PaymentId = typeof PAYMENT_METHODS[number]['id'];
 
@@ -179,7 +190,9 @@ export default function SendScreen() {
   // ISO date string ('YYYY-MM-DD'): driven by the inline calendar.
   const [scheduledDate, setScheduledDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [scheduledHour, setScheduledHour] = useState<number | null>(null);
-  const [paymentId,   setPaymentId]   = useState<PaymentId>('wallet');
+  // Card is the default. This was 'wallet', which is why the confirm
+  // step showed "SEIRS Wallet" as the chosen method on every booking.
+  const [paymentId,   setPaymentId]   = useState<PaymentId>('card');
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
 
@@ -219,10 +232,11 @@ export default function SendScreen() {
   const fieldBorder = (key: string) =>
     invalidField === key ? theme.error : theme.border;
 
-  // Cash on delivery: sender opts in; recipient pays cash; we charge a
-  // handling fee for the cash-collection service.
-  const [codEnabled,  setCodEnabled]  = useState(false);
-  const [codAmount,   setCodAmount]   = useState('');
+  // Cash on delivery is OFF at launch (founder 2026-08-13). Kept as a
+  // constant rather than deleted so the fare breakdown and the booking
+  // payload keep their shape; flip to state if COD is ever switched on.
+  const codEnabled = false;
+  const codAmount  = '';
 
   // Inline autocomplete state for the address step (BottomSheetTextInput).
   const [pickupQuery,  setPickupQuery]  = useState('');
@@ -1042,37 +1056,12 @@ export default function SendScreen() {
                 </Pressable>
               ))}
 
-              {/* Cash on delivery */}
-              <Pressable
-                onPress={() => setCodEnabled(v => !v)}
-                style={[
-                  styles.payOption,
-                  {
-                    backgroundColor: codEnabled ? theme.accent + '10' : theme.surface,
-                    borderColor:     codEnabled ? theme.accent       : theme.border,
-                  },
-                ]}
-              >
-                <Ionicons name="cash-outline" size={20} color={codEnabled ? theme.accent : theme.textSecond} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.payLabel, { color: theme.text }]}>{t('send.codTitle')}</Text>
-                  <Text style={[styles.scheduleDesc, { color: theme.textSecond }]}>{t('send.codDesc')}</Text>
-                </View>
-                {codEnabled && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
-              </Pressable>
-              {codEnabled && (
-                <View style={{ marginTop: -Spacing.sm }}>
-                  <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.codAmount')}</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
-                    placeholder={t('send.codAmountPlaceholder')}
-                    placeholderTextColor={theme.textThird}
-                    keyboardType="number-pad"
-                    value={codAmount}
-                    onChangeText={setCodAmount}
-                  />
-                </View>
-              )}
+              {/* Cash on delivery removed (founder 2026-08-13): we are
+                  not running COD at launch. Handing drivers cash to
+                  reconcile is a theft and float problem we have no
+                  process for yet. The pricing engine still knows how to
+                  charge a COD fee, so this is a UI removal, not a
+                  teardown, if we ever turn it on deliberately. */}
             </View>
           )}
 
