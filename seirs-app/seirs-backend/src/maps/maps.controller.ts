@@ -1,16 +1,27 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { MapsService } from './maps.service';
 
 /**
- * Authenticated Maps proxy. Deliberately NOT marked @Public(): the whole
- * point is that the Google key stops being reachable by anyone who
- * downloads the app. An open proxy would recreate the same billing
- * exposure with extra steps.
+ * Authenticated Maps proxy.
  *
- * Address search happens on registration screens too, so anywhere a
- * signed-out user needs lookup, route it through a screen that already
- * has a session, or add a narrow public endpoint with its own limits.
+ * The guard below is the entire point. Moving the Google key off the
+ * phone only helps if the replacement is not itself free to use: an
+ * open proxy is the same billing exposure with an extra hop, and a
+ * friendlier one, since the attacker no longer has to unpack an APK to
+ * find it. Abuse now costs a SEIRS account we can see and disable.
+ *
+ * This codebase guards per controller rather than globally, so the
+ * class-level guard is load-bearing. Shipped without it on 2026-08-12
+ * and caught in production the next morning: /maps/geocode answered
+ * anonymous callers with live data for several hours.
+ *
+ * Address search also happens on registration screens, before a session
+ * exists. Those still call Google directly today; when they move here
+ * they need a narrow public endpoint with its own rate limit, not a
+ * blanket exemption on this controller.
  */
+@UseGuards(JwtAuthGuard)
 @Controller('maps')
 export class MapsController {
   constructor(private readonly maps: MapsService) {}
