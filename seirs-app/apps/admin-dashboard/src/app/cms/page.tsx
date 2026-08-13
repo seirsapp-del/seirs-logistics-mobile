@@ -232,6 +232,20 @@ export default function CmsPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             {items.map((item, idx) => (
               <div key={item.id} className={`flex items-center gap-4 px-5 py-4 ${idx > 0 ? 'border-t border-gray-100' : ''}`}>
+                {/* Thumbnail so the row is identifiable before opening it
+                    (founder 2026-08-13). A list of titles alone means
+                    clicking into each one to find the right banner. */}
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt=""
+                    className="w-14 h-14 rounded-lg object-cover bg-gray-100 shrink-0 border border-gray-200"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-lg bg-gray-100 shrink-0 border border-gray-200 flex items-center justify-center text-gray-300">
+                    <ImageIcon size={18} />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs bg-[#0F2B4C]/8 text-[#0F2B4C]/60 px-2 py-0.5 rounded capitalize font-medium">

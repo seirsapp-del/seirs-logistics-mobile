@@ -8,18 +8,36 @@ import {
   Ticket, Lightbulb, FileText, Percent, BarChart2, BarChart3, FileBarChart, Inbox,
   UserCog, ScrollText, Settings, LogOut, ChevronLeft, ChevronRight,
   Activity, Send, MoonStar, Mail, Code2, BookOpen,
+  Globe, List, Trash2, CircleDot,
 } from 'lucide-react';
 import { canAccess, canAccessFromUser, isSuperAdmin, isSuperAdminFromUser, ROLE_COLORS, ROLE_LABELS, NAV_SECTIONS } from '@/lib/rbac';
 import type { AdminRoleType } from '@/lib/rbac';
 import { SeirsMarkBold, SeirsLockup } from './SeirsLogo';
 
+/**
+ * Every icon named in NAV_SECTIONS must appear here.
+ *
+ * A name missing from this map used to render NO icon at all, which made
+ * the row look like a section heading rather than a link. Website,
+ * Service Catalog and Recycle Bin were all invisible-as-buttons for that
+ * reason, and the founder reported not knowing Website was clickable and
+ * not being able to find the Recycle Bin at all (2026-08-13).
+ *
+ * If you add a nav item, add its icon here in the same commit. The
+ * fallback below stops a future miss from being silent again.
+ */
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   LayoutDashboard, Map, Package, Truck, Users, Store, ArrowRightLeft, Briefcase,
   Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, ShieldCheck, Copy, ClipboardCheck,
   Ticket, Lightbulb, FileText, Percent, BarChart2, BarChart3, FileBarChart, Inbox,
   UserCog, ScrollText, Settings,
   Activity, Send, MoonStar, Mail, Code2, BookOpen,
+  Globe, List, Trash2,
 };
+
+// Anything unmapped still gets a bullet, so it reads as a link and lines
+// up with its neighbours instead of disappearing into the section label.
+const FALLBACK_ICON = CircleDot;
 
 export default function AdminNav() {
   const router   = useRouter();
@@ -120,7 +138,7 @@ export default function AdminNav() {
               )}
               {collapsed && <div className="my-1 mx-2 border-t border-white/10" />}
               {visibleItems.map((item) => {
-                const Icon = ICON_MAP[item.icon];
+                const Icon = ICON_MAP[item.icon] ?? FALLBACK_ICON;
                 const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
                 return (
                   <a
@@ -135,7 +153,7 @@ export default function AdminNav() {
                         : 'text-white/60 hover:bg-white/10 hover:text-white'
                     }`}
                   >
-                    {Icon && <Icon size={16} />}
+                    <Icon size={16} />
                     {!collapsed && (
                       <span className="text-[13px] font-medium flex-1 truncate">{item.label}</span>
                     )}
