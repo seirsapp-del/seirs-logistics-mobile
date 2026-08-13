@@ -4,7 +4,7 @@ import { adminApi } from '@/lib/api';
 import {
   Users, Truck, ClipboardList, Zap, Package,
   Clock, TrendingUp, ChevronRight, AlertTriangle,
-  Activity, Timer, Gauge, ShieldAlert,
+  Activity, Timer, Gauge, ShieldAlert, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [liveUpdatedAt, setLiveUpdatedAt] = useState<Date | null>(null);
+  const [drill, setDrill] = useState<DrillKey | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -63,7 +64,20 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, []);
 
-  const cards: { label: string; value: string; sub?: string; Icon: LucideIcon; color: string; bg: string }[] = stats ? [
+  /**
+   * Every card that represents a queue of real records carries a drill
+   * key (founder 2026-08-13: "i see 2 pending dispatch and i cant even
+   * click to see them... for everything being able to click them and see
+   * the details is important"). Clicking opens a drawer listing those
+   * records with the action that queue needs.
+   *
+   * Cards without a drill key are totals with no actionable list behind
+   * them, so they stay static rather than pretending to be buttons.
+   */
+  const cards: {
+    label: string; value: string; sub?: string; Icon: LucideIcon;
+    color: string; bg: string; drill?: DrillKey;
+  }[] = stats ? [
     {
       label: 'Total Customers', value: stats.users.total.toLocaleString(),
       Icon: Users, color: 'text-[#3A7BD5]', bg: 'bg-[#3A7BD5]/10',
@@ -77,11 +91,13 @@ export default function DashboardPage() {
       label: 'Active Deliveries', value: stats.deliveries.active.toLocaleString(),
       sub: `${stats.deliveries.today} today`,
       Icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-100',
+      drill: 'active',
     },
     {
       label: 'Pending Dispatch', value: stats.deliveries.pending.toLocaleString(),
       Icon: Clock, color: stats.deliveries.pending > 5 ? 'text-red-600' : 'text-amber-600',
       bg: stats.deliveries.pending > 5 ? 'bg-red-100' : 'bg-amber-100',
+      drill: 'pending',
     },
     {
       label: 'Total Deliveries', value: stats.deliveries.total.toLocaleString(),
@@ -90,6 +106,7 @@ export default function DashboardPage() {
     {
       label: 'Pending KYC', value: stats.drivers.pendingKyc.toLocaleString(),
       Icon: ClipboardList, color: 'text-orange-600', bg: 'bg-orange-100',
+      drill: 'kyc',
     },
     {
       label: 'Total Revenue', value: fmt(stats.revenue.total),
@@ -152,16 +169,31 @@ export default function DashboardPage() {
           <>
             {/* Stats grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {cards.map((c) => (
-                <div key={c.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                  <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${c.bg} mb-3`}>
-                    <c.Icon size={17} className={c.color} />
-                  </div>
-                  <div className="text-xl font-bold text-[#0F2B4C]">{c.value}</div>
-                  <div className="text-xs text-[#0F2B4C]/50 mt-0.5">{c.label}</div>
-                  {c.sub && <div className="text-xs text-[#3A7BD5] mt-1">{c.sub}</div>}
-                </div>
-              ))}
+              {cards.map((c) => {
+                const clickable = !!c.drill;
+                const Tag = clickable ? 'button' : 'div';
+                return (
+                  <Tag
+                    key={c.label}
+                    {...(clickable ? { onClick: () => setDrill(c.drill!), type: 'button' as const } : {})}
+                    className={`bg-white rounded-xl p-5 shadow-sm border border-gray-100 text-left w-full ${
+                      clickable
+                        ? 'hover:border-[#3A7BD5] hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]'
+                        : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${c.bg} mb-3`}>
+                        <c.Icon size={17} className={c.color} />
+                      </div>
+                      {clickable && <ChevronRight size={15} className="text-[#0F2B4C]/25 mt-1" />}
+                    </div>
+                    <div className="text-xl font-bold text-[#0F2B4C]">{c.value}</div>
+                    <div className="text-xs text-[#0F2B4C]/50 mt-0.5">{c.label}</div>
+                    {c.sub && <div className="text-xs text-[#3A7BD5] mt-1">{c.sub}</div>}
+                  </Tag>
+                );
+              })}
             </div>
 
             {/* Currently active drivers strip */}
@@ -301,6 +333,147 @@ export default function DashboardPage() {
           </>
         )}
       </main>
+
+      {drill && (
+        <DrillDrawer
+          which={drill}
+          onClose={() => setDrill(null)}
+          onChanged={load}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Which overview cards open a drawer, and what each one lists. */
+type DrillKey = 'pending' | 'active' | 'kyc';
+
+const DRILL_META: Record<DrillKey, { title: string; blurb: string; empty: string }> = {
+  pending: {
+    title: 'Pending dispatch',
+    blurb: 'Booked and paid for, but no driver has taken them. These need a person.',
+    empty: 'Nothing waiting. Auto-match has placed every booking.',
+  },
+  active: {
+    title: 'Active deliveries',
+    blurb: 'On the road right now: assigned, picked up, or in transit.',
+    empty: 'Nothing moving at the moment.',
+  },
+  kyc: {
+    title: 'Drivers awaiting KYC',
+    blurb: 'Signed up and waiting to be approved. Until you approve them they cannot earn.',
+    empty: 'No drivers waiting for review.',
+  },
+};
+
+/**
+ * Slide-over showing the records behind an overview number, with the
+ * action that queue actually needs (founder 2026-08-13: "i still need to
+ * be able to take action on whatever i click").
+ *
+ * Deliberately not a second copy of the deliveries table: it shows the
+ * few fields needed to decide, plus one action, and links out to the
+ * full page for anything deeper.
+ */
+function DrillDrawer({ which, onClose, onChanged }: {
+  which:     DrillKey;
+  onClose:   () => void;
+  onChanged: () => void;
+}) {
+  const [rows,    setRows]    = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const meta = DRILL_META[which];
+
+  const load = () => {
+    setLoading(true);
+    const p = which === 'kyc'
+      ? adminApi.drivers(1, 'pending').then((d: any) => d?.drivers ?? [])
+      : adminApi.deliveries(1, which === 'pending' ? 'pending' : 'assigned').then((d: any) => d?.deliveries ?? []);
+    p.then(setRows).catch(() => setRows([])).finally(() => setLoading(false));
+  };
+
+  useEffect(load, [which]);
+
+  const approve = async (driverId: string) => {
+    await adminApi.approveDriver(driverId);
+    load();
+    onChanged();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
+      <aside
+        className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={meta.title}
+      >
+        <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-bold text-[#0F2B4C]">{meta.title}</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{meta.blurb}</p>
+          </div>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-700 shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <p className="text-center text-sm text-gray-400 py-12">Loading…</p>
+          ) : rows.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-12 px-6">{meta.empty}</p>
+          ) : which === 'kyc' ? (
+            rows.map(d => (
+              <div key={d.id} className="px-5 py-3 border-b border-gray-50 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#0F2B4C] truncate">{d.user?.name ?? '-'}</p>
+                  <p className="text-xs text-gray-400 capitalize">{d.vehicleType ?? 'vehicle unknown'}</p>
+                </div>
+                <a href={`/drivers/${d.id}`} className="text-xs text-[#3A7BD5] font-semibold hover:underline">Review</a>
+                <button
+                  onClick={() => approve(d.id)}
+                  className="text-xs font-semibold bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700"
+                >
+                  Approve
+                </button>
+              </div>
+            ))
+          ) : (
+            rows.map(d => (
+              <div key={d.id} className="px-5 py-3 border-b border-gray-50">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-bold text-[#0F2B4C]">{d.trackingCode}</span>
+                  <span className="text-xs font-semibold text-[#0F2B4C]">₦{d.price?.toLocaleString()}</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1 truncate">{d.pickupAddress}</p>
+                <p className="text-xs text-gray-500 truncate">→ {d.dropoffAddress}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-[11px] text-gray-400">
+                    {d.driver?.user?.name ? `Driver: ${d.driver.user.name}` : 'No driver yet'}
+                  </span>
+                  <a
+                    href={`/deliveries?status=${which === 'pending' ? 'pending' : 'assigned'}`}
+                    className="text-xs text-[#3A7BD5] font-semibold hover:underline"
+                  >
+                    {which === 'pending' ? 'Assign a driver' : 'Open'}
+                  </a>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
+          <a
+            href={which === 'kyc' ? '/kyc' : `/deliveries?status=${which === 'pending' ? 'pending' : 'assigned'}`}
+            className="text-sm font-semibold text-[#0F2B4C] hover:text-[#3A7BD5]"
+          >
+            Open the full list →
+          </a>
+        </div>
+      </aside>
     </div>
   );
 }
