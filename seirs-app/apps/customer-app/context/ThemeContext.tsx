@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useColorScheme as useSystemScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { registerColorSchemeResolver } from '@seirs/shared/hooks/use-color-scheme';
 
 type Theme = 'light' | 'dark';
 
@@ -79,3 +80,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useTheme = () => useContext(ThemeContext);
+
+/**
+ * Point shared components (Card, Avatar, Button...) at this context.
+ *
+ * Without it they read the OS theme directly and ignore the in-app
+ * toggle, so a phone in dark mode with the app set to light rendered
+ * dark Cards on light screens. Registered at module load, before the
+ * first render, so hook order stays stable.
+ */
+registerColorSchemeResolver(() => useContext(ThemeContext).theme);

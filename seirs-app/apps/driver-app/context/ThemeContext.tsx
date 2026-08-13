@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useColorScheme as useSystemScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { registerColorSchemeResolver } from '@seirs/shared/hooks/use-color-scheme';
 
 type Theme = 'light' | 'dark';
 
@@ -78,3 +79,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useTheme = () => useContext(ThemeContext);
+
+/**
+ * Point shared components at this context. Without it they read the OS
+ * theme and ignore the in-app toggle, rendering dark Cards on light
+ * screens (2026-08-13).
+ */
+registerColorSchemeResolver(() => useContext(ThemeContext).theme);
