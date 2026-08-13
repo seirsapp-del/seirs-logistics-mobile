@@ -113,6 +113,22 @@ export class WebsiteContent {
   @Column({ type: 'varchar', length: 24, nullable: true })
   featureBadge: string | null;
 
+  /**
+   * Special-offer window (founder 2026-08-13). A promo card should stop
+   * showing when the promo ends, without anyone remembering to go and
+   * untick it on the day. Both bounds optional: blank from = show
+   * immediately, blank until = show until unticked.
+   *
+   * Separate from publishAt/status, which govern the article on the
+   * website. A story can stay published and readable long after it has
+   * finished occupying a carousel slot.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  featureFrom: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  featureUntil: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

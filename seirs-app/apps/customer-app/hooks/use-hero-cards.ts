@@ -48,19 +48,39 @@ function toHeroCard(dto: FeaturedCardDTO): HeroCard {
   };
 }
 
+/**
+ * Fisher-Yates. Every story after the brand card gets an equal chance at
+ * the second slot (founder 2026-08-13: "it should be auto shuffle").
+ * Without this the newest story always shows first and the oldest is
+ * seen by nobody who does not swipe, which wastes the older ones.
+ */
+function shuffle<T>(input: T[]): T[] {
+  const a = [...input];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export function useHeroCards() {
-  const [cards, setCards] = useState<HeroCard[]>(HERO_CARDS);
+  // Built-in cards are shuffled too, so even the offline fallback does
+  // not always open on the same slide. The okada stays pinned first: it
+  // is the brand anchor, not one of the rotating stories.
+  const [cards, setCards] = useState<HeroCard[]>(
+    () => [HERO_CARDS[0], ...shuffle(HERO_CARDS.slice(1))],
+  );
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res   = await storiesApi.featured(4);
+        const res   = await storiesApi.featured(6);
         const items = Array.isArray(res?.items) ? res.items : [];
         // Nothing featured is a normal editorial state, not a failure:
         // keep the built-in cards rather than showing one lonely okada.
         if (!cancelled && items.length > 0) {
-          setCards([BRAND_CARD, ...items.map(toHeroCard)]);
+          setCards([BRAND_CARD, ...shuffle(items.map(toHeroCard))]);
         }
       } catch {
         /* offline or backend down: built-in cards already showing */

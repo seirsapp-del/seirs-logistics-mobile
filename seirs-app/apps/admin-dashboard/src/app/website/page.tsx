@@ -24,6 +24,8 @@ interface Row {
   coverImageUrl:   string | null;
   featureInApp?:   boolean;
   featureBadge?:   string | null;
+  featureFrom?:    string | null;
+  featureUntil?:   string | null;
   seoTitle:        string | null;
   seoDescription:  string | null;
   category:        string | null;
@@ -219,6 +221,8 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   const [sortOrder, setSortOrder] = useState(String(row?.sortOrder ?? 0));
   const [featureInApp, setFeatureInApp] = useState(row?.featureInApp ?? false);
   const [featureBadge, setFeatureBadge] = useState(row?.featureBadge ?? '');
+  const [featureFrom,  setFeatureFrom]  = useState(row?.featureFrom  ? toLocalInput(row.featureFrom)  : '');
+  const [featureUntil, setFeatureUntil] = useState(row?.featureUntil ? toLocalInput(row.featureUntil) : '');
   const [status,    setStatus]    = useState(row?.status ?? 'draft');
   const [publishAt, setPublishAt] = useState(row?.publishAt ? toLocalInput(row.publishAt) : '');
   const [uploading, setUploading] = useState(false);
@@ -272,6 +276,8 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
         sortOrder:      Number(sortOrder) || 0,
         featureInApp,
         featureBadge:   featureBadge.trim() || null,
+        featureFrom:    featureFrom  ? new Date(featureFrom).toISOString()  : null,
+        featureUntil:   featureUntil ? new Date(featureUntil).toISOString() : null,
         status,
         publishAt:      publishAt ? new Date(publishAt).toISOString() : null,
       };
@@ -480,6 +486,34 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
                       No cover image yet. Featured cards without one render as a plain navy slide.
                     </p>
                   )}
+
+                  {/* Special-offer window. A promo that ends on Sunday
+                      should leave the carousel on Sunday, not whenever
+                      somebody remembers to come back and untick it. */}
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Show from</label>
+                      <input
+                        type="datetime-local"
+                        value={featureFrom}
+                        onChange={e => setFeatureFrom(e.target.value)}
+                        className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Stop showing</label>
+                      <input
+                        type="datetime-local"
+                        value={featureUntil}
+                        onChange={e => setFeatureUntil(e.target.value)}
+                        className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1.5">
+                    Leave both blank to feature it until you untick the box. The article stays readable on the
+                    website either way: these dates only control the app carousel slot.
+                  </p>
                 </div>
               )}
             </div>

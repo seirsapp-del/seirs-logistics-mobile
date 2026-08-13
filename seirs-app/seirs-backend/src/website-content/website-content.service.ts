@@ -200,15 +200,20 @@ export class WebsiteContentService implements OnModuleInit {
    * featured this week), not an error.
    */
   async listFeaturedCards(limit = 4, lang = 'en') {
-    const rows = await this.repo.find({
-      where: {
-        featureInApp: true,
-        status:       WebContentStatus.PUBLISHED,
-        lang,
-      },
-      order: { sortOrder: 'ASC', publishedAt: 'DESC' },
-      take:  limit,
-    });
+    // Respect the special-offer window: a promo drops off the carousel
+    // the moment it expires, without anyone remembering to untick it.
+    // NULL on either bound means unbounded in that direction.
+    const rows = await this.repo
+      .createQueryBuilder('c')
+      .where('c."featureInApp" = true')
+      .andWhere('c.status = :status', { status: WebContentStatus.PUBLISHED })
+      .andWhere('c.lang = :lang', { lang })
+      .andWhere('(c."featureFrom"  IS NULL OR c."featureFrom"  <= NOW())')
+      .andWhere('(c."featureUntil" IS NULL OR c."featureUntil" >  NOW())')
+      .orderBy('c."sortOrder"', 'ASC')
+      .addOrderBy('c."publishedAt"', 'DESC')
+      .take(limit)
+      .getMany();
 
     return {
       items: rows.map(r => ({
@@ -288,6 +293,8 @@ export class WebsiteContentService implements OnModuleInit {
       sortOrder:      body.sortOrder      ?? 0,
       featureInApp:   body.featureInApp   ?? false,
       featureBadge:   body.featureBadge   ?? null,
+      featureFrom:    body.featureFrom  ? new Date(body.featureFrom)  : null,
+      featureUntil:   body.featureUntil ? new Date(body.featureUntil) : null,
       authorUserId:   adminId,
       publishAt:      at,
       publishedAt:    status === WebContentStatus.PUBLISHED ? now : null,
@@ -312,6 +319,8 @@ export class WebsiteContentService implements OnModuleInit {
     if (body.sortOrder      !== undefined) row.sortOrder      = body.sortOrder;
     if (body.featureInApp   !== undefined) row.featureInApp   = body.featureInApp;
     if (body.featureBadge   !== undefined) row.featureBadge   = body.featureBadge;
+    if (body.featureFrom    !== undefined) row.featureFrom    = body.featureFrom  ? new Date(body.featureFrom)  : null;
+    if (body.featureUntil   !== undefined) row.featureUntil   = body.featureUntil ? new Date(body.featureUntil) : null;
     if (body.lang           !== undefined) row.lang           = body.lang;
     if (body.publishAt      !== undefined) row.publishAt      = body.publishAt ? new Date(body.publishAt) : null;
 

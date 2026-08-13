@@ -16,9 +16,19 @@
  * currently featured. Keep it evergreen: no dated promos here, since
  * changing it needs an app release.
  *
- * ── IMAGE SOURCES (for real-people-of-colour content) ──────────────────
- * The placeholders below use picsum.photos because it's reliable. For
- * launch content, swap to Black/Nigerian photos from:
+ * ── NO PLACEHOLDER IMAGES HERE. DELIBERATE. ───────────────────────────
+ * These cards carried picsum.photos URLs, which serve a RANDOM stock
+ * photo per seed. In testing on 2026-08-12/13 that produced a snowy
+ * pine forest captioned "Now delivering from Shoprite Ikeja", and then
+ * a beach of walruses under a referral offer. Funny in a dev build,
+ * brand damage in production.
+ *
+ * With no imageUrl the card renders SEIRS navy, which is on-brand and
+ * says nothing false. Any real artwork belongs in the CMS, where it can
+ * be changed without an app release. Do not reintroduce a random-image
+ * service here.
+ *
+ * For real launch photography, Black and Nigerian sources:
  *
  *   - Nappy.co            https://nappy.co            (curated Black + Brown)
  *   - Pexels - Nigerian   https://www.pexels.com/search/nigerian/
@@ -85,7 +95,6 @@ export const HERO_CARDS: HeroCard[] = [
   {
     id:         'outlet-shoprite',
     kind:       'image',
-    imageUrl:   'https://picsum.photos/seed/seirs-outlet/720/400',
     badgeKey:   'home.heroBadgeOutlet',
     badgeColor: '#FFBE0B',
     titleKey:   'home.heroCard2Title',
@@ -99,7 +108,6 @@ export const HERO_CARDS: HeroCard[] = [
   {
     id:         'tip-schedule',
     kind:       'image',
-    imageUrl:   'https://picsum.photos/seed/seirs-tip/720/400',
     badgeKey:   'home.heroBadgeTip',
     badgeColor: '#3A86FF',
     titleKey:   'home.heroCard3Title',
@@ -113,7 +121,6 @@ export const HERO_CARDS: HeroCard[] = [
   {
     id:         'feature-multistop',
     kind:       'image',
-    imageUrl:   'https://picsum.photos/seed/seirs-feature/720/400',
     badgeKey:   'home.heroBadgeNew',
     badgeColor: '#FF6B00',
     titleKey:   'home.heroCard4Title',
@@ -127,7 +134,6 @@ export const HERO_CARDS: HeroCard[] = [
   {
     id:         'referral',
     kind:       'image',
-    imageUrl:   'https://picsum.photos/seed/seirs-referral/720/400',
     badgeKey:   'home.heroBadgePromo',
     badgeColor: '#22C55E',
     titleKey:   'home.heroCard5Title',

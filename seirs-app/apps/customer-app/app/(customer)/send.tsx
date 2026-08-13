@@ -183,6 +183,42 @@ export default function SendScreen() {
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
 
+  /**
+   * Field-level validation (founder 2026-08-13: "when a field is missing
+   * it should auto scroll to the field and mark as red with the
+   * instruction there").
+   *
+   * A red banner at the top of a long scrolling sheet tells you
+   * something is wrong but not where, which on a phone means hunting.
+   * We now mark the offending field, put the instruction directly under
+   * it, and scroll it into view.
+   *
+   * fieldY records each field's offset inside the scroll view via
+   * onLayout, so scrolling does not depend on measuring native handles.
+   */
+  const [invalidField, setInvalidField] = useState<string | null>(null);
+  const scrollRef = useRef<any>(null);
+  const fieldY    = useRef<Record<string, number>>({});
+
+  const onFieldLayout = (key: string) => (e: any) => {
+    fieldY.current[key] = e.nativeEvent.layout.y;
+  };
+
+  // Flag the field, say why, and bring it on screen. Offset lifts the
+  // field clear of the sheet's rounded top edge.
+  const failField = (key: string, message: string) => {
+    setInvalidField(key);
+    setError(message);
+    const y = fieldY.current[key];
+    if (typeof y === 'number') {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 24), animated: true });
+    }
+  };
+
+  // Border + inline message for whichever field is currently flagged.
+  const fieldBorder = (key: string) =>
+    invalidField === key ? theme.error : theme.border;
+
   // Cash on delivery: sender opts in; recipient pays cash; we charge a
   // handling fee for the cash-collection service.
   const [codEnabled,  setCodEnabled]  = useState(false);
@@ -346,21 +382,31 @@ export default function SendScreen() {
 
   // ── Step navigation ──────────────────────────────────────────────────────
   const next = () => {
-    if (step === 0 && photos.length === 0) { setError(t('send.errPhotoMissing')); return; }
-    if (step === 0 && !category)           { setError(t('send.errCategoryMissing')); return; }
+    if (step === 0 && photos.length === 0) { failField('photos',   t('send.errPhotoMissing'));    return; }
+    if (step === 0 && !category)           { failField('category', t('send.errCategoryMissing')); return; }
     // Weight is REQUIRED (founder 2026-08-12): the driver picks a
     // vehicle from it, so a blank weight means a rider turning up to a
     // load their okada cannot carry. An estimate is fine, silence is not.
     if (step === 0 && !(parseFloat(weightKg) > 0)) {
-      setError(t('send.errWeightMissing', { defaultValue: 'Enter the weight in kg. An estimate is fine: your driver picks the right vehicle from it.' }));
+      failField('weight', t('send.errWeightMissing', { defaultValue: 'Enter the weight in kg. An estimate is fine: your driver picks the right vehicle from it.' }));
       return;
     }
-    if (step === 1 && !pickup)  { setError(t('send.errPickupMissing')); return; }
-    if (step === 1 && !dropoff) { setError(t('send.errDropoffMissing')); return; }
+    // Receiver's first name is REQUIRED (founder 2026-08-13). The driver
+    // confirms a name at handoff, so "optional" meant a driver arriving
+    // with nobody to ask for, and a package that can be claimed by
+    // whoever answers the door. Surname stays optional: one name is
+    // enough to confirm against, and many people give only one.
+    if (step === 0 && !receiverFirst.trim()) {
+      failField('receiver', t('send.errReceiverMissing', { defaultValue: "Enter the receiver's first name. The driver asks for this person by name at handoff." }));
+      return;
+    }
+    if (step === 1 && !pickup)  { failField('pickup',  t('send.errPickupMissing'));  return; }
+    if (step === 1 && !dropoff) { failField('dropoff', t('send.errDropoffMissing')); return; }
     if (step === 1 && !scheduleNow && scheduledHour == null) {
-      setError(t('send.errScheduleTime'));
+      failField('schedule', t('send.errScheduleTime'));
       return;
     }
+    setInvalidField(null);
     setError('');
     if (step === 1 && category) setVehicleId(autoRecommend(category, kg));
     setStep(s => s + 1);
@@ -370,6 +416,7 @@ export default function SendScreen() {
 
   const back = () => {
     if (step === 0) { router.back(); return; }
+    setInvalidField(null);
     setError('');
     setStep(s => s - 1);
   };
@@ -469,12 +516,21 @@ export default function SendScreen() {
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
       >
+        {/* Scroll padding clears the phone's navigation bar (founder
+            2026-08-13: the Continue button sat right on top of it, so a
+            tap could hit Back instead of Continue). insets.bottom is 0
+            on gesture navigation and ~48dp on the 3-button layout, so
+            this adapts rather than hardcoding a gap. */}
         <BottomSheetScrollView
+          ref={scrollRef}
           style={styles.sheetInner}
-          contentContainerStyle={{ paddingBottom: Spacing.xxl }}
+          contentContainerStyle={{ paddingBottom: Spacing.xxl + insets.bottom + 16 }}
           keyboardShouldPersistTaps="handled"
         >
-          {!!error && (
+          {/* Banner only for errors with no single field to point at
+              (booking failures, network). Missing-field messages now
+              render under the field itself. */}
+          {!!error && !invalidField && (
             <View style={[styles.errorBox, { backgroundColor: '#EF444415' }]}>
               <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
             </View>
@@ -566,7 +622,15 @@ export default function SendScreen() {
                 onChangeText={setDescription}
               />
 
-              <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.category')} <Text style={{ color: theme.error }}>*</Text></Text>
+              <Text
+                onLayout={onFieldLayout('category')}
+                style={[styles.label, { color: theme.textSecond }]}
+              >
+                {t('send.category')} <Text style={{ color: theme.error }}>*</Text>
+              </Text>
+              {invalidField === 'category' && (
+                <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
+              )}
               <View style={styles.categoryGrid}>
                 {PACKAGE_CATEGORIES.map(cat => (
                   <Pressable
@@ -579,34 +643,46 @@ export default function SendScreen() {
                 ))}
               </View>
 
-              <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.weightKg')}</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
-                placeholder={t('send.weightPlaceholder')}
-                placeholderTextColor={theme.textThird}
-                keyboardType="decimal-pad"
-                value={weightKg}
-                onChangeText={setWeightKg}
-              />
+              <View onLayout={onFieldLayout('weight')}>
+                <Text style={[styles.label, { color: theme.textSecond }]}>
+                  {t('send.weightKg')} <Text style={{ color: theme.error }}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: fieldBorder('weight'), borderWidth: invalidField === 'weight' ? 2 : 1, color: theme.text }]}
+                  placeholder={t('send.weightPlaceholder')}
+                  placeholderTextColor={theme.textThird}
+                  keyboardType="decimal-pad"
+                  value={weightKg}
+                  onChangeText={v => { setWeightKg(v); if (invalidField === 'weight') { setInvalidField(null); setError(''); } }}
+                />
+                {invalidField === 'weight' && (
+                  <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
+                )}
+              </View>
 
-              <Text style={[styles.label, { color: theme.textSecond }]}>
-                {t('send.receiverName', { defaultValue: 'Who is receiving? (optional)' })}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-                <TextInput
-                  style={[styles.input, { flex: 1, backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
-                  placeholder={t('send.receiverFirst', { defaultValue: 'First name' })}
-                  placeholderTextColor={theme.textThird}
-                  value={receiverFirst}
-                  onChangeText={setReceiverFirst}
-                />
-                <TextInput
-                  style={[styles.input, { flex: 1, backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
-                  placeholder={t('send.receiverLast', { defaultValue: 'Last name' })}
-                  placeholderTextColor={theme.textThird}
-                  value={receiverLast}
-                  onChangeText={setReceiverLast}
-                />
+              <View onLayout={onFieldLayout('receiver')}>
+                <Text style={[styles.label, { color: theme.textSecond }]}>
+                  {t('send.receiverName', { defaultValue: 'Who is receiving?' })} <Text style={{ color: theme.error }}>*</Text>
+                </Text>
+                <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, backgroundColor: theme.surfaceSecond, borderColor: fieldBorder('receiver'), borderWidth: invalidField === 'receiver' ? 2 : 1, color: theme.text }]}
+                    placeholder={t('send.receiverFirst', { defaultValue: 'First name' })}
+                    placeholderTextColor={theme.textThird}
+                    value={receiverFirst}
+                    onChangeText={v => { setReceiverFirst(v); if (invalidField === 'receiver') { setInvalidField(null); setError(''); } }}
+                  />
+                  <TextInput
+                    style={[styles.input, { flex: 1, backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
+                    placeholder={t('send.receiverLast', { defaultValue: 'Last name (optional)' })}
+                    placeholderTextColor={theme.textThird}
+                    value={receiverLast}
+                    onChangeText={setReceiverLast}
+                  />
+                </View>
+                {invalidField === 'receiver' && (
+                  <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
+                )}
               </View>
               <Text style={{ fontSize: FontSize.xs, color: theme.textThird, marginTop: -Spacing.xs, marginBottom: Spacing.sm }}>
                 {t('send.receiverHint', { defaultValue: 'The driver confirms this first name at handoff. Anyone you trust can collect: a neighbour, security, family.' })}
@@ -1065,6 +1141,9 @@ const styles = StyleSheet.create({
 
   errorBox:     { padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.sm },
   errorText:    { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  // Inline message under the offending field, so the instruction sits
+  // where the fix happens rather than in a banner further up.
+  fieldError:   { fontSize: FontSize.xs, lineHeight: 17, marginTop: -Spacing.xs, marginBottom: Spacing.sm },
   label:        { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   hintText:     { fontSize: FontSize.sm, lineHeight: 20 },
 
