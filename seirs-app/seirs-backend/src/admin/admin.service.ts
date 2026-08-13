@@ -1701,16 +1701,48 @@ export class AdminService {
         });
       }
     }
+    /**
+     * Strip permissions, do not just disable the account (founder
+     * 2026-08-13): "an attacker vector could just focus on reinstating a
+     * user, and if the user already have certain permissions".
+     *
+     * Correct, and it is the quiet way back in: a dormant account that
+     * still carries super_admin needs only isActive flipped to be fully
+     * live again, and reactivating a former colleague looks far more
+     * innocent in a log than granting someone a new role. Wiping the
+     * role means reinstatement grants nothing until a super admin
+     * deliberately re-grants it, which is a decision that gets noticed.
+     *
+     * The previous role goes into the audit entry rather than being
+     * lost, so a genuine rehire can be restored knowingly.
+     */
+    const outgoing = await this.usersRepo.findOne({
+      where:  { id: adminUserId },
+      select: ['id', 'adminRole', 'roleId'],
+    });
+
     await this.usersRepo.update(adminUserId, {
       isActive:           false,
       deactivatedAt:      new Date(),
       deactivationReason: opts.reason ?? 'admin_offboarded',
+      adminRole:          null as any,
+      roleId:             null as any,
+      // Kill the push token too: an offboarded account should stop
+      // receiving operational notifications on a personal phone.
+      fcmToken:           null as any,
     });
+
     await this.logAudit(requester, 'offboard_admin', `user:${adminUserId}`, {
-      reason: opts.reason,
-      forced: !!opts.force,
+      reason:          opts.reason,
+      forced:          !!opts.force,
+      revokedRole:     outgoing?.adminRole ?? null,
+      revokedRoleId:   outgoing?.roleId ?? null,
     }, ip);
-    return { message: 'Admin offboarded.' };
+
+    return {
+      message: 'Admin offboarded. Their role has been revoked: reinstating the account alone will not restore access.',
+      revokedRole: outgoing?.adminRole ?? null,
+    };
   }
 
   // TOTP setup is handled by the auth module; these are stubs
