@@ -9,6 +9,7 @@ import { ServiceCategory } from './service-category.entity';
 import { Public } from '../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
+import { SuperAdminGuard } from '../common/guards/super-admin.guard';
 
 /**
  * Pricing system surface area.
@@ -74,7 +75,9 @@ export class PricingController {
   // JwtAuthGuard here ensures only authenticated users can hit these.
   // Production should add an explicit role check via RolesGuard.
 
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  // Super admin only (2026-08-13 RBAC audit). Publishing a rate card
+  // changes what every future delivery costs, platform-wide.
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Put('admin/rate-card')
   async publishRateCard(@Body() body: Partial<RateCard> & { changeReason: string; activatedBy: string }) {
     if (!body.changeReason) {
@@ -111,7 +114,8 @@ export class PricingController {
     return this.rateCardRepo.find({ order: { version: 'DESC' } });
   }
 
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  // Service categories carry surcharges, so editing one moves prices.
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Put('admin/service-catalog/:code')
   async upsertCategory(@Param('code') code: string, @Body() body: Partial<ServiceCategory>) {
     const existing = await this.categoryRepo.findOne({ where: { code } });
