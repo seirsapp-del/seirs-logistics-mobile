@@ -25,9 +25,22 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string
 };
 
 const PAYMENT_ICONS: Record<string, string> = {
-  wallet: 'wallet-outline',
-  card:   'card-outline',
-  cash:   'cash-outline',
+  card:          'card-outline',
+  bank_transfer: 'business-outline',
+  ussd:          'phone-portrait-outline',
+};
+
+/**
+ * Wording the customer recognises. "Paid via Wallet" was appearing on
+ * older trips because paymentMethod defaulted to 'wallet', and customers
+ * have no SEIRS wallet: holding their funds is licensed activity we are
+ * not licensed for. Anything unrecognised now reads neutrally rather
+ * than naming a product that does not exist.
+ */
+const PAYMENT_LABELS: Record<string, string> = {
+  card:          'Paid by card',
+  bank_transfer: 'Paid by bank transfer',
+  ussd:          'Paid by USSD',
 };
 
 export default function TripDetailsScreen() {
@@ -88,7 +101,7 @@ export default function TripDetailsScreen() {
     distance:       raw.distanceKm ? `${Number(raw.distanceKm).toFixed(1)} km` : '-',
     duration:       raw.estimatedTotalMinutes ? `${raw.estimatedTotalMinutes} min` : '-',
     price:          Number(raw.price ?? 0),
-    paymentMethod:  raw.paymentMethod ?? 'wallet',
+    paymentMethod:  raw.paymentMethod ?? '',
     vehicleType:    raw.vehicleType ?? '',
     driver:         raw.driver ? {
       id:           raw.driver.id ?? raw.driver.user?.id ?? 'd',
@@ -103,6 +116,17 @@ export default function TripDetailsScreen() {
     rating:         raw.customerRating ?? null,
     packageDescription: raw.packageDescription ?? '',
   };
+  /**
+   * Real fare lines only: every entry here is a value the backend
+   * actually sent for this delivery. If it did not send one, the line
+   * does not appear, and the card falls back to showing the single
+   * total honestly.
+   */
+  const fareLines: Array<{ label: string; amount: number }> = [
+    raw.nightFeeNgn   ? { label: 'Night pickup fee', amount: Math.round(Number(raw.nightFeeNgn)) }   : null,
+    raw.redirectFeeNgn ? { label: 'Redirect fee',    amount: Math.round(Number(raw.redirectFeeNgn)) } : null,
+  ].filter(Boolean) as Array<{ label: string; amount: number }>;
+
   const status = STATUS_CONFIG[trip.status] ?? { label: trip.status, color: '#A1A1AA', icon: 'ellipse-outline' };
   const isActive    = ['pending', 'assigned', 'picked_up', 'in_transit', 'in_progress'].includes(trip.status);
   const isCompleted = trip.status === 'completed' || trip.status === 'delivered';
@@ -226,29 +250,48 @@ export default function TripDetailsScreen() {
             </Card>
           ) : null}
 
-          {/* Fare breakdown */}
+          {/* Fare breakdown.
+
+              This used to invent one: a hardcoded 500 base fare plus
+              45%, 12% and 9% of the total, labelled Distance, Time and
+              Service. Those numbers came from nowhere, did not sum to
+              the total, and bore no relation to what the customer was
+              actually charged. Showing somebody a fabricated breakdown
+              of their own money is worse than showing none, and it is
+              exactly what a customer screenshots when they dispute a
+              charge.
+
+              We now show only what the API actually returns. Lines the
+              backend does not send are simply absent. */}
           <Card>
-            <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>Fare Breakdown</Text>
-            {[
-              { label: 'Base fare',    amount: 500 },
-              { label: 'Distance fee', amount: Math.round(trip.price * 0.45) },
-              { label: 'Time fee',     amount: Math.round(trip.price * 0.12) },
-              { label: 'Service fee',  amount: Math.round(trip.price * 0.09) },
-            ].map(row => (
+            <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>What you paid</Text>
+
+            {fareLines.map(row => (
               <View key={row.label} style={styles.fareRow}>
                 <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{row.label}</Text>
                 <Text style={[styles.fareAmt, { color: theme.text }]}>₦{row.amount.toLocaleString()}</Text>
               </View>
             ))}
-            <View style={[styles.fareDivider, { backgroundColor: theme.border }]} />
+
+            {fareLines.length > 0 && (
+              <View style={[styles.fareDivider, { backgroundColor: theme.border }]} />
+            )}
+
             <View style={styles.fareRow}>
               <Text style={[styles.fareTotal, { color: theme.text }]}>Total</Text>
               <Text style={[styles.fareTotalAmt, { color: theme.primary }]}>₦{trip.price.toLocaleString()}</Text>
             </View>
+
+            {fareLines.length === 0 && (
+              <Text style={[styles.fareNote, { color: theme.textThird }]}>
+                Charged as a single fare for this trip.
+              </Text>
+            )}
+
             <View style={[styles.payMethod, { backgroundColor: theme.surfaceSecond }]}>
               <Ionicons name={PAYMENT_ICONS[trip.paymentMethod] as any ?? 'card-outline'} size={16} color={theme.textSecond} />
               <Text style={[styles.payMethodText, { color: theme.textSecond }]}>
-                Paid via {trip.paymentMethod.charAt(0).toUpperCase() + trip.paymentMethod.slice(1)}
+                {PAYMENT_LABELS[trip.paymentMethod] ?? 'Paid on this account'}
               </Text>
             </View>
           </Card>
@@ -341,6 +384,7 @@ const styles = StyleSheet.create({
   fareDivider:  { height: 1, marginVertical: Spacing.sm },
   fareTotal:    { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   fareTotalAmt: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  fareNote:     { fontSize: FontSize.xs, lineHeight: 17, marginTop: 4 },
   payMethod:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.sm, borderRadius: Radius.md, marginTop: Spacing.sm },
   payMethodText:{ fontSize: FontSize.sm },
 
