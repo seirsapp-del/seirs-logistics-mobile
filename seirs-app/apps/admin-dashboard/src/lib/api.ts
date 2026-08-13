@@ -303,6 +303,13 @@ export const adminApi = {
     create: (body: any)              => req<any>('/admin/website/content', { method: 'POST', body: JSON.stringify(body) }),
     update: (id: string, body: any)  => req<any>(`/admin/website/content/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     remove: (id: string)             => req<any>(`/admin/website/content/${id}`, { method: 'DELETE' }),
+    // Super-admin approval of a submitted page. Reject returns it to
+    // draft rather than deleting the editor's work.
+    review: (id: string, approve: boolean) =>
+      req<any>(`/admin/website/content/${id}/review`, {
+        method: 'POST',
+        body:   JSON.stringify({ approve }),
+      }),
   },
 
   // Direct R2 upload helper (re-uses the existing /upload endpoint).

@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { isSuperAdminFromUser } from '@/lib/rbac';
+import { getUser } from '@/lib/auth';
 
 // Spec V8 §3.13. admin editor for the public marketing website.
 // Manages four content types under tabs: articles (news/blog/press),
@@ -29,7 +31,8 @@ interface Row {
   seoTitle:        string | null;
   seoDescription:  string | null;
   category:        string | null;
-  status:          'draft' | 'scheduled' | 'published' | 'archived';
+  // pending_approval: submitted by an editor, waiting on a super admin.
+  status:          'draft' | 'pending_approval' | 'scheduled' | 'published' | 'archived';
   publishAt:       string | null;
   publishedAt:     string | null;
   sortOrder:       number;
@@ -45,10 +48,15 @@ const TABS: Array<{ key: WebType; label: string; sub: string }> = [
 ];
 
 const STATUS_STYLES: Record<string, string> = {
-  draft:     'bg-gray-100 text-gray-600',
-  scheduled: 'bg-amber-100 text-amber-700',
-  published: 'bg-emerald-100 text-emerald-700',
-  archived:  'bg-red-100 text-red-600',
+  draft:            'bg-gray-100 text-gray-600',
+  pending_approval: 'bg-[#C2410C]/10 text-[#C2410C]',
+  scheduled:        'bg-amber-100 text-amber-700',
+  published:        'bg-emerald-100 text-emerald-700',
+  archived:         'bg-red-100 text-red-600',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  pending_approval: 'awaiting approval',
 };
 
 export default function WebsiteCmsPage() {
@@ -168,7 +176,9 @@ export default function WebsiteCmsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-[#0F2B4C] truncate">{r.title}</p>
-                  <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded font-bold ${STATUS_STYLES[r.status] ?? 'bg-gray-100'}`}>{r.status}</span>
+                  <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded font-bold ${STATUS_STYLES[r.status] ?? 'bg-gray-100'}`}>
+                    {STATUS_LABEL[r.status] ?? r.status}
+                  </span>
                   {r.category && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#3A7BD5]/10 text-[#3A7BD5] font-medium">{r.category}</span>
                   )}
@@ -230,6 +240,9 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   const [err,       setErr]       = useState<string | null>(null);
   const [showPrev,  setShowPrev]  = useState(false);
   const confirm                   = useConfirm();
+  // Only a super admin can turn website content live. Everyone else
+  // submits for review; the button label changes to say so.
+  const superAdmin                = isSuperAdminFromUser(getUser());
 
   const autoSlug = () => {
     if (!title) return;
@@ -300,6 +313,14 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
     setSaving(true);
     try { await adminApi.websiteContent.remove(row.id); onSaved(); }
     catch (e: any) { setErr(e?.message ?? 'Delete failed'); setSaving(false); }
+  };
+
+  // Super-admin decision on a submitted page.
+  const review = async (approve: boolean) => {
+    if (!row) return;
+    setSaving(true); setErr(null);
+    try { await adminApi.websiteContent.review(row.id, approve); onSaved(); }
+    catch (e: any) { setErr(e?.message ?? 'Review failed'); setSaving(false); }
   };
 
   return (
@@ -550,11 +571,31 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
             )}
           </div>
           <div className="flex gap-2">
+            {/* Super-admin review controls, only on a submitted page.
+                Reject returns it to draft so the editor keeps the work. */}
+            {!isNew && row?.status === 'pending_approval' && superAdmin && (
+              <>
+                <button
+                  onClick={() => review(false)}
+                  disabled={saving}
+                  className="px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50"
+                >
+                  Send back to draft
+                </button>
+                <button
+                  onClick={() => review(true)}
+                  disabled={saving}
+                  className="px-4 py-2 text-sm font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  Approve and publish
+                </button>
+              </>
+            )}
             <button onClick={onClose} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
             <button onClick={save} disabled={saving || !title || !slug || !body}
               className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[#0F2B4C] text-white rounded-lg hover:bg-[#3A7BD5] disabled:opacity-50">
               <Save size={14} />
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? 'Saving…' : superAdmin ? 'Save' : 'Save and submit'}
             </button>
           </div>
         </div>

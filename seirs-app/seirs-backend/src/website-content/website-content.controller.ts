@@ -1,6 +1,6 @@
 import {
   Body, Controller, Delete, Get, Ip, Param, Patch, Post, Query, Req, UseGuards,
-  DefaultValuePipe, ParseIntPipe,
+  DefaultValuePipe, ParseIntPipe, ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { WebsiteContentService } from './website-content.service';
@@ -10,7 +10,16 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { User } from '../users/user.entity';
+import { User, AdminSubRole } from '../users/user.entity';
+
+/**
+ * Who may publish to the live website. Deliberately narrow: the whole
+ * point of the approval gate is that a content editor cannot push copy
+ * or imagery public without a second pair of eyes.
+ */
+function isSuperAdmin(user: User): boolean {
+  return (user as any)?.adminRole === AdminSubRole.SUPER_ADMIN;
+}
 
 @Controller()
 export class WebsiteContentController {
@@ -93,13 +102,30 @@ export class WebsiteContentController {
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Post('admin/website/content')
   adminCreate(@CurrentUser() user: User, @Body() body: any) {
-    return this.svc.create(user.id, body);
+    return this.svc.create(user.id, body, isSuperAdmin(user));
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch('admin/website/content/:id')
-  adminUpdate(@Param('id') id: string, @Body() body: any) {
-    return this.svc.update(id, body);
+  adminUpdate(@CurrentUser() user: User, @Param('id') id: string, @Body() body: any) {
+    return this.svc.update(id, body, isSuperAdmin(user));
+  }
+
+  /**
+   * Super admin approves or rejects a submitted page (2026-08-13).
+   * Rejection returns it to draft so the editor keeps their work.
+   */
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post('admin/website/content/:id/review')
+  adminReview(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { approve: boolean },
+  ) {
+    if (!isSuperAdmin(user)) {
+      throw new ForbiddenException('Only a super admin can approve website content.');
+    }
+    return this.svc.review(id, !!body?.approve);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)

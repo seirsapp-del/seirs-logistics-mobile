@@ -11,6 +11,17 @@ import { ContactSubmission, ContactStatus, ContactSubject } from './contact-subm
 // 2-120 chars. Keep it strict to avoid Next.js dynamic route ambiguity.
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,118}[a-z0-9])?$/;
 
+/**
+ * Fields whose change alters what the public actually reads. Editing any
+ * of these on a live page sends it back for approval when the editor is
+ * not a super admin. Metadata like sortOrder is excluded: reordering a
+ * FAQ is not a content change worth re-reviewing.
+ */
+const CONTENT_FIELDS = [
+  'title', 'body', 'excerpt', 'coverImageUrl', 'slug',
+  'seoTitle', 'seoDescription', 'featureInApp', 'featureBadge',
+] as const;
+
 @Injectable()
 export class WebsiteContentService implements OnModuleInit {
   private readonly logger = new Logger(WebsiteContentService.name);
@@ -265,7 +276,7 @@ export class WebsiteContentService implements OnModuleInit {
     return row;
   }
 
-  async create(adminId: string, body: Partial<WebsiteContent>) {
+  async create(adminId: string, body: Partial<WebsiteContent>, isSuper = true) {
     this.validateSlug(body.slug);
     if (!body.type)  throw new BadRequestException('type required');
     if (!body.title) throw new BadRequestException('title required');
@@ -275,9 +286,11 @@ export class WebsiteContentService implements OnModuleInit {
     // future → schedule; missing → draft.
     const now    = new Date();
     const at     = body.publishAt ? new Date(body.publishAt) : null;
-    const status = body.status
+    const wanted = body.status
       ?? (at ? (at <= now ? WebContentStatus.PUBLISHED : WebContentStatus.SCHEDULED)
             : WebContentStatus.DRAFT);
+    // Non-super-admins cannot publish straight to the live site.
+    const status = this.gatePublish(wanted, isSuper)!;
 
     const row = this.repo.create({
       type:           body.type,
@@ -303,7 +316,47 @@ export class WebsiteContentService implements OnModuleInit {
     return this.repo.save(row);
   }
 
-  async update(id: string, body: Partial<WebsiteContent>) {
+  /**
+   * Publishing the website now needs a super admin (founder 2026-08-13:
+   * "in case anyone is trying to go rogue"). A content editor can write,
+   * edit and submit; only a super admin turns it live.
+   *
+   * The In-App CMS has always worked this way. The website did not, so
+   * anyone holding the 'cms' permission could push copy, imagery or a
+   * fake offer straight onto the public site with nobody reviewing it.
+   * With staff joining, that is the gap worth closing first.
+   *
+   * Downgrade rather than reject: an editor asking to publish gets
+   * PENDING_APPROVAL, not an error, so the work is never lost and the
+   * super admin has a queue to work through.
+   */
+  private gatePublish(
+    requested: WebContentStatus | undefined,
+    isSuper: boolean,
+  ): WebContentStatus | undefined {
+    if (isSuper || requested === undefined) return requested;
+    if (requested === WebContentStatus.PUBLISHED || requested === WebContentStatus.SCHEDULED) {
+      return WebContentStatus.PENDING_APPROVAL;
+    }
+    return requested;
+  }
+
+  /**
+   * Super admin decision on a submitted item. Rejection returns it to
+   * DRAFT rather than deleting it: the editor keeps their work and can
+   * resubmit after changes.
+   */
+  async review(id: string, approve: boolean) {
+    const row = await this.getOne(id);
+    if (row.status !== WebContentStatus.PENDING_APPROVAL) {
+      throw new BadRequestException('This item is not awaiting approval.');
+    }
+    row.status = approve ? WebContentStatus.PUBLISHED : WebContentStatus.DRAFT;
+    if (approve && !row.publishedAt) row.publishedAt = new Date();
+    return this.repo.save(row);
+  }
+
+  async update(id: string, body: Partial<WebsiteContent>, isSuper = true) {
     const row = await this.getOne(id);
     if (body.slug !== undefined && body.slug !== row.slug) {
       this.validateSlug(body.slug);
@@ -324,12 +377,30 @@ export class WebsiteContentService implements OnModuleInit {
     if (body.lang           !== undefined) row.lang           = body.lang;
     if (body.publishAt      !== undefined) row.publishAt      = body.publishAt ? new Date(body.publishAt) : null;
 
-    if (body.status !== undefined && body.status !== row.status) {
-      if (body.status === WebContentStatus.PUBLISHED && !row.publishedAt) {
+    // An editor asking to publish gets queued for review instead.
+    const nextStatus = this.gatePublish(body.status, isSuper);
+    if (nextStatus !== undefined && nextStatus !== row.status) {
+      if (nextStatus === WebContentStatus.PUBLISHED && !row.publishedAt) {
         row.publishedAt = new Date();
       }
-      row.status = body.status;
+      row.status = nextStatus;
     }
+
+    /**
+     * Editing already-live content sends it BACK for review, unless a
+     * super admin made the edit. Otherwise the gate is trivially
+     * bypassed: submit something harmless, wait for approval, then
+     * rewrite the body once it is live. Founder's exact concern.
+     */
+    if (
+      !isSuper &&
+      body.status === undefined &&
+      row.status === WebContentStatus.PUBLISHED &&
+      CONTENT_FIELDS.some(f => (body as any)[f] !== undefined)
+    ) {
+      row.status = WebContentStatus.PENDING_APPROVAL;
+    }
+
     return this.repo.save(row);
   }
 

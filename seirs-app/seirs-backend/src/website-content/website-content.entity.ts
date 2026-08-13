@@ -22,6 +22,11 @@ export enum WebContentType {
 
 export enum WebContentStatus {
   DRAFT     = 'draft',
+  // Submitted by a content editor, waiting for a super admin to approve
+  // (2026-08-13). The In-App CMS has had this gate since it shipped; the
+  // website did not, so anyone with content permission could publish
+  // straight to the live site. Same review step now applies to both.
+  PENDING_APPROVAL = 'pending_approval',
   SCHEDULED = 'scheduled',
   PUBLISHED = 'published',
   ARCHIVED  = 'archived',
