@@ -1342,15 +1342,54 @@ export class AdminService {
     return d;
   }
 
+  /**
+   * Hand a delivery to a specific driver. This is the manual override
+   * for when auto-match finds nobody, which is why the dispatcher needs
+   * it reachable rather than buried (founder 2026-08-13).
+   *
+   * Guards added the same day. Before this it would assign a package to
+   * literally any driver row: unapproved applicants who have never
+   * passed KYC, and the staged demo driver whose whole purpose is to
+   * never touch real work.
+   */
   async manualReassign(deliveryId: string, driverId: string) {
-    const driver = await this.driversRepo.findOne({ where: { id: driverId } });
+    const driver = await this.driversRepo.findOne({
+      where:     { id: driverId },
+      relations: ['user'],
+    });
     if (!driver) throw new NotFoundException('Driver not found.');
+
+    if (driver.status !== DriverStatus.APPROVED) {
+      throw new BadRequestException(
+        `${driver.user?.name ?? 'This driver'} is not approved (${driver.status}). Approve them in Driver KYC first.`,
+      );
+    }
+    if ((driver.user as any)?.isDemo) {
+      throw new BadRequestException(
+        'That is a demo account, staged for screenshots. It cannot be given a real delivery.',
+      );
+    }
+
+    const delivery = await this.deliveriesRepo.findOne({ where: { id: deliveryId } });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if ([DeliveryStatus.DELIVERED, DeliveryStatus.CANCELLED].includes(delivery.status)) {
+      throw new BadRequestException(`This delivery is already ${delivery.status}.`);
+    }
 
     await this.deliveriesRepo.update(deliveryId, {
       driver,
       status:     DeliveryStatus.ASSIGNED,
       assignedAt: new Date(),
     });
+
+    this.logger.log(
+      `Delivery ${delivery.trackingCode} manually assigned to driver ${driverId} by admin`,
+    );
+
+    // NOTE: the driver is not push-notified here. AdminService has no
+    // NotificationsService injected, and wiring one in creates a module
+    // cycle through DeliveriesModule. The driver sees the job when the
+    // app polls. Worth fixing properly, but not by widening this class.
 
     return this.getDeliveryDetail(deliveryId);
   }

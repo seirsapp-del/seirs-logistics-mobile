@@ -24,6 +24,15 @@ function DeliveriesContent() {
   const [loading, setLoading] = useState(true);
   const confirm               = useConfirm();
 
+  /**
+   * Manual dispatch (founder 2026-08-13). Auto-match handles the normal
+   * case, but when it finds nobody the delivery sits at pending and a
+   * dispatcher has to intervene. The backend could always do this; there
+   * was simply no way to reach it from the dashboard, so pending jobs
+   * had a Cancel button and nothing else.
+   */
+  const [assigning, setAssigning] = useState<any>(null);
+
   const load = (p = 1) => {
     setLoading(true);
     adminApi.deliveries(p, statusFilter || undefined)
@@ -113,12 +122,20 @@ function DeliveriesContent() {
                       </td>
                       <td className="px-4 py-3">
                         {!['delivered', 'cancelled', 'failed'].includes(d.status) && (
-                          <button
-                            onClick={() => handleCancel(d.id)}
-                            className="text-xs text-red-600 hover:text-red-800 font-medium transition-colors"
-                          >
-                            Cancel
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => setAssigning(d)}
+                              className="text-xs text-[#3A7BD5] hover:text-[#0F2B4C] font-semibold transition-colors"
+                            >
+                              {d.driver ? 'Reassign' : 'Assign driver'}
+                            </button>
+                            <button
+                              onClick={() => handleCancel(d.id)}
+                              className="text-xs text-red-600 hover:text-red-800 font-medium transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -154,6 +171,117 @@ function DeliveriesContent() {
           </>
         )}
       </main>
+
+      {assigning && (
+        <AssignDriverModal
+          delivery={assigning}
+          onClose={() => setAssigning(null)}
+          onDone={() => { setAssigning(null); load(page); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Driver picker for manual dispatch. Lists approved drivers only,
+ * because the backend rejects anyone else and finding that out after
+ * clicking is a worse experience than not offering them.
+ */
+function AssignDriverModal({ delivery, onClose, onDone }: {
+  delivery: any;
+  onClose:  () => void;
+  onDone:   () => void;
+}) {
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId,  setBusyId]  = useState<string | null>(null);
+  const [search,  setSearch]  = useState('');
+  const [err,     setErr]     = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    adminApi.drivers(1, 'approved', search || undefined)
+      .then(d => setDrivers(Array.isArray(d?.drivers) ? d.drivers : []))
+      .catch(() => setDrivers([]))
+      .finally(() => setLoading(false));
+  }, [search]);
+
+  const assign = async (driverId: string) => {
+    setBusyId(driverId); setErr(null);
+    try {
+      await adminApi.reassignDelivery(delivery.id, driverId);
+      onDone();
+    } catch (e: any) {
+      setErr(e?.message ?? 'Assignment failed');
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="px-5 py-3 border-b border-gray-100">
+          <h2 className="font-bold text-[#0F2B4C]">
+            {delivery.driver ? 'Reassign' : 'Assign'} {delivery.trackingCode}
+          </h2>
+          <p className="text-xs text-gray-500 mt-0.5 truncate">
+            {delivery.pickupAddress} → {delivery.dropoffAddress}
+          </p>
+          {delivery.driver && (
+            <p className="text-xs text-[#B45309] mt-1">
+              Currently with {delivery.driver?.user?.name ?? 'a driver'}. Reassigning takes it off them.
+            </p>
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-b border-gray-100">
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search approved drivers by name"
+            className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:border-[#3A7BD5]"
+          />
+        </div>
+
+        {err && <div className="mx-5 mt-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <p className="text-center text-sm text-gray-400 py-10">Loading drivers…</p>
+          ) : drivers.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-10">
+              No approved drivers{search ? ' match that search' : ''}.
+            </p>
+          ) : drivers.map(dr => (
+            <div key={dr.id} className="flex items-center gap-3 px-5 py-3 border-b border-gray-50">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[#0F2B4C] truncate">{dr.user?.name ?? '-'}</p>
+                <p className="text-xs text-gray-400 capitalize">
+                  {dr.vehicleType ?? 'vehicle unknown'}
+                  {dr.isOnline ? ' · online' : ' · offline'}
+                </p>
+              </div>
+              <button
+                onClick={() => assign(dr.id)}
+                disabled={busyId !== null}
+                className="text-xs font-semibold bg-[#0F2B4C] text-white px-3 py-1.5 rounded-lg hover:bg-[#3A7BD5] disabled:opacity-50"
+              >
+                {busyId === dr.id ? 'Assigning…' : 'Assign'}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex justify-end">
+          <button onClick={onClose} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">Close</button>
+        </div>
+      </div>
     </div>
   );
 }
