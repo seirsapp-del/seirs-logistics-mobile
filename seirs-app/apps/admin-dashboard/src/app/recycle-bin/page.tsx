@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Trash2, RotateCcw, AlertTriangle, ShieldAlert, Clock } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { HardDeleteModal } from '@/components/HardDeleteModal';
 
 // Recycle Bin: users scheduled for hard-delete but still within the 30-day
 // grace window. Admin can restore (cancel deletion) or force-purge now.
@@ -42,6 +43,9 @@ export default function RecycleBinPage() {
   const [rows, setRows]       = useState<PendingDeletion[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId]   = useState<string | null>(null);
+  // Which row is being purged for good. Held separately from busyId so
+  // the two-stage modal cannot be confused with the one-tap restore.
+  const [purging, setPurging] = useState<PendingDeletion | null>(null);
   const confirm               = useConfirm();
 
   const load = useCallback(() => {
@@ -67,6 +71,28 @@ export default function RecycleBinPage() {
       load();
     } catch (e: any) {
       alert(e?.message ?? 'Restore failed');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  /**
+   * Delete forever: skip the rest of the grace window and purge now.
+   * Same NDPR path as the users page, behind the same two-stage guard
+   * (reason for the audit log, then type the name). Nothing here can be
+   * undone, which is exactly why it is not a one-tap button next to
+   * Restore.
+   */
+  const purgeNow = async (reason: string) => {
+    if (!purging) return;
+    const row = purging;
+    setBusyId(row.id);
+    try {
+      await adminApi.ndpr.hardDeleteUser(row.id, reason.trim());
+      setPurging(null);
+      load();
+    } catch (e: any) {
+      alert(e?.message ?? 'Purge failed');
     } finally {
       setBusyId(null);
     }
@@ -187,14 +213,25 @@ export default function RecycleBinPage() {
                         <div className="text-gray-400">{fmtDate(r.deletionScheduledAt)}</div>
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => restore(r)}
-                          disabled={busyId === r.id}
-                          className="inline-flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-200 font-medium disabled:opacity-50"
-                        >
-                          <RotateCcw size={12} />
-                          {busyId === r.id ? '…' : 'Restore'}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => restore(r)}
+                            disabled={busyId === r.id}
+                            className="inline-flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-200 font-medium disabled:opacity-50"
+                          >
+                            <RotateCcw size={12} />
+                            {busyId === r.id ? '…' : 'Restore'}
+                          </button>
+                          <button
+                            onClick={() => setPurging(r)}
+                            disabled={busyId === r.id}
+                            className="inline-flex items-center gap-1 text-xs text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 font-medium disabled:opacity-50"
+                            title="Purge now instead of waiting for the scheduled date. Cannot be undone."
+                          >
+                            <Trash2 size={12} />
+                            Delete forever
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -204,6 +241,14 @@ export default function RecycleBinPage() {
           </div>
         )}
       </div>
+
+      {purging && (
+        <HardDeleteModal
+          userName={purging.name}
+          onCancel={() => setPurging(null)}
+          onConfirm={purgeNow}
+        />
+      )}
     </div>
   );
 }
