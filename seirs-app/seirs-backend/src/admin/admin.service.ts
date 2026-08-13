@@ -24,6 +24,7 @@ import { DriverEarning } from '../earnings/driver-earning.entity';
 import { LoyaltyPoint } from '../loyalty/loyalty-point.entity';
 import { IdentityVerification } from '../user-verification/user-verification.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
+import { AccountIdPrefix, generateUuidAccountId } from '../common/utils/auth-codes';
 
 const PRICING_SINGLETON_ID = 'singleton';
 
@@ -1033,6 +1034,18 @@ export class AdminService {
     const rawPassword = data.password?.trim()
       || crypto.randomBytes(16).toString('base64url');
 
+    /**
+     * Staff get an ADM- SEIRS ID like everyone else (founder asked
+     * 2026-08-13: "when i want to add a staff member how do they get
+     * their seirs id"). They did not: createAdmin never set accountId,
+     * so every staff account carried null.
+     *
+     * That broke the one-email-one-account-one-ID rule for the only
+     * people whose actions most need to be traceable. Audit entries and
+     * approval records name an admin, and "who is user
+     * 9f3c-…-a12b" is a worse answer than ADM-XXXXXXXX when you are
+     * reconstructing who published something or changed a fee.
+     */
     const user = this.usersRepo.create({
       name:      fullName,
       email,
@@ -1041,6 +1054,7 @@ export class AdminService {
       role:      UserRole.ADMIN,
       adminRole: (data.adminRole as AdminSubRole) ?? null,
       roleId:    data.roleId ?? null,
+      accountId: generateUuidAccountId(AccountIdPrefix.ADMIN),
     });
     await this.usersRepo.save(user);
 

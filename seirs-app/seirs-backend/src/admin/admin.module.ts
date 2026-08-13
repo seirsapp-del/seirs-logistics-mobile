@@ -1,9 +1,11 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { Module, OnModuleInit, Logger } from '@nestjs/common';
+import { TypeOrmModule, InjectRepository } from '@nestjs/typeorm';
+import { IsNull, Repository } from 'typeorm';
+import { AccountIdPrefix, generateUuidAccountId } from '../common/utils/auth-codes';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { DemoDataService } from './demo-data.service';
-import { User } from '../users/user.entity';
+import { User, UserRole } from '../users/user.entity';
 import { ArchivedUser } from '../users/archived-user.entity';
 import { UsersModule } from '../users/users.module';
 import { Driver } from '../drivers/driver.entity';
@@ -49,4 +51,37 @@ import { StoreDropoff } from '../partner-store/store-dropoff.entity';
   providers: [AdminService, DemoDataService],
   exports: [AdminService],
 })
-export class AdminModule {}
+export class AdminModule implements OnModuleInit {
+  private readonly logger = new Logger(AdminModule.name);
+
+  constructor(@InjectRepository(User) private readonly usersRepo: Repository<User>) {}
+
+  /**
+   * Backfill ADM- SEIRS IDs for staff created before 2026-08-13, when
+   * createAdmin started assigning them. Existing admins, including the
+   * founder's own account, carried null.
+   *
+   * Runs once in practice: after the first boot there is nothing left to
+   * find. Kept idempotent rather than as a one-off script so a restored
+   * backup or a fresh environment self-heals the same way.
+   */
+  async onModuleInit() {
+    try {
+      const missing = await this.usersRepo.find({
+        where:  { role: UserRole.ADMIN, accountId: IsNull() },
+        select: ['id'],
+      });
+      for (const row of missing) {
+        await this.usersRepo.update(row.id, {
+          accountId: generateUuidAccountId(AccountIdPrefix.ADMIN),
+        });
+      }
+      if (missing.length > 0) {
+        this.logger.log(`Backfilled ADM- account IDs for ${missing.length} staff account(s)`);
+      }
+    } catch (err: any) {
+      // Never block boot over a cosmetic identifier.
+      this.logger.warn(`Admin accountId backfill skipped: ${err?.message}`);
+    }
+  }
+}
