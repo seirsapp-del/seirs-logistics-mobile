@@ -21,7 +21,12 @@ const RATE_DRIVER_BONUS      = 5;
 const MONTHLY_STREAK_BONUS   = 50;
 const MONTHLY_STREAK_TARGET  = 5;            // 5th delivery in a calendar month
 const MAX_REFERRALS_PER_MONTH = 10;
-const POINT_LIFETIME_MONTHS  = 24;
+// 12 months, not 24 (founder 2026-08-13). This now matches the rolling
+// 12-month window the tier calculation already uses, so a customer's
+// points and their tier expire on the same clock. Two different windows
+// meant someone could hold points that no longer counted toward the tier
+// that earned them, which is impossible to explain to a customer.
+const POINT_LIFETIME_MONTHS  = 12;
 
 // Referral anti-fraud gates (Spec V8. bootstrapped platform, sybil attack
 // would be existential). All must pass before a referral bonus is paid out:

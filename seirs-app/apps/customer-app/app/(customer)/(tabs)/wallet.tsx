@@ -283,23 +283,19 @@ export default function WalletScreen() {
           </ScrollView>
         </View>
 
-        {/* Community pulse (social proof). Only shows when we have data. */}
-        {pulse && pulse.deliveriesThisWeek > 0 && (
-          <View style={[styles.pulseCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <View style={[styles.pulseIcon, { backgroundColor: theme.primary + '15' }]}>
-              <Users size={18} color={theme.primary} strokeWidth={2} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.pulseCount, { color: theme.text }]}>
-                {pulse.deliveriesThisWeek.toLocaleString()}
-                <Text style={[styles.pulseCountUnit, { color: theme.textSecond }]}> deliveries this week</Text>
-              </Text>
-              <Text style={[styles.pulseSub, { color: theme.textSecond }]}>
-                By {pulse.activeCustomersThisWeek.toLocaleString()} SEIRS customers across Nigeria.
-              </Text>
-            </View>
-          </View>
-        )}
+        {/* Community pulse REMOVED (founder 2026-08-13).
+
+            It published our weekly delivery count and active customer
+            count to anyone who installed the app. That is competitive
+            intelligence and a targeting signal in one: it tells a rival
+            exactly how big we are, and it tells anyone planning fraud or
+            theft how thin our coverage is in a given week. Pre-launch
+            those numbers are small enough to read as "not worth using",
+            which is the opposite of the social proof it was meant to be.
+
+            Volume figures stay internal, on the admin dashboard. If we
+            want to publish a milestone it should be a deliberate
+            statement with a number we chose, not a live counter. */}
 
         {/* Empty state when everything is null (fresh account, no deliveries) */}
         {balance === 0 && deliveredCount === 0 && streak === 0 && !promo && (
