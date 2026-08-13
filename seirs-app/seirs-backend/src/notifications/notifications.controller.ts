@@ -78,4 +78,15 @@ export class NotificationsController {
   }) {
     return this.svc.broadcastToAudience(body);
   }
+
+  // POST /api/v1/notifications/send-to-user  (admin only)
+  // One message to one person. Support work is mostly one customer at a
+  // time; until this existed the only tool was a platform-wide
+  // broadcast, so those conversations happened on WhatsApp with no
+  // record against the account.
+  @UseGuards(AdminGuard)
+  @Post('send-to-user')
+  sendToUser(@Body() body: { userId: string; title: string; body: string }) {
+    return this.svc.sendToUser(body);
+  }
 }

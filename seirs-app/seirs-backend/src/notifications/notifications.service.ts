@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -207,6 +207,50 @@ export class NotificationsService {
   // Resolves the audience to a user-id list, persists one notification
   // row per recipient (so they show up in the in-app notification
   // centre), and pushes via FCM. Returns counts for the admin UI.
+  /**
+   * Message ONE person (founder 2026-08-13: "i see the general
+   * notification but what about single notification to specific user").
+   *
+   * Support work is mostly one customer at a time: chasing a document,
+   * explaining a refund, telling a driver their bank change was
+   * approved. Until now the only tool was a broadcast to every customer
+   * on the platform, which nobody would use for that, so those messages
+   * happened on WhatsApp with no record.
+   *
+   * Reuses create(), so the message lands in the in-app inbox, the live
+   * socket, and push, exactly like a system notification.
+   */
+  async sendToUser(input: {
+    userId: string;
+    title:  string;
+    body:   string;
+  }): Promise<{ delivered: boolean; hasPushToken: boolean; recipientName: string }> {
+    const title = input.title?.trim();
+    const body  = input.body?.trim();
+    if (!title || !body) throw new BadRequestException('Title and message are both required.');
+
+    const user = await this.usersRepo.findOne({
+      where:  { id: input.userId },
+      select: ['id', 'name', 'fcmToken', 'isActive'],
+    });
+    if (!user) throw new NotFoundException('That account no longer exists.');
+    if (user.isActive === false) {
+      throw new BadRequestException('That account is deactivated and will not receive messages.');
+    }
+
+    await this.create(user.id, title, body, NotificationType.SYSTEM);
+
+    // Report honestly whether a push could actually go out. Without a
+    // token the message still reaches the in-app inbox, but the person
+    // sees nothing until they open the app, and support needs to know
+    // that rather than assume it was delivered to their lock screen.
+    return {
+      delivered:     true,
+      hasPushToken:  !!user.fcmToken,
+      recipientName: user.name ?? 'this user',
+    };
+  }
+
   async broadcastToAudience(input: {
     audience: BroadcastAudience;
     zone?: string;

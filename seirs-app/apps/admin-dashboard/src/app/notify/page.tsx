@@ -1,6 +1,6 @@
 'use client';
-import { useState } from 'react';
-import { Send, Users, Truck, Store, AlertCircle, CheckCircle2, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Send, Users, Truck, Store, AlertCircle, CheckCircle2, Calendar, UserSearch } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 // Spec V8 §3.13 - push composer for one-off ops broadcasts. Different
@@ -12,18 +12,20 @@ import { adminApi } from '@/lib/api';
 // validates input; the send handler hits a placeholder route that
 // will be wired up in the next batch.
 
-type Audience = 'all_customers' | 'all_drivers' | 'all_partners' | 'specific_zone';
+type Audience = 'all_customers' | 'all_drivers' | 'all_partners' | 'specific_zone' | 'one_user';
 type Schedule = 'now' | 'later';
 
 const AUDIENCES: Array<{ key: Audience; label: string; sub: string; Icon: any; color: string }> = [
+  // One person first: support work is mostly one customer at a time, so
+  // this is the common case, not the exotic one (founder 2026-08-13).
+  { key: 'one_user',      label: 'One person',     sub: 'Search by name, email or SEIRS ID',  Icon: UserSearch, color: '#0F2B4C' },
   { key: 'all_customers', label: 'All customers',  sub: 'Everyone with a customer account',  Icon: Users, color: '#3A7BD5' },
   { key: 'all_drivers',   label: 'All drivers',    sub: 'Approved drivers only',              Icon: Truck, color: '#D97706' },
   { key: 'all_partners',  label: 'All partner stores', sub: 'Active partner store accounts',  Icon: Store, color: '#16A34A' },
-  { key: 'specific_zone', label: 'Specific area',  sub: 'Geofence by city or LGA (coming)',   Icon: AlertCircle, color: '#0F2B4C' },
 ];
 
 export default function NotifyComposerPage() {
-  const [audience, setAudience] = useState<Audience>('all_customers');
+  const [audience, setAudience] = useState<Audience>('one_user');
   const [zone,     setZone]     = useState('');
   const [title,    setTitle]    = useState('');
   const [body,     setBody]     = useState('');
@@ -32,11 +34,36 @@ export default function NotifyComposerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState<{ recipients: number; pushed: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote]   = useState<string | null>(null);
+
+  // One-person mode: search customers/drivers and pick a single recipient.
+  const [userQuery,   setUserQuery]   = useState('');
+  const [userResults, setUserResults] = useState<any[]>([]);
+  const [searching,   setSearching]   = useState(false);
+  const [recipient,   setRecipient]   = useState<any | null>(null);
+
+  useEffect(() => {
+    if (audience !== 'one_user') return;
+    const q = userQuery.trim();
+    if (q.length < 2) { setUserResults([]); return; }
+    // Debounced so typing a name is not one request per keystroke.
+    const t = setTimeout(() => {
+      setSearching(true);
+      adminApi.users(1, undefined, q)
+        .then((r: any) => setUserResults(Array.isArray(r?.users) ? r.users.slice(0, 8) : []))
+        .catch(() => setUserResults([]))
+        .finally(() => setSearching(false));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [userQuery, audience]);
 
   const charLimit = 240;
   const titleOk = title.length > 0 && title.length <= 60;
   const bodyOk  = body.length  > 0 && body.length  <= charLimit;
-  const audienceOk = audience !== 'specific_zone' || zone.trim().length > 0;
+  const audienceOk =
+    audience === 'one_user'      ? !!recipient
+    : audience === 'specific_zone' ? zone.trim().length > 0
+    : true;
   const scheduleOk = schedule === 'now' || scheduleAt.length > 0;
 
   const canSend = titleOk && bodyOk && audienceOk && scheduleOk && !submitting;
@@ -45,12 +72,34 @@ export default function NotifyComposerPage() {
     setSubmitting(true);
     setError(null);
     setSent(null);
+    setNote(null);
     try {
+      if (audience === 'one_user' && recipient) {
+        const r = await adminApi.notifications.sendToUser({ userId: recipient.id, title, body });
+        setSent({ recipients: 1, pushed: r.hasPushToken ? 1 : 0 });
+        // Say plainly when it will only be seen in-app. Support needs to
+        // know whether the person got a buzz or has to open the app.
+        setNote(
+          r.hasPushToken
+            ? `Sent to ${r.recipientName}.`
+            : `Saved to ${r.recipientName}'s inbox, but they have no push token, so they will only see it when they next open the app.`,
+        );
+        setTimeout(() => {
+          setSent(null); setNote(null);
+          setTitle(''); setBody(''); setRecipient(null); setUserQuery('');
+        }, 6000);
+        return;
+      }
       // Scheduled broadcasts are stored client-side intent only - the
       // backend `broadcastToAudience` fires immediately. A scheduler cron
       // (queue + delayed publish) is a follow-up; for now scheduled
       // requests fall back to send-now and we surface that in the toast.
-      const res = await adminApi.notifications.broadcast({ audience, zone, title, body });
+      // one_user returned above, so anything reaching here is a real
+      // audience broadcast.
+      const res = await adminApi.notifications.broadcast({
+        audience: audience as Exclude<Audience, 'one_user'>,
+        zone, title, body,
+      });
       setSent(res);
       setTimeout(() => {
         setSent(null);
@@ -80,9 +129,11 @@ export default function NotifyComposerPage() {
       </div>
 
       {sent && (
-        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-          <CheckCircle2 size={16} />
-          Broadcast sent to {sent.recipients.toLocaleString()} {sent.recipients === 1 ? 'user' : 'users'} ({sent.pushed.toLocaleString()} pushed).
+        <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
+          <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
+          <span>
+            {note ?? `Broadcast sent to ${sent.recipients.toLocaleString()} ${sent.recipients === 1 ? 'user' : 'users'} (${sent.pushed.toLocaleString()} pushed).`}
+          </span>
         </div>
       )}
       {error && (
@@ -128,6 +179,60 @@ export default function NotifyComposerPage() {
             onChange={e => setZone(e.target.value)}
             className="w-full px-3 py-2 mt-2 rounded-lg border border-[#E5E7EB] text-sm focus:outline-none focus:border-[#3A7BD5]"
           />
+        )}
+
+        {audience === 'one_user' && (
+          <div className="mt-3">
+            {recipient ? (
+              <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-[#3A7BD5] bg-[#3A7BD5]/5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#0F2B4C] truncate">{recipient.name}</p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {recipient.email}
+                    {recipient.accountId ? ` · ${recipient.accountId}` : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setRecipient(null); setUserQuery(''); }}
+                  className="text-xs font-semibold text-[#3A7BD5] hover:underline shrink-0"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  placeholder="Search by name, email or SEIRS ID"
+                  value={userQuery}
+                  onChange={e => setUserQuery(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] text-sm focus:outline-none focus:border-[#3A7BD5]"
+                />
+                {searching && <p className="text-xs text-gray-400 mt-2">Searching…</p>}
+                {!searching && userQuery.trim().length >= 2 && userResults.length === 0 && (
+                  <p className="text-xs text-gray-400 mt-2">No accounts match that.</p>
+                )}
+                {userResults.length > 0 && (
+                  <div className="mt-2 border border-[#E5E7EB] rounded-lg divide-y divide-gray-50 overflow-hidden">
+                    {userResults.map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => setRecipient(u)}
+                        className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                      >
+                        <p className="text-sm font-medium text-[#0F2B4C] truncate">{u.name}</p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {u.email}
+                          {u.accountId ? ` · ${u.accountId}` : ''}
+                          {u.role ? ` · ${u.role}` : ''}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
 

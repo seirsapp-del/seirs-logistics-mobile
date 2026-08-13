@@ -225,6 +225,12 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+    // One message to one person, for support work.
+    sendToUser: (body: { userId: string; title: string; body: string }) =>
+      req<{ delivered: boolean; hasPushToken: boolean; recipientName: string }>(
+        '/notifications/send-to-user',
+        { method: 'POST', body: JSON.stringify(body) },
+      ),
   },
 
   // Spec V8 §3.13. email template catalogue + override layer.
