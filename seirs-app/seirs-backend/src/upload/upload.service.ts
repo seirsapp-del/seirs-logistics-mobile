@@ -1,8 +1,41 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import { extname } from 'path';
+
+type AllowedType = 'image/jpeg' | 'image/png' | 'application/pdf';
+
+const EXT_FOR_TYPE: Record<AllowedType, string> = {
+  'image/jpeg':      'jpg',
+  'image/png':       'png',
+  'application/pdf': 'pdf',
+};
+
+const normaliseExt = (ext: string) =>
+  ext.replace(/^\./, '').toLowerCase() === 'jpeg' ? 'jpg' : ext.replace(/^\./, '').toLowerCase();
+
+/**
+ * Identify a buffer by its magic bytes. Returns null for anything that
+ * is not one of the three formats we accept, which is the whole point:
+ * an unrecognised file is rejected rather than stored under whatever
+ * type its name claimed.
+ */
+function sniffType(buf: Buffer): AllowedType | null {
+  if (buf.length < 8) return null;
+  // JPEG: FF D8 FF
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
+    buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a
+  ) return 'image/png';
+  // PDF: %PDF
+  if (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46) {
+    return 'application/pdf';
+  }
+  return null;
+}
 
 // Cloudflare R2 is S3-compatible. Zero egress fees, 10GB free forever.
 // API endpoint format: https://<accountId>.r2.cloudflarestorage.com
@@ -50,20 +83,42 @@ export class UploadService implements OnModuleInit {
     }
 
     const ext = extname(originalName).toLowerCase();
-    const key = `${folder}/${uuidv4()}${ext}`;
 
-    const contentTypeMap: Record<string, string> = {
-      '.jpg':  'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png':  'image/png',
-      '.pdf':  'application/pdf',
-    };
+    /**
+     * Check what the bytes actually are (audit 2026-08-14).
+     *
+     * The only validation was a regex over the filename, in the multer
+     * fileFilter. A filename is a caller-supplied string: naming a file
+     * .png made it a PNG as far as the API was concerned, and the stored
+     * Content-Type was then derived from that same string, so whatever
+     * was uploaded got served back under a type it had claimed for
+     * itself. These files are later opened by admins reviewing KYC.
+     *
+     * The same reasoning as the proof-photo rule: enforce where the data
+     * is written, not where it is typed.
+     */
+    const sniffed = sniffType(buffer);
+    if (!sniffed) {
+      throw new BadRequestException(
+        'That file is not a JPEG, PNG or PDF. Check the file and try again.',
+      );
+    }
+    if (EXT_FOR_TYPE[sniffed] !== normaliseExt(ext)) {
+      throw new BadRequestException(
+        `File contents do not match the .${normaliseExt(ext) || '?'} extension. ` +
+        'Rename it to match its real format and try again.',
+      );
+    }
+
+    // Extension taken from what the bytes say, not from the caller's
+    // filename, so the key and the served type cannot disagree.
+    const key = `${folder}/${uuidv4()}.${EXT_FOR_TYPE[sniffed]}`;
 
     await this.s3.send(new PutObjectCommand({
       Bucket:      this.bucket,
       Key:         key,
       Body:        buffer,
-      ContentType: contentTypeMap[ext] ?? 'application/octet-stream',
+      ContentType: sniffed,
     }));
 
     // Return the public CDN URL (set R2_PUBLIC_URL to your bucket's public domain)
