@@ -415,91 +415,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── THE PROBLEM WE ARE SOLVING ──
-          Added 2026-08-14. Founder asked for real, researched data rather
-          than invented numbers, framed in the present tense so the site reads
-          as a company actively solving these problems rather than one
-          promising to later.
-
-          Every figure here is real and checkable. The ₦50bn is Nigeria's
-          postal service's own published estimate of what weak addressing
-          costs the country in failed and inaccurate deliveries. The digital
-          postcode rollout is federal policy with a first phase from October.
-          The cash-on-delivery retreat is documented across the major
-          Nigerian platforms. Attribution is kept in prose rather than as
-          links, per founder preference, but each claim is sourced and none
-          is embellished.
-
-          Deliberately absent: any speed or arrival-time claim. Traffic
-          research would support one, but we never promise arrival times in
-          Nigeria, and this section is where that temptation lives. ── */}
-      <section className="py-14 sm:py-20 lg:py-24 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10 lg:mb-14">
-            <p className="section-label mb-3">Why We Exist</p>
-            <h2 className="section-title mb-4">
-              Nigeria loses ₦50 billion a year to deliveries that fail
-            </h2>
-            <p className="section-sub">
-              That is the postal service&apos;s own estimate, and the cause is
-              not laziness or bad luck. It is that the country&apos;s delivery
-              system was built on addresses that do not exist, payments nobody
-              trusts, and handoffs nobody can prove. We are rebuilding all
-              three.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            {[
-              {
-                icon: MapPin,
-                problem: "Addresses that do not exist",
-                detail:
-                  "Most Nigerian streets have no signs and most buildings have no numbers, so deliveries run on landmarks and phone calls. The country is now rolling out digital postcodes to fix it at national scale.",
-                solution:
-                  "We never ask for a street address. You drop a pin, and the driver navigates to the coordinate. It already works everywhere, including the streets the postcode rollout has not reached.",
-              },
-              {
-                icon: Lock,
-                problem: "Payments nobody trusts",
-                detail:
-                  "Cash on delivery pushed the risk onto riders and sellers: refused parcels, cash carried through traffic, and losses big enough that major Nigerian platforms have pulled COD entirely.",
-                solution:
-                  "We hold the money in escrow instead. The sender pays by card up front, the driver carries no cash, and the funds release only once delivery is confirmed.",
-              },
-              {
-                icon: KeyRound,
-                problem: "Handoffs nobody can prove",
-                detail:
-                  "When a parcel is handed to the wrong person, there is usually no record of who took it. The dispute becomes one person's word against another's, and it is the sender who absorbs it.",
-                solution:
-                  "Every pickup and drop-off is confirmed with a one-time code, and the receiver's name is recorded. There is always an answer to who took the package.",
-              },
-            ].map((c, i) => (
-              <Reveal key={c.problem} delay={i * 120}>
-                <div className="h-full bg-off-white rounded-card border border-gray-100 p-6 lg:p-7">
-                  <div className="w-11 h-11 rounded-xl bg-navy/5 flex items-center justify-center mb-4">
-                    <c.icon size={20} className="text-navy" strokeWidth={1.75} />
-                  </div>
-                  <h3 className="text-navy font-bold text-base sm:text-lg mb-2">
-                    {c.problem}
-                  </h3>
-                  <p className="text-text-muted text-sm leading-relaxed mb-4">
-                    {c.detail}
-                  </p>
-                  <p className="text-sky text-[11px] font-bold uppercase tracking-widest mb-1.5">
-                    What we are doing
-                  </p>
-                  <p className="text-navy text-sm leading-relaxed font-medium">
-                    {c.solution}
-                  </p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── HOW IT WORKS ── */}
       <section id="how-it-works" className="py-24 bg-off-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -622,32 +537,32 @@ export default async function HomePage() {
               <FeatureCard
                 icon={Upload}
                 title="Bulk CSV Upload"
-                description="Upload hundreds of delivery orders in one go with our simple CSV template. Save hours every morning."
+                description="Hundreds of orders in a single upload. The whole morning dispatch, done at once."
               />
               <FeatureCard
                 icon={Wallet}
                 title="Business Wallet"
-                description="Top up once, dispatch all day. Your wallet is instantly debited per delivery, no per-transaction friction."
+                description="Top up once, dispatch all day. One balance, one statement."
               />
               <FeatureCard
                 icon={Users}
                 title="Team Management"
-                description="Add multiple team members to your account with customisable roles and spending limits."
+                description="Your team books under one account, within the limits you set."
               />
               <FeatureCard
                 icon={Gift}
                 title="Recurring Templates"
-                description="Same route every Tuesday? Save it once and rebook it in two taps, schedule included."
+                description="The routes you run every week, saved and rebooked in seconds."
               />
               <FeatureCard
                 icon={Zap}
                 title="Multi-Stop Runs"
-                description="One pickup, many drop-offs. Route-optimised automatically, each stop with its own verification code."
+                description="One pickup, many drop-offs, sequenced and verified end to end."
               />
               <FeatureCard
                 icon={Headphones}
                 title="Direct Support"
-                description="A real support inbox inside the app: open a ticket, get a human, keep the whole thread in one place."
+                description="A real support inbox in the app. A human, not a contact form."
               />
             </div>
             </div></Reveal>
