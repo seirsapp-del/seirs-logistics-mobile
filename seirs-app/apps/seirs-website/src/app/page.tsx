@@ -21,8 +21,6 @@ import {
   Smartphone,
   ChevronRight,
   Globe,
-  Lock,
-  Camera,
 } from "lucide-react";
 
 /* ── Hero scene: bespoke okada illustration in the logo's own visual
@@ -816,21 +814,40 @@ export default async function HomePage() {
           optional. Nothing here is aspirational. ── */}
       <section className="py-8 sm:py-10 bg-off-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-5 md:flex md:flex-wrap md:items-center md:justify-center md:gap-x-14">
+          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6 sm:gap-x-16">
             {[
-              { icon: CheckCircle, label: "Payments by Flutterwave" },
-              { icon: Lock, label: "Funds held in escrow" },
-              { icon: Shield, label: "KYC-checked drivers" },
-              { icon: Camera, label: "Photo proof at handoff" },
-            ].map(({ icon: Icon, label }) => (
-              <div
-                key={label}
-                className="flex items-center gap-2 text-text-muted"
-              >
-                <Icon size={17} className="text-sky flex-shrink-0" strokeWidth={1.75} />
-                <span className="text-xs sm:text-sm font-medium leading-tight">{label}</span>
-              </div>
-            ))}
+              {
+                logo: img.img_badge_flutterwave,
+                icon: CheckCircle,
+                label: "Payments by Flutterwave",
+              },
+              {
+                logo: img.img_badge_compliance,
+                icon: Shield,
+                label: "NDPR compliant",
+              },
+              {
+                logo: null,
+                icon: Shield,
+                label: "KYC-checked drivers",
+              },
+            ].map(({ logo, icon: Icon, label }) =>
+              logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={label}
+                  src={logo}
+                  alt={label}
+                  className="h-8 sm:h-10 w-auto max-w-[150px] object-contain"
+                  loading="lazy"
+                />
+              ) : (
+                <div key={label} className="flex items-center gap-2 text-text-muted">
+                  <Icon size={17} className="text-sky flex-shrink-0" strokeWidth={1.75} />
+                  <span className="text-xs sm:text-sm font-medium leading-tight">{label}</span>
+                </div>
+              ),
+            )}
           </div>
         </div>
       </section>

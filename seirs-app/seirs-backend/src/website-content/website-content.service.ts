@@ -467,6 +467,15 @@ export class WebsiteContentService implements OnModuleInit {
 // excerpt doubles as the admin's what-goes-where instruction card AND
 // the generation brief (matches Desktop\seirs-image-prompts.txt names).
 const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
+  // Trust badge logos, added 2026-08-15. The footer badge row shows real
+  // marks rather than lucide icons. Upload the official asset for each;
+  // until then the badge falls back to its text label, so the row never
+  // renders as a broken image. Use the vendor's own approved logo file and
+  // follow their brand guidelines: these are third-party trademarks.
+  { slug: 'img_badge_flutterwave', title: 'Trust badge: Flutterwave',
+    excerpt: 'Footer trust row. Official Flutterwave logo from their brand assets page. Transparent background, wide. Falls back to the text "Payments by Flutterwave" when empty.' },
+  { slug: 'img_badge_compliance',  title: 'Trust badge: data-protection compliance',
+    excerpt: 'Footer trust row. NDPR / NITDA compliance mark. IMPORTANT: only upload this once the registration is actually granted, since it asserts a registration to every visitor. Falls back to text when empty.' },
   // Partner logo strip, added 2026-08-14. Replaced the "The apps, exactly as
   // they are" section on the homepage. Six slots so the strip can grow as
   // real partners sign; empty slots are skipped, and the strip hides itself
