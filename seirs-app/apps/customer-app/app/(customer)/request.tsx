@@ -87,6 +87,7 @@ export default function RequestDriverScreen() {
     coords:       routeCoords,
     distanceText,
     durationText,
+    distanceMeters,
   } = useDirectionsPolyline(
     pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : null,
     dropoff ? { latitude: dropoff.lat, longitude: dropoff.lng } : null,
@@ -199,12 +200,22 @@ export default function RequestDriverScreen() {
     setPredictions([]);
   };
 
-  // Distance in km parsed from the Directions "1.2 km" string, fallback 0
-  // so calcRideFare(...) still returns just the base fare if the route
-  // hasn't resolved yet.
-  const distKmParsed = distanceText
-    ? Number(distanceText.match(/([\d.]+)/)?.[1] ?? '0')
-    : 0;
+  /**
+   * Distance for the fare, from the numeric field the hook already
+   * exposes for exactly this (audit 2026-08-14).
+   *
+   * This used to regex the first number out of the human-readable
+   * distance string, which is a display format and mis-parses in both
+   * directions:
+   *   "850 m"    -> 850, so any sub-kilometre ride was priced as 850 km
+   *   "1,234 km" -> 1, because the match stops at the thousands comma
+   * The first is the common one: every short hop across a neighbourhood
+   * formats in metres.
+   *
+   * 0 while the route resolves, so calcRideFare returns the base fare
+   * rather than a guess.
+   */
+  const distKmParsed = distanceMeters != null ? distanceMeters / 1000 : 0;
 
   const handleNext = () => {
     if (!pickup || !dropoff) return;

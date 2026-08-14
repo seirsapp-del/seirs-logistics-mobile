@@ -255,14 +255,27 @@ export default function SendScreen() {
   const snapPoints = useMemo(() => [180, '92%'], []);
 
   // Real road-following polyline + km + ETA
-  const { coords: routeCoords, distanceText, durationText } = useDirectionsPolyline(
+  const { coords: routeCoords, distanceText, durationText, distanceMeters } = useDirectionsPolyline(
     pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : null,
     dropoff ? { latitude: dropoff.lat, longitude: dropoff.lng } : null,
   );
 
-  const distKmRoute = distanceText
-    ? Number((distanceText.match(/([\d.]+)/)?.[1] ?? '7'))
-    : 7;
+  /**
+   * Distance for the quote, from the hook's numeric field (audit
+   * 2026-08-14).
+   *
+   * This regexed the first number out of the human-readable distance
+   * string, which is a display format and mis-parses both ways:
+   *   "850 m"    -> 850, so any sub-kilometre drop was quoted as 850 km
+   *   "1,234 km" -> 1, because the match stops at the thousands comma
+   * The metres case is the common one: short hops format that way.
+   *
+   * The old fallback of 7 was worse than the parse bug. Before a route
+   * resolves there is no distance, and inventing an average-looking one
+   * quotes a price for a trip nobody described. 0 means the quote shows
+   * the base fare until the route arrives.
+   */
+  const distKmRoute = distanceMeters != null ? distanceMeters / 1000 : 0;
   const kg   = parseFloat(weightKg) || 0;
   const codAmountNgn = codEnabled ? (Number(codAmount) || 0) : 0;
   const pickupCoords  = pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : null;
