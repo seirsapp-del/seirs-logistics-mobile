@@ -153,7 +153,14 @@ export default async function ForDriversPage() {
               body="Every completed delivery credits your wallet immediately: no waiting for a Friday batch, no minimum balance, no calling anyone to ask where your money is. Withdraw to your bank whenever you want, or let the daily payout run send it for you."
               points={[
                 'Earnings visible per trip, with the platform cut shown plainly',
-                'Night pickups carry a night fee that goes to you in full',
+                // Corrected 2026-08-15. This said the night fee "goes to you
+                // in full". It does not: the fee is a percentage of the fare,
+                // rides inside the gross, and takes the same commission as
+                // everything else, so the rider keeps the standard share of
+                // it. Saying otherwise is a false pay claim to someone
+                // deciding whether to work for us. Revisit the wording if
+                // nightFeeNgn is ever excluded from the commission base.
+                'Night pickups pay more, on the same terms as every other trip',
                 'Instant withdrawal available once earnings are a day old',
               ]}
             />

@@ -14,7 +14,6 @@ import {
   Upload,
   Shield,
   Headphones,
-  Star,
   ArrowRight,
   Zap,
   Store,
@@ -131,46 +130,9 @@ function HeroIllustration() {
    site, so the slot is now fully orphaned and has been pulled from the
    admin's list, same as the img_step_* slots. */
 
-/* ── Testimonial Card ── */
-function TestimonialCard({
-  quote,
-  name,
-  role,
-  location,
-  rating,
-}: {
-  quote: string;
-  name: string;
-  role: string;
-  location: string;
-  rating: number;
-}) {
-  return (
-    <div className="bg-white rounded-card p-7 shadow-sm border border-gray-100 flex flex-col">
-      {/* Quote mark */}
-      <div className="text-navy font-black text-5xl leading-none mb-4 opacity-20 select-none">
-        &ldquo;
-      </div>
-      <p className="text-text-dark text-sm leading-relaxed flex-grow mb-5">
-        {quote}
-      </p>
-      <div className="flex items-center gap-1 mb-4">
-        {Array.from({ length: rating }).map((_, i) => (
-          <Star key={i} size={14} className="text-warning-amber fill-warning-amber" />
-        ))}
-      </div>
-      <div className="flex items-center gap-3 border-t border-gray-100 pt-4">
-        <div className="w-10 h-10 bg-navy/10 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-navy font-bold text-sm">{name.charAt(0)}</span>
-        </div>
-        <div>
-          <div className="text-navy font-bold text-sm">{name}</div>
-          <div className="text-text-muted text-xs">{role} · {location}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
+/* TestimonialCard removed 2026-08-15. It was already unused before today:
+   the invented testimonials it rendered were replaced by The SEIRS Standard,
+   and that section has now gone too. */
 
 /* ── Partner Benefit ── */
 function PartnerBenefit({
@@ -754,45 +716,24 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* ── THE SEIRS STANDARD ──
-          Replaces the invented testimonials (fabricated people on a
-          pre-launch site would be exactly the "cheap" tell we're
-          killing). Real customer stories take this slot after launch. */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <p className="section-label mb-3">Our Promises</p>
-            <h2 className="section-title mb-4">The SEIRS Standard</h2>
-            <p className="section-sub max-w-2xl mx-auto">
-              We are new, and we would rather earn your trust than borrow it. These are the
-              rules we hold ourselves to on every single delivery.
-            </p>
-          </div>
+      /* THE SEIRS STANDARD removed 2026-08-15. Founder called it after the
+         audit: two of its three promises did not survive checking.
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "No fake promises",
-                body: "We never guarantee arrival times: this is Lagos, and anyone who promises you 4:15 PM is lying. We show you the live position and an honest estimate instead.",
-              },
-              {
-                title: "Proof over trust",
-                body: "Photo on every delivery. ID checks on everything valuable. A timeline you can audit. When something goes wrong, the record already exists.",
-              },
-              {
-                title: "Fair to the people who carry it",
-                body: "Riders keep the majority of every fare, night fees go to them in full, and nobody is ranked, punished, or pushed to ride when they don't want to.",
-              },
-            ].map((p) => (
-              <div key={p.title} className="bg-off-white rounded-card p-8 border border-gray-100">
-                <div className="w-10 h-1.5 bg-[#FFBE0B] rounded-full mb-5" />
-                <h3 className="text-navy font-bold text-lg mb-3">{p.title}</h3>
-                <p className="text-text-muted text-sm leading-relaxed">{p.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+         "No fake promises" (never guarantee arrival times) and "Proof over
+         trust" (photo on every delivery, ID checks above the high-value
+         threshold, auditable timeline) were both true and verifiable.
+
+         "Fair to the people who carry it" was not. It claimed night fees go
+         to riders in full: the night fee is a percentage of the fare, rides
+         inside the gross, and takes the same 30% commission as everything
+         else. It also claimed nobody is ranked, while /how-it-works says
+         jobs go to drivers "ranked by rating, vehicle fit and route" and
+         DriverSubscription sells Priority Matching at ₦5,000/week for a
+         +0.15 score boost that outranks the rating gap.
+
+         Rather than rewrite one promise, the founder removed the section:
+         a promises block whose own product contradicts it costs more trust
+         than it earns. */
 
       {/* ── CTA BANNER ── */}
       <section
