@@ -48,21 +48,28 @@ export class BusinessController {
   }
 
   // Stop-level driver transitions. The driver app POSTs these as the
-  // driver walks through the multi-stop route. Driver auth/identity is
-  // checked at the matching/dispatch layer - here we accept the request
-  // from any authenticated user and let the service validate ownership.
+  // driver walks through the multi-stop route. The actor is checked in
+  // the service against the parent delivery's assigned driver: the old
+  // comment here claimed dispatch had already done that, and it had not.
   @Post('business/deliveries/:deliveryId/stops/:stopId/arrived')
-  markStopArrived(@Param('deliveryId') deliveryId: string, @Param('stopId') stopId: string) {
-    return this.svc.markStopArrived(deliveryId, stopId);
+  markStopArrived(
+    @Param('deliveryId') deliveryId: string,
+    @Param('stopId')     stopId: string,
+    @CurrentUser()       user: User,
+  ) {
+    return this.svc.markStopArrived(deliveryId, stopId, user.id);
   }
 
   @Post('business/deliveries/:deliveryId/stops/:stopId/delivered')
   markStopDelivered(
     @Param('deliveryId') deliveryId: string,
     @Param('stopId')     stopId: string,
+    @CurrentUser()       user: User,
     @Body() body: { proofPhotoUrls?: string[]; recipientSignatureUrl?: string },
   ) {
-    return this.svc.markStopDelivered(deliveryId, stopId, body?.proofPhotoUrls, body?.recipientSignatureUrl);
+    return this.svc.markStopDelivered(
+      deliveryId, stopId, body?.proofPhotoUrls, body?.recipientSignatureUrl, user.id,
+    );
   }
 
   @Post('business/deliveries/csv')

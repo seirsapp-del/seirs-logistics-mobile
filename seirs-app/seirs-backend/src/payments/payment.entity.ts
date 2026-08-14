@@ -38,6 +38,11 @@ export enum EscrowStatus {
 export enum PaymentPurpose {
   DELIVERY     = 'delivery',      // the fare: escrow-held, released to driver
   REDIRECT_FEE = 'redirect_fee',  // failed-delivery reroute to a partner store
+  // The ₦100 charge that exists only to tokenize a card, refunded
+  // immediately. Before 2026-08-14 these rows fell through to the
+  // DELIVERY default, so the webhook put a verification charge into
+  // escrow as though it were a fare.
+  CARD_VERIFICATION = 'card_verify',
 }
 
 @Entity('payments')

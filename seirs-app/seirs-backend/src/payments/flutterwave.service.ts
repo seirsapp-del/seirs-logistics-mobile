@@ -77,6 +77,7 @@ export class FlutterwaveService {
   async verifyByTxRef(txRef: string): Promise<{
     success:       boolean;
     amount:        number;
+    currency:      string;
     transactionId: number;
   }> {
     const data = await this.request<any>(
@@ -85,7 +86,12 @@ export class FlutterwaveService {
     );
     return {
       success:       data.data.status === 'successful',
-      amount:        data.data.amount,
+      // `amount` is the settled transaction amount, which is what the
+      // documented verification check compares against. Deliberately not
+      // `charged_amount`: that adds customer-borne fees on top, so it is
+      // always >= amount and would wave through a short payment.
+      amount:        Number(data.data.amount),
+      currency:      data.data.currency,
       transactionId: data.data.id,
     };
   }

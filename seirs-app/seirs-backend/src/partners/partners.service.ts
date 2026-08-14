@@ -121,8 +121,14 @@ export class PartnersService {
     return pd;
   }
 
+  // Credentials never leave the server, even for admins: nothing renders
+  // them, and a leak here is a leak of someone else's system.
   async getAllPartners() {
-    return this.partnersRepo.find({ order: { name: 'ASC' } });
+    const rows = await this.partnersRepo.find({ order: { name: 'ASC' } });
+    return rows.map(({ apiKey, apiSecret, ...safe }) => ({
+      ...safe,
+      hasCredentials: !!(apiKey && apiSecret),
+    }));
   }
 
   async createPartner(data: Partial<Partner>) {

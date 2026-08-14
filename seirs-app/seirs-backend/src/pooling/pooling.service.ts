@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PoolGroup } from './pool-group.entity';
+import { Driver } from '../drivers/driver.entity';
 
 const POOL_TIME_CAP_PCT  = 20;   // Spec V8 §1 - insertion can add at most +20% time
 const CORRIDOR_RADIUS_KM = 1;    // Pickup/dropoff must lie within 1km of route
@@ -59,7 +60,36 @@ export class PoolingService {
 
   constructor(
     @InjectRepository(PoolGroup) private repo: Repository<PoolGroup>,
+    @InjectRepository(Driver)    private driversRepo: Repository<Driver>,
   ) {}
+
+  /**
+   * Resolve the caller's own driver record (audit 2026-08-14).
+   *
+   * Every route on this controller took a driverId from the request
+   * body or the URL and trusted it, so any authenticated account could
+   * read another driver's active pool groups, open groups in their name
+   * and complete their legs. Nothing in the apps or the backend calls
+   * this module yet, which is exactly why it went unnoticed: an unused
+   * surface is still a mounted one.
+   */
+  async requireOwnDriverId(actorUserId: string): Promise<string> {
+    const driver = await this.driversRepo.findOne({
+      where: { user: { id: actorUserId } },
+      relations: ['user'],
+    });
+    if (!driver) throw new ForbiddenException('Only drivers can use pooling.');
+    return driver.id;
+  }
+
+  private async assertOwnsGroup(poolGroupId: string, actorUserId: string) {
+    const driverId = await this.requireOwnDriverId(actorUserId);
+    const group = await this.repo.findOne({ where: { id: poolGroupId } });
+    if (!group) throw new NotFoundException('Pool group not found.');
+    if (group.driverId !== driverId) {
+      throw new ForbiddenException('That pool group belongs to another driver.');
+    }
+  }
 
   // Try to insert a new leg into one of the driver's active pool groups.
   // Returns whether it fits, and which group accepted it.
@@ -136,7 +166,8 @@ export class PoolingService {
   }
 
   // Mark a leg complete; if all legs done, close the group.
-  async completeLeg(poolGroupId: string, deliveryId: string) {
+  async completeLeg(poolGroupId: string, deliveryId: string, actorUserId?: string) {
+    if (actorUserId) await this.assertOwnsGroup(poolGroupId, actorUserId);
     const g = await this.repo.findOne({ where: { id: poolGroupId } });
     if (!g) return null;
     g.legIds = (g.legIds ?? []).filter(id => id !== deliveryId);

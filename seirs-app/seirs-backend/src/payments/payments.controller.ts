@@ -105,10 +105,12 @@ export class PaymentsController {
   }
 
   // POST /api/v1/payments/verify/:txRef
+  // The reference is caller-chosen, so the service checks it belongs to
+  // this account before confirming anything.
   @UseGuards(JwtAuthGuard)
   @Post('verify/:txRef')
-  async verifyPayment(@Param('txRef') txRef: string) {
-    return this.paymentsService.confirmFlutterwavePayment(txRef);
+  async verifyPayment(@Param('txRef') txRef: string, @CurrentUser() user: User) {
+    return this.paymentsService.confirmFlutterwavePayment(txRef, user.id);
   }
 
   // GET /api/v1/payments/wallet

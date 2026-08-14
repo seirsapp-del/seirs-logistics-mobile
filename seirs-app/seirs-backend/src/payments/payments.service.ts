@@ -1,5 +1,5 @@
 import {
-  Injectable, Logger, BadRequestException, NotFoundException,
+  Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -143,6 +143,9 @@ export class PaymentsService {
       amountKobo:        toKobo(this.CARD_VERIFY_NAIRA),
       method:            PaymentMethod.CARD,
       status:            PaymentStatus.PENDING,
+      // Tagged so the webhook does not mistake a ₦100 tokenization
+      // charge for a fare and put it into escrow.
+      purpose:           PaymentPurpose.CARD_VERIFICATION,
       provider:          'flutterwave',
       providerReference: txRef,
       authorizationUrl:  paymentLink,
@@ -158,6 +161,39 @@ export class PaymentsService {
     last4?: string;
     brand?: string;
   }> {
+    /**
+     * The reference is a path parameter, so it is entirely caller-chosen
+     * (audit 2026-08-14).
+     *
+     * This method used to take it straight to Flutterwave, pull the card
+     * token off whatever transaction came back, and save that token to
+     * the *calling* account. It never asked whose reference it was. Pass
+     * somebody else's SRS-CARDV- reference and their card landed on your
+     * account, chargeable through the saved-card flow. The only thing
+     * standing in the way was guessing 8 hex characters, on an endpoint
+     * with no rate limit.
+     *
+     * Ownership is now established from our own records first, and
+     * Flutterwave is only consulted about a reference we already know
+     * belongs to this user.
+     */
+    const own = await this.paymentsRepo.findOne({
+      where: { providerReference: txRef, customer: { id: userId } },
+      relations: ['customer'],
+    });
+    if (!own) {
+      throw new NotFoundException('No card verification found for that reference on this account.');
+    }
+    if (own.purpose !== PaymentPurpose.CARD_VERIFICATION) {
+      throw new BadRequestException('That reference is not a card verification.');
+    }
+    // SUCCESS is allowed as well as PENDING: the webhook and the client's
+    // return trip race each other, and the webhook often wins. REFUNDED
+    // means this flow already ran to completion.
+    if (own.status === PaymentStatus.REFUNDED) {
+      throw new BadRequestException('That card verification has already been processed.');
+    }
+
     // Confirm the transaction actually succeeded before saving anything.
     const verified = await this.flutterwaveService.verifyByTxRef(txRef);
     if (!verified.success) {
@@ -371,17 +407,78 @@ export class PaymentsService {
 
   // ── Verify Flutterwave payment (webhook + manual) ─────────────────────────
 
-  async confirmFlutterwavePayment(txRef: string): Promise<Payment | null> {
+  async confirmFlutterwavePayment(
+    txRef: string,
+    actorUserId?: string,
+  ): Promise<Payment | null> {
     const payment = await this.paymentsRepo.findOne({
       where: { providerReference: txRef },
       relations: ['delivery', 'customer'],
     });
     if (!payment) return null;
+
+    // The manual verify route takes the reference from the URL, so a
+    // caller can name any payment in the system. The webhook passes no
+    // actor and stays trusted: it has already proven itself with the
+    // secret hash.
+    if (actorUserId && payment.customer?.id !== actorUserId) {
+      throw new ForbiddenException('That payment reference belongs to another account.');
+    }
+
     if (payment.status === PaymentStatus.SUCCESS) return payment;
 
     const result = await this.flutterwaveService.verifyByTxRef(txRef);
 
+    /**
+     * Verify what was actually paid, not just that something was paid
+     * (audit 2026-08-14).
+     *
+     * The amount and currency came back from Flutterwave and were used
+     * for nothing but a log line. The row was then marked SUCCESS and
+     * escrowed at the amount we *expected*, whatever had really been
+     * collected. A short payment, or a payment settled in a different
+     * currency on a multi-currency account, would still have released
+     * the full fare to the driver with SEIRS covering the gap. This is
+     * the check Flutterwave's own integration guide asks for before
+     * giving value.
+     *
+     * Overpayment is allowed through: refusing to deliver a package
+     * somebody has overpaid for helps nobody, and it is reconcilable.
+     */
     if (result.success) {
+      const expectedNaira = toNaira(payment.amountKobo);
+      const paidNaira     = Number(result.amount ?? 0);
+      const paidCurrency  = String(result.currency ?? '').toUpperCase();
+      const wantCurrency  = String(payment.currency ?? 'NGN').toUpperCase();
+
+      // Tolerate sub-kobo float noise from the provider, nothing more.
+      if (!Number.isFinite(paidNaira) || paidNaira + 0.01 < expectedNaira) {
+        this.logger.error(
+          `UNDERPAYMENT rejected txRef=${txRef} expected=₦${expectedNaira} paid=₦${paidNaira}`,
+        );
+        await this.paymentsRepo.update(payment.id, { status: PaymentStatus.FAILED });
+        return null;
+      }
+      if (paidCurrency && paidCurrency !== wantCurrency) {
+        this.logger.error(
+          `CURRENCY MISMATCH rejected txRef=${txRef} expected=${wantCurrency} paid=${paidCurrency}`,
+        );
+        await this.paymentsRepo.update(payment.id, { status: PaymentStatus.FAILED });
+        return null;
+      }
+
+      // A card-tokenization charge is not a fare. It must never be
+      // escrowed or earn loyalty points; verifyAndRefundCardCharge owns
+      // the rest of its lifecycle and refunds it.
+      if (payment.purpose === PaymentPurpose.CARD_VERIFICATION) {
+        await this.paymentsRepo.update(payment.id, {
+          status:                   PaymentStatus.SUCCESS,
+          flutterwaveTransactionId: result.transactionId,
+        });
+        payment.status = PaymentStatus.SUCCESS;
+        return payment;
+      }
+
       // Redirect fees settle outright: they are owed to SEIRS + the
       // holding store, never escrowed for a driver, and they must not
       // award loyalty points or tokenize a card a second time. Paying

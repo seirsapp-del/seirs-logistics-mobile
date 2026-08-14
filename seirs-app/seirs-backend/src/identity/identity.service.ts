@@ -10,9 +10,14 @@ import { HandoffOtp } from './handoff-otp.entity';
 import { HandoffRecord, HandoffMethod, HandoffStage } from './handoff-record.entity';
 import { MailService } from '../mail/mail.service';
 import { FeesService } from '../fees/fees.service';
+import { generateOtp } from '../common/utils/auth-codes';
 
 const OTP_TTL_MIN = 10;
 const RATE_LIMIT_PER_MIN = 3;
+// Higher than the OTP limit: a partner store working through a queue of
+// collections legitimately scans several QRs a minute. Still far below
+// what walking the SEIRS ID space would need.
+const LOOKUP_LIMIT_PER_MIN = 20;
 
 @Injectable()
 export class IdentityService {
@@ -37,7 +42,13 @@ export class IdentityService {
   // can speak it and have it typed back for verification.
   //
   // Returns minimal info - never the email/phone of someone else's account.
-  async lookupBySeirsId(code: string) {
+  async lookupBySeirsId(code: string, actorUserId?: string) {
+    // Throttled per caller (audit 2026-08-14): this turns a SEIRS ID into
+    // a real person's name and photo, and SEIRS IDs are short enough to
+    // walk. Unthrottled it is a name-harvesting endpoint, which is the
+    // reconnaissance risk the founder called out. Legitimate use is a
+    // staff member scanning one QR in front of them.
+    if (actorUserId) this.checkRateLimit(`lookup:${actorUserId}`, LOOKUP_LIMIT_PER_MIN);
     const normalized = code.trim().toUpperCase();
     if (!/^(CUST|DRV|PART|BIZ)-[A-Z0-9]+$/.test(normalized)) {
       throw new BadRequestException('Invalid SEIRS ID format');
@@ -66,7 +77,8 @@ export class IdentityService {
   // collecting - the Amazon one-time-PIN pattern. Verification still
   // records against the sender's user id, which is who verifyHandoff
   // resolves as the OTP owner.
-  async issueHandoffOtp(deliveryId: string, recipientUserId?: string) {
+  async issueHandoffOtp(deliveryId: string, recipientUserId?: string, actorUserId?: string) {
+    if (actorUserId) await this.assertDeliveryParty(deliveryId, actorUserId);
     let resolvedId = recipientUserId;
     if (!resolvedId) {
       const delivery = await this.deliveriesRepo.findOne({
@@ -81,7 +93,12 @@ export class IdentityService {
     const recipient = await this.usersRepo.findOne({ where: { id: resolvedId } });
     if (!recipient) throw new NotFoundException('Recipient not found');
 
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    // Was Math.random (audit 2026-08-14). generateOtp already exists and
+    // its own docstring names handoff verification as the reason it was
+    // written; this call site was missed when the rest were converted.
+    // Math.random is seeded predictably enough that observing a few codes
+    // narrows the next one, and this code releases high-value packages.
+    const code = generateOtp();
     const codeHash = await bcrypt.hash(code, 10);
 
     await this.otpRepo.save(this.otpRepo.create({
@@ -121,7 +138,10 @@ export class IdentityService {
       // Both methods may attach a proof photo
       proofPhotoUrl?: string;
     },
+    actorUserId?: string,
   ): Promise<{ recordId: string; recipientUserId: string }> {
+    if (actorUserId) await this.assertDeliveryParty(payload.deliveryId, actorUserId);
+
     const delivery = await this.deliveriesRepo.findOne({
       where: { id: payload.deliveryId },
       relations: ['customer'],
@@ -251,7 +271,8 @@ export class IdentityService {
   }
 
   // ── Audit / chain of custody ───────────────────────────────────────────
-  async getHandoffChain(deliveryId: string) {
+  async getHandoffChain(deliveryId: string, actorUserId?: string) {
+    if (actorUserId) await this.assertDeliveryParty(deliveryId, actorUserId);
     return this.recordRepo.find({
       where: { deliveryId },
       order: { createdAt: 'ASC' },
@@ -260,14 +281,53 @@ export class IdentityService {
 
   // ── Helpers ────────────────────────────────────────────────────────────
 
-  private checkRateLimit(userId: string) {
+  /**
+   * Only people actually involved in a delivery may touch its custody
+   * chain (audit 2026-08-14).
+   *
+   * Every handoff route carried JwtAuthGuard and stopped there, taking
+   * the delivery id straight from the URL without asking whether the
+   * caller had anything to do with it. Three consequences, all reachable
+   * from any ordinary account by iterating delivery ids:
+   *
+   *   - issue-otp mailed a real verification code to a stranger's
+   *     customer on demand, which is both an email bomb and the setup
+   *     for a "read me your code" phone scam.
+   *   - verify minted the handoff record that the DELIVERED gate on
+   *     high-value packages checks for. The record is the gate.
+   *   - the chain returned typed legal names, government ID type and
+   *     last four digits, and doorstep photos for any delivery.
+   *
+   * Admins are allowed through: disputes are exactly the case where
+   * somebody outside the delivery has to read the chain.
+   */
+  private async assertDeliveryParty(deliveryId: string, actorUserId: string) {
+    const delivery = await this.deliveriesRepo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer', 'driver', 'driver.user'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found');
+
+    if (delivery.customer?.id === actorUserId) return delivery;
+    if (delivery.driver?.user?.id === actorUserId) return delivery;
+
+    const actor = await this.usersRepo.findOne({
+      where: { id: actorUserId },
+      select: ['id', 'adminRole'],
+    });
+    if (actor?.adminRole) return delivery;
+
+    throw new ForbiddenException('You are not a party to this delivery.');
+  }
+
+  private checkRateLimit(key: string, limit: number = RATE_LIMIT_PER_MIN) {
     const now = Date.now();
     const windowStart = now - 60_000;
-    const recent = (this.issueAttempts.get(userId) ?? []).filter(t => t > windowStart);
-    if (recent.length >= RATE_LIMIT_PER_MIN) {
-      throw new ForbiddenException('Too many OTP requests - wait 60 seconds and try again');
+    const recent = (this.issueAttempts.get(key) ?? []).filter(t => t > windowStart);
+    if (recent.length >= limit) {
+      throw new ForbiddenException('Too many requests - wait 60 seconds and try again');
     }
     recent.push(now);
-    this.issueAttempts.set(userId, recent);
+    this.issueAttempts.set(key, recent);
   }
 }

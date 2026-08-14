@@ -624,7 +624,35 @@ export class BusinessService {
    * If the stop is the first one, also marks the parent Delivery as
    * actualStartedAt (first arrival = trip started).
    */
-  async markStopArrived(deliveryId: string, stopId: string) {
+  /**
+   * The driver assigned to the parent delivery, or nobody (audit
+   * 2026-08-14).
+   *
+   * The controller carried a comment saying driver identity was checked
+   * "at the matching/dispatch layer" and that the service validated
+   * ownership. Neither was true: these two methods looked up the stop,
+   * checked its status, and wrote. Any authenticated account could walk
+   * a stranger's multi-stop route stop by stop, and the first arrival
+   * flips the parent delivery to IN_TRANSIT.
+   *
+   * Optional actor so internal callers (dispatch, CSV import, the
+   * recurring-template cron) stay trusted; only the HTTP layer passes
+   * one, because that is the only place an untrusted caller appears.
+   */
+  private async assertStopDriver(deliveryId: string, actorUserId?: string) {
+    if (!actorUserId) return;
+    const delivery = await this.deliveriesRepo.findOne({
+      where: { id: deliveryId },
+      relations: ['driver', 'driver.user'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.driver?.user?.id !== actorUserId) {
+      throw new ForbiddenException('Only the driver assigned to this route can update its stops.');
+    }
+  }
+
+  async markStopArrived(deliveryId: string, stopId: string, actorUserId?: string) {
+    await this.assertStopDriver(deliveryId, actorUserId);
     const stop = await this.stopsRepo.findOne({ where: { id: stopId, deliveryId } });
     if (!stop) throw new NotFoundException('Stop not found.');
     // Idempotency: re-marking an already-arrived stop is a no-op so
@@ -661,7 +689,9 @@ export class BusinessService {
     stopId: string,
     proofPhotoUrls?: string[],
     recipientSignatureUrl?: string,
+    actorUserId?: string,
   ) {
+    await this.assertStopDriver(deliveryId, actorUserId);
     const stop = await this.stopsRepo.findOne({ where: { id: stopId, deliveryId } });
     if (!stop) throw new NotFoundException('Stop not found.');
     // Idempotency: re-marking an already-delivered stop is a no-op so
