@@ -70,6 +70,18 @@ export class WebsiteContentController {
     return this.svc.getImageSlots();
   }
 
+  // GET /api/v1/website/partner-logos
+  // The homepage "Trusted by" strip: [{ name, url }] for every published
+  // page block whose slug starts img_partner_logo_. Separate from
+  // image-slots because the strip shows the company NAME next to the mark,
+  // and that map only carries urls. Uncapped on purpose: adding a partner is
+  // adding a row in the admin.
+  @Public()
+  @Get('website/partner-logos')
+  partnerLogos() {
+    return this.svc.getPartnerLogos();
+  }
+
   // GET /api/v1/website/page-block/:slug?lang=en
   // Returns the block OR a 404. Website pages use this to drop in
   // inline-editable copy chunks; they fall back to hardcoded copy

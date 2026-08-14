@@ -174,6 +174,35 @@ export class WebsiteContentService implements OnModuleInit {
     return map;
   }
 
+  /**
+   * Partner logos for the homepage "Trusted by" strip.
+   *
+   * Deliberately not a fixed set of slots. Any published PAGE_BLOCK whose
+   * slug starts with img_partner_logo_ is picked up, so adding a partner is
+   * creating one row in the admin, with no deploy and no cap. The row's
+   * TITLE is the company name, which the strip renders beside the mark:
+   * getImageSlots() only returns urls, which is why this is separate.
+   *
+   * Ordered by slug so the admin controls sequence by naming
+   * (img_partner_logo_01 before _02). Numeric-aware so _10 does not sort
+   * ahead of _2.
+   */
+  async getPartnerLogos(): Promise<Array<{ name: string; url: string }>> {
+    const rows = await this.repo
+      .createQueryBuilder('c')
+      .where('c.type = :t', { t: WebContentType.PAGE_BLOCK })
+      .andWhere(`c.slug LIKE 'img_partner_logo_%'`)
+      .andWhere('c.status = :s', { s: WebContentStatus.PUBLISHED })
+      .andWhere('c.coverImageUrl IS NOT NULL')
+      .getMany();
+
+    return rows
+      .sort((a, b) =>
+        a.slug.localeCompare(b.slug, undefined, { numeric: true, sensitivity: 'base' }),
+      )
+      .map(r => ({ name: r.title ?? '', url: r.coverImageUrl! }));
+  }
+
   // ── Public-facing reads (no auth) ─────────────────────────────────────────
   // Used by apps/seirs-website. ISR caches per route so we don't need
   // micro-optimisation here.

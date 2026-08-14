@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getPageBlock, getImageSlots } from "@/lib/cms";
+import { getPageBlock, getImageSlots, getPartnerLogos } from "@/lib/cms";
+import { PartnerMarquee } from "@/components/PartnerMarquee";
 import { Reveal } from "@/components/Reveal";
 import { GetAppButton } from "@/components/GetAppButton";
 import { AppScreenshot } from "@/components/AppScreenshot";
@@ -203,23 +204,21 @@ export default async function HomePage() {
   // Inline-editable hero block, falls back to the hardcoded copy below
   // when the CMS row is missing or unreachable, so marketing can edit
   // without breaking the page.
-  const [hero, img] = await Promise.all([getPageBlock('home_hero'), getImageSlots()]);
+  const [hero, img, livePartnerLogos] = await Promise.all([
+    getPageBlock('home_hero'),
+    getImageSlots(),
+    getPartnerLogos(),
+  ]);
 
-  // Partner logo strip. Six admin slots, empty ones skipped so the row never
-  // renders as gaps. Until real partners sign, the SEIRS mark stands in
-  // (founder 2026-08-14), which keeps the section's shape reviewable without
-  // implying a partnership that does not exist.
-  const partnerLogos: string[] = [
-    img.img_partner_logo_1,
-    img.img_partner_logo_2,
-    img.img_partner_logo_3,
-    img.img_partner_logo_4,
-    img.img_partner_logo_5,
-    img.img_partner_logo_6,
-  ].filter(Boolean);
-  if (partnerLogos.length === 0) {
-    partnerLogos.push('/seirs-logo.png', '/seirs-logo.png', '/seirs-logo.png');
-  }
+  // Uncapped: whatever the admin has published under img_partner_logo_*.
+  // Until real partners sign, the SEIRS mark stands in (founder 2026-08-14),
+  // which keeps the strip's shape and motion reviewable without implying a
+  // partnership that does not exist. Four copies so the loop has something
+  // to actually scroll.
+  const partnerLogos =
+    livePartnerLogos.length > 0
+      ? livePartnerLogos
+      : Array.from({ length: 4 }, () => ({ name: 'SEIRS', url: '/seirs-logo.png' }));
 
   return (
     <>
@@ -586,40 +585,20 @@ export default async function HomePage() {
       </section>
 
       {/* ── TRUSTED BY ──
-          Replaced "The apps, exactly as they are" 2026-08-14 (founder). That
-          section was the third place on the homepage showing app screenshots,
-          after How It Works and the business section, so it went and a
-          partner logo strip took the slot.
+          Replaced "The apps, exactly as they are" 2026-08-14. That section
+          was the third place on the homepage showing app screenshots, after
+          How It Works and the business section.
 
-          Logos come from six admin slots (img_partner_logo_1..6), so the
-          strip is editable without a deploy. Empty slots are skipped and the
-          whole section hides itself when none are set, which means it never
-          renders as a row of gaps. Until real partners sign, the SEIRS mark
-          stands in, per founder.
+          Founder follow-up: bigger marks, each with the company name,
+          flowing left, and no cap on how many can be added. So this is not a
+          fixed set of slots. The backend returns every published page block
+          whose slug starts img_partner_logo_, ordered by slug, with the row
+          TITLE as the company name. Adding a partner is creating one row in
+          the admin: no deploy, no limit.
 
-          Removed in the same pass: "Built on Proof / On the timeline", whose
-          tracking-code-escrow story How It Works step 3 already tells, and
-          "Day and Night", which restated the 24/7 tile the visitor read in
-          the hero trust row. ── */}
-      <section className="py-10 sm:py-14 bg-off-white border-y border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-text-muted text-[11px] sm:text-xs font-semibold tracking-widest uppercase mb-6 sm:mb-8">
-            Trusted by
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-6 sm:gap-x-14">
-            {partnerLogos.map((src, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={src}
-                alt=""
-                className="h-7 sm:h-9 w-auto object-contain opacity-60 hover:opacity-100 transition-opacity"
-                loading="lazy"
-              />
-            ))}
-          </div>
-        </div>
-      </section>
+          Rendering, pausing and reduced-motion behaviour live in
+          PartnerMarquee. ── */}
+      <PartnerMarquee logos={partnerLogos} />
 
       {/* ── RECEIVER SYSTEM ──
           Rebuilt 2026-08-14 (founder: more storytelling, with a big image
@@ -638,20 +617,27 @@ export default async function HomePage() {
           full width rather than leaving a hole. ── */}
       <section className="py-14 sm:py-20 lg:py-24 bg-off-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+          {/* Founder 2026-08-14: the handoff image should be wider. It was a
+              3:4 portrait in an even 50/50 split, so it read as a tall inset
+              beside the text. The image column is now the larger of the two
+              (7 of 12 against 5) and the crop is landscape at every width, so
+              the moment itself carries the section rather than decorating it.
+              The image is admin-editable: it is the img_handoff_hands slot
+              under Website > Page Blocks, which already holds this shot. */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
             {img.img_handoff_hands && (
-              <Reveal>
+              <Reveal className="lg:col-span-7">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.img_handoff_hands}
                   alt="A Seirs rider handing a package to the person collecting it"
-                  className="w-full rounded-card object-cover aspect-[4/3] lg:aspect-[3/4] shadow-lg"
+                  className="w-full rounded-card object-cover aspect-[4/3] lg:aspect-[16/10] shadow-lg"
                   loading="lazy"
                 />
               </Reveal>
             )}
 
-            <Reveal delay={120}>
+            <Reveal delay={120} className="lg:col-span-5">
               <div>
                 <p className="section-label mb-3">Made for Nigeria</p>
                 <h2 className="section-title mb-4">Anyone you trust can collect</h2>

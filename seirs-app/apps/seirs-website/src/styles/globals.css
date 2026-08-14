@@ -184,3 +184,38 @@
     transition: none;
   }
 }
+
+/* ── Partner marquee: the "Trusted by" strip scrolls continuously left
+   (founder 2026-08-14). The track holds two identical copies of the list,
+   so translating it -50% lands the second copy exactly where the first
+   began and the reset is invisible. Duration is set inline per instance,
+   scaled to the number of logos, so speed per logo stays constant however
+   many partners are added. ── */
+.marquee {
+  --marquee-mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.marquee-track {
+  animation: marquee-left linear infinite;
+}
+
+/* Pause on hover so a partner name can actually be read. */
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Anyone who asked for less motion gets a static, manually scrollable row
+   instead of a moving one. */
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+  }
+  .marquee-track {
+    animation: none;
+  }
+}

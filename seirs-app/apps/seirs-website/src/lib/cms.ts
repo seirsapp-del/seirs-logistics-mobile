@@ -112,6 +112,24 @@ export async function getImageSlots(): Promise<Record<string, string>> {
   return { ...SLOT_PLACEHOLDERS, ...live };
 }
 
+export interface PartnerLogo {
+  name: string;
+  url: string;
+}
+
+/**
+ * Homepage "Trusted by" strip. Uncapped: the backend returns every published
+ * page block whose slug starts img_partner_logo_, so adding a partner is one
+ * row in the admin with no deploy. Each carries the company name, which the
+ * strip shows beside the mark.
+ *
+ * Returns [] when the API is unreachable, and the strip renders its own
+ * stand-in rather than an empty band.
+ */
+export async function getPartnerLogos(): Promise<PartnerLogo[]> {
+  return (await safeFetch<PartnerLogo[]>('/website/partner-logos')) ?? [];
+}
+
 // ─── Markdown → HTML ───────────────────────────────────────────────────────
 // Server-rendered subset matching the admin preview. Handles headers,
 // bold, italic, links, ordered / unordered lists, paragraphs. Good
