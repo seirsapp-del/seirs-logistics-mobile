@@ -17,7 +17,6 @@ import {
   Star,
   ArrowRight,
   Zap,
-  Gift,
   Store,
   DollarSign,
   Smartphone,
@@ -122,28 +121,9 @@ function HeroIllustration() {
    Uploading to them has no effect on the site until they are either wired
    somewhere else or removed from the admin. */
 
-/* ── Business Feature Card ── */
-function FeatureCard({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="lift flex items-start gap-4 p-5 bg-off-white rounded-card hover:bg-white">
-      <div className="w-11 h-11 bg-navy/10 rounded-xl flex items-center justify-center flex-shrink-0">
-        <Icon size={22} className="text-navy" />
-      </div>
-      <div>
-        <h4 className="text-navy font-bold text-sm mb-1">{title}</h4>
-        <p className="text-text-muted text-sm leading-relaxed">{description}</p>
-      </div>
-    </div>
-  );
-}
+/* FeatureCard removed 2026-08-14: the six business feature cards were folded
+   into a compact labelled list inside the copy column, so nothing renders a
+   card any more. */
 
 /* DriverBenefit removed 2026-08-14 with the driver band it belonged to.
    That band was the only place img_driver_portrait rendered anywhere on the
@@ -481,12 +461,29 @@ export default async function HomePage() {
               <p className="text-text-muted text-lg leading-relaxed mb-6">
                 Whether you ship 10 parcels a day or 10,000 a month, Seirs scales with you. Manage your entire logistics operation from one dashboard, no spreadsheets, no chasing drivers.
               </p>
-              <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-8">
-                Every booking is priced from a transparent rate card: base fare, distance,
-                weight, and any surcharges itemised line by line before you pay. Your team
-                books from one shared wallet with roles and limits you control, and every
-                delivery lands in a monthly statement your accountant will actually like.
-              </p>
+              {/* Founder 2026-08-14: fold the six feature cards into where the
+                  rate-card paragraph sat, and make them terser still. That
+                  paragraph was itself a spec disclosure, naming the rate-card
+                  components and the roles-and-limits design, so the swap
+                  removes the last of that from this section and buys back the
+                  length the six cards were spending. */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 mb-8">
+                {[
+                  { icon: Upload, label: "Bulk CSV upload" },
+                  { icon: Wallet, label: "One prepaid balance" },
+                  { icon: Users, label: "Your team, your limits" },
+                  { icon: Zap, label: "Saved routes" },
+                  { icon: MapPin, label: "Multi-stop runs" },
+                  { icon: Headphones, label: "A human on support" },
+                ].map((f) => (
+                  <div key={f.label} className="flex items-center gap-2.5">
+                    <f.icon size={16} className="text-sky flex-shrink-0" strokeWidth={1.75} />
+                    <span className="text-text-dark text-xs sm:text-sm font-medium">
+                      {f.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
               <Link
                 href="/contact"
                 className="inline-flex items-center gap-2 bg-navy text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-navy-dark transition-colors shadow-lg text-[13px] sm:text-base"
@@ -495,10 +492,9 @@ export default async function HomePage() {
                 <ChevronRight size={18} />
               </Link>
 
-              {/* Founder 2026-08-14: the business app belongs on the opposite
-                  side from the copy. The shop-owner photograph stays as the
-                  human note under the text; the screen goes across the fold
-                  beside the feature grid. */}
+              {/* Both images stay on purpose (founder: people are visual
+                  learners). The shop owner is the human note under the copy,
+                  the app screen sits opposite in the other column. */}
               {img.img_business_owner && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={img.img_business_owner} alt="Nigerian business owner preparing orders"
@@ -506,46 +502,15 @@ export default async function HomePage() {
               )}
             </div></Reveal>
 
-            {/* Right: the business app itself, then the feature grid. Every
-                card describes a shipped feature. */}
+            {/* Right: the business app itself. The six features moved into
+                the copy column, so this is the screen alone. Both images are
+                deliberately kept (founder: people are visual learners): the
+                shop owner under the copy, the app screen here. */}
             <Reveal delay={120}><div>
             <AppScreenshot
               screen="businessDashboard"
               alt="The Seirs business app dashboard"
-              className="mb-8"
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FeatureCard
-                icon={Upload}
-                title="Bulk CSV Upload"
-                description="Hundreds of orders in a single upload. The whole morning dispatch, done at once."
-              />
-              <FeatureCard
-                icon={Wallet}
-                title="Business Wallet"
-                description="Top up once, dispatch all day. One balance, one statement."
-              />
-              <FeatureCard
-                icon={Users}
-                title="Team Management"
-                description="Your team books under one account, within the limits you set."
-              />
-              <FeatureCard
-                icon={Gift}
-                title="Recurring Templates"
-                description="The routes you run every week, saved and rebooked in seconds."
-              />
-              <FeatureCard
-                icon={Zap}
-                title="Multi-Stop Runs"
-                description="One pickup, many drop-offs, sequenced and verified end to end."
-              />
-              <FeatureCard
-                icon={Headphones}
-                title="Direct Support"
-                description="A real support inbox in the app. A human, not a contact form."
-              />
-            </div>
             </div></Reveal>
           </div>
         </div>
