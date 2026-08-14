@@ -306,14 +306,11 @@ export default async function HomePage() {
           />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24 w-full">
-          {/* Founder 2026-08-14: "it should look exactly like the desktop
-              mode". So the two-column split now holds at every width rather
-              than collapsing to a stack under lg. At 390px that gives two
-              ~171px columns, which means the whole left column has to scale
-              down to fit beside the okada: the headline drops from 36px to
-              20px, body copy to 12px, and the CTAs shrink to match. Desktop
-              from lg up is exactly as it was. */}
+        {/* Top padding 2026-08-14 (founder: "send anything could be bigger
+            since we have empty space up"). 96px of vertical padding on a
+            phone was most of that gap, so it starts at 32px and steps back
+            up. The reclaimed space goes into the headline. */}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-14 lg:py-24 w-full">
           {/* Founder 2026-08-14, phone layout: okada beside the headline, the
               two CTAs side by side underneath it, then the language line and
               the trust row each on a single line. So the hero is now one grid
@@ -324,10 +321,16 @@ export default async function HomePage() {
               stacks in column 1, which is the original desktop hero. */}
           <div className="grid grid-cols-2 gap-x-4 sm:gap-x-6 lg:gap-x-16 items-center">
             <div className="col-span-2 lg:col-span-1 lg:col-start-1">
-              <div className="inline-flex items-center gap-1.5 lg:gap-2 bg-white/10 border border-white/20 rounded-full px-2.5 py-1 lg:px-4 lg:py-1.5 mb-4 lg:mb-6">
+              {/* Founder 2026-08-14: Nigeria, not Lagos, at every width. The
+                  platform is not a Lagos-only product and the chip was the
+                  one place still saying otherwise. The "join the first wave"
+                  half stays desktop-only: at 390px it pushed the chip to a
+                  second line, which is the empty space the headline wanted. */}
+              <div className="inline-flex items-center gap-1.5 lg:gap-2 bg-white/10 border border-white/20 rounded-full px-2.5 py-1 lg:px-4 lg:py-1.5 mb-3 lg:mb-6">
                 <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-[#FFBE0B] rounded-full animate-pulse flex-shrink-0" />
                 <span className="text-white/80 text-[10px] lg:text-xs font-medium leading-tight">
-                  Launching in Lagos
+                  Launching in Nigeria
+                  <span className="hidden lg:inline">: join the first wave</span>
                 </span>
               </div>
             </div>
@@ -335,7 +338,11 @@ export default async function HomePage() {
             {/* Headline and lede: the only block that shares a row with the
                 okada on a phone, so it carries the narrow-column type scale. */}
             <div className="lg:col-start-1">
-              <h1 className="text-lg sm:text-3xl md:text-4xl lg:text-6xl font-extrabold text-white leading-[1.15] lg:leading-[1.1] mb-2 lg:mb-6 tracking-tight">
+              {/* Founder 2026-08-14: "send anything could be bigger". Was
+                  18px, now 26px on a phone. That is the largest the ~171px
+                  column takes before the longest word in the fallback
+                  headline, "Nigeria's", starts to overhang. */}
+              <h1 className="text-[26px] sm:text-3xl md:text-4xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-2 lg:mb-6 tracking-tight">
                 {hero?.title ?? (
                   <>
                     Nigeria&apos;s Smartest
