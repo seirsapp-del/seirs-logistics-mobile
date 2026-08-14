@@ -115,11 +115,10 @@ function HeroIllustration() {
 }
 
 /* StepCard removed 2026-08-14: the How It Works section it served is now one
-   app screenshot with the three steps listed beside it, so nothing rendered
-   this any more. Note for the admin side: the img_step_book, img_step_pickup
-   and img_step_delivered slots under Website > Page Blocks are now orphaned.
-   Uploading to them has no effect on the site until they are either wired
-   somewhere else or removed from the admin. */
+   app screenshot with the three steps listed beside it, so nothing renders
+   this any more. The img_step_* slots it used are NOT orphaned though: seven
+   of the ten story articles use them as mid-article illustrations, so they
+   stay in the admin list. */
 
 /* FeatureCard removed 2026-08-14: the six business feature cards were folded
    into a compact labelled list inside the copy column, so nothing renders a
@@ -205,6 +204,22 @@ export default async function HomePage() {
   // when the CMS row is missing or unreachable, so marketing can edit
   // without breaking the page.
   const [hero, img] = await Promise.all([getPageBlock('home_hero'), getImageSlots()]);
+
+  // Partner logo strip. Six admin slots, empty ones skipped so the row never
+  // renders as gaps. Until real partners sign, the SEIRS mark stands in
+  // (founder 2026-08-14), which keeps the section's shape reviewable without
+  // implying a partnership that does not exist.
+  const partnerLogos: string[] = [
+    img.img_partner_logo_1,
+    img.img_partner_logo_2,
+    img.img_partner_logo_3,
+    img.img_partner_logo_4,
+    img.img_partner_logo_5,
+    img.img_partner_logo_6,
+  ].filter(Boolean);
+  if (partnerLogos.length === 0) {
+    partnerLogos.push('/seirs-logo.png', '/seirs-logo.png', '/seirs-logo.png');
+  }
 
   return (
     <>
@@ -570,157 +585,115 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── THE APPS, FOR REAL: actual screenshots off the actual phone,
-          in CSS device frames. No mockups, no fakes. ── */}
-      <section className="py-24 bg-off-white overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Reveal>
-            <div className="text-center mb-14">
-              <p className="section-label mb-3">Straight From the Phone</p>
-              <h2 className="section-title mb-4">The apps, exactly as they are</h2>
-              <p className="section-sub max-w-2xl mx-auto">
-                These are real screenshots from the live driver app: not mockups. The
-                customer and business apps join them here as their screens are captured.
-              </p>
-            </div>
-          </Reveal>
-          <div className="flex flex-wrap items-end justify-center gap-8">
-            {/* Founder privacy rule 2026-08-11: never real accounts on
-                marketing surfaces (the profile shot showed a real name
-                + the SEIRS ID is a collection credential). Demo-account
-                captures in light + dark replace these next session. */}
-            {[
-              { src: "/app-shots/driver-earnings.png", label: "Earnings, transparent", lift: "lg:translate-y-4" },
-              { src: "/app-shots/driver-home.png",     label: "The driver hub",        lift: "" },
-            ].map((p, i) => (
-              <Reveal key={p.src} delay={i * 140}>
-                <div className={`flex flex-col items-center gap-3 ${p.lift}`}>
-                  <div className="rounded-[2rem] border-[6px] border-navy bg-navy shadow-2xl overflow-hidden w-[220px]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.src} alt={p.label} className="w-full h-auto block" loading="lazy" />
-                  </div>
-                  <span className="text-text-muted text-xs font-semibold">{p.label}</span>
-                </div>
-              </Reveal>
+      {/* ── TRUSTED BY ──
+          Replaced "The apps, exactly as they are" 2026-08-14 (founder). That
+          section was the third place on the homepage showing app screenshots,
+          after How It Works and the business section, so it went and a
+          partner logo strip took the slot.
+
+          Logos come from six admin slots (img_partner_logo_1..6), so the
+          strip is editable without a deploy. Empty slots are skipped and the
+          whole section hides itself when none are set, which means it never
+          renders as a row of gaps. Until real partners sign, the SEIRS mark
+          stands in, per founder.
+
+          Removed in the same pass: "Built on Proof / On the timeline", whose
+          tracking-code-escrow story How It Works step 3 already tells, and
+          "Day and Night", which restated the 24/7 tile the visitor read in
+          the hero trust row. ── */}
+      <section className="py-10 sm:py-14 bg-off-white border-y border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-text-muted text-[11px] sm:text-xs font-semibold tracking-widest uppercase mb-6 sm:mb-8">
+            Trusted by
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-6 sm:gap-x-14">
+            {partnerLogos.map((src, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={src}
+                alt=""
+                className="h-7 sm:h-9 w-auto object-contain opacity-60 hover:opacity-100 transition-opacity"
+                loading="lazy"
+              />
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── TRACKING + ESCROW: the trust story ── */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <p className="section-label mb-3">Built on Proof</p>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-navy leading-tight mb-6">
-                Every package watched.
-                <br />Every naira protected.
-              </h2>
-              <p className="text-text-muted text-lg leading-relaxed mb-6">
-                From the moment a driver accepts your booking, the package writes its own
-                diary: accepted, picked up, en route, delivered, each step logged with time
-                and place on a timeline anyone with the tracking code can follow.
-              </p>
-              <p className="text-text-muted text-base leading-relaxed mb-6">
-                Your money is protected the same way. Payment sits in escrow while the
-                package travels, and the driver is paid only when delivery is confirmed:
-                with a proof photo, and for high-value packages, an identity-verified
-                handoff. If a delivery fails, the escrow returns to you.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  "Live GPS position and honest arrival estimates: never promises",
-                  "Proof photo required on every single delivery",
-                  "High-value packages: recipient must be ID-verified before handover",
-                  "Failed or cancelled? Escrow refunds automatically",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-3">
-                    <CheckCircle size={18} className="text-success-green flex-shrink-0 mt-0.5" />
-                    <span className="text-text-dark text-sm leading-relaxed">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="relative rounded-card overflow-hidden bg-navy min-h-[320px] flex items-end"
-              style={img.img_lagos_dusk ? { backgroundImage: `url(${img.img_lagos_dusk})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
-              <div className="absolute inset-0 bg-navy/50" />
-              <div className="relative p-8">
-                <p className="text-white/70 text-xs font-semibold tracking-widest uppercase mb-2">On the timeline</p>
-                <div className="space-y-2.5">
+      {/* ── RECEIVER SYSTEM ──
+          Rebuilt 2026-08-14 (founder: more storytelling, with a big image
+          next to it of a driver handing a package to the customer, and the
+          image replaceable from the admin).
+
+          It was a centred heading over three equal icon cards, which read as
+          a feature list rather than the thing it actually is: the part of
+          SEIRS built around how Nigerians really receive parcels. Now it is
+          a two-column story, image on one side, the three moments told as a
+          short sequence on the other.
+
+          The image is img_handoff_hands, an existing admin slot that already
+          holds exactly this shot, so it is editable without a deploy and no
+          new slot was needed. When it is empty the copy simply takes the
+          full width rather than leaving a hole. ── */}
+      <section className="py-14 sm:py-20 lg:py-24 bg-off-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+            {img.img_handoff_hands && (
+              <Reveal>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.img_handoff_hands}
+                  alt="A Seirs rider handing a package to the person collecting it"
+                  className="w-full rounded-card object-cover aspect-[4/3] lg:aspect-[3/4] shadow-lg"
+                  loading="lazy"
+                />
+              </Reveal>
+            )}
+
+            <Reveal delay={120}>
+              <div>
+                <p className="section-label mb-3">Made for Nigeria</p>
+                <h2 className="section-title mb-4">Anyone you trust can collect</h2>
+                <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-8">
+                  You are at work. The parcel arrives at 2pm. In most of the
+                  world that is a failed delivery and a card through the door.
+                  Here, your neighbour signs for it, security takes it at the
+                  gate, your cousin is home anyway. We built for that instead
+                  of pretending it does not happen.
+                </p>
+
+                <div className="space-y-6">
                   {[
-                    { label: "Driver assigned", time: "2:14 PM", done: true },
-                    { label: "Package picked up", time: "2:31 PM", done: true },
-                    { label: "En route: Ikeja to Yaba", time: "2:38 PM", done: true },
-                    { label: "Delivered: proof photo saved", time: "3:05 PM", done: true },
-                  ].map((s) => (
-                    <div key={s.label} className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2.5">
-                      <CheckCircle size={15} className="text-[#FFBE0B] flex-shrink-0" />
-                      <span className="text-white text-sm flex-1">{s.label}</span>
-                      <span className="text-white/50 text-xs">{s.time}</span>
+                    {
+                      icon: Users,
+                      title: "You name who is collecting",
+                      body: "Any name you trust, given when you book. The driver confirms it at the door, and the person collecting needs nothing installed.",
+                    },
+                    {
+                      icon: Shield,
+                      title: "The code comes to you, not them",
+                      body: "You forward it to whoever is picking up. No code, no package, and you decide who ever gets one.",
+                    },
+                    {
+                      icon: MapPin,
+                      title: "You set the fallback before it is needed",
+                      body: "Hand to the receiver only, a named neighbour, the gate with photo proof, or a partner store nearby. Chosen at booking, not argued about at the door.",
+                    },
+                  ].map((r) => (
+                    <div key={r.title} className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-sky/10 flex items-center justify-center flex-shrink-0">
+                        <r.icon size={18} className="text-sky" strokeWidth={1.75} />
+                      </div>
+                      <div>
+                        <h3 className="text-navy font-bold text-base mb-1">{r.title}</h3>
+                        <p className="text-text-muted text-sm leading-relaxed">{r.body}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── NIGHT OPS ── */}
-      <section className="relative py-28 overflow-hidden"
-        style={{ background: "linear-gradient(160deg, #0A1E36, #0F2B4C)" }}>
-        {img.img_night_rider && (
-          <div aria-hidden className="absolute inset-0 bg-cover bg-center opacity-30"
-            style={{ backgroundImage: `url(${img.img_night_rider})` }} />
-        )}
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-[#FFBE0B] font-semibold text-sm tracking-widest uppercase mb-4">Day and Night</p>
-          <h2 className="text-3xl md:text-5xl font-extrabold text-white leading-tight mb-6">
-            Lagos doesn&apos;t sleep.
-            <br />Neither does SEIRS.
-          </h2>
-          <p className="text-white/70 text-lg leading-relaxed max-w-2xl mx-auto mb-8">
-            Book a pickup for 2 AM and it happens at 2 AM. Deliveries run round the clock,
-            because markets open before dawn and interstate roads belong to the night.
-            Night pickups carry a small night fee, and every naira of it goes to the rider
-            who showed up while the city slept.
-          </p>
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-5 py-2">
-            <div className="w-2 h-2 bg-[#FFBE0B] rounded-full" />
-            <span className="text-white/80 text-sm">Riders choose their own hours: nobody is ever forced onto the road</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ── RECEIVER SYSTEM ── */}
-      <section className="py-24 bg-off-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <p className="section-label mb-3">Made for Nigeria</p>
-            <h2 className="section-title mb-4">Anyone you trust can collect</h2>
-            <p className="section-sub max-w-2xl mx-auto">
-              Your neighbour signs for packages. Security collects at the gate. Your cousin
-              is home when you are not. SEIRS is built for how Nigerians actually receive
-              things, safely.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <PartnerBenefit
-              icon={Users}
-              title="Name Your Receiver"
-              description="Tell us who is collecting when you book: any first and last name you trust. The driver confirms the name at the door, no app needed on their side."
-            />
-            <PartnerBenefit
-              icon={Shield}
-              title="Codes You Control"
-              description="For extra security the collection code emails YOU, and you forward it to whoever is picking up. No code, no package."
-            />
-            <PartnerBenefit
-              icon={MapPin}
-              title="Your Fallback, Your Rules"
-              description="Nobody home? You chose the plan at booking: hand-to-receiver only, a named neighbour, the gate with photo proof, or a partner store nearby."
-            />
+            </Reveal>
           </div>
         </div>
       </section>

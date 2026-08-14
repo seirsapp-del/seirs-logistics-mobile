@@ -438,14 +438,36 @@ export class WebsiteContentService implements OnModuleInit {
 // excerpt doubles as the admin's what-goes-where instruction card AND
 // the generation brief (matches Desktop\seirs-image-prompts.txt names).
 const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
+  // Partner logo strip, added 2026-08-14. Replaced the "The apps, exactly as
+  // they are" section on the homepage. Six slots so the strip can grow as
+  // real partners sign; empty slots are skipped, and the strip hides itself
+  // entirely when none are set, so it never renders as a row of gaps.
+  { slug: 'img_partner_logo_1', title: 'Partner logo 1',
+    excerpt: 'Homepage partner strip. Upload a partner or client logo, ideally on a transparent background. Wide, roughly 3:1. Leave empty to hide the slot.' },
+  { slug: 'img_partner_logo_2', title: 'Partner logo 2',
+    excerpt: 'Homepage partner strip. Same rules as slot 1.' },
+  { slug: 'img_partner_logo_3', title: 'Partner logo 3',
+    excerpt: 'Homepage partner strip. Same rules as slot 1.' },
+  { slug: 'img_partner_logo_4', title: 'Partner logo 4',
+    excerpt: 'Homepage partner strip. Same rules as slot 1.' },
+  { slug: 'img_partner_logo_5', title: 'Partner logo 5',
+    excerpt: 'Homepage partner strip. Same rules as slot 1.' },
+  { slug: 'img_partner_logo_6', title: 'Partner logo 6',
+    excerpt: 'Homepage partner strip. Same rules as slot 1.' },
   { slug: 'img_hero_rider',     title: 'Homepage hero: okada rider',
     excerpt: 'Full-width homepage hero backdrop. Okada rider with yellow delivery box, Lagos dusk. Wide 21:9. Midjourney file: hero-rider. Falls back to the drawn okada scene when empty.' },
-  // img_step_book / img_step_pickup / img_step_delivered removed 2026-08-14.
-  // The three How It Works cards they fed were replaced by a single app
-  // screenshot with the steps listed beside it, on both the homepage and the
-  // how-it-works page, so nothing rendered these. Leaving them listed meant
-  // the admin offered three uploads that silently did nothing. Any images
-  // already uploaded stay in storage and are simply no longer referenced.
+  // Restored 2026-08-14 after being wrongly removed earlier the same day.
+  // These three did feed the old How It Works step cards, which are gone, but
+  // they are ALSO the mid-article illustrations for seven of the ten story
+  // articles (see STORY_ILLUSTRATIONS in news/[slug]). Dropping them from
+  // this list silently blanked those images. Titles now describe what they
+  // are actually used for.
+  { slug: 'img_step_book',      title: 'Story illustration: booking a delivery',
+    excerpt: 'Interleaved image in the "moving documents" story. Hands booking on a phone in a Lagos shop. 4:3. Midjourney file: step-book.' },
+  { slug: 'img_step_pickup',    title: 'Story illustration: rider collecting',
+    excerpt: 'Interleaved image in the woodwork and building-materials stories. Rider receiving a yellow-taped parcel at a gate, golden hour. 4:3. Midjourney file: step-pickup.' },
+  { slug: 'img_step_delivered', title: 'Story illustration: parcel delivered',
+    excerpt: 'Interleaved image in the tailors, hot-food and electronics stories. Recipient receiving a parcel at the door, warm light. 4:3. Midjourney file: step-delivered.' },
   { slug: 'img_business_owner', title: 'For Business: shop owner packing',
     excerpt: 'For Businesses section (homepage + for-business page). Businesswoman packing orders in her small shop. 16:9. Midjourney file: business-owner.' },
   // img_driver_portrait removed 2026-08-14. The homepage driver band was cut
