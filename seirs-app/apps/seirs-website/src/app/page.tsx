@@ -148,26 +148,10 @@ function FeatureCard({
   );
 }
 
-/* ── Driver Benefit Card ── */
-function DriverBenefit({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="text-center">
-      <div className="w-16 h-16 bg-white/15 border border-white/25 rounded-2xl flex items-center justify-center mx-auto mb-4">
-        <Icon size={28} className="text-white" />
-      </div>
-      <h4 className="text-white font-bold text-base mb-2">{title}</h4>
-      <p className="text-white/65 text-sm leading-relaxed">{description}</p>
-    </div>
-  );
-}
+/* DriverBenefit removed 2026-08-14 with the driver band it belonged to.
+   That band was the only place img_driver_portrait rendered anywhere on the
+   site, so the slot is now fully orphaned and has been pulled from the
+   admin's list, same as the img_step_* slots. */
 
 /* ── Testimonial Card ── */
 function TestimonialCard({
@@ -570,77 +554,54 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── FOR DRIVERS ── */}
+      {/* ── FOR DRIVERS ──
+          Cut back 2026-08-14 (founder: this section definitely needs to be
+          removed). It was a full recruitment pitch: portrait photo, three
+          benefit cards, and the complete Requirements to Join checklist with
+          its own apply button. /for-drivers already does all of that, and the
+          nav audit's central finding was that this page asks a visitor to
+          pick an audience five separate times on the way down.
+
+          So it is a strip now, not a band. A rider arriving from a WhatsApp
+          link still sees something addressed to them and has one clear way
+          on; everyone else scrolls past it in a second.
+
+          Two things deliberately did not survive the cut, per the no-free-
+          spec rule: the live demand map, which tells a competitor how supply
+          is steered, and the daily payout-run mechanics. Pay facts stayed,
+          because money is what riders actually decide on. The requirements
+          checklist moved to /for-drivers, where someone has already decided
+          to apply. ── */}
       <section
         id="for-drivers"
-        className="py-24"
+        className="py-12 sm:py-16 lg:py-20"
         style={{ background: "linear-gradient(135deg, #0F2B4C, #1a3a5c)" }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <p className="text-[#FFBE0B] font-semibold text-sm tracking-widest uppercase mb-3">
-              Driver Opportunities
-            </p>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-white leading-tight mb-4">
-              Earn on Your Schedule
-            </h2>
-            <p className="text-white/65 text-lg max-w-2xl mx-auto">
-              Okada, keke, car, van, or truck: you set your hours, we bring the deliveries.
-              Be one of the first riders on the platform and grow with it.
-            </p>
-          </div>
-
-          {img.img_driver_portrait && (
-            <div className="flex justify-center mb-14">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.img_driver_portrait} alt="SEIRS delivery rider"
-                className="rounded-card object-cover max-h-96 shadow-2xl" loading="lazy" />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-6 lg:gap-12">
+            <div className="flex-1">
+              <p className="text-[#FFBE0B] font-semibold text-[11px] sm:text-sm tracking-widest uppercase mb-2">
+                Driving with Seirs
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight mb-3">
+                Okada, keke, car or van. You set the hours.
+              </h2>
+              <p className="text-white/65 text-sm sm:text-base leading-relaxed">
+                Paid on every completed delivery, withdrawn to your own Nigerian
+                bank account. Night runs pay more. Be one of the first riders on
+                the platform and grow with it.
+              </p>
             </div>
-          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-16">
-            <DriverBenefit
-              icon={DollarSign}
-              title="Your Money, Your Timing"
-              description="Every delivery credits your wallet the moment it completes. Withdraw to your Nigerian bank account whenever you want, or let the daily payout run send it automatically."
-            />
-            <DriverBenefit
-              icon={Truck}
-              title="Night Pays Extra"
-              description="Deliveries run 24/7 and night pickups carry a night fee that goes to you in full. Ride when the city needs you: you decide, always."
-            />
-            <DriverBenefit
-              icon={Smartphone}
-              title="See Everything"
-              description="Earnings, completed trips, ratings, and a demand map showing where the orders are, live in the app. Full transparency, always."
-            />
-          </div>
-
-          {/* Requirements */}
-          <div className="bg-white/10 border border-white/20 rounded-card p-8 max-w-2xl mx-auto text-center">
-            <h3 className="text-white font-bold text-lg mb-4">Requirements to Join</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
-              {[
-                "Valid Nigerian driving licence",
-                "NIN (National ID Number)",
-                "Vehicle in good working condition",
-                "Android smartphone (iOS coming soon)",
-                "Valid vehicle insurance",
-                "Clean police report",
-              ].map((req) => (
-                <div key={req} className="flex items-center gap-2">
-                  <CheckCircle size={15} className="text-success-green flex-shrink-0" />
-                  <span className="text-white/75 text-sm">{req}</span>
-                </div>
-              ))}
+            <div className="flex-shrink-0">
+              <Link
+                href="/for-drivers"
+                className="inline-flex items-center justify-center gap-2 bg-[#FFBE0B] text-navy font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:opacity-90 transition-opacity shadow-lg text-[13px] sm:text-base"
+              >
+                See what you would earn
+                <ArrowRight size={16} className="flex-shrink-0" />
+              </Link>
             </div>
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 bg-sky text-white font-bold px-8 py-4 rounded-btn hover:opacity-90 transition-opacity"
-            >
-              Join as a Driver
-              <ArrowRight size={18} />
-            </Link>
           </div>
         </div>
       </section>

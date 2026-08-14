@@ -448,8 +448,10 @@ const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
   // already uploaded stay in storage and are simply no longer referenced.
   { slug: 'img_business_owner', title: 'For Business: shop owner packing',
     excerpt: 'For Businesses section (homepage + for-business page). Businesswoman packing orders in her small shop. 16:9. Midjourney file: business-owner.' },
-  { slug: 'img_driver_portrait', title: 'For Drivers: courier portrait',
-    excerpt: 'For Drivers section (homepage + for-drivers page). Proud courier holding helmet beside his motorcycle, dusk. Portrait 3:4. Midjourney file: driver-portrait.' },
+  // img_driver_portrait removed 2026-08-14. The homepage driver band was cut
+  // to a slim strip that links out to /for-drivers, and that band was the
+  // only place this rendered anywhere on the site. Same treatment as the
+  // img_step_* slots: any uploaded image stays in storage, just unreferenced.
   { slug: 'img_night_rider',    title: '24/7 section: night rider',
     excerpt: 'The night-delivery section. Rider on a quiet Lagos street at night under warm shop lights. 16:9. Midjourney file: night-rider.' },
   { slug: 'img_partner_store',  title: 'Partner Stores: shopkeeper handoff',
