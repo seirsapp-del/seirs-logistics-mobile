@@ -4,28 +4,32 @@
 // buttons read as fake next to DHL/Amazon-grade sites). Assets are the
 // vendors' own: Apple's "Download on the App Store" marketing SVG and
 // Google's Play badge PNG (transparent margin trimmed so both sit at
-// equal height). Until the apps actually publish, the env vars are
-// unset and the badges render dimmed with a "coming soon" caption
-// instead of broken links.
+// equal height).
 //
-// Set on Vercel when the listings go live:
-//   NEXT_PUBLIC_PLAY_STORE_URL  = https://play.google.com/store/apps/details?id=...
-//   NEXT_PUBLIC_APP_STORE_URL   = https://apps.apple.com/ng/app/seirs/id...
+// Behaviour changed 2026-08-14 (founder: the site should act as though the
+// app is already live). These used to render as dead, dimmed <span>s with a
+// "coming soon" caption whenever the env vars were unset, so the highest
+// intent moment on the page, someone reaching for the app, went nowhere.
+// They are now always real links, built from the final package ids in
+// lib/launch.ts, so they point at the correct forever-URL and start
+// resolving the day the listings publish, with no code change. The env vars
+// still win if set, for pointing at a beta or a regional listing.
+
+import { STORE, type AppName } from '@/lib/launch';
 
 interface Props {
   /** 'navy' = rendered on the navy hero, 'light' = on white sections; affects caption color only (official badges work on both). */
   theme?: 'navy' | 'light';
   /** Which audience the apps target, customer / driver / business, for the right-side label */
-  app?: 'customer' | 'driver' | 'business';
+  app?: AppName;
   className?: string;
 }
 
 export function AppStoreBadges({ theme = 'light', app = 'customer', className = '' }: Props) {
-  const playUrl = process.env.NEXT_PUBLIC_PLAY_STORE_URL?.trim() || null;
-  const appUrl  = process.env.NEXT_PUBLIC_APP_STORE_URL?.trim()  || null;
+  const playUrl = process.env.NEXT_PUBLIC_PLAY_STORE_URL?.trim() || STORE.play(app);
+  const appUrl  = process.env.NEXT_PUBLIC_APP_STORE_URL?.trim()  || STORE.apple(app);
 
   const caption = theme === 'navy' ? 'text-white/60' : 'text-gray-500';
-  const anyInactive = !playUrl || !appUrl;
 
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
@@ -46,28 +50,15 @@ export function AppStoreBadges({ theme = 'light', app = 'customer', className = 
           </span>
         )}
       </div>
-      {anyInactive && (
-        <span className={`text-xs ${caption}`}>
-          Coming soon to the App Store and Google Play.
-        </span>
-      )}
     </div>
   );
 }
 
-function Badge({ href, src, alt }: { href: string | null; src: string; alt: string }) {
+function Badge({ href, src, alt }: { href: string; src: string; alt: string }) {
   /* eslint-disable @next/next/no-img-element */
-  const img = (
-    <img
-      src={src}
-      alt={href ? alt : `${alt} - coming soon`}
-      className={`h-12 w-auto ${href ? '' : 'opacity-50 grayscale'}`}
-    />
-  );
-  if (!href) return <span aria-disabled>{img}</span>;
   return (
-    <a href={href} target="_blank" rel="noopener" className="transition-opacity hover:opacity-85">
-      {img}
+    <a href={href} target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-85">
+      <img src={src} alt={alt} className="h-12 w-auto" />
     </a>
   );
 }

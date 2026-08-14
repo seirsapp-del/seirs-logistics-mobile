@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPageBlock, getImageSlots } from "@/lib/cms";
 import { Reveal } from "@/components/Reveal";
+import { GetAppButton } from "@/components/GetAppButton";
 import {
   Package,
   Truck,
@@ -331,17 +332,22 @@ export default async function HomePage() {
                   'Send thousands of packages with one click. Real-time tracking, business wallets, and a network of verified drivers and partner stores across Nigeria.'}
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-14">
-                <Link
-                  href="/contact"
-                  className="inline-flex items-center justify-center gap-2 bg-white text-navy font-bold px-8 py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-base"
+              {/* Sizing 2026-08-14 (founder: "why are those buttons so big on
+                  phone"): flex-col stretches both to full width, and px-8 py-4
+                  on top of that gave two chunky full-bleed blocks with 16px
+                  between them and 56px under. Padding, gap and margin are now
+                  phone-first and step up at sm. Desktop is unchanged. */}
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-10 sm:mb-14">
+                <GetAppButton
+                  app="customer"
+                  className="inline-flex items-center justify-center gap-2 bg-white text-navy font-bold px-6 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-[15px] sm:text-base"
                 >
                   Start Sending
                   <ArrowRight size={18} />
-                </Link>
+                </GetAppButton>
                 <Link
                   href="/for-drivers"
-                  className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-8 py-4 rounded-btn hover:bg-white/10 transition-colors text-base"
+                  className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-6 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-white/10 transition-colors text-[15px] sm:text-base"
                 >
                   Become a Driver
                 </Link>
