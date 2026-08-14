@@ -32,12 +32,14 @@ import {
    wheels, the yellow package as the star. ── */
 function HeroIllustration() {
   return (
-    <div className="relative w-full h-full min-h-[260px] sm:min-h-[320px] lg:min-h-[380px] flex items-center justify-center">
-      {/* The SVG scales to the column width (max-w-full), so on a 390px
-          phone it lands at ~358px wide, roughly 0.81 of full size. The
-          bold-stroke geometry survives that: 13px strokes render at
-          ~10.6, the rider's head ~23px across, the wheels ~42px. min-h
-          tracks the scaled height so there is no dead space under it. */}
+    <div className="relative w-full h-full min-h-[140px] sm:min-h-[220px] lg:min-h-[380px] flex items-center justify-center">
+      {/* The SVG scales to its column (max-w-full). Since the hero holds two
+          columns at every width now, that column is ~171px on a 390px phone,
+          so the okada renders about 171x140 at 0.39 scale and the 13px
+          strokes land near 5px. That is the cost of matching the desktop
+          arrangement on a phone: it reads as a small emblem beside the copy
+          rather than a full illustration. min-h tracks the scaled height at
+          each breakpoint so no dead navy opens up under it. */}
       <svg width="440" height="360" viewBox="0 0 440 360" fill="none" className="max-w-full h-auto">
         {/* Lagos skyline silhouette */}
         <g fill="white" fillOpacity="0.07">
@@ -304,18 +306,25 @@ export default async function HomePage() {
           />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full">
-          <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16 items-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24 w-full">
+          {/* Founder 2026-08-14: "it should look exactly like the desktop
+              mode". So the two-column split now holds at every width rather
+              than collapsing to a stack under lg. At 390px that gives two
+              ~171px columns, which means the whole left column has to scale
+              down to fit beside the okada: the headline drops from 36px to
+              20px, body copy to 12px, and the CTAs shrink to match. Desktop
+              from lg up is exactly as it was. */}
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:gap-16 items-center">
             {/* Left: copy */}
             <div>
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-6">
-                <div className="w-2 h-2 bg-[#FFBE0B] rounded-full animate-pulse" />
-                <span className="text-white/80 text-xs font-medium">
-                  Launching in Lagos: join the first wave
+              <div className="inline-flex items-center gap-1.5 lg:gap-2 bg-white/10 border border-white/20 rounded-full px-2.5 py-1 lg:px-4 lg:py-1.5 mb-4 lg:mb-6">
+                <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-[#FFBE0B] rounded-full animate-pulse flex-shrink-0" />
+                <span className="text-white/80 text-[10px] lg:text-xs font-medium leading-tight">
+                  Launching in Lagos
                 </span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-6 tracking-tight">
+              <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-6xl font-extrabold text-white leading-[1.15] lg:leading-[1.1] mb-3 lg:mb-6 tracking-tight">
                 {hero?.title ?? (
                   <>
                     Nigeria&apos;s Smartest
@@ -327,27 +336,26 @@ export default async function HomePage() {
                 )}
               </h1>
 
-              <p className="text-white/70 text-lg leading-relaxed mb-8 max-w-lg">
+              <p className="text-white/70 text-xs sm:text-base lg:text-lg leading-relaxed mb-5 lg:mb-8 max-w-lg">
                 {hero?.excerpt ??
                   'Send thousands of packages with one click. Real-time tracking, business wallets, and a network of verified drivers and partner stores across Nigeria.'}
               </p>
 
               {/* Sizing 2026-08-14 (founder: "why are those buttons so big on
-                  phone"): flex-col stretches both to full width, and px-8 py-4
-                  on top of that gave two chunky full-bleed blocks with 16px
-                  between them and 56px under. Padding, gap and margin are now
-                  phone-first and step up at sm. Desktop is unchanged. */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-10 sm:mb-14">
+                  phone"): they were px-8 py-4 at full bleed. Now they live in
+                  a ~171px column beside the okada, so they stay stacked until
+                  lg and scale their padding and label with the column. */}
+              <div className="flex flex-col lg:flex-row gap-2 lg:gap-4 mb-8 lg:mb-14">
                 <GetAppButton
                   app="customer"
-                  className="inline-flex items-center justify-center gap-2 bg-white text-navy font-bold px-6 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-[15px] sm:text-base"
+                  className="inline-flex items-center justify-center gap-1.5 lg:gap-2 bg-white text-navy font-bold px-3 py-2.5 lg:px-8 lg:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-xs sm:text-sm lg:text-base whitespace-nowrap"
                 >
                   Start Sending
-                  <ArrowRight size={18} />
+                  <ArrowRight size={16} className="flex-shrink-0" />
                 </GetAppButton>
                 <Link
                   href="/for-drivers"
-                  className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-6 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-white/10 transition-colors text-[15px] sm:text-base"
+                  className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-2.5 lg:px-8 lg:py-4 rounded-btn hover:bg-white/10 transition-colors text-xs sm:text-sm lg:text-base whitespace-nowrap"
                 >
                   Become a Driver
                 </Link>
