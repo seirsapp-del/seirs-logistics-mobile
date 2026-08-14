@@ -37,7 +37,12 @@ export function AppScreenshot({
 
   return (
     <div
-      className={`relative mx-auto w-full max-w-[260px] aspect-[9/19] rounded-[1.75rem] border border-gray-200 bg-white shadow-lg overflow-hidden ${className}`}
+      /* Founder 2026-08-14: the screens were too big on a phone. At 260px a
+         19:9 frame is ~550px tall, so a single step filled the whole viewport
+         and the story became one screen per scroll. 170px on a phone puts it
+         at ~360px tall, so the screen and its copy sit together in one view,
+         which is the desktop relationship. */
+      className={`relative mx-auto w-full max-w-[170px] sm:max-w-[210px] lg:max-w-[260px] aspect-[9/19] rounded-2xl lg:rounded-[1.75rem] border border-gray-200 bg-white shadow-lg overflow-hidden ${className}`}
     >
       {src ? (
         /* eslint-disable-next-line @next/next/no-img-element */

@@ -62,35 +62,45 @@ export function PageHero({
         />
       </div>
 
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-28 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 border border-white/20 mb-8">
-          <Icon size={28} className="text-sky" strokeWidth={1.75} />
+      {/* Phone sizing 2026-08-14 (founder: the inner pages have the same
+          problem the homepage hero had, buttons too big and stacked instead
+          of side by side, and it should feel like the desktop page). This
+          component is the hero on how-it-works, for-business, for-drivers and
+          for-partner-stores, so fixing it here fixes four pages at once.
+          Padding, icon, type and CTAs are all phone-first now and step back
+          up to the original values at sm and lg. */}
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28 text-center">
+        <div className="inline-flex items-center justify-center w-12 h-12 lg:w-16 lg:h-16 rounded-2xl bg-white/10 border border-white/20 mb-5 lg:mb-8">
+          <Icon size={22} className="text-sky lg:hidden" strokeWidth={1.75} />
+          <Icon size={28} className="text-sky hidden lg:block" strokeWidth={1.75} />
         </div>
 
-        <p className="text-sky text-xs font-bold uppercase tracking-widest mb-4">
+        <p className="text-sky text-[10px] lg:text-xs font-bold uppercase tracking-widest mb-3 lg:mb-4">
           {eyebrow}
         </p>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-6 tracking-tight">
+        <h1 className="text-[28px] sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-4 lg:mb-6 tracking-tight">
           {title}
         </h1>
 
-        <p className="text-white/70 text-lg leading-relaxed mb-10 max-w-2xl mx-auto">
+        <p className="text-white/70 text-sm sm:text-base lg:text-lg leading-relaxed mb-6 lg:mb-10 max-w-2xl mx-auto">
           {subtitle}
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        {/* Side by side at every width, matching the homepage hero. flex-1
+            makes them share the row evenly on a phone. */}
+        <div className="flex flex-row gap-2 sm:gap-3 justify-center">
           <Link
             href={primaryCtaHref}
-            className="inline-flex items-center justify-center gap-2 bg-white text-navy font-bold px-8 py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-white text-navy font-bold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-[13px] sm:text-base"
           >
             {primaryCtaLabel}
-            <ArrowRight size={18} />
+            <ArrowRight size={16} className="flex-shrink-0" />
           </Link>
           {secondaryCtaLabel && secondaryCtaHref ? (
             <Link
               href={secondaryCtaHref}
-              className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-8 py-4 rounded-btn hover:bg-white/10 transition-colors"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-white/10 transition-colors text-[13px] sm:text-base"
             >
               {secondaryCtaLabel}
             </Link>
@@ -132,23 +142,23 @@ export function PageCta({
 }) {
   return (
     <section
-      className="py-20"
+      className="py-12 sm:py-16 lg:py-20"
       style={{
         background:
           "linear-gradient(135deg, #0F2B4C 0%, #1a3a5c 60%, #0F2B4C 100%)",
       }}
     >
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-3 lg:mb-4">
           {title}
         </h2>
-        <p className="text-white/70 text-lg mb-8">{subtitle}</p>
+        <p className="text-white/70 text-sm sm:text-base lg:text-lg mb-6 lg:mb-8">{subtitle}</p>
         <Link
           href={primaryHref}
-          className="inline-flex items-center justify-center gap-2 bg-sky text-white font-bold px-8 py-4 rounded-btn hover:opacity-90 transition-opacity shadow-xl"
+          className="inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-sky text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:opacity-90 transition-opacity shadow-xl text-[13px] sm:text-base"
         >
           {primaryLabel}
-          <ArrowRight size={18} />
+          <ArrowRight size={16} className="flex-shrink-0" />
         </Link>
       </div>
     </section>

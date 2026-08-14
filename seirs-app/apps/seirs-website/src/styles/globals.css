@@ -39,16 +39,21 @@
     @apply bg-white rounded-card p-6 shadow-sm border border-gray-100;
   }
 
+  /* Phone-first section type, 2026-08-14. Founder: the inner pages read the
+     same way the homepage did before its hero was fixed, oversized on a
+     phone, and asked for the whole site checked. These three classes head
+     almost every section on every page, so scaling them here is the
+     site-wide fix. Desktop values are unchanged: md and up is what it was. */
   .section-label {
-    @apply text-sm font-semibold tracking-widest uppercase text-sky;
+    @apply text-[11px] sm:text-sm font-semibold tracking-widest uppercase text-sky;
   }
 
   .section-title {
-    @apply text-3xl md:text-4xl font-extrabold text-navy leading-tight;
+    @apply text-2xl sm:text-3xl md:text-4xl font-extrabold text-navy leading-tight;
   }
 
   .section-sub {
-    @apply text-lg text-text-muted max-w-2xl mx-auto;
+    @apply text-sm sm:text-base lg:text-lg text-text-muted max-w-2xl mx-auto;
   }
 }
 

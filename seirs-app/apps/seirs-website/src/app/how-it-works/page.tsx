@@ -58,7 +58,7 @@ function StoryStep({
   flip?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-16 items-center">
       <div className={flip ? 'lg:order-2' : ''}>
         <AppScreenshot screen={screen} alt={screenAlt} />
       </div>
@@ -146,7 +146,7 @@ export default async function HowItWorksPage() {
             </p>
           </div>
 
-          <div className="space-y-16 lg:space-y-24">
+          <div className="space-y-10 lg:space-y-24">
             <StoryStep
               step={1}
               icon={Smartphone}

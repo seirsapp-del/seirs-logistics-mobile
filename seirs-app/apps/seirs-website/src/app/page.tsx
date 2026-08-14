@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getPageBlock, getImageSlots } from "@/lib/cms";
 import { Reveal } from "@/components/Reveal";
 import { GetAppButton } from "@/components/GetAppButton";
+import { AppScreenshot } from "@/components/AppScreenshot";
 import {
   Package,
   Truck,
@@ -115,44 +116,12 @@ function HeroIllustration() {
   );
 }
 
-/* ── Step Card. Photo slot on top when the admin has uploaded one
-   (Admin > Website > Page Blocks > img_step_*); icon-only otherwise. ── */
-function StepCard({
-  number,
-  title,
-  description,
-  icon: Icon,
-  imageUrl,
-}: {
-  number: number;
-  title: string;
-  description: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  imageUrl?: string;
-}) {
-  return (
-    <div className="lift relative bg-white rounded-card shadow-sm border border-gray-100 overflow-hidden">
-      {imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="" className="w-full h-44 object-cover" loading="lazy" />
-      )}
-      <div className="relative p-8">
-        <div className="absolute -top-4 left-6">
-          <div className="w-8 h-8 bg-navy text-white font-black text-sm rounded-lg flex items-center justify-center shadow-lg">
-            {number}
-          </div>
-        </div>
-        {!imageUrl && (
-          <div className="w-14 h-14 bg-sky/10 rounded-xl flex items-center justify-center mb-5">
-            <Icon size={26} className="text-sky" />
-          </div>
-        )}
-        <h3 className={`text-navy font-bold text-lg mb-2 ${imageUrl ? 'mt-4' : ''}`}>{title}</h3>
-        <p className="text-text-muted text-sm leading-relaxed">{description}</p>
-      </div>
-    </div>
-  );
-}
+/* StepCard removed 2026-08-14: the How It Works section it served is now one
+   app screenshot with the three steps listed beside it, so nothing rendered
+   this any more. Note for the admin side: the img_step_book, img_step_pickup
+   and img_step_delivered slots under Website > Page Blocks are now orphaned.
+   Uploading to them has no effect on the site until they are either wired
+   somewhere else or removed from the admin. */
 
 /* ── Business Feature Card ── */
 function FeatureCard({
@@ -455,39 +424,63 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
-            <Reveal delay={0}>
-              <StepCard
-                number={1}
-                title="Create a Delivery"
-                description="Add your pickup and drop-off address, describe your package, and pay instantly from your Seirs wallet. Bulk orders? Upload a CSV and process hundreds at once."
-                icon={Package}
-                imageUrl={img.img_step_book}
-              />
-            </Reveal>
-            <Reveal delay={120}>
-              <StepCard
-                number={2}
-                title="Driver Picks Up"
-                description="A verified, background-checked driver is automatically assigned and dispatched to your pickup location in minutes. You get their name, photo, and live location."
-                icon={Truck}
-                imageUrl={img.img_step_pickup}
-              />
-            </Reveal>
-            <Reveal delay={240}>
-              <StepCard
-                number={3}
-                title="Real-Time Tracking"
-                description="Track every step of the journey on the map in real time. Get push notifications at each milestone, dispatched, picked up, nearby, delivered."
-                icon={MapPin}
-                imageUrl={img.img_step_delivered}
-              />
-            </Reveal>
-          </div>
+          {/* Rebuilt 2026-08-14. Founder asked for one screenshot of the app
+              with the three explanations beside it, rather than three cards
+              each carrying their own image. One screen anchors the section,
+              the steps read as a list next to it, and on a phone the screen
+              sits on top with the three steps underneath, so the whole
+              section fits in about one and a half screens instead of three
+              stacked cards.
 
-          {/* Connector line (desktop) */}
-          <div className="hidden md:flex items-center justify-center mt-2 -mt-4 relative" aria-hidden="true">
-            {/* purely visual; the grid positions already imply flow */}
+              The old step 1 copy said you "pay instantly from your Seirs
+              wallet". Customers do not hold NGN balances, per CBN rules and
+              our own standing rule that the customer side never says Wallet.
+              Corrected to card payment, which is what actually happens. */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center max-w-5xl mx-auto">
+            <Reveal>
+              <AppScreenshot
+                screen="customerBooking"
+                alt="Creating a delivery in the Seirs customer app"
+              />
+            </Reveal>
+
+            <div className="space-y-6 lg:space-y-8">
+              {[
+                {
+                  n: 1,
+                  icon: Package,
+                  title: "Create a Delivery",
+                  body: "Add your pickup and drop-off address, describe your package, and pay by card. Bulk orders? Upload a CSV and process hundreds at once.",
+                },
+                {
+                  n: 2,
+                  icon: Truck,
+                  title: "Driver Picks Up",
+                  body: "A verified, background-checked driver is assigned and dispatched to your pickup in minutes. You get their name, photo and live location.",
+                },
+                {
+                  n: 3,
+                  icon: MapPin,
+                  title: "Real-Time Tracking",
+                  body: "Follow the journey on the map. Push notifications at every milestone: dispatched, picked up, nearby, delivered.",
+                },
+              ].map((s, i) => (
+                <Reveal key={s.n} delay={i * 120}>
+                  <div className="flex gap-4">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-navy text-white flex items-center justify-center font-extrabold text-sm">
+                      {s.n}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2.5 mb-1.5">
+                        <s.icon size={18} className="text-sky flex-shrink-0" strokeWidth={1.75} />
+                        <h3 className="text-navy font-bold text-base sm:text-lg">{s.title}</h3>
+                      </div>
+                      <p className="text-text-muted text-sm leading-relaxed">{s.body}</p>
+                    </div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -982,24 +975,29 @@ export default async function HomePage() {
             style={{ backgroundImage: `url(${img.img_handoff_hands})` }} />
         )}
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-3 lg:mb-4">
             Ready to simplify your logistics?
           </h2>
-          <p className="text-white/65 text-lg mb-8 max-w-xl mx-auto">
+          <p className="text-white/65 text-sm sm:text-base lg:text-lg mb-6 lg:mb-8 max-w-xl mx-auto">
             Be part of the first wave: senders, riders, and partner stores building
             Nigeria&apos;s most honest delivery network.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/contact"
-              className="inline-flex items-center justify-center gap-2 bg-white text-navy font-bold px-8 py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-base"
+          {/* These were two adjacent buttons pointing at the same /contact
+              URL, which teaches people that buttons are decorative. They now
+              go to genuinely different places: the app for a sender, the form
+              for a business. Sizing matches the hero, side by side on a
+              phone rather than two stacked full-bleed blocks. */}
+          <div className="flex flex-row gap-2 sm:gap-4 justify-center">
+            <GetAppButton
+              app="customer"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-white text-navy font-bold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-[13px] sm:text-base"
             >
-              Get Started Today
-              <ArrowRight size={18} />
-            </Link>
+              Get the App
+              <ArrowRight size={16} className="flex-shrink-0" />
+            </GetAppButton>
             <Link
               href="/contact"
-              className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-8 py-4 rounded-btn hover:bg-white/10 transition-colors text-base"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-white/10 transition-colors text-[13px] sm:text-base"
             >
               Talk to Sales
             </Link>
