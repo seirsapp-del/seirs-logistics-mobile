@@ -602,7 +602,12 @@ export default async function HomePage() {
 
             <Reveal delay={120} className="lg:col-span-5">
               <div>
-                <p className="section-label mb-3">Made for Nigeria</p>
+                {/* Eyebrow was "Made for Nigeria", removed 2026-08-15: the
+                    plan is to expand across Africa, and a label that pins the
+                    product to one country ages badly the moment it does.
+                    "How collection really works" says the same thing about
+                    the feature without fixing it to a market. */}
+                <p className="section-label mb-3">How collection really works</p>
                 <h2 className="section-title mb-4">Anyone you trust can collect</h2>
                 <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-8">
                   You are at work. The parcel arrives at 2pm. In most of the
@@ -716,24 +721,30 @@ export default async function HomePage() {
         )}
       </section>
 
-      /* THE SEIRS STANDARD removed 2026-08-15. Founder called it after the
-         audit: two of its three promises did not survive checking.
+      {/* THE SEIRS STANDARD removed 2026-08-15. Two of its three promises
+          did not survive the audit.
 
-         "No fake promises" (never guarantee arrival times) and "Proof over
-         trust" (photo on every delivery, ID checks above the high-value
-         threshold, auditable timeline) were both true and verifiable.
+          "No fake promises" (never guarantee arrival times) and "Proof over
+          trust" (photo on every delivery, ID checks above the high-value
+          threshold, auditable timeline) were both true and verifiable.
 
-         "Fair to the people who carry it" was not. It claimed night fees go
-         to riders in full: the night fee is a percentage of the fare, rides
-         inside the gross, and takes the same 30% commission as everything
-         else. It also claimed nobody is ranked, while /how-it-works says
-         jobs go to drivers "ranked by rating, vehicle fit and route" and
-         DriverSubscription sells Priority Matching at ₦5,000/week for a
-         +0.15 score boost that outranks the rating gap.
+          "Fair to the people who carry it" was not. It claimed night fees go
+          to riders in full: the fee is a percentage of the fare, rides inside
+          the gross, and takes the same 30% commission as everything else. It
+          also claimed nobody is ranked, while /how-it-works says jobs go to
+          drivers "ranked by rating, vehicle fit and route" and
+          DriverSubscription sells Priority Matching at ₦5,000/week for a
+          +0.15 score boost that outranks the rating gap.
 
-         Rather than rewrite one promise, the founder removed the section:
-         a promises block whose own product contradicts it costs more trust
-         than it earns. */
+          Founder removed the section rather than rewrite one promise: a
+          promises block contradicted by its own paid product costs more
+          trust than it earns.
+
+          NOTE: this block first shipped as a bare block comment sitting
+          between JSX elements, which is not a comment in that position. JSX
+          only treats one as a comment when it is wrapped in braces, so the
+          entire paragraph rendered as visible text on the live homepage.
+          Between elements, always wrap in braces. */}
 
       {/* ── CTA BANNER ── */}
       <section
