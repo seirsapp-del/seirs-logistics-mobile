@@ -27,6 +27,18 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  /**
+   * Trust the platform proxy (audit 2026-08-14).
+   *
+   * Railway terminates TLS and forwards, so without this every request
+   * arrives with the proxy's address as req.ip. That is harmless while
+   * nothing reads req.ip, but the rate limiter now does, and one shared
+   * IP for the entire user base would mean the first hundred requests a
+   * minute lock out everybody. One hop only: trusting the whole chain
+   * would let a caller spoof X-Forwarded-For and shed their own limit.
+   */
+  app.set('trust proxy', 1);
+
   // Security headers - applied before all routes
   app.use(helmet({
     contentSecurityPolicy: {

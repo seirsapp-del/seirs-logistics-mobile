@@ -3,6 +3,7 @@ import {
   UseGuards, RawBodyRequest, Req, Headers,
   HttpCode, HttpStatus,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { createHash, timingSafeEqual } from 'crypto';
 import { PaymentsService } from './payments.service';
 import { FlutterwaveService } from './flutterwave.service';
@@ -190,6 +191,10 @@ export class PaymentsController {
   // POST /api/v1/payments/webhook/flutterwave
   // Set FLW_WEBHOOK_HASH in your env to the same Secret Hash configured in
   // Flutterwave dashboard → Settings → Webhooks
+  // Exempt from the global throttler: Flutterwave batches and retries,
+  // and dropping a payment notification to save a rate-limit slot is the
+  // wrong trade. The secret-hash check below is this route's protection.
+  @SkipThrottle()
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('webhook/flutterwave')

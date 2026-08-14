@@ -13,6 +13,13 @@ import { User } from '../users/user.entity';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // Throttles below are per-IP per-minute. They were written when the
+  // ThrottlerGuard was not registered, so none of them fired; the guard
+  // is now global (see AppModule) and these are the real limits. The
+  // unthrottled routes were the ones that mattered most: a 6-digit OTP
+  // under the loose global default is a brute-force target, and the
+  // resend and reset routes are free email cannons.
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
@@ -37,21 +44,25 @@ export class AuthController {
     return this.authService.adminLogin(body.email, body.password);
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('verify-otp')
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto);
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('resend-otp')
   resendOtp(@Body('email') email: string) {
     return this.authService.resendOtp(email);
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('google')
   googleLogin(@Body() dto: SocialLoginDto) {
     return this.authService.googleLogin(dto);
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('apple')
   appleLogin(@Body() dto: SocialLoginDto) {
     return this.authService.appleLogin(dto);
@@ -73,11 +84,15 @@ export class AuthController {
     return this.authService.refreshToken(user.id);
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('forgot-password')
   forgotPassword(@Body('email') email: string) {
     return this.authService.forgotPassword(email);
   }
 
+  // The reset token is the only thing standing between a caller and
+  // somebody else's account, so guessing attempts are capped hard.
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('reset-password')
   resetPassword(
     @Body('token') token: string,
@@ -100,11 +115,13 @@ export class AuthController {
 
   // ── Business / Partner Auth ────────────────────────────────────────────────
 
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('business-register')
   businessRegister(@Body() body: any) {
     return this.authService.businessRegister(body);
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('business-verify-otp')
   businessVerifyOtp(@Body() body: { email: string; otp: string }) {
     return this.authService.businessVerifyOtp(body.email, body.otp);

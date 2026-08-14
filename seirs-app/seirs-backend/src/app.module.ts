@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -51,7 +53,12 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    // Global fallback for routes without their own @Throttle. Raised from
+    // 100 now that the guard actually runs: authenticated traffic is
+    // counted per token, but anonymous traffic still shares an IP, and a
+    // Nigerian carrier NAT puts a great many real people behind one.
+    // The routes worth defending closely carry their own strict limits.
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 300 }]),
     ScheduleModule.forRoot(), // enables @Cron decorators
 
     TypeOrmModule.forRootAsync({
@@ -129,6 +136,22 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
     TicketsModule,
     AddressesModule,
     MaintenanceModule,
+  ],
+  providers: [
+    /**
+     * Rate limiting (audit 2026-08-14).
+     *
+     * ThrottlerModule.forRoot has been configured since early on, and
+     * auth carried @Throttle decorators on login, register and OTP. None
+     * of it did anything: registering the module supplies the config,
+     * but without the guard nothing consults it, so every decorator in
+     * the codebase was decorative and the API had no rate limiting in
+     * production at all.
+     *
+     * That is what made the add-card reference guessable in practice,
+     * and it left login and OTP open to unlimited attempts.
+     */
+    { provide: APP_GUARD, useClass: HttpThrottlerGuard },
   ],
 })
 export class AppModule {}
