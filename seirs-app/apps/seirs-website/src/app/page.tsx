@@ -185,7 +185,15 @@ export default async function HomePage() {
     <>
       {/* ── HERO ── */}
       <section
-        className="relative overflow-hidden min-h-[90vh] flex items-center"
+        /* min-h-[90vh] is desktop-only from 2026-08-15. On a 360x740 A30 it
+           forced the hero to 666px whatever the content measured, and with
+           flex items-center the ~510px of actual content got centred inside
+           it, opening roughly 150px of dead navy split above and below. That
+           is the "empty space up" the founder reported; trimming py-24 to
+           py-8 earlier helped the padding but left the min-height doing the
+           damage. On a phone the hero is now content-sized, so the chip sits
+           just under the nav. Desktop keeps the full-bleed 90vh hero. */
+        className="relative overflow-hidden lg:min-h-[90vh] flex items-center"
         style={{
           background: "linear-gradient(135deg, #0F2B4C 0%, #1a3a5c 60%, #0F2B4C 100%)",
         }}
@@ -226,7 +234,13 @@ export default async function HomePage() {
               with the okada; everything else spans both columns. From lg up
               the okada is pinned to column 2 across every row and the rest
               stacks in column 1, which is the original desktop hero. */}
-          <div className="grid grid-cols-2 gap-x-4 sm:gap-x-6 lg:gap-x-16 items-center">
+          {/* 55/45 rather than an even split below lg. At 360 an even split
+              left the copy column ~155px, which broke the headline as
+              "Send / anything. / Anywhere in / Nigeria." with a single word
+              stranded on line one. The extra ~18px lets "Send anything." hold
+              together. The okada still reads clearly at the narrower share,
+              and lg goes back to the even desktop split. */}
+          <div className="grid grid-cols-[1.22fr_1fr] lg:grid-cols-2 gap-x-3 sm:gap-x-6 lg:gap-x-16 items-center">
             <div className="col-span-2 lg:col-span-1 lg:col-start-1">
               {/* Founder 2026-08-14: Nigeria, not Lagos, at every width. The
                   platform is not a Lagos-only product and the chip was the
