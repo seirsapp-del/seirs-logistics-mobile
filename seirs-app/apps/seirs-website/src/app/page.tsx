@@ -31,7 +31,12 @@ import {
    wheels, the yellow package as the star. ── */
 function HeroIllustration() {
   return (
-    <div className="relative w-full h-full min-h-[380px] flex items-center justify-center">
+    <div className="relative w-full h-full min-h-[260px] sm:min-h-[320px] lg:min-h-[380px] flex items-center justify-center">
+      {/* The SVG scales to the column width (max-w-full), so on a 390px
+          phone it lands at ~358px wide, roughly 0.81 of full size. The
+          bold-stroke geometry survives that: 13px strokes render at
+          ~10.6, the rider's head ~23px across, the wheels ~42px. min-h
+          tracks the scaled height so there is no dead space under it. */}
       <svg width="440" height="360" viewBox="0 0 440 360" fill="none" className="max-w-full h-auto">
         {/* Lagos skyline silhouette */}
         <g fill="white" fillOpacity="0.07">
@@ -299,7 +304,7 @@ export default async function HomePage() {
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16 items-center">
             {/* Left: copy */}
             <div>
               <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-6">
@@ -379,8 +384,12 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* Right: illustration */}
-            <div className="hidden lg:block">
+            {/* Right on desktop, below the copy on phones (founder
+                2026-08-14: it renders on iPad but was hidden under lg,
+                so the phone never got the okada). It sits after the
+                headline and CTAs in DOM order, so showing it costs
+                nothing above the fold. */}
+            <div>
               <HeroIllustration />
             </div>
           </div>
