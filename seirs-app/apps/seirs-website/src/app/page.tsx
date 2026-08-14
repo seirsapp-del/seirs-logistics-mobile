@@ -667,12 +667,18 @@ export default async function HomePage() {
       <section id="partner-stores" className="relative py-24 bg-off-white overflow-hidden">
         {img.img_partner_store && (
           <>
+            {/* Photo at full strength, readability handled by the wash above
+                it rather than by dimming the image. The first attempt did
+                both, 0.18 opacity under a 55% wash, which left roughly 8% of
+                the photo showing: effectively invisible. One 72% wash over a
+                full-strength image leaves about 28%, which reads as a real
+                background while keeping the heading legible. */}
             <div
               aria-hidden
-              className="absolute inset-0 bg-cover bg-center opacity-[0.18]"
+              className="absolute inset-0 bg-cover bg-center"
               style={{ backgroundImage: `url(${img.img_partner_store})` }}
             />
-            <div aria-hidden className="absolute inset-0 bg-off-white/55" />
+            <div aria-hidden className="absolute inset-0 bg-off-white/[0.72]" />
           </>
         )}
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
