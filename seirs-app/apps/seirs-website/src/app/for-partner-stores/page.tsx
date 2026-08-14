@@ -263,7 +263,12 @@ export default async function ForPartnerStoresPage() {
               {
                 step: 2,
                 title: "Quick virtual walkthrough",
-                body: "Our partner success team calls you, asks for shopfront photos, confirms your hours and capacity. Usually within 24 hours of applying.",
+                // "Usually within 24 hours of applying" dropped 2026-08-15.
+                // There is no partner success team on a rota yet and no
+                // measured response time to average, so "usually" was
+                // describing a service level nobody has committed to. The
+                // step itself is real; only the timing promise is removed.
+                body: "Our partner team calls you, asks for shopfront photos, and confirms your hours and capacity.",
               },
               {
                 step: 3,

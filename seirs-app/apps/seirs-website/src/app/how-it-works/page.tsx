@@ -296,9 +296,14 @@ export default async function HowItWorksPage() {
         </div>
       </section>
 
+      {/* "place your first delivery in under two minutes" dropped
+          2026-08-15. It is a speed claim nobody has timed, and it invites
+          the reader to treat two minutes as a standard the app has to meet
+          on their connection, on their first try, while entering an address
+          they have never entered before. */}
       <PageCta
         title="Ready to try it?"
-        subtitle="Download the Seirs Customer app and place your first delivery in under two minutes."
+        subtitle="Download the Seirs Customer app and send your first package."
         primaryLabel="Get the Customer App"
         primaryHref={STORE.play('customer')}
       />

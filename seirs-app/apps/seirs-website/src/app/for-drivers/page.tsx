@@ -309,8 +309,15 @@ export default async function ForDriversPage() {
           <div className="text-center mb-12">
             <p className="section-label mb-3">Application Process</p>
             <h2 className="section-title mb-4">From signup to first trip</h2>
+            {/* Was "Most drivers are approved and earning within 48 hours",
+                corrected 2026-08-15. Two problems: our own identity policy
+                puts manual document review at 24 hours to 3 business days,
+                so 48 hours was a promise the review process does not make;
+                and "most drivers" is a statistic about a driver population
+                that does not exist yet. */}
             <p className="section-sub">
-              Most drivers are approved and earning within 48 hours.
+              Approval usually takes one to three business days once your
+              documents are in.
             </p>
           </div>
 
@@ -333,7 +340,13 @@ export default async function ForDriversPage() {
             <StepRow
               step={4}
               title="Go online and earn"
-              body="Tap 'Go Online' in the app. Jobs near you start appearing. Accept the ones you want. Get paid the same day every trip clears."
+              // "Get paid the same day every trip clears" was false three
+              // ways, corrected 2026-08-15: earnings become withdrawable a
+              // day after a trip clears (this page already said so further
+              // up), payouts only run once the balance passes the minimum,
+              // and new drivers carry a partial holdback for their first
+              // month. Same-day was contradicted by our own copy.
+              body="Tap 'Go Online' in the app. Jobs near you start appearing. Accept the ones you want, and earnings become withdrawable a day after each trip clears."
             />
           </div>
         </div>
@@ -372,9 +385,14 @@ export default async function ForDriversPage() {
         </div>
       </section>
 
+      {/* subtitle was "Apply now and start earning on Nigeria's
+          fastest-growing delivery network", removed 2026-08-15. A growth
+          superlative needs growth to measure, and the network has not
+          launched. It is also the exact class of claim a competitor can
+          trivially disprove. */}
       <PageCta
         title="Ready to drive with Seirs?"
-        subtitle="Apply now and start earning on Nigeria's fastest-growing delivery network."
+        subtitle="Apply now, get your documents reviewed, and start taking jobs as soon as you are approved."
         primaryLabel="Apply to drive"
         primaryHref="/contact"
       />
