@@ -22,6 +22,7 @@ const SKELETONS: Record<ScreenKey, 'form' | 'profile' | 'map'> = {
   customerTracking: 'map',
   driverHome: 'map',
   driverEarnings: 'form',
+  businessDashboard: 'form',
 };
 
 export function AppScreenshot({

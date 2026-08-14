@@ -87,7 +87,8 @@ export type ScreenKey =
   | 'customerDriverAccepted'
   | 'customerTracking'
   | 'driverHome'
-  | 'driverEarnings';
+  | 'driverEarnings'
+  | 'businessDashboard';
 
 export const APP_SCREENSHOTS: Record<ScreenKey, string | null> = {
   // NEEDS_DATA, standing in until the capture session (founder 2026-08-14:
@@ -102,6 +103,10 @@ export const APP_SCREENSHOTS: Record<ScreenKey, string | null> = {
   // LIVE: already in the repo, and correct for their own section.
   driverHome: '/app-shots/driver-home.png',
   driverEarnings: '/app-shots/driver-earnings.png',
+  // NEEDS_DATA: no business-app capture exists. Deliberately left null so it
+  // draws the neutral skeleton rather than a driver screen mislabelled as
+  // business, which is what the how-it-works section is doing today.
+  businessDashboard: null,
 };
 
 // ── Launch state ────────────────────────────────────────────────────────────

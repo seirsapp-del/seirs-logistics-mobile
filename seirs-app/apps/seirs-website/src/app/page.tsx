@@ -24,6 +24,8 @@ import {
   Smartphone,
   ChevronRight,
   Globe,
+  Lock,
+  KeyRound,
 } from "lucide-react";
 
 /* ── Hero scene: bespoke okada illustration in the logo's own visual
@@ -413,6 +415,91 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── THE PROBLEM WE ARE SOLVING ──
+          Added 2026-08-14. Founder asked for real, researched data rather
+          than invented numbers, framed in the present tense so the site reads
+          as a company actively solving these problems rather than one
+          promising to later.
+
+          Every figure here is real and checkable. The ₦50bn is Nigeria's
+          postal service's own published estimate of what weak addressing
+          costs the country in failed and inaccurate deliveries. The digital
+          postcode rollout is federal policy with a first phase from October.
+          The cash-on-delivery retreat is documented across the major
+          Nigerian platforms. Attribution is kept in prose rather than as
+          links, per founder preference, but each claim is sourced and none
+          is embellished.
+
+          Deliberately absent: any speed or arrival-time claim. Traffic
+          research would support one, but we never promise arrival times in
+          Nigeria, and this section is where that temptation lives. ── */}
+      <section className="py-14 sm:py-20 lg:py-24 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10 lg:mb-14">
+            <p className="section-label mb-3">Why We Exist</p>
+            <h2 className="section-title mb-4">
+              Nigeria loses ₦50 billion a year to deliveries that fail
+            </h2>
+            <p className="section-sub">
+              That is the postal service&apos;s own estimate, and the cause is
+              not laziness or bad luck. It is that the country&apos;s delivery
+              system was built on addresses that do not exist, payments nobody
+              trusts, and handoffs nobody can prove. We are rebuilding all
+              three.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {[
+              {
+                icon: MapPin,
+                problem: "Addresses that do not exist",
+                detail:
+                  "Most Nigerian streets have no signs and most buildings have no numbers, so deliveries run on landmarks and phone calls. The country is now rolling out digital postcodes to fix it at national scale.",
+                solution:
+                  "We never ask for a street address. You drop a pin, and the driver navigates to the coordinate. It already works everywhere, including the streets the postcode rollout has not reached.",
+              },
+              {
+                icon: Lock,
+                problem: "Payments nobody trusts",
+                detail:
+                  "Cash on delivery pushed the risk onto riders and sellers: refused parcels, cash carried through traffic, and losses big enough that major Nigerian platforms have pulled COD entirely.",
+                solution:
+                  "We hold the money in escrow instead. The sender pays by card up front, the driver carries no cash, and the funds release only once delivery is confirmed.",
+              },
+              {
+                icon: KeyRound,
+                problem: "Handoffs nobody can prove",
+                detail:
+                  "When a parcel is handed to the wrong person, there is usually no record of who took it. The dispute becomes one person's word against another's, and it is the sender who absorbs it.",
+                solution:
+                  "Every pickup and drop-off is confirmed with a one-time code, and the receiver's name is recorded. There is always an answer to who took the package.",
+              },
+            ].map((c, i) => (
+              <Reveal key={c.problem} delay={i * 120}>
+                <div className="h-full bg-off-white rounded-card border border-gray-100 p-6 lg:p-7">
+                  <div className="w-11 h-11 rounded-xl bg-navy/5 flex items-center justify-center mb-4">
+                    <c.icon size={20} className="text-navy" strokeWidth={1.75} />
+                  </div>
+                  <h3 className="text-navy font-bold text-base sm:text-lg mb-2">
+                    {c.problem}
+                  </h3>
+                  <p className="text-text-muted text-sm leading-relaxed mb-4">
+                    {c.detail}
+                  </p>
+                  <p className="text-sky text-[11px] font-bold uppercase tracking-widest mb-1.5">
+                    What we are doing
+                  </p>
+                  <p className="text-navy text-sm leading-relaxed font-medium">
+                    {c.solution}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS ── */}
       <section id="how-it-works" className="py-24 bg-off-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -498,7 +585,7 @@ export default async function HomePage() {
               <p className="text-text-muted text-lg leading-relaxed mb-6">
                 Whether you ship 10 parcels a day or 10,000 a month, Seirs scales with you. Manage your entire logistics operation from one dashboard, no spreadsheets, no chasing drivers.
               </p>
-              <p className="text-text-muted text-base leading-relaxed mb-8">
+              <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-8">
                 Every booking is priced from a transparent rate card: base fare, distance,
                 weight, and any surcharges itemised line by line before you pay. Your team
                 books from one shared wallet with roles and limits you control, and every
@@ -506,12 +593,16 @@ export default async function HomePage() {
               </p>
               <Link
                 href="/contact"
-                className="inline-flex items-center gap-2 bg-navy text-white font-bold px-8 py-4 rounded-btn hover:bg-navy-dark transition-colors shadow-lg"
+                className="inline-flex items-center gap-2 bg-navy text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-navy-dark transition-colors shadow-lg text-[13px] sm:text-base"
               >
                 Open a Business Account
                 <ChevronRight size={18} />
               </Link>
 
+              {/* Founder 2026-08-14: the business app belongs on the opposite
+                  side from the copy. The shop-owner photograph stays as the
+                  human note under the text; the screen goes across the fold
+                  beside the feature grid. */}
               {img.img_business_owner && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={img.img_business_owner} alt="Nigerian business owner preparing orders"
@@ -519,8 +610,15 @@ export default async function HomePage() {
               )}
             </div></Reveal>
 
-            {/* Right: feature grid. Every card describes a shipped feature. */}
-            <Reveal delay={120}><div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Right: the business app itself, then the feature grid. Every
+                card describes a shipped feature. */}
+            <Reveal delay={120}><div>
+            <AppScreenshot
+              screen="businessDashboard"
+              alt="The Seirs business app dashboard"
+              className="mb-8"
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FeatureCard
                 icon={Upload}
                 title="Bulk CSV Upload"
@@ -551,6 +649,7 @@ export default async function HomePage() {
                 title="Direct Support"
                 description="A real support inbox inside the app: open a ticket, get a human, keep the whole thread in one place."
               />
+            </div>
             </div></Reveal>
           </div>
         </div>
