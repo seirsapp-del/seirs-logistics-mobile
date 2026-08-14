@@ -9,7 +9,7 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
@@ -45,6 +45,7 @@ export default function TrackScreen() {
   const isDark = colorScheme === 'dark';
   const params = useLocalSearchParams<{ code?: string }>();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   const [code,         setCode]         = useState(params.code ?? '');
   const [deliveryId,   setDeliveryId]   = useState<string | null>(null);
@@ -407,7 +408,15 @@ export default function TrackScreen() {
       {/* Store picker: nearest to the ORIGINAL dropoff first */}
       <Modal visible={redirectOpen} transparent animationType="slide" onRequestClose={() => setRedirectOpen(false)}>
         <View style={styles.redirectOverlay}>
-          <View style={[styles.redirectCard, { backgroundColor: theme.surface }]}>
+          {/* Bottom padding clears the phone's navigation bar, same fix
+              as send.tsx: this sheet's Cancel button sat right on top of
+              it, so a tap could hit Back instead. insets.bottom is 0 on
+              gesture navigation and ~48dp on the 3-button layout, so it
+              adapts rather than hardcoding a gap. */}
+          <View style={[
+            styles.redirectCard,
+            { backgroundColor: theme.surface, paddingBottom: Spacing.lg + insets.bottom },
+          ]}>
             <View style={styles.redirectHandle} />
             <Text style={[styles.redirectModalTitle, { color: theme.text }]}>Redirect to a partner store</Text>
             <Text style={[styles.redirectModalSub, { color: theme.textSecond }]}>

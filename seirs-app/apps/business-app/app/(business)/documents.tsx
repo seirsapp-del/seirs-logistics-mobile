@@ -9,7 +9,7 @@ import {
   View, Text, Pressable, StyleSheet, FlatList, StatusBar,
   RefreshControl, ActivityIndicator, Modal, ScrollView, Share, Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
@@ -34,6 +34,7 @@ export default function BusinessDocumentsScreen() {
   const router     = useRouter();
   const { isDark } = useTheme();
   const theme      = Colors[isDark ? 'dark' : 'light'];
+  const insets     = useSafeAreaInsets();
 
   const [docs,       setDocs]       = useState<UserDocumentDTO[]>([]);
   const [spend,      setSpend]      = useState<{ companyName: string; years: SpendYear[] } | null>(null);
@@ -193,7 +194,13 @@ export default function BusinessDocumentsScreen() {
 
       <Modal visible={!!viewing} transparent animationType="slide" onRequestClose={() => setViewing(null)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: theme.surface }]}>
+          {/* A Modal renders outside the screen's SafeAreaView, so the
+              bottom inset has to be applied here or the sheet's last
+              control sits under the phone's navigation bar. */}
+          <View style={[
+            styles.modalCard,
+            { backgroundColor: theme.surface, paddingBottom: 20 + insets.bottom },
+          ]}>
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: theme.text }]}>{viewing?.title}</Text>
             <Text style={[styles.modalMeta, { color: theme.textSecond }]}>

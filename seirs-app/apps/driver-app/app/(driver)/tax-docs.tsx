@@ -3,7 +3,7 @@ import {
   View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator,
   Share, Modal, Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft, FileText, Download, ChevronRight, Calendar, Receipt, AlertCircle,
@@ -57,6 +57,7 @@ export default function TaxDocsScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
+  const insets = useSafeAreaInsets();
 
   const [summaries, setSummaries] = useState<YearSummary[]>([]);
   const [received,  setReceived]  = useState<UserDocumentDTO[]>([]);
@@ -254,7 +255,13 @@ export default function TaxDocsScreen() {
       {/* Inline document viewer (body-text documents) */}
       <Modal visible={!!viewing} transparent animationType="slide" onRequestClose={() => setViewing(null)}>
         <View style={styles.docModalOverlay}>
-          <View style={[styles.docModalCard, { backgroundColor: theme.surface }]}>
+          {/* A Modal renders outside the screen's SafeAreaView, so the
+              bottom inset has to be applied here or the sheet's last
+              control sits under the phone's navigation bar. */}
+          <View style={[
+            styles.docModalCard,
+            { backgroundColor: theme.surface, paddingBottom: Spacing.lg + insets.bottom },
+          ]}>
             <View style={styles.docModalHandle} />
             <Text style={[styles.docModalTitle, { color: theme.text }]}>{viewing?.title}</Text>
             <Text style={[styles.docModalMeta, { color: theme.textThird }]}>
