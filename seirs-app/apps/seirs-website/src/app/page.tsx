@@ -17,15 +17,12 @@ import {
   Star,
   ArrowRight,
   Zap,
-  Clock,
   Gift,
   Store,
   DollarSign,
   Smartphone,
   ChevronRight,
   Globe,
-  Lock,
-  KeyRound,
 } from "lucide-react";
 
 /* ── Hero scene: bespoke okada illustration in the logo's own visual
@@ -550,58 +547,6 @@ export default async function HomePage() {
               />
             </div>
             </div></Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FOR DRIVERS ──
-          Cut back 2026-08-14 (founder: this section definitely needs to be
-          removed). It was a full recruitment pitch: portrait photo, three
-          benefit cards, and the complete Requirements to Join checklist with
-          its own apply button. /for-drivers already does all of that, and the
-          nav audit's central finding was that this page asks a visitor to
-          pick an audience five separate times on the way down.
-
-          So it is a strip now, not a band. A rider arriving from a WhatsApp
-          link still sees something addressed to them and has one clear way
-          on; everyone else scrolls past it in a second.
-
-          Two things deliberately did not survive the cut, per the no-free-
-          spec rule: the live demand map, which tells a competitor how supply
-          is steered, and the daily payout-run mechanics. Pay facts stayed,
-          because money is what riders actually decide on. The requirements
-          checklist moved to /for-drivers, where someone has already decided
-          to apply. ── */}
-      <section
-        id="for-drivers"
-        className="py-12 sm:py-16 lg:py-20"
-        style={{ background: "linear-gradient(135deg, #0F2B4C, #1a3a5c)" }}
-      >
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-6 lg:gap-12">
-            <div className="flex-1">
-              <p className="text-[#FFBE0B] font-semibold text-[11px] sm:text-sm tracking-widest uppercase mb-2">
-                Driving with Seirs
-              </p>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight mb-3">
-                Okada, keke, car or van. You set the hours.
-              </h2>
-              <p className="text-white/65 text-sm sm:text-base leading-relaxed">
-                Paid on every completed delivery, withdrawn to your own Nigerian
-                bank account. Night runs pay more. Be one of the first riders on
-                the platform and grow with it.
-              </p>
-            </div>
-
-            <div className="flex-shrink-0">
-              <Link
-                href="/for-drivers"
-                className="inline-flex items-center justify-center gap-2 bg-[#FFBE0B] text-navy font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:opacity-90 transition-opacity shadow-lg text-[13px] sm:text-base"
-              >
-                See what you would earn
-                <ArrowRight size={16} className="flex-shrink-0" />
-              </Link>
-            </div>
           </div>
         </div>
       </section>
