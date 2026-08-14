@@ -652,9 +652,30 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── PARTNER STORES ── */}
-      <section id="partner-stores" className="py-24 bg-off-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* ── PARTNER STORES ──
+          Founder 2026-08-15: the image should sit behind the section as a
+          translucent background, not as a band underneath it, which is what
+          the first attempt did. Same treatment the CTA banner already uses.
+
+          The photograph is img_partner_store, an existing admin slot, so it
+          stays swappable without a deploy. Two things keep the copy readable
+          over it: the image is held at low opacity, and a solid off-white
+          wash sits between the photo and the content rather than relying on
+          opacity alone, so a dark upload cannot turn the body text
+          unreadable. Section falls back to plain off-white when the slot is
+          empty. ── */}
+      <section id="partner-stores" className="relative py-24 bg-off-white overflow-hidden">
+        {img.img_partner_store && (
+          <>
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-cover bg-center opacity-[0.18]"
+              style={{ backgroundImage: `url(${img.img_partner_store})` }}
+            />
+            <div aria-hidden className="absolute inset-0 bg-off-white/55" />
+          </>
+        )}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="section-label mb-3">Store Partnerships</p>
             <h2 className="section-title mb-4">Turn Your Store Into a Pickup Point</h2>
@@ -705,20 +726,6 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Full-bleed image under the section. img_partner_store is an
-            existing admin slot holding exactly this shot, so it is editable
-            without a deploy. Fixed heights rather than an aspect ratio, so a
-            portrait upload cannot blow the band open, and the section simply
-            ends after the CTA when the slot is empty. */}
-        {img.img_partner_store && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={img.img_partner_store}
-            alt="A Nigerian shop owner accepting a Seirs package over the counter"
-            className="mt-12 sm:mt-16 w-full h-56 sm:h-72 lg:h-96 object-cover"
-            loading="lazy"
-          />
-        )}
       </section>
 
       {/* THE SEIRS STANDARD removed 2026-08-15. Two of its three promises
