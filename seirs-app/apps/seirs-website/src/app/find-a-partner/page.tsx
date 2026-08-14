@@ -25,7 +25,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MapPin, Phone, Clock, Search, Store, ExternalLink, Navigation } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://seirs-logistics-mobile-production.up.railway.app/api/v1';
+// Env unification 2026-08-14: this file, reset-password and track/[code]
+// read NEXT_PUBLIC_API_URL while contact and cms.ts read
+// NEXT_PUBLIC_API_BASE_URL. Both fell back to the same Railway URL, so
+// nothing broke, but setting only one on Vercel would have silently
+// pointed half the site at the fallback. BASE_URL is now the canonical
+// name, with the old one kept as a fallback so an existing dashboard
+// value keeps working.
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  'https://seirs-logistics-mobile-production.up.railway.app/api/v1';
 
 interface PartnerStoreDTO {
   id:            string;

@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
 import { AppStoreBadges } from "@/components/AppStoreBadges";
 import SeirsLogo from "@/components/SeirsLogo";
 
@@ -99,15 +99,13 @@ export default function Footer() {
                   business@seirs.co
                 </a>
               </li>
-              <li>
-                <a
-                  href="tel:+2348000000000"
-                  className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition-colors duration-150"
-                >
-                  <Phone size={14} className="text-sky flex-shrink-0" />
-                  +234 800 000 0000
-                </a>
-              </li>
+              {/* Honesty fix 2026-08-14: the third entry dialled
+                  +234 800 000 0000, a placeholder that connects to nothing.
+                  The contact page dropped this exact number on 2026-08-11;
+                  the footer was the surviving copy. Removed rather than
+                  replaced: put a WhatsApp wa.me link here when a real
+                  business line exists, since that converts better in
+                  Nigeria than an email form. */}
             </ul>
           </div>
         </div>

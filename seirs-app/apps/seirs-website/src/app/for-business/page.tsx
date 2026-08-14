@@ -17,6 +17,7 @@ import {
 import { PageHero, PageCta } from "@/components/PageHero";
 import { getPageBlock, getImageSlots } from "@/lib/cms";
 import { StoryRow } from "@/components/StoryRow";
+import Link from "next/link";
 
 // ISR: refetch the CMS-editable hero image every 60s so marketing
 // changes appear within a minute without a redeploy.
@@ -245,12 +246,14 @@ export default async function ForBusinessPage() {
                 <CheckRow>Pause acceptance during stock days or closures</CheckRow>
               </ul>
               <p className="text-text-muted text-xs mt-5">
-                <a
+                {/* Was a raw <a>, which forced a full document reload on an
+                    internal route. <Link> keeps it a client transition. */}
+                <Link
                   href="/for-partner-stores"
                   className="text-sky font-semibold hover:underline"
                 >
                   Read more about Partner Stores →
-                </a>
+                </Link>
               </p>
             </div>
           </div>

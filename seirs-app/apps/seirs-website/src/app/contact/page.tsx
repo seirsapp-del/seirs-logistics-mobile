@@ -42,11 +42,16 @@ const contactCards = [
   {
     // Honesty fix 2026-08-11: the old card dialed a placeholder number
     // (+234 800 000 0000). In-app tickets are the real urgent channel.
+    // Destination fix 2026-08-14: the card told the reader to open the
+    // app, then navigated to a marketing page that never mentions in-app
+    // support, for an app nobody can install yet. Pre-launch the honest
+    // urgent channel is the same support inbox. Restore the in-app
+    // wording once the apps are published.
     icon: Phone,
-    label: "Urgent Delivery Issues",
-    value: "In-app support",
-    href: "/how-it-works",
-    desc: "Open Contact Support inside any SEIRS app: tickets reach our team directly, with your delivery attached.",
+    label: "Delivery Issues",
+    value: "support@seirs.co",
+    href: "mailto:support@seirs.co",
+    desc: "Email us with your tracking code and we will pick it up directly. In-app tickets arrive when the apps launch.",
     color: "bg-warning-amber/10",
     iconColor: "text-warning-amber",
   },
