@@ -77,6 +77,33 @@ export const CONTACT = {
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? 'https://seirs.app';
 
+// ── App screenshots ─────────────────────────────────────────────────────────
+// Real captures from the running apps, used in the How it Works story and the
+// app sections. null means no capture exists yet, and AppScreenshot draws a
+// skeleton of that screen instead. Drop the file in public/app-shots/ and set
+// the path here; nothing else changes.
+export type ScreenKey =
+  | 'customerBooking'
+  | 'customerDriverAccepted'
+  | 'customerTracking'
+  | 'driverHome'
+  | 'driverEarnings';
+
+export const APP_SCREENSHOTS: Record<ScreenKey, string | null> = {
+  // NEEDS_DATA, standing in until the capture session (founder 2026-08-14:
+  // "use the current screenshot that we have, we will replace them later").
+  // These three currently point at the two driver captures, so the story
+  // rows show real SEIRS UI rather than a skeleton, but they are the wrong
+  // app and the middle one repeats. Swap all three the moment the customer
+  // app captures exist: booking, driver-accepted, live tracking.
+  customerBooking: '/app-shots/driver-home.png',
+  customerDriverAccepted: '/app-shots/driver-earnings.png',
+  customerTracking: '/app-shots/driver-home.png',
+  // LIVE: already in the repo, and correct for their own section.
+  driverHome: '/app-shots/driver-home.png',
+  driverEarnings: '/app-shots/driver-earnings.png',
+};
+
 // ── Launch state ────────────────────────────────────────────────────────────
 // Flip to true on the day the apps are published. Anything that should read
 // differently before and after launch keys off this, so the switch is one
@@ -94,6 +121,13 @@ export const LAUNCH_CHECKLIST = [
     where: 'src/lib/launch.ts',
     blocks: 'iOS store links fall back to an App Store search',
     from: 'App Store Connect, once each app record exists',
+  },
+  {
+    key: 'APP_SCREENSHOTS.customer*',
+    what: 'Three customer-app captures: booking, driver accepted, live tracking',
+    where: 'public/app-shots/ plus src/lib/launch.ts',
+    blocks: 'How it Works story rows draw skeleton screens instead of real UI',
+    from: 'Capture session from the connected phone',
   },
   {
     key: 'CONTACT.whatsapp',

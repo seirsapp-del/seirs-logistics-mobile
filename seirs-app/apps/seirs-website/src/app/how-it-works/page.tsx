@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { PageHero, PageCta } from "@/components/PageHero";
 import { getPageBlock } from "@/lib/cms";
+import { AppScreenshot } from "@/components/AppScreenshot";
+import { STORE, type ScreenKey } from "@/lib/launch";
 
 export const revalidate = 60;
 
@@ -22,32 +24,64 @@ export const metadata: Metadata = {
     "From order creation to doorstep handoff, see exactly how Seirs Logistics matches customers, drivers, and partner stores across Nigeria for fast, secure last-mile delivery.",
 };
 
-function StepCard({
+/**
+ * One step of the customer story: a real app screen on one side, short copy on
+ * the other, sides alternating down the page.
+ *
+ * Replaced the old StepCard 2026-08-14. That was a bordered card holding a
+ * number, an outline icon and a ~95 word paragraph, and the page was nothing
+ * but those top to bottom: no product imagery anywhere, which is the wall of
+ * text a visitor arriving from social media bounces off. The screenshot now
+ * carries what the paragraph used to describe, so the copy is a lead sentence
+ * plus the two or three details that actually build trust.
+ *
+ * On a phone there is no room to alternate, so every step stacks screen-first:
+ * the image is the hook, the words follow.
+ */
+function StoryStep({
   step,
   icon: Icon,
   title,
-  body,
+  lead,
+  points,
+  screen,
+  screenAlt,
+  flip = false,
 }: {
   step: number;
   icon: LucideIcon;
   title: string;
-  body: string;
+  lead: string;
+  points: string[];
+  screen: ScreenKey;
+  screenAlt: string;
+  flip?: boolean;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-      <div className="flex items-start gap-5">
-        <div className="flex-shrink-0">
-          <div className="w-12 h-12 rounded-xl bg-navy text-white flex items-center justify-center font-extrabold text-lg">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+      <div className={flip ? 'lg:order-2' : ''}>
+        <AppScreenshot screen={screen} alt={screenAlt} />
+      </div>
+
+      <div className={flip ? 'lg:order-1' : ''}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-9 h-9 rounded-lg bg-navy text-white flex items-center justify-center font-extrabold text-sm flex-shrink-0">
             {step}
           </div>
+          <Icon size={20} className="text-sky flex-shrink-0" strokeWidth={1.75} />
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-3">
-            <Icon size={22} className="text-sky" strokeWidth={1.75} />
-            <h3 className="text-navy font-bold text-xl">{title}</h3>
-          </div>
-          <p className="text-text-muted leading-relaxed">{body}</p>
-        </div>
+        <h3 className="text-navy font-bold text-xl sm:text-2xl mb-3">{title}</h3>
+        <p className="text-text-muted leading-relaxed mb-4">{lead}</p>
+        <ul className="space-y-2">
+          {points.map((p) => (
+            <li key={p} className="flex gap-2.5 text-text-muted text-sm leading-relaxed">
+              <span className="text-sky font-bold flex-shrink-0" aria-hidden>
+                &bull;
+              </span>
+              {p}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
@@ -79,6 +113,11 @@ export default async function HowItWorksPage() {
   const hero = await getPageBlock('hero_how_it_works');
   return (
     <>
+      {/* primaryCtaHref was "/contact": the label promised an app and
+          delivered a support form. Under the act-live pattern it goes to the
+          store listing. PageHero renders a plain Link, so this is the Play
+          URL rather than the platform-aware GetAppButton the homepage uses.
+          Worth unifying when the remaining CTAs get retargeted. */}
       <PageHero
         heroImageUrl={hero?.coverImageUrl ?? null}
         eyebrow="Simple Process"
@@ -91,14 +130,14 @@ export default async function HowItWorksPage() {
         subtitle="Seirs runs on three connected apps, one for customers sending packages, one for drivers fulfilling them, and one for businesses and partner stores managing volume. They all talk to the same backend, in real time."
         icon={Workflow}
         primaryCtaLabel="Get the Customer App"
-        primaryCtaHref="/contact"
+        primaryCtaHref={STORE.play('customer')}
         secondaryCtaLabel="Become a Driver"
         secondaryCtaHref="/for-drivers"
       />
 
       {/* The 3-step flow */}
       <section className="py-20 bg-off-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="section-label mb-3">The Customer Flow</p>
             <h2 className="section-title mb-4">From order to doorstep</h2>
@@ -107,24 +146,46 @@ export default async function HowItWorksPage() {
             </p>
           </div>
 
-          <div className="space-y-5">
-            <StepCard
+          <div className="space-y-16 lg:space-y-24">
+            <StoryStep
               step={1}
               icon={Smartphone}
               title="Create the order"
-              body="Open the Seirs Customer app, choose Send a Package or Request a Ride, drop your pickup and dropoff pins, pick a vehicle that fits your load. We auto-quote a fair price using our pooled-driver matching, fuel index, and zone-based pricing, no surprise surcharges at the end."
+              lead="Drop your pickup and dropoff pins, pick a vehicle that fits the load, and see the price before you commit."
+              points={[
+                "Send a package or request a ride, from the same screen.",
+                "Auto-quoted from zone pricing and a fuel index, not a guess.",
+                "The price you see is the price you pay. No surcharges at the end.",
+              ]}
+              screen="customerBooking"
+              screenAlt="Booking a delivery in the Seirs customer app"
             />
-            <StepCard
+            <StoryStep
               step={2}
               icon={Truck}
               title="A verified driver accepts"
-              body="Our matching engine sends the job to nearby online drivers ranked by rating, vehicle fit, and route efficiency. Every driver on the network is identity-verified, has uploaded a valid driver's license and vehicle papers, and has passed our KYC review. You see their photo, name, plate number, and live location the moment they accept."
+              lead="The job goes to nearby online drivers, ranked by rating, vehicle fit and route. You meet yours the moment they accept."
+              points={[
+                "Every driver is identity-verified and KYC-reviewed before going online.",
+                "Licence and vehicle papers checked, not just uploaded.",
+                "You see their photo, name, plate number and live location.",
+              ]}
+              screen="customerDriverAccepted"
+              screenAlt="A matched driver's profile in the Seirs customer app"
+              flip
             />
-            <StepCard
+            <StoryStep
               step={3}
               icon={CheckCircle}
-              title="Pickup, transit, drop-off, all tracked live"
-              body="Watch your package move on the map in real time. The driver verifies pickup and drop-off using a one-time code generated in your app, so packages can't be released to the wrong person. Funds in escrow release to the driver only after you confirm delivery."
+              title="Tracked live, all the way to the door"
+              lead="Watch it move on the map in real time, and control the handoff at both ends."
+              points={[
+                "Pickup and drop-off are confirmed with a one-time code from your app.",
+                "That code is why a package cannot be released to the wrong person.",
+                "Escrow releases to the driver only after you confirm delivery.",
+              ]}
+              screen="customerTracking"
+              screenAlt="Live delivery tracking in the Seirs customer app"
             />
           </div>
         </div>
@@ -183,53 +244,52 @@ export default async function HowItWorksPage() {
       {/* The 3-app system */}
       <section className="py-20 bg-off-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Reframed 2026-08-14. This was three text cards, one of them the
+              customer app, which the story above now shows three times over.
+              Repeating it here in a smaller, wordier form added nothing. The
+              section is the other side of the network, and it is where the
+              two driver captures we already have finally get used. */}
           <div className="text-center mb-14">
-            <p className="section-label mb-3">Three Apps, One Network</p>
+            <p className="section-label mb-3">The Other Side of the Network</p>
             <h2 className="section-title mb-4">
-              Each role gets a tailored experience
+              The apps that fulfil your delivery
             </h2>
+            <p className="section-sub">
+              Every order you place lands in one of these. Same backend, same
+              live data, built for the people moving your package.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-2xl border border-gray-200 p-7 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-navy/10 flex items-center justify-center mb-5">
-                <Smartphone size={22} className="text-navy" strokeWidth={1.75} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 max-w-3xl mx-auto">
+            <div className="text-center">
+              <AppScreenshot
+                screen="driverHome"
+                alt="The Seirs driver app home screen"
+                className="mb-6"
+              />
+              <div className="flex items-center justify-center gap-2.5 mb-2">
+                <Truck size={20} className="text-sky" strokeWidth={1.75} />
+                <h3 className="text-navy font-bold text-lg">Driver App</h3>
               </div>
-              <h3 className="text-navy font-bold text-lg mb-2">Customer App</h3>
-              <p className="text-text-muted text-sm leading-relaxed mb-4">
-                Send packages, request rides, track deliveries, manage payment
-                methods, earn referral rewards.
-              </p>
-              <p className="text-text-muted text-xs">
-                Available for Android, iOS coming soon.
-              </p>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-gray-200 p-7 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-sky/15 flex items-center justify-center mb-5">
-                <Truck size={22} className="text-sky" strokeWidth={1.75} />
-              </div>
-              <h3 className="text-navy font-bold text-lg mb-2">Driver App</h3>
-              <p className="text-text-muted text-sm leading-relaxed mb-4">
+              <p className="text-text-muted text-sm leading-relaxed">
                 Go online, accept jobs, navigate to pickup, complete handoffs,
-                track earnings, withdraw to your bank.
-              </p>
-              <p className="text-text-muted text-xs">
-                Driver onboarding takes ~10 minutes.
+                and watch earnings land. Onboarding takes about ten minutes.
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 p-7 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-success-green/15 flex items-center justify-center mb-5">
-                <Workflow size={22} className="text-success-green" strokeWidth={1.75} />
+            <div className="text-center">
+              <AppScreenshot
+                screen="driverEarnings"
+                alt="The Seirs driver earnings screen"
+                className="mb-6"
+              />
+              <div className="flex items-center justify-center gap-2.5 mb-2">
+                <Workflow size={20} className="text-success-green" strokeWidth={1.75} />
+                <h3 className="text-navy font-bold text-lg">Business App</h3>
               </div>
-              <h3 className="text-navy font-bold text-lg mb-2">Business App</h3>
-              <p className="text-text-muted text-sm leading-relaxed mb-4">
-                Bulk dispatch, CSV upload, business wallet, multi-stop routing,
-                team access, partner-store dashboards.
-              </p>
-              <p className="text-text-muted text-xs">
-                Two account types: Sender or Partner Store.
+              <p className="text-text-muted text-sm leading-relaxed">
+                Bulk dispatch, CSV upload, multi-stop routing, team access and
+                partner-store dashboards. Sender or Partner Store accounts.
               </p>
             </div>
           </div>
@@ -239,8 +299,8 @@ export default async function HowItWorksPage() {
       <PageCta
         title="Ready to try it?"
         subtitle="Download the Seirs Customer app and place your first delivery in under two minutes."
-        primaryLabel="Get Started"
-        primaryHref="/contact"
+        primaryLabel="Get the Customer App"
+        primaryHref={STORE.play('customer')}
       />
     </>
   );
