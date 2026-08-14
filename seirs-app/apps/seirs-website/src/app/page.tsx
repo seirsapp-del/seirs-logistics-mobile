@@ -314,17 +314,28 @@ export default async function HomePage() {
               down to fit beside the okada: the headline drops from 36px to
               20px, body copy to 12px, and the CTAs shrink to match. Desktop
               from lg up is exactly as it was. */}
-          <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:gap-16 items-center">
-            {/* Left: copy */}
-            <div>
+          {/* Founder 2026-08-14, phone layout: okada beside the headline, the
+              two CTAs side by side underneath it, then the language line and
+              the trust row each on a single line. So the hero is now one grid
+              whose items are placed individually, rather than a copy column
+              plus an art column. On a phone only the headline shares its row
+              with the okada; everything else spans both columns. From lg up
+              the okada is pinned to column 2 across every row and the rest
+              stacks in column 1, which is the original desktop hero. */}
+          <div className="grid grid-cols-2 gap-x-4 sm:gap-x-6 lg:gap-x-16 items-center">
+            <div className="col-span-2 lg:col-span-1 lg:col-start-1">
               <div className="inline-flex items-center gap-1.5 lg:gap-2 bg-white/10 border border-white/20 rounded-full px-2.5 py-1 lg:px-4 lg:py-1.5 mb-4 lg:mb-6">
                 <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-[#FFBE0B] rounded-full animate-pulse flex-shrink-0" />
                 <span className="text-white/80 text-[10px] lg:text-xs font-medium leading-tight">
                   Launching in Lagos
                 </span>
               </div>
+            </div>
 
-              <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-6xl font-extrabold text-white leading-[1.15] lg:leading-[1.1] mb-3 lg:mb-6 tracking-tight">
+            {/* Headline and lede: the only block that shares a row with the
+                okada on a phone, so it carries the narrow-column type scale. */}
+            <div className="lg:col-start-1">
+              <h1 className="text-lg sm:text-3xl md:text-4xl lg:text-6xl font-extrabold text-white leading-[1.15] lg:leading-[1.1] mb-2 lg:mb-6 tracking-tight">
                 {hero?.title ?? (
                   <>
                     Nigeria&apos;s Smartest
@@ -340,22 +351,31 @@ export default async function HomePage() {
                 {hero?.excerpt ??
                   'Send thousands of packages with one click. Real-time tracking, business wallets, and a network of verified drivers and partner stores across Nigeria.'}
               </p>
+            </div>
 
-              {/* Sizing 2026-08-14 (founder: "why are those buttons so big on
-                  phone"): they were px-8 py-4 at full bleed. Now they live in
-                  a ~171px column beside the okada, so they stay stacked until
-                  lg and scale their padding and label with the column. */}
-              <div className="flex flex-col lg:flex-row gap-2 lg:gap-4 mb-8 lg:mb-14">
+            {/* The okada. On a phone it takes column 2 of the headline row,
+                so it sits beside "Send anything, anywhere" rather than under
+                the buttons. From lg it is pinned to column 2 spanning every
+                row, which is the original desktop placement. */}
+            <div className="lg:col-start-2 lg:row-start-1 lg:row-span-5 lg:self-center">
+              <HeroIllustration />
+            </div>
+
+            {/* Founder: the two CTAs go side by side underneath the okada
+                row, not stacked. flex-row at every width, and they get the
+                full page width back now that they are out of the narrow
+                column, so the phone padding can come back up a little. */}
+            <div className="col-span-2 lg:col-span-1 lg:col-start-1 flex flex-row gap-2 lg:gap-4 mb-6 lg:mb-14">
                 <GetAppButton
                   app="customer"
-                  className="inline-flex items-center justify-center gap-1.5 lg:gap-2 bg-white text-navy font-bold px-3 py-2.5 lg:px-8 lg:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-xs sm:text-sm lg:text-base whitespace-nowrap"
+                  className="flex-1 lg:flex-none inline-flex items-center justify-center gap-1.5 lg:gap-2 bg-white text-navy font-bold px-3 py-3 lg:px-8 lg:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-[13px] sm:text-sm lg:text-base whitespace-nowrap"
                 >
                   Start Sending
                   <ArrowRight size={16} className="flex-shrink-0" />
                 </GetAppButton>
                 <Link
                   href="/for-drivers"
-                  className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-2.5 lg:px-8 lg:py-4 rounded-btn hover:bg-white/10 transition-colors text-xs sm:text-sm lg:text-base whitespace-nowrap"
+                  className="flex-1 lg:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 lg:px-8 lg:py-4 rounded-btn hover:bg-white/10 transition-colors text-[13px] sm:text-sm lg:text-base whitespace-nowrap"
                 >
                   Become a Driver
                 </Link>
@@ -366,13 +386,18 @@ export default async function HomePage() {
                   Igbo / Hausa translations (improving, see the language
                   story), and this site is English with browser
                   translation. Say exactly that. */}
+              {/* Founder: this reads as one line on a phone. The full
+                  sentence wrapped to three, so the invitation to read the
+                  story is desktop-only and the claim itself, which is the
+                  part that matters, stays whole. */}
               <Link
                 href="/news/speaking-nigerian-languages"
-                className="inline-flex items-center gap-2.5 bg-white/5 border border-white/15 rounded-lg px-3 py-2 mb-8 hover:bg-white/10 transition-colors"
+                className="col-span-2 lg:col-span-1 lg:col-start-1 w-fit inline-flex items-center gap-2 lg:gap-2.5 bg-white/5 border border-white/15 rounded-lg px-2.5 py-1.5 lg:px-3 lg:py-2 mb-6 lg:mb-8 hover:bg-white/10 transition-colors"
               >
-                <Globe size={14} className="text-[#FFBE0B] flex-shrink-0" strokeWidth={1.75} />
-                <span className="text-white/65 text-xs">
-                  The apps speak Yoruba, Igbo and Hausa. Read how we&apos;re improving that
+                <Globe size={13} className="text-[#FFBE0B] flex-shrink-0" strokeWidth={1.75} />
+                <span className="text-white/65 text-[11px] lg:text-xs whitespace-nowrap">
+                  The apps speak Yoruba, Igbo and Hausa.
+                  <span className="hidden lg:inline"> Read how we&apos;re improving that</span>
                 </span>
               </Link>
 
@@ -380,7 +405,11 @@ export default async function HomePage() {
                   the old fake stats (10,000+ deliveries, 99.2% on-time)
                   claimed history a pre-launch platform does not have, and
                   an on-time percentage is a promise we never make. */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {/* Founder: 24/7, Live, Verified and Escrow read as one line on
+                  a phone. Was a 2x2 block; now four across at every width,
+                  which puts each cell at roughly 83px on a 390px screen, so
+                  the value drops to 14px and the label to 9px to fit. */}
+              <div className="col-span-2 lg:col-span-1 lg:col-start-1 grid grid-cols-4 gap-2 lg:gap-4">
                 {[
                   { value: "24/7", label: "Pickups, day & night" },
                   { value: "Live", label: "GPS tracking" },
@@ -389,23 +418,14 @@ export default async function HomePage() {
                 ].map((stat) => (
                   <div
                     key={stat.label}
-                    className="bg-white/10 border border-white/15 rounded-card px-4 py-4 text-center"
+                    className="bg-white/10 border border-white/15 rounded-card px-1.5 py-2.5 lg:px-4 lg:py-4 text-center"
                   >
-                    <div className="text-white font-extrabold text-xl">{stat.value}</div>
-                    <div className="text-white/55 text-xs mt-0.5">{stat.label}</div>
+                    <div className="text-white font-extrabold text-sm lg:text-xl">{stat.value}</div>
+                    <div className="text-white/55 text-[9px] lg:text-xs mt-0.5 leading-tight">{stat.label}</div>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* Right on desktop, below the copy on phones (founder
-                2026-08-14: it renders on iPad but was hidden under lg,
-                so the phone never got the okada). It sits after the
-                headline and CTAs in DOM order, so showing it costs
-                nothing above the fold. */}
-            <div>
-              <HeroIllustration />
-            </div>
           </div>
         </div>
 

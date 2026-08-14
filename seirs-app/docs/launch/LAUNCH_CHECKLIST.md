@@ -19,6 +19,28 @@ Use the per-item docs as drafts — adapt to your actual contacts and timelines,
 | 6 | **Apple Developer enrollment** (iOS only — defer until iOS build is on the table) | [06-apple-developer-enrollment.md](06-apple-developer-enrollment.md) | Founder | ☐ Deferred | iOS Phase |
 | 7 | **Public dispute resolution playbook** | [07-dispute-resolution-playbook.md](07-dispute-resolution-playbook.md) | Founder + Legal | ☐ Not started | T-14 days |
 | 8 | **Production observability** (Sentry + Better Stack — code shipped in bucket 15, needs DSNs) | [08-observability.md](08-observability.md) | Founder + Eng | ☐ Setup pending | T-7 days |
+| 9 | **Rotate the seeded account password** (see below) | this file | Founder | ☐ Not started | **Before launch, hard gate** |
+
+### 9. Rotate the seeded account password
+
+Until 2026-08-14 the password for all four seeded accounts, including
+`admin@seirs.co` and the founder's own `oyadeyio761@gmail.com`, sat as a
+literal string in `seirs-backend/seed.ts` and in a credentials table in
+`seirs-architecture.html`. This repository is public on GitHub, so that value
+has been world-readable for the life of those files, and it is still valid on
+the production API at `seirs-logistics-mobile-production.up.railway.app`.
+
+The code side is fixed: both files now read the value from
+`SEED_USER_PASSWORD` in `seirs-backend/.env`, which is gitignored, and nothing
+tracked contains a password. The value itself is deliberately unchanged, by
+founder decision on 2026-08-14, so that development is not interrupted.
+
+**What is left, and it is a hard gate on launch:** pick a new password, set it
+in `seirs-backend/.env`, re-run the seed, and change it on the live accounts.
+Do it before any real customer money or personal data is in the system. Note
+that the old value remains in git history: that does not matter once rotated,
+because a rotated password is a worthless string, which is exactly why history
+rewriting was not worth doing here.
 
 ---
 
