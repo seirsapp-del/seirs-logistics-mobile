@@ -192,7 +192,21 @@
    scaled to the number of logos, so speed per logo stays constant however
    many partners are added. ── */
 .marquee {
-  --marquee-mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  overflow: hidden;
+}
+
+/* Spacing lives on the item, not in a flex gap. A gap would also sit BETWEEN
+   the two copies, making the track copy+gap+copy, so -50% would land half a
+   gap short and the loop would visibly jump every pass. With the space baked
+   into each item's width, one copy is exactly half the track. */
+.marquee-item {
+  margin-right: 2.75rem;
+}
+
+@media (min-width: 640px) {
+  .marquee-item {
+    margin-right: 4.5rem;
+  }
 }
 
 .marquee-track {
