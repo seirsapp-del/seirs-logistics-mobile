@@ -225,7 +225,13 @@ export default async function HomePage() {
             since we have empty space up"). 96px of vertical padding on a
             phone was most of that gap, so it starts at 32px and steps back
             up. The reclaimed space goes into the headline. */}
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-14 lg:py-24 w-full">
+        {/* Asymmetric vertical padding on a phone. The decorative wave at the
+            bottom of this section is absolutely positioned and 48px tall,
+            and once min-h-[90vh] stopped padding the hero out, the trust row
+            ran straight under it and its tiles were sliced. Bottom padding
+            has to clear the wave, so pb-16 (64px) rather than the pt-8 that
+            is right at the top. Symmetric py- reintroduces the clipping. */}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16 sm:pt-14 sm:pb-20 lg:py-24 w-full">
           {/* Founder 2026-08-14, phone layout: okada beside the headline, the
               two CTAs side by side underneath it, then the language line and
               the trust row each on a single line. So the hero is now one grid
@@ -240,7 +246,7 @@ export default async function HomePage() {
               stranded on line one. The extra ~18px lets "Send anything." hold
               together. The okada still reads clearly at the narrower share,
               and lg goes back to the even desktop split. */}
-          <div className="grid grid-cols-[1.22fr_1fr] lg:grid-cols-2 gap-x-3 sm:gap-x-6 lg:gap-x-16 items-center">
+          <div className="grid grid-cols-[1.34fr_1fr] lg:grid-cols-2 gap-x-3 sm:gap-x-6 lg:gap-x-16 items-center">
             <div className="col-span-2 lg:col-span-1 lg:col-start-1">
               {/* Founder 2026-08-14: Nigeria, not Lagos, at every width. The
                   platform is not a Lagos-only product and the chip was the
