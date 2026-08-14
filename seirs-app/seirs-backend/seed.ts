@@ -8,15 +8,35 @@ import { Client } from 'pg';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 
+// Credentials moved to env 2026-08-14. This file previously carried a
+// literal Postgres password and a literal account password for all four
+// seeded logins, including the admin. The repo is public, so both were
+// world-readable, and both have been rotated. Nothing here may hold a
+// real secret again: .env is gitignored, this file is not.
+function required(name: string): string {
+  const v = process.env[name];
+  if (!v) {
+    throw new Error(
+      `${name} is not set. Seeding needs it. Add it to seirs-backend/.env ` +
+        `(gitignored) or export it before running this script.`,
+    );
+  }
+  return v;
+}
+
 const DB: any = process.env.DATABASE_URL
   ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
   : {
       host:     process.env.DB_HOST     ?? 'localhost',
       port:     Number(process.env.DB_PORT ?? 5432),
       user:     process.env.DB_USERNAME ?? 'postgres',
-      password: process.env.DB_PASSWORD ?? 'Whoareyoupls80#',
+      password: required('DB_PASSWORD'),
       database: process.env.DB_NAME     ?? 'seirs_db',
     };
+
+// One password across the four seeded accounts, same as before, just not
+// written down here. Set SEED_USER_PASSWORD in seirs-backend/.env.
+const SEED_PASSWORD = required('SEED_USER_PASSWORD');
 
 const hash = (pw: string) => bcrypt.hash(pw, 12);
 
@@ -27,7 +47,7 @@ const USERS = [
     name:  'Oluwaseye Israel Oyadeyi',
     phone: '08000000001',
     role:  'driver',
-    password: 'Ibadan80#',
+    password: SEED_PASSWORD,
     vehicleType:  'motorcycle',
     vehiclePlate: 'LAG-001-AA',
     status:       'approved',
@@ -37,21 +57,21 @@ const USERS = [
     name:  'Oluwaseye Israel Oyadeyi',
     phone: '08000000002',
     role:  'customer',
-    password: 'Ibadan80#',
+    password: SEED_PASSWORD,
   },
   {
     email: 'seirs.app@gmail.com',
     name:  'Oluwaseye Israel Oyadeyi',
     phone: '08000000003',
     role:  'customer',
-    password: 'Ibadan80#',
+    password: SEED_PASSWORD,
   },
   {
     email: 'admin@seirs.co',
     name:  'Oluwaseye Israel Oyadeyi',
     phone: '08000000000',
     role:  'admin',
-    password: 'Ibadan80#',
+    password: SEED_PASSWORD,
   },
 ] as const;
 
