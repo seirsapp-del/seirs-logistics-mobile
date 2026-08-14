@@ -215,8 +215,14 @@ export default function TermsOfServicePage() {
                 items={[
                   "Payments are processed via Flutterwave, a CBN-licensed payment service provider",
                   "Business wallet top-ups are processed immediately; they are non-refundable once delivery orders are created using those funds",
-                  "Refunds for failed or cancelled deliveries are credited to your Seirs wallet within 24 hours",
-                  "Cash withdrawals from the Seirs wallet are processed within 3–5 business days, subject to identity verification",
+                  // Corrected 2026-08-14. These two clauses told every customer
+                  // they held a Seirs cash balance they could withdraw from.
+                  // Customer accounts do not hold NGN: only business accounts
+                  // carry a prepaid wallet, and only drivers and partner stores
+                  // withdraw to a bank. Promising a consumer balance is the CBN
+                  // problem, and it was live in a legal document.
+                  "Refunds for failed or cancelled deliveries are returned to the original payment method. Card refunds typically settle within 5–10 business days depending on your bank. Business accounts are credited back to the business wallet within 24 hours",
+                  "Withdrawals to a Nigerian bank account are available to drivers and partner stores, processed within 3–5 business days and subject to identity verification. Customer accounts do not hold a cash balance",
                   "Driver and partner store payouts are processed weekly every Monday; Seirs is not liable for delays caused by bank infrastructure",
                 ]}
               />

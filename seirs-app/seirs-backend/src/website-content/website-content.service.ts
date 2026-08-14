@@ -440,12 +440,12 @@ export class WebsiteContentService implements OnModuleInit {
 const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
   { slug: 'img_hero_rider',     title: 'Homepage hero: okada rider',
     excerpt: 'Full-width homepage hero backdrop. Okada rider with yellow delivery box, Lagos dusk. Wide 21:9. Midjourney file: hero-rider. Falls back to the drawn okada scene when empty.' },
-  { slug: 'img_step_book',      title: 'How It Works step 1: booking',
-    excerpt: 'How-it-works card 1 (homepage + how-it-works page). Hands booking on a phone in a Lagos shop. 4:3. Midjourney file: step-book.' },
-  { slug: 'img_step_pickup',    title: 'How It Works step 2: pickup',
-    excerpt: 'How-it-works card 2. Rider receiving a yellow-taped parcel at a gate, golden hour. 4:3. Midjourney file: step-pickup.' },
-  { slug: 'img_step_delivered', title: 'How It Works step 3: delivered',
-    excerpt: 'How-it-works card 3. Recipient receiving a parcel at the door, warm light. 4:3. Midjourney file: step-delivered.' },
+  // img_step_book / img_step_pickup / img_step_delivered removed 2026-08-14.
+  // The three How It Works cards they fed were replaced by a single app
+  // screenshot with the steps listed beside it, on both the homepage and the
+  // how-it-works page, so nothing rendered these. Leaving them listed meant
+  // the admin offered three uploads that silently did nothing. Any images
+  // already uploaded stay in storage and are simply no longer referenced.
   { slug: 'img_business_owner', title: 'For Business: shop owner packing',
     excerpt: 'For Businesses section (homepage + for-business page). Businesswoman packing orders in her small shop. 16:9. Midjourney file: business-owner.' },
   { slug: 'img_driver_portrait', title: 'For Drivers: courier portrait',
