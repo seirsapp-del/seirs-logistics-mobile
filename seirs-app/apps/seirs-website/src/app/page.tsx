@@ -10,7 +10,6 @@ import {
   MapPin,
   CheckCircle,
   Users,
-  BarChart3,
   Wallet,
   Upload,
   Shield,
@@ -23,6 +22,8 @@ import {
   Smartphone,
   ChevronRight,
   Globe,
+  Lock,
+  Camera,
 } from "lucide-react";
 
 /* ── Hero scene: bespoke okada illustration in the logo's own visual
@@ -717,56 +718,40 @@ export default async function HomePage() {
             />
           </div>
 
-          {/* How partner stores work */}
-          <div className="bg-white rounded-card p-8 shadow-sm border border-gray-100 max-w-3xl mx-auto">
-            <h3 className="text-navy font-bold text-lg mb-6 text-center">
-              How it works for partner stores
-            </h3>
-            <div className="space-y-4">
-              {[
-                {
-                  step: "1",
-                  title: "A package arrives at your store",
-                  desc: "A Seirs driver drops off a package intended for a customer in your area.",
-                },
-                {
-                  step: "2",
-                  title: "Customer is notified",
-                  desc: "The customer receives a push notification and collection code. They pick it up at their convenience.",
-                },
-                {
-                  step: "3",
-                  title: "You verify and release",
-                  desc: "Check the collector's code or ID in the app, snap the handoff, done. The whole exchange takes under a minute.",
-                },
-                {
-                  step: "4",
-                  title: "Every package on your statement",
-                  desc: "Your earnings ledger lives in the app: every package, every fee, itemised. No chasing anyone for what you're owed.",
-                },
-              ].map((item) => (
-                <div key={item.step} className="flex gap-4 items-start">
-                  <div className="w-8 h-8 bg-sky/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-sky font-bold text-sm">{item.step}</span>
-                  </div>
-                  <div>
-                    <div className="text-navy font-semibold text-sm">{item.title}</div>
-                    <div className="text-text-muted text-sm mt-0.5">{item.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-8 text-center">
-              <Link
-                href="/contact"
-                className="inline-flex items-center gap-2 bg-sky text-white font-bold px-8 py-4 rounded-btn hover:opacity-90 transition-opacity"
-              >
-                Apply as Partner Store
-                <ChevronRight size={18} />
-              </Link>
-            </div>
+          {/* Founder 2026-08-15: drop the four-step "How it works for partner
+              stores" explainer, keep the apply CTA, and put a full-width
+              admin-replaceable image underneath, in the spirit of the hero.
+
+              The explainer was the same over-disclosure the business feature
+              cards had: it walked a competitor through the whole partner
+              flow, notification, collection code, ID check, handoff photo,
+              itemised ledger, step by step. /for-partner-stores still carries
+              it for someone who has actually decided to apply. */}
+          <div className="text-center">
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 bg-sky text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:opacity-90 transition-opacity text-[13px] sm:text-base"
+            >
+              Apply as Partner Store
+              <ChevronRight size={18} />
+            </Link>
           </div>
         </div>
+
+        {/* Full-bleed image under the section. img_partner_store is an
+            existing admin slot holding exactly this shot, so it is editable
+            without a deploy. Fixed heights rather than an aspect ratio, so a
+            portrait upload cannot blow the band open, and the section simply
+            ends after the CTA when the slot is empty. */}
+        {img.img_partner_store && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={img.img_partner_store}
+            alt="A Nigerian shop owner accepting a Seirs package over the counter"
+            className="mt-12 sm:mt-16 w-full h-56 sm:h-72 lg:h-96 object-cover"
+            loading="lazy"
+          />
+        )}
       </section>
 
       {/* ── THE SEIRS STANDARD ──
@@ -849,22 +834,36 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── TRUST BADGES ── */}
-      <section className="py-10 bg-off-white border-t border-gray-200">
+      {/* ── TRUST BADGES ──
+          Rebuilt 2026-08-15 (founder: real badges only, the licence has to
+          come before the claim either way).
+
+          "NDPR Compliant" was here and is gone. Launch checklist item 3,
+          NITDA NDPR registration and DPO appointment, is Not started, so it
+          asserted a registration that does not exist, on every page view,
+          next to genuine ones. That is the kind of unearned compliance claim
+          a regulator acts on. Add it back the day the registration lands.
+
+          The four below are each true today and each verifiable:
+          Flutterwave is the processor and is CBN-licensed; escrow holds
+          funds until delivery is confirmed; drivers pass KYC review before
+          going online; and the proof photo is enforced at handoff, not
+          optional. Nothing here is aspirational. ── */}
+      <section className="py-8 sm:py-10 bg-off-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5 md:flex md:flex-wrap md:items-center md:justify-center md:gap-x-14">
             {[
-              { icon: Shield, label: "NDPR Compliant" },
               { icon: CheckCircle, label: "Payments by Flutterwave" },
-              { icon: Star, label: "Escrow-Protected Deliveries" },
-              { icon: BarChart3, label: "ID-Verified Drivers" },
+              { icon: Lock, label: "Funds held in escrow" },
+              { icon: Shield, label: "KYC-checked drivers" },
+              { icon: Camera, label: "Photo proof at handoff" },
             ].map(({ icon: Icon, label }) => (
               <div
                 key={label}
                 className="flex items-center gap-2 text-text-muted"
               >
-                <Icon size={18} className="text-sky" />
-                <span className="text-sm font-medium">{label}</span>
+                <Icon size={17} className="text-sky flex-shrink-0" strokeWidth={1.75} />
+                <span className="text-xs sm:text-sm font-medium leading-tight">{label}</span>
               </div>
             ))}
           </div>
