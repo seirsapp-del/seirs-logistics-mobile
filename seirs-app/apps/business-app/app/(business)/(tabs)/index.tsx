@@ -40,28 +40,31 @@ export default function BusinessDashboard() {
   return (
     <>
       <Drawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      {/* Greeting + bell + drawer stay pinned (founder 2026-08-15: the
+          hamburger scrolled away with the header, stranding the drawer).
+          Solid navy matches the top of the gradient below so the seam is
+          invisible; only the wallet card scrolls. */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+        <View>
+          <Text style={styles.greeting}>Good {getTimeOfDay()},</Text>
+          <Text style={styles.companyName}>{user?.companyName ?? user?.name}</Text>
+        </View>
+        <View style={styles.headerActions}>
+          <Pressable style={styles.avatarBtn} onPress={() => router.push('/(business)/notifications' as any)}>
+            <Icon name="Bell" size={20} color="#fff" strokeWidth={1.5} />
+          </Pressable>
+          <Pressable style={styles.avatarBtn} onPress={() => setDrawerOpen(true)}>
+            <Icon name="Menu" size={20} color="#fff" strokeWidth={1.5} />
+          </Pressable>
+        </View>
+      </View>
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} showsVerticalScrollIndicator={false}>
         {/* Header: keeps the brand navy gradient in both modes since it
             is intentionally dark-on-dark (text reads on either scheme). */}
         <LinearGradient
           colors={['#0F2B4C', '#1a3a5c']}
-          style={[styles.header, { paddingTop: insets.top + 16 }]}
+          style={styles.header}
         >
-          <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.greeting}>Good {getTimeOfDay()},</Text>
-              <Text style={styles.companyName}>{user?.companyName ?? user?.name}</Text>
-            </View>
-            <View style={styles.headerActions}>
-              <Pressable style={styles.avatarBtn} onPress={() => router.push('/(business)/notifications' as any)}>
-                <Icon name="Bell" size={20} color="#fff" strokeWidth={1.5} />
-              </Pressable>
-              <Pressable style={styles.avatarBtn} onPress={() => setDrawerOpen(true)}>
-                <Icon name="Menu" size={20} color="#fff" strokeWidth={1.5} />
-              </Pressable>
-            </View>
-          </View>
-
           <View style={styles.walletCard}>
             <Text style={styles.walletLabel}>Business Wallet</Text>
             <Text style={styles.walletBalance}>{fmt(data?.walletBalance ?? 0)}</Text>
@@ -203,8 +206,11 @@ function getTimeOfDay() {
 
 // Structural styles only: colors come from useColors() and override at use site.
 const styles = StyleSheet.create({
-  header:      { paddingHorizontal: 24, paddingBottom: 28 },
-  headerRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+  header:      { paddingHorizontal: 24, paddingTop: 4, paddingBottom: 28 },
+  topBar:      {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 24, paddingBottom: 12, backgroundColor: '#0F2B4C',
+  },
   greeting:    { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   companyName: { fontSize: 20, fontWeight: '800', color: '#fff', marginTop: 2 },
   headerActions: { flexDirection: 'row', gap: 8 },
