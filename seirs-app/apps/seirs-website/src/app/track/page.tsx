@@ -29,13 +29,33 @@ export default function TrackIndexPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // Tracking codes are alphanumeric; normalising here means a pasted code
-    // with stray spaces or lowercase letters still resolves instead of 404ing.
-    const clean = code.trim().toUpperCase().replace(/\s+/g, "");
-    if (clean.length < 4) {
-      setError("That code looks too short. Check the message you were sent.");
+
+    // Codes are SRS- followed by 8 crypto-random alphanumerics, so the only
+    // characters that can ever be valid are A-Z, 0-9 and the hyphen.
+    // Whitelisting rather than stripping whitespace means nothing else
+    // reaches the router or the API at all.
+    //
+    // Not strictly required for safety: the value is encodeURIComponent'd
+    // into the path, the backend looks it up through a parameterised TypeORM
+    // query, and React escapes it when the not-found state echoes it back.
+    // This is defence in depth plus a better error, since a code with a
+    // stray character otherwise produces a confusing "not found" for what is
+    // really a typo.
+    const clean = code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+
+    if (!clean) {
+      setError("Enter the tracking code from your confirmation message.");
       return;
     }
+    if (clean.length < 6) {
+      setError("That code looks too short. It should look like SRS-1A2B3C4D.");
+      return;
+    }
+    if (clean.length > 24) {
+      setError("That looks longer than a tracking code. Check for extra text.");
+      return;
+    }
+
     setError(null);
     router.push(`/track/${encodeURIComponent(clean)}`);
   }
@@ -59,7 +79,12 @@ export default function TrackIndexPage() {
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="e.g. SRS4K92B"
+              // Real codes are SRS- plus 8 characters (generateTrackingCode).
+              // The first placeholder here showed "SRS4K92B", the wrong shape,
+              // which would have had people hunting for a code that does not
+              // look like the one they were sent.
+              placeholder="e.g. SRS-1A2B3C4D"
+              maxLength={24}
               aria-label="Tracking code"
               autoComplete="off"
               autoCapitalize="characters"
