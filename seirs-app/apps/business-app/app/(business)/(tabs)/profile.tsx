@@ -6,7 +6,7 @@
  * business style: account card, SEIRS ID, grouped menu, sign out.
  */
 import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Modal, Image } from 'react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import QRCode from 'react-native-qrcode-svg';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,8 +22,12 @@ export default function BusinessProfileTab() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { t } = useTranslation();
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const [qrVisible, setQrVisible] = useState(false);
+
+  // The login-time snapshot goes stale (partner approval, photo, company
+  // edits). Refresh whenever the tab mounts so what you see is current.
+  useEffect(() => { refresh(); }, []);
 
   const firstName = user?.name?.split(' ')[0] ?? '';
   const initial = (firstName || user?.companyName || '?').charAt(0).toUpperCase();

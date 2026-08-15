@@ -107,9 +107,7 @@ export default function BusinessDashboard() {
                   onPress={() => router.push('/(business)/new-delivery' as any)} primary />
                 <ActionCard icon="FileSpreadsheet" label="CSV Upload"   sub="Bulk import from file"
                   onPress={() => router.push('/(business)/csv-upload' as any)} />
-                <ActionCard icon="RotateCcw"       label="Recurring"    sub="Schedule repeating jobs"
-                  onPress={() => router.push('/(business)/new-delivery' as any)} />
-                <ActionCard icon="Truck"           label="Specialists"  sub="Haulage, cold chain & more"
+                <ActionCard icon="Truck"           label="Special Cargo" sub="Trucks, cold chain & heavy loads"
                   onPress={() => router.push('/(business)/new-delivery' as any)} />
               </View>
 

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { clearPushRegistration } from '@seirs/shared/hooks/usePushRegistration';
+import { usersApi } from '@/services/api';
 
 export type BusinessRole = 'sender' | 'partner' | null;
 
@@ -34,6 +35,11 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login:           (user: AuthUser) => Promise<void>;
   logout:          () => Promise<void>;
+  // Re-pull /users/me and merge into the stored session. Without this the
+  // login-time snapshot never updates: partner approval, company edits and
+  // photo changes stayed invisible until a full re-login (found 2026-08-16
+  // when an approved partner still saw "Apply to be a Partner Store").
+  refresh:         () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -43,6 +49,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   login:           async () => {},
   logout:          async () => {},
+  refresh:         async () => {},
 });
 
 const STORAGE_KEY = 'seirs_business_user';
@@ -57,6 +64,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then((stored) => { if (stored) setUser(JSON.parse(stored)); })
       .finally(() => setIsLoading(false));
   }, []);
+
+  const refresh = async () => {
+    try {
+      const me: any = await usersApi.me();
+      if (!me?.id) return;
+      setUser((prev) => {
+        if (!prev) return prev;
+        const merged = { ...prev, ...me, token: prev.token };
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged)).catch(() => {});
+        return merged;
+      });
+    } catch { /* offline: the stored snapshot stands */ }
+  };
 
   const login = async (authUser: AuthUser) => {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
@@ -78,8 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         login,
-        logout,
-      }}
+        logout, refresh }}
     >
       {children}
     </AuthContext.Provider>
