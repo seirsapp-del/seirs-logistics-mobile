@@ -148,7 +148,7 @@ export default function WalletScreen() {
               <Icon name="Star" size={20} color="#D97706" />
               <View>
                 <Text style={[styles.loyaltyTitle, { color: colors.text }]}>Loyalty Points</Text>
-                <Text style={styles.loyaltySub}>Earn 1 point per ₦500 spent</Text>
+                <Text style={styles.loyaltySub}>Earn 1 point per ₦100 spent</Text>
               </View>
             </View>
             <View style={styles.loyaltyRight}>

@@ -9,6 +9,11 @@ import {
   Menu, Zap, Star, FileSpreadsheet, RotateCcw, Bell, RefreshCw,
   Trash2, Info, Gauge, Send, CreditCard, Repeat, ArrowDownLeft, ArrowUpRight, Download,
   Key, Copy, BarChart3, Activity, Pause, Play, Filter, Pencil,
+  // Added 2026-08-15 after the founder found invisible chrome: these seven
+  // were used across the app (the dashboard hamburger is AlignLeft, the
+  // Messages tab is MessageSquare, the support CTA is LifeBuoy) but never
+  // registered here, and the component renders nothing for unknown names.
+  AlignLeft, BellOff, CheckCheck, LifeBuoy, MessageSquare, Paperclip, Receipt,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -23,6 +28,11 @@ const ICONS: Record<string, LucideIcon> = {
   Menu, Zap, Star, FileSpreadsheet, RotateCcw, Bell, RefreshCw,
   Trash2, Info, Gauge, Send, CreditCard, Repeat, ArrowDownLeft, ArrowUpRight, Download,
   Key, Copy, BarChart3, Activity, Pause, Play, Filter, Pencil,
+  // Added 2026-08-15 after the founder found invisible chrome: these seven
+  // were used across the app (the dashboard hamburger is AlignLeft, the
+  // Messages tab is MessageSquare, the support CTA is LifeBuoy) but never
+  // registered here, and the component renders nothing for unknown names.
+  AlignLeft, BellOff, CheckCheck, LifeBuoy, MessageSquare, Paperclip, Receipt,
 };
 
 interface IconProps {

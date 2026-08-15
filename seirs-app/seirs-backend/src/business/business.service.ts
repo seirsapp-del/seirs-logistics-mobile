@@ -596,7 +596,13 @@ export class BusinessService {
       // ── Wallet debit + ledger (uses live row-locked balance) ────────
       const balBefore = liveBalance;
       const balAfter  = balBefore - total;
-      await mgr.update(BusinessAccount, biz.id, { walletBalance: balAfter });
+      // Loyalty accrues here, on spend, per the agreed plan: 1 point per
+      // ₦100 of delivery spend, mirroring the customer-side rate.
+      const earnedPoints = Math.floor(total / 100);
+      await mgr.update(BusinessAccount, biz.id, {
+        walletBalance: balAfter,
+        loyaltyPoints: biz.loyaltyPoints + earnedPoints,
+      });
       const tx = mgr.create(BusinessWalletTx, {
         businessAccountId: biz.id,
         type:           'debit',
@@ -950,9 +956,12 @@ export class BusinessService {
     const balAfter  = balBefore + amount;
     await this.bizRepo.update(biz.id, { walletBalance: balAfter });
 
-    // Award loyalty points: 1 point per ₦100 funded
-    const points = Math.floor(amount / 100);
-    await this.bizRepo.update(biz.id, { loyaltyPoints: biz.loyaltyPoints + points });
+    // Points on funding removed 2026-08-15. The agreed loyalty plan earns
+    // on SPEND, never on funding: rewarding a top-up rewards parked cash, a
+    // perk with no revenue behind it, exactly the class the no-uncapped-
+    // perks rule exists to stop. The award now happens where the wallet is
+    // debited for a delivery, at the platform rate (10 pts per ₦1,000, the
+    // same POINTS_PER_NAIRA the customer side uses).
 
     const tx = this.walletTxRepo.create({
       businessAccountId: biz.id,
@@ -965,7 +974,7 @@ export class BusinessService {
     });
     await this.walletTxRepo.save(tx);
 
-    return { balance: balAfter, pointsEarned: points, message: 'Wallet funded successfully.' };
+    return { balance: balAfter, pointsEarned: 0, message: 'Wallet funded successfully.' };
   }
 
   async getTransactions(userId: string, page = 1) {

@@ -200,7 +200,7 @@ export default function ApplyPartnerScreen() {
 
         <Text style={[styles.heading, { color: colors.text }]}>Apply to be a Partner Store</Text>
         <Text style={[styles.sub, { color: colors.textSecond }]}>
-          Operate a SEIRS collection point. Earn ₦500 per package, weekly payouts.
+          Operate a SEIRS collection point. Earn a fee on every package, weekly payouts.
           We&apos;ll review your KYC docs within 24-48 hours.
         </Text>
 
