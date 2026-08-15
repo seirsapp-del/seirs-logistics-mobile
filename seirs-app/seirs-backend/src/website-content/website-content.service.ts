@@ -563,6 +563,14 @@ const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
     excerpt: 'Footer trust row. Official Flutterwave logo from their brand assets page. Transparent background, wide. Falls back to the text "Payments by Flutterwave" when empty.' },
   { slug: 'img_badge_compliance',  title: 'Trust badge: data-protection compliance',
     excerpt: 'Footer trust row. NDPR / NITDA compliance mark. IMPORTANT: only upload this once the registration is actually granted, since it asserts a registration to every visitor. Falls back to text when empty.' },
+  // Partner-stores page band, added 2026-08-15. Replaced the "Getting
+  // Started" four-step onboarding walkthrough and the "How Earnings Build"
+  // fee mechanics on /for-partner-stores: both together were the operating
+  // manual on a public page (founder: it gives the full template of how we
+  // run the company). Details now live in the application process, where
+  // an applicant hears them from the partner team.
+  { slug: 'img_partner_apply', title: 'Partner Stores page: closing band',
+    excerpt: 'Full-width image on /for-partner-stores between Eligibility and the apply button. A busy Nigerian shopfront or a counter handoff works well. Wide, roughly 21:9. Falls back to the partner-store image when empty.' },
   // Partner logo strip, added 2026-08-14. Replaced the "The apps, exactly as
   // they are" section on the homepage. Six slots so the strip can grow as
   // real partners sign; empty slots are skipped, and the strip hides itself

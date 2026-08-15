@@ -246,94 +246,24 @@ export default async function ForPartnerStoresPage() {
       </section>
 
       {/* Process */}
-      <section className="py-section-sm lg:py-section-lg bg-off-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="section-label mb-3">Getting Started</p>
-            <h2 className="section-title mb-4">From application to first ₦</h2>
-          </div>
-
-          <div className="space-y-6">
-            {[
-              {
-                step: 1,
-                title: "Submit your application",
-                body: "Fill out our short form (5 minutes). Tell us about your shop, location, and capacity.",
-              },
-              {
-                step: 2,
-                title: "Quick virtual walkthrough",
-                // "Usually within 24 hours of applying" dropped 2026-08-15.
-                // There is no partner success team on a rota yet and no
-                // measured response time to average, so "usually" was
-                // describing a service level nobody has committed to. The
-                // step itself is real; only the timing promise is removed.
-                body: "Our partner team calls you, asks for shopfront photos, and confirms your hours and capacity.",
-              },
-              {
-                step: 3,
-                title: "Set up the Business app",
-                body: "We onboard you on a video call, set up your account, link your bank, do a test scan. Takes 20 minutes.",
-              },
-              {
-                step: 4,
-                title: "Customers start dropping packages",
-                body: "Your shop appears in the customer app's nearby drop-off list. First package usually arrives within a week of activation.",
-              },
-            ].map((s) => (
-              <div
-                key={s.step}
-                className="bg-white rounded-2xl border border-gray-200 p-6 flex gap-5"
-              >
-                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-success-green text-white flex items-center justify-center font-extrabold">
-                  {s.step}
-                </div>
-                <div>
-                  <h4 className="text-navy font-bold text-lg mb-1">
-                    {s.title}
-                  </h4>
-                  <p className="text-text-muted text-sm leading-relaxed">
-                    {s.body}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Earnings example */}
-      <section className="py-section-sm lg:py-section-lg bg-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <p className="section-label mb-3">How Earnings Build</p>
-            <h2 className="section-title mb-4">Simple math, no surprises</h2>
-          </div>
-
-          {/* Honesty rule 2026-08-11: the previous version invented
-              monthly earnings "based on last quarter's partner data" for
-              a network that hasn't launched. Real partner earnings take
-              this slot once real partners have real quarters. */}
-          <div className="bg-off-white rounded-2xl border border-gray-200 p-8">
-            <div className="space-y-4 max-w-xl mx-auto">
-              {[
-                { n: "1", text: "You earn a per-package fee on every drop-off, hold, and collection your shop handles: the exact rate is agreed at onboarding, in writing." },
-                { n: "2", text: "Senders who overstay the free storage window pay daily storage fees: those are yours too." },
-                { n: "3", text: "Every package and fee appears on your in-app statement the moment it happens. The busier your street, the more your shelf earns." },
-              ].map((s) => (
-                <div key={s.n} className="flex items-start gap-4">
-                  <div className="w-8 h-8 bg-navy text-white font-bold text-sm rounded-lg flex items-center justify-center flex-shrink-0">{s.n}</div>
-                  <p className="text-text-dark text-sm leading-relaxed pt-1">{s.text}</p>
-                </div>
-              ))}
-            </div>
-            <p className="text-text-muted text-xs text-center mt-6">
-              We publish real partner earning figures once our first partners have
-              real months behind them: not before.
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* "Getting Started" (the four-step onboarding walkthrough) and "How
+          Earnings Build" (the fee mechanics) removed 2026-08-15. Founder:
+          together they published the full template of how the company runs,
+          the same over-disclosure cut from the homepage feature cards and
+          the partner four-step. An applicant hears all of it from the
+          partner team during the application, which is where it belongs.
+          In their place: one admin-replaceable image (img_partner_apply,
+          falling back to img_partner_store), so the page closes on a
+          picture of the life rather than the mechanics. */}
+      {(img.img_partner_apply || img.img_partner_store) && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={img.img_partner_apply ?? img.img_partner_store}
+          alt="A Seirs partner store serving customers"
+          className="w-full h-56 sm:h-72 lg:h-96 object-cover"
+          loading="lazy"
+        />
+      )}
 
       <PageCta
         title="Turn your shop into income"
