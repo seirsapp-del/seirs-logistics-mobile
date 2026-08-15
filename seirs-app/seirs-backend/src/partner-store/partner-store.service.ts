@@ -597,10 +597,16 @@ export class PartnerStoreService {
   }
 
   async listCapacityNearby(_lat?: number, _lng?: number, _radiusKm = 10) {
-    // Stub for the customer "pick a store" screen. returns all active
-    // stores with their capacity. Geofiltering by haversine moves to
-    // a follow-up commit when we wire the customer UI.
-    const stores = await this.storeRepo.find({ where: { status: 'active' } });
+    // Returns every store a sender may drop at, with live capacity.
+    // Status semantics match publicDirectory: 'approved' (KYC done) and
+    // 'active' are both listable: this used to accept only 'active', so
+    // approved stores (including the demo store) were invisible in the
+    // drop-at-store screens while showing on the website directory
+    // (founder catch 2026-08-15). Geofiltering by haversine still moves
+    // to a follow-up when the customer UI wires lat/lng through.
+    const stores = await this.storeRepo.find({
+      where: { status: In(['approved', 'active'] as any[]), acceptingNew: true as any },
+    });
     return Promise.all(
       stores.map(async s => ({
         id:           s.id,
