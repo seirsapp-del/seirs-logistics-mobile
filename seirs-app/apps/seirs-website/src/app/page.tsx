@@ -259,7 +259,7 @@ export default async function HomePage() {
                   second line, which is the empty space the headline wanted. */}
               <div className="inline-flex items-center gap-1.5 lg:gap-2 bg-white/10 border border-white/20 rounded-full px-2.5 py-1 lg:px-4 lg:py-1.5 mb-3 lg:mb-6">
                 <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-[#FFBE0B] rounded-full animate-pulse flex-shrink-0" />
-                <span className="text-white/80 text-[10px] lg:text-xs font-medium leading-tight">
+                <span className="text-white/85 text-caption-sm lg:text-caption-lg font-medium">
                   Launching in Nigeria
                   <span className="hidden lg:inline">: join the first wave</span>
                 </span>
@@ -298,14 +298,14 @@ export default async function HomePage() {
             <div className="lg:col-start-1 flex flex-row gap-2 lg:gap-4 mb-6 lg:mb-14">
                 <GetAppButton
                   app="customer"
-                  className="flex-1 lg:flex-none inline-flex items-center justify-center gap-1.5 lg:gap-2 bg-white text-navy font-bold px-3 py-3 lg:px-8 lg:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-[13px] sm:text-sm lg:text-base whitespace-nowrap"
+                  className="flex-1 lg:flex-none inline-flex items-center justify-center gap-1.5 lg:gap-2 bg-white text-navy font-bold px-3 py-3 lg:px-8 lg:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-caption-sm sm:text-body-sm lg:text-body-md whitespace-nowrap"
                 >
                   Start Sending
                   <ArrowRight size={16} className="flex-shrink-0" />
                 </GetAppButton>
                 <Link
                   href="/for-drivers"
-                  className="flex-1 lg:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 lg:px-8 lg:py-4 rounded-btn hover:bg-white/10 transition-colors text-[13px] sm:text-sm lg:text-base whitespace-nowrap"
+                  className="flex-1 lg:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 lg:px-8 lg:py-4 rounded-btn hover:bg-white/10 transition-colors text-caption-sm sm:text-body-sm lg:text-body-md whitespace-nowrap"
                 >
                   Become a Driver
                 </Link>
@@ -335,7 +335,7 @@ export default async function HomePage() {
                 className="lg:col-start-1 w-fit inline-flex items-center gap-2 lg:gap-2.5 bg-white/5 border border-white/15 rounded-lg px-2.5 py-1.5 lg:px-3 lg:py-2 mb-6 lg:mb-8 hover:bg-white/10 transition-colors"
               >
                 <Globe size={13} className="text-[#FFBE0B] flex-shrink-0" strokeWidth={1.75} />
-                <span className="text-white/65 text-[11px] lg:text-xs whitespace-nowrap">
+                <span className="text-white/75 text-caption-sm lg:text-caption-lg whitespace-nowrap">
                   The apps speak Yoruba, Igbo and Hausa.
                   <span className="hidden lg:inline"> Read how we&apos;re improving that</span>
                 </span>
@@ -360,8 +360,8 @@ export default async function HomePage() {
                     key={stat.label}
                     className="bg-white/10 border border-white/15 rounded-card px-1.5 py-2.5 lg:px-4 lg:py-4 text-center"
                   >
-                    <div className="text-white font-extrabold text-sm lg:text-xl">{stat.value}</div>
-                    <div className="text-white/55 text-[9px] lg:text-xs mt-0.5 leading-tight">{stat.label}</div>
+                    <div className="text-white font-extrabold text-sub-sm lg:text-sub-lg">{stat.value}</div>
+                    <div className="text-white/65 text-caption-sm lg:text-caption-lg mt-1">{stat.label}</div>
                   </div>
                 ))}
               </div>
@@ -479,7 +479,7 @@ export default async function HomePage() {
                 ].map((f) => (
                   <div key={f.label} className="flex items-center gap-2.5">
                     <f.icon size={16} className="text-sky flex-shrink-0" strokeWidth={1.75} />
-                    <span className="text-text-dark text-xs sm:text-sm font-medium">
+                    <span className="text-text-dark text-caption-sm sm:text-body-sm font-medium">
                       {f.label}
                     </span>
                   </div>
@@ -487,7 +487,7 @@ export default async function HomePage() {
               </div>
               <Link
                 href="/contact?subject=business"
-                className="inline-flex items-center gap-2 bg-navy text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-navy-dark transition-colors shadow-lg text-[13px] sm:text-base"
+                className="inline-flex items-center gap-2 bg-navy text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-navy-dark transition-colors shadow-lg text-caption-sm sm:text-body-md"
               >
                 Open a Business Account
                 <ChevronRight size={18} />
@@ -558,7 +558,7 @@ export default async function HomePage() {
                     <div className="w-8 h-1 bg-[#FFBE0B] rounded-full mb-2" />
                     <h3 className="text-white font-bold text-sm leading-tight">{t.title}</h3>
                     <p className="text-white/70 text-xs leading-snug mt-1">{t.story}</p>
-                    <p className="text-[#FFBE0B] text-[11px] font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Read the story</p>
+                    <p className="text-yellow text-caption-sm font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Read the story</p>
                   </div>
                 </Link>
               </Reveal>
@@ -748,7 +748,7 @@ export default async function HomePage() {
           <div className="text-center">
             <Link
               href="/contact?subject=partner"
-              className="inline-flex items-center gap-2 bg-sky text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:opacity-90 transition-opacity text-[13px] sm:text-base"
+              className="inline-flex items-center gap-2 bg-sky text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:opacity-90 transition-opacity text-caption-sm sm:text-body-md"
             >
               Apply as Partner Store
               <ChevronRight size={18} />
@@ -808,14 +808,14 @@ export default async function HomePage() {
           <div className="flex flex-row gap-2 sm:gap-4 justify-center">
             <GetAppButton
               app="customer"
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-white text-navy font-bold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-[13px] sm:text-base"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-white text-navy font-bold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-caption-sm sm:text-body-md"
             >
               Get the App
               <ArrowRight size={16} className="flex-shrink-0" />
             </GetAppButton>
             <Link
               href="/contact?subject=business"
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-white/10 transition-colors text-[13px] sm:text-base"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-white/10 transition-colors text-caption-sm sm:text-body-md"
             >
               Talk to Sales
             </Link>

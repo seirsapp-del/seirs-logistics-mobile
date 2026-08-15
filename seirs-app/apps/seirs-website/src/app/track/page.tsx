@@ -67,7 +67,7 @@ export default function TrackIndexPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 lg:w-16 lg:h-16 rounded-2xl bg-white/10 border border-white/20 mb-5 lg:mb-6">
             <PackageSearch size={24} className="text-sky" strokeWidth={1.75} />
           </div>
-          <h1 className="text-[28px] sm:text-4xl lg:text-5xl font-extrabold text-white leading-[1.1] mb-3">
+          <h1 className="text-title-sm lg:text-title-lg font-extrabold text-white mb-3">
             Track your delivery
           </h1>
           <p className="text-white/70 text-sm sm:text-base mb-7 lg:mb-9">

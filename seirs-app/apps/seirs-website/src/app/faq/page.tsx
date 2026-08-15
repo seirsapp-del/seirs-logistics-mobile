@@ -70,7 +70,7 @@ function ContentHero({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <section className="bg-gradient-to-br from-navy via-[#1a3a5c] to-navy text-white pt-28 pb-16">
       <div className="max-w-4xl mx-auto px-6 text-center">
-        <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4">{title}</h1>
+        <h1 className="text-title-sm lg:text-title-lg font-extrabold mb-4">{title}</h1>
         <p className="text-white/70 text-lg max-w-2xl mx-auto">{subtitle}</p>
       </div>
     </section>

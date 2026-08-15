@@ -133,7 +133,11 @@ function ContactForm() {
               Get in Touch
             </div>
           </div>
-          <h1 className="text-4xl font-extrabold text-white mb-3">Contact Us</h1>
+          {/* Was text-4xl, which computed to 36px on desktop while every sibling
+              page ran 48-60. The audit flagged it as the clearest symptom of
+              having no scale: nobody chose 36 for this page, it just never
+              got looked at. Now the same page-title step as the rest. */}
+          <h1 className="text-title-sm lg:text-title-lg font-extrabold text-white mb-3">Contact Us</h1>
           <p className="text-white/60 text-lg max-w-xl">
             Whether you&apos;re a business, a driver, a store owner, or just have a question, we&apos;re here to help.
           </p>

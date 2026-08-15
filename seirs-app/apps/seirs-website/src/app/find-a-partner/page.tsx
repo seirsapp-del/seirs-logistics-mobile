@@ -147,7 +147,7 @@ export default function FindAPartnerPage() {
               <Store size={14} className="text-sky" />
               Partner network
             </div>
-            <h1 className="text-3xl font-black leading-tight sm:text-4xl md:text-5xl">
+            <h1 className="text-title-sm font-black lg:text-title-lg">
               Find a Seirs partner store near you
             </h1>
             <p className="mt-4 text-lg text-white/70">

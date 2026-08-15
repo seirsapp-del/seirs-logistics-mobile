@@ -25,7 +25,7 @@ export default async function CareersPage() {
             style={{ backgroundImage: `url(${img.img_careers_team})` }} />
         )}
         <div className="relative max-w-4xl mx-auto px-6 text-center">
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4">Build SEIRS with us</h1>
+          <h1 className="text-title-sm lg:text-title-lg font-extrabold mb-4">Build SEIRS with us</h1>
           <p className="text-white/70 text-lg max-w-2xl mx-auto">
             We&apos;re building the logistics rail that every Nigerian e-commerce, restaurant, and trader plugs into. If that sounds like your kind of problem, take a look below.
           </p>

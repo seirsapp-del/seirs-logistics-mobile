@@ -75,15 +75,15 @@ export function PageHero({
           <Icon size={28} className="text-sky hidden lg:block" strokeWidth={1.75} />
         </div>
 
-        <p className="text-sky text-[10px] lg:text-xs font-bold uppercase tracking-widest mb-3 lg:mb-4">
+        <p className="text-sky text-caption-sm lg:text-caption-lg font-bold uppercase tracking-widest mb-3 lg:mb-4">
           {eyebrow}
         </p>
 
-        <h1 className="text-[28px] sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-4 lg:mb-6 tracking-tight">
+        <h1 className="text-title-sm lg:text-title-lg font-extrabold text-white mb-4 lg:mb-6">
           {title}
         </h1>
 
-        <p className="text-white/70 text-sm sm:text-base lg:text-lg leading-relaxed mb-6 lg:mb-10 max-w-2xl mx-auto">
+        <p className="text-white/75 text-body-lg lg:text-body-lg-d mb-7 lg:mb-10 max-w-2xl mx-auto">
           {subtitle}
         </p>
 
@@ -92,7 +92,7 @@ export function PageHero({
         <div className="flex flex-row gap-2 sm:gap-3 justify-center">
           <Link
             href={primaryCtaHref}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-white text-navy font-bold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-[13px] sm:text-base"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-white text-navy font-bold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-caption-sm sm:text-body-md"
           >
             {primaryCtaLabel}
             <ArrowRight size={16} className="flex-shrink-0" />
@@ -100,7 +100,7 @@ export function PageHero({
           {secondaryCtaLabel && secondaryCtaHref ? (
             <Link
               href={secondaryCtaHref}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-white/10 transition-colors text-[13px] sm:text-base"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-white/10 transition-colors text-caption-sm sm:text-body-md"
             >
               {secondaryCtaLabel}
             </Link>
@@ -149,13 +149,13 @@ export function PageCta({
       }}
     >
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-3 lg:mb-4">
+        <h2 className="text-section-sm md:text-section-lg font-extrabold text-white mb-3 lg:mb-4">
           {title}
         </h2>
-        <p className="text-white/70 text-sm sm:text-base lg:text-lg mb-6 lg:mb-8">{subtitle}</p>
+        <p className="text-white/75 text-body-lg lg:text-body-lg-d mb-7 lg:mb-8">{subtitle}</p>
         <Link
           href={primaryHref}
-          className="inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-sky text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:opacity-90 transition-opacity shadow-xl text-[13px] sm:text-base"
+          className="inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-sky text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:opacity-90 transition-opacity shadow-xl text-caption-sm sm:text-body-md"
         >
           {primaryLabel}
           <ArrowRight size={16} className="flex-shrink-0" />

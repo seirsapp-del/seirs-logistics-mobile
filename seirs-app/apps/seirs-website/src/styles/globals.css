@@ -39,21 +39,28 @@
     @apply bg-white rounded-card p-6 shadow-sm border border-gray-100;
   }
 
+  /* Migrated onto the type scale 2026-08-15 (WEBSITE-DESIGN-AUDIT step 3).
+     Was 11/24/14px on a phone, hand-picked on 2026-08-14 to stop things
+     looking oversized. The scale replaces the guesswork: 13/26/17, with the
+     line-height baked into each step, so leading-tight is gone from
+     section-title because it fought the token.
+
+     Original 2026-08-14 note kept below for the reasoning. */
   /* Phone-first section type, 2026-08-14. Founder: the inner pages read the
      same way the homepage did before its hero was fixed, oversized on a
      phone, and asked for the whole site checked. These three classes head
      almost every section on every page, so scaling them here is the
      site-wide fix. Desktop values are unchanged: md and up is what it was. */
   .section-label {
-    @apply text-[11px] sm:text-sm font-semibold tracking-widest uppercase text-sky;
+    @apply text-caption-sm sm:text-caption-lg font-semibold tracking-widest uppercase text-sky;
   }
 
   .section-title {
-    @apply text-2xl sm:text-3xl md:text-4xl font-extrabold text-navy leading-tight;
+    @apply text-section-sm md:text-section-lg font-extrabold text-navy;
   }
 
   .section-sub {
-    @apply text-sm sm:text-base lg:text-lg text-text-muted max-w-2xl mx-auto;
+    @apply text-body-lg lg:text-body-lg-d text-text-muted max-w-2xl mx-auto;
   }
 }
 
