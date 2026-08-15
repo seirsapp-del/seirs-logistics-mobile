@@ -186,7 +186,7 @@ export default async function ArticlePage({ params }: Props) {
               {article.category}
             </span>
           )}
-          <h1 className="text-3xl sm:text-5xl font-extrabold text-white leading-[1.1] tracking-tight mb-5">
+          <h1 className="text-title-sm lg:text-title-lg font-extrabold text-white mb-5">
             {article.title}
           </h1>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/60">

@@ -78,7 +78,7 @@ export default function TermsOfServicePage() {
               Legal Document
             </div>
           </div>
-          <h1 className="text-4xl font-extrabold text-white mb-3">
+          <h1 className="text-title-sm lg:text-title-lg font-extrabold text-white mb-3">
             Terms of Service
           </h1>
           <p className="text-white/55 text-sm">
@@ -164,10 +164,15 @@ export default function TermsOfServicePage() {
               </SubSection>
               <SubSection title="3.4 Partner Store Accounts">
                 <BodyText>
+                  {/* "₦500 per package" removed 2026-08-15. The fee lives in
+                      the admin Fee Catalogue and is agreed per partner at
+                      onboarding; a number hardcoded in a legal document
+                      drifts from the catalogue the first time it is tuned,
+                      and publishes partner economics besides. */}
                   Physical store operators who receive and hold packages on behalf of customers.
-                  Partner stores earn &#8358;500 per successfully collected package. Weekly payouts
-                  are processed every Monday. Stores must maintain the agreed storage capacity
-                  and operating hours.
+                  Partner stores earn a per-package fee as set out in their partner agreement.
+                  Weekly payouts are processed every Monday. Stores must maintain the agreed
+                  storage capacity and operating hours.
                 </BodyText>
               </SubSection>
             </Section>

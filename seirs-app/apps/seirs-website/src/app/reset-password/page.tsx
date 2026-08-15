@@ -98,7 +98,7 @@ function ResetForm() {
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">
             <AlertTriangle className="h-8 w-8 text-amber-600" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900">This link is incomplete</h1>
+          <h1 className="text-section-sm font-bold text-slate-900">This link is incomplete</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
             The reset link is missing its security token. Open the reset email again and tap the
             button, or request a fresh link from the {appLabel} app&apos;s sign-in screen.
@@ -115,7 +115,7 @@ function ResetForm() {
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
             <CheckCircle2 className="h-8 w-8 text-green-600" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900">Password updated</h1>
+          <h1 className="text-section-sm font-bold text-slate-900">Password updated</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
             Your {appLabel} password has been changed. Open the app on your phone and sign in with
             the new password.
@@ -136,7 +136,7 @@ function ResetForm() {
 
   return (
     <CardShell>
-      <h1 className="text-xl font-bold text-slate-900">Choose a new password</h1>
+      <h1 className="text-section-sm font-bold text-slate-900">Choose a new password</h1>
       <p className="mt-1 text-sm text-slate-500">
         For your {appLabel} account. At least 8 characters with uppercase, lowercase, a number, and
         a symbol.

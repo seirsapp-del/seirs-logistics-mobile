@@ -50,7 +50,7 @@ export default function PrivacyPolicyPage() {
               Legal Document
             </div>
           </div>
-          <h1 className="text-4xl font-extrabold text-white mb-3">
+          <h1 className="text-title-sm lg:text-title-lg font-extrabold text-white mb-3">
             Privacy Policy
           </h1>
           <p className="text-white/55 text-sm">
