@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import {
   Truck,
-  Wallet,
+  Zap,
+  CarTaxiFront,
   Clock,
   ShieldCheck,
   MapPin,
@@ -23,7 +24,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "For Drivers",
   description:
-    "Drive with Seirs and earn on your terms. Daily wallet payouts, smart routing, verified senders. Join Nigeria's smartest last-mile delivery network.",
+    "Drive with Seirs and earn on your terms. Daily wallet payouts, smart routing, real support. Join Nigeria's smartest last-mile delivery network.",
 };
 
 function FeatureCard({
@@ -115,7 +116,7 @@ export default async function ForDriversPage() {
             <span className="text-sky">Get paid daily.</span>
           </>
         }
-        subtitle="Join Nigeria's smartest last-mile delivery network. Bicycle, motorbike, tricycle, car, van, bring what you have. Daily wallet payouts, smart routing, verified senders, real support."
+        subtitle="Join Nigeria's smartest last-mile delivery network. Okada, keke, car, van: bring what you have. Daily wallet payouts, smart routing, real support."
         icon={Truck}
         primaryCtaLabel="Apply to drive"
         primaryCtaHref={STORE.play('driver')}
@@ -177,17 +178,16 @@ export default async function ForDriversPage() {
               points={[
                 'Okada, keke, car, van, or truck: bring what you already ride',
                 'Documents stay encrypted and are only opened for compliance review',
-                'You choose your hours entirely: the online toggle is always yours',
               ]}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard
-              icon={Wallet}
-              title="Daily payouts"
-              body="Earnings credit your Seirs wallet after every completed trip. Withdraw to your bank account any time, no waiting until end of week, no minimum balance."
-            />
+            {/* "Daily payouts" cut 2026-08-15: it restated the "Your money
+                moves" story row above it almost verbatim. "Protected
+                handoffs" cut the same day: proof photo, codes and escrow
+                were being told three times on one page (this card, the
+                person row below, the trust section). One telling each. */}
             <FeatureCard
               icon={Clock}
               title="Drive when you want"
@@ -197,11 +197,6 @@ export default async function ForDriversPage() {
               icon={MapPin}
               title="Smart routing"
               body="Multi-stop matching groups nearby orders so you're paid for one trip but deliver multiple packages, your earnings per litre of fuel go up."
-            />
-            <FeatureCard
-              icon={ShieldCheck}
-              title="Protected handoffs"
-              body="Proof photo on every delivery, ID-verified handoffs on high-value packages, and a full chain-of-custody record. When there's a dispute, the evidence already exists on your side."
             />
             {/* "Top-driver rewards" removed 2026-08-15. It promised weekly
                 bonus payouts based on completion rate (no such system exists
@@ -239,13 +234,13 @@ export default async function ForDriversPage() {
               capacity="Up to 5 kg"
             />
             <VehicleCard
-              icon={Bike}
-              label="Motorcycle"
+              icon={Zap}
+              label="Okada (motorcycle)"
               capacity="Up to 20 kg"
             />
             <VehicleCard
-              icon={Bike}
-              label="Tricycle"
+              icon={CarTaxiFront}
+              label="Keke (tricycle)"
               capacity="Up to 100 kg"
             />
             <VehicleCard
@@ -328,7 +323,6 @@ export default async function ForDriversPage() {
             points={[
               'Handoffs confirm with a one-time code, so the right person gets the package',
               'Your proof photo closes every delivery, and the record stays yours in a dispute',
-              'No cash to carry: payment sits in escrow before you ever ride',
             ]}
           />
         </div>
@@ -391,7 +385,7 @@ export default async function ForDriversPage() {
             <h2 className="section-title mb-4">We have your back</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FeatureCard
               icon={ShieldCheck}
               title="In-app SOS"
@@ -406,11 +400,6 @@ export default async function ForDriversPage() {
               icon={FileBadge}
               title="Transparent disputes"
               body="Disagreements with a customer? Our handoff records (GPS trail, OTP timestamps, photos) settle it fairly. You're not at the mercy of one bad rating."
-            />
-            <FeatureCard
-              icon={Truck}
-              title="Vehicle-aware matching"
-              body="No one will send you a 50 kg load on a bicycle. Our matching engine respects your vehicle's capacity."
             />
           </div>
         </div>
