@@ -210,7 +210,7 @@ export default async function HowItWorksPage() {
             <FeatureBlock
               icon={ShieldCheck}
               title="Identity-verified drivers"
-              body="Every driver clears NIN-anchored KYC plus vehicle document review before their first trip. Their SEIRS ID is bound to their phone biometrics."
+              body="Every driver clears NIN-anchored KYC plus vehicle document review before their first trip."
             />
             <FeatureBlock
               icon={KeyRound}
@@ -220,7 +220,7 @@ export default async function HowItWorksPage() {
             <FeatureBlock
               icon={Lock}
               title="Escrow on every payment"
-              body="Card and wallet payments are held in escrow until delivery is confirmed. Failed deliveries refund automatically within 3 business days."
+              body="Payments are held in escrow until you confirm delivery. If a delivery fails, the money returns to your original payment method."
             />
             <FeatureBlock
               icon={MapPin}
@@ -235,7 +235,7 @@ export default async function HowItWorksPage() {
             <FeatureBlock
               icon={Truck}
               title="Backup driver auto-assignment"
-              body="If a driver goes offline mid-trip without warning, our scheduler reassigns the active leg to a nearby driver within 90 seconds, your package keeps moving."
+              body="If a driver goes offline mid-trip without warning, the delivery is reassigned to a nearby driver: your package keeps moving."
             />
           </div>
         </div>

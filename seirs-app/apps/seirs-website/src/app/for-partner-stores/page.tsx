@@ -2,12 +2,9 @@ import type { Metadata } from "next";
 import {
   Store,
   Banknote,
-  ScanLine,
   Calendar,
   Footprints,
-  PauseCircle,
   ShieldCheck,
-  PackageCheck,
   TrendingUp,
   CheckCircle,
   type LucideIcon,
@@ -154,10 +151,17 @@ export default async function ForPartnerStoresPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Read-through 2026-08-15: "Pause whenever you want", "Simple
+                QR scan workflow" and "Capacity dashboard" restated the
+                counter and shelf story rows above, near-verbatim. Cut. The
+                storage-fee sentence here also duplicated the shelf row's
+                bullet, and "forecast your monthly side income" promised a
+                forecast feature that does not exist (same correction as the
+                driver page). Six cards remain: two clean rows of three. */}
             <FeatureCard
               icon={Banknote}
               title="Earn on every package"
-              body="Every package your shop receives, holds, or releases earns a fee, recorded on your statement the moment the handoff completes. Storage fees apply when senders overstay: also yours."
+              body="Every package your shop receives, holds, or releases earns a fee, recorded on your statement the moment the handoff completes."
             />
             <FeatureCard
               icon={Calendar}
@@ -170,21 +174,6 @@ export default async function ForPartnerStoresPage() {
               body="Customers come to you to drop or collect packages, and often buy something while they&apos;re there. Free customer acquisition you didn&apos;t pay for."
             />
             <FeatureCard
-              icon={PauseCircle}
-              title="Pause whenever you want"
-              body="Closing for stock day, family event, or holidays? Tap once to pause new package acceptance. Resume anytime. You&apos;re in control of capacity."
-            />
-            <FeatureCard
-              icon={ScanLine}
-              title="Simple QR scan workflow"
-              body="Open the Business app, scan the customer&apos;s package QR code on drop-off, scan again on pickup. No paperwork, no manual entry."
-            />
-            <FeatureCard
-              icon={PackageCheck}
-              title="Capacity dashboard"
-              body="See at a glance how many packages you&apos;re holding, how long they&apos;ve been there, and which ones need to be released soon. Never lose track."
-            />
-            <FeatureCard
               icon={ShieldCheck}
               title="Protected custody"
               body="Every package you hold is logged with photos, codes, and a chain-of-custody record. If something goes wrong that isn&apos;t your doing, the evidence is already on your side."
@@ -192,7 +181,7 @@ export default async function ForPartnerStoresPage() {
             <FeatureCard
               icon={TrendingUp}
               title="Earnings dashboard"
-              body="See today&apos;s earnings, this week, this month, broken down by package type. Forecast your monthly side income."
+              body="See today&apos;s earnings, this week, this month, broken down by package type. Every naira on the record."
             />
             <FeatureCard
               icon={Store}

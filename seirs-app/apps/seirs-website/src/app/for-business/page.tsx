@@ -3,14 +3,10 @@ import {
   Briefcase,
   Upload,
   Wallet,
-  Users,
-  Route,
   FileSpreadsheet,
   Clock,
   TrendingUp,
   Building2,
-  Receipt,
-  Repeat,
   CheckCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -133,7 +129,7 @@ export default async function ForBusinessPage() {
               points={[
                 'Nigerian phone formats and addresses validated before dispatch',
                 'Recurring routes saved once and rebooked in two taps',
-                'Multi-stop runs sequenced automatically, each stop with its own code',
+                'Multi-stop runs sequenced automatically to save fuel and time',
               ]}
             />
             <StoryRow
@@ -146,51 +142,35 @@ export default async function ForBusinessPage() {
               points={[
                 'Roles from owner to viewer, with spending visibility per person',
                 'Every action carries an audit trail for your records',
-                'Receipts itemised down to base fare, distance, and surcharges',
+                'Every receipt itemised line by line, ready for your books',
               ]}
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard
-              icon={Upload}
-              title="CSV bulk upload"
-              body="Drag in a CSV with recipient names, addresses, and notes, we generate every individual delivery, validate Nigerian phone formats, and dispatch in one batch."
-            />
-            <FeatureCard
-              icon={Route}
-              title="Multi-stop routing"
-              body="Group nearby drops into a single route. Our optimiser sequences stops to minimise distance and time. One driver, multiple drops, one fare."
-            />
+          {/* Read-through 2026-08-15: five of nine cards (CSV upload,
+              multi-stop routing, team access, itemised receipts, recurring
+              orders) restated the two story rows directly above them, some
+              near-verbatim. Cut; the four that remain each say something the
+              rows do not. Also fixed in the survivors: "any hour" scheduling
+              contradicted the 5 AM to 9 PM pickup window; the 15-minutes-
+              before-pickup engine detail was a mechanism leak; the USSD
+              funding channel and points-off-future-bookings redemption were
+              claims nothing in the code verifies. */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FeatureCard
               icon={Wallet}
               title="Business wallet"
-              body="Fund once via card, bank transfer, or USSD. Every delivery debits the wallet, no card-on-file friction, no awkward payment delays at peak hours."
-            />
-            <FeatureCard
-              icon={Users}
-              title="Team access"
-              body="Add Managers and Dispatchers to your account with separate permissions. See who created which order. Audit trail for every action."
-            />
-            <FeatureCard
-              icon={Receipt}
-              title="Itemised receipts"
-              body="Every delivery generates a tax-aware receipt with breakdown of base fare, distance, surcharge, and platform fee. Export weekly or monthly for your books."
-            />
-            <FeatureCard
-              icon={Repeat}
-              title="Recurring orders"
-              body="Schedule the same delivery to repeat daily, weekly, or on selected days, for office supplies, bakery deliveries, or pharmacy refills."
+              body="Fund once, dispatch all day. Every delivery debits the wallet: no card-on-file friction, no payment delays at peak hours."
             />
             <FeatureCard
               icon={Clock}
               title="Same-day & scheduled"
-              body="Dispatch instantly or pre-book up to 7 days ahead, any hour: deliveries run 24/7. Pre-booked orders go to the matching engine 15 minutes before pickup time."
+              body="Send Now dispatches around the clock. Scheduled pickups book up to 7 days ahead, within daily pickup hours of 5 AM to 9 PM."
             />
             <FeatureCard
               icon={TrendingUp}
               title="Loyalty points"
-              body="Every delivery earns points, and your tier raises the rate you earn at. Points come off future bookings: the more you ship, the faster they build."
+              body="Every delivery earns points, and your tier raises the rate you earn at. The more you ship, the faster they build."
             />
             <FeatureCard
               icon={Building2}
@@ -280,6 +260,23 @@ export default async function ForBusinessPage() {
               body="REST API to programmatically create deliveries from your e-commerce backend. Webhooks for status updates. Fits Shopify, WooCommerce, custom Node/Python stacks."
             />
           </div>
+        </div>
+      </section>
+
+      {/* Founder 2026-08-15: the person-photo-beside-text row each
+          audience page carries. img_business_owner is admin-replaceable and
+          already holds the businesswoman-packing-orders shot. No bullets on
+          purpose: every candidate bullet restated a section above. */}
+      <section className="py-section-sm lg:py-section-lg bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <StoryRow
+            imageUrl={img.img_business_owner}
+            alt="A Nigerian business owner preparing orders for dispatch"
+            flip
+            eyebrow="Who this is for"
+            title="Built for the owner who does everything"
+            body="You take the orders, pack the parcels, answer the WhatsApp messages, and chase the riders. Seirs takes the last one off your plate: dispatch becomes a list you upload, not a morning you lose."
+          />
         </div>
       </section>
 
