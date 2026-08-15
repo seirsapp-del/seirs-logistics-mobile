@@ -123,13 +123,6 @@ export const LAUNCH_CHECKLIST = [
     from: 'App Store Connect, once each app record exists',
   },
   {
-    key: 'APP_SCREENSHOTS.customer*',
-    what: 'Three customer-app captures: booking, driver accepted, live tracking',
-    where: 'public/app-shots/ plus src/lib/launch.ts',
-    blocks: 'How it Works story rows draw skeleton screens instead of real UI',
-    from: 'Capture session from the connected phone',
-  },
-  {
     key: 'CONTACT.whatsapp',
     what: 'Business WhatsApp number, international format, digits only',
     where: 'src/lib/launch.ts',
