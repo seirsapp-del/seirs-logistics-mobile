@@ -329,6 +329,8 @@ export class WebsiteContentService implements OnModuleInit {
       excerpt:        body.excerpt        ?? null,
       body:           body.body,
       coverImageUrl:  body.coverImageUrl  ?? null,
+      galleryImages:  (body.galleryImages ?? []).filter((u) => typeof u === 'string' && u.trim()).slice(0, 5),
+      videoUrl:       body.videoUrl?.trim() || null,
       seoTitle:       body.seoTitle       ?? null,
       seoDescription: body.seoDescription ?? null,
       category:       body.category       ?? null,
@@ -395,6 +397,17 @@ export class WebsiteContentService implements OnModuleInit {
     if (body.body           !== undefined) row.body           = body.body;
     if (body.excerpt        !== undefined) row.excerpt        = body.excerpt;
     if (body.coverImageUrl  !== undefined) row.coverImageUrl  = body.coverImageUrl;
+    if (body.galleryImages  !== undefined) {
+      // Cap at 5 beyond the cover, and drop empties rather than erroring:
+      // the admin UI sends the whole array on every save, so a cleared slot
+      // arrives as an empty string.
+      const cleaned = (body.galleryImages ?? []).filter((u) => typeof u === 'string' && u.trim());
+      if (cleaned.length > 5) {
+        throw new BadRequestException('An article can carry at most 5 gallery images beyond the cover.');
+      }
+      row.galleryImages = cleaned.length ? cleaned : null;
+    }
+    if (body.videoUrl       !== undefined) row.videoUrl       = body.videoUrl?.trim() || null;
     if (body.seoTitle       !== undefined) row.seoTitle       = body.seoTitle;
     if (body.seoDescription !== undefined) row.seoDescription = body.seoDescription;
     if (body.category       !== undefined) row.category       = body.category;

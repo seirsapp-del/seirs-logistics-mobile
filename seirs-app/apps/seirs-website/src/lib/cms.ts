@@ -23,6 +23,11 @@ export interface WebsiteContent {
   excerpt:         string | null;
   body:            string;
   coverImageUrl:   string | null;
+  // Article gallery + video, 2026-08-15. Up to 5 admin-uploaded images
+  // interleaved through the story, and one optional video (YouTube or a
+  // direct file) rendered near the top.
+  galleryImages:   string[] | null;
+  videoUrl:        string | null;
   seoTitle:        string | null;
   seoDescription:  string | null;
   category:        string | null;

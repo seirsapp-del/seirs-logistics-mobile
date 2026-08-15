@@ -55,8 +55,39 @@ function readingMinutes(body: string): number {
  * reader gets a visual beat every few paragraphs instead of a wall of
  * text. Skipped entirely when the author already placed images.
  */
-function illustrate(body: string, images: string[]): string {
-  if (!images.length || /!\[[^\]]*\]\([^)]+\)/.test(body)) return body;
+/**
+ * Turns whatever video URL the admin pasted into something embeddable.
+ * YouTube watch / youtu.be / shorts links become the privacy-enhanced
+ * youtube-nocookie embed; anything else is treated as a direct video file
+ * and rendered with a native <video> tag. Returns null for unrecognised
+ * YouTube-ish URLs rather than embedding something broken.
+ */
+function videoEmbed(url: string): { kind: 'youtube'; src: string } | { kind: 'file'; src: string } | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      const id = u.pathname.startsWith('/shorts/')
+        ? u.pathname.split('/')[2]
+        : u.searchParams.get('v');
+      return id ? { kind: 'youtube', src: `https://www.youtube-nocookie.com/embed/${id}` } : null;
+    }
+    if (host === 'youtu.be') {
+      const id = u.pathname.slice(1).split('/')[0];
+      return id ? { kind: 'youtube', src: `https://www.youtube-nocookie.com/embed/${id}` } : null;
+    }
+    return { kind: 'file', src: url };
+  } catch {
+    return null;
+  }
+}
+
+function illustrate(body: string, images: string[], force = false): string {
+  // The skip-when-author-placed-images rule exists for the GENERIC slot
+  // illustrations, which would clash with hand-positioned pictures. A
+  // curated gallery was chosen for this specific article, so it interleaves
+  // regardless (force=true from the caller).
+  if (!images.length || (!force && /!\[[^\]]*\]\([^)]+\)/.test(body))) return body;
   const blocks = body.split(/\n\n+/);
   if (blocks.length < 4) return body;
 
@@ -84,8 +115,15 @@ export default async function ArticlePage({ params }: Props) {
   if (!article) notFound();
 
   const slotKeys = STORY_ILLUSTRATIONS[slug] ?? [];
-  const imageUrls = slotKeys.map(k => img[k]).filter(Boolean);
-  const body = illustrate(article.body, imageUrls);
+  // Precedence, 2026-08-15: the admin's own gallery for THIS article wins
+  // over the generic per-slug illustration slots. The slots stay as the
+  // fallback so the ten existing stories keep their pictures until each
+  // gets a curated gallery.
+  const galleryUrls = article.galleryImages ?? [];
+  const imageUrls = galleryUrls.length
+    ? galleryUrls
+    : slotKeys.map(k => img[k]).filter(Boolean);
+  const body = illustrate(article.body, imageUrls, galleryUrls.length > 0);
   const minutes = readingMinutes(article.body);
   const related = siblings.filter(s => s.slug !== slug).slice(0, 3);
   const cover = article.coverImageUrl ?? img[slotKeys[0]] ?? null;
@@ -130,6 +168,32 @@ export default async function ArticlePage({ params }: Props) {
             {article.excerpt}
           </p>
         )}
+
+        {/* Optional interview video, near the top so a visual-first reader
+            gets the story without reading a word (founder 2026-08-15). The
+            16:9 box is reserved either way, so the page does not jump when
+            the player loads. */}
+        {(() => {
+          const v = article.videoUrl ? videoEmbed(article.videoUrl) : null;
+          if (!v) return null;
+          return (
+            <div className="mb-10 rounded-card overflow-hidden shadow-lg aspect-video bg-navy">
+              {v.kind === 'youtube' ? (
+                <iframe
+                  src={v.src}
+                  title={`Video: ${article.title}`}
+                  className="w-full h-full"
+                  allow="accelerometer; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              ) : (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <video src={v.src} controls preload="metadata" className="w-full h-full" />
+              )}
+            </div>
+          );
+        })()}
 
         {/* Long-form reading rhythm: generous line height, comfortable
             measure, and images that breathe (styled by the renderer's

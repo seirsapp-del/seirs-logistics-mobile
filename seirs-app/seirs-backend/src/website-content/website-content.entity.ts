@@ -68,6 +68,22 @@ export class WebsiteContent {
   @Column({ type: 'text', nullable: true })
   coverImageUrl: string | null;
 
+  // Gallery, added 2026-08-15 (founder: a success story about a farmer
+  // should carry more than one picture; many Nigerians are visual
+  // learners). Up to 5 additional image URLs beyond the cover, enforced
+  // in the service so a fat-fingered admin call cannot store 40. The
+  // website interleaves them through the article body the same way the
+  // built-in illustrations already flow.
+  @Column({ type: 'jsonb', nullable: true })
+  galleryImages: string[] | null;
+
+  // Optional video for the article: a YouTube link or a direct MP4 URL
+  // (e.g. an interview with the farmer). The website embeds YouTube and
+  // renders a <video> tag for direct files. One per article on purpose:
+  // if a story needs two videos it should be two stories.
+  @Column({ type: 'text', nullable: true })
+  videoUrl: string | null;
+
   // SEO meta - falls back to title + excerpt when blank.
   @Column({ type: 'text', nullable: true })
   seoTitle: string | null;

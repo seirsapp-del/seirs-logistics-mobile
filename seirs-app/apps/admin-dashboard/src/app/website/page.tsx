@@ -24,6 +24,8 @@ interface Row {
   excerpt:         string | null;
   body:            string;
   coverImageUrl:   string | null;
+  galleryImages?:  string[] | null;
+  videoUrl?:       string | null;
   featureInApp?:   boolean;
   featureBadge?:   string | null;
   featureFrom?:    string | null;
@@ -225,6 +227,12 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   const [excerpt,   setExcerpt]   = useState(row?.excerpt ?? '');
   const [body,      setBody]      = useState(row?.body ?? '');
   const [cover,     setCover]     = useState(row?.coverImageUrl ?? '');
+  // Founder 2026-08-15: a success story should carry more than one picture,
+  // and possibly an interview video. Up to 5 gallery images beyond the
+  // cover; the backend enforces the same cap.
+  const [gallery,   setGallery]   = useState<string[]>(row?.galleryImages ?? []);
+  const [videoUrl,  setVideoUrl]  = useState(row?.videoUrl ?? '');
+  const [galleryUploading, setGalleryUploading] = useState(false);
   const [seoTitle,  setSeoTitle]  = useState(row?.seoTitle ?? '');
   const [seoDesc,   setSeoDesc]   = useState(row?.seoDescription ?? '');
   const [category,  setCategory]  = useState(row?.category ?? (defaultType === 'article' ? 'news' : ''));
@@ -262,6 +270,16 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
     finally { setUploading(false); }
   };
 
+  const uploadGalleryImage = async (file: File) => {
+    if (gallery.length >= 5) { setErr('Maximum of 5 gallery images per article.'); return; }
+    setGalleryUploading(true); setErr(null);
+    try {
+      const { url } = await adminApi.upload.image(file);
+      setGallery(prev => [...prev, url]);
+    } catch (e: any) { setErr(e?.message ?? 'Upload failed'); }
+    finally { setGalleryUploading(false); }
+  };
+
   // Founder 2026-08-11: images INSIDE articles. Uploads to R2 and
   // appends the markdown image tag to the body; move it wherever the
   // story needs it.
@@ -283,6 +301,8 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
         excerpt:        excerpt        || null,
         body,
         coverImageUrl:  cover          || null,
+        galleryImages:  gallery,
+        videoUrl:       videoUrl.trim() || null,
         seoTitle:       seoTitle       || null,
         seoDescription: seoDesc        || null,
         category:       category       || null,
@@ -431,6 +451,58 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
                   <button onClick={() => setCover('')} className="text-xs text-red-500 font-semibold">Remove</button>
                 )}
               </div>
+            </div>
+          )}
+
+          {type === 'article' && (
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                Gallery images ({gallery.length}/5)
+              </label>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Extra photos shown through the story, after the cover. A farmer
+                success story reads better with the farm, the goods and the
+                handoff, not just one picture.
+              </p>
+              <div className="mt-2 flex flex-wrap items-start gap-3">
+                {gallery.map((url, i) => (
+                  <div key={url} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`gallery ${i + 1}`} className="w-24 h-16 object-cover rounded border border-[#E5E7EB]" />
+                    <button
+                      onClick={() => setGallery(prev => prev.filter((_, j) => j !== i))}
+                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none"
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {gallery.length < 5 && (
+                  <label className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-white border border-dashed border-[#E5E7EB] rounded-lg cursor-pointer hover:bg-gray-50">
+                    <ImageIcon size={14} />
+                    {galleryUploading ? 'Uploading…' : '+ Add image'}
+                    <input type="file" accept="image/jpeg,image/png" className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) uploadGalleryImage(f); e.target.value = ''; }} />
+                  </label>
+                )}
+              </div>
+            </div>
+          )}
+
+          {type === 'article' && (
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Video (optional)</label>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                A YouTube link or a direct .mp4 URL, e.g. an interview. One per
+                article; it renders as a player near the top of the story.
+              </p>
+              <input
+                value={videoUrl}
+                onChange={e => setVideoUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=... or https://.../interview.mp4"
+                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5] text-xs font-mono"
+              />
             </div>
           )}
 

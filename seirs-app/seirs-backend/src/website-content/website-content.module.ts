@@ -34,6 +34,11 @@ export class WebsiteContentModule implements OnModuleInit {
       // EXISTS makes this safe to re-run, and it must land before the
       // website starts sending ?subject=sender.
       `ALTER TYPE "contact_submissions_subject_enum" ADD VALUE IF NOT EXISTS 'sender'`,
+      // Article gallery + video, 2026-08-15. Up to 5 extra images and one
+      // video URL per article (founder: stories need more pictures, many
+      // Nigerians are visual learners).
+      `ALTER TABLE "website_content" ADD COLUMN IF NOT EXISTS "galleryImages" jsonb`,
+      `ALTER TABLE "website_content" ADD COLUMN IF NOT EXISTS "videoUrl" text`,
     ];
     for (const sql of alters) {
       try { await this.dataSource.query(sql); }
