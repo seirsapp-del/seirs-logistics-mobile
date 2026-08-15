@@ -13,6 +13,11 @@ export enum ContactSubject {
   DRIVER   = 'driver',
   PARTNER  = 'partner',
   SUPPORT  = 'support',
+  // Added 2026-08-15. Senders are the largest audience the site gets and had
+  // no bucket, so every "Start Sending" and "Get the app" lead landed as
+  // GENERAL alongside password questions and complaints. Without this the
+  // admin inbox cannot tell demand from noise.
+  SENDER   = 'sender',
 }
 
 export enum ContactStatus {

@@ -28,6 +28,12 @@ export class WebsiteContentModule implements OnModuleInit {
       // own date instead of waiting for someone to untick it.
       `ALTER TABLE "website_content" ADD COLUMN IF NOT EXISTS "featureFrom" timestamptz`,
       `ALTER TABLE "website_content" ADD COLUMN IF NOT EXISTS "featureUntil" timestamptz`,
+      // 'sender' added to ContactSubject 2026-08-15. The column is a real
+      // Postgres enum type, so adding the value in TypeScript alone would
+      // make every sender submission fail on insert in production. IF NOT
+      // EXISTS makes this safe to re-run, and it must land before the
+      // website starts sending ?subject=sender.
+      `ALTER TYPE "contact_submissions_subject_enum" ADD VALUE IF NOT EXISTS 'sender'`,
     ];
     for (const sql of alters) {
       try { await this.dataSource.query(sql); }

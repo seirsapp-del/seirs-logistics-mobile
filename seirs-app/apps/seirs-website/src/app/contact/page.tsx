@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Mail, Phone, MapPin, Send, CheckCircle, Building2, Truck, Store, MessageSquare } from "lucide-react";
 
 const subjects = [
+  // 'sender' added 2026-08-15, first because it is the largest audience the
+  // site gets. Without it every "Start Sending" lead landed in General
+  // alongside password complaints, so demand was indistinguishable from
+  // noise in the admin inbox. Matches ContactSubject.SENDER in the backend.
+  { value: "sender", label: "Sending a package" },
   { value: "general", label: "General Enquiry" },
   { value: "business", label: "Business Account" },
   { value: "driver", label: "Driver Application" },
@@ -57,11 +63,29 @@ const contactCards = [
   },
 ];
 
-export default function ContactPage() {
+/**
+ * Reads ?subject= into the form's initial state.
+ *
+ * Until 2026-08-15 the form ignored the query string entirely, so all fifteen
+ * CTAs across the site landed on "General Enquiry" and every lead arrived
+ * untriaged: a business wanting an account looked identical to a password
+ * complaint. The value is validated against the known subjects rather than
+ * trusted, so a hand-edited URL cannot push an arbitrary string into the
+ * select or the API.
+ */
+function useSubjectFromQuery(): string {
+  const params = useSearchParams();
+  const requested = params.get("subject");
+  return subjects.some((s) => s.value === requested) ? requested! : "general";
+}
+
+function ContactForm() {
+  const initialSubject = useSubjectFromQuery();
   const [form, setForm] = useState({
     name: "",
     email: "",
-    subject: "general",
+    phone: "",
+    subject: initialSubject,
     message: "",
   });
   const [submitted, setSubmitted] = useState(false);
@@ -161,7 +185,7 @@ export default function ContactPage() {
                   <button
                     onClick={() => {
                       setSubmitted(false);
-                      setForm({ name: "", email: "", subject: "general", message: "" });
+                      setForm({ name: "", email: "", phone: "", subject: initialSubject, message: "" });
                     }}
                     className="mt-6 text-sky hover:underline text-sm font-medium"
                   >
@@ -207,6 +231,31 @@ export default function ContactPage() {
                         className="w-full px-4 py-3 rounded-btn border border-gray-200 bg-off-white focus:outline-none focus:ring-2 focus:ring-sky/30 focus:border-sky text-text-dark text-sm placeholder-text-muted transition-colors"
                       />
                     </div>
+                  </div>
+
+                  {/* Phone, added 2026-08-15. The backend already accepted an
+                      optional phone on this endpoint and the form simply never
+                      collected it. In Nigeria it is the field most likely to
+                      actually get someone called back, so it is worth asking
+                      for even though it stays optional. */}
+                  <div>
+                    <label
+                      htmlFor="phone"
+                      className="block text-navy font-semibold text-sm mb-2"
+                    >
+                      Phone <span className="text-text-muted font-normal">(optional)</span>
+                    </label>
+                    <input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={form.phone}
+                      onChange={handleChange}
+                      placeholder="0801 234 5678"
+                      className="w-full px-4 py-3 rounded-btn border border-gray-200 bg-off-white focus:outline-none focus:ring-2 focus:ring-sky/30 focus:border-sky text-text-dark text-sm placeholder-text-muted transition-colors"
+                    />
                   </div>
 
                   <div>
@@ -389,5 +438,18 @@ export default function ContactPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * useSearchParams forces the nearest boundary to render on the client, so the
+ * form sits inside Suspense. Without it Next opts this whole route out of
+ * static generation and warns at build time.
+ */
+export default function ContactPage() {
+  return (
+    <Suspense fallback={null}>
+      <ContactForm />
+    </Suspense>
   );
 }
