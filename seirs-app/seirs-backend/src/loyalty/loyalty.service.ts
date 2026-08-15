@@ -454,6 +454,11 @@ export class LoyaltyService {
   // ── Reads ────────────────────────────────────────────────────────────────
 
   async getBalance(userId: string): Promise<number> {
+    // TypeORM silently drops undefined where-values (find returns the
+    // WHOLE table) and binds them to no match in QueryBuilder. After the
+    // req.user.sub incident (2026-08-15) every read here refuses to run
+    // without a real id rather than degrade into a cross-user leak.
+    if (!userId) throw new BadRequestException('Missing user id.');
     const { sum } = await this.repo
       .createQueryBuilder('p')
       .select('COALESCE(SUM(p.delta), 0)', 'sum')
@@ -464,6 +469,7 @@ export class LoyaltyService {
   }
 
   async getTier(userId: string): Promise<Tier> {
+    if (!userId) throw new BadRequestException('Missing user id.');
     // Tier based on earned points in last 12 months (excludes redemptions).
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -480,6 +486,7 @@ export class LoyaltyService {
   }
 
   async getHistory(userId: string, limit = 50): Promise<LoyaltyPoint[]> {
+    if (!userId) throw new BadRequestException('Missing user id.');
     return this.repo.find({
       where: { userId },
       order: { createdAt: 'DESC' },

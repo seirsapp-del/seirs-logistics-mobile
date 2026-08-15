@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { User } from '../users/user.entity';
 import { EarningsService } from './earnings.service';
 
 /**
@@ -15,15 +17,13 @@ export class EarningsController {
   constructor(private readonly earnings: EarningsService) {}
 
   @Get('dashboard')
-  dashboard(@Req() req: any) {
-    const driverId = req.user?.sub ?? req.user?.userId;
-    return this.earnings.getDashboard(driverId);
+  dashboard(@CurrentUser() user: User) {
+    return this.earnings.getDashboard(user.id);
   }
 
   @Get('history')
-  history(@Req() req: any) {
-    const driverId = req.user?.sub ?? req.user?.userId;
-    return this.earnings.getHistory(driverId);
+  history(@CurrentUser() user: User) {
+    return this.earnings.getHistory(user.id);
   }
 
   // Optional amountNaira caps the withdrawal: earnings entries are
@@ -32,8 +32,7 @@ export class EarningsController {
   // instant=true also unlocks 24h+ old earnings still inside the
   // business-day clearance window, for the catalogue fee.
   @Post('payout')
-  payout(@Req() req: any, @Body() body?: { amountNaira?: number; instant?: boolean }) {
-    const driverId = req.user?.sub ?? req.user?.userId;
-    return this.earnings.payoutDriver(driverId, body?.amountNaira, body?.instant === true);
+  payout(@CurrentUser() user: User, @Body() body?: { amountNaira?: number; instant?: boolean }) {
+    return this.earnings.payoutDriver(user.id, body?.amountNaira, body?.instant === true);
   }
 }

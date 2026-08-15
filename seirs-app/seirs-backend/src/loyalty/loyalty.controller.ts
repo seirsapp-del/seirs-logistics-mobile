@@ -18,7 +18,7 @@ export class LoyaltyController {
 
   @Get('balance')
   async balance(@Req() req: any) {
-    const userId = req.user?.sub ?? req.user?.userId;
+    const userId = req.user?.id ?? req.user?.sub ?? req.user?.userId;
     const [balance, tier, history] = await Promise.all([
       this.loyalty.getBalance(userId),
       this.loyalty.getTier(userId),
@@ -33,13 +33,13 @@ export class LoyaltyController {
   // Refer & Earn screen. Points-based; there is no NGN cash bonus.
   @Get('my-referrals')
   async myReferrals(@Req() req: any) {
-    const userId = req.user?.sub ?? req.user?.userId;
+    const userId = req.user?.id ?? req.user?.sub ?? req.user?.userId;
     return this.loyalty.getMyReferrals(userId);
   }
 
   @Post('redeem')
   async redeem(@Req() req: any, @Body() body: { type: 'discount_500' | 'free_delivery' | 'priority' | 'insurance'; deliveryId?: string }) {
-    const userId = req.user?.sub ?? req.user?.userId;
+    const userId = req.user?.id ?? req.user?.sub ?? req.user?.userId;
     const cost = REDEMPTION_COSTS[body.type];
     if (cost == null) throw new BadRequestException('Unknown redemption type.');
 
