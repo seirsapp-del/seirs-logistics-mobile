@@ -278,6 +278,12 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   const [gallery,   setGallery]   = useState<string[]>(row?.galleryImages ?? []);
   const [videoUrl,  setVideoUrl]  = useState(row?.videoUrl ?? '');
   const [galleryUploading, setGalleryUploading] = useState(false);
+  // Only send galleryImages when this editor actually changed it. On the
+  // backend, null means "never curated" (seeded stories keep their built-in
+  // illustrations) while [] means "deliberately emptied" (no images at
+  // all). Sending [] on every save would flip null to [] the first time
+  // anyone fixed a typo, silently killing a story's illustrations.
+  const [galleryTouched, setGalleryTouched] = useState(false);
   const [seoTitle,  setSeoTitle]  = useState(row?.seoTitle ?? '');
   const [seoDesc,   setSeoDesc]   = useState(row?.seoDescription ?? '');
   const [category,  setCategory]  = useState(row?.category ?? (defaultType === 'article' ? 'news' : ''));
@@ -321,6 +327,7 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
     try {
       const { url } = await adminApi.upload.image(file);
       setGallery(prev => [...prev, url]);
+      setGalleryTouched(true);
     } catch (e: any) { setErr(e?.message ?? 'Upload failed'); }
     finally { setGalleryUploading(false); }
   };
@@ -346,7 +353,7 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
         excerpt:        excerpt        || null,
         body,
         coverImageUrl:  cover          || null,
-        galleryImages:  gallery,
+        ...(galleryTouched ? { galleryImages: gallery } : {}),
         videoUrl:       videoUrl.trim() || null,
         seoTitle:       seoTitle       || null,
         seoDescription: seoDesc        || null,
@@ -532,7 +539,7 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
                       {`{{img${i + 1}}}`}
                     </button>
                     <button
-                      onClick={() => setGallery(prev => prev.filter((_, j) => j !== i))}
+                      onClick={() => { setGallery(prev => prev.filter((_, j) => j !== i)); setGalleryTouched(true); }}
                       className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none"
                       title="Remove"
                     >

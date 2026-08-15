@@ -473,7 +473,13 @@ export class WebsiteContentService implements OnModuleInit {
       if (cleaned.length > 5) {
         throw new BadRequestException('An article can carry at most 5 gallery images beyond the cover.');
       }
-      row.galleryImages = cleaned.length ? cleaned : null;
+      // [] is stored as [], NOT coerced to null (founder 2026-08-15). The
+      // two mean different things on the website: null = never curated, so
+      // the seeded stories fall back to their built-in illustrations; [] =
+      // the admin deliberately emptied the gallery, so the article shows no
+      // images at all. Coercing lost that distinction, which is why deleting
+      // a gallery image made the placeholders come back.
+      row.galleryImages = cleaned;
     }
     if (body.videoUrl       !== undefined) row.videoUrl       = body.videoUrl?.trim() || null;
     if (body.seoTitle       !== undefined) row.seoTitle       = body.seoTitle;

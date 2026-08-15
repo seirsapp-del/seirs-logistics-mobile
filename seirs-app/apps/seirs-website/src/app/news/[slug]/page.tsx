@@ -119,6 +119,9 @@ export default async function ArticlePage({ params }: Props) {
   // over the generic per-slug illustration slots. The slots stay as the
   // fallback so the ten existing stories keep their pictures until each
   // gets a curated gallery.
+  // null = never curated (fallback illustrations apply); [] = the admin
+  // deliberately emptied the gallery (no images at all). Founder 2026-08-15.
+  const curated = article.galleryImages != null;
   const galleryUrls = article.galleryImages ?? [];
 
   // Manual placement (founder 2026-08-15: "the ability to put it within the
@@ -143,10 +146,10 @@ export default async function ArticlePage({ params }: Props) {
   });
   const videoTokenUsed = /\{\{video\}\}/.test(rawBody) && !!article.videoUrl;
 
-  const interleavePool = galleryUrls.length
+  const interleavePool = curated
     ? galleryUrls.filter((_, i) => !placed.has(i))
     : slotKeys.map(k => img[k]).filter(Boolean);
-  const body = illustrate(rawBody, interleavePool, galleryUrls.length > 0);
+  const body = illustrate(rawBody, interleavePool, curated);
 
   // {{video}} placement. The token has no markdown-special characters, so it
   // survives renderMarkdown as a plain <p>{{video}}</p>, which is swapped for
