@@ -303,12 +303,17 @@ export default async function HomePage() {
                   Start Sending
                   <ArrowRight size={16} className="flex-shrink-0" />
                 </GetAppButton>
-                <Link
-                  href="/for-drivers"
+                {/* Founder 2026-08-15: driver CTAs go to the store, not to a
+                    page or the contact form, so applications happen in the
+                    driver app instead of arriving as tickets and emails.
+                    /for-drivers stays reachable from the nav and footer for
+                    anyone who wants the requirements first. */}
+                <GetAppButton
+                  app="driver"
                   className="flex-1 lg:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 lg:px-8 lg:py-4 rounded-btn hover:bg-white/10 transition-colors text-caption-sm sm:text-body-sm lg:text-body-md whitespace-nowrap"
                 >
                   Become a Driver
-                </Link>
+                </GetAppButton>
               </div>
 
               {/* Honesty pass 2026-08-12: the old banner implied the SITE

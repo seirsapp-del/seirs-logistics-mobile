@@ -132,7 +132,7 @@ export default async function HowItWorksPage() {
         primaryCtaLabel="Get the Customer App"
         primaryCtaHref={STORE.play('customer')}
         secondaryCtaLabel="Become a Driver"
-        secondaryCtaHref="/for-drivers"
+        secondaryCtaHref={STORE.play('driver')}
       />
 
       {/* The 3-step flow */}

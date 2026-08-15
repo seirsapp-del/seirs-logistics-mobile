@@ -17,6 +17,7 @@ import {
 import { PageHero, PageCta } from "@/components/PageHero";
 import { getPageBlock, getImageSlots } from "@/lib/cms";
 import { StoryRow } from "@/components/StoryRow";
+import { STORE } from "@/lib/launch";
 
 export const revalidate = 60;
 
@@ -123,7 +124,7 @@ export default async function ForDriversPage() {
         subtitle="Join Nigeria's smartest last-mile delivery network. Bicycle, motorbike, tricycle, car, van, bring what you have. Daily wallet payouts, smart routing, verified senders, real support."
         icon={Truck}
         primaryCtaLabel="Apply to drive"
-        primaryCtaHref="/contact?subject=driver"
+        primaryCtaHref={STORE.play('driver')}
         secondaryCtaLabel="See how it works"
         secondaryCtaHref="/how-it-works"
       />
@@ -394,7 +395,7 @@ export default async function ForDriversPage() {
         title="Ready to drive with Seirs?"
         subtitle="Apply now, get your documents reviewed, and start taking jobs as soon as you are approved."
         primaryLabel="Apply to drive"
-        primaryHref="/contact?subject=driver"
+        primaryHref={STORE.play('driver')}
       />
     </>
   );
