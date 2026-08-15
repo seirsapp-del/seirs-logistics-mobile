@@ -61,7 +61,12 @@ export default function ProfileScreen() {
         setLoyaltyTier(l?.tier ?? null);
         setCompletedTrips((h as any)?.total ?? (h as any)?.items?.filter?.((i: any) => i.status === 'completed').length ?? 0);
         setActivePromos((p ?? []).length);
-        setReferralCode((user as any)?.referralCode ?? null);
+        // Your referral code IS your SEIRS ID: the backend matches
+        // referrers by accountId, and there is no user.referralCode field
+        // anywhere server-side. Reading it left this row blank for every
+        // user since launch prep (found 2026-08-15). referral.tsx already
+        // used accountId correctly.
+        setReferralCode((user as any)?.accountId ?? null);
       })();
       return () => { cancelled = true; };
     }, [user]),
