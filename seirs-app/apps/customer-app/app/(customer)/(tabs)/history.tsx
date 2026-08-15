@@ -61,7 +61,10 @@ function toTrip(d: any): Trip {
     pickupAddress:  d.pickupAddress ?? '-',
     dropoffAddress: d.dropoffAddress ?? '-',
     distance:       d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '-',
-    price:          Number(d.price ?? 0),
+    // Whole naira on the card: the rate card computes in kobo precision
+    // and "N1,473.15" reads like an error to a customer (founder catch,
+    // 2026-08-15). The receipt keeps the exact figure.
+    price:          Math.round(Number(d.price ?? 0)),
     driver:         drv,
     rating:         d.customerRating ?? null,
     trackingCode:   d.trackingCode ?? d.id,
