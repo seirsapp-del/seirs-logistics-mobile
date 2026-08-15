@@ -608,7 +608,7 @@ const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
   // between Requirements and the Application Process on /for-drivers, and
   // this slot (with any image already uploaded to it) fits that exactly.
   { slug: 'img_driver_portrait', title: 'For Drivers: courier portrait',
-    excerpt: 'Full-width band on /for-drivers between the requirements list and the application steps. Proud courier with helmet beside his motorcycle works well. Wide crop. Midjourney file: driver-portrait.' },
+    excerpt: 'Image-beside-text row on /for-drivers between the requirements list and the application steps. A driver handing a package to a customer, or at a store counter, works best. Landscape crop. Midjourney file: driver-portrait.' },
   { slug: 'img_night_rider',    title: '24/7 section: night rider',
     excerpt: 'The night-delivery section. Rider on a quiet Lagos street at night under warm shop lights. 16:9. Midjourney file: night-rider.' },
   { slug: 'img_partner_store',  title: 'Partner Stores: shopkeeper handoff',

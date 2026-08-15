@@ -308,21 +308,31 @@ export default async function ForDriversPage() {
         </div>
       </section>
 
-      {/* Founder 2026-08-15: a picture between the requirements and the
-          application steps, so the page breathes before the process. The
-          slot is img_driver_portrait, admin-replaceable, which the homepage
-          driver band used before it was cut: revived here rather than
-          minting a near-identical new slot, so anything already uploaded to
-          it comes straight back. Same band treatment as the partner page. */}
-      {img.img_driver_portrait && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={img.img_driver_portrait}
-          alt="A Seirs rider ready to work"
-          className="w-full h-56 sm:h-72 lg:h-96 object-cover"
-          loading="lazy"
-        />
-      )}
+      {/* Founder 2026-08-15, revised same day: not a full-width band but a
+          picture NEXT TO text, like the story rows above (the intended
+          photo: a driver with a customer, or at a store counter). StoryRow
+          gives exactly that: side by side 50/50 on desktop, stacked
+          image-first on a phone, text-only with no hole when the slot is
+          empty. The slot stays img_driver_portrait, admin-replaceable.
+          Every point below was verified against the code earlier today:
+          one-time handoff codes, the enforced proof photo, and escrow. */}
+      <section className="py-section-sm lg:py-section-lg bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <StoryRow
+            imageUrl={img.img_driver_portrait}
+            alt="A Seirs rider handing a package to a customer"
+            flip
+            eyebrow="The work itself"
+            title="Every delivery ends with a person"
+            body="A customer at a gate, a shop owner at a counter. You confirm the code, take the photo, and you are done: the record is already on your side, and the money is already waiting."
+            points={[
+              'Handoffs confirm with a one-time code, so the right person gets the package',
+              'Your proof photo closes every delivery, and the record stays yours in a dispute',
+              'No cash to carry: payment sits in escrow before you ever ride',
+            ]}
+          />
+        </div>
+      </section>
 
       {/* Application steps */}
       <section className="py-section-sm lg:py-section-lg bg-white">
