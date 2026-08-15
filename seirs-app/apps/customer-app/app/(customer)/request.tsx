@@ -85,7 +85,22 @@ export default function RequestDriverScreen() {
   // No "full screen" snap when not searching: that's where the empty
   // space came from. When the user focuses an input we use keyboardBehavior
   // "extend" to lift the sheet above the keyboard so suggestions are visible.
-  const snapPoints = useMemo(() => [200, 480], []);
+  // Third snap exists only for search: 480 minus a ~300px keyboard left a
+  // ~180px band, so the predictions list rendered entirely under the
+  // keyboard: the user typed and saw nothing change (A30 field test,
+  // 2026-08-15). Focus lifts the sheet to 88%; picking a result or
+  // dismissing the keyboard drops it back to the comfy default.
+  const snapPoints = useMemo(() => [200, 480, '88%'], []);
+
+  // Whenever the keyboard goes away (result picked, back pressed, tap on
+  // the map) the search snap has no reason to persist: return to the
+  // default so the map stays the hero.
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidHide', () => {
+      sheetRef.current?.snapToIndex(1);
+    });
+    return () => sub.remove();
+  }, []);
 
   // Center on user's GPS once on mount.
   useEffect(() => {
@@ -324,7 +339,7 @@ export default function RequestDriverScreen() {
               <BottomSheetTextInput
                 value={pickupQuery}
                 onChangeText={(t) => onChangeQuery('pickup', t)}
-                onFocus={() => { setActiveField('pickup'); sheetRef.current?.snapToIndex(1); }}
+                onFocus={() => { setActiveField('pickup'); sheetRef.current?.snapToIndex(2); }}
                 placeholder={t('request2.pickupAddress')}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text }]}
@@ -341,7 +356,7 @@ export default function RequestDriverScreen() {
               <BottomSheetTextInput
                 value={dropoffQuery}
                 onChangeText={(t) => onChangeQuery('dropoff', t)}
-                onFocus={() => { setActiveField('dropoff'); sheetRef.current?.snapToIndex(1); }}
+                onFocus={() => { setActiveField('dropoff'); sheetRef.current?.snapToIndex(2); }}
                 placeholder={t('request2.whereTo')}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text }]}
