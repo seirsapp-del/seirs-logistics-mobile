@@ -34,7 +34,6 @@ import BottomSheet, {
   BottomSheetTextInput,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
-import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
@@ -214,6 +213,12 @@ export default function NewDeliveryScreen() {
         if (status !== 'granted') return;
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         if (cancelled || !mapRef.current || draft.pickupLat) return;
+        // Follow GPS only inside Nigeria's bounding box (same guard as the
+        // customer request screen, 2026-08-15): a founder in Berlin or a
+        // traveller abroad should still open on Lagos, not their street.
+        const { latitude, longitude } = loc.coords;
+        const inNigeria = latitude >= 4 && latitude <= 14 && longitude >= 2.5 && longitude <= 15;
+        if (!inNigeria) return;
         mapRef.current.animateToRegion(
           { latitude: loc.coords.latitude, longitude: loc.coords.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 },
           600,
@@ -628,7 +633,7 @@ export default function NewDeliveryScreen() {
         <BottomSheetScrollView
           ref={scrollRef}
           style={styles.sheetInner}
-          contentContainerStyle={{ paddingBottom: 32 + keyboardHeight }}
+          contentContainerStyle={{ paddingBottom: 32 + insets.bottom + keyboardHeight }}
           keyboardShouldPersistTaps="handled"
         >
           {/* Config error banner */}
@@ -653,42 +658,39 @@ export default function NewDeliveryScreen() {
                 <ActivityIndicator color={colors.accent} />
               ) : (
                 <View>
-                  <GHScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator
-                    decelerationRate="fast"
-                    snapToInterval={132}
-                    snapToAlignment="start"
-                    contentContainerStyle={{ gap: 8, paddingRight: 40, paddingLeft: 2 }}
-                  >
+                  {/* Wrapped pill grid, the customer-app pattern (founder
+                      2026-08-15: the horizontal cards clipped into
+                      unreadable skeletons as the first thing a user met).
+                      Every category is visible at once; the selected
+                      one's examples render as a single hint line below. */}
+                  <View style={styles.catGrid}>
                     {catalog.map((cat) => {
                       const active = draft.categoryCode === cat.code;
                       return (
                         <Pressable
                           key={cat.code}
                           style={[
-                            styles.catCard,
+                            styles.catChip,
                             { backgroundColor: colors.surfaceSecond, borderColor: colors.border },
                             active && { backgroundColor: colors.primary, borderColor: colors.primary },
                           ]}
                           onPress={() => setDraft({ categoryCode: cat.code })}
                         >
-                          <Text style={[styles.catName, { color: colors.text }, active && { color: '#fff' }]}>
+                          <Text style={[styles.catChipTxt, { color: colors.text }, active && { color: '#fff' }]}>
                             {cat.name}
-                          </Text>
-                          <Text
-                            style={[styles.catEx, { color: colors.textSecond }, active && { color: '#DBEAFE' }]}
-                            numberOfLines={2}
-                          >
-                            {cat.examples}
                           </Text>
                         </Pressable>
                       );
                     })}
-                  </GHScrollView>
-                  <Text style={[styles.fieldHint, { color: colors.textThird, marginTop: 6 }]}>
-                    Swipe to see more
-                  </Text>
+                  </View>
+                  {(() => {
+                    const sel = catalog.find((c) => c.code === draft.categoryCode);
+                    return sel?.examples ? (
+                      <Text style={[styles.fieldHint, { color: colors.textThird, marginTop: 8 }]} numberOfLines={2}>
+                        {sel.examples}
+                      </Text>
+                    ) : null;
+                  })()}
                 </View>
               )}
 
@@ -1141,9 +1143,9 @@ const styles = StyleSheet.create({
   suggMain: { fontSize: 14, fontWeight: '500' },
   suggSub: { fontSize: 12, marginTop: 2 },
 
-  catCard: { width: 124, padding: 12, borderRadius: 12, borderWidth: 1 },
-  catName: { fontSize: 13, fontWeight: '700' },
-  catEx: { fontSize: 11, marginTop: 4 },
+  catGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  catChip:    { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5 },
+  catChipTxt: { fontSize: 13, fontWeight: '600' },
 
   vehChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 22, borderWidth: 1 },
   vehChipText: { fontSize: 13, fontWeight: '600' },

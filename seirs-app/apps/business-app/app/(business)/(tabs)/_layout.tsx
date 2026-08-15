@@ -64,7 +64,11 @@ export default function BusinessTabsLayout() {
       />
       <Tabs.Screen
         name="new-delivery"
-        options={{ title: 'Send', tabBarIcon: () => (
+        // The booking wizard runs full-screen: keeping the tab bar there
+        // wasted a row mid-flow and invited mid-booking tab-hopping that
+        // dropped the draft (founder 2026-08-15, matching the customer
+        // Send flow, which never shows a tab bar).
+        options={{ title: 'Send', tabBarStyle: { display: 'none' }, tabBarIcon: () => (
           <View style={{
             width: 44, height: 44, borderRadius: 14, backgroundColor: theme.primary,
             alignItems: 'center', justifyContent: 'center', marginBottom: 16,
