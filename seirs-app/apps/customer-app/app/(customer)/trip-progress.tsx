@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar, Animated, Easing, Alert,
+  View, Text, Pressable, StyleSheet, StatusBar, Animated, Easing, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -45,6 +45,16 @@ export default function TripProgressScreen() {
   // and params carry the actual pickup/dropoff coords + addresses.
   const mockTrip   = MOCK_TRIPS.find(tr => tr.id === params.id);
   const hasParams  = !!(params.pickupLat && params.dropoffLat);
+
+  // P0 fix (founder field test 2026-08-15): a REAL delivery id with no
+  // coord params used to miss MOCK_TRIPS.find and land on MOCK_TRIPS[2],
+  // so the map drew Lagos to Ibeju for an Ibadan trip and the step chip
+  // disagreed with Trip Details. Real ids now fetch the delivery; the
+  // mock table serves only known mock ids (dev demos from /history).
+  const [fetched,    setFetched]    = useState<any>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const needsFetch = !hasParams && !mockTrip && !!params.id;
+
   const trip = hasParams
     ? {
         id:             params.id,
@@ -55,12 +65,51 @@ export default function TripProgressScreen() {
         dropoffLat:     Number(params.dropoffLat),
         dropoffLng:     Number(params.dropoffLng),
       }
+    : fetched
+    ? {
+        id:             fetched.id,
+        pickupAddress:  fetched.pickupAddress  ?? '',
+        dropoffAddress: fetched.dropoffAddress ?? '',
+        pickupLat:      fetched.pickupLat  != null ? Number(fetched.pickupLat)  : undefined,
+        pickupLng:      fetched.pickupLng  != null ? Number(fetched.pickupLng)  : undefined,
+        dropoffLat:     fetched.dropoffLat != null ? Number(fetched.dropoffLat) : undefined,
+        dropoffLng:     fetched.dropoffLng != null ? Number(fetched.dropoffLng) : undefined,
+        trackingCode:   fetched.trackingCode,
+      }
     : mockTrip ?? MOCK_TRIPS[2];
 
-  const driver = MOCK_DRIVERS.find(d => d.id === params.driverId) ?? MOCK_DRIVERS[0];
+  // Real driver when the delivery brought one; mock only for mock trips.
+  const mockDriver = MOCK_DRIVERS.find(d => d.id === params.driverId) ?? MOCK_DRIVERS[0];
+  const fetchedDriver = fetched?.driver;
+  const driver = fetchedDriver
+    ? {
+        id:      fetchedDriver.id,
+        name:    [fetchedDriver.user?.firstName, fetchedDriver.user?.lastName].filter(Boolean).join(' ') || 'Your driver',
+        rating:  Number(fetchedDriver.rating ?? 5).toFixed(1),
+        plate:   fetchedDriver.vehiclePlate ?? '',
+        color:   fetchedDriver.vehicleMeta?.color ?? '',
+        vehicle: fetchedDriver.vehicleMeta?.model ?? String(fetchedDriver.vehicleType ?? ''),
+        eta:     mockDriver.eta,
+      }
+    : mockDriver;
 
   const [currentStep, setCurrentStep] = useState(0);
   const [eta,         setEta]         = useState(driver.eta);
+
+  useEffect(() => {
+    if (!needsFetch) return;
+    deliveriesApi.get(String(params.id))
+      .then((d: any) => {
+        setFetched(d);
+        // Seed the step from the delivery's CURRENT status so this
+        // screen and Trip Details tell one truth from the first frame;
+        // the WS event stream takes over from here.
+        const idx = STATUS_STEPS.findIndex(st => st.key === d?.status);
+        if (idx >= 0) setCurrentStep(idx);
+        if (d?.status === 'delivered') setEta(0);
+      })
+      .catch(() => setLoadFailed(true));
+  }, [needsFetch, params.id]);
   const pulse = useRef(new Animated.Value(1)).current;
   const mapRef = useRef<MapView>(null);
 
@@ -103,8 +152,8 @@ export default function TripProgressScreen() {
     distanceText,
     durationText,
   } = useDirectionsPolyline(
-    trip.pickupLat  != null ? { latitude: trip.pickupLat,  longitude: trip.pickupLng  } : null,
-    trip.dropoffLat != null ? { latitude: trip.dropoffLat, longitude: trip.dropoffLng } : null,
+    trip.pickupLat  != null && trip.pickupLng  != null ? { latitude: trip.pickupLat,  longitude: trip.pickupLng  } : null,
+    trip.dropoffLat != null && trip.dropoffLng != null ? { latitude: trip.dropoffLat, longitude: trip.dropoffLng } : null,
   );
 
   useEffect(() => {
@@ -119,7 +168,7 @@ export default function TripProgressScreen() {
     // the single source of truth: customers should never see a fake
     // "delivered" badge while the driver hasn't moved.
     const timers: ReturnType<typeof setTimeout>[] = [];
-    if (__DEV__ && !hasParams) {
+    if (__DEV__ && !hasParams && mockTrip) {
       timers.push(setTimeout(() => setCurrentStep(1), 5000));
       timers.push(setTimeout(() => setCurrentStep(2), 12000));
       timers.push(setTimeout(() => { setCurrentStep(3); setEta(0); }, 20000));
@@ -259,6 +308,27 @@ export default function TripProgressScreen() {
     );
   };
 
+  // While a real delivery is loading (or failed), never render the mock
+  // fallback beneath: a spinner is honest, a fictional route is not.
+  if (needsFetch && !fetched) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background, gap: Spacing.md }}>
+        {loadFailed ? (
+          <>
+            <Text style={{ color: theme.text, fontSize: FontSize.base, textAlign: 'center', paddingHorizontal: Spacing.xl }}>
+              {t('tripProgress2.loadFailed', { defaultValue: 'Could not load this trip. Check your connection and try again.' })}
+            </Text>
+            <Pressable onPress={() => router.back()} style={{ paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderRadius: Radius.full, backgroundColor: theme.primary }}>
+              <Text style={{ color: '#fff', fontSize: FontSize.base }}>{t('common.back', { defaultValue: 'Go back' })}</Text>
+            </Pressable>
+          </>
+        ) : (
+          <ActivityIndicator size="large" color={theme.primary} />
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" />
@@ -276,7 +346,8 @@ export default function TripProgressScreen() {
           longitudeDelta: 0.05,
         }}
         onMapReady={() => {
-          if (trip.pickupLat == null || trip.dropoffLat == null) return;
+          if (trip.pickupLat == null || trip.pickupLng == null ||
+              trip.dropoffLat == null || trip.dropoffLng == null) return;
           mapRef.current?.fitToCoordinates(
             [
               { latitude: trip.pickupLat,  longitude: trip.pickupLng  },
@@ -287,7 +358,7 @@ export default function TripProgressScreen() {
         }}
         showsUserLocation
       >
-        {trip.pickupLat != null && (
+        {trip.pickupLat != null && trip.pickupLng != null && (
           <Marker
             coordinate={{ latitude: trip.pickupLat, longitude: trip.pickupLng }}
             pinColor="#22C55E"
@@ -295,7 +366,7 @@ export default function TripProgressScreen() {
             description={trip.pickupAddress}
           />
         )}
-        {trip.dropoffLat != null && (
+        {trip.dropoffLat != null && trip.dropoffLng != null && (
           <Marker
             coordinate={{ latitude: trip.dropoffLat, longitude: trip.dropoffLng }}
             pinColor="#EF4444"
@@ -328,7 +399,7 @@ export default function TripProgressScreen() {
         </View>
         <Pressable
           style={[styles.backBtn, { backgroundColor: theme.surface }, Shadows.sm]}
-          onPress={() => router.push({ pathname: '/(customer)/share-trip', params: { id: trip.id } })}
+          onPress={() => router.push({ pathname: '/(customer)/share-trip', params: { id: trip.id, code: trackingCode ?? undefined } })}
         >
           <Ionicons name="share-social-outline" size={20} color={theme.text} />
         </Pressable>

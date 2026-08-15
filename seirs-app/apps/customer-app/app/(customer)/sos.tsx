@@ -192,7 +192,7 @@ export default function SOSScreen() {
           {/* Share trip */}
           <Pressable
             style={styles.shareBtn}
-            onPress={() => router.push('/(customer)/share-trip')}
+            onPress={() => router.push({ pathname: '/(customer)/share-trip', params: { id: params.deliveryId } })}
           >
             <Ionicons name="share-social-outline" size={18} color="#fff" />
             <Text style={styles.shareBtnText}>{t('sos.shareLocationBtn')}</Text>

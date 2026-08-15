@@ -10,6 +10,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { MOCK_TRIPS, MOCK_USER } from '@/constants/mockData';
+import { deliveriesApi } from '@/services/api';
+import { useEffect } from 'react';
 
 const SHARE_VIA = [
   { id: 'whatsapp', label: 'WhatsApp',    icon: 'logo-whatsapp', color: '#25D366' },
@@ -24,16 +26,32 @@ export default function ShareTripScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
   const { t }   = useTranslation();
-  const { id }  = useLocalSearchParams<{ id?: string }>();
+  const { id, code } = useLocalSearchParams<{ id?: string; code?: string }>();
 
   const trip = MOCK_TRIPS.find(tr => tr.id === id) ?? MOCK_TRIPS[2];
   const [copied, setCopied] = useState(false);
 
+  // The REAL tracking code, never the mock table's. Callers pass it as
+  // `code`; failing that we fetch it from the delivery id. Sharing
+  // MOCK_TRIPS[2].trackingCode sent recipients a link to a stranger's
+  // (fictional) trip: found in the 2026-08-15 mock-fallback sweep.
+  const [realCode, setRealCode] = useState<string | null>(code ?? null);
+  const isMockId = !!MOCK_TRIPS.find(tr => tr.id === id);
+  useEffect(() => {
+    if (realCode || !id || isMockId) return;
+    deliveriesApi.get(String(id))
+      .then((d: any) => { if (d?.trackingCode) setRealCode(d.trackingCode); })
+      .catch(() => {});
+  }, [realCode, id, isMockId]);
+
+  const trackingCode = realCode ?? (isMockId ? trip.trackingCode : null);
+
   // Public tracking page lives on the marketing website: seirs.app/track/{code}.
   // Anyone with the code can open this in any browser without a login.
-  const shareLink = `https://seirs.app/track/${trip.trackingCode}`;
+  const shareLink = trackingCode ? `https://seirs.app/track/${trackingCode}` : null;
 
   const handleShare = async (via: string) => {
+    if (!shareLink) return; // code still loading: buttons are inert, not wrong
     if (via === 'copy') {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -42,7 +60,7 @@ export default function ShareTripScreen() {
     try {
       await Share.share({
         title:   'Track my SEIRS trip',
-        message: `Hey! Track my live trip on SEIRS: ${shareLink}\n\nTracking code: ${trip.trackingCode}`,
+        message: `Hey! Track my live trip on SEIRS: ${shareLink}\n\nTracking code: ${trackingCode}`,
         url:     shareLink,
       });
     } catch {}
@@ -82,7 +100,7 @@ export default function ShareTripScreen() {
           </View>
           <View style={[styles.trackingRow, { borderTopColor: theme.border }]}>
             <Ionicons name="barcode-outline" size={14} color={theme.textSecond} />
-            <Text style={[styles.trackCode, { color: theme.textSecond }]}>{trip.trackingCode}</Text>
+            <Text style={[styles.trackCode, { color: theme.textSecond }]}>{trackingCode ?? '…'}</Text>
           </View>
         </View>
 
