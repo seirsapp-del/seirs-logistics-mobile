@@ -188,7 +188,7 @@ export default async function HomePage() {
            forced the hero to 666px whatever the content measured, and with
            flex items-center the ~510px of actual content got centred inside
            it, opening roughly 150px of dead navy split above and below. That
-           is the "empty space up" the founder reported; trimming py-24 to
+           is the "empty space up" the founder reported; trimming py-section-sm lg:py-section-lg to
            py-8 earlier helped the padding but left the min-height doing the
            damage. On a phone the hero is now content-sized, so the chip sits
            just under the nav. Desktop keeps the full-bleed 90vh hero. */
@@ -378,7 +378,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="how-it-works" className="py-24 bg-off-white">
+      <section id="how-it-works" className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="section-label mb-3">Simple Process</p>
@@ -450,7 +450,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── FOR BUSINESSES ── */}
-      <section id="for-business" className="py-24 bg-white">
+      <section id="for-business" className="py-section-sm lg:py-section-lg bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             {/* Left: text */}
@@ -521,7 +521,7 @@ export default async function HomePage() {
           2026-08-11). Every tile is a REAL service category from the
           app's catalogue: farmers, traders, tailors, carpenters, and
           everything in between. Nothing international: we move Nigeria. */}
-      <section className="py-24 bg-white">
+      <section className="py-section-sm lg:py-section-lg bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
             <div className="text-center mb-14">
@@ -688,7 +688,7 @@ export default async function HomePage() {
           opacity alone, so a dark upload cannot turn the body text
           unreadable. Section falls back to plain off-white when the slot is
           empty. ── */}
-      <section id="partner-stores" className="relative py-24 bg-off-white overflow-hidden">
+      <section id="partner-stores" className="relative py-section-sm lg:py-section-lg bg-off-white overflow-hidden">
         {img.img_partner_store && (
           <>
             {/* Photo at full strength, readability handled by the wash above
@@ -785,7 +785,7 @@ export default async function HomePage() {
 
       {/* ── CTA BANNER ── */}
       <section
-        className="relative py-20 overflow-hidden"
+        className="relative py-section-sm lg:py-section-lg overflow-hidden"
         style={{ background: "linear-gradient(135deg, #0F2B4C, #1a3a5c)" }}
       >
         {img.img_handoff_hands && (

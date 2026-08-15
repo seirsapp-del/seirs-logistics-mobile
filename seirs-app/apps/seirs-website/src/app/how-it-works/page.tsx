@@ -136,7 +136,7 @@ export default async function HowItWorksPage() {
       />
 
       {/* The 3-step flow */}
-      <section className="py-20 bg-off-white">
+      <section className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="section-label mb-3">The Customer Flow</p>
@@ -192,7 +192,7 @@ export default async function HowItWorksPage() {
       </section>
 
       {/* The trust layer */}
-      <section className="py-20 bg-white">
+      <section className="py-section-sm lg:py-section-lg bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="section-label mb-3">Built on Trust</p>
@@ -242,7 +242,7 @@ export default async function HowItWorksPage() {
       </section>
 
       {/* The 3-app system */}
-      <section className="py-20 bg-off-white">
+      <section className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Reframed 2026-08-14. This was three text cards, one of them the
               customer app, which the story above now shows three times over.

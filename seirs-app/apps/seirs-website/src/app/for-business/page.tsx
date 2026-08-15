@@ -85,7 +85,7 @@ export default async function ForBusinessPage() {
       />
 
       {/* Use cases bar */}
-      <section className="py-12 bg-white border-b border-gray-100">
+      <section className="py-section-sm lg:py-section-lg bg-white border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-center text-text-muted text-sm mb-6">
             Built for Nigerian businesses across categories
@@ -113,7 +113,7 @@ export default async function ForBusinessPage() {
       </section>
 
       {/* Core features grid */}
-      <section className="py-20 bg-off-white">
+      <section className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="section-label mb-3">What You Get</p>
@@ -202,7 +202,7 @@ export default async function ForBusinessPage() {
       </section>
 
       {/* Two account types */}
-      <section className="py-20 bg-white">
+      <section className="py-section-sm lg:py-section-lg bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="section-label mb-3">Two Account Types</p>
@@ -261,7 +261,7 @@ export default async function ForBusinessPage() {
       </section>
 
       {/* Tools mini list */}
-      <section className="py-20 bg-off-white">
+      <section className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="section-label mb-3">Plays Nicely With Your Stack</p>

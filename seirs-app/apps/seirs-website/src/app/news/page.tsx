@@ -25,7 +25,7 @@ export default async function NewsPage() {
     <>
       <ContentHero title="News & Updates" subtitle="Product launches, company milestones, and stories from across the SEIRS network." />
 
-      <section className="bg-cream py-16">
+      <section className="bg-cream py-section-sm lg:py-section-lg">
         <div className="max-w-6xl mx-auto px-6">
           {articles.length === 0 ? (
             <div className="text-center py-16 text-gray-500">

@@ -31,7 +31,7 @@ export default async function FaqPage() {
     <>
       <ContentHero title="Frequently Asked Questions" subtitle="Quick answers to the questions we hear most often." />
 
-      <section className="bg-cream py-16">
+      <section className="bg-cream py-section-sm lg:py-section-lg">
         <div className="max-w-3xl mx-auto px-6 space-y-10">
           {items.length === 0 ? (
             <div className="text-center py-16 text-gray-500">

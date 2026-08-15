@@ -151,7 +151,7 @@ export default async function ArticlePage({ params }: Props) {
       </div>
 
       {related.length > 0 && (
-        <section className="bg-off-white border-t border-gray-200 py-14">
+        <section className="bg-off-white border-t border-gray-200 py-section-sm lg:py-section-lg">
           <div className="max-w-5xl mx-auto px-6">
             <h2 className="text-navy font-extrabold text-xl mb-6">More stories</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

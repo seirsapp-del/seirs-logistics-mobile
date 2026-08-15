@@ -129,7 +129,7 @@ export default async function ForDriversPage() {
       />
 
       {/* Why drive with us */}
-      <section className="py-20 bg-off-white">
+      <section className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="section-label mb-3">Why Seirs</p>
@@ -215,7 +215,7 @@ export default async function ForDriversPage() {
       </section>
 
       {/* Vehicle types + earnings */}
-      <section className="py-20 bg-white">
+      <section className="py-section-sm lg:py-section-lg bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="section-label mb-3">Bring What You Have</p>
@@ -268,7 +268,7 @@ export default async function ForDriversPage() {
       </section>
 
       {/* Requirements */}
-      <section className="py-20 bg-off-white">
+      <section className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="section-label mb-3">Requirements</p>
@@ -304,7 +304,7 @@ export default async function ForDriversPage() {
       </section>
 
       {/* Application steps */}
-      <section className="py-20 bg-white">
+      <section className="py-section-sm lg:py-section-lg bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="section-label mb-3">Application Process</p>
@@ -353,7 +353,7 @@ export default async function ForDriversPage() {
       </section>
 
       {/* Trust */}
-      <section className="py-20 bg-off-white">
+      <section className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="section-label mb-3">Your Safety Matters</p>

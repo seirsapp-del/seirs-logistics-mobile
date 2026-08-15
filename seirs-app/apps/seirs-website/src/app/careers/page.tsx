@@ -32,7 +32,7 @@ export default async function CareersPage() {
         </div>
       </section>
 
-      <section className="bg-cream py-16">
+      <section className="bg-cream py-section-sm lg:py-section-lg">
         <div className="max-w-3xl mx-auto px-6">
           {roles.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-xl border border-gray-200">

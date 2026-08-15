@@ -97,7 +97,7 @@ export default async function ForPartnerStoresPage() {
       />
 
       {/* Headline numbers */}
-      <section className="py-16 bg-white border-b border-gray-100">
+      <section className="py-section-sm lg:py-section-lg bg-white border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <StatBlock value="Per-package" label="Fee on every handoff" />
@@ -109,7 +109,7 @@ export default async function ForPartnerStoresPage() {
       </section>
 
       {/* Story rows: what actually happens behind your counter. */}
-      <section className="py-16 bg-white">
+      <section className="py-section-sm lg:py-section-lg bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
           <StoryRow
             imageUrl={img.img_store_counter}
@@ -140,7 +140,7 @@ export default async function ForPartnerStoresPage() {
       </section>
 
       {/* Why it works */}
-      <section className="py-20 bg-off-white">
+      <section className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="section-label mb-3">Why Partner</p>
@@ -204,7 +204,7 @@ export default async function ForPartnerStoresPage() {
       </section>
 
       {/* Requirements */}
-      <section className="py-20 bg-white">
+      <section className="py-section-sm lg:py-section-lg bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="section-label mb-3">Eligibility</p>
@@ -246,7 +246,7 @@ export default async function ForPartnerStoresPage() {
       </section>
 
       {/* Process */}
-      <section className="py-20 bg-off-white">
+      <section className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="section-label mb-3">Getting Started</p>
@@ -303,7 +303,7 @@ export default async function ForPartnerStoresPage() {
       </section>
 
       {/* Earnings example */}
-      <section className="py-20 bg-white">
+      <section className="py-section-sm lg:py-section-lg bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="section-label mb-3">How Earnings Build</p>

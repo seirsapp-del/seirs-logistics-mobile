@@ -15,7 +15,7 @@ export default async function ChangelogPage() {
     <>
       <ContentHero title="Changelog" subtitle="Every product update, feature launch, and improvement, newest first." />
 
-      <section className="bg-cream py-16">
+      <section className="bg-cream py-section-sm lg:py-section-lg">
         <div className="max-w-3xl mx-auto px-6 space-y-8">
           {items.length === 0 ? (
             <div className="text-center py-16 text-gray-500">
