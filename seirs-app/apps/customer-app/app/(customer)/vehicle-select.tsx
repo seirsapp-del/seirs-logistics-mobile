@@ -4,7 +4,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -216,11 +216,19 @@ export default function VehicleSelectScreen() {
                   {v.photoUrl ? (
                     <Image source={{ uri: v.photoUrl }} style={styles.iconImage} />
                   ) : (
+                    v.icon === 'rickshaw' ? (
+                      <MaterialCommunityIcons
+                        name="rickshaw"
+                        size={36}
+                        color={isSelected ? v.accentColor : theme.textSecond}
+                      />
+                    ) : (
                     <Ionicons
                       name={v.icon as any}
                       size={36}
                       color={isSelected ? v.accentColor : theme.textSecond}
                     />
+                    )
                   )}
                 </View>
 

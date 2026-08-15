@@ -1,4 +1,4 @@
-import {
+import { Alert,
   View, Text, Pressable, StyleSheet, StatusBar, ActivityIndicator, Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +10,7 @@ import BottomSheet, {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -34,6 +34,8 @@ interface Prediction {
 
 export default function RequestDriverScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const isDark = cs === 'dark';
@@ -45,6 +47,27 @@ export default function RequestDriverScreen() {
 
   const [pickup,     setPickup]     = useState<PickedAddress | null>(null);
   const [dropoff,    setDropoff]    = useState<PickedAddress | null>(null);
+
+  // QA 2026-08-15: hardware back silently discarded a typed pickup and
+  // destination with no warning (it ate a whole entered route during the
+  // capture session). If either field holds anything, leaving now asks
+  // first; an empty form leaves instantly like before.
+  useEffect(() => {
+    const sub = (navigation as any).addListener?.('beforeRemove', (e: any) => {
+      if (!pickup && !dropoff) return;
+      e.preventDefault();
+      Alert.alert(
+        'Discard this trip?',
+        'Your pickup and destination will be cleared.',
+        [
+          { text: 'Keep editing', style: 'cancel' },
+          { text: 'Discard', style: 'destructive',
+            onPress: () => (navigation as any).dispatch(e.data.action) },
+        ],
+      );
+    });
+    return sub;
+  }, [navigation, pickup, dropoff]);
 
   // Inline autocomplete state: replaces the old modal AddressPicker.
   const [pickupQuery,  setPickupQuery]  = useState('');
@@ -74,6 +97,15 @@ export default function RequestDriverScreen() {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         if (cancelled || !mapRef.current) return;
         if (pickup || dropoff) return;
+        // Only follow the GPS when it lands inside Nigeria (QA 2026-08-15:
+        // the founder opened this screen in Berlin and got a Berlin map in a
+        // Nigerian ride app). Outside the service area, the Lagos default
+        // region already showing is the right answer: the user is about to
+        // type a Nigerian address anyway.
+        const inNigeria =
+          loc.coords.latitude  >= 4.0 && loc.coords.latitude  <= 14.0 &&
+          loc.coords.longitude >= 2.5 && loc.coords.longitude <= 15.0;
+        if (!inNigeria) return;
         mapRef.current.animateToRegion(
           { latitude: loc.coords.latitude, longitude: loc.coords.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 },
           600,
