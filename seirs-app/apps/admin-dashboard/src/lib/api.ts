@@ -316,6 +316,13 @@ export const adminApi = {
         method: 'POST',
         body:   JSON.stringify({ approve }),
       }),
+    // Unused-media sweep, super admin only. dryRun=true (the default on
+    // the backend too) only counts; pass false to actually delete.
+    cleanupMedia: (dryRun: boolean) =>
+      req<{ dryRun: boolean; totalObjects: number; referenced: number; unused: number; skippedRecent: number; freedBytes: number; deleted: number }>(
+        '/admin/website/media/cleanup',
+        { method: 'POST', body: JSON.stringify({ dryRun }) },
+      ),
   },
 
   // Direct R2 upload helper (re-uses the existing /upload endpoint).

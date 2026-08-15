@@ -6,9 +6,10 @@ import { WebsiteContent } from './website-content.entity';
 import { ContactSubmission } from './contact-submission.entity';
 import { WebsiteContentService } from './website-content.service';
 import { WebsiteContentController } from './website-content.controller';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([WebsiteContent, ContactSubmission])],
+  imports: [TypeOrmModule.forFeature([WebsiteContent, ContactSubmission]), UploadModule],
   controllers: [WebsiteContentController],
   providers: [WebsiteContentService],
   exports: [WebsiteContentService],

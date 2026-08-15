@@ -6,6 +6,7 @@ import { LessThanOrEqual, Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebsiteContent, WebContentStatus, WebContentType } from './website-content.entity';
 import { ContactSubmission, ContactStatus, ContactSubject } from './contact-submission.entity';
+import { UploadService } from '../upload/upload.service';
 
 // Slugs are URL-safe identifiers - lowercase alphanumerics + hyphens,
 // 2-120 chars. Keep it strict to avoid Next.js dynamic route ambiguity.
@@ -29,6 +30,7 @@ export class WebsiteContentService implements OnModuleInit {
   constructor(
     @InjectRepository(WebsiteContent)    private repo:        Repository<WebsiteContent>,
     @InjectRepository(ContactSubmission) private contactRepo: Repository<ContactSubmission>,
+    private readonly uploadService: UploadService,
   ) {}
 
   // ── Spec V8 §3.13 - Public contact form (W7) ─────────────────────────────
@@ -158,6 +160,72 @@ export class WebsiteContentService implements OnModuleInit {
     } catch (e: any) {
       this.logger.warn(`image-slot seed skipped: ${e?.message ?? e}`);
     }
+  }
+
+  /**
+   * CMS media cleanup (founder 2026-08-15: "does it get deleted or does it
+   * keep occupying space?" It kept occupying space: nothing in the backend
+   * ever deleted an R2 object).
+   *
+   * Deletes objects under cms/ that no row in website_content references
+   * from any field that can hold a URL: body markdown, coverImageUrl,
+   * galleryImages and videoUrl. Every row counts, drafts and archived
+   * included, because a recycle-bin article that gets restored must come
+   * back with its pictures.
+   *
+   * Two hard safety rails:
+   * - Scoped to the cms/ prefix at the listing call itself. KYC documents,
+   *   proof photos, avatars and chat files live under other prefixes and
+   *   this code cannot see them, let alone delete them.
+   * - Objects newer than 48 hours are skipped even when unreferenced,
+   *   because an upload belongs to an UNSAVED draft until the editor hits
+   *   save: it is referenced by a textarea on someone's screen, which no
+   *   database query can know about.
+   *
+   * dryRun returns the same numbers without deleting, so the admin UI can
+   * show "this will remove N files (X MB)" before anything is destroyed.
+   */
+  async cleanupCmsMedia(dryRun: boolean) {
+    const rows = await this.repo.find({
+      select: ['body', 'coverImageUrl', 'galleryImages', 'videoUrl'],
+    });
+    const referenced = new Set<string>();
+    const keyRe = /cms\/[0-9a-f-]{36}\.(?:jpg|png|pdf)/g;
+    for (const r of rows) {
+      const haystack = [
+        r.body ?? '',
+        r.coverImageUrl ?? '',
+        r.videoUrl ?? '',
+        ...(r.galleryImages ?? []),
+      ].join('\n');
+      for (const m of haystack.match(keyRe) ?? []) referenced.add(m);
+    }
+
+    const objects = await this.uploadService.listObjects('cms/');
+    const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+    let skippedRecent = 0;
+    const unused = objects.filter(o => {
+      if (referenced.has(o.key)) return false;
+      if (o.lastModified.getTime() > cutoff) { skippedRecent++; return false; }
+      return true;
+    });
+    const freedBytes = unused.reduce((sum, o) => sum + o.size, 0);
+
+    let deleted = 0;
+    if (!dryRun && unused.length) {
+      deleted = await this.uploadService.deleteKeys(unused.map(o => o.key));
+      this.logger.log(`CMS_MEDIA_CLEANUP deleted=${deleted} freedBytes=${freedBytes}`);
+    }
+
+    return {
+      dryRun,
+      totalObjects: objects.length,
+      referenced:   referenced.size,
+      unused:       unused.length,
+      skippedRecent,
+      freedBytes,
+      deleted,
+    };
   }
 
   // Public: all image slots in one shot for the website renderer.

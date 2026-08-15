@@ -68,6 +68,41 @@ export default function WebsiteCmsPage() {
   const [error,    setError]    = useState<string | null>(null);
   const [search,   setSearch]   = useState('');
   const [editing,  setEditing]  = useState<Row | 'new' | null>(null);
+  const [sweeping, setSweeping] = useState(false);
+  const confirmSweep            = useConfirm();
+  const superAdmin              = isSuperAdminFromUser(getUser());
+
+  // Founder 2026-08-15: removing an image from an article only removed the
+  // reference; the file stayed in R2 forever. This sweeps cms/ files nothing
+  // references. Dry-run first, so the confirm dialog shows real numbers
+  // before anything is destroyed.
+  const sweepUnusedMedia = async () => {
+    setSweeping(true);
+    try {
+      const probe = await adminApi.websiteContent.cleanupMedia(true);
+      if (probe.unused === 0) {
+        await confirmSweep({
+          title:        'Nothing to clean up',
+          message:      `All ${probe.totalObjects} stored files are still referenced by an article, a page block or a draft${probe.skippedRecent ? `, and ${probe.skippedRecent} recent upload(s) were left alone in case they belong to unsaved work` : ''}.`,
+          confirmLabel: 'OK',
+        });
+        return;
+      }
+      const mb = (probe.freedBytes / (1024 * 1024)).toFixed(1);
+      const ok = await confirmSweep({
+        title:        `Delete ${probe.unused} unused file(s)?`,
+        message:      `These ${probe.unused} images/files (${mb} MB) are no longer used by any article, gallery, page block or draft. Uploads from the last 48 hours are never touched, in case they belong to unsaved work. This cannot be undone.`,
+        confirmLabel: `Delete ${probe.unused} file(s)`,
+        danger:       true,
+      });
+      if (!ok) return;
+      await adminApi.websiteContent.cleanupMedia(false);
+    } catch (e: any) {
+      setError(e?.message ?? 'Cleanup failed');
+    } finally {
+      setSweeping(false);
+    }
+  };
 
   const load = () => {
     setLoading(true);
@@ -102,6 +137,16 @@ export default function WebsiteCmsPage() {
         >
           <RefreshCw size={14} /> Refresh
         </button>
+        {superAdmin && (
+          <button
+            onClick={sweepUnusedMedia}
+            disabled={sweeping}
+            title="Delete stored images that no article, gallery or page block uses any more"
+            className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-white border border-[#E5E7EB] rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Trash2 size={14} /> {sweeping ? 'Checking…' : 'Clean up unused images'}
+          </button>
+        )}
         <button
           onClick={() => setEditing('new')}
           className="flex items-center gap-2 bg-[#3A7BD5] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#2f6cc0]"

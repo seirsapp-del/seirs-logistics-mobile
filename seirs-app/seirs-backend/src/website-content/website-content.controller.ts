@@ -123,6 +123,20 @@ export class WebsiteContentController {
     return this.svc.update(id, body, isSuperAdmin(user));
   }
 
+  // POST /api/v1/admin/website/media/cleanup  { dryRun?: boolean }
+  // Deletes cms/ objects nothing in website_content references (see the
+  // service for the safety rails: cms-prefix only, 48h grace for unsaved
+  // drafts). Super admin only: it destroys files, and destruction is
+  // gated the same way as Delete Forever in the recycle bin.
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post('admin/website/media/cleanup')
+  cleanupMedia(@CurrentUser() user: User, @Body() body: { dryRun?: boolean }) {
+    if (!isSuperAdmin(user)) {
+      throw new ForbiddenException('Only a super admin can delete unused media.');
+    }
+    return this.svc.cleanupCmsMedia(body?.dryRun !== false);
+  }
+
   /**
    * Super admin approves or rejects a submitted page (2026-08-13).
    * Rejection returns it to draft so the editor keeps their work.

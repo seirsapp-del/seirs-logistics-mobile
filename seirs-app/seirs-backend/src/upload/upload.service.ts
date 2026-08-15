@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand,
+} from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import { extname } from 'path';
 
@@ -123,5 +125,44 @@ export class UploadService implements OnModuleInit {
 
     // Return the public CDN URL (set R2_PUBLIC_URL to your bucket's public domain)
     return `${this.publicUrl}/${key}`;
+  }
+
+  /**
+   * List every object under a prefix. Exists for the CMS media cleanup
+   * (founder 2026-08-15: deleting an image from an article removed only the
+   * reference, and the file kept occupying R2 space forever). Paginates,
+   * since ListObjectsV2 caps at 1000 keys per call.
+   */
+  async listObjects(prefix: string): Promise<Array<{ key: string; size: number; lastModified: Date }>> {
+    if (!this.enabled || !this.s3) return [];
+    const out: Array<{ key: string; size: number; lastModified: Date }> = [];
+    let token: string | undefined;
+    do {
+      const page = await this.s3.send(new ListObjectsV2Command({
+        Bucket:            this.bucket,
+        Prefix:            prefix,
+        ContinuationToken: token,
+      }));
+      for (const o of page.Contents ?? []) {
+        if (o.Key) out.push({ key: o.Key, size: o.Size ?? 0, lastModified: o.LastModified ?? new Date() });
+      }
+      token = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (token);
+    return out;
+  }
+
+  /** Delete objects by key, chunked to the API's 1000-key limit. */
+  async deleteKeys(keys: string[]): Promise<number> {
+    if (!this.enabled || !this.s3 || keys.length === 0) return 0;
+    let deleted = 0;
+    for (let i = 0; i < keys.length; i += 1000) {
+      const chunk = keys.slice(i, i + 1000);
+      const res = await this.s3.send(new DeleteObjectsCommand({
+        Bucket: this.bucket,
+        Delete: { Objects: chunk.map(Key => ({ Key })), Quiet: true },
+      }));
+      deleted += chunk.length - (res.Errors?.length ?? 0);
+    }
+    return deleted;
   }
 }
