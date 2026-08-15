@@ -6,8 +6,9 @@ import {
   MessageSquare, ChevronRight, Clock, AlertCircle, CheckCircle2, XCircle, Send,
 } from 'lucide-react';
 
-type TicketStatus   = 'open' | 'in_progress' | 'resolved' | 'closed';
-type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+// Unified on the support module 2026-08-16: these are the live statuses
+// the apps write. Priority never existed in the real system.
+type TicketStatus = 'open' | 'awaiting_agent' | 'awaiting_user' | 'resolved' | 'closed';
 
 interface TicketReply {
   id:        string;
@@ -19,38 +20,32 @@ interface TicketReply {
 interface Ticket {
   id:          string;
   subject:     string;
-  description: string;
   status:      TicketStatus;
-  priority:    TicketPriority;
   category?:   string;
+  userAccountType?: string;
   user?:       { id: string; name: string; email: string };
-  assignedTo?: { id: string; name: string };
+  assignedToId?:   string | null;
+  assignedToName?: string | null;
   replies?:    TicketReply[];
   createdAt:   string;
   updatedAt:   string;
   resolvedAt?: string;
-  slaBreached?: boolean;
 }
 
 const STATUS_COLORS: Record<TicketStatus, string> = {
-  open:        'bg-blue-100 text-blue-700',
-  in_progress: 'bg-amber-100 text-amber-700',
-  resolved:    'bg-emerald-100 text-emerald-700',
-  closed:      'bg-gray-100 text-gray-600',
+  open:           'bg-blue-100 text-blue-700',
+  awaiting_agent: 'bg-amber-100 text-amber-700',
+  awaiting_user:  'bg-indigo-100 text-indigo-700',
+  resolved:       'bg-emerald-100 text-emerald-700',
+  closed:         'bg-gray-100 text-gray-600',
 };
 
 const STATUS_ICON: Record<TicketStatus, React.ComponentType<any>> = {
-  open:        AlertCircle,
-  in_progress: Clock,
-  resolved:    CheckCircle2,
-  closed:      XCircle,
-};
-
-const PRIORITY_COLORS: Record<TicketPriority, string> = {
-  low:    'bg-gray-100 text-gray-600',
-  medium: 'bg-blue-100 text-blue-600',
-  high:   'bg-orange-100 text-orange-700',
-  urgent: 'bg-red-100 text-red-700',
+  open:           AlertCircle,
+  awaiting_agent: Clock,
+  awaiting_user:  Clock,
+  resolved:       CheckCircle2,
+  closed:         XCircle,
 };
 
 const SLA_RESPONSE_MS  = 2  * 60 * 60 * 1000;  // 2 hours
@@ -78,7 +73,6 @@ export default function TicketsPage() {
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [status,   setStatus]   = useState<TicketStatus | 'all'>('all');
-  const [priority, setPriority] = useState<TicketPriority | 'all'>('all');
   const [page,     setPage]     = useState(1);
   const [hasMore,  setHasMore]  = useState(false);
   const [reply,    setReply]    = useState('');
@@ -89,7 +83,7 @@ export default function TicketsPage() {
 
   const load = (p = 1) => {
     setLoading(true);
-    adminApi.tickets.list(p, status !== 'all' ? status : undefined, priority !== 'all' ? priority : undefined)
+    adminApi.tickets.list(p, status !== 'all' ? status : undefined)
       .then((data: any) => {
         const items = Array.isArray(data) ? data : data?.items ?? [];
         setTickets(p === 1 ? items : (prev) => [...prev, ...items]);
@@ -98,7 +92,7 @@ export default function TicketsPage() {
       }).catch(() => {}).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(1); }, [status, priority]);
+  useEffect(() => { load(1); }, [status]);
 
   const openTicket = async (t: Ticket) => {
     try {
@@ -159,7 +153,7 @@ export default function TicketsPage() {
           {/* Filters */}
           <div className="space-y-2">
             <div className="flex gap-1 flex-wrap">
-              {(['all', 'open', 'in_progress', 'resolved', 'closed'] as const).map((s) => (
+              {(['all', 'open', 'awaiting_agent', 'awaiting_user', 'resolved', 'closed'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setStatus(s)}
@@ -168,19 +162,6 @@ export default function TicketsPage() {
                   }`}
                 >
                   {s.replace('_', ' ')}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-1 flex-wrap">
-              {(['all', 'urgent', 'high', 'medium', 'low'] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPriority(p)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium capitalize transition-colors ${
-                    priority === p ? 'bg-[#0F2B4C] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  {p}
                 </button>
               ))}
             </div>
@@ -212,11 +193,10 @@ export default function TicketsPage() {
                         <StatusIcon size={11} />
                         {t.status.replace('_', ' ')}
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium capitalize ${PRIORITY_COLORS[t.priority]}`}>
-                        {t.priority}
-                      </span>
-                      {t.slaBreached && (
-                        <span className="text-xs text-red-500 font-medium">SLA breached</span>
+                      {t.userAccountType && (
+                        <span className="text-xs px-2 py-0.5 rounded font-medium capitalize bg-gray-100 text-gray-600">
+                          {t.userAccountType}
+                        </span>
                       )}
                       <span className={`text-xs ml-auto ${slaColor(t.createdAt, t.status)}`}>
                         {slaLabel(t.createdAt, t.status)}
@@ -255,9 +235,6 @@ export default function TicketsPage() {
                 <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[selected.status]}`}>
                   {selected.status.replace('_', ' ')}
                 </span>
-                <span className={`text-xs px-2 py-0.5 rounded font-medium capitalize ${PRIORITY_COLORS[selected.priority]}`}>
-                  {selected.priority} priority
-                </span>
                 <span className={`text-xs ${slaColor(selected.createdAt, selected.status)}`}>
                   {slaLabel(selected.createdAt, selected.status)}
                 </span>
@@ -265,7 +242,7 @@ export default function TicketsPage() {
             </div>
             {/* Actions */}
             <div className="flex gap-2 shrink-0">
-              {!selected.assignedTo && (
+              {!selected.assignedToId && (
                 <button
                   onClick={assignToMe}
                   disabled={acting}
@@ -274,16 +251,16 @@ export default function TicketsPage() {
                   Assign to me
                 </button>
               )}
-              {selected.status === 'open' && (
-                <button onClick={() => updateStatus('in_progress')} disabled={acting}
-                  className="text-xs px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 font-medium disabled:opacity-50 transition-colors">
-                  Start
-                </button>
-              )}
-              {(selected.status === 'open' || selected.status === 'in_progress') && (
+              {(selected.status === 'open' || selected.status === 'awaiting_agent' || selected.status === 'awaiting_user') && (
                 <button onClick={() => updateStatus('resolved')} disabled={acting}
                   className="text-xs px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 font-medium disabled:opacity-50 transition-colors">
                   Resolve
+                </button>
+              )}
+              {selected.status === 'closed' && (
+                <button onClick={() => updateStatus('open')} disabled={acting}
+                  className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 font-medium disabled:opacity-50 transition-colors">
+                  Reopen
                 </button>
               )}
               {selected.status === 'resolved' && (
@@ -299,24 +276,11 @@ export default function TicketsPage() {
           <div className="px-6 py-2 bg-gray-50 border-b border-gray-100 text-xs text-gray-500 flex gap-6">
             <span>Response SLA: <span className="font-medium text-[#0F2B4C]">&lt;2 hours</span></span>
             <span>Resolution SLA: <span className="font-medium text-[#0F2B4C]">&lt;24 hours</span></span>
-            {selected.assignedTo && <span>Assigned: <span className="font-medium text-[#0F2B4C]">{selected.assignedTo.name}</span></span>}
+            {selected.assignedToName && <span>Assigned: <span className="font-medium text-[#0F2B4C]">{selected.assignedToName}</span></span>}
           </div>
 
           {/* Thread */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {/* Original message */}
-            <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-[#0F2B4C]">
-                  {selected.user?.name ?? 'Customer'}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {new Date(selected.createdAt).toLocaleString('en-NG')}
-                </span>
-              </div>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{selected.description}</p>
-            </div>
-
             {/* Replies */}
             {selected.replies?.map((r) => (
               <div key={r.id} className={`rounded-xl border p-4 ${r.sender === 'admin' ? 'bg-[#0F2B4C]/5 border-[#0F2B4C]/10 ml-8' : 'bg-white border-gray-100'}`}>

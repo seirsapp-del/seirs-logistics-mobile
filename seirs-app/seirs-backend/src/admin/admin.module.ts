@@ -17,7 +17,8 @@ import { DriversModule } from '../drivers/drivers.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { FraudFlag } from '../fraud/fraud-flag.entity';
 import { CmsItem } from './cms-item.entity';
-import { SupportTicket } from './support-ticket.entity';
+import { SupportTicket } from '../support/support-ticket.entity';
+import { SupportModule } from '../support/support.module';
 import { AuditLogEntry } from './audit-log.entity';
 import { PricingConfig } from './pricing-config.entity';
 import { DuplicateAccountCandidate } from './duplicate-account.entity';
@@ -33,6 +34,7 @@ import { StoreDropoff } from '../partner-store/store-dropoff.entity';
 
 @Module({
   imports: [
+    SupportModule,
     TypeOrmModule.forFeature([
       User, ArchivedUser, Driver, Delivery, FraudFlag,
       CmsItem, SupportTicket, AuditLogEntry, PricingConfig,

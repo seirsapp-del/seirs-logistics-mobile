@@ -26,7 +26,10 @@ const AUTO_CLOSE_IDLE_DAYS = 7;
 
 // Which admin sub-roles can act as support agents. Kept as a set so
 // tests can pass a stub user without hitting the admin service.
-const AGENT_ROLES = new Set(['super_admin', 'support_agent']);
+// Aligned 2026-08-16 with roles.seed: ops_manager carries the 'tickets'
+// permission in the admin dashboard, so it must also pass the support
+// module's agent gate or the dashboard's ticket desk 403s for them.
+const AGENT_ROLES = new Set(['super_admin', 'support_agent', 'ops_manager']);
 
 @Injectable()
 export class SupportService {

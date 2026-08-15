@@ -14,7 +14,8 @@ import { UsersService } from '../users/users.service';
 import { PaymentsService } from '../payments/payments.service';
 import { DriversService } from '../drivers/drivers.service';
 import { CmsItem, ContentType, ContentStatus } from './cms-item.entity';
-import { SupportTicket, TicketStatus, TicketPriority } from './support-ticket.entity';
+import { SupportTicket, TicketStatus } from '../support/support-ticket.entity';
+import { SupportService } from '../support/support.service';
 import { AuditLogEntry } from './audit-log.entity';
 import { PricingConfig } from './pricing-config.entity';
 import { DuplicateAccountCandidate, DuplicateReason, DuplicateStatus } from './duplicate-account.entity';
@@ -51,6 +52,7 @@ export class AdminService {
     @InjectRepository(FraudFlag)                  private flagsRepo:      Repository<FraudFlag>,
     @InjectRepository(CmsItem)                    private cmsRepo:        Repository<CmsItem>,
     @InjectRepository(SupportTicket)              private ticketsRepo:    Repository<SupportTicket>,
+    private readonly supportService: SupportService,
     @InjectRepository(AuditLogEntry)              private auditRepo:      Repository<AuditLogEntry>,
     @InjectRepository(PricingConfig)              private pricingRepo:    Repository<PricingConfig>,
     @InjectRepository(DuplicateAccountCandidate)  private duplicatesRepo: Repository<DuplicateAccountCandidate>,
@@ -1805,72 +1807,99 @@ export class AdminService {
 
   // ── Support Tickets ───────────────────────────────────────────────────────
 
-  async getTickets(page: number, status?: TicketStatus, priority?: TicketPriority) {
-    const limit = 20;
-    const qb = this.ticketsRepo.createQueryBuilder('t')
-      .orderBy('t.priority', 'DESC')
-      .addOrderBy('t.createdAt', 'ASC')
-      .skip((page - 1) * limit)
-      .take(limit);
-
-    if (status)   qb.andWhere('t.status = :status', { status });
-    if (priority) qb.andWhere('t.priority = :priority', { priority });
-
-    const [items, total] = await qb.getManyAndCount();
-    return { items, total, page, limit, hasMore: page * limit < total };
+  /**
+   * Ticket desk, unified on the SUPPORT module (2026-08-16). Two parallel
+   * ticket systems shared one table: the apps wrote through the support
+   * module while this desk read the legacy admin shape, so agents were
+   * staring at an empty queue while real tickets piled up next to it.
+   * These methods now read the canonical support entity and delegate
+   * writes to SupportService, mapped to the response shape the dashboard
+   * already renders.
+   */
+  private mapTicket(t: any, replies?: any[]) {
+    return {
+      id: t.id,
+      subject: t.subject,
+      status: t.status,
+      category: t.topic,
+      topic: t.topic,
+      userAccountType: t.userAccountType,
+      userId: t.user?.id ?? null,
+      userName: t.user?.name ?? null,
+      userEmail: t.user?.email ?? null,
+      user: t.user ? { id: t.user.id, name: t.user.name, email: t.user.email } : undefined,
+      assignedToId: t.assignedAgentId ?? null,
+      linkedDeliveryId: t.linkedDeliveryId ?? null,
+      lastMessageAt: t.lastMessageAt,
+      resolvedAt: t.resolvedAt,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+      ...(replies ? { replies } : {}),
+    };
   }
 
-  async getTicket(id: string) {
-    const t = await this.ticketsRepo.findOne({ where: { id } });
-    if (!t) throw new NotFoundException('Ticket not found.');
-    return {
-      ...t,
-      user: t.userId ? { id: t.userId, name: t.userName, email: t.userEmail } : undefined,
-      assignedTo: t.assignedToId ? { id: t.assignedToId, name: t.assignedToName } : undefined,
-    };
+  async getTickets(page: number, status?: string) {
+    const limit = 20;
+    const qb = this.ticketsRepo.createQueryBuilder('t')
+      .leftJoinAndSelect('t.user', 'u')
+      .orderBy('t."lastMessageAt"', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+    if (status) qb.andWhere('t.status = :status', { status });
+    const [rows, total] = await qb.getManyAndCount();
+    return { items: rows.map((t) => this.mapTicket(t)), total, page, limit, hasMore: page * limit < total };
+  }
+
+  async getTicket(id: string, requester: any) {
+    const { ticket, messages } = await this.supportService.getThread(id, requester);
+    const ownerId = (ticket as any).user?.id;
+    const replies = messages.map((m: any) => ({
+      id: m.id,
+      message: m.body,
+      sender: m.sender && m.sender.id !== ownerId ? ('admin' as const) : ('user' as const),
+      agentName: m.sender && m.sender.id !== ownerId ? m.sender?.name : undefined,
+      createdAt: m.createdAt,
+    }));
+    const mapped = this.mapTicket(ticket, replies);
+    if ((ticket as any).assignedAgentId) {
+      const agent = await this.usersRepo.findOne({ where: { id: (ticket as any).assignedAgentId } });
+      (mapped as any).assignedToName = agent?.name ?? null;
+    }
+    return mapped;
   }
 
   async assignTicket(id: string, agentId: string) {
     const agent = await this.usersRepo.findOne({ where: { id: agentId } });
     if (!agent) throw new NotFoundException('Agent not found.');
-    await this.ticketsRepo.update(id, {
-      assignedToId:   agentId,
-      assignedToName: agent.name,
-      status:         TicketStatus.IN_PROGRESS,
-    });
-    return this.getTicket(id);
+    await this.ticketsRepo.update(id, { assignedAgentId: agentId } as any);
+    const t = await this.ticketsRepo.findOne({ where: { id }, relations: ['user'] });
+    if (!t) throw new NotFoundException('Ticket not found.');
+    return this.mapTicket(t);
   }
 
   async updateTicket(
     id: string,
-    data: { status?: TicketStatus; resolution?: string },
+    data: { status?: string; resolution?: string },
     requester: any,
     ip?: string,
   ) {
     const updates: Partial<SupportTicket> = {};
-    if (data.status) updates.status = data.status;
-    if (data.status === TicketStatus.RESOLVED) updates.resolvedAt = new Date();
+    if (data.status) {
+      const allowed = Object.values(TicketStatus) as string[];
+      if (!allowed.includes(data.status)) throw new BadRequestException(`Unknown status: ${data.status}`);
+      updates.status = data.status as TicketStatus;
+      if (data.status === TicketStatus.RESOLVED) updates.resolvedAt = new Date();
+    }
     await this.ticketsRepo.update(id, updates);
     await this.logAudit(requester, `ticket_${data.status}`, `ticket:${id}`, data, ip);
-    return this.getTicket(id);
+    const t = await this.ticketsRepo.findOne({ where: { id }, relations: ['user'] });
+    if (!t) throw new NotFoundException('Ticket not found.');
+    return this.mapTicket(t);
   }
 
   async replyToTicket(id: string, message: string, requester: any) {
-    const ticket = await this.ticketsRepo.findOne({ where: { id } });
-    if (!ticket) throw new NotFoundException('Ticket not found.');
-
-    const reply = {
-      id:        crypto.randomUUID(),
-      message,
-      sender:    'admin' as const,
-      agentId:   requester.id,
-      agentName: requester.name,
-      createdAt: new Date().toISOString(),
-    };
-
-    const replies = [...(ticket.replies ?? []), reply];
-    await this.ticketsRepo.update(id, { replies });
-    return this.getTicket(id);
+    await this.supportService.agentReply(id, requester, message);
+    return this.getTicket(id, requester);
   }
 
   // ── Audit Log ─────────────────────────────────────────────────────────────

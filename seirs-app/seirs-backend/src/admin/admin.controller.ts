@@ -17,7 +17,7 @@ import { SuperAdminGuard } from '../common/guards/super-admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { FraudFlagStatus } from '../fraud/fraud-flag.entity';
 import { ContentType, ContentStatus } from './cms-item.entity';
-import { TicketStatus, TicketPriority } from './support-ticket.entity';
+import { TicketStatus } from '../support/support-ticket.entity';
 
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller('admin')
@@ -453,16 +453,17 @@ export class AdminController {
 
   // ── Support Tickets ───────────────────────────────────────────────────────
 
-  // GET /api/v1/admin/tickets?page=1&status=open&priority=urgent
+  // GET /api/v1/admin/tickets?page=1&status=open
+  // Unified on the support module 2026-08-16; priority no longer exists.
   @Get('tickets')
-  getTickets(@Query() q: { page?: number; status?: TicketStatus; priority?: TicketPriority }) {
-    return this.adminService.getTickets(q.page ?? 1, q.status, q.priority);
+  getTickets(@Query() q: { page?: number; status?: TicketStatus }) {
+    return this.adminService.getTickets(q.page ?? 1, q.status);
   }
 
   // GET /api/v1/admin/tickets/:id
   @Get('tickets/:id')
-  getTicket(@Param('id') id: string) {
-    return this.adminService.getTicket(id);
+  getTicket(@Param('id') id: string, @CurrentUser() admin: any) {
+    return this.adminService.getTicket(id, admin);
   }
 
   // PATCH /api/v1/admin/tickets/:id/assign  { agentId }

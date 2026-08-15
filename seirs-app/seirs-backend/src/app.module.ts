@@ -46,7 +46,6 @@ import { PromotionsModule } from './promotions/promotions.module';
 import { SuggestionsModule } from './suggestions/suggestions.module';
 import { WebsiteContentModule } from './website-content/website-content.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
-import { TicketsModule } from './tickets/tickets.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 
@@ -133,7 +132,6 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
     SuggestionsModule,
     WebsiteContentModule,
     TelemetryModule,
-    TicketsModule,
     AddressesModule,
     MaintenanceModule,
   ],

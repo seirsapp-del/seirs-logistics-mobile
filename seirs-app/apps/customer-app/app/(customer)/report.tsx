@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
-import { ticketsApi } from '@/services/api';
+import { supportApi } from '@/services/api';
 
 export default function ReportScreen() {
   const router   = useRouter();
@@ -39,11 +39,19 @@ export default function ReportScreen() {
     const cat = CATEGORIES.find(c => c.id === category)!;
     setLoading(true);
     try {
-      await ticketsApi.create({
-        subject:     cat.label + (tripId ? `: trip ${String(tripId).toUpperCase()}` : ''),
-        description: detail.trim() || cat.desc,
-        category,
-        tripId:      tripId ?? undefined,
+      // Unified on the real support system (2026-08-16): the legacy
+      // /tickets endpoint wrote into a parallel table no agent watched.
+      const TOPIC_MAP: Record<string, 'billing' | 'driver' | 'account' | 'delivery' | 'other'> = {
+        lost_item: 'delivery', driver: 'driver', overcharge: 'billing',
+        route: 'delivery', vehicle: 'driver', other: 'other',
+      };
+      const isUuid = (v: unknown) =>
+        typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+      await supportApi.create({
+        topic:        TOPIC_MAP[category] ?? 'other',
+        subject:      cat.label + (tripId ? `: trip ${String(tripId).toUpperCase()}` : ''),
+        firstMessage: detail.trim() || cat.desc,
+        linkedDeliveryId: isUuid(tripId) ? String(tripId) : undefined,
       });
       setDone(true);
     } catch (e: any) {

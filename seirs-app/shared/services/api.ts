@@ -622,18 +622,6 @@ export const addressesApi = {
     request<{ deleted: true }>('DELETE', `/addresses/${id}`),
 };
 
-// ─── Support tickets (customer-facing) ────────────────────────────────────────
-export const ticketsApi = {
-  create: (body: {
-    subject: string;
-    description: string;
-    category?: string;
-    priority?: 'low' | 'medium' | 'high' | 'urgent';
-    tripId?: string;
-  }) => request<{ id: string; status: string }>('POST', '/tickets', body),
-  listMine: () => request<any[]>('GET', '/tickets/mine'),
-};
-
 // ─── Suggestions (Spec V8 §3.13) ─────────────────────────────────────────────
 export const suggestionsApi = {
   submit: (body: { subject: string; body: string; category?: string }) =>

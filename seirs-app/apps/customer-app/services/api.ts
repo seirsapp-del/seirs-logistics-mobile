@@ -26,7 +26,6 @@ export {
   suggestionsApi,
   // Wave 16B additions
   addressesApi,
-  ticketsApi,
   supportApi,
   // Wave 16E addition
   maintenanceApi,

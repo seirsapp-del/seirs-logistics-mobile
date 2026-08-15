@@ -459,8 +459,8 @@ export const adminApi = {
   },
 
   tickets: {
-    list:    (page = 1, status?: string, priority?: string) =>
-      req<any>(`/admin/tickets?page=${page}${status ? `&status=${status}` : ''}${priority ? `&priority=${priority}` : ''}`),
+    list:    (page = 1, status?: string) =>
+      req<any>(`/admin/tickets?page=${page}${status ? `&status=${status}` : ''}`),
     get:     (id: string) => req<any>(`/admin/tickets/${id}`),
     assign:  (id: string, agentId: string) =>
       req<any>(`/admin/tickets/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ agentId }) }),
