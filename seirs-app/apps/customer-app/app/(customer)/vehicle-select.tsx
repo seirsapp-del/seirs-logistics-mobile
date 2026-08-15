@@ -5,7 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -13,6 +13,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcRideFare, calcPackageFare, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
+import { deliveriesApi } from '@/services/api';
 
 // UI presentation for the rate-card package vehicles: keyed by the
 // canonical id calcPackageFare looks up. Keeping this here (not on the
@@ -54,6 +55,37 @@ export default function VehicleSelectScreen() {
   const dropoffCoords = Number(params.dropoffLat) && Number(params.dropoffLng)
     ? { latitude: Number(params.dropoffLat), longitude: Number(params.dropoffLng) } : null;
 
+  /**
+   * Live fares from the unified backend quote: one engine for shown and
+   * charged (founder 2026-08-15). The bundled card keeps pricing the
+   * screen while the request is in flight or offline, so the picker
+   * never blanks; the moment the server answers, its numbers win.
+   */
+  const ID_TO_ENUM: Record<string, string> = {
+    okada: 'motorcycle', keke: 'tricycle', car: 'car', danfo: 'van',
+    bicycle: 'bicycle', motorcycle: 'motorcycle', van: 'van',
+    truck_sm: 'truck_small', truck_lg: 'truck_large',
+  };
+  const [liveQuotes, setLiveQuotes] = useState<Record<string, { total: number }> | null>(null);
+  useEffect(() => {
+    if (!pickupCoords || !dropoffCoords) return;
+    deliveriesApi.quote({
+      pickupLat:  pickupCoords.latitude,  pickupLng:  pickupCoords.longitude,
+      dropoffLat: dropoffCoords.latitude, dropoffLng: dropoffCoords.longitude,
+      pickupAddress: params.pickup, dropoffAddress: params.dropoff,
+      packageCategory: isRide ? 'ride' : 'standard parcel',
+      weightKg: 0,
+    })
+      .then((r: any) => { if (r?.quotes && Object.keys(r.quotes).length) setLiveQuotes(r.quotes); })
+      .catch(() => { /* bundled card keeps the screen honest offline */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRide, params.pickupLat, params.pickupLng, params.dropoffLat, params.dropoffLng]);
+
+  const liveTotal = (appId: string, localTotal: number, sharedFactor = 1): number => {
+    const live = liveQuotes?.[ID_TO_ENUM[appId] ?? appId];
+    return live ? Math.round(Number(live.total) * sharedFactor) : localTotal;
+  };
+
   // Share-ride lives on this screen now (used to live on /request).
   // Only applies to car / danfo; the toggle row is hidden otherwise.
   const [shared, setShared] = useState(false);
@@ -71,7 +103,14 @@ export default function VehicleSelectScreen() {
         description: v.description,
         eta:         v.eta,
         features:    [...v.features],
-        priceLabel:  `₦${calcRideFare(v.id, distKm, shared, { pickupCoords, dropoffCoords }).total.toLocaleString()}`,
+        priceLabel:  (() => {
+          const local = calcRideFare(v.id, distKm, shared, { pickupCoords, dropoffCoords }).total;
+          const sharedFactor = shared && v.shareable
+            ? calcRideFare(v.id, distKm, true,  { pickupCoords, dropoffCoords }).total /
+              Math.max(1, calcRideFare(v.id, distKm, false, { pickupCoords, dropoffCoords }).total)
+            : 1;
+          return `₦${liveTotal(v.id, local, sharedFactor).toLocaleString()}`;
+        })(),
         shareable:   v.shareable,
       }))
     : PACKAGE_VEHICLES.map(v => {
@@ -90,7 +129,7 @@ export default function VehicleSelectScreen() {
           description: t(`send.${ui.descKey}`, { defaultValue: '' }),
           eta:         ui.eta,
           features:    ui.features,
-          priceLabel:  `₦${priced.total.toLocaleString()}`,
+          priceLabel:  `₦${liveTotal(v.id, priced.total).toLocaleString()}`,
           shareable:   false,
         };
       });

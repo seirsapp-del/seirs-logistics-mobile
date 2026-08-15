@@ -193,16 +193,54 @@ export class DeliveriesService {
    * loss. RouteDistanceService resolves Google road distance under a
    * monthly free-tier cap, then a self-calibrating fallback.
    */
+  /**
+   * Quote and charge from ONE engine (founder 2026-08-15: shown and
+   * charged can never drift). This used to answer from the legacy
+   * economy/standard/instant formula while create() charged the rate
+   * card: the fork the pricing unification existed to kill, still open
+   * on the quote side. Now it prices every vehicle on the active card
+   * for the same inputs create() will use, so the number on the screen
+   * IS the number on the receipt. Vehicles the category blocks are
+   * simply absent from the response.
+   */
   async getQuote(dto: CreateDeliveryDto) {
     const road = await this.routeDistance.getRoadDistance(
       dto.pickupLat, dto.pickupLng,
       dto.dropoffLat, dto.dropoffLng,
     );
+    const card = await this.rateCardPricing.getActiveRateCard();
+    const weight = Number(dto.weightKg ?? 0);
+    const categoryCode = toCategoryCode(dto.packageCategory);
+    const quotes: Record<string, { total: number; driverEarnings: number; nightSurcharge: number }> = {};
+    for (const vehicleType of Object.keys(card.vehicleRates)) {
+      try {
+        const b = await this.rateCardPricing.computePrice({
+          vehicleType,
+          categoryCode,
+          km: road.km,
+          stopCount: 1,
+          weightKg: weight,
+          estimatedDwellMinutes: 0,
+          scheduledAt: dto.scheduledFor ? new Date(dto.scheduledFor) : undefined,
+          pickupCoords:  { lat: dto.pickupLat,  lng: dto.pickupLng },
+          dropoffCoords: { lat: dto.dropoffLat, lng: dto.dropoffLng },
+        } as any);
+        quotes[vehicleType] = {
+          total:          Number(b.customer.total),
+          driverEarnings: Number(b.driver.total),
+          nightSurcharge: Number((b as any).customer?.nightSurcharge ?? 0),
+        };
+      } catch {
+        // Category blocks this vehicle (or the card has no rate): omit.
+      }
+    }
     return {
       distanceKm: road.km,
       durationMin: road.durationMin,
       distanceSource: road.source,
-      quotes: this.pricingService.getQuotes(road.km, dto.packageSize, dto.isFragile),
+      rateCardId: card.id,
+      categoryCode,
+      quotes,
     };
   }
 
