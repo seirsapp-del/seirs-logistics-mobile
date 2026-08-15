@@ -1681,19 +1681,28 @@ export class DeliveriesService {
       relations: ['customer'],
     });
     for (const d of stale) {
-      await this.repo.update(d.id, { status: DeliveryStatus.CANCELLED });
-      if (this.trackingGateway) {
-        try { this.trackingGateway.broadcastStatusChange(d.id, DeliveryStatus.CANCELLED); } catch { /* ws only */ }
-      }
-      if (d.customer?.id && this.paymentsService) {
-        await this.paymentsService
-          .refundEscrow(d.id, d.customer.id, 0)
-          .catch((err: any) => this.logger.error(`Auto-expiry refund failed for ${d.trackingCode}: ${err?.message ?? err}`));
-      }
-      if (d.customer?.id && this.notificationsService) {
-        this.notificationsService
-          .notifyStatusUpdate(d.customer.id, d.trackingCode, DeliveryStatus.CANCELLED, d.id)
-          .catch(() => {});
+      // Each booking is isolated: a synchronous throw from any collaborator
+      // (first prod run: one refund threw and stalled the rest of the list
+      // until later cycles) must never block the remaining refunds.
+      try {
+        await this.repo.update(d.id, { status: DeliveryStatus.CANCELLED });
+        if (this.trackingGateway) {
+          try { this.trackingGateway.broadcastStatusChange(d.id, DeliveryStatus.CANCELLED); } catch { /* ws only */ }
+        }
+        if (d.customer?.id && this.paymentsService) {
+          try {
+            await this.paymentsService.refundEscrow(d.id, d.customer.id, 0);
+          } catch (err: any) {
+            this.logger.error(`Auto-expiry refund failed for ${d.trackingCode}: ${err?.message ?? err}`);
+          }
+        }
+        if (d.customer?.id && this.notificationsService) {
+          this.notificationsService
+            .notifyStatusUpdate(d.customer.id, d.trackingCode, DeliveryStatus.CANCELLED, d.id)
+            .catch(() => {});
+        }
+      } catch (err: any) {
+        this.logger.error(`Auto-expiry failed for ${d.trackingCode}: ${err?.message ?? err}`);
       }
     }
     if (stale.length) {
