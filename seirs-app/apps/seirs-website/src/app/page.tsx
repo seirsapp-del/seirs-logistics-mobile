@@ -30,14 +30,13 @@ import {
    wheels, the yellow package as the star. ── */
 function HeroIllustration() {
   return (
-    <div className="relative w-full h-full min-h-[140px] sm:min-h-[220px] lg:min-h-[380px] flex items-center justify-center">
-      {/* The SVG scales to its column (max-w-full). Since the hero holds two
-          columns at every width now, that column is ~171px on a 390px phone,
-          so the okada renders about 171x140 at 0.39 scale and the 13px
-          strokes land near 5px. That is the cost of matching the desktop
-          arrangement on a phone: it reads as a small emblem beside the copy
-          rather than a full illustration. min-h tracks the scaled height at
-          each breakpoint so no dead navy opens up under it. */}
+    <div className="relative w-full h-full min-h-[240px] sm:min-h-[300px] lg:min-h-[380px] flex items-center justify-center">
+      {/* Sizing revised 2026-08-15 with the one-column phone hero. It used to
+          share a row with the copy, so at 360 it got ~171px and rendered at
+          0.39 scale with its 13px strokes landing near 5px: an emblem, not an
+          illustration. Full width it lands near 328px on an A30, roughly 0.75
+          scale, where the bold-stroke geometry reads as drawn. min-h tracks
+          the taller render so no dead navy opens under it. */}
       <svg width="440" height="360" viewBox="0 0 440 360" fill="none" className="max-w-full h-auto">
         {/* Lagos skyline silhouette */}
         <g fill="white" fillOpacity="0.07">
@@ -246,8 +245,13 @@ export default async function HomePage() {
               stranded on line one. The extra ~18px lets "Send anything." hold
               together. The okada still reads clearly at the narrower share,
               and lg goes back to the even desktop split. */}
-          <div className="grid grid-cols-[1.34fr_1fr] lg:grid-cols-2 gap-x-3 sm:gap-x-6 lg:gap-x-16 items-center">
-            <div className="col-span-2 lg:col-span-1 lg:col-start-1">
+          {/* Phone gets ONE column, 2026-08-15, reversing the two-column phone
+              hero. That layout capped the copy column at ~181px, which capped
+              the headline at 26px, which is what every measured reference
+              beats (Stripe 34, Paystack 40, Flutterwave 50). Desktop keeps its
+              two columns unchanged from lg. */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-3 sm:gap-x-6 lg:gap-x-16 items-center">
+            <div className="lg:col-start-1">
               {/* Founder 2026-08-14: Nigeria, not Lagos, at every width. The
                   platform is not a Lagos-only product and the chip was the
                   one place still saying otherwise. The "join the first wave"
@@ -269,7 +273,7 @@ export default async function HomePage() {
                   18px, now 26px on a phone. That is the largest the ~171px
                   column takes before the longest word in the fallback
                   headline, "Nigeria's", starts to overhang. */}
-              <h1 className="text-[26px] sm:text-3xl md:text-4xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-2 lg:mb-6 tracking-tight">
+              <h1 className="text-display-sm lg:text-display-lg font-extrabold text-white mb-4 lg:mb-6">
                 {hero?.title ?? (
                   <>
                     Nigeria&apos;s Smartest
@@ -281,25 +285,17 @@ export default async function HomePage() {
                 )}
               </h1>
 
-              <p className="text-white/70 text-xs sm:text-base lg:text-lg leading-relaxed mb-5 lg:mb-8 max-w-lg">
+              <p className="text-white/75 text-body-lg lg:text-body-lg-d mb-7 lg:mb-8 max-w-lg">
                 {hero?.excerpt ??
                   'Send thousands of packages with one click. Real-time tracking, business wallets, and a network of verified drivers and partner stores across Nigeria.'}
               </p>
-            </div>
-
-            {/* The okada. On a phone it takes column 2 of the headline row,
-                so it sits beside "Send anything, anywhere" rather than under
-                the buttons. From lg it is pinned to column 2 spanning every
-                row, which is the original desktop placement. */}
-            <div className="lg:col-start-2 lg:row-start-1 lg:row-span-5 lg:self-center">
-              <HeroIllustration />
             </div>
 
             {/* Founder: the two CTAs go side by side underneath the okada
                 row, not stacked. flex-row at every width, and they get the
                 full page width back now that they are out of the narrow
                 column, so the phone padding can come back up a little. */}
-            <div className="col-span-2 lg:col-span-1 lg:col-start-1 flex flex-row gap-2 lg:gap-4 mb-6 lg:mb-14">
+            <div className="lg:col-start-1 flex flex-row gap-2 lg:gap-4 mb-6 lg:mb-14">
                 <GetAppButton
                   app="customer"
                   className="flex-1 lg:flex-none inline-flex items-center justify-center gap-1.5 lg:gap-2 bg-white text-navy font-bold px-3 py-3 lg:px-8 lg:py-4 rounded-btn hover:bg-gray-50 transition-colors shadow-xl text-[13px] sm:text-sm lg:text-base whitespace-nowrap"
@@ -320,13 +316,23 @@ export default async function HomePage() {
                   Igbo / Hausa translations (improving, see the language
                   story), and this site is English with browser
                   translation. Say exactly that. */}
-              {/* Founder: this reads as one line on a phone. The full
+              {/* The okada now sits BELOW the CTAs on a phone, not beside the
+                headline. In one column it becomes a full-width band instead
+                of a 0.39-scale emblem squeezed into half the screen, so its
+                bold strokes read at the weight they were drawn for. Desktop
+                placement is explicit (column 2, spanning every row), so
+                moving it down the DOM changes nothing from lg up. */}
+            <div className="mb-8 lg:mb-0 lg:col-start-2 lg:row-start-1 lg:row-span-5 lg:self-center">
+              <HeroIllustration />
+            </div>
+
+            {/* Founder: this reads as one line on a phone. The full
                   sentence wrapped to three, so the invitation to read the
                   story is desktop-only and the claim itself, which is the
                   part that matters, stays whole. */}
               <Link
                 href="/news/speaking-nigerian-languages"
-                className="col-span-2 lg:col-span-1 lg:col-start-1 w-fit inline-flex items-center gap-2 lg:gap-2.5 bg-white/5 border border-white/15 rounded-lg px-2.5 py-1.5 lg:px-3 lg:py-2 mb-6 lg:mb-8 hover:bg-white/10 transition-colors"
+                className="lg:col-start-1 w-fit inline-flex items-center gap-2 lg:gap-2.5 bg-white/5 border border-white/15 rounded-lg px-2.5 py-1.5 lg:px-3 lg:py-2 mb-6 lg:mb-8 hover:bg-white/10 transition-colors"
               >
                 <Globe size={13} className="text-[#FFBE0B] flex-shrink-0" strokeWidth={1.75} />
                 <span className="text-white/65 text-[11px] lg:text-xs whitespace-nowrap">
@@ -343,7 +349,7 @@ export default async function HomePage() {
                   a phone. Was a 2x2 block; now four across at every width,
                   which puts each cell at roughly 83px on a 390px screen, so
                   the value drops to 14px and the label to 9px to fit. */}
-              <div className="col-span-2 lg:col-span-1 lg:col-start-1 grid grid-cols-4 gap-2 lg:gap-4">
+              <div className="lg:col-start-1 grid grid-cols-4 gap-2 lg:gap-4">
                 {[
                   { value: "24/7", label: "Pickups, day & night" },
                   { value: "Live", label: "GPS tracking" },
