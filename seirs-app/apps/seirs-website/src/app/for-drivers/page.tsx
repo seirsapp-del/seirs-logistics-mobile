@@ -308,6 +308,22 @@ export default async function ForDriversPage() {
         </div>
       </section>
 
+      {/* Founder 2026-08-15: a picture between the requirements and the
+          application steps, so the page breathes before the process. The
+          slot is img_driver_portrait, admin-replaceable, which the homepage
+          driver band used before it was cut: revived here rather than
+          minting a near-identical new slot, so anything already uploaded to
+          it comes straight back. Same band treatment as the partner page. */}
+      {img.img_driver_portrait && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={img.img_driver_portrait}
+          alt="A Seirs rider ready to work"
+          className="w-full h-56 sm:h-72 lg:h-96 object-cover"
+          loading="lazy"
+        />
+      )}
+
       {/* Application steps */}
       <section className="py-section-sm lg:py-section-lg bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
