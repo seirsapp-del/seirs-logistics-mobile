@@ -131,9 +131,17 @@ export default async function ForDriversPage() {
             <h2 className="section-title mb-4">
               Built for drivers, not just dispatchers
             </h2>
+            {/* Reworded 2026-08-15 (founder flagged it). "In Lagos" pinned
+                the pitch to one city after the whole site moved to Nigeria
+                framing for the Africa expansion. And "pays you what you
+                earn" was circular: it said nothing, and read suspiciously
+                it invited "so where is the cut?". The true, checkable
+                strength is the opposite: the platform cut is shown plainly
+                on every trip, so say that. */}
             <p className="section-sub">
-              Built around how dispatch riders actually work in Lagos: a
-              platform that respects your time and pays you what you earn.
+              Built around how dispatch riders actually work in Nigeria: a
+              platform that respects your time and shows you exactly what you
+              earn on every trip.
             </p>
           </div>
 
