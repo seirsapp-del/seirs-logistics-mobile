@@ -24,6 +24,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MapPin, Phone, Clock, Search, Store, ExternalLink, Navigation } from 'lucide-react';
+import { HeroBackdrop } from '@/components/HeroBackdrop';
 
 // Env unification 2026-08-14: this file, reset-password and track/[code]
 // read NEXT_PUBLIC_API_URL while contact and cms.ts read
@@ -140,8 +141,9 @@ export default function FindAPartnerPage() {
   return (
     <div className="min-h-screen">
       {/* Hero */}
-      <section className="bg-navy text-white">
-        <div className="mx-auto max-w-5xl px-4 py-16 sm:py-20">
+      <section className="relative overflow-hidden bg-navy text-white">
+        <HeroBackdrop slot="img_hero_directory" />
+        <div className="relative mx-auto max-w-5xl px-4 py-16 sm:py-20">
           <div className="max-w-2xl">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90">
               <Store size={14} className="text-sky" />

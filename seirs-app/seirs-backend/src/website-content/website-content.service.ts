@@ -554,6 +554,23 @@ export class WebsiteContentService implements OnModuleInit {
 // excerpt doubles as the admin's what-goes-where instruction card AND
 // the generation brief (matches Desktop\seirs-image-prompts.txt names).
 const IMAGE_SLOTS: Array<Partial<WebsiteContent>> = [
+  // Per-page header backdrops, added 2026-08-15 (founder: every page should
+  // be able to carry a background image like the homepage, and each must be
+  // individually changeable, never shared). One slot per page; with a slot
+  // empty that page keeps its plain navy gradient. The four audience pages
+  // and careers already had their own hero slots; these cover the rest.
+  { slug: 'img_hero_news', title: 'News page: header backdrop',
+    excerpt: 'Background image behind the News & Updates header only. Shown dimmed over navy. Wide, roughly 21:9.' },
+  { slug: 'img_hero_faq', title: 'FAQ page: header backdrop',
+    excerpt: 'Background image behind the FAQ header only. Shown dimmed over navy. Wide, roughly 21:9.' },
+  { slug: 'img_hero_changelog', title: 'Changelog page: header backdrop',
+    excerpt: 'Background image behind the Changelog header only. Shown dimmed over navy. Wide, roughly 21:9.' },
+  { slug: 'img_hero_contact', title: 'Contact page: header backdrop',
+    excerpt: 'Background image behind the Contact Us header only. Shown dimmed over navy. Wide, roughly 21:9.' },
+  { slug: 'img_hero_track', title: 'Track page: header backdrop',
+    excerpt: 'Background image behind the Track your delivery header only. Keep it calm: a busy image fights the tracking-code input. Wide, roughly 21:9.' },
+  { slug: 'img_hero_directory', title: 'Find a Partner page: header backdrop',
+    excerpt: 'Background image behind the partner directory header only. Shown dimmed over navy. Wide, roughly 21:9.' },
   // Trust badge logos, added 2026-08-15. The footer badge row shows real
   // marks rather than lucide icons. Upload the official asset for each;
   // until then the badge falls back to its text label, so the row never

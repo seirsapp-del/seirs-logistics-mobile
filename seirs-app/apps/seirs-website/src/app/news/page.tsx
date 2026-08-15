@@ -1,6 +1,7 @@
 ﻿import Link from 'next/link';
 import { ArrowRight, Newspaper } from 'lucide-react';
-import { listContent, fmtDate } from '@/lib/cms';
+import { listContent, fmtDate, getImageSlots } from '@/lib/cms';
+import { ContentHero } from '@/components/ContentHero';
 
 export const revalidate = 60;
 
@@ -19,11 +20,12 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default async function NewsPage() {
+  const img = await getImageSlots();
   const articles = await listContent('article', { pageSize: 24 });
 
   return (
     <>
-      <ContentHero title="News & Updates" subtitle="Product launches, company milestones, and stories from across the SEIRS network." />
+      <ContentHero imageUrl={img.img_hero_news} title="News & Updates" subtitle="Product launches, company milestones, and stories from across the SEIRS network." />
 
       <section className="bg-cream py-section-sm lg:py-section-lg">
         <div className="max-w-6xl mx-auto px-6">
@@ -72,13 +74,3 @@ export default async function NewsPage() {
 
 // Lightweight hero for content-list pages, gradient matches PageHero
 // but no required CTAs, icon, or eyebrow.
-function ContentHero({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <section className="bg-gradient-to-br from-navy via-[#1a3a5c] to-navy text-white pt-28 pb-16">
-      <div className="max-w-4xl mx-auto px-6 text-center">
-        <h1 className="text-title-sm lg:text-title-lg font-extrabold mb-4">{title}</h1>
-        <p className="text-white/70 text-lg max-w-2xl mx-auto">{subtitle}</p>
-      </div>
-    </section>
-  );
-}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, PackageSearch } from "lucide-react";
+import { HeroBackdrop } from "@/components/HeroBackdrop";
 
 /**
  * /track: the front door to tracking.
@@ -62,8 +63,9 @@ export default function TrackIndexPage() {
 
   return (
     <div className="bg-off-white min-h-screen">
-      <div className="bg-navy py-14 sm:py-20">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div className="relative overflow-hidden bg-navy py-14 sm:py-20">
+        <HeroBackdrop slot="img_hero_track" />
+        <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 lg:w-16 lg:h-16 rounded-2xl bg-white/10 border border-white/20 mb-5 lg:mb-6">
             <PackageSearch size={24} className="text-sky" strokeWidth={1.75} />
           </div>

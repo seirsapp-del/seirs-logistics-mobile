@@ -1,5 +1,6 @@
 import { HelpCircle } from 'lucide-react';
-import { listContent, renderMarkdown } from '@/lib/cms';
+import { listContent, renderMarkdown, getImageSlots } from '@/lib/cms';
+import { ContentHero } from '@/components/ContentHero';
 
 export const revalidate = 60;
 
@@ -17,6 +18,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default async function FaqPage() {
+  const img = await getImageSlots();
   const items = await listContent('faq', { pageSize: 50 });
 
   // Group by category. Uncategorised items fall under "General".
@@ -29,7 +31,7 @@ export default async function FaqPage() {
 
   return (
     <>
-      <ContentHero title="Frequently Asked Questions" subtitle="Quick answers to the questions we hear most often." />
+      <ContentHero imageUrl={img.img_hero_faq} title="Frequently Asked Questions" subtitle="Quick answers to the questions we hear most often." />
 
       <section className="bg-cream py-section-sm lg:py-section-lg">
         <div className="max-w-3xl mx-auto px-6 space-y-10">
@@ -66,13 +68,3 @@ export default async function FaqPage() {
   );
 }
 
-function ContentHero({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <section className="bg-gradient-to-br from-navy via-[#1a3a5c] to-navy text-white pt-28 pb-16">
-      <div className="max-w-4xl mx-auto px-6 text-center">
-        <h1 className="text-title-sm lg:text-title-lg font-extrabold mb-4">{title}</h1>
-        <p className="text-white/70 text-lg max-w-2xl mx-auto">{subtitle}</p>
-      </div>
-    </section>
-  );
-}

@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { HeroBackdrop } from "@/components/HeroBackdrop";
 import { Mail, Phone, MapPin, Send, CheckCircle, Building2, Truck, Store, MessageSquare } from "lucide-react";
 
 const subjects = [
@@ -123,8 +124,9 @@ function ContactForm() {
   return (
     <div className="bg-off-white min-h-screen">
       {/* Header */}
-      <div className="bg-navy py-16">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative overflow-hidden bg-navy py-16">
+        <HeroBackdrop slot="img_hero_contact" />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-sky/20 rounded-xl flex items-center justify-center">
               <MessageSquare size={20} className="text-sky" />

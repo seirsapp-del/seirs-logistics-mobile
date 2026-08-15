@@ -1,5 +1,6 @@
 import { ScrollText } from 'lucide-react';
-import { listContent, renderMarkdown, fmtDate } from '@/lib/cms';
+import { listContent, renderMarkdown, fmtDate, getImageSlots } from '@/lib/cms';
+import { ContentHero } from '@/components/ContentHero';
 
 export const revalidate = 60;
 
@@ -9,11 +10,12 @@ export const metadata = {
 };
 
 export default async function ChangelogPage() {
+  const img = await getImageSlots();
   const items = await listContent('changelog', { pageSize: 50 });
 
   return (
     <>
-      <ContentHero title="Changelog" subtitle="Every product update, feature launch, and improvement, newest first." />
+      <ContentHero imageUrl={img.img_hero_changelog} title="Changelog" subtitle="Every product update, feature launch, and improvement, newest first." />
 
       <section className="bg-cream py-section-sm lg:py-section-lg">
         <div className="max-w-3xl mx-auto px-6 space-y-8">
@@ -44,13 +46,3 @@ export default async function ChangelogPage() {
   );
 }
 
-function ContentHero({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <section className="bg-gradient-to-br from-navy via-[#1a3a5c] to-navy text-white pt-28 pb-16">
-      <div className="max-w-4xl mx-auto px-6 text-center">
-        <h1 className="text-title-sm lg:text-title-lg font-extrabold mb-4">{title}</h1>
-        <p className="text-white/70 text-lg max-w-2xl mx-auto">{subtitle}</p>
-      </div>
-    </section>
-  );
-}
