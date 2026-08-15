@@ -150,7 +150,7 @@ export default function BusinessEditProfileScreen() {
         <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.surfaceSecond }]}>
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.text }]}>Edit Profile</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Edit Business Details</Text>
         <View style={{ width: 32 }} />
       </View>
 

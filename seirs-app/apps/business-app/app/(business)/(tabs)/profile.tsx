@@ -5,7 +5,9 @@
  * for reach-anywhere), presented as a screen in the app's restrained
  * business style: account card, SEIRS ID, grouped menu, sign out.
  */
-import { View, Text, ScrollView, Pressable, StyleSheet, Linking } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Modal } from 'react-native';
+import { useState } from 'react';
+import QRCode from 'react-native-qrcode-svg';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +23,7 @@ export default function BusinessProfileTab() {
   const colors = useColors();
   const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const [qrVisible, setQrVisible] = useState(false);
 
   const firstName = user?.name?.split(' ')[0] ?? '';
   const initial = (firstName || user?.companyName || '?').charAt(0).toUpperCase();
@@ -92,13 +95,30 @@ export default function BusinessProfileTab() {
       </View>
 
       {!!user?.accountId && (
-        <View style={[styles.idRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Pressable
+          style={[styles.idRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => setQrVisible(true)}
+        >
           <Text style={[styles.idLabel, { color: colors.textSecond }]}>
-            {t('profile.seirsId', { defaultValue: 'SEIRS ID' })}
+            {t('profile.seirsIdTap', { defaultValue: 'SEIRS ID · TAP FOR QR' })}
           </Text>
           <Text style={[styles.idValue, { color: colors.text }]}>{user.accountId}</Text>
-        </View>
+        </Pressable>
       )}
+
+      {/* SEIRS ID QR, customer-app parity (founder 2026-08-16): shown at
+          partner counters and handoffs. Content is the accountId only. */}
+      <Modal visible={qrVisible} transparent animationType="fade" onRequestClose={() => setQrVisible(false)}>
+        <Pressable style={styles.qrBackdrop} onPress={() => setQrVisible(false)}>
+          <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
+            <QRCode value={user?.accountId ?? 'SEIRS'} size={200} />
+            <Text style={[styles.qrId, { color: colors.text }]}>{user?.accountId}</Text>
+            <Text style={[styles.qrHint, { color: colors.textSecond }]}>
+              {t('profile.qrHint', { defaultValue: 'Show this at partner counters and handoffs.' })}
+            </Text>
+          </View>
+        </Pressable>
+      </Modal>
 
       {sections.map((section) => (
         <View key={section.title}>
@@ -153,4 +173,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 20, marginTop: 28, paddingVertical: 14, borderRadius: 14, borderWidth: 1,
   },
   signOutText: { color: '#DC2626', fontSize: 15, fontWeight: '600' },
+  qrBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
+  qrCard:     { alignItems: 'center', gap: 12, padding: 28, borderRadius: 20 },
+  qrId:       { fontSize: 16, fontWeight: '700', letterSpacing: 1 },
+  qrHint:     { fontSize: 12, textAlign: 'center', maxWidth: 220 },
 });
