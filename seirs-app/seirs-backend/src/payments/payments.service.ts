@@ -575,8 +575,27 @@ export class PaymentsService {
 
     if (payment.escrowStatus === EscrowStatus.RELEASED) return;
 
-    const commission      = await this.getCommissionRate();
-    const driverShareKobo = Math.round(payment.amountKobo * (1 - commission));
+    const commission = await this.getCommissionRate();
+
+    /**
+     * Pay the number the driver was promised, not a recomputation
+     * (2026-08-15). The delivery row's driverEarnings is set at booking as
+     * 70% of the subtotal PLUS the night fee in full: that is the figure
+     * the job card showed when the driver accepted. This release path used
+     * to ignore it and take a flat (1 - commission) of gross, which
+     * silently kept 30% of the night fee, so night trips paid less than
+     * their own offer screen. Booked figure wins; the gross split stays as
+     * the fallback for legacy rows that predate driverEarnings.
+     */
+    const delivery = await this.dataSource.getRepository(Delivery).findOne({
+      where: { id: deliveryId },
+      select: ['id', 'driverEarnings'],
+    });
+    const bookedNaira = Number(delivery?.driverEarnings);
+    const driverShareKobo =
+      Number.isFinite(bookedNaira) && bookedNaira > 0
+        ? Math.min(Math.round(bookedNaira * 100), payment.amountKobo)
+        : Math.round(payment.amountKobo * (1 - commission));
 
     await this.dataSource.transaction(async (manager) => {
       let driverWallet = await manager.findOne(Wallet, {
@@ -608,7 +627,10 @@ export class PaymentsService {
         driverId:        driverUserId,
         deliveryId,
         grossNaira:      toNaira(payment.amountKobo),
-        seirsCutPercent: commission,
+        // Effective cut, derived from what was actually credited above, so
+        // the ledger and the wallet agree on night trips where the booked
+        // driverEarnings carries the night fee in full.
+        seirsCutPercent: 1 - driverShareKobo / Math.max(payment.amountKobo, 1),
       });
     } catch (e: any) {
       this.logger.warn(`DriverEarning record failed for ${deliveryId}: ${e.message}`);

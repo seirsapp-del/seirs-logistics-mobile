@@ -256,6 +256,18 @@ export class Delivery {
   @Column({ type: 'decimal', precision: 7, scale: 2, default: 0 })
   distanceKm: number;
 
+  // How distanceKm was measured (2026-08-15): 'google' road distance,
+  // 'calibrated' straight-line x learned zone factor, or raw 'haversine'.
+  // Feeds the nightly circuity calibration, which only learns from rows
+  // whose distance came from Google ground truth.
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  quotedDistanceSource: string | null;
+
+  // Traffic-aware drive time at quote time, minutes. Null when the quote
+  // fell back to calibration (no route was fetched).
+  @Column({ type: 'numeric', precision: 6, scale: 1, nullable: true })
+  quotedDurationMin: number | null;
+
   // Snapshot of the active RateCard at booking time. Future rate
   // changes don't alter historical prices. Nullable for legacy rows.
   @Column({ nullable: true })

@@ -117,4 +117,21 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'dev_scale_overage',           name: 'Dev Platform - Scale Overage',
     description: 'Per-delivery charge once Scale tier monthly inclusion is exhausted.',
     category: FeeCategory.DEV_PLATFORM, unit: FeeUnit.FLAT_NGN,   value: 80 },
+
+  // Road-distance quoting knobs (2026-08-15). Directions calls are capped
+  // under Google's 10,000/month free tier; past the cap, quotes fall back
+  // to straight-line distance times a circuity factor that the system
+  // calibrates from real routed trips per pickup zone, bounded both ways.
+  { key: 'routes_api_monthly_cap',      name: 'Routes API monthly call cap',
+    description: 'Directions lookups allowed per calendar month before quotes fall back to calibrated straight-line distance. Keep under the 10,000 free tier unless billing is intended.',
+    category: FeeCategory.COMMISSION,   unit: FeeUnit.FLAT_NGN,   value: 9000 },
+  { key: 'circuity_default_pct',        name: 'Circuity factor default (%)',
+    description: 'Fallback road-vs-straight-line ratio when a pickup zone has no learned value. 145 means roads assumed 45% longer than the crow flies.',
+    category: FeeCategory.COMMISSION,   unit: FeeUnit.PERCENT,    value: 145 },
+  { key: 'circuity_min_pct',            name: 'Circuity factor floor (%)',
+    description: 'Lower bound on any circuity factor, learned or default.',
+    category: FeeCategory.COMMISSION,   unit: FeeUnit.PERCENT,    value: 110 },
+  { key: 'circuity_max_pct',            name: 'Circuity factor ceiling (%)',
+    description: 'Upper bound on any circuity factor, learned or default.',
+    category: FeeCategory.COMMISSION,   unit: FeeUnit.PERCENT,    value: 220 },
 ];

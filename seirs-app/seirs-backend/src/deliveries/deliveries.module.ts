@@ -4,6 +4,7 @@ import { DataSource, Repository } from 'typeorm';
 import { DeliveriesController } from './deliveries.controller';
 import { DeliveriesService } from './deliveries.service';
 import { PricingService } from './pricing.service';
+import { RouteDistanceService } from './route-distance.service';
 import { Delivery } from './delivery.entity';
 import { DeliveryEvent } from './delivery-event.entity';
 import { MatchingModule } from '../matching/matching.module';
@@ -27,12 +28,14 @@ import { ChatModule } from '../chat/chat.module';
 import { ChatService } from '../chat/chat.service';
 import { StoreDropoff } from '../partner-store/store-dropoff.entity';
 import { FeesModule } from '../fees/fees.module';
+import { MapsModule } from '../maps/maps.module';
 import { FeesService } from '../fees/fees.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Delivery, DeliveryEvent, User, StoreDropoff]),
     FeesModule,
+    MapsModule,
     MatchingModule,
     TrackingModule,
     forwardRef(() => PaymentsModule),
@@ -44,7 +47,7 @@ import { FeesService } from '../fees/fees.service';
     ChatModule,
   ],
   controllers: [DeliveriesController],
-  providers: [DeliveriesService, PricingService],
+  providers: [DeliveriesService, PricingService, RouteDistanceService],
   exports: [DeliveriesService, PricingService],
 })
 export class DeliveriesModule implements OnModuleInit {
@@ -172,6 +175,13 @@ export class DeliveriesModule implements OnModuleInit {
       await this.ds.query(`
         ALTER TABLE "deliveries"
           ADD COLUMN IF NOT EXISTS "nightFeeNgn" numeric(12,2) NULL
+      `);
+      // Road-distance quoting (2026-08-15): which source measured the fare's
+      // distance, and the traffic-aware duration when Google answered.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "quotedDistanceSource" varchar(16) NULL,
+          ADD COLUMN IF NOT EXISTS "quotedDurationMin" numeric(6,1) NULL
       `);
       // Customer cancellation (2026-08-14): the fee that was quoted in
       // the app but never priced, stored, or charged.

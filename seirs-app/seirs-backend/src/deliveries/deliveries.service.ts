@@ -7,6 +7,7 @@ import { Delivery, DeliveryStatus, PackageSize, UrgencyLevel } from './delivery.
 import { DeliveryEvent, DeliveryEventType, EventActorRole } from './delivery-event.entity';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
+import { RouteDistanceService } from './route-distance.service';
 import { User } from '../users/user.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
@@ -158,24 +159,39 @@ export class DeliveriesService {
   constructor(
     @InjectRepository(Delivery) private repo: Repository<Delivery>,
     private pricingService: PricingService,
+    private routeDistance: RouteDistanceService,
   ) {}
 
-  getQuote(dto: CreateDeliveryDto) {
-    const distanceKm = PricingService.haversineKm(
+  /**
+   * Road distance since 2026-08-15. Fares were priced on the straight line
+   * between the pins, which in Lagos meant quoting across the lagoon while
+   * the driver went around it: with the fare locked at booking and the
+   * driver paid a share of the QUOTE, every underquote was the rider's
+   * loss. RouteDistanceService resolves Google road distance under a
+   * monthly free-tier cap, then a self-calibrating fallback.
+   */
+  async getQuote(dto: CreateDeliveryDto) {
+    const road = await this.routeDistance.getRoadDistance(
       dto.pickupLat, dto.pickupLng,
       dto.dropoffLat, dto.dropoffLng,
     );
     return {
-      distanceKm: Math.round(distanceKm * 10) / 10,
-      quotes: this.pricingService.getQuotes(distanceKm, dto.packageSize, dto.isFragile),
+      distanceKm: road.km,
+      durationMin: road.durationMin,
+      distanceSource: road.source,
+      quotes: this.pricingService.getQuotes(road.km, dto.packageSize, dto.isFragile),
     };
   }
 
   async create(dto: CreateDeliveryDto, customer: User): Promise<Delivery> {
-    const distanceKm = PricingService.haversineKm(
+    // Same resolver as getQuote, and the 15-minute cache means the booking
+    // reuses the exact distance the customer was shown on the quote screen:
+    // the two cannot disagree inside one booking session.
+    const road = await this.routeDistance.getRoadDistance(
       dto.pickupLat, dto.pickupLng,
       dto.dropoffLat, dto.dropoffLng,
     );
+    const distanceKm = road.km;
 
     /**
      * The customer app describes a package by weight, category and
@@ -297,6 +313,8 @@ export class DeliveriesService {
       trackingCode,
       customer,
       distanceKm,
+      quotedDistanceSource: road.source,
+      quotedDurationMin:    road.durationMin,
       price:          +(pricing.price + nightFee).toFixed(2),
       driverEarnings: +(pricing.driverEarnings + nightFee).toFixed(2),
       nightFeeNgn:    nightFee > 0 ? nightFee : null,
