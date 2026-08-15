@@ -281,7 +281,7 @@ export default async function ForDriversPage() {
                 Valid Nigerian ID (NIN, BVN, driver&apos;s licence, voter&apos;s card, or international passport)
               </RequirementRow>
               <RequirementRow>
-                A working Android smartphone with GPS
+                A working smartphone with GPS
               </RequirementRow>
               <RequirementRow>
                 A vehicle you own or have permission to use (bicycle, motorcycle, tricycle, car, or van)

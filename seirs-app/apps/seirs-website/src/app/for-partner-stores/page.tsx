@@ -223,7 +223,7 @@ export default async function ForPartnerStoresPage() {
                 Storage space for at least 10 packages at any given time
               </CheckRow>
               <CheckRow>
-                A working Android smartphone for the Seirs Business app
+                A working smartphone for the Seirs Business app
               </CheckRow>
               <CheckRow>
                 Valid CAC business registration OR personal NIN if running as sole trader
