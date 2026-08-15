@@ -30,9 +30,13 @@ export function PageHero({
   title: ReactNode;
   subtitle: string;
   icon: LucideIcon;
-  primaryCtaLabel: string;
+  // ReactNode (2026-08-15) so a page can hand in a short phone label and the
+  // full label from sm: up. "Get the Customer App" wrapped to two lines
+  // beside a one-line "Become a Driver" in the 50/50 phone row, and no
+  // readable font size fits 20 characters in half of 360px.
+  primaryCtaLabel: React.ReactNode;
   primaryCtaHref: string;
-  secondaryCtaLabel?: string;
+  secondaryCtaLabel?: React.ReactNode;
   secondaryCtaHref?: string;
   heroImageUrl?: string | null;
 }) {

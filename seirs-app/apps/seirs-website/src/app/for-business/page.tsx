@@ -76,7 +76,12 @@ export default async function ForBusinessPage() {
         icon={Briefcase}
         primaryCtaLabel="Talk to our team"
         primaryCtaHref="/contact?subject=business"
-        secondaryCtaLabel="Become a partner store"
+        secondaryCtaLabel={
+          <>
+            <span className="sm:hidden">Partner stores</span>
+            <span className="hidden sm:inline">Become a partner store</span>
+          </>
+        }
         secondaryCtaHref="/for-partner-stores"
       />
 

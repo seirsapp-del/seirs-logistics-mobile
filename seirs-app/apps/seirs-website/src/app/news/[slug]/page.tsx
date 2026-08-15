@@ -178,7 +178,11 @@ export default async function ArticlePage({ params }: Props) {
           <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />
         )}
         <div className="relative max-w-3xl mx-auto px-6 pt-24 pb-14">
-          <Link href="/news" className="inline-flex items-center gap-1 text-sm text-white/70 hover:text-white mb-8">
+          {/* Was inline-flex, which let the IMPACT category label sit on the
+              same line, jammed against "All stories" with no gap (founder
+              spotted it on desktop; it did the same on phones). flex w-fit
+              keeps the arrow+text layout but owns its own line. */}
+          <Link href="/news" className="flex w-fit items-center gap-1 text-sm text-white/70 hover:text-white mb-8">
             <ArrowLeft size={14} /> All stories
           </Link>
           {article.category && (

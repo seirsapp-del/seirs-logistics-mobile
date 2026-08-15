@@ -129,7 +129,12 @@ export default async function HowItWorksPage() {
         }
         subtitle="Seirs runs on three connected apps, one for customers sending packages, one for drivers fulfilling them, and one for businesses and partner stores managing volume. They all talk to the same backend, in real time."
         icon={Workflow}
-        primaryCtaLabel="Get the Customer App"
+        primaryCtaLabel={
+          <>
+            <span className="sm:hidden">Get the App</span>
+            <span className="hidden sm:inline">Get the Customer App</span>
+          </>
+        }
         primaryCtaHref={STORE.play('customer')}
         secondaryCtaLabel="Become a Driver"
         secondaryCtaHref={STORE.play('driver')}

@@ -87,7 +87,12 @@ export default async function ForPartnerStoresPage() {
         }
         subtitle="Already running a kiosk, supermarket, pharmacy, or any neighbourhood shopfront? Become a Seirs Partner Store. Earn for every package you handle, drive foot traffic, and watch every naira on your statement. No upfront cost."
         icon={Store}
-        primaryCtaLabel="Apply to be a partner"
+        primaryCtaLabel={
+          <>
+            <span className="sm:hidden">Apply to partner</span>
+            <span className="hidden sm:inline">Apply to be a partner</span>
+          </>
+        }
         primaryCtaHref="/contact?subject=partner"
         secondaryCtaLabel="See how it works"
         secondaryCtaHref="/how-it-works"
