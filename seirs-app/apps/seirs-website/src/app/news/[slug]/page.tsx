@@ -120,10 +120,47 @@ export default async function ArticlePage({ params }: Props) {
   // fallback so the ten existing stories keep their pictures until each
   // gets a curated gallery.
   const galleryUrls = article.galleryImages ?? [];
-  const imageUrls = galleryUrls.length
-    ? galleryUrls
+
+  // Manual placement (founder 2026-08-15: "the ability to put it within the
+  // article anywhere we want, maybe after a certain paragraph"). The admin
+  // types {{img1}}..{{img5}} in the body to pin a specific gallery image
+  // after a paragraph, and {{video}} to pin the video. Placed images leave
+  // the auto-interleave pool so nothing shows twice; unplaced ones keep
+  // flowing every few paragraphs, and an unplaced video stays at the top.
+  // A token whose image does not exist is stripped rather than printed.
+  let rawBody = article.body;
+  const placed = new Set<number>();
+  rawBody = rawBody.replace(/\{\{img([1-5])\}\}/g, (_m, d: string) => {
+    const idx = Number(d) - 1;
+    const url = galleryUrls[idx];
+    if (!url) return '';
+    placed.add(idx);
+    return `
+
+![image](${url})
+
+`;
+  });
+  const videoTokenUsed = /\{\{video\}\}/.test(rawBody) && !!article.videoUrl;
+
+  const interleavePool = galleryUrls.length
+    ? galleryUrls.filter((_, i) => !placed.has(i))
     : slotKeys.map(k => img[k]).filter(Boolean);
-  const body = illustrate(article.body, imageUrls, galleryUrls.length > 0);
+  const body = illustrate(rawBody, interleavePool, galleryUrls.length > 0);
+
+  // {{video}} placement. The token has no markdown-special characters, so it
+  // survives renderMarkdown as a plain <p>{{video}}</p>, which is swapped for
+  // the embed here. The src is admin-supplied and publish-gated, but quotes
+  // are stripped anyway so a pasted URL cannot break out of the attribute.
+  let bodyHtml = renderMarkdown(body);
+  if (videoTokenUsed) {
+    const v = videoEmbed(article.videoUrl!);
+    const embedHtml = !v ? '' : v.kind === 'youtube'
+      ? `<div class="article-video"><iframe src="${v.src.replace(/"/g, '')}" title="Video" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`
+      : `<div class="article-video"><video src="${v.src.replace(/"/g, '')}" controls preload="metadata"></video></div>`;
+    bodyHtml = bodyHtml.split('<p>{{video}}</p>').join(embedHtml);
+  }
+
   const minutes = readingMinutes(article.body);
   const related = siblings.filter(s => s.slug !== slug).slice(0, 3);
   const cover = article.coverImageUrl ?? img[slotKeys[0]] ?? null;
@@ -174,7 +211,7 @@ export default async function ArticlePage({ params }: Props) {
             16:9 box is reserved either way, so the page does not jump when
             the player loads. */}
         {(() => {
-          const v = article.videoUrl ? videoEmbed(article.videoUrl) : null;
+          const v = article.videoUrl && !videoTokenUsed ? videoEmbed(article.videoUrl) : null;
           if (!v) return null;
           return (
             <div className="mb-10 rounded-card overflow-hidden shadow-lg aspect-video bg-navy">
@@ -201,7 +238,7 @@ export default async function ArticlePage({ params }: Props) {
         <Reveal>
           <div
             className="article-body text-[17px] sm:text-lg leading-[1.85] text-text-dark"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}
+            dangerouslySetInnerHTML={{ __html: bodyHtml }}
           />
         </Reveal>
 

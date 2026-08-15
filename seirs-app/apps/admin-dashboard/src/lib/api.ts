@@ -321,13 +321,23 @@ export const adminApi = {
   // Direct R2 upload helper (re-uses the existing /upload endpoint).
   // folder=cms for marketing images, folder=documents for PDFs/files
   // delivered through the Documents hub.
+  //
+  // Fixed 2026-08-15 after "Upload failed (404)" in production. This helper
+  // was the only call in the file not using BASE: it read
+  // NEXT_PUBLIC_API_BASE_URL (the WEBSITE's env var, never set on the admin
+  // project), fell back to '', and POSTed to the admin's own Vercel domain,
+  // which has no /upload. It also read localStorage 'admin_token' while the
+  // real key is 'seirs_admin_token', so after fixing the URL it would have
+  // 401'd next. Every upload from the deployed admin (cover images included)
+  // has been broken since this helper landed; it worked in local dev because
+  // BASE's localhost fallback and the misnamed var pointed at the same
+  // place. Uses BASE and getToken() like every other call now.
   upload: {
     image: async (file: File, folder: 'cms' | 'documents' = 'cms'): Promise<{ url: string }> => {
       const form = new FormData();
       form.append('file', file);
-      const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
-      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-      const r = await fetch(`${base}/upload?folder=${folder}`, {
+      const token = getToken();
+      const r = await fetch(`${BASE}/upload?folder=${folder}`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: form,

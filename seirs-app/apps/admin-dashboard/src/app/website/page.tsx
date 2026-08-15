@@ -460,15 +460,32 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
                 Gallery images ({gallery.length}/5)
               </label>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                Extra photos shown through the story, after the cover. A farmer
-                success story reads better with the farm, the goods and the
-                handoff, not just one picture.
+                Extra photos shown through the story, after the cover. They
+                flow automatically every few paragraphs, or type{' '}
+                <code className="bg-gray-100 px-1 rounded">{'{{img1}}'}</code>{' '}
+                to <code className="bg-gray-100 px-1 rounded">{'{{img5}}'}</code>{' '}
+                in the body to pin one after a specific paragraph. Click a
+                token on a thumbnail to copy it. Removing an image renumbers
+                the ones after it, so re-check any typed tokens after a
+                removal. Images without a token flow automatically; the video
+                without a token shows at the top.
               </p>
               <div className="mt-2 flex flex-wrap items-start gap-3">
                 {gallery.map((url, i) => (
                   <div key={url} className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt={`gallery ${i + 1}`} className="w-24 h-16 object-cover rounded border border-[#E5E7EB]" />
+                    {/* Each thumbnail wears its own token, because "type
+                        {{img2}}" is useless if nothing says which image is
+                        number 2. Clicking copies the token to paste into the
+                        body. */}
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(`{{img${i + 1}}}`)}
+                      className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] font-mono py-0.5 rounded-b hover:bg-[#3A7BD5]"
+                      title="Click to copy, then paste in the body where this image should appear"
+                    >
+                      {`{{img${i + 1}}}`}
+                    </button>
                     <button
                       onClick={() => setGallery(prev => prev.filter((_, j) => j !== i))}
                       className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none"
@@ -494,8 +511,10 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
             <div>
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Video (optional)</label>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                A YouTube link or a direct .mp4 URL, e.g. an interview. One per
-                article; it renders as a player near the top of the story.
+                A YouTube link or a direct .mp4 URL, e.g. an interview. Shows
+                at the top of the story, or type{' '}
+                <code className="bg-gray-100 px-1 rounded">{'{{video}}'}</code>{' '}
+                in the body to place it after a specific paragraph.
               </p>
               <input
                 value={videoUrl}
