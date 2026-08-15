@@ -13,6 +13,7 @@ export class SchedulerService {
   // to avoid a circular dep with SupportModule. Cron below sweeps
   // 7-day-idle tickets.
   supportService?: any;
+  deliveriesService?: any;
 
   constructor(
     @InjectRepository(Delivery) private deliveriesRepo: Repository<Delivery>,
@@ -44,6 +45,17 @@ export class SchedulerService {
           );
       }
     }
+  }
+
+  // Every 5 minutes: auto-cancel + fully refund paid bookings no driver
+  // took within the admin-tunable window (default 60 min; founder decision
+  // 2026-08-15). Logic lives in DeliveriesService so the refund and
+  // notification paths are the same ones manual cancellation uses.
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async expireStalePendingBookings() {
+    if (!this.deliveriesService) return;
+    try { await this.deliveriesService.expireStalePending(); }
+    catch (e: any) { this.logger.error(`Pending-booking expiry sweep failed: ${e?.message ?? e}`); }
   }
 
   // Every day at 2am: mark old failed/cancelled deliveries as archived (soft cleanup)

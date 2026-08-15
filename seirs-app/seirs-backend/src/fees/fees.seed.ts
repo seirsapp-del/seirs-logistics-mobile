@@ -37,6 +37,13 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     category: FeeCategory.SURGE,        unit: FeeUnit.PERCENT,    value: 150 },
 
   // ── Night operations (founder 2026-08-11: 24/7 scheduling) ─────────────
+  // Founder decision 2026-08-15: a PENDING booking that no driver takes
+  // within this window is auto-cancelled and refunded IN FULL (the fare
+  // was escrowed at booking; without this it sat locked forever).
+  { key: 'pending_booking_expiry_minutes', name: 'Pending Booking Expiry (minutes)',
+    description: 'Minutes a paid booking may wait for a driver before it auto-cancels with a full refund.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 60 },
+
   { key: 'night_fee_pct',               name: 'Night Delivery Fee',
     description: 'Surcharge on pickups requested inside the night window. Passed to the driver in FULL to encourage night coverage (Lagos and Kano never sleep; interstate runs overnight). Set 0 to disable.',
     category: FeeCategory.SURGE,        unit: FeeUnit.PERCENT,    value: 15 },

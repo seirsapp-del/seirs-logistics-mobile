@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Repository, MoreThan } from 'typeorm';
+import { LessThan, Repository, MoreThan } from 'typeorm';
 import { secureCode } from '../common/utils/auth-codes';
 import { Delivery, DeliveryStatus, PackageSize, UrgencyLevel } from './delivery.entity';
 import { DeliveryEvent, DeliveryEventType, EventActorRole } from './delivery-event.entity';
@@ -1657,6 +1657,49 @@ export class DeliveriesService {
     }
 
     return this.repo.findOne({ where: { id } });
+  }
+
+  /**
+   * Auto-expiry sweep (founder decision 2026-08-15: one hour, max). A
+   * PENDING booking still unclaimed after the window is cancelled and
+   * refunded IN FULL: the fare was escrowed at booking, and three real
+   * bookings from 13-14 Aug were found still pending with their money
+   * locked. No cancellation fee is ever withheld here: the platform
+   * failed to supply a driver, so the failure is ours, not theirs.
+   * Window comes from the admin-tunable pending_booking_expiry_minutes
+   * fee row. Called by the scheduler every five minutes.
+   */
+  async expireStalePending(): Promise<number> {
+    let minutes = 60;
+    if (this.feesServiceRef) {
+      try { minutes = Number(await this.feesServiceRef.getValueOr('pending_booking_expiry_minutes', 60)) || 60; }
+      catch { /* seeded default stands */ }
+    }
+    const cutoff = new Date(Date.now() - minutes * 60_000);
+    const stale = await this.repo.find({
+      where: { status: DeliveryStatus.PENDING, createdAt: LessThan(cutoff) },
+      relations: ['customer'],
+    });
+    for (const d of stale) {
+      await this.repo.update(d.id, { status: DeliveryStatus.CANCELLED });
+      if (this.trackingGateway) {
+        try { this.trackingGateway.broadcastStatusChange(d.id, DeliveryStatus.CANCELLED); } catch { /* ws only */ }
+      }
+      if (d.customer?.id && this.paymentsService) {
+        await this.paymentsService
+          .refundEscrow(d.id, d.customer.id, 0)
+          .catch((err: any) => this.logger.error(`Auto-expiry refund failed for ${d.trackingCode}: ${err?.message ?? err}`));
+      }
+      if (d.customer?.id && this.notificationsService) {
+        this.notificationsService
+          .notifyStatusUpdate(d.customer.id, d.trackingCode, DeliveryStatus.CANCELLED, d.id)
+          .catch(() => {});
+      }
+    }
+    if (stale.length) {
+      this.logger.log(`Auto-expired ${stale.length} pending booking(s) past ${minutes} min; refunds issued in full`);
+    }
+    return stale.length;
   }
 
   /**
