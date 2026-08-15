@@ -39,7 +39,9 @@ present, correctly ordered top-to-bottom by urgency. Density is right.
    below the keyboard on a 740px phone: the user types and sees nothing
    change. Diagnosed precisely: the sheet's keyboardBehavior="extend" is
    capped by its 480px snap point; the predictions band falls in the covered
-   region. — QUEUED: keyboard-aware taller snap.
+   region. — **FIXED** (7fc3a84): a third 88% snap exists only while
+   searching; keyboard dismissal returns to the default. Device pass due
+   next customer Metro session.
 3. Hardware back threw away a fully typed route without asking. — **FIXED**:
    discard confirm when either field holds text.
 4. Pin-set → map snap to Lagos works and reads beautifully; route drawing
@@ -54,16 +56,18 @@ fares, ETAs, tags ("Fastest in traffic"), selected state, fare breakdown CTA.
    rickshaw glyph via MaterialCommunityIcons.
 2. Fares came from in-app mock tables while the backend charged a different
    formula. — **FIXED at the charge level** (single rate-card engine
-   server-side); QUEUED: point this screen's displayed numbers at the unified
-   quote endpoint so shown and charged can never drift.
+   server-side); **FIXED** (e35eab4): /deliveries/quote now prices every
+   vehicle on the admin rate card and this screen consumes it live, with
+   the bundled card only as an offline fallback.
 
 ### Trip Details
 **Purpose:** receipt + gateway to tracking.
 **What works:** itemised night fee, paid-by-card badge, tracking code, route
 summary. Right density, right order.
 **Finding:** status chip said **"Pending"** while the tracking screen said
-"Arrived" for the same trip. Two screens, one truth violated. Root cause is
-below. — QUEUED (same fix as tracking).
+"Arrived" for the same trip. Two screens, one truth violated. — **FIXED**
+(749a95b): tracking now fetches the delivery and seeds its step from the
+CURRENT status, so both screens tell one truth from the first frame.
 
 ### Live tracking
 **Purpose:** the anxiety killer. Where is my package, who has it.
@@ -72,9 +76,12 @@ and plate, SOS and Package QR one tap away. As a screenshot it sells.
 **Finding — the most serious in the customer app:** the map drew
 Lagos→Lekki→Ibeju while the trip was Ibadan→Akobo. The screen still renders
 **mock route data** (the known P0: trip-progress falls back to MOCK_TRIPS).
-A real user tracking a real package would watch a fiction. — QUEUED P0: wire
-to the live tracking endpoint; the public /track/[code] backend already
-serves real events.
+A real user tracking a real package would watch a fiction. — **FIXED**
+(749a95b): real ids fetch the delivery (route, addresses, driver card with
+real name/plate/rating); mocks serve only known mock ids in dev; a loading
+spinner replaces fiction while fetching. Same sweep caught share-trip
+sharing the MOCK tracking code for real trips: also fixed, including the
+SOS path.
 
 ### Send a Package (step 1)
 **Purpose:** describe the parcel.
@@ -101,8 +108,13 @@ network at the right moment; category chips; clear required markers.
    seed business demo activity or screenshot the demo store account. —
    ACTION with the same admin seed tap.
 3. Header (greeting, bell, **hamburger**) scrolls away, so the drawer is
-   unreachable once the user scrolls: confirmed source of "hamburger not
-   visible". — QUEUED: sticky header row.
+   unreachable once the user scrolls. — **FIXED** (52877d5): greeting +
+   bell + hamburger are a pinned navy bar; only the wallet card scrolls.
+   AND the deeper cause of "no hamburger / no tab icon": seven icon names
+   (AlignLeft, MessageSquare, LifeBuoy, Paperclip, BellOff, CheckCheck,
+   Receipt) were used but never registered in components/Icon.tsx, which
+   renders nothing for unknown names. All seven registered (234996e),
+   verified on device.
 
 ### Tab bar (all business screens)
 **Finding:** business had drifted from the customer/driver pattern: 10px
@@ -125,19 +137,41 @@ come" — agreed):**
    okada/keke/danfo rule the customer app follows. — **FIXED**: Okada, Keke,
    Danfo / Van.
 2. Category chips render as clipped skeletons with "Swipe to see more":
-   the first element a user meets is unreadable. — QUEUED: wrap chips like
-   the customer app.
+   the first element a user meets is unreadable. — **FIXED** (51cbdbe):
+   wrapped pill grid, all fifteen categories visible at once, verified.
 3. The wizard shows the tab bar, wasting a row mid-flow where the customer
-   Send flow runs full-screen. — QUEUED.
+   Send flow runs full-screen. — **FIXED** (51cbdbe). Bonus catches in
+   the same pass: the wizard map opened on Berlin (same GPS bug as the
+   customer app; Nigeria bounding-box guard applied, cold boot verified
+   on Lagos) and the Continue button sat under the system bar (inset
+   added).
 4. No illustration, no warmth: it reads like a form, the customer flow
    reads like a product. — QUEUED: port the customer step pattern
    (illustration header, helper copy, store-drop equivalent for bulk).
 
 ### Wallet
 **What works:** balance, fund, history — clean and correct for business.
-**Finding:** copy says "Earn 1 point per ₦500 **spent**"; the code awards
-1 per ₦100 **funded**. Different basis, different rate. — **DECISION:
-which is the intended economics? One line to fix once chosen.**
+**Finding:** copy says "Earn 1 point per ₦500 **spent**"; the code awarded
+1 per ₦100 **funded**. — **FIXED** (234996e) per the agreed loyalty plan
+(earn on SPEND, never funding): award moved to the wallet-debit site at
+the platform rate (1 pt per ₦100, same POINTS_PER_NAIRA as customer),
+copy corrected, and apply-partner's hardcoded "₦500 per package" promise
+reworded (fees live in the admin catalogue).
+
+---
+
+## Backend (found while debugging, 2026-08-15)
+1. **Two SupportTicket entities fight over one table**: src/admin/ and
+   src/support/ both declare @Entity('support_tickets') with different
+   columns and indexes. Blocks local dev boot (synchronize flip-flops and
+   dies on a phantom index) and is a data landmine in prod. — OPEN,
+   needs a deliberate merge or a table rename with data migration.
+2. **Demo loyalty balance reads 0 with a full ledger**: prod serves the
+   demo customer's 8 seeded rows (335 pts, unexpired) through history
+   while the balance SUM says 0. Code and query verified correct against
+   a clean local schema; JWT matches the rows. Remaining suspect is the
+   prod table's actual shape/clock. — OPEN, founder is running two
+   read-only SQL probes in Railway.
 
 ---
 
@@ -165,5 +199,4 @@ download the app?")
 1. **Admin → Settings → Seed demo data** (one tap): populates points, trips
    and business activity, then home + dashboard get reshot and swapped.
 2. **A package photo** on the phone: unlocks the Send flow end-to-end audit.
-3. **Loyalty basis decision:** per-₦500-spent or per-₦100-funded.
 4. Standing: password rotation, NDPR registration.
