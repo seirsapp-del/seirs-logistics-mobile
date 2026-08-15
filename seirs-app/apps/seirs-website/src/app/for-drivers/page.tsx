@@ -3,7 +3,6 @@ import {
   Truck,
   Wallet,
   Clock,
-  Award,
   ShieldCheck,
   MapPin,
   TrendingUp,
@@ -24,7 +23,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "For Drivers",
   description:
-    "Drive with Seirs and earn on your terms. Daily wallet payouts, smart routing, verified senders, insured trips. Join Nigeria's smartest last-mile delivery network.",
+    "Drive with Seirs and earn on your terms. Daily wallet payouts, smart routing, verified senders. Join Nigeria's smartest last-mile delivery network.",
 };
 
 function FeatureCard({
@@ -51,12 +50,10 @@ function VehicleCard({
   icon: Icon,
   label,
   capacity,
-  earningsHint,
 }: {
   icon: LucideIcon;
   label: string;
   capacity: string;
-  earningsHint: string;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
@@ -64,10 +61,7 @@ function VehicleCard({
         <Icon size={26} className="text-navy" strokeWidth={1.75} />
       </div>
       <div className="text-navy font-bold text-base mb-1">{label}</div>
-      <div className="text-text-muted text-xs mb-3">{capacity}</div>
-      <div className="text-success-green font-semibold text-sm">
-        {earningsHint}
-      </div>
+      <div className="text-text-muted text-xs">{capacity}</div>
     </div>
   );
 }
@@ -201,15 +195,18 @@ export default async function ForDriversPage() {
               title="Protected handoffs"
               body="Proof photo on every delivery, ID-verified handoffs on high-value packages, and a full chain-of-custody record. When there's a dispute, the evidence already exists on your side."
             />
-            <FeatureCard
-              icon={Award}
-              title="Top-driver rewards"
-              body="Drivers with 4.7+ rating get priority on premium jobs (high-value packages, scheduled deliveries) and weekly bonus payouts based on completion rate."
-            />
+            {/* "Top-driver rewards" removed 2026-08-15. It promised weekly
+                bonus payouts based on completion rate (no such system exists
+                anywhere in the backend; the weekly-goal reward program is a
+                deferred founder decision, not a shipped feature) and free
+                priority on premium jobs for 4.7+ ratings, while priority
+                matching is actually the paid Driver Premium subscription.
+                A recruitment page contradicting our own paid product is the
+                same disease the SEIRS Standard died of. */}
             <FeatureCard
               icon={TrendingUp}
               title="Earnings dashboard"
-              body="See today's earnings, this week, this month, broken down by trip count, distance, and bonuses. Forecast tomorrow based on your usual hours."
+              body="See today's earnings, this week, this month, broken down by trip count, distance, and fees. Every naira accounted for."
             />
           </div>
         </div>
@@ -232,38 +229,37 @@ export default async function ForDriversPage() {
               icon={Bike}
               label="Bicycle"
               capacity="Up to 5 kg"
-              earningsHint="₦500, ₦1,500 / trip"
             />
             <VehicleCard
               icon={Bike}
               label="Motorcycle"
               capacity="Up to 20 kg"
-              earningsHint="₦800, ₦3,000 / trip"
             />
             <VehicleCard
               icon={Bike}
               label="Tricycle"
               capacity="Up to 100 kg"
-              earningsHint="₦1,500, ₦5,000 / trip"
             />
             <VehicleCard
               icon={Car}
               label="Car"
               capacity="Up to 200 kg"
-              earningsHint="₦2,000, ₦8,000 / trip"
             />
             <VehicleCard
               icon={Truck}
               label="Van / Truck"
               capacity="800 kg+"
-              earningsHint="₦4,000, ₦25,000 / trip"
             />
           </div>
 
+          {/* The per-vehicle "typical take-home" ranges removed 2026-08-15:
+              a network with zero completed trips has no typical anything,
+              same class of invented statistic as the 10,000+ deliveries the
+              homepage once claimed. Real ranges can return when real months
+              of trips exist to average. */}
           <p className="text-text-muted text-xs text-center mt-6 max-w-2xl mx-auto">
-            Earnings ranges shown are typical per-trip take-home after platform
-            fee. Actual earnings depend on distance, demand, vehicle type, and
-            your tier.
+            Fares are quoted per trip in the app before you accept, based on
+            distance, vehicle type and demand.
           </p>
         </div>
       </section>
@@ -294,7 +290,7 @@ export default async function ForDriversPage() {
                 Driver&apos;s licence (motorbike riders need rider&apos;s permit, car/van drivers need full licence)
               </RequirementRow>
               <RequirementRow>
-                A Nigerian bank account in your name for weekly payouts
+                A Nigerian bank account in your name for your payouts
               </RequirementRow>
               <RequirementRow>
                 Be at least 18 years old
@@ -330,7 +326,7 @@ export default async function ForDriversPage() {
             />
             <StepRow
               step={2}
-              title="KYC verification (24, 48 hrs)"
+              title="KYC verification (1 to 3 business days)"
               body="Our compliance team reviews your documents. We may call you for a short interview. You'll get an email + push notification when you're approved."
             />
             <StepRow
@@ -365,7 +361,7 @@ export default async function ForDriversPage() {
             <FeatureCard
               icon={ShieldCheck}
               title="In-app SOS"
-              body="One tap alerts our 24/7 safety team with your live location. Emergency services contacted on your behalf if needed."
+              body="One tap alerts SEIRS ops with your live location and notifies your customer that something is wrong. The app also puts the 199 emergency line one tap away."
             />
             <FeatureCard
               icon={Banknote}
