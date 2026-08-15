@@ -91,6 +91,7 @@ export class DemoDataService {
       email: 'demo.store@seirs.co', firstName: 'Yusuf', lastName: 'Garba',
       phone: '08071234569', role: UserRole.CUSTOMER, passwordHash,
       accountIdPrefix: AccountIdPrefix.BUSINESS,
+      businessRole: 'owner',
       homeAddress: {
         label: 'Shop', street: '12 Allen Avenue', city: 'Ikeja', state: 'Lagos',
         coords: { lat: IKEJA.lat, lng: IKEJA.lng },
@@ -128,6 +129,9 @@ export class DemoDataService {
     role: UserRole; passwordHash: string;
     /** Overrides the role-derived prefix (business accounts are BIZ-). */
     accountIdPrefix?: string;
+    /** businessLogin() gates on this: without it the demo store owner can
+     *  never sign in to the business app (found 2026-08-15, on-device). */
+    businessRole?: string;
     homeAddress?: User['homeAddress'];
     identityVerified?: boolean; identityDocType?: string;
     bank?: { bankCode: string; bankAccountNumber: string; bankAccountName: string };
@@ -144,6 +148,7 @@ export class DemoDataService {
       homeAddress: opts.homeAddress ?? null,
       identityVerifiedAt: opts.identityVerified ? new Date() : null,
       identityDocType: opts.identityDocType ?? null,
+      ...(opts.businessRole ? { businessRole: opts.businessRole } : {}),
       ...(opts.bank ?? {}),
     };
 

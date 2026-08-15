@@ -47,7 +47,7 @@ export default function BusinessDashboard() {
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.greeting}>Good {getTimeOfDay()},</Text>
-          <Text style={styles.companyName}>{user?.companyName ?? user?.name}</Text>
+          <Text style={styles.companyName}>{user?.name?.split(' ')[0] ?? user?.companyName}</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable style={styles.avatarBtn} onPress={() => router.push('/(business)/notifications' as any)}>
@@ -100,7 +100,7 @@ export default function BusinessDashboard() {
 
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
               <View style={styles.actions}>
-                <ActionCard icon="Package"         label="New Delivery" sub="Single or multi-stop"
+                <ActionCard icon="Package"         label="Send a Package" sub="Single or multi-stop"
                   onPress={() => router.push('/(business)/(tabs)/new-delivery' as any)} primary />
                 <ActionCard icon="FileSpreadsheet" label="CSV Upload"   sub="Bulk import from file"
                   onPress={() => router.push('/(business)/csv-upload' as any)} />

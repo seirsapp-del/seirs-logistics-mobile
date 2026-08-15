@@ -612,7 +612,7 @@ export default function NewDeliveryScreen() {
           <Icon name="ArrowLeft" size={20} color={colors.text} />
         </Pressable>
         <View style={[styles.topTitle, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.topTitleText, { color: colors.text }]}>New Delivery</Text>
+          <Text style={[styles.topTitleText, { color: colors.text }]}>Send a Package</Text>
           <Text style={[styles.topStep, { color: colors.textSecond }]}>Step {step + 1} / 3: {STEPS[step]}</Text>
         </View>
         {/* Spacer so title chip is visually screen-centered (matches back button) */}
