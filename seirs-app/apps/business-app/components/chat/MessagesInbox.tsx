@@ -123,7 +123,7 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(busin
         <FlatList
           data={rows}
           keyExtractor={r => r.id}
-          contentContainerStyle={{ paddingVertical: 4 }}
+          contentContainerStyle={{ paddingVertical: 4, flexGrow: 1 }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -254,7 +254,9 @@ const styles = StyleSheet.create({
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 40 },
 
-  emptyWrap:  { alignItems: 'center', paddingHorizontal: 40, paddingTop: 80, gap: 10 },
+  // Centred 2026-08-15 (founder: the support CTA sat at the top of a
+  // dead page). flexGrow on the list content lets the wrap fill and centre.
+  emptyWrap:  { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 10 },
   emptyTitle: { fontSize: 15, fontWeight: '700' },
   emptyBody:  { fontSize: 13, textAlign: 'center', lineHeight: 18 },
   emptyCta:   { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999 },

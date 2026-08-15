@@ -35,15 +35,23 @@ export default function BusinessTabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Founder QA 2026-08-15: the five tabs sat tiny and pressed
+        // against the phone's own navigation. On button-nav Androids
+        // insets.bottom is 0, so the old bar had no cushion at all; the
+        // labels were 10px and the inactive tint too faint to read. The
+        // bar now keeps an 8px floor under it, the labels step up to 12,
+        // and inactive items use the secondary text colour instead of the
+        // washed-out icon default.
         tabBarStyle: {
           backgroundColor: theme.navBackground,
           borderTopColor:  theme.border,
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom,
+          height: 62 + Math.max(insets.bottom, 8),
+          paddingBottom: Math.max(insets.bottom, 8),
+          paddingTop: 6,
         },
         tabBarActiveTintColor:   theme.accent,
-        tabBarInactiveTintColor: theme.tabIconDefault,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
+        tabBarInactiveTintColor: theme.textSecond ?? theme.tabIconDefault,
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600', marginTop: 2 },
       }}
     >
       <Tabs.Screen

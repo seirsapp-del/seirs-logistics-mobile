@@ -76,9 +76,12 @@ function buildScheduledFor(isoDate: string, hour: number): Date {
 const VEHICLE_ORDER: VehicleType[] = [
   'bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large',
 ];
+// Founder vocabulary rule (2026-08-15): pickers say okada/keke/danfo, the
+// names the customer app already uses on the same kind of screen. The
+// canonical backend enum underneath is unchanged.
 const VEHICLE_LABEL: Record<VehicleType, string> = {
-  bicycle: 'Bicycle', motorcycle: 'Motorcycle', tricycle: 'Tricycle',
-  car: 'Car', van: 'Van', truck_small: 'Small Truck', truck_large: 'Large Truck',
+  bicycle: 'Bicycle', motorcycle: 'Okada', tricycle: 'Keke',
+  car: 'Car', van: 'Danfo / Van', truck_small: 'Small Truck', truck_large: 'Large Truck',
 };
 
 type ActiveField = { kind: 'pickup' } | { kind: 'stop'; idx: number } | null;
