@@ -101,13 +101,13 @@ export default function BusinessDashboard() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
               <View style={styles.actions}>
                 <ActionCard icon="Package"         label="Send a Package" sub="Single or multi-stop"
-                  onPress={() => router.push('/(business)/(tabs)/new-delivery' as any)} primary />
+                  onPress={() => router.push('/(business)/new-delivery' as any)} primary />
                 <ActionCard icon="FileSpreadsheet" label="CSV Upload"   sub="Bulk import from file"
                   onPress={() => router.push('/(business)/csv-upload' as any)} />
                 <ActionCard icon="RotateCcw"       label="Recurring"    sub="Schedule repeating jobs"
-                  onPress={() => router.push('/(business)/(tabs)/new-delivery' as any)} />
+                  onPress={() => router.push('/(business)/new-delivery' as any)} />
                 <ActionCard icon="Truck"           label="Specialists"  sub="Haulage, cold chain & more"
-                  onPress={() => router.push('/(business)/(tabs)/new-delivery' as any)} />
+                  onPress={() => router.push('/(business)/new-delivery' as any)} />
               </View>
 
               <View style={styles.sectionHeader}>
@@ -123,7 +123,7 @@ export default function BusinessDashboard() {
                   <Text style={[styles.emptyText, { color: colors.textThird }]}>No deliveries yet</Text>
                   <Pressable
                     style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => router.push('/(business)/(tabs)/new-delivery' as any)}
+                    onPress={() => router.push('/(business)/new-delivery' as any)}
                   >
                     <Text style={styles.emptyBtnText}>Create your first delivery</Text>
                   </Pressable>

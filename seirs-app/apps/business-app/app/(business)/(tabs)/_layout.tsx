@@ -62,21 +62,12 @@ export default function BusinessTabsLayout() {
         name="deliveries"
         options={{ title: 'Deliveries', tabBarIcon: ({ focused }) => <TabIcon name="Package" focused={focused} /> }}
       />
-      <Tabs.Screen
-        name="new-delivery"
-        // The booking wizard runs full-screen: keeping the tab bar there
-        // wasted a row mid-flow and invited mid-booking tab-hopping that
-        // dropped the draft (founder 2026-08-15, matching the customer
-        // Send flow, which never shows a tab bar).
-        options={{ title: 'Send', tabBarStyle: { display: 'none' }, tabBarIcon: () => (
-          <View style={{
-            width: 44, height: 44, borderRadius: 14, backgroundColor: theme.primary,
-            alignItems: 'center', justifyContent: 'center', marginBottom: 16,
-          }}>
-            <Icon name="Plus" size={24} color={theme.textOnPrimary} strokeWidth={2} />
-          </View>
-        )}}
-      />
+      {/* The centre + tab is gone (founder 2026-08-15): booking starts
+          from the dashboard's Send a Package card, the way the customer
+          app books from its home cards. The wizard itself moved up to the
+          (business) stack level, so it is full-screen by construction and
+          the tab bar no longer needs a display:none hack. Profile takes
+          the freed slot: every SEIRS app now ends its bar with Profile. */}
       <Tabs.Screen
         name="messages"
         options={{ title: 'Messages', tabBarIcon: ({ focused }) => <TabIcon name="MessageSquare" focused={focused} /> }}
@@ -84,6 +75,10 @@ export default function BusinessTabsLayout() {
       <Tabs.Screen
         name="wallet"
         options={{ title: 'Wallet', tabBarIcon: ({ focused }) => <TabIcon name="Wallet" focused={focused} /> }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{ title: 'Profile', tabBarIcon: ({ focused }) => <TabIcon name="User" focused={focused} /> }}
       />
       {/* Team is drawer-only now (founder 2026-08-10: six tabs felt
           cramped; team management is low-frequency). href: null hides

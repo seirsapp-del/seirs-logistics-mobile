@@ -14,6 +14,7 @@ import {
   // Messages tab is MessageSquare, the support CTA is LifeBuoy) but never
   // registered here, and the component renders nothing for unknown names.
   AlignLeft, BellOff, CheckCheck, LifeBuoy, MessageSquare, Paperclip, Receipt,
+  MessageCircle, MoreHorizontal,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -33,6 +34,7 @@ const ICONS: Record<string, LucideIcon> = {
   // Messages tab is MessageSquare, the support CTA is LifeBuoy) but never
   // registered here, and the component renders nothing for unknown names.
   AlignLeft, BellOff, CheckCheck, LifeBuoy, MessageSquare, Paperclip, Receipt,
+  MessageCircle, MoreHorizontal,
 };
 
 interface IconProps {
