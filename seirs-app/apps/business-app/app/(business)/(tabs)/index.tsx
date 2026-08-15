@@ -68,12 +68,15 @@ export default function BusinessDashboard() {
           <View style={styles.walletCard}>
             <Text style={styles.walletLabel}>Business Wallet</Text>
             <Text style={styles.walletBalance}>{fmt(data?.walletBalance ?? 0)}</Text>
+            {/* Fund Wallet retired 2026-08-16 (founder: "we are not a
+                bank"). Businesses pay per booking; the button now opens
+                billing history instead of implying we take deposits. */}
             <Pressable
               style={styles.fundBtn}
-              onPress={() => router.push('/(business)/wallet' as any)}
+              onPress={() => router.push('/(business)/(tabs)/wallet' as any)}
             >
-              <Icon name="Plus" size={14} color="#0F2B4C" />
-              <Text style={styles.fundBtnText}>Fund Wallet</Text>
+              <Icon name="Receipt" size={14} color="#0F2B4C" />
+              <Text style={styles.fundBtnText}>Billing & History</Text>
             </Pressable>
           </View>
         </LinearGradient>

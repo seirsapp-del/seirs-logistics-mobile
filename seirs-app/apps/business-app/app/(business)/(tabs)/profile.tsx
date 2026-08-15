@@ -5,7 +5,7 @@
  * for reach-anywhere), presented as a screen in the app's restrained
  * business style: account card, SEIRS ID, grouped menu, sign out.
  */
-import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Modal } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Modal, Image } from 'react-native';
 import { useState } from 'react';
 import QRCode from 'react-native-qrcode-svg';
 import { useRouter } from 'expo-router';
@@ -81,9 +81,13 @@ export default function BusinessProfileTab() {
       </Text>
 
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-          <Text style={styles.avatarText}>{initial}</Text>
-        </View>
+        {user?.profilePhoto ? (
+          <Image source={{ uri: user.profilePhoto }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+            <Text style={styles.avatarText}>{initial}</Text>
+          </View>
+        )}
         <View style={{ flex: 1 }}>
           <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
             {user?.companyName ?? user?.name}

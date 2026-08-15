@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Alert, TextInput,
+  View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
+import { Drawer } from '@/components/Drawer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/Icon';
@@ -11,8 +12,6 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
-const QUICK_AMOUNTS = [5000, 10000, 25000, 50000, 100000];
-
 export default function WalletScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
@@ -20,10 +19,8 @@ export default function WalletScreen() {
   const [wallet,   setWallet]   = useState<any>(null);
   const [txns,     setTxns]     = useState<any[]>([]);
   const [loyalty,  setLoyalty]  = useState<any>(null);
-  const [loading,  setLoading]  = useState(true);
-  const [amount,   setAmount]   = useState('');
-  const [funding,  setFunding]  = useState(false);
-  const [showFund, setShowFund] = useState(false);
+  const [loading,    setLoading]    = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -37,24 +34,6 @@ export default function WalletScreen() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  const handleFund = async () => {
-    const n = Number(amount);
-    if (!n || n < 100) { Alert.alert('Invalid amount', 'Minimum top-up is ₦100'); return; }
-    setFunding(true);
-    try {
-      await businessApi.fundWallet(n);
-      const w = await businessApi.wallet();
-      setWallet(w);
-      setAmount('');
-      setShowFund(false);
-      Alert.alert('Wallet Funded', `₦${n.toLocaleString()} has been added to your wallet.`);
-    } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Payment failed.');
-    } finally {
-      setFunding(false);
-    }
-  };
-
   const txnIcon = (type: string) => {
     if (type === 'credit') return 'Plus';
     if (type === 'delivery') return 'Package';
@@ -63,81 +42,35 @@ export default function WalletScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Drawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        {/* Hero: brand navy gradient stays consistent in both modes */}
+        {/* Funding is gone (founder 2026-08-16: "we are not a bank").
+            Businesses pay per booking through Flutterwave; nobody
+            deposits money with SEIRS. Any remaining legacy balance
+            simply drains against upcoming bookings. This screen becomes
+            the full Billing home in the pay-per-booking rebuild. */}
         <LinearGradient
           colors={['#0F2B4C', '#1a3a5c']}
           style={[styles.hero, { paddingTop: insets.top + 20 }]}
         >
-          <Text style={styles.heroLabel}>Business Wallet Balance</Text>
+          <Pressable onPress={() => setDrawerOpen(true)} hitSlop={10} style={{ marginBottom: 14 }}>
+            <Icon name="AlignLeft" size={22} color="#fff" />
+          </Pressable>
+          <Text style={styles.heroLabel}>Billing</Text>
           {loading ? (
             <ActivityIndicator color="#fff" style={{ marginVertical: 12 }} />
           ) : (
-            <Text style={styles.heroBalance}>{fmt(wallet?.balance ?? 0)}</Text>
+            <>
+              <Text style={styles.heroBalance}>{fmt(wallet?.balance ?? 0)}</Text>
+              <Text style={styles.heroNote}>
+                {Number(wallet?.balance ?? 0) > 0
+                  ? 'Remaining credit: it is spent on your next bookings. New bookings are paid per booking via Flutterwave.'
+                  : 'You pay per booking via Flutterwave. No deposits, no top-ups.'}
+              </Text>
+            </>
           )}
-          <View style={styles.heroBtns}>
-            <Pressable style={styles.heroBtn} onPress={() => setShowFund((v) => !v)}>
-              <Icon name="Plus" size={16} color="#0F2B4C" />
-              <Text style={styles.heroBtnText}>Fund</Text>
-            </Pressable>
-          </View>
         </LinearGradient>
-
-        {showFund && (
-          <View style={[styles.fundPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.fundTitle, { color: colors.text }]}>Top-Up Amount</Text>
-            <View style={styles.quickRow}>
-              {QUICK_AMOUNTS.map((q) => {
-                const active = amount === String(q);
-                return (
-                  <Pressable
-                    key={q}
-                    style={[
-                      styles.quickBtn,
-                      { backgroundColor: colors.surfaceSecond, borderColor: colors.border },
-                      active && { backgroundColor: colors.primary, borderColor: colors.primary },
-                    ]}
-                    onPress={() => setAmount(String(q))}
-                  >
-                    <Text style={[
-                      styles.quickText,
-                      { color: colors.text },
-                      active && { color: '#fff' },
-                    ]}>₦{(q / 1000).toFixed(0)}k</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <View style={[styles.amtRow, {
-              backgroundColor: colors.surfaceSecond, borderColor: colors.border,
-            }]}>
-              <Text style={[styles.currency, { color: colors.text }]}>₦</Text>
-              <TextInput
-                style={[styles.amtInput, { color: colors.text }]}
-                value={amount}
-                onChangeText={setAmount}
-                placeholder="Custom amount"
-                placeholderTextColor={colors.textThird}
-                keyboardType="numeric"
-              />
-            </View>
-            <Pressable
-              style={[
-                styles.fundBtn,
-                { backgroundColor: colors.primary },
-                (!amount || funding) && styles.fundBtnDisabled,
-              ]}
-              onPress={handleFund}
-              disabled={!amount || funding}
-            >
-              {funding
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.fundBtnText}>Pay via Flutterwave</Text>
-              }
-            </Pressable>
-          </View>
-        )}
 
         {loyalty && (
           <View style={[styles.loyaltyCard, {
@@ -199,27 +132,7 @@ const styles = StyleSheet.create({
   hero:          { paddingHorizontal: 24, paddingBottom: 32 },
   heroLabel:     { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 6 },
   heroBalance:   { fontSize: 34, fontWeight: '900', color: '#fff', marginBottom: 20 },
-  heroBtns:      { flexDirection: 'row', gap: 12 },
-  heroBtn:       {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10,
-  },
-  heroBtnText:   { fontSize: 14, fontWeight: '700', color: '#0F2B4C' },
-  fundPanel:     { margin: 16, borderRadius: 16, padding: 20, borderWidth: 1 },
-  fundTitle:     { fontSize: 15, fontWeight: '700', marginBottom: 14 },
-  quickRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  quickBtn:      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  quickText:     { fontSize: 13, fontWeight: '600' },
-  amtRow:        {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    borderWidth: 1, marginBottom: 14,
-  },
-  currency:      { fontSize: 18, fontWeight: '700', marginRight: 6 },
-  amtInput:      { flex: 1, fontSize: 18, fontWeight: '700' },
-  fundBtn:       { borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  fundBtnDisabled: { opacity: 0.4 },
-  fundBtnText:   { color: '#fff', fontWeight: '700', fontSize: 15 },
+  heroNote:      { fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 17, maxWidth: 300 },
   loyaltyCard:   {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     borderRadius: 14, margin: 16, padding: 16, borderWidth: 1,

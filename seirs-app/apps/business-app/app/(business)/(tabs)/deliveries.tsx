@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
+import { Drawer } from '@/components/Drawer';
 import { businessApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
@@ -50,6 +51,7 @@ export default function DeliveriesScreen() {
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [status,     setStatus]     = useState('all');
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [search,     setSearch]     = useState('');
   const [page,       setPage]       = useState(1);
   const [hasMore,    setHasMore]    = useState(false);
@@ -146,11 +148,16 @@ export default function DeliveriesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Drawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <View style={[styles.header, {
         paddingTop: insets.top + 12,
         backgroundColor: colors.surface,
         borderBottomColor: colors.border,
+        flexDirection: 'row', alignItems: 'center', gap: 12,
       }]}>
+        <Pressable onPress={() => setDrawerOpen(true)} hitSlop={10}>
+          <Icon name="AlignLeft" size={22} color={colors.text} />
+        </Pressable>
         <Text style={[styles.heading, { color: colors.text }]}>Deliveries</Text>
       </View>
 
