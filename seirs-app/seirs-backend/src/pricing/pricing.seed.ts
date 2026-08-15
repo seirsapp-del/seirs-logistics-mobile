@@ -182,6 +182,23 @@ export const DEFAULT_SERVICE_CATEGORIES: Array<{
   suggestedVehicles: string[]; setupDwellMinutes: number;
   surchargePercent: number; safetyRules: any; sortOrder: number;
 }> = [
+  // Rides joined the rate card 2026-08-15 (founder: customer and business
+  // both move packages, rides are the customer-only difference, and nothing
+  // may be hardcoded). A ride is priced like any other booking: vehicle
+  // labour + fuel pass-through + time/zone surcharges, weight 0. Bicycles
+  // and trucks cannot carry passengers; danfo is the van alias.
+  { code: 'passenger_ride', name: 'Passenger ride',
+    examples: 'Okada, keke, car or danfo trips for people, not parcels',
+    suggestedVehicles: ['motorcycle', 'tricycle', 'car', 'van'],
+    setupDwellMinutes: 2, surchargePercent: 0,
+    safetyRules: {
+      blockedVehicles: ['bicycle', 'truck_small', 'truck_large'],
+      warningVehicles: [],
+      weightThresholdKg: null,
+      warningCopy: 'Passenger trips run on okada, keke, car or danfo only.',
+    },
+    sortOrder: 0 },
+
   { code: 'documents', name: 'Documents',
     examples: 'Letters, contracts, invoices, archive boxes',
     suggestedVehicles: ['bicycle', 'motorcycle', 'tricycle'],

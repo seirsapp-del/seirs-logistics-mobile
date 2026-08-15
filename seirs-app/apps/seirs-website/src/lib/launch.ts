@@ -91,23 +91,17 @@ export type ScreenKey =
   | 'businessDashboard';
 
 export const APP_SCREENSHOTS: Record<ScreenKey, string | null> = {
-  // NEEDS_DATA, standing in until the capture session (founder 2026-08-14:
-  // "use the current screenshot that we have, we will replace them later").
-  // These three currently point at the two driver captures, so the story
-  // rows show real SEIRS UI rather than a skeleton, but they are the wrong
-  // app and the middle one repeats. Swap all three the moment the customer
-  // app captures exist: booking, driver-accepted, live tracking.
-  customerBooking: '/app-shots/driver-home.png',
-  customerDriverAccepted: '/app-shots/driver-earnings.png',
-  customerTracking: '/app-shots/driver-home.png',
-  // LIVE: already in the repo, and correct for their own section.
+  // LIVE since the 2026-08-15 capture session: real screens off the real
+  // A30, driven over adb. Booking is the ride-quote screen with both pins
+  // and the Ikeja-to-UNILAG route drawn; driver-accepted shows the arrived
+  // state with the driver card (name, rating, plate, vehicle); tracking is
+  // the live map mid-trip. The wrong-app stand-ins are finally history.
+  customerBooking: '/app-shots/customer-booking.png',
+  customerDriverAccepted: '/app-shots/customer-driver.png',
+  customerTracking: '/app-shots/customer-tracking.png',
   driverHome: '/app-shots/driver-home.png',
   driverEarnings: '/app-shots/driver-earnings.png',
-  // NEEDS_DATA: no business-app capture exists. Founder 2026-08-14 asked for
-  // a driver screen here as a stand-in, to see how the section reads with a
-  // real screenshot in place before the business capture is taken. Swap to
-  // the business dashboard the moment it exists.
-  businessDashboard: '/app-shots/driver-home.png',
+  businessDashboard: '/app-shots/business-dashboard.png',
 };
 
 // ── Launch state ────────────────────────────────────────────────────────────

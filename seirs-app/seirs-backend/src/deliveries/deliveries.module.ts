@@ -29,6 +29,7 @@ import { ChatService } from '../chat/chat.service';
 import { StoreDropoff } from '../partner-store/store-dropoff.entity';
 import { FeesModule } from '../fees/fees.module';
 import { MapsModule } from '../maps/maps.module';
+import { PricingModule } from '../pricing/pricing.module';
 import { FeesService } from '../fees/fees.service';
 
 @Module({
@@ -36,6 +37,7 @@ import { FeesService } from '../fees/fees.service';
     TypeOrmModule.forFeature([Delivery, DeliveryEvent, User, StoreDropoff]),
     FeesModule,
     MapsModule,
+    PricingModule,
     MatchingModule,
     TrackingModule,
     forwardRef(() => PaymentsModule),

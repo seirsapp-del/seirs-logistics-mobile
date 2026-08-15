@@ -8,6 +8,7 @@ import { DeliveryEvent, DeliveryEventType, EventActorRole } from './delivery-eve
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
 import { RouteDistanceService } from './route-distance.service';
+import { PricingService as RateCardPricing } from '../pricing/pricing.service';
 import { User } from '../users/user.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
@@ -113,6 +114,27 @@ function describeHandoffStage(stage: string): string {
   }
 }
 
+
+/**
+ * The apps send human category strings; the rate card prices by category
+ * code. Mapping lives here so both quote and create translate identically,
+ * with standard_parcel as the safe default. Rides come through as
+ * "ride"/"passenger" from the ride flow.
+ */
+function toCategoryCode(raw: string | undefined | null): string {
+  const t = (raw ?? '').toLowerCase();
+  if (/ride|passenger/.test(t))        return 'passenger_ride';
+  if (/document|letter|envelope/.test(t)) return 'documents';
+  if (/fragile|glass|electronic|laptop|phone/.test(t)) return 'fragile';
+  if (/hot food|food/.test(t))         return 'food_hot';
+  if (/frozen|cold/.test(t))           return 'food_cold';
+  if (/medic|pharma|drug/.test(t))     return 'medical';
+  if (/farm|produce|crop/.test(t))     return 'farm_produce';
+  if (/bulk|wholesale/.test(t))        return 'bulk_goods';
+  if (/small/.test(t))                 return 'small_parcel';
+  return 'standard_parcel';
+}
+
 function generateTrackingCode(): string {
   // Crypto-secure (2026-08-09): Math.random is predictable via state
   // recovery; tracking codes gate the public timeline + QR handoff.
@@ -160,6 +182,7 @@ export class DeliveriesService {
     @InjectRepository(Delivery) private repo: Repository<Delivery>,
     private pricingService: PricingService,
     private routeDistance: RouteDistanceService,
+    private rateCardPricing: RateCardPricing,
   ) {}
 
   /**
@@ -222,12 +245,36 @@ export class DeliveriesService {
     const packageDescription =
       (dto.packageDescription ?? dto.description ?? '').trim();
 
-    const pricing = this.pricingService.calculate({
-      distanceKm,
-      packageSize,
-      urgency,
-      isFragile,
-    });
+    /**
+     * Unified on the rate card (founder 2026-08-15: no hardcoded pricing).
+     * The old formula here (300 base + 80/km constants) ignored the admin
+     * rate card entirely, so tuning rates in the dashboard changed business
+     * and API fares while customer fares silently stood still. All bookings
+     * now price through the same versioned card: vehicle labour + fuel
+     * pass-through + category, time, and zone surcharges, with the driver's
+     * share of each line defined by the card rather than a blanket split.
+     */
+    const card = await this.rateCardPricing.getActiveRateCard();
+    const vehicleType =
+      dto.vehicleType && card.vehicleRates[dto.vehicleType]
+        ? dto.vehicleType
+        : weight > 100 ? 'van' : weight > 20 ? 'tricycle' : 'motorcycle';
+    const breakdown = await this.rateCardPricing.computePrice({
+      vehicleType,
+      categoryCode: toCategoryCode(dto.packageCategory),
+      km: distanceKm,
+      stopCount: 1,
+      weightKg: weight,
+      estimatedDwellMinutes: 0,
+      scheduledAt: dto.scheduledFor ? new Date(dto.scheduledFor) : undefined,
+      pickupCoords:  { lat: dto.pickupLat,  lng: dto.pickupLng },
+      dropoffCoords: { lat: dto.dropoffLat, lng: dto.dropoffLng },
+    } as any);
+    const pricing = {
+      price:          Number(breakdown.customer.total),
+      driverEarnings: Number(breakdown.driver.total),
+    };
+    void packageSize; void urgency; void isFragile;
 
     // Collision-safe tracking code: at ~1M deliveries the birthday
     // bound gives a ~45% chance of at least one random collision in a
@@ -280,7 +327,13 @@ export class DeliveriesService {
     // Night fee (founder 2026-08-11): surcharge on pickups whose
     // effective time falls in the night window, passed to the driver IN
     // FULL to encourage night coverage. All three knobs are admin rows.
+    // Night pricing now lives in the rate card's timeSurcharges (priced and
+    // driver-allocated per the card), so the old fees-catalogue night fee is
+    // retired from this path: adding both would charge the customer twice
+    // for the same dark sky. nightFeeNgn on the row stays for reporting,
+    // fed from the card's own night line when present.
     let nightFee = 0;
+    const RATE_CARD_OWNS_NIGHT = true;
     if (this.feesServiceRef) {
       try {
         const pct   = await this.feesServiceRef.getValueOr('night_fee_pct', 15);
@@ -290,7 +343,7 @@ export class DeliveriesService {
         // Africa/Lagos = UTC+1, no DST.
         const hour = (effective.getUTCHours() + 1) % 24;
         const inWindow = start > end ? (hour >= start || hour < end) : (hour >= start && hour < end);
-        if (pct > 0 && inWindow) nightFee = +(pricing.price * (pct / 100)).toFixed(2);
+        if (!RATE_CARD_OWNS_NIGHT && pct > 0 && inWindow) nightFee = +(pricing.price * (pct / 100)).toFixed(2);
       } catch { /* night fee is best-effort; base pricing always stands */ }
     }
 
@@ -315,9 +368,12 @@ export class DeliveriesService {
       distanceKm,
       quotedDistanceSource: road.source,
       quotedDurationMin:    road.durationMin,
-      price:          +(pricing.price + nightFee).toFixed(2),
-      driverEarnings: +(pricing.driverEarnings + nightFee).toFixed(2),
-      nightFeeNgn:    nightFee > 0 ? nightFee : null,
+      price:          +pricing.price.toFixed(2),
+      driverEarnings: +pricing.driverEarnings.toFixed(2),
+      nightFeeNgn:    Number((breakdown as any).customer?.nightSurcharge ?? 0) > 0
+                        ? +Number((breakdown as any).customer.nightSurcharge).toFixed(2)
+                        : null,
+      rateCardSnapshotId: card.id,
       status:         DeliveryStatus.PENDING,
       // create() resolves to its array overload when the literal is cast,
       // so the cast goes on the result instead.
