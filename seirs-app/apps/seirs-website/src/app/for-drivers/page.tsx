@@ -123,7 +123,7 @@ export default async function ForDriversPage() {
         subtitle="Join Nigeria's smartest last-mile delivery network. Bicycle, motorbike, tricycle, car, van, bring what you have. Daily wallet payouts, smart routing, verified senders, real support."
         icon={Truck}
         primaryCtaLabel="Apply to drive"
-        primaryCtaHref="/contact"
+        primaryCtaHref="/contact?subject=driver"
         secondaryCtaLabel="See how it works"
         secondaryCtaHref="/how-it-works"
       />
@@ -394,7 +394,7 @@ export default async function ForDriversPage() {
         title="Ready to drive with Seirs?"
         subtitle="Apply now, get your documents reviewed, and start taking jobs as soon as you are approved."
         primaryLabel="Apply to drive"
-        primaryHref="/contact"
+        primaryHref="/contact?subject=driver"
       />
     </>
   );

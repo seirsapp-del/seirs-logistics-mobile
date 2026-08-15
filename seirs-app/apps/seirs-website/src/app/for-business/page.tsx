@@ -79,7 +79,7 @@ export default async function ForBusinessPage() {
         subtitle="Seirs Business is for traders, e-commerce shops, restaurants, and SMEs who dispatch dozens to hundreds of packages a day. Bulk send, multi-stop routes, business wallet, team access, all from one dashboard."
         icon={Briefcase}
         primaryCtaLabel="Talk to our team"
-        primaryCtaHref="/contact"
+        primaryCtaHref="/contact?subject=business"
         secondaryCtaLabel="Become a partner store"
         secondaryCtaHref="/for-partner-stores"
       />
@@ -287,7 +287,7 @@ export default async function ForBusinessPage() {
         title="Ready to scale your delivery operations?"
         subtitle="Get a free walkthrough with our team. We'll set up your account, import your address book, and run a test batch with you."
         primaryLabel="Book a demo"
-        primaryHref="/contact"
+        primaryHref="/contact?subject=business"
       />
     </>
   );

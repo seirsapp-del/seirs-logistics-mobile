@@ -480,7 +480,7 @@ export default async function HomePage() {
                 ))}
               </div>
               <Link
-                href="/contact"
+                href="/contact?subject=business"
                 className="inline-flex items-center gap-2 bg-navy text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-navy-dark transition-colors shadow-lg text-[13px] sm:text-base"
               >
                 Open a Business Account
@@ -741,7 +741,7 @@ export default async function HomePage() {
               it for someone who has actually decided to apply. */}
           <div className="text-center">
             <Link
-              href="/contact"
+              href="/contact?subject=partner"
               className="inline-flex items-center gap-2 bg-sky text-white font-bold px-5 py-3 sm:px-8 sm:py-4 rounded-btn hover:opacity-90 transition-opacity text-[13px] sm:text-base"
             >
               Apply as Partner Store
@@ -808,7 +808,7 @@ export default async function HomePage() {
               <ArrowRight size={16} className="flex-shrink-0" />
             </GetAppButton>
             <Link
-              href="/contact"
+              href="/contact?subject=business"
               className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-3 py-3 sm:px-8 sm:py-4 rounded-btn hover:bg-white/10 transition-colors text-[13px] sm:text-base"
             >
               Talk to Sales
