@@ -128,6 +128,24 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "delivery_stops"
           ADD COLUMN IF NOT EXISTS "stopCode" varchar(12) NULL
       `);
+      // Multi-package rebuild (2026-08-16): each stop is one package with
+      // its own photo set, description, category, weight, public tracking
+      // code and attributed price. Partial unique index keeps package
+      // codes collision-safe without blocking legacy NULL rows.
+      await this.ds.query(`
+        ALTER TABLE "delivery_stops"
+          ADD COLUMN IF NOT EXISTS "packagePhotoUrls" jsonb NULL,
+          ADD COLUMN IF NOT EXISTS "packageDescription" text NULL,
+          ADD COLUMN IF NOT EXISTS "categoryCode" varchar(40) NULL,
+          ADD COLUMN IF NOT EXISTS "weightKg" numeric(8,2) NULL,
+          ADD COLUMN IF NOT EXISTS "packageTrackingCode" varchar(16) NULL,
+          ADD COLUMN IF NOT EXISTS "packagePriceNgn" numeric(12,2) NULL
+      `);
+      await this.ds.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS "delivery_stops_pkg_code_uniq"
+          ON "delivery_stops" ("packageTrackingCode")
+          WHERE "packageTrackingCode" IS NOT NULL
+      `);
       // High-value handoff policy (2026-08-10): sender-declared value
       // drives the mandatory signature gate on DELIVERED.
       await this.ds.query(`

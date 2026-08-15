@@ -62,6 +62,38 @@ export class DeliveryStop {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   lng: number;
 
+  /**
+   * Per-package fields (multi-package rebuild, founder spec 2026-08-15:
+   * packages are FIRST-CLASS: each stop carries one package with its own
+   * photo, description, category, weight and a PUBLIC tracking code).
+   * Nullable so legacy single-category runs keep working; the business
+   * Send rebuild writes them for every new booking.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  packagePhotoUrls: string[] | null;
+
+  @Column({ type: 'text', nullable: true })
+  packageDescription: string | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  categoryCode: string | null;
+
+  @Column({ type: 'numeric', precision: 8, scale: 2, nullable: true })
+  weightKg: number | null;
+
+  // Public per-package tracking code (SRS-P-XXXXXXXX). Unlike stopCode
+  // (a claim code the recipient shows at the door), this one resolves on
+  // the public /track page so each receiver can follow their own parcel.
+  @Index()
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  packageTrackingCode: string | null;
+
+  // Price attributed to this package by the rate card at booking time
+  // (its category surcharge + weight tier + its share of labour/fuel).
+  // Sums to the delivery's total; feeds the itemized receipt.
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  packagePriceNgn: number | null;
+
   @Column()
   recipientName: string;
 

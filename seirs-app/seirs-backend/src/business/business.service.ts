@@ -31,6 +31,13 @@ function generateStopCode(): string {
   return 'STP-' + secureCode(8);
 }
 
+// Public per-package tracking code: SRS-P- prefix keeps it visually part
+// of the tracking family while support can tell package codes from run
+// codes (SRS-) and claim codes (STP-) at a glance.
+function generatePackageCode(): string {
+  return 'SRS-P-' + secureCode(8);
+}
+
 const clamp = (n: number, min: number, max: number) =>
   Math.min(Math.max(n, min), max);
 
@@ -55,6 +62,16 @@ export interface CreateMultiStopDeliveryDto {
     recipientPhone: string;
     notes?:         string;
     sequenceOrder?: number;
+    /**
+     * Multi-package rebuild (2026-08-16): each stop IS one package with
+     * its own identity. Optional so the legacy one-category flow keeps
+     * booking until the new UI ships; when present, per-package pricing
+     * and public tracking codes activate.
+     */
+    packagePhotoUrls?:   string[];
+    packageDescription?: string;
+    categoryCode?:       string;
+    weightKg?:           number;
   }>;
   vehicleType:      string;
   categoryCode:     string;
@@ -553,6 +570,14 @@ export class BusinessService {
         return c;
       };
 
+      const usedPkgCodes = new Set<string>();
+      const nextPackageCode = () => {
+        let c = generatePackageCode();
+        while (usedPkgCodes.has(c)) c = generatePackageCode();
+        usedPkgCodes.add(c);
+        return c;
+      };
+
       const stopRows = dto.stops.map((s, idx) => mgr.create(DeliveryStop, {
         deliveryId:    savedDelivery.id,
         sequenceOrder: s.sequenceOrder ?? idx + 1,
@@ -560,6 +585,13 @@ export class BusinessService {
         // only claim THEIR stop, not the whole run. Same alphabet as
         // tracking codes, STP- prefix so support can tell them apart.
         stopCode:      nextStopCode(),
+        // Public per-package tracking code: every package is trackable
+        // on /track by its own receiver, not just the run's sender.
+        packageTrackingCode: nextPackageCode(),
+        packagePhotoUrls:   s.packagePhotoUrls ?? null,
+        packageDescription: s.packageDescription ?? null,
+        categoryCode:       s.categoryCode ?? dto.categoryCode ?? null,
+        weightKg:           s.weightKg ?? null,
         address:       s.address,
         lat:           s.lat,
         lng:           s.lng,
@@ -586,6 +618,22 @@ export class BusinessService {
           for (const row of stopRows) {
             if (row.stopCode && clashSet.has(row.stopCode)) {
               row.stopCode = nextStopCode();
+            }
+          }
+        }
+      }
+
+      const pkgCodes = stopRows.map(r => r.packageTrackingCode!).filter(Boolean);
+      if (pkgCodes.length > 0) {
+        const pkgClashes: Array<{ packageTrackingCode: string }> = await mgr.query(
+          `SELECT "packageTrackingCode" FROM delivery_stops WHERE "packageTrackingCode" = ANY($1)`,
+          [pkgCodes],
+        );
+        if (pkgClashes.length > 0) {
+          const clashSet = new Set(pkgClashes.map(c => c.packageTrackingCode));
+          for (const row of stopRows) {
+            if (row.packageTrackingCode && clashSet.has(row.packageTrackingCode)) {
+              row.packageTrackingCode = nextPackageCode();
             }
           }
         }
