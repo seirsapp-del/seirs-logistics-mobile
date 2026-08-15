@@ -5,8 +5,18 @@ import Link from "next/link";
 import { Menu, X, Globe, Check } from "lucide-react";
 import SeirsLogo from "./SeirsLogo";
 
+// Track added 2026-08-15, second. /track/[code] has been live and working
+// the whole time with nothing linking to it, so the only way in was to
+// hand-type a deep URL. Recipients are the largest audience a Nigerian
+// logistics site gets and they arrive already holding a code; making them
+// open a menu to find tracking is the wrong trade. Sits high deliberately.
+//
+// Find a Partner is still here but the directory currently returns zero
+// stores, so a top-level slot answers "0 partners in the network". Worth
+// demoting until roughly ten are live.
 const navLinks = [
   { label: "How it Works",     href: "/how-it-works" },
+  { label: "Track",            href: "/track" },
   { label: "Find a Partner",   href: "/find-a-partner" },
   { label: "For Business",     href: "/for-business" },
   { label: "For Drivers",      href: "/for-drivers" },

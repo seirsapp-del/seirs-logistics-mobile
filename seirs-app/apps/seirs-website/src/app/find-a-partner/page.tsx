@@ -296,9 +296,15 @@ export default function FindAPartnerPage() {
         <div className="mt-16 rounded-2xl bg-gradient-to-br from-navy to-navy-dark p-8 text-center text-white sm:p-10">
           <h2 className="text-2xl font-black sm:text-3xl">Ready to send with Seirs?</h2>
           <p className="mx-auto mt-3 max-w-xl text-white/70">
+            {/* Was the plain text "seirs.app/track", which was not a link and
+                pointed at a URL that 404'd because no /track index existed.
+                Now a real link to the page built 2026-08-15. */}
             Choose a partner drop-off in the customer app to save on pickup fees,
-            or schedule a door pickup. Both flows track live in the app and at
-            seirs.app/track.
+            or schedule a door pickup. Both flows track live in the app and{" "}
+            <Link href="/track" className="text-sky font-semibold hover:underline">
+              here on the site
+            </Link>
+            .
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link

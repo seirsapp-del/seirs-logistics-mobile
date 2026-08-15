@@ -22,6 +22,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/for-drivers`,        changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/for-partner-stores`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/news`,               changeFrequency: 'daily',   priority: 0.9 },
+    // /track added 2026-08-15. High priority on purpose: recipients holding
+    // a code are the largest search audience a logistics site gets, and they
+    // search for tracking far more than for marketing pages.
+    { url: `${BASE}/track`,              changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE}/faq`,                changeFrequency: 'monthly', priority: 0.7 },
     { url: `${BASE}/changelog`,          changeFrequency: 'weekly',  priority: 0.6 },
     { url: `${BASE}/careers`,            changeFrequency: 'weekly',  priority: 0.7 },

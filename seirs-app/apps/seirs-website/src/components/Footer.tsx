@@ -31,14 +31,23 @@ export default function Footer() {
               Company
             </h4>
             <ul className="space-y-3">
+              {/* Track, FAQ and Changelog added 2026-08-15. All three were
+                  live, published and in the sitemap, but linked from nowhere
+                  on the site: the FAQ has answers written and was deflecting
+                  no support at all, and tracking could only be reached by
+                  hand-typing a deep URL. Crawlable but unreachable is the
+                  worst of both. */}
               {[
                 { label: "How it Works",     href: "/how-it-works" },
+                { label: "Track a Delivery", href: "/track" },
                 { label: "Find a Partner",   href: "/find-a-partner" },
                 { label: "For Business",     href: "/for-business" },
                 { label: "For Drivers",      href: "/for-drivers" },
                 { label: "Partner Stores",   href: "/for-partner-stores" },
+                { label: "FAQ",              href: "/faq" },
                 { label: "Careers",          href: "/careers" },
                 { label: "News",             href: "/news" },
+                { label: "Changelog",        href: "/changelog" },
                 { label: "Contact",          href: "/contact" },
               ].map((link) => (
                 <li key={link.label}>
