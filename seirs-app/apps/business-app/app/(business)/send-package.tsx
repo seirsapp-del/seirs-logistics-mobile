@@ -413,7 +413,7 @@ export default function SendPackageScreen() {
       Alert.alert('Photo needed', 'Allow photo access: every package needs its picture for handoff proof.');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
     if (!result.canceled && result.assets?.[0]?.uri) {
       updateStop(idx, { photoUris: [...current, result.assets[0].uri] });
     }

@@ -88,7 +88,7 @@ export default function BusinessProfileTab() {
     {
       title: t('profile.preferences', { defaultValue: 'Preferences' }),
       items: [
-        { icon: 'Bell',  label: t('drawer.notifications', { defaultValue: 'Notifications' }), onPress: () => router.push('/(business)/notifications' as any) },
+        { icon: 'Bell',  label: t('drawer.notifications', { defaultValue: 'Notifications' }), onPress: () => router.push('/(business)/notification-settings' as any) },
         { icon: 'Globe', label: t('drawer.language',      { defaultValue: 'Language' }),      onPress: () => router.push('/(business)/language' as any) },
       ],
     },
