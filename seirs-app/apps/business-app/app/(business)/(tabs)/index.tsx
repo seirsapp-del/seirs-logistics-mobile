@@ -120,8 +120,8 @@ export default function BusinessDashboard() {
 
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
               <View style={styles.actions}>
-                <ActionCard icon="Package"         label="Send a Package" sub="Single or multi-stop"
-                  onPress={() => router.push('/(business)/new-delivery' as any)} primary />
+                <ActionCard icon="Package"         label="Send a Package" sub="One or many packages, one payment"
+                  onPress={() => router.push('/(business)/send-package' as any)} primary />
                 <ActionCard icon="FileSpreadsheet" label="CSV Upload"   sub="Bulk import from file"
                   onPress={() => router.push('/(business)/csv-upload' as any)} />
                 <ActionCard icon="Truck"           label="Special Cargo" sub="Trucks, cold chain & heavy loads"
@@ -141,7 +141,7 @@ export default function BusinessDashboard() {
                   <Text style={[styles.emptyText, { color: colors.textThird }]}>No deliveries yet</Text>
                   <Pressable
                     style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => router.push('/(business)/new-delivery' as any)}
+                    onPress={() => router.push('/(business)/send-package' as any)}
                   >
                     <Text style={styles.emptyBtnText}>Create your first delivery</Text>
                   </Pressable>
