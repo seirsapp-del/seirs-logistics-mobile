@@ -68,13 +68,15 @@ export default function BusinessTabsLayout() {
           (business) stack level, so it is full-screen by construction and
           the tab bar no longer needs a display:none hack. Profile takes
           the freed slot: every SEIRS app now ends its bar with Profile. */}
-      <Tabs.Screen
-        name="messages"
-        options={{ title: 'Messages', tabBarIcon: ({ focused }) => <TabIcon name="MessageSquare" focused={focused} /> }}
-      />
+      {/* Wallet holds the centre slot (founder 2026-08-16): money and
+          rewards are the anchor between work (left) and people (right). */}
       <Tabs.Screen
         name="wallet"
         options={{ title: 'Wallet', tabBarIcon: ({ focused }) => <TabIcon name="Wallet" focused={focused} /> }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{ title: 'Messages', tabBarIcon: ({ focused }) => <TabIcon name="MessageSquare" focused={focused} /> }}
       />
       <Tabs.Screen
         name="profile"

@@ -4,8 +4,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/Icon';
+import { HeroCarousel } from '@/components/HeroCarousel';
 import { Drawer } from '@/components/Drawer';
 import { businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
@@ -45,41 +45,58 @@ export default function BusinessDashboard() {
           Solid navy matches the top of the gradient below so the seam is
           invisible; only the wallet card scrolls. */}
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-        <View>
+        <Pressable style={styles.avatarBtn} onPress={() => setDrawerOpen(true)}>
+          <Icon name="AlignLeft" size={20} color="#fff" strokeWidth={1.75} />
+        </Pressable>
+        <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.greeting}>Good {getTimeOfDay()},</Text>
           <Text style={styles.companyName}>{user?.name?.split(' ')[0] ?? user?.companyName}</Text>
         </View>
-        <View style={styles.headerActions}>
-          <Pressable style={styles.avatarBtn} onPress={() => router.push('/(business)/notifications' as any)}>
-            <Icon name="Bell" size={20} color="#fff" strokeWidth={1.5} />
-          </Pressable>
-          <Pressable style={styles.avatarBtn} onPress={() => setDrawerOpen(true)}>
-            <Icon name="Menu" size={20} color="#fff" strokeWidth={1.5} />
-          </Pressable>
-        </View>
+        <Pressable style={styles.avatarBtn} onPress={() => router.push('/(business)/notifications' as any)}>
+          <Icon name="Bell" size={20} color="#fff" strokeWidth={1.5} />
+        </Pressable>
       </View>
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} showsVerticalScrollIndicator={false}>
         {/* Header: keeps the brand navy gradient in both modes since it
             is intentionally dark-on-dark (text reads on either scheme). */}
-        <LinearGradient
-          colors={['#0F2B4C', '#1a3a5c']}
-          style={styles.header}
+        {/* The wallet hero is gone (founder 2026-08-16): the dashboard
+            leads with the same living carousel the customer app has, so
+            businesses get the news, promos and product updates too. */}
+        <View style={{ marginTop: 12 }}>
+          <HeroCarousel />
+        </View>
+
+        {/* Quick-access chips: points lead (they open the Wallet tab's
+            Rewards), then Stories and Alerts: the customer pattern. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
         >
-          <View style={styles.walletCard}>
-            <Text style={styles.walletLabel}>Business Wallet</Text>
-            <Text style={styles.walletBalance}>{fmt(data?.walletBalance ?? 0)}</Text>
-            {/* Fund Wallet retired 2026-08-16 (founder: "we are not a
-                bank"). Businesses pay per booking; the button now opens
-                billing history instead of implying we take deposits. */}
-            <Pressable
-              style={styles.fundBtn}
-              onPress={() => router.push('/(business)/(tabs)/wallet' as any)}
-            >
-              <Icon name="Receipt" size={14} color="#0F2B4C" />
-              <Text style={styles.fundBtnText}>Billing & History</Text>
-            </Pressable>
-          </View>
-        </LinearGradient>
+          <Pressable
+            style={[styles.chip, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
+            onPress={() => router.push('/(business)/(tabs)/wallet' as any)}
+          >
+            <Icon name="Star" size={14} color={colors.primary} />
+            <Text style={[styles.chipText, { color: colors.primary }]}>
+              {(data?.loyaltyPoints ?? 0).toLocaleString()} pts
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => router.push('/(business)/stories' as any)}
+          >
+            <Icon name="FileText" size={14} color={colors.textSecond} />
+            <Text style={[styles.chipText, { color: colors.textSecond }]}>Stories</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => router.push('/(business)/notifications' as any)}
+          >
+            <Icon name="Bell" size={14} color={colors.textSecond} />
+            <Text style={[styles.chipText, { color: colors.textSecond }]}>Alerts</Text>
+          </Pressable>
+        </ScrollView>
 
         <View style={styles.body}>
           {loading ? (
@@ -209,9 +226,15 @@ function getTimeOfDay() {
 const styles = StyleSheet.create({
   header:      { paddingHorizontal: 24, paddingTop: 4, paddingBottom: 28 },
   topBar:      {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 24, paddingBottom: 12, backgroundColor: '#0F2B4C',
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingBottom: 12, backgroundColor: '#0F2B4C',
   },
+  chipsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 14 },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1,
+  },
+  chipText: { fontSize: 13, fontWeight: '600' },
   greeting:    { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   companyName: { fontSize: 20, fontWeight: '800', color: '#fff', marginTop: 2 },
   headerActions: { flexDirection: 'row', gap: 8 },

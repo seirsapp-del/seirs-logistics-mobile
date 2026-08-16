@@ -15,6 +15,7 @@ export {
   onSessionExpired,
   setSessionExpiredHandler,
   uploadApi,
+  storiesApi,
   notificationsApi,
   businessApi,
   partnerApi,
@@ -63,3 +64,4 @@ export const authApi = {
   forgotPassword: sharedAuthApi.forgotPassword,
   resetPassword:  sharedAuthApi.resetPassword,
 };
+export type { FeaturedCardDTO, StoryDTO } from '@seirs/shared/services/api';
