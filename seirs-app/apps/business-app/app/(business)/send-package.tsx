@@ -24,7 +24,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
   ActivityIndicator, Alert, Image, Linking, KeyboardAvoidingView, Platform,
-  Keyboard, Dimensions, Modal, Share,
+  Keyboard, Dimensions, Modal, Share, StatusBar as RNStatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -89,6 +89,12 @@ export default function SendPackageScreen() {
    */
   const fullMapRef = useRef<MapView>(null);
   const [mapFull, setMapFull] = useState(false);
+  /**
+   * useSafeAreaInsets returns 0 inside a React Native Modal on Android,
+   * so the status-bar scrim rendered with no height at all. RNStatusBar
+   * .currentHeight is the real measurement.
+   */
+  const statusBarH = Math.max(RNStatusBar.currentHeight ?? 0, insets.top ?? 0, 28);
   /**
    * Counter the sender tapped for details (founder 2026-08-16: "shouldn't
    * the user be able to see that as well, maybe tap to get more details
@@ -530,23 +536,24 @@ export default function SendPackageScreen() {
     if (!total || !n) return null;
     const pctOf = (code?: string | null) =>
       Number(catalog.find(c => c.code === (code ?? draft.categoryCode))?.surchargePercent ?? 0);
-    // Counter handling is a flat per-parcel disbursement, so it is split
-    // out first and given back to the exact parcels that incurred it,
-    // instead of being spread across the run by category weight.
+    /**
+     * Carriage only. Counter handling is a flat disbursement shown as its
+     * own line, so folding it into the package prices as well made the
+     * same money appear twice.
+     *
+     * Rounded to whole naira HERE, with the last line absorbing the
+     * drift, because the receipt is read at whole-naira precision: shares
+     * that summed exactly to the total still printed 5,302 + 5,802 next
+     * to a total of 11,103 (seen on device 2026-08-16).
+     */
     const handling = Number(quote?.customer?.partnerHandling ?? 0);
-    const touches =
-      (draft.pickupStoreId ? draft.stops.length : 0) +
-      draft.stops.filter((s) => s.destinationStoreId).length;
-    const rate = touches > 0 ? handling / touches : 0;
-    const perStopHandling = draft.stops.map((s) =>
-      (draft.pickupStoreId ? rate : 0) + (s.destinationStoreId ? rate : 0));
     const carriage = total - handling;
     const weights = draft.stops.map(s => 1 + pctOf(s.categoryCode) / 100);
     const wSum = weights.reduce((a, b) => a + b, 0);
-    const shares = weights.map(w => Math.round((carriage * w / wSum) * 100) / 100);
-    const drift = Math.round((carriage - shares.reduce((a, b) => a + b, 0)) * 100) / 100;
-    shares[n - 1] = Math.round((shares[n - 1] + drift) * 100) / 100;
-    return shares.map((s, i) => Math.round((s + (perStopHandling[i] ?? 0)) * 100) / 100);
+    const shares = weights.map(w => Math.round(carriage * w / wSum));
+    const drift = Math.round(carriage) - shares.reduce((a, b) => a + b, 0);
+    shares[n - 1] += drift;
+    return shares;
   }, [quote, draft.stops, catalog, draft.categoryCode, draft.pickupStoreId]);
 
   // ── Validation per step ──────────────────────────────────────────────
@@ -575,6 +582,23 @@ export default function SendPackageScreen() {
       // You cannot walk packages into a counter that is shut. Sending a
       // driver there now would strand the run (found on device
       // 2026-08-16: a Mon-Sat counter offered "Send now" on a Sunday).
+      /**
+       * A parcel dropped at a counter and delivered to that SAME counter
+       * never travels, but the run is still priced and dispatched (seen
+       * on device 2026-08-16: the pickup pin and a drop pin sat on top of
+       * each other and the sender was quoted 62km). If the receiver
+       * really collects from the drop counter, that is a different
+       * product, not a delivery.
+       */
+      if (draft.pickupMode === 'store' && draft.pickupStoreId) {
+        const clash = draft.stops.findIndex((s) => s.destinationStoreId === draft.pickupStoreId);
+        if (clash !== -1) {
+          return {
+            packageIndex: clash,
+            message: `Package ${clash + 1} is going to the same counter you are dropping it at. Send it to an address or a different counter.`,
+          };
+        }
+      }
       if (draft.pickupMode === 'store' && scheduleNow && draft.pickupStoreInfo?.isOpenNow === false) {
         return {
           message: `${draft.pickupStoreInfo.storeName} is closed right now${
@@ -1473,7 +1497,7 @@ export default function SendPackageScreen() {
                         Partner counter handling
                       </Text>
                       <Text style={[styles.lineSub, { color: colors.textThird }]} numberOfLines={2}>
-                        Paid to the shop for every parcel it takes in or hands over. Already included in the package prices above.
+                        Paid to the counter for every parcel it takes in or hands over.
                       </Text>
                     </View>
                     <Text style={[styles.linePrice, { color: colors.textSecond }]}>
@@ -1611,7 +1635,12 @@ export default function SendPackageScreen() {
         {/* Full-screen route map (founder 2026-08-16). Same pins and
             polyline as the thumbnail, with room to actually read them. */}
         <Modal visible={mapFull} animationType="slide" onRequestClose={() => setMapFull(false)}>
-          <View style={{ flex: 1, backgroundColor: colors.background }}>
+          {/* paddingTop keeps the map out from under the status bar, so
+              the clock, signal and battery stay readable on the app's own
+              background instead of on pale map tiles. An absolutely
+              positioned scrim did not survive over the native map view
+              (founder 2026-08-16). */}
+          <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: statusBarH }}>
             {!!pickupPoint && dropPoints.length > 0 && (
               <MapView
                 provider={PROVIDER_GOOGLE}
@@ -1656,8 +1685,12 @@ export default function SendPackageScreen() {
                 )}
               </MapView>
             )}
+            {/* The map is drawn under the status bar, so the clock,
+                signal and battery sat on pale map tiles and could not be
+                read (founder 2026-08-16). A scrim gives them something to
+                sit on without taking the map off the full screen. */}
             <Pressable
-              style={[styles.mapCloseBtn, { backgroundColor: colors.surface, top: insets.top + 12 }]}
+              style={[styles.mapCloseBtn, { backgroundColor: colors.surface, top: statusBarH + 12 }]}
               onPress={() => setMapFull(false)}
             >
               <Icon name="X" size={20} color={colors.text} />

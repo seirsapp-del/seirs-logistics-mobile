@@ -540,7 +540,9 @@ export class BusinessService {
      */
     const attributePackagePrices = (): number[] | null => {
       const n = dto.stops.length;
-      const total = Number(breakdown.customer.total);
+      // Carriage only: counter handling is a flat disbursement with its
+      // own line, so it must not be spread across the packages as well.
+      const total = Number(breakdown.customer.total) - Number(breakdown.customer.partnerHandling ?? 0);
       if (!n || !Number.isFinite(total)) return null;
       const weights = hasPackages && packagePcts.length === n
         ? packagePcts.map((pct) => 1 + pct / 100)
@@ -563,17 +565,11 @@ export class BusinessService {
      * It rides on the per-package share too, otherwise the receipt lines
      * would not add up to what the sender is charged.
      */
-    const handlingRate = await this.fees.getValueOr('partner_store_handling_ngn', 500);
-    const perStopHandling = dto.stops.map((st) =>
-      (dto.pickupStoreId ? handlingRate : 0) + (st.destinationStoreId ? handlingRate : 0));
-    // computePrice already added this to customer.total via
-    // partnerStoreTouches; this is the same money, split per package.
+    // Added to customer.total by the pricing engine via
+    // partnerStoreTouches. Stored on the delivery for reconciliation and
+    // shown as its own receipt line; deliberately NOT folded into the
+    // per-package prices, or the same money appears twice on the receipt.
     const partnerHandlingNgn = Number(breakdown.customer.partnerHandling ?? 0);
-    if (packageShares) {
-      for (let i = 0; i < packageShares.length; i++) {
-        packageShares[i] = Math.round((packageShares[i] + (perStopHandling[i] ?? 0)) * 100) / 100;
-      }
-    }
 
     /**
      * Pay-per-booking (founder 2026-08-15: "we are not a bank"). If the
