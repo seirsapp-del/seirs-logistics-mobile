@@ -287,17 +287,17 @@ export class SupportService {
   private async appendMessage(
     ticket: SupportTicket, sender: User, bodyText: string, _senderKind: 'user' | 'agent',
   ): Promise<ChatMessage> {
-    // Build the entity via create() with a narrowed input so TypeORM's
-    // overload resolves to the single-entity variant. The ticketId
-    // column is set via cast because ChatMessage entity doesn't declare
-    // it yet (kept out of the entity to avoid a chat->support import).
+    // ticketId is now a real column on ChatMessage. It used to be set
+    // through a cast, and TypeORM drops properties an entity does not
+    // declare, so every ticket message was written detached from its
+    // ticket and the thread came back empty.
     const partial = {
       sender,
       body:     bodyText,
       imageUrl: null,
       delivery: null,
       ticketId: ticket.id,
-    } as unknown as Partial<ChatMessage>;
+    } as Partial<ChatMessage>;
     const msg = this.messages.create(partial);
     const saved = await this.messages.save(msg);
     return saved as ChatMessage;

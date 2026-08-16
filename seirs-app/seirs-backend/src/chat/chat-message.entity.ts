@@ -15,9 +15,25 @@ export class ChatMessage {
   // Each conversation is scoped to a delivery. Both customer and driver
   // join `chat:<deliveryId>` to exchange messages. There is no separate
   // "thread" entity; the delivery itself is the chat thread.
-  @ManyToOne(() => Delivery, { onDelete: 'CASCADE' })
+  // Nullable since support tickets reuse this table: a support message
+  // belongs to a ticket and has no delivery at all. Writing one used to
+  // hit a NOT NULL on deliveryId and fail the whole request with a 500,
+  // which is why opening a support ticket was broken (2026-08-16).
+  @ManyToOne(() => Delivery, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn()
-  delivery: Delivery;
+  delivery: Delivery | null;
+
+  /**
+   * Support ticket this message belongs to, when it is not a delivery
+   * conversation. Declared here because TypeORM silently DROPS any
+   * property the entity does not know: support wrote ticketId through a
+   * cast, so every ticket message was saved detached from its ticket.
+   * Kept as a plain uuid column rather than a relation so chat does not
+   * have to import the support module.
+   */
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  ticketId: string | null;
 
   // Nullable so system messages (driver assigned, picked up, delivered) can
   // exist without a real user sender. Clients render sender-less messages

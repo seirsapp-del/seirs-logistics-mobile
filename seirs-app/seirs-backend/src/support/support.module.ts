@@ -73,6 +73,13 @@ export class SupportModule implements OnModuleInit {
         CREATE INDEX IF NOT EXISTS "chat_messages_ticket_created_idx"
           ON "chat_messages" ("ticketId", "createdAt")
       `);
+      // A support message has no delivery. deliveryId was still NOT NULL,
+      // so writing the first message of a ticket failed and the whole
+      // request 500'd: opening a support ticket was impossible from any
+      // app (found on device 2026-08-16).
+      await this.ds.query(`
+        ALTER TABLE "chat_messages" ALTER COLUMN "deliveryId" DROP NOT NULL
+      `);
       this.logger.log('support_tickets schema self-heal complete');
     } catch (e: any) {
       this.logger.warn(`support_tickets self-heal skipped: ${e?.message ?? e}`);
