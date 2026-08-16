@@ -1,6 +1,7 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
+  Keyboard, Dimensions,
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +37,40 @@ function validatePhone(v: string): string | null {
 
 export default function BusinessEditProfileScreen() {
   const insets = useSafeAreaInsets();
+
+  /**
+   * Keep the focused field above the keyboard. Android resizes the window
+   * (adjustResize) but React Native does not scroll the focused input
+   * into view, so the street address sat at y=1585 under a keyboard
+   * topping out near y=1340 and you could not see what you typed
+   * (founder, on device 2026-08-16). Same approach as the Send flow:
+   * measureInWindow needs no ancestor ref, and the lift runs from
+   * keyboardDidShow because the height is unknown at focus time.
+   */
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  const focusedRef = useRef<any>(null);
+  const [kbH, setKbH] = useState(0);
+  const ensureVisible = (node: any, height: number) => {
+    if (!node || typeof node.measureInWindow !== 'function' || !height) return;
+    node.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+      const overlap = (y + h + 24) - (Dimensions.get('window').height - height);
+      if (overlap > 0) scrollRef.current?.scrollTo({ y: Math.max(0, scrollY.current + overlap), animated: true });
+    });
+  };
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      const h = e.endCoordinates.height;
+      setKbH(h);
+      if (focusedRef.current) setTimeout(() => ensureVisible(focusedRef.current, h), 60);
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKbH(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+  const onFieldFocus = (e: any) => {
+    focusedRef.current = e?.target;
+    if (kbH > 0) setTimeout(() => ensureVisible(e?.target, kbH), 60);
+  };
   const router = useRouter();
   const colors = useColors();
   const { user, refresh } = useAuth() as any;
@@ -155,7 +190,17 @@ export default function BusinessEditProfileScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* The Save button sat UNDER the Android navigation bar: the
+            scroll content had a flat 16pt bottom padding and no safe-area
+            inset, so the last control was permanently half-covered
+            (founder spotted it on device 2026-08-16). */}
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 + kbH }]}
+          keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={16}
+          onScroll={(ev) => { scrollY.current = ev.nativeEvent.contentOffset.y; }}
+        >
 
           {/* SEIRS ID: shown for support flows. Copy button optional here
               (business owners typically use the dashboard, not phone). */}
@@ -181,6 +226,7 @@ export default function BusinessEditProfileScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.label, { color: colors.textSecond }]}>FIRST NAME</Text>
             <TextInput
+              onFocus={onFieldFocus}
               value={firstName} onChangeText={setFirstName}
               style={[styles.input, { borderColor: errors.firstName ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="Adebayo" placeholderTextColor={colors.textThird} />
@@ -191,6 +237,7 @@ export default function BusinessEditProfileScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.label, { color: colors.textSecond }]}>MIDDLE NAME (OPTIONAL)</Text>
             <TextInput
+              onFocus={onFieldFocus}
               value={middleName} onChangeText={setMiddleName}
               style={[styles.input, { borderColor: errors.middleName ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="" placeholderTextColor={colors.textThird} />
@@ -200,6 +247,7 @@ export default function BusinessEditProfileScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.label, { color: colors.textSecond }]}>LAST NAME</Text>
             <TextInput
+              onFocus={onFieldFocus}
               value={lastName} onChangeText={setLastName}
               style={[styles.input, { borderColor: errors.lastName ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="Ogunlana" placeholderTextColor={colors.textThird} />
@@ -210,6 +258,7 @@ export default function BusinessEditProfileScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.label, { color: colors.textSecond }]}>DATE OF BIRTH {dobLocked ? '(LOCKED)' : ''}</Text>
             <TextInput
+              onFocus={onFieldFocus}
               value={dateOfBirth} onChangeText={setDateOfBirth} editable={!dobLocked}
               keyboardType="numbers-and-punctuation"
               style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: dobLocked ? 0.6 : 1 }]}
@@ -222,6 +271,7 @@ export default function BusinessEditProfileScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.label, { color: colors.textSecond }]}>PHONE</Text>
             <TextInput
+              onFocus={onFieldFocus}
               value={phone} onChangeText={setPhone} keyboardType="phone-pad"
               style={[styles.input, { borderColor: errors.phone ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="08012345678" placeholderTextColor={colors.textThird} />
@@ -240,6 +290,7 @@ export default function BusinessEditProfileScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.label, { color: colors.textSecond }]}>CONTACT NAME</Text>
             <TextInput
+              onFocus={onFieldFocus}
               value={emergencyName} onChangeText={setEmergencyName}
               style={[styles.input, { borderColor: errors.emergencyName ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="e.g. Chinyere Okafor" placeholderTextColor={colors.textThird} />
@@ -249,6 +300,7 @@ export default function BusinessEditProfileScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.label, { color: colors.textSecond }]}>CONTACT PHONE</Text>
             <TextInput
+              onFocus={onFieldFocus}
               value={emergencyPhone} onChangeText={setEmergencyPhone} keyboardType="phone-pad"
               style={[styles.input, { borderColor: errors.emergencyPhone ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="08012345678" placeholderTextColor={colors.textThird} />
@@ -282,6 +334,7 @@ export default function BusinessEditProfileScreen() {
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.label, { color: colors.textSecond }]}>COMPANY NAME</Text>
                 <TextInput
+              onFocus={onFieldFocus}
                   value={companyName} onChangeText={setCompanyName} editable={isOwner}
                   style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: isOwner ? 1 : 0.6 }]}
                   placeholder="Acme Logistics Ltd" placeholderTextColor={colors.textThird} />
@@ -290,6 +343,7 @@ export default function BusinessEditProfileScreen() {
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.label, { color: colors.textSecond }]}>RC NUMBER</Text>
                 <TextInput
+              onFocus={onFieldFocus}
                   value={rcNumber} onChangeText={setRcNumber} editable={isOwner}
                   style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: isOwner ? 1 : 0.6 }]}
                   placeholder="RC1234567" placeholderTextColor={colors.textThird} />
@@ -298,6 +352,7 @@ export default function BusinessEditProfileScreen() {
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.label, { color: colors.textSecond }]}>STREET ADDRESS</Text>
                 <TextInput
+              onFocus={onFieldFocus}
                   value={streetAddress} onChangeText={setStreetAddress} editable={isOwner}
                   style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: isOwner ? 1 : 0.6 }]}
                   placeholder="15 Adeola Odeku" placeholderTextColor={colors.textThird} />
@@ -307,6 +362,7 @@ export default function BusinessEditProfileScreen() {
                 <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}>
                   <Text style={[styles.label, { color: colors.textSecond }]}>CITY</Text>
                   <TextInput
+              onFocus={onFieldFocus}
                     value={city} onChangeText={setCity} editable={isOwner}
                     style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: isOwner ? 1 : 0.6 }]}
                     placeholder="Lekki" placeholderTextColor={colors.textThird} />
@@ -314,6 +370,7 @@ export default function BusinessEditProfileScreen() {
                 <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}>
                   <Text style={[styles.label, { color: colors.textSecond }]}>STATE</Text>
                   <TextInput
+              onFocus={onFieldFocus}
                     value={state} onChangeText={setState} editable={isOwner}
                     style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: isOwner ? 1 : 0.6 }]}
                     placeholder="Lagos" placeholderTextColor={colors.textThird} />
