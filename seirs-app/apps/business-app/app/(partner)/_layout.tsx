@@ -36,6 +36,16 @@ export default function PartnerLayout() {
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
       }}
     >
+      {/* FIVE tabs, no more (founder 2026-08-16: the footer was crammed).
+          This is a Tabs layout, so EVERY route file in this folder was
+          silently becoming a tab: billing, capacity, storage, language,
+          receive-dropoff and release-pickup were all sitting in the bar.
+          They are reachable from the dashboard and settings, so they are
+          explicitly hidden with href: null rather than left to autoload.
+
+          The five that earn a slot are the partner's daily loop: see the
+          shelf, work the shelf, scan a handover, check the money, manage
+          the store. */}
       <Tabs.Screen
         name="index"
         options={{ title: 'Dashboard', tabBarIcon: ({ focused }) => <TabIcon name="LayoutDashboard" focused={focused} /> }}
@@ -56,17 +66,22 @@ export default function PartnerLayout() {
         )}}
       />
       <Tabs.Screen
-        name="messages"
-        options={{ title: 'Messages', tabBarIcon: ({ focused }) => <TabIcon name="MessageSquare" focused={focused} /> }}
-      />
-      <Tabs.Screen
         name="earnings"
         options={{ title: 'Earnings', tabBarIcon: ({ focused }) => <TabIcon name="TrendingUp" focused={focused} /> }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Settings', tabBarIcon: ({ focused }) => <TabIcon name="Settings" focused={focused} /> }}
+        options={{ title: 'Store', tabBarIcon: ({ focused }) => <TabIcon name="Settings" focused={focused} /> }}
       />
+
+      {/* Reachable screens that must NOT occupy a tab slot. */}
+      <Tabs.Screen name="messages"         options={{ href: null }} />
+      <Tabs.Screen name="billing"          options={{ href: null }} />
+      <Tabs.Screen name="capacity"         options={{ href: null }} />
+      <Tabs.Screen name="storage"          options={{ href: null }} />
+      <Tabs.Screen name="language"         options={{ href: null }} />
+      <Tabs.Screen name="receive-dropoff"  options={{ href: null }} />
+      <Tabs.Screen name="release-pickup"   options={{ href: null }} />
     </Tabs>
   );
 }

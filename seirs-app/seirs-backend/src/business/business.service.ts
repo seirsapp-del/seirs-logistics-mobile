@@ -55,6 +55,8 @@ export interface CreateMultiStopDeliveryDto {
   pickupAddress:    string;
   pickupLat:        number;
   pickupLng:        number;
+  /** Sender drops the run at this counter instead of a door pickup. */
+  pickupStoreId?:   string;
   stops: Array<{
     address:        string;
     lat:            number;
@@ -586,6 +588,7 @@ export class BusinessService {
         pickupAddress:  dto.pickupAddress,
         pickupLat:      dto.pickupLat,
         pickupLng:      dto.pickupLng,
+        pickupStoreId:  dto.pickupStoreId ?? null,
         // For single-stop bookings, populate dropoff* too so the legacy
         // single-leg dispatcher / driver app keeps working until phase 5
         // wires stops everywhere.

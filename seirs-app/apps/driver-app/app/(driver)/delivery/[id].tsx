@@ -10,7 +10,7 @@
  * When the last stop flips to delivered, the parent Delivery auto-
  * closes server-side (see business.service.markStopDelivered).
  */
-import {
+import { Image,
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator,
   Alert, Linking,
 } from 'react-native';
@@ -32,6 +32,17 @@ interface Stop {
   recipientPhone: string;
   notes?:         string | null;
   estimatedDwellMinutes: number;
+  /**
+   * Per-package fields (multi-package rebuild 2026-08-16). A business run
+   * is one package per stop, so the driver needs to see WHICH parcel
+   * belongs at this door: its photo, what it is, its weight, and the
+   * public code the receiver is tracking.
+   */
+  packagePhotoUrls?:     string[] | null;
+  packageDescription?:   string | null;
+  weightKg?:             number | string | null;
+  packageTrackingCode?:  string | null;
+  destinationStoreId?:   string | null;
   status:         'pending' | 'en_route' | 'arrived' | 'delivered' | 'failed';
   arrivedAt?:     string | null;
   deliveredAt?:   string | null;
@@ -255,12 +266,46 @@ export default function DeliveryDetailScreen() {
               >
                 <View style={styles.stopHeader}>
                   <View style={[styles.stopBadge, { backgroundColor: meta.color }]}>
-                    <Text style={styles.stopBadgeText}>Stop {stop.sequenceOrder}</Text>
+                    <Text style={styles.stopBadgeText}>
+                      {stop.packageTrackingCode ? `Package ${stop.sequenceOrder}` : `Stop ${stop.sequenceOrder}`}
+                    </Text>
                   </View>
                   <View style={[styles.statusPill, { backgroundColor: meta.color + '22' }]}>
                     <Text style={[styles.statusPillText, { color: meta.color }]}>{meta.label}</Text>
                   </View>
                 </View>
+
+                {/* What the driver is actually carrying to this door. The
+                    photo is the sender's own picture of the parcel, so a
+                    five-package run cannot be mixed up at the doorstep. */}
+                {(stop.packagePhotoUrls?.length || stop.packageDescription) && (
+                  <View style={styles.pkgRow}>
+                    {!!stop.packagePhotoUrls?.length && (
+                      <Image source={{ uri: stop.packagePhotoUrls[0] }} style={styles.pkgThumb} />
+                    )}
+                    <View style={{ flex: 1 }}>
+                      {!!stop.packageDescription && (
+                        <Text style={[styles.pkgDesc, { color: theme.text }]} numberOfLines={2}>
+                          {stop.packageDescription}
+                        </Text>
+                      )}
+                      <Text style={[styles.pkgMeta, { color: theme.textThird }]} numberOfLines={1}>
+                        {stop.weightKg != null ? `${Number(stop.weightKg)}kg` : ''}
+                        {stop.weightKg != null && stop.packageTrackingCode ? ' · ' : ''}
+                        {stop.packageTrackingCode ?? ''}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {!!stop.destinationStoreId && (
+                  <View style={[styles.storeFlag, { backgroundColor: theme.accent + '18' }]}>
+                    <Ionicons name="storefront-outline" size={13} color={theme.accent} />
+                    <Text style={[styles.storeFlagText, { color: theme.accent }]}>
+                      Hand to the counter staff, not a customer
+                    </Text>
+                  </View>
+                )}
 
                 <Text style={[styles.stopAddress, { color: theme.text }]}>{stop.address}</Text>
                 <Text style={[styles.stopRecipient, { color: theme.textSecond }]}>
@@ -427,6 +472,16 @@ const styles = StyleSheet.create({
   stopBadgeText: { fontSize: FontSize.xs, color: '#fff', fontWeight: FontWeight.bold as any },
   statusPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   statusPillText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
+  pkgRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  pkgThumb: { width: 52, height: 52, borderRadius: 10 },
+  pkgDesc:  { fontSize: 13, fontWeight: '700' },
+  pkgMeta:  { fontSize: 11, marginTop: 2, letterSpacing: 0.3 },
+  storeFlag: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 999, marginBottom: 6,
+  },
+  storeFlagText: { fontSize: 11, fontWeight: '700' },
   stopAddress: { fontSize: FontSize.base, fontWeight: FontWeight.semibold as any, marginTop: 4 },
   stopRecipient: { fontSize: FontSize.sm },
   stopNotes: { fontSize: FontSize.sm, fontStyle: 'italic' },

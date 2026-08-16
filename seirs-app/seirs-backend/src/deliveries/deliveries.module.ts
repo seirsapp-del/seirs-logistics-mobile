@@ -149,6 +149,11 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "packageTrackingCode" varchar(16) NULL,
           ADD COLUMN IF NOT EXISTS "packagePriceNgn" numeric(12,2) NULL
       `);
+      // Sender drops at a counter, driver collects there (2026-08-16).
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "pickupStoreId" uuid NULL
+      `);
       // Per-package destination partner store (2026-08-16).
       await this.ds.query(`
         ALTER TABLE "delivery_stops"

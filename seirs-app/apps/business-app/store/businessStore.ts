@@ -38,6 +38,15 @@ export interface DeliveryStop {
 }
 
 export interface DraftDelivery {
+  /**
+   * How the packages reach SEIRS (founder 2026-08-16): a driver collects
+   * from the sender, or the sender drops the run at a partner counter and
+   * a driver collects there. Store mode puts the counter's address and
+   * coords into the pickup fields, so pricing and routing are unchanged.
+   */
+  pickupMode?:      'door' | 'store';
+  pickupStoreId?:   string;
+  pickupStoreName?: string;
   pickupAddress:    string;
   pickupLat?:       number;
   pickupLng?:       number;

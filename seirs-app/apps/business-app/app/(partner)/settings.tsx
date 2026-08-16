@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
@@ -25,6 +26,7 @@ interface StoreSettings {
 }
 
 export default function PartnerSettingsScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { user, logout } = useAuth();
@@ -227,6 +229,28 @@ export default function PartnerSettingsScreen() {
               )}
             </View>
           </View>
+          {/* Messages and Language had NO entry point anywhere once they
+              left the tab bar (founder 2026-08-16: "are you hiding the
+              rest or organising it"). Hiding a screen without giving it a
+              home is just orphaning it, so they live here, where a
+              partner looks for account and preference settings. */}
+          <Pressable
+            style={[styles.linkRow, { borderTopColor: colors.border }]}
+            onPress={() => router.push('/(partner)/messages' as any)}
+          >
+            <Icon name="MessageSquare" size={16} color={colors.textSecond} />
+            <Text style={[styles.linkRowText, { color: colors.text }]}>Messages &amp; support</Text>
+            <Icon name="ChevronRight" size={16} color={colors.textThird} />
+          </Pressable>
+          <Pressable
+            style={[styles.linkRow, { borderTopColor: colors.border }]}
+            onPress={() => router.push('/(partner)/language' as any)}
+          >
+            <Icon name="Globe" size={16} color={colors.textSecond} />
+            <Text style={[styles.linkRowText, { color: colors.text }]}>Language</Text>
+            <Icon name="ChevronRight" size={16} color={colors.textThird} />
+          </Pressable>
+
           <Pressable style={[styles.logoutBtn, { borderTopColor: colors.border }]} onPress={logout}>
             <Icon name="LogOut" size={16} color="#DC2626" />
             <Text style={styles.logoutText}>Sign Out</Text>
@@ -278,6 +302,11 @@ const styles = StyleSheet.create({
   accountLabel:  { fontSize: 14, fontWeight: '700' },
   accountEmail:  { fontSize: 12, marginTop: 1 },
 
+  linkRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 14, paddingHorizontal: 16, borderTopWidth: 1,
+  },
+  linkRowText: { flex: 1, fontSize: 14, fontWeight: '600' },
   logoutBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, borderTopWidth: 1 },
   logoutText:    { fontSize: 14, fontWeight: '600', color: '#DC2626' },
 

@@ -871,6 +871,8 @@ export const businessApi = {
     pickupAddress:    string;
     pickupLat:        number;
     pickupLng:        number;
+    /** Sender drops the run at this counter; a driver collects there. */
+    pickupStoreId?:   string;
     stops: Array<{
       address:        string;
       lat:            number;
@@ -879,6 +881,18 @@ export const businessApi = {
       recipientPhone: string;
       notes?:         string;
       sequenceOrder?: number;
+      /** Multi-package rebuild: each stop IS one package. */
+      packagePhotoUrls?:      string[];
+      packageDescription?:    string;
+      categoryCode?:          string;
+      weightKg?:              number;
+      receiverFirstName?:     string;
+      receiverLastName?:      string;
+      declaredValueNgn?:      number;
+      fallbackPref?:          string;
+      fallbackNeighbourName?: string;
+      /** Deliver this package to a counter near the receiver. */
+      destinationStoreId?:    string;
     }>;
     vehicleType:      string;
     categoryCode:     string;

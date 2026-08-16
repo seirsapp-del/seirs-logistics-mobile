@@ -207,6 +207,9 @@ export default function SendPackageScreen() {
       if (activeField.kind === 'pickup') {
         setPickupQuery(address);
         setDraft({ pickupAddress: address, pickupLat: loc.lat, pickupLng: loc.lng });
+        // Counter mode: the typed place locates the AREA, then we show the
+        // counters the sender can walk the packages to.
+        if (draft.pickupMode === 'store') findStoresNear(-1, loc.lat, loc.lng);
       } else {
         const idx = activeField.idx;
         setPkgQueries(prev => { const next = [...prev]; next[idx] = address; return next; });
@@ -272,6 +275,17 @@ export default function SendPackageScreen() {
       setNearbyBusy((b) => ({ ...b, [idx]: false }));
     }
   };
+  const choosePickupStore = (store: any) => {
+    setDraft({
+      pickupStoreId:   store.id,
+      pickupStoreName: store.storeName,
+      pickupAddress:   store.storeAddress,
+      pickupLat:       store.lat ?? undefined,
+      pickupLng:       store.lng ?? undefined,
+    });
+    setPickupQuery(store.storeAddress);
+  };
+
   const chooseStore = (idx: number, store: any) => {
     updateStop(idx, {
       destinationStoreId:   store.id,
@@ -429,6 +443,8 @@ export default function SendPackageScreen() {
       return null;
     }
     if (step === 1) {
+      if (draft.pickupMode === 'store' && !draft.pickupStoreId)
+        return { message: 'Choose the counter you will drop the packages at.' };
       if (draft.pickupLat == null || draft.pickupLng == null) return { message: 'Pick the pickup address from the suggestions.' };
       if (!scheduleNow && scheduledHour == null) return { message: 'Pick a pickup hour, or switch to Send now.' };
       return null;
@@ -503,6 +519,7 @@ export default function SendPackageScreen() {
         pickupAddress: draft.pickupAddress,
         pickupLat: draft.pickupLat!,
         pickupLng: draft.pickupLng!,
+        pickupStoreId: draft.pickupMode === 'store' ? draft.pickupStoreId : undefined,
         stops: draft.stops.map((s, idx) => ({
           address: s.address,
           lat: s.lat!,
@@ -937,8 +954,46 @@ export default function SendPackageScreen() {
           {/* ─── STEP 1: PICKUP ────────────────────────────────────── */}
           {step === 1 && (
             <View style={{ gap: 14 }}>
+              {/* How the packages reach SEIRS (founder 2026-08-16). Dropping
+                  at a counter removes the door-pickup leg: the sender walks
+                  them in whenever the shop is open and a driver collects
+                  there. Combined with a package's own "to a partner store"
+                  choice, a run can go counter to counter. */}
+              <Text style={[styles.label, { color: colors.textSecond, marginTop: 0 }]}>
+                How do we get the packages? <Text style={{ color: '#DC2626' }}>*</Text>
+              </Text>
+              {([
+                { key: 'door',  title: 'A driver collects from me', sub: 'Rider comes to your address', icon: 'Bike' },
+                { key: 'store', title: "I'll drop them at a counter", sub: 'Cheaper: no pickup leg, drop any time the shop is open', icon: 'Store' },
+              ] as const).map((opt) => {
+                const active = (draft.pickupMode ?? 'door') === opt.key;
+                return (
+                  <Pressable
+                    key={opt.key}
+                    style={[styles.whenCard,
+                      { backgroundColor: colors.surface, borderColor: colors.border },
+                      active && { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
+                    onPress={() => {
+                      setDraft({ pickupMode: opt.key, pickupStoreId: undefined, pickupStoreName: undefined });
+                      if (opt.key === 'store' && draft.pickupLat != null && draft.pickupLng != null) {
+                        findStoresNear(-1, draft.pickupLat, draft.pickupLng);
+                      }
+                    }}
+                  >
+                    <View style={[styles.whenIcon, { backgroundColor: active ? colors.primary : colors.surfaceSecond }]}>
+                      <Icon name={opt.icon as any} size={18} color={active ? '#fff' : colors.textSecond} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.whenTitle, { color: colors.text }]}>{opt.title}</Text>
+                      <Text style={[styles.whenSub, { color: colors.textSecond }]}>{opt.sub}</Text>
+                    </View>
+                    {active && <Icon name="CheckCircle2" size={20} color={colors.primary} />}
+                  </Pressable>
+                );
+              })}
+
               <Text style={[styles.label, { color: colors.textSecond }]}>
-                Pickup address <Text style={{ color: '#DC2626' }}>*</Text>
+                {draft.pickupMode === 'store' ? 'Your area' : 'Pickup address'} <Text style={{ color: '#DC2626' }}>*</Text>
               </Text>
               <TextInput
                 style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
@@ -949,6 +1004,67 @@ export default function SendPackageScreen() {
                 placeholderTextColor={colors.textThird}
               />
               {renderSuggestions('pickup')}
+
+              {draft.pickupMode === 'store' && (
+                <View style={{ marginTop: 8 }}>
+                  {draft.pickupStoreId ? (
+                    <View style={[styles.storePicked, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+                      <Icon name="Store" size={16} color={colors.primary} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.storeName, { color: colors.text }]} numberOfLines={1}>
+                          {draft.pickupStoreName}
+                        </Text>
+                        <Text style={[styles.storeMeta, { color: colors.textSecond }]} numberOfLines={1}>
+                          You drop here · a driver collects from the counter
+                        </Text>
+                      </View>
+                      <Pressable onPress={() => setDraft({ pickupStoreId: undefined, pickupStoreName: undefined })}>
+                        <Text style={[styles.changeTxt, { color: colors.primary }]}>Change</Text>
+                      </Pressable>
+                    </View>
+                  ) : nearbyBusy[-1] ? (
+                    <ActivityIndicator color={colors.accent} style={{ paddingVertical: 12 }} />
+                  ) : (nearby[-1]?.length ?? 0) > 0 ? (
+                    <>
+                      <Text style={[styles.hint, { color: colors.textThird }]}>
+                        {nearby[-1].length} counter{nearby[-1].length === 1 ? '' : 's'} near you. Tap the one you will drop at.
+                      </Text>
+                      {nearby[-1].map((store: any) => (
+                        <Pressable
+                          key={store.id}
+                          style={[styles.storeCardRow, { backgroundColor: colors.surfaceSecond, borderColor: colors.border }]}
+                          onPress={() => choosePickupStore(store)}
+                        >
+                          {store.photoUrl ? (
+                            <Image source={{ uri: store.photoUrl }} style={styles.storeThumb} />
+                          ) : (
+                            <View style={[styles.storeThumb, { backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }]}>
+                              <Icon name="Store" size={18} color={colors.textThird} />
+                            </View>
+                          )}
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.storeName, { color: colors.text }]} numberOfLines={1}>{store.storeName}</Text>
+                            <Text style={[styles.storeMeta, { color: colors.textSecond }]} numberOfLines={1}>{store.storeAddress}</Text>
+                            <Text style={[styles.storeMeta, { color: colors.textThird }]} numberOfLines={1}>
+                              {store.distanceKm != null ? (store.distanceKm < 1 ? 'under 1km away · ' : `${store.distanceKm}km away · `) : ''}
+                              {store.isOpenNow ? 'Open now' : 'Closed now'}
+                              {store.openTime ? ` (${store.openTime}-${store.closeTime})` : ''}
+                            </Text>
+                          </View>
+                          <Icon name="ChevronRight" size={16} color={colors.textThird} />
+                        </Pressable>
+                      ))}
+                    </>
+                  ) : (
+                    <Text style={[styles.hint, { color: colors.textThird }]}>
+                      {draft.pickupLat != null
+                        ? 'No counter near that area yet. A driver can collect from you instead.'
+                        : 'Type your area and we will show the counters you can drop at.'}
+                    </Text>
+                  )}
+                </View>
+              )}
+
               <Pressable style={styles.useLocRow} onPress={useMyLocation}>
                 <Icon name="MapPin" size={16} color={colors.accent} />
                 <Text style={[styles.useLocTxt, { color: colors.accent }]}>Use my current location</Text>
@@ -1145,8 +1261,10 @@ export default function SendPackageScreen() {
 
               <View style={[styles.sumCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.sumTitle, { color: colors.text }]}>Route</Text>
-                <Text style={[styles.sumLine, { color: colors.textSecond }]} numberOfLines={1}>
-                  From {draft.pickupAddress || '…'}
+                <Text style={[styles.sumLine, { color: colors.textSecond }]} numberOfLines={2}>
+                  {draft.pickupMode === 'store' && draft.pickupStoreName
+                    ? `You drop at ${draft.pickupStoreName} · driver collects there`
+                    : `From ${draft.pickupAddress || '…'}`}
                 </Text>
                 <Text style={[styles.sumLine, { color: colors.textSecond }]}>
                   {draft.stops.length} drop{draft.stops.length === 1 ? '' : 's'} · {route.distanceText ?? `~${routeKm}km`} · {VEHICLE_LABEL[draft.vehicleType]}

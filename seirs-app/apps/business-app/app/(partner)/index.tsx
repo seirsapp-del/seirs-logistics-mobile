@@ -53,6 +53,16 @@ export default function PartnerDashboard() {
                   ID behind a PART- placeholder, which read as though the
                   account and the shop were the same thing. */}
               <Text style={styles.partnerId}>{data?.storeCode ?? 'Code pending approval'}</Text>
+            {/* There was NO way back to the business side once you entered
+                partner mode (founder 2026-08-16). Same account, two hats:
+                this returns to sending without signing out. */}
+            <Pressable
+              style={styles.switchBtn}
+              onPress={() => router.replace('/(business)/(tabs)' as any)}
+            >
+              <Icon name="ArrowLeft" size={13} color="#fff" />
+              <Text style={styles.switchText}>Back to business</Text>
+            </Pressable>
             </View>
             <Pressable style={styles.logoutBtn} onPress={() => setDrawerOpen(true)}>
               <Icon name="Menu" size={20} color="#fff" strokeWidth={1.5} />
@@ -223,6 +233,12 @@ const styles = StyleSheet.create({
   headerRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   partnerLabel:  { fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
   storeName:     { fontSize: 20, fontWeight: '800', color: '#fff' },
+  switchBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+    marginTop: 10, paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  switchText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   partnerId:     { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace', marginTop: 4 },
   logoutBtn:     {
     width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.1)',

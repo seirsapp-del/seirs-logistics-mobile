@@ -323,6 +323,17 @@ export class Delivery {
   @Column({ type: 'timestamptz', nullable: true })
   paymentHeldAt: Date | null;
 
+  /**
+   * Counter the sender drops the packages at, for a driver to collect
+   * (founder 2026-08-16). Distinct from a package's destination store:
+   * this replaces the door pickup leg, so pickupAddress/Lat/Lng hold the
+   * store's location and routing needs no special case. Null means an
+   * ordinary door pickup.
+   */
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  pickupStoreId: string | null;
+
   // Proof of delivery
   @Column({ nullable: true })
   proofPhotoUrl: string;
