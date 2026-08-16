@@ -15,10 +15,16 @@ export interface DeliveryStop {
    * its own identity (founder spec). Photo is REQUIRED at submit;
    * category/weight default from the run-level picks until edited.
    */
-  photoUri?:            string;   // local uri until upload at submit
+  photoUris?:           string[];  // local uris until upload at submit (up to 5, customer parity)
   packageDescription?:  string;
   categoryCode?:        string;
   weightKg?:            number;
+  // Customer-parity fields, per package (2026-08-16).
+  receiverFirstName?:     string;
+  receiverLastName?:      string;
+  declaredValueNgn?:      number;
+  fallbackPref?:          'hand_only' | 'neighbour' | 'gate' | 'store';
+  fallbackNeighbourName?: string;
 }
 
 export interface DraftDelivery {

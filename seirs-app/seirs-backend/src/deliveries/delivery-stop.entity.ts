@@ -94,6 +94,28 @@ export class DeliveryStop {
   @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
   packagePriceNgn: number | null;
 
+  /**
+   * Customer-parity fields (2026-08-16): the customer Send form asks
+   * these per package, so a business run must carry them per package
+   * too, not once for the whole run. Receiver first/last drive the
+   * handoff name check; declared value drives the high-value ID gate;
+   * fallback says what the driver may do when nobody answers.
+   */
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  receiverFirstName: string | null;
+
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  receiverLastName: string | null;
+
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  declaredValueNgn: number | null;
+
+  @Column({ type: 'varchar', length: 12, nullable: true })
+  fallbackPref: string | null;
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  fallbackNeighbourName: string | null;
+
   @Column()
   recipientName: string;
 

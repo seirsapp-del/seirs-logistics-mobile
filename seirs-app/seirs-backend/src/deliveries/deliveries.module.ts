@@ -149,6 +149,15 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "packageTrackingCode" varchar(16) NULL,
           ADD COLUMN IF NOT EXISTS "packagePriceNgn" numeric(12,2) NULL
       `);
+      // Customer-parity per-package fields (2026-08-16).
+      await this.ds.query(`
+        ALTER TABLE "delivery_stops"
+          ADD COLUMN IF NOT EXISTS "receiverFirstName" varchar(60) NULL,
+          ADD COLUMN IF NOT EXISTS "receiverLastName" varchar(60) NULL,
+          ADD COLUMN IF NOT EXISTS "declaredValueNgn" numeric(12,2) NULL,
+          ADD COLUMN IF NOT EXISTS "fallbackPref" varchar(12) NULL,
+          ADD COLUMN IF NOT EXISTS "fallbackNeighbourName" varchar(80) NULL
+      `);
       await this.ds.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS "delivery_stops_pkg_code_uniq"
           ON "delivery_stops" ("packageTrackingCode")

@@ -15,9 +15,10 @@
  *               backend books with) + total, then one payment: credit
  *               drains first, otherwise Flutterwave checkout.
  *
- * The map-first wizard (new-delivery.tsx) remains routable for CSV and
- * recurring templates until they migrate here; the dashboard's Send a
- * Package card points HERE.
+ * This is the ONLY in-app booking flow. The old map-first wizard was
+ * deleted with this rebuild: two booking screens meant two sets of
+ * rules, and the divergence is exactly what the founder kept finding.
+ * CSV upload still books through the same backend endpoint.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -171,6 +172,8 @@ export default function SendPackageScreen() {
 
   // ── Photos ───────────────────────────────────────────────────────────
   const pickPhoto = async (idx: number) => {
+    const current = draft.stops[idx]?.photoUris ?? [];
+    if (current.length >= 5) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert('Photo needed', 'Allow photo access: every package needs its picture for handoff proof.');
@@ -178,8 +181,34 @@ export default function SendPackageScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      updateStop(idx, { photoUri: result.assets[0].uri });
+      updateStop(idx, { photoUris: [...current, result.assets[0].uri] });
     }
+  };
+  const removePhoto = (idx: number, photoIdx: number) => {
+    const current = draft.stops[idx]?.photoUris ?? [];
+    updateStop(idx, { photoUris: current.filter((_, j) => j !== photoIdx) });
+  };
+
+  // Use-my-location for pickup (customer parity). Nigeria bounding box
+  // guard: a founder abroad should not geocode their hotel as pickup.
+  const useMyLocation = async () => {
+    try {
+      const Location = await import('expo-location');
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (perm.status !== 'granted') return;
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude, longitude } = loc.coords;
+      if (!(latitude >= 4 && latitude <= 14 && longitude >= 2.5 && longitude <= 15)) {
+        Alert.alert('Outside Nigeria', 'Type the pickup address instead.');
+        return;
+      }
+      const j = await mapsApi.geocode({ latlng: `${latitude},${longitude}` });
+      const address = j?.results?.[0]?.formatted_address ?? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+      setPickupQuery(address);
+      setDraft({ pickupAddress: address, pickupLat: latitude, pickupLng: longitude });
+      setPredictions([]);
+      setActiveField(null);
+    } catch { /* typing still works */ }
   };
 
   // ── Schedule ─────────────────────────────────────────────────────────
@@ -247,10 +276,12 @@ export default function SendPackageScreen() {
     if (step === 0) {
       for (let i = 0; i < draft.stops.length; i++) {
         const s = draft.stops[i];
-        if (!s.photoUri)                    return `Package ${i + 1} needs a photo.`;
+        if (!(s.photoUris ?? []).length)    return `Package ${i + 1} needs at least one photo.`;
         if (!(Number(s.weightKg) > 0))      return `Package ${i + 1} needs a weight.`;
         if (!(s.categoryCode ?? draft.categoryCode)) return `Package ${i + 1} needs a category.`;
-        if (!s.recipientName?.trim())       return `Package ${i + 1} needs the receiver's name.`;
+        if (!s.receiverFirstName?.trim())   return `Package ${i + 1} needs the receiver's first name.`;
+        if (s.fallbackPref === 'neighbour' && !s.fallbackNeighbourName?.trim())
+          return `Package ${i + 1}: name the neighbour who may collect.`;
         if (!s.recipientPhone?.trim())      return `Package ${i + 1} needs the receiver's phone.`;
         if (s.lat == null || s.lng == null) return `Package ${i + 1} needs a delivery address picked from the suggestions.`;
       }
@@ -287,10 +318,15 @@ export default function SendPackageScreen() {
     if (!quote) { Alert.alert('One moment', 'The price is still computing.'); return; }
     setLoading(true);
     try {
-      const photoUrls: string[] = [];
+      // Every photo of every package uploads (customer parity: up to 5).
+      const photoUrlsPerPackage: string[][] = [];
       for (const s of draft.stops) {
-        const up = await uploadApi.file(s.photoUri!, 'image/jpeg', 'packages');
-        photoUrls.push(up.url);
+        const urls: string[] = [];
+        for (const uri of (s.photoUris ?? [])) {
+          const up = await uploadApi.file(uri, 'image/jpeg', 'packages');
+          urls.push(up.url);
+        }
+        photoUrlsPerPackage.push(urls);
       }
       const scheduledAt = !scheduleNow && scheduledHour != null
         ? (() => { const d = new Date(); d.setHours(scheduledHour, 0, 0, 0); if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1); return d.toISOString(); })()
@@ -304,11 +340,16 @@ export default function SendPackageScreen() {
           address: s.address,
           lat: s.lat!,
           lng: s.lng!,
-          recipientName: s.recipientName.trim(),
+          recipientName: [s.receiverFirstName?.trim(), s.receiverLastName?.trim()].filter(Boolean).join(' ') || s.recipientName.trim(),
           recipientPhone: s.recipientPhone.trim(),
           notes: s.note?.trim() || undefined,
           sequenceOrder: idx + 1,
-          packagePhotoUrls: [photoUrls[idx]],
+          packagePhotoUrls: photoUrlsPerPackage[idx],
+          receiverFirstName: s.receiverFirstName?.trim() || undefined,
+          receiverLastName: s.receiverLastName?.trim() || undefined,
+          declaredValueNgn: s.declaredValueNgn ?? undefined,
+          fallbackPref: s.fallbackPref ?? undefined,
+          fallbackNeighbourName: s.fallbackPref === 'neighbour' ? (s.fallbackNeighbourName?.trim() || undefined) : undefined,
           packageDescription: s.packageDescription?.trim() || undefined,
           categoryCode: s.categoryCode ?? draft.categoryCode ?? undefined,
           weightKg: s.weightKg ?? undefined,
@@ -396,6 +437,24 @@ export default function SendPackageScreen() {
           {/* ─── STEP 0: PACKAGES ──────────────────────────────────── */}
           {step === 0 && (
             <View style={{ gap: 18 }}>
+              {/* Store drop, the customer app's first card: for business
+                  runs it is the cheaper alternative to a door pickup. */}
+              <Pressable
+                style={[styles.storeCard, { borderColor: colors.accent + '55', backgroundColor: colors.accent + '12' }]}
+                onPress={() => router.push('/(business)/drop-at-store' as any)}
+              >
+                <View style={[styles.storeIcon, { backgroundColor: colors.surface }]}>
+                  <Icon name="Store" size={18} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.storeTitle, { color: colors.text }]}>Drop at a partner store instead</Text>
+                  <Text style={[styles.storeSub, { color: colors.textSecond }]}>
+                    Take them to a counter near you, skip the pickup leg.
+                  </Text>
+                </View>
+                <Icon name="ChevronRight" size={16} color={colors.accent} />
+              </Pressable>
+
               {draft.stops.map((s, i) => (
                 <View key={i} style={[styles.pkgCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={styles.pkgHead}>
@@ -408,21 +467,28 @@ export default function SendPackageScreen() {
                   </View>
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>
-                    Photo <Text style={{ color: '#DC2626' }}>*</Text>
+                    Photos <Text style={{ color: '#DC2626' }}>*</Text>
+                    <Text style={{ color: colors.textThird }}>  at least 1, up to 5</Text>
                   </Text>
-                  <Pressable
-                    style={[styles.photoBox, { borderColor: s.photoUri ? '#16A34A' : colors.border, backgroundColor: colors.surfaceSecond }]}
-                    onPress={() => pickPhoto(i)}
-                  >
-                    {s.photoUri ? (
-                      <Image source={{ uri: s.photoUri }} style={styles.photoImg} />
-                    ) : (
-                      <View style={{ alignItems: 'center', gap: 6 }}>
-                        <Icon name="Camera" size={22} color={colors.accent} />
-                        <Text style={[styles.photoHint, { color: colors.textSecond }]}>Add a photo of this package</Text>
+                  <View style={styles.photoRow}>
+                    {(s.photoUris ?? []).map((uri, pi) => (
+                      <View key={pi} style={styles.photoWrap}>
+                        <Image source={{ uri }} style={styles.photoThumb} />
+                        <Pressable style={styles.photoRemove} onPress={() => removePhoto(i, pi)} hitSlop={6}>
+                          <Icon name="X" size={11} color="#fff" />
+                        </Pressable>
                       </View>
+                    ))}
+                    {(s.photoUris ?? []).length < 5 && (
+                      <Pressable
+                        style={[styles.photoAdd, { borderColor: colors.border, backgroundColor: colors.surfaceSecond }]}
+                        onPress={() => pickPhoto(i)}
+                      >
+                        <Icon name="Camera" size={20} color={colors.accent} />
+                        <Text style={[styles.photoHint, { color: colors.textSecond }]}>Add</Text>
+                      </Pressable>
                     )}
-                  </Pressable>
+                  </View>
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>What is it?</Text>
                   <TextInput
@@ -473,15 +539,27 @@ export default function SendPackageScreen() {
                   </View>
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>
-                    Receiver <Text style={{ color: '#DC2626' }}>*</Text>
+                    Who is receiving? <Text style={{ color: '#DC2626' }}>*</Text>
                   </Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
-                    value={s.recipientName}
-                    onChangeText={(v) => updateStop(i, { recipientName: v })}
-                    placeholder="Full name"
-                    placeholderTextColor={colors.textThird}
-                  />
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TextInput
+                      style={[styles.input, { flex: 1, backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
+                      value={s.receiverFirstName ?? ''}
+                      onChangeText={(v) => updateStop(i, { receiverFirstName: v })}
+                      placeholder="First name"
+                      placeholderTextColor={colors.textThird}
+                    />
+                    <TextInput
+                      style={[styles.input, { flex: 1, backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
+                      value={s.receiverLastName ?? ''}
+                      onChangeText={(v) => updateStop(i, { receiverLastName: v })}
+                      placeholder="Last name (optional)"
+                      placeholderTextColor={colors.textThird}
+                    />
+                  </View>
+                  <Text style={[styles.hint, { color: colors.textThird }]}>
+                    The driver confirms this first name at handoff. Anyone the receiver trusts can collect.
+                  </Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={s.recipientPhone}
@@ -489,6 +567,68 @@ export default function SendPackageScreen() {
                     placeholder="08012345678"
                     placeholderTextColor={colors.textThird}
                     keyboardType="phone-pad"
+                  />
+
+                  <Text style={[styles.label, { color: colors.textSecond }]}>If nobody is available</Text>
+                  <View style={styles.chipWrap}>
+                    {([
+                      { key: 'hand_only', label: 'Hand to receiver only' },
+                      { key: 'neighbour', label: 'Leave with neighbour' },
+                      { key: 'gate',      label: 'Leave at gate' },
+                      { key: 'store',     label: 'Drop at partner store' },
+                    ] as const).map((opt) => {
+                      const hv = Number(s.declaredValueNgn ?? 0) >= 100000;
+                      const blocked = hv && (opt.key === 'gate' || opt.key === 'neighbour');
+                      const active = (s.fallbackPref ?? 'hand_only') === opt.key;
+                      return (
+                        <Pressable
+                          key={opt.key}
+                          disabled={blocked}
+                          style={[styles.chip,
+                            { backgroundColor: colors.surfaceSecond, borderColor: colors.border, opacity: blocked ? 0.4 : 1 },
+                            active && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                          onPress={() => updateStop(i, { fallbackPref: opt.key })}
+                        >
+                          <Text style={[styles.chipTxt, { color: colors.text }, active && { color: '#fff' }]}>{opt.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  {Number(s.declaredValueNgn ?? 0) >= 100000 && (
+                    <Text style={[styles.hint, { color: colors.textThird }]}>
+                      High-value packages cannot be left at the gate or with a neighbour.
+                    </Text>
+                  )}
+                  {s.fallbackPref === 'neighbour' && (
+                    <TextInput
+                      style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
+                      value={s.fallbackNeighbourName ?? ''}
+                      onChangeText={(v) => updateStop(i, { fallbackNeighbourName: v })}
+                      placeholder="Neighbour or security's name"
+                      placeholderTextColor={colors.textThird}
+                    />
+                  )}
+
+                  <Text style={[styles.label, { color: colors.textSecond }]}>Package value in NGN (optional)</Text>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
+                    value={s.declaredValueNgn != null ? String(s.declaredValueNgn) : ''}
+                    onChangeText={(v) => {
+                      const n = Number(v.replace(/[^0-9.]/g, ''));
+                      updateStop(i, { declaredValueNgn: Number.isFinite(n) && v !== '' ? n : undefined });
+                    }}
+                    placeholder="e.g. 150000. High-value packages get ID-verified handoff."
+                    placeholderTextColor={colors.textThird}
+                    keyboardType="numeric"
+                  />
+
+                  <Text style={[styles.label, { color: colors.textSecond }]}>Instructions for driver (optional)</Text>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
+                    value={s.note ?? ''}
+                    onChangeText={(v) => updateStop(i, { note: v })}
+                    placeholder="e.g. Call when you reach the gate. Ask for security."
+                    placeholderTextColor={colors.textThird}
                   />
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>
@@ -539,6 +679,10 @@ export default function SendPackageScreen() {
                 placeholderTextColor={colors.textThird}
               />
               {renderSuggestions('pickup')}
+              <Pressable style={styles.useLocRow} onPress={useMyLocation}>
+                <Icon name="MapPin" size={16} color={colors.accent} />
+                <Text style={[styles.useLocTxt, { color: colors.accent }]}>Use my current location</Text>
+              </Pressable>
 
               <Text style={[styles.label, { color: colors.textSecond, marginTop: 8 }]}>When?</Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -627,13 +771,13 @@ export default function SendPackageScreen() {
                 <Text style={[styles.sumTitle, { color: colors.text }]}>Packages</Text>
                 {draft.stops.map((s, i) => (
                   <View key={i} style={styles.lineRow}>
-                    {s.photoUri && <Image source={{ uri: s.photoUri }} style={styles.lineThumb} />}
+                    {!!(s.photoUris ?? []).length && <Image source={{ uri: s.photoUris![0] }} style={styles.lineThumb} />}
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.lineName, { color: colors.text }]} numberOfLines={1}>
                         {s.packageDescription?.trim() || `Package ${i + 1}`}
                       </Text>
                       <Text style={[styles.lineSub, { color: colors.textThird }]} numberOfLines={1}>
-                        {s.recipientName} · {s.weightKg}kg · {catalog.find(c => c.code === (s.categoryCode ?? draft.categoryCode))?.name ?? ''}
+                        {[s.receiverFirstName, s.receiverLastName].filter(Boolean).join(' ') || s.recipientName} · {s.weightKg}kg · {catalog.find(c => c.code === (s.categoryCode ?? draft.categoryCode))?.name ?? ''}
                       </Text>
                     </View>
                     <Text style={[styles.linePrice, { color: colors.text }]}>
@@ -701,9 +845,28 @@ const styles = StyleSheet.create({
   pkgTitle: { fontSize: 15, fontWeight: '700' },
   label:    { fontSize: 12, fontWeight: '600', marginTop: 8, marginBottom: 6 },
   input:    { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 2 },
-  photoBox: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 12, height: 96, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  photoImg:  { width: '100%', height: '100%' },
-  photoHint: { fontSize: 12 },
+  photoRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  photoWrap:  { width: 72, height: 72 },
+  photoThumb: { width: 72, height: 72, borderRadius: 10 },
+  photoRemove: {
+    position: 'absolute', top: -5, right: -5, width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center',
+  },
+  photoAdd: {
+    width: 72, height: 72, borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center', gap: 3,
+  },
+  photoHint: { fontSize: 11 },
+  hint:      { fontSize: 11, lineHeight: 15, marginTop: 4, marginBottom: 2 },
+  storeCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1.5, borderRadius: 14, padding: 14,
+  },
+  storeIcon:  { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  storeTitle: { fontSize: 14, fontWeight: '700' },
+  storeSub:   { fontSize: 12, marginTop: 2 },
+  useLocRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 },
+  useLocTxt:  { fontSize: 13, fontWeight: '600' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip:     { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
   chipTxt:  { fontSize: 12.5, fontWeight: '600' },

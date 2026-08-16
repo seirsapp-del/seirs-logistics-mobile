@@ -73,6 +73,12 @@ export interface CreateMultiStopDeliveryDto {
     packageDescription?: string;
     categoryCode?:       string;
     weightKg?:           number;
+    /** Customer-parity per package (2026-08-16). */
+    receiverFirstName?:     string;
+    receiverLastName?:      string;
+    declaredValueNgn?:      number;
+    fallbackPref?:          string;
+    fallbackNeighbourName?: string;
   }>;
   vehicleType:      string;
   categoryCode:     string;
@@ -647,6 +653,11 @@ export class BusinessService {
         categoryCode:       s.categoryCode ?? dto.categoryCode ?? null,
         weightKg:           s.weightKg ?? null,
         packagePriceNgn:    packageShares ? packageShares[idx] : null,
+        receiverFirstName:     s.receiverFirstName ?? null,
+        receiverLastName:      s.receiverLastName ?? null,
+        declaredValueNgn:      s.declaredValueNgn ?? null,
+        fallbackPref:          s.fallbackPref ?? null,
+        fallbackNeighbourName: s.fallbackNeighbourName ?? null,
         address:       s.address,
         lat:           s.lat,
         lng:           s.lng,
