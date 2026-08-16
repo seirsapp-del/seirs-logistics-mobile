@@ -468,8 +468,35 @@ export class BusinessService {
     const category = await this.pricing.getCategoryByCode(dto.categoryCode);
     const card     = await this.pricing.getActiveRateCard();
     const perStopDwellMin = this.pricing.computeStopDwellMinutes(card, category, dto.weightKg);
-    const totalDwellMin   = perStopDwellMin * dto.stops.length;
-    const totalEtaMin     = (dto.estimatedDriveMinutes ?? 0) + totalDwellMin;
+
+    /**
+     * Multi-package runs (2026-08-16): when stops carry their own
+     * category/weight, each package prices and dwells on ITS OWN inputs.
+     * The run weight becomes the sum of package weights (payload cap
+     * checks the real load, not a client-supplied total), and each
+     * stop's dwell reflects what the driver actually handles there.
+     */
+    const hasPackages = dto.stops.some((st) => st.categoryCode || st.weightKg != null);
+    let packages: Array<{ categoryCode: string; weightKg: number }> | undefined;
+    let perStopDwell: number[] | null = null;
+    let packagePcts: number[] = [];
+    let runWeightKg = dto.weightKg;
+    let totalDwellMin = perStopDwellMin * dto.stops.length;
+    if (hasPackages) {
+      packages = dto.stops.map((st) => ({
+        categoryCode: st.categoryCode ?? dto.categoryCode,
+        weightKg:     Number(st.weightKg ?? 0),
+      }));
+      runWeightKg = packages.reduce((sum, pkg) => sum + pkg.weightKg, 0);
+      perStopDwell = [];
+      for (const pkg of packages) {
+        const cat = await this.pricing.getCategoryByCode(pkg.categoryCode);
+        perStopDwell.push(this.pricing.computeStopDwellMinutes(card, cat, pkg.weightKg));
+        packagePcts.push(Number(cat.surchargePercent) || 0);
+      }
+      totalDwellMin = perStopDwell.reduce((sum, m) => sum + m, 0);
+    }
+    const totalEtaMin = (dto.estimatedDriveMinutes ?? 0) + totalDwellMin;
 
     // ── Pricing ────────────────────────────────────────────────────────
     const breakdown = await this.pricing.computePrice({
@@ -477,13 +504,35 @@ export class BusinessService {
       categoryCode:   dto.categoryCode,
       km:             dto.km,
       stopCount:      dto.stops.length,
-      weightKg:       dto.weightKg,
+      weightKg:       runWeightKg,
       estimatedDwellMinutes: totalDwellMin,
       scheduledAt:    dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
       isInterState:   dto.isInterState,
       isLongDistance: dto.isLongDistance,
       isRecurring:    dto.isRecurring,
+      packages,
     });
+
+    /**
+     * Per-package price attribution for the itemized receipt. Each
+     * package weighs (1 + its surcharge pct); shares scale to the run
+     * total so they always sum exactly, with the last package absorbing
+     * rounding drift. Single-category legacy runs split equally.
+     */
+    const attributePackagePrices = (): number[] | null => {
+      const n = dto.stops.length;
+      const total = Number(breakdown.customer.total);
+      if (!n || !Number.isFinite(total)) return null;
+      const weights = hasPackages && packagePcts.length === n
+        ? packagePcts.map((pct) => 1 + pct / 100)
+        : Array(n).fill(1);
+      const wSum = weights.reduce((sum, w) => sum + w, 0);
+      const shares = weights.map((w) => Math.round((total * w / wSum) * 100) / 100);
+      const drift = Math.round((total - shares.reduce((sum, x) => sum + x, 0)) * 100) / 100;
+      shares[n - 1] = Math.round((shares[n - 1] + drift) * 100) / 100;
+      return shares;
+    };
+    const packageShares = attributePackagePrices();
 
     // ── Wallet pre-flight (cheap check before opening transaction) ────
     // The real authoritative check happens inside the transaction with a
@@ -592,13 +641,14 @@ export class BusinessService {
         packageDescription: s.packageDescription ?? null,
         categoryCode:       s.categoryCode ?? dto.categoryCode ?? null,
         weightKg:           s.weightKg ?? null,
+        packagePriceNgn:    packageShares ? packageShares[idx] : null,
         address:       s.address,
         lat:           s.lat,
         lng:           s.lng,
         recipientName: s.recipientName,
         recipientPhone: s.recipientPhone,
         notes:         s.notes ?? null,
-        estimatedDwellMinutes: perStopDwellMin,
+        estimatedDwellMinutes: perStopDwell ? perStopDwell[idx] : perStopDwellMin,
         status:        DeliveryStopStatus.PENDING,
       }));
 

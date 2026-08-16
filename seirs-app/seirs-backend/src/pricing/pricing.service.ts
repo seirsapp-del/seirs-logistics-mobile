@@ -58,6 +58,17 @@ export interface PriceBreakdown {
   rateCardSnapshotId: string;
 }
 
+/**
+ * Package-count caps per vehicle when the active rate card predates the
+ * maxPackages field (founder 2026-08-15: never unlimited, an okada cannot
+ * carry 40 parcels and a failed pickup is a refund). Admin overrides live
+ * in the rate card's vehicleRates.<type>.maxPackages.
+ */
+export const DEFAULT_MAX_PACKAGES: Record<string, number> = {
+  bicycle: 3, motorcycle: 5, tricycle: 15, car: 20,
+  van: 40, truck_small: 80, truck_large: 150,
+};
+
 export interface PricingInput {
   vehicleType:   string;          // bicycle | motorcycle | ... | truck_large
   categoryCode:  string;          // documents | fragile | ...
@@ -66,6 +77,14 @@ export interface PricingInput {
   weightKg:      number;
   /** Estimated minutes the driver will spend not driving across all stops. */
   estimatedDwellMinutes: number;
+  /**
+   * Multi-package rebuild (2026-08-16): when a run carries packages with
+   * MIXED categories/weights, list them here. weightKg above stays the
+   * TOTAL. Each package's category surcharge applies to its equal share
+   * of the run subtotal (a blended surcharge), every category's safety
+   * rules are enforced, and the vehicle's maxPackages cap applies.
+   */
+  packages?: Array<{ categoryCode: string; weightKg: number }>;
   scheduledAt?:  Date;             // if undefined, treated as "now"
 
   /**
@@ -327,6 +346,32 @@ export class PricingService implements OnModuleInit {
       );
     }
 
+    // ── Multi-package runs: cap + per-package safety + blended surcharge ──
+    // Every package's category must tolerate the vehicle, and the count
+    // must fit the vehicle's capacity (card override, code default).
+    let packageCategories: Array<{ pct: number }> | null = null;
+    if (input.packages && input.packages.length > 0) {
+      const maxPackages =
+        Number((v as any).maxPackages) || DEFAULT_MAX_PACKAGES[input.vehicleType] || 20;
+      if (input.packages.length > maxPackages) {
+        throw new BadRequestException(
+          `${input.packages.length} packages exceed the ${input.vehicleType} limit of ${maxPackages}. Split the run or choose a larger vehicle.`,
+        );
+      }
+      packageCategories = [];
+      for (const pkg of input.packages) {
+        const cat = await this.getCategoryByCode(pkg.categoryCode);
+        const catBlocked = cat.safetyRules?.blockedVehicles ?? [];
+        if (catBlocked.includes(input.vehicleType)) {
+          throw new BadRequestException(
+            cat.safetyRules?.warningCopy
+              ?? `${cat.name} cannot be moved by ${input.vehicleType}.`,
+          );
+        }
+        packageCategories.push({ pct: Number(cat.surchargePercent) || 0 });
+      }
+    }
+
     // ── Regional context ─────────────────────────────────────────
     // Detect pickup/dropoff state from coords if supplied; honour explicit
     // overrides for tests / address-only flows; otherwise null (legacy path).
@@ -360,7 +405,16 @@ export class PricingService implements OnModuleInit {
 
     const subtotalPreSurcharge = base + distanceLabour + distanceFuel + stopBonuses + dwellOver;
 
-    const categorySurcharge = subtotalPreSurcharge * (Number(category.surchargePercent) / 100);
+    // Mixed-category runs surcharge each package's EQUAL SHARE of the
+    // subtotal at its own category rate; the sum is a blended surcharge
+    // that itemizes cleanly on the receipt. Single-category runs keep
+    // the original one-line formula (identical result when all match).
+    const categorySurcharge = packageCategories
+      ? packageCategories.reduce(
+          (sum, pc) => sum + (subtotalPreSurcharge / packageCategories!.length) * (pc.pct / 100),
+          0,
+        )
+      : subtotalPreSurcharge * (Number(category.surchargePercent) / 100);
 
     const tNow = input.scheduledAt ?? new Date();
     const t = card.timeSurcharges;
