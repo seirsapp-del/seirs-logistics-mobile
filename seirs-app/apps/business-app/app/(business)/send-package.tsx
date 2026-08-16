@@ -24,6 +24,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
   ActivityIndicator, Alert, Image, Linking, KeyboardAvoidingView, Platform,
+  Keyboard, findNodeHandle,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -167,6 +168,12 @@ export default function SendPackageScreen() {
       }
       setPredictions([]);
       setActiveField(null);
+      // Close the keyboard once an address is chosen. Leaving it open
+      // with focus still in the address box means the next thing typed
+      // silently appends to the address, which is how "Lagos, Nigeria"
+      // became "Lagos, NigeriaBello" during the walkthrough. A chosen
+      // address is a finished field.
+      Keyboard.dismiss();
     } catch { /* keep typing */ }
     finally { setSearching(false); }
   };
