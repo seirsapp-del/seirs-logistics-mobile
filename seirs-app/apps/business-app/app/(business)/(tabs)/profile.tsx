@@ -79,7 +79,9 @@ export default function BusinessProfileTab() {
     {
       title: t('profile.partner', { defaultValue: 'Partner network' }),
       items: [
-        { icon: 'Store', label: t('drawer.dropAtStore', { defaultValue: 'Drop at Partner Store' }), onPress: () => router.push('/(business)/drop-at-store' as any) },
+        // Dropping at a counter is a booking decision, not an account
+        // setting (founder 2026-08-16). It lives in Send a Package, where
+        // the sender picks it per run and sees the counters near them.
         canPartner
           ? { icon: 'Store', label: t('drawer.partnerProfile', { defaultValue: 'Partner Profile' }), onPress: () => router.push('/(partner)' as any) }
           : { icon: 'Store', label: t('drawer.applyPartner', { defaultValue: 'Apply to be a Partner Store' }), onPress: () => router.push('/(business)/apply-partner' as any) },
@@ -88,7 +90,10 @@ export default function BusinessProfileTab() {
     {
       title: t('profile.preferences', { defaultValue: 'Preferences' }),
       items: [
-        { icon: 'Bell',  label: t('drawer.notifications', { defaultValue: 'Notifications' }), onPress: () => router.push('/(business)/notification-settings' as any) },
+        // No Notifications row here (founder 2026-08-16). The header bell
+        // already opens the inbox, so this was a second door to the same
+        // screen, and there is nothing to configure: everything about a
+        // delivery, a payment or the account always sends.
         { icon: 'Globe', label: t('drawer.language',      { defaultValue: 'Language' }),      onPress: () => router.push('/(business)/language' as any) },
       ],
     },
