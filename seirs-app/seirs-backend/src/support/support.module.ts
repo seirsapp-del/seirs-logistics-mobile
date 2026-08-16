@@ -33,56 +33,95 @@ export class SupportModule implements OnModuleInit {
 
   constructor(@InjectDataSource() private readonly ds: DataSource) {}
 
-  async onModuleInit() {
+  /**
+   * Schema self-heal for support.
+   *
+   * Every statement runs independently. It used to be one try/catch
+   * around the whole block, so a single failing statement silently
+   * skipped everything after it, and a failure here is invisible: the
+   * table ends up half-built and every support query 500s (opening a
+   * ticket AND listing tickets were both broken on production,
+   * 2026-08-16).
+   *
+   * CREATE TABLE IF NOT EXISTS also never repairs a table that predates
+   * the current entity, so each column is added defensively too.
+   */
+  private async run(label: string, sql: string): Promise<boolean> {
     try {
-      await this.ds.query(`
-        CREATE TABLE IF NOT EXISTS "support_tickets" (
-          "id"                 uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
-          "userId"             uuid         NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
-          "userAccountType"    varchar(32)  NOT NULL,
-          "topic"              varchar(16)  NOT NULL,
-          "status"             varchar(24)  NOT NULL DEFAULT 'open',
-          "subject"            varchar(200) NOT NULL,
-          "linkedDeliveryId"   uuid         NULL,
-          "assignedAgentId"    uuid         NULL,
-          "firstAgentReplyAt"  timestamptz  NULL,
-          "resolvedAt"         timestamptz  NULL,
-          "autoClosedAt"       timestamptz  NULL,
-          "lastMessageAt"      timestamptz  NOT NULL DEFAULT NOW(),
-          "createdAt"          timestamptz  NOT NULL DEFAULT NOW(),
-          "updatedAt"          timestamptz  NOT NULL DEFAULT NOW()
-        )
-      `);
-      await this.ds.query(`
-        CREATE INDEX IF NOT EXISTS "support_tickets_user_status_idx"
-          ON "support_tickets" ("userId", "status")
-      `);
-      await this.ds.query(`
-        CREATE INDEX IF NOT EXISTS "support_tickets_status_lastmsg_idx"
-          ON "support_tickets" ("status", "lastMessageAt")
-      `);
-
-      // Widen chat_messages so a message row can belong to EITHER a
-      // delivery or a support ticket. Both FKs are nullable; the app
-      // enforces exactly-one-set at write time.
-      await this.ds.query(`
-        ALTER TABLE "chat_messages"
-          ADD COLUMN IF NOT EXISTS "ticketId" uuid NULL
-      `);
-      await this.ds.query(`
-        CREATE INDEX IF NOT EXISTS "chat_messages_ticket_created_idx"
-          ON "chat_messages" ("ticketId", "createdAt")
-      `);
-      // A support message has no delivery. deliveryId was still NOT NULL,
-      // so writing the first message of a ticket failed and the whole
-      // request 500'd: opening a support ticket was impossible from any
-      // app (found on device 2026-08-16).
-      await this.ds.query(`
-        ALTER TABLE "chat_messages" ALTER COLUMN "deliveryId" DROP NOT NULL
-      `);
-      this.logger.log('support_tickets schema self-heal complete');
+      await this.ds.query(sql);
+      return true;
     } catch (e: any) {
-      this.logger.warn(`support_tickets self-heal skipped: ${e?.message ?? e}`);
+      this.logger.error(`support self-heal FAILED [${label}]: ${e?.message ?? e}`);
+      return false;
     }
+  }
+
+  async onModuleInit() {
+    await this.run('create table', `
+      CREATE TABLE IF NOT EXISTS "support_tickets" (
+        "id"                 uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
+        "userId"             uuid         NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
+        "userAccountType"    varchar(32)  NOT NULL,
+        "topic"              varchar(16)  NOT NULL,
+        "status"             varchar(24)  NOT NULL DEFAULT 'open',
+        "subject"            varchar(200) NOT NULL,
+        "linkedDeliveryId"   uuid         NULL,
+        "assignedAgentId"    uuid         NULL,
+        "firstAgentReplyAt"  timestamptz  NULL,
+        "resolvedAt"         timestamptz  NULL,
+        "autoClosedAt"       timestamptz  NULL,
+        "lastMessageAt"      timestamptz  NOT NULL DEFAULT NOW(),
+        "createdAt"          timestamptz  NOT NULL DEFAULT NOW(),
+        "updatedAt"          timestamptz  NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    // Bring an older table up to the current entity. Each is a no-op when
+    // the column is already there.
+    const columns: Array<[string, string]> = [
+      ['userId',            'uuid'],
+      ['userAccountType',   'varchar(32)'],
+      ['topic',             'varchar(16)'],
+      ['status',            "varchar(24) NOT NULL DEFAULT 'open'"],
+      ['subject',           'varchar(200)'],
+      ['linkedDeliveryId',  'uuid NULL'],
+      ['assignedAgentId',   'uuid NULL'],
+      ['firstAgentReplyAt', 'timestamptz NULL'],
+      ['resolvedAt',        'timestamptz NULL'],
+      ['autoClosedAt',      'timestamptz NULL'],
+      ['lastMessageAt',     'timestamptz NOT NULL DEFAULT NOW()'],
+      ['createdAt',         'timestamptz NOT NULL DEFAULT NOW()'],
+      ['updatedAt',         'timestamptz NOT NULL DEFAULT NOW()'],
+    ];
+    for (const [name, type] of columns) {
+      await this.run(`add ${name}`, `
+        ALTER TABLE "support_tickets" ADD COLUMN IF NOT EXISTS "${name}" ${type}
+      `);
+    }
+
+    await this.run('idx user/status', `
+      CREATE INDEX IF NOT EXISTS "support_tickets_user_status_idx"
+        ON "support_tickets" ("userId", "status")
+    `);
+    await this.run('idx status/lastmsg', `
+      CREATE INDEX IF NOT EXISTS "support_tickets_status_lastmsg_idx"
+        ON "support_tickets" ("status", "lastMessageAt")
+    `);
+
+    // chat_messages carries support threads as well as delivery chats.
+    await this.run('chat ticketId', `
+      ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "ticketId" uuid NULL
+    `);
+    await this.run('idx chat ticket', `
+      CREATE INDEX IF NOT EXISTS "chat_messages_ticket_created_idx"
+        ON "chat_messages" ("ticketId", "createdAt")
+    `);
+    // A support message has no delivery, so this must be nullable or the
+    // first message of every ticket violates NOT NULL and 500s.
+    await this.run('chat deliveryId nullable', `
+      ALTER TABLE "chat_messages" ALTER COLUMN "deliveryId" DROP NOT NULL
+    `);
+
+    this.logger.log('support schema self-heal complete');
   }
 }
