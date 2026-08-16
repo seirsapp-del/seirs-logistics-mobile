@@ -81,6 +81,57 @@ export default function SendPackageScreen() {
   } = useBusinessStore();
 
   const mapRef = useRef<MapView>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const cardRefs = useRef<Record<number, View | null>>({});
+
+  /**
+   * Two scrolling behaviours the founder asked for by name:
+   *
+   * 1. Focusing a field brings it near the top, so its address
+   *    suggestions render in the space ABOVE the keyboard instead of
+   *    underneath it. Reported twice; fixed here for real.
+   * 2. A failed validation scrolls to the package that is incomplete,
+   *    because naming it in an error line still leaves someone with ten
+   *    packages hunting for the one at fault.
+   */
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  const scrollNodeHandle = () => (scrollRef.current ? findNodeHandle(scrollRef.current) : null);
+
+  const handleFieldFocus = (e: any) => {
+    const node = e?.target;
+    const scrollNode = scrollNodeHandle();
+    if (!node || !scrollNode || typeof node.measureLayout !== 'function') return;
+    setTimeout(() => {
+      try {
+        node.measureLayout(
+          scrollNode,
+          (_x: number, y: number) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 110), animated: true }),
+          () => {},
+        );
+      } catch { /* best effort */ }
+    }, 80);
+  };
+
+  const scrollToPackage = (idx: number) => {
+    const node = cardRefs.current[idx] as any;
+    const scrollNode = scrollNodeHandle();
+    if (!node || !scrollNode || typeof node.measureLayout !== 'function') return;
+    setTimeout(() => {
+      try {
+        node.measureLayout(
+          scrollNode,
+          (_x: number, y: number) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 70), animated: true }),
+          () => {},
+        );
+      } catch { /* best effort */ }
+    }, 60);
+  };
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -360,32 +411,32 @@ export default function SendPackageScreen() {
   }, [quote, draft.stops, catalog, draft.categoryCode]);
 
   // ── Validation per step ──────────────────────────────────────────────
-  const validateStep = (): string | null => {
+  const validateStep = (): { message: string; packageIndex?: number } | null => {
     if (step === 0) {
       for (let i = 0; i < draft.stops.length; i++) {
         const s = draft.stops[i];
-        if (!(s.photoUris ?? []).length)    return `Package ${i + 1} needs at least one photo.`;
-        if (!(Number(s.weightKg) > 0))      return `Package ${i + 1} needs a weight.`;
-        if (!(s.categoryCode ?? draft.categoryCode)) return `Package ${i + 1} needs a category.`;
-        if (!s.receiverFirstName?.trim())   return `Package ${i + 1} needs the receiver's first name.`;
+        if (!(s.photoUris ?? []).length)    return { packageIndex: i, message: `Package ${i + 1} needs at least one photo.` };
+        if (!(Number(s.weightKg) > 0))      return { packageIndex: i, message: `Package ${i + 1} needs a weight.` };
+        if (!(s.categoryCode ?? draft.categoryCode)) return { packageIndex: i, message: `Package ${i + 1} needs a category.` };
+        if (!s.receiverFirstName?.trim())   return { packageIndex: i, message: `Package ${i + 1} needs the receiver's first name.` };
         if (s.fallbackPref === 'neighbour' && !s.fallbackNeighbourName?.trim())
-          return `Package ${i + 1}: name the neighbour who may collect.`;
-        if (!s.recipientPhone?.trim())      return `Package ${i + 1} needs the receiver's phone.`;
+          return { packageIndex: i, message: `Package ${i + 1}: name the neighbour who may collect.` };
+        if (!s.recipientPhone?.trim())      return { packageIndex: i, message: `Package ${i + 1} needs the receiver's phone.` };
         if (s.destinationMode === 'store' && !s.destinationStoreId)
-          return `Package ${i + 1}: choose the partner store it goes to.`;
-        if (s.lat == null || s.lng == null) return `Package ${i + 1} needs a delivery address picked from the suggestions.`;
+          return { packageIndex: i, message: `Package ${i + 1}: choose the partner store it goes to.` };
+        if (s.lat == null || s.lng == null) return { packageIndex: i, message: `Package ${i + 1} needs a delivery address picked from the suggestions.` };
       }
       return null;
     }
     if (step === 1) {
-      if (draft.pickupLat == null || draft.pickupLng == null) return 'Pick the pickup address from the suggestions.';
-      if (!scheduleNow && scheduledHour == null) return 'Pick a pickup hour, or switch to Send now.';
+      if (draft.pickupLat == null || draft.pickupLng == null) return { message: 'Pick the pickup address from the suggestions.' };
+      if (!scheduleNow && scheduledHour == null) return { message: 'Pick a pickup hour, or switch to Send now.' };
       return null;
     }
     if (step === 2) {
-      if (!draft.vehicleType) return 'Pick a vehicle.';
+      if (!draft.vehicleType) return { message: 'Pick a vehicle.' };
       if (draft.stops.length > maxPackages)
-        return `${draft.stops.length} packages exceed the ${VEHICLE_LABEL[draft.vehicleType]} limit of ${maxPackages}. Choose a larger vehicle or remove packages.`;
+        return { message: `${draft.stops.length} packages exceed the ${VEHICLE_LABEL[draft.vehicleType]} limit of ${maxPackages}. Choose a larger vehicle or remove packages.` };
       return null;
     }
     return null;
@@ -409,7 +460,11 @@ export default function SendPackageScreen() {
 
   const next = () => {
     const err = validateStep();
-    if (err) { setError(err); return; }
+    if (err) {
+      setError(err.message);
+      if (err.packageIndex != null) scrollToPackage(err.packageIndex);
+      return;
+    }
     setError(null);
     if (step === 1) recommendVehicle();
     if (step < 3) setStep((s) => (s + 1) as any);
@@ -530,8 +585,9 @@ export default function SendPackageScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
+          ref={scrollRef}
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 20, paddingBottom: 24 + insets.bottom }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 24 + insets.bottom + keyboardHeight }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -558,7 +614,11 @@ export default function SendPackageScreen() {
                   the counter) and gets wired into the Pickup step properly
                   rather than as a link that throws away this form. */}
               {draft.stops.map((s, i) => (
-                <View key={i} style={[styles.pkgCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View
+                  key={i}
+                  ref={(r) => { cardRefs.current[i] = r; }}
+                  style={[styles.pkgCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                >
                   <View style={styles.pkgHead}>
                     <Text style={[styles.pkgTitle, { color: colors.text }]}>Package {i + 1}</Text>
                     {draft.stops.length > 1 && (
@@ -597,6 +657,7 @@ export default function SendPackageScreen() {
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={s.packageDescription ?? ''}
                     onChangeText={(v) => updateStop(i, { packageDescription: v })}
+                    onFocus={handleFieldFocus}
                     placeholder="e.g. Two cartons of shoes"
                     placeholderTextColor={colors.textThird}
                   />
@@ -613,7 +674,8 @@ export default function SendPackageScreen() {
                           const n = Number(v.replace(',', '.'));
                           updateStop(i, { weightKg: Number.isFinite(n) && v !== '' ? n : undefined });
                         }}
-                        placeholder="e.g. 3"
+                        onFocus={handleFieldFocus}
+                    placeholder="e.g. 3"
                         placeholderTextColor={colors.textThird}
                         keyboardType="numeric"
                       />
@@ -648,14 +710,16 @@ export default function SendPackageScreen() {
                       style={[styles.input, { flex: 1, backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                       value={s.receiverFirstName ?? ''}
                       onChangeText={(v) => updateStop(i, { receiverFirstName: v })}
-                      placeholder="First name"
+                      onFocus={handleFieldFocus}
+                    placeholder="First name"
                       placeholderTextColor={colors.textThird}
                     />
                     <TextInput
                       style={[styles.input, { flex: 1, backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                       value={s.receiverLastName ?? ''}
                       onChangeText={(v) => updateStop(i, { receiverLastName: v })}
-                      placeholder="Last name (optional)"
+                      onFocus={handleFieldFocus}
+                    placeholder="Last name (optional)"
                       placeholderTextColor={colors.textThird}
                     />
                   </View>
@@ -666,6 +730,7 @@ export default function SendPackageScreen() {
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={s.recipientPhone}
                     onChangeText={(v) => updateStop(i, { recipientPhone: v })}
+                    onFocus={handleFieldFocus}
                     placeholder="08012345678"
                     placeholderTextColor={colors.textThird}
                     keyboardType="phone-pad"
@@ -708,7 +773,7 @@ export default function SendPackageScreen() {
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={pkgQueries[i] ?? ''}
                     onChangeText={(v) => onChangePkgAddress(i, v)}
-                    onFocus={() => setActiveField({ kind: 'pkg', idx: i })}
+                    onFocus={(e) => { setActiveField({ kind: 'pkg', idx: i }); handleFieldFocus(e); }}
                     placeholder={s.destinationMode === 'store'
                       ? 'Area the receiver is in, e.g. Yaba'
                       : 'Street, area, city'}
@@ -814,7 +879,8 @@ export default function SendPackageScreen() {
                       style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                       value={s.fallbackNeighbourName ?? ''}
                       onChangeText={(v) => updateStop(i, { fallbackNeighbourName: v })}
-                      placeholder="Neighbour or security's name"
+                      onFocus={handleFieldFocus}
+                    placeholder="Neighbour or security's name"
                       placeholderTextColor={colors.textThird}
                     />
                   )}
@@ -827,6 +893,7 @@ export default function SendPackageScreen() {
                       const n = Number(v.replace(/[^0-9.]/g, ''));
                       updateStop(i, { declaredValueNgn: Number.isFinite(n) && v !== '' ? n : undefined });
                     }}
+                    onFocus={handleFieldFocus}
                     placeholder="e.g. 150000. High-value packages get ID-verified handoff."
                     placeholderTextColor={colors.textThird}
                     keyboardType="numeric"
@@ -837,6 +904,7 @@ export default function SendPackageScreen() {
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={s.note ?? ''}
                     onChangeText={(v) => updateStop(i, { note: v })}
+                    onFocus={handleFieldFocus}
                     placeholder="e.g. Call when you reach the gate. Ask for security."
                     placeholderTextColor={colors.textThird}
                   />
@@ -876,7 +944,7 @@ export default function SendPackageScreen() {
                 style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                 value={pickupQuery}
                 onChangeText={onChangePickup}
-                onFocus={() => setActiveField({ kind: 'pickup' })}
+                onFocus={(e) => { setActiveField({ kind: 'pickup' }); handleFieldFocus(e); }}
                 placeholder="Where the driver collects everything"
                 placeholderTextColor={colors.textThird}
               />
