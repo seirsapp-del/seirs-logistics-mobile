@@ -21,42 +21,28 @@ import { Icon } from '@/components/Icon';
 import { usersApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
-type ToggleKey =
-  | 'delivery_updates' | 'driver_assigned'
-  | 'rewards_update'   | 'promo_alerts'
-  | 'marketing';
+type ToggleKey = 'marketing';
 
 /**
- * ONLY the alerts a business may genuinely switch off.
+ * Almost nothing here is the sender's to switch off.
  *
- * Delivery completion, cancellations and failures, payment receipts and
- * problems, payouts, counter handovers, security and app updates are not
- * choices: they tell
- * you your goods, your money or your account moved, and a sender who
- * silences them simply does not find out. They are not listed here
- * either, because a locked row is clutter pretending to be a setting
- * (founder 2026-08-16: "some of the always on options shouldnt be shows
- * at all . it should be normal notification by default").
+ * Status changes, driver assignment, completion, cancellations and
+ * failures, payment receipts and problems, payouts, counter handovers,
+ * security and app updates all say something happened to your goods,
+ * your money or your account. Founder 2026-08-16: "who wouldnt want to
+ * know the status of their packages". They are simply sent, and are not
+ * listed, because a locked row is clutter pretending to be a setting.
+ *
+ * That leaves marketing. Rewards and offer alerts are deliberately absent
+ * too: nothing in the backend sends them yet, and a switch that gates
+ * nothing is the same decorative lie this screen was built to remove.
  */
 const SECTIONS: { title: string; items: { key: ToggleKey; icon: string; label: string; sub: string }[] }[] = [
   {
-    title: 'DELIVERIES',
+    title: 'OPTIONAL',
     items: [
-      { key: 'delivery_updates', icon: 'Package', label: 'Every status change', sub: 'Picked up, in transit, and each stop along the way' },
-      { key: 'driver_assigned',  icon: 'Bike',    label: 'Driver assigned',     sub: 'When a rider accepts and is on the way' },
-    ],
-  },
-  {
-    title: 'REWARDS',
-    items: [
-      { key: 'rewards_update', icon: 'Star', label: 'Points earned', sub: 'Points added after a paid delivery' },
-      { key: 'promo_alerts',   icon: 'Gift', label: 'Offers',        sub: 'Discounts and seasonal campaigns' },
-    ],
-  },
-  {
-    title: 'GENERAL',
-    items: [
-      { key: 'marketing', icon: 'Megaphone', label: 'Marketing', sub: 'News and stories from SEIRS' },
+      { key: 'marketing', icon: 'Megaphone', label: 'Offers and news',
+        sub: 'Discounts, seasonal campaigns and stories from SEIRS' },
     ],
   },
 ];
@@ -101,8 +87,9 @@ export default function NotificationSettingsScreen() {
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }}>
           <Text style={[styles.intro, { color: colors.textSecond }]}>
-            Turn off what you do not need. Anything about your goods, your money
-            or your account always sends, so nothing important passes you silently.
+            Everything about your deliveries, your payments and your account is
+            always sent, so nothing important passes you silently. The only thing
+            you can turn off is what SEIRS sends to sell to you.
           </Text>
 
           {SECTIONS.map((section) => (

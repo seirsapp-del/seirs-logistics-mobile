@@ -43,16 +43,19 @@ export class NotificationsService {
    * send path ever read it, so every switch in the apps was decorative
    * (found 2026-08-16 while shipping the business settings screen).
    *
-   * Types absent from this map are never suppressed. Payment receipts are
-   * deliberately absent (founder 2026-08-16: "payment recieved cant be
-   * optional who would want to know if their payment went through"), as
-   * are completions, failures, payouts, job offers, SOS, chat and system
-   * messages. The apps do not list them as settings at all, rather than
-   * showing a locked row that pretends to be one.
+   * Types absent from this map are never suppressed, which is nearly all
+   * of them. Founder 2026-08-16: "payment recieved cant be optional who
+   * would want to know if their payment went through" and "who wouldnt
+   * want to know the status of their packages". Status updates,
+   * assignment, completion, failures, receipts, payouts, job offers, SOS,
+   * chat and system messages therefore always send, and the apps do not
+   * list them as settings at all rather than showing a locked row that
+   * pretends to be one.
    */
   private static readonly PREF_KEY_BY_TYPE: Partial<Record<NotificationType, string>> = {
-    [NotificationType.DELIVERY_ASSIGNED]: 'driver_assigned',
-    [NotificationType.STATUS_UPDATE]:     'delivery_updates',
+    // Marketing blasts go out as GENERAL. Everything else, including
+    // every status change, is operational and always sends.
+    [NotificationType.GENERAL]: 'marketing',
   };
 
   /** False when the recipient has explicitly switched this type off. */
