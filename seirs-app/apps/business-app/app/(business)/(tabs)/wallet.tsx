@@ -59,7 +59,6 @@ export default function WalletScreen() {
   }, [canPartner]);
 
   const points = Number(loyalty?.points ?? 0);
-  const legacyCredit = Number(wallet?.balance ?? 0);
   const pendingOwed = payouts
     .filter((p: any) => p?.status && p.status !== 'paid')
     .reduce((sum: number, p: any) => sum + Number(p.amount ?? 0), 0);
@@ -132,15 +131,12 @@ export default function WalletScreen() {
 
         {segment === 'rewards' ? (
           <>
-            {legacyCredit > 0 && (
-              <View style={[styles.noteCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Icon name="Info" size={16} color={colors.textSecond} />
-                <Text style={[styles.noteText, { color: colors.textSecond }]}>
-                  Remaining credit {fmt(legacyCredit)}: it is spent on your next bookings.
-                  New bookings pay per booking via Flutterwave.
-                </Text>
-              </View>
-            )}
+            {/* No sender balance is shown at all. SEIRS is not a bank:
+                senders pay per booking through Flutterwave, and the only
+                wallets are the EARNINGS ledgers held by partner counters
+                and drivers (founder, restated 2026-08-16). Any legacy
+                business credit still sitting in the database is an admin
+                reconciliation job, not a spendable balance. */}
 
             {!canPartner && (
               <Pressable

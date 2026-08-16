@@ -726,8 +726,10 @@ export default function SendPackageScreen() {
       } else {
         Alert.alert(
           'Run booked',
-          `Tracking: ${trackingCode}\nEach package has its own code: receivers can track theirs on seirs.` +
-          (res?.wallet ? `\nRemaining credit: ₦${(res.wallet.balanceAfter ?? 0).toLocaleString()}` : ''),
+          // No "remaining credit" line: senders do not hold a balance with
+          // SEIRS. Only partner counters and drivers have wallets, and
+          // those show EARNINGS (founder, restated 2026-08-16).
+          `Tracking: ${trackingCode}\nEach package has its own code: receivers can track theirs on seirs.`,
           [{ text: 'Done', onPress: () => router.replace('/(business)/(tabs)/deliveries' as any) }],
         );
       }

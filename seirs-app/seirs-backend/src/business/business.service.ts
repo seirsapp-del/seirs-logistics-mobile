@@ -583,7 +583,22 @@ export class BusinessService {
     // pricing engine from partnerStoreTouches), so this stays the single
     // charged/escrowed/refunded figure.
     const total = Number(breakdown.customer.total);
-    const useCredit = Number(biz.walletBalance) >= total;
+
+    /**
+     * Founder rule, restated 2026-08-16: SEIRS is not a bank and senders
+     * never hold NGN with us. Business bookings are paid per booking
+     * through Flutterwave, full stop.
+     *
+     * This was still reading BusinessAccount.walletBalance and silently
+     * spending it: the demo account booked a 10,103 run against 51,896.92
+     * of legacy credit and never saw a card screen. Withdrawable balances
+     * belong to partner counters and drivers only, as EARNINGS.
+     *
+     * Typed as boolean rather than the literal so the legacy branches
+     * below stay compiling; they are now unreachable and exist only until
+     * the remaining balances are reconciled and the column is dropped.
+     */
+    const useCredit: boolean = false;
 
     // ── Transaction: Delivery + Stops + Wallet ─────────────────────────
     const txResult = await this.dataSource.transaction(async (mgr) => {
@@ -1086,8 +1101,11 @@ export class BusinessService {
       totalRows: rows.length,
       bookings,
       grandTotal,
-      walletBalance: Number(biz.walletBalance),
-      canAfford:     Number(biz.walletBalance) >= grandTotal,
+      // Senders hold no balance with SEIRS, so there is nothing to be
+      // short of: a CSV batch is paid at checkout like any other booking.
+      // Kept (always true) so older app builds do not block themselves.
+      walletBalance: 0,
+      canAfford:     true,
       bulkDiscountApplied: rows.length >= card.discounts.bulkUploadMinPackages,
       bulkDiscountPercent: rows.length >= card.discounts.bulkUploadMinPackages
                             ? card.discounts.bulkUploadOffPercent : 0,

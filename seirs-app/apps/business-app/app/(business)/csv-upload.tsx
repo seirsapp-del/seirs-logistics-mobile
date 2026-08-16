@@ -123,13 +123,10 @@ export default function CsvUploadScreen() {
       Alert.alert('Nothing to create', 'There are no valid bookings in this CSV. Fix the errors and re-upload.');
       return;
     }
-    if (!preview.canAfford) {
-      Alert.alert(
-        'Insufficient wallet balance',
-        `This batch costs ₦${preview.grandTotal.toLocaleString()} but your wallet has ₦${preview.walletBalance.toLocaleString()}. Top up first.`,
-      );
-      return;
-    }
+    // No balance check: senders do not hold funds with SEIRS, and each
+    // booking is paid at checkout. This used to refuse the batch and tell
+    // the sender to "top up", which would have blocked every bulk upload
+    // once the legacy credit path was switched off (2026-08-16).
     setStep('creating');
     setProgress({ done: 0, failed: 0, total: valid.length });
 
@@ -289,7 +286,7 @@ export default function CsvUploadScreen() {
           borderTopColor: colors.border,
         }]}>
           <Pressable
-            style={[styles.ctaBtn, { backgroundColor: colors.primary }, !preview.canAfford && styles.ctaBtnDisabled]}
+            style={[styles.ctaBtn, { backgroundColor: colors.primary }]}
             onPress={confirmCreate}
           >
             <Icon name="Check" size={18} color="#fff" />
@@ -297,11 +294,6 @@ export default function CsvUploadScreen() {
               Confirm: ₦{Math.round(preview.grandTotal).toLocaleString()} ({preview.bookings.filter(b => b.valid).length} bookings)
             </Text>
           </Pressable>
-          {!preview.canAfford && (
-            <Text style={styles.affordWarn}>
-              Wallet has ₦{preview.walletBalance.toLocaleString()}: top up before confirming.
-            </Text>
-          )}
         </View>
       )}
     </View>
@@ -341,12 +333,8 @@ function PreviewView({ preview }: { preview: CsvPreviewResponse }) {
           <Text style={[styles.summaryLabel, { fontWeight: '700', color: colors.text }]}>Total</Text>
           <Text style={[styles.summaryValue, { fontWeight: '700', color: colors.text }]}>₦{Math.round(preview.grandTotal).toLocaleString()}</Text>
         </View>
-        <View style={styles.summaryRow}>
-          <Text style={[styles.summaryLabel, { color: colors.text }]}>Wallet</Text>
-          <Text style={[styles.summaryValue, { color: preview.canAfford ? '#16A34A' : '#DC2626' }]}>
-            ₦{Math.round(preview.walletBalance).toLocaleString()}
-          </Text>
-        </View>
+        {/* No wallet row: the batch is paid at checkout, and senders
+            hold no balance with SEIRS. */}
       </View>
 
       {preview.bookings.map((b, idx) => (
