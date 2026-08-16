@@ -2,6 +2,25 @@ import { create, type StateCreator } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+/**
+ * The parts of a partner counter a SENDER needs: where to walk in, when
+ * it trades, and how to reach it. Carried in the draft rather than looked
+ * up again, so the details survive a reload and the "counter is shut"
+ * check keeps working after the nearby list is cleared.
+ */
+export interface StoreLite {
+  id:             string;
+  storeName:      string;
+  storeAddress:   string;
+  phone?:         string | null;
+  photoUrl?:      string | null;
+  openTime?:      string | null;
+  closeTime?:     string | null;
+  operatingDays?: string[];
+  isOpenNow?:     boolean | null;
+  distanceKm?:    number | null;
+}
+
 export interface DeliveryStop {
   address:        string;
   // Latitude/longitude — set when the user picks an address from the
@@ -35,6 +54,8 @@ export interface DeliveryStop {
   destinationMode?:      'address' | 'store';
   destinationStoreId?:   string;
   destinationStoreName?: string;
+  /** Full counter record, for the details sheet and the receipt. */
+  destinationStoreInfo?: StoreLite | null;
 }
 
 export interface DraftDelivery {
@@ -47,6 +68,12 @@ export interface DraftDelivery {
   pickupMode?:      'door' | 'store';
   pickupStoreId?:   string;
   pickupStoreName?: string;
+  /**
+   * Full record of the counter the sender drops at, copied in at
+   * selection time so hours and address survive a reload and the
+   * "counter is shut" guard does not depend on a transient list.
+   */
+  pickupStoreInfo?: StoreLite | null;
   pickupAddress:    string;
   pickupLat?:       number;
   pickupLng?:       number;

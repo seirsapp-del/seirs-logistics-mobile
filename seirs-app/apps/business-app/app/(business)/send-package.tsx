@@ -24,10 +24,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
   ActivityIndicator, Alert, Image, Linking, KeyboardAvoidingView, Platform,
-  Keyboard, Dimensions,
+  Keyboard, Dimensions, Modal, Share,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useMultiStopDirections } from '@/components/useMultiStopDirections';
 import { useRouter } from 'expo-router';
@@ -37,7 +38,7 @@ import {
   businessApi, configApi, mapsApi, uploadApi, pricingApi, dropoffApi,
   type ServiceCategory, type RateCard,
 } from '@/services/api';
-import { useBusinessStore } from '@/store/businessStore';
+import { useBusinessStore, type StoreLite } from '@/store/businessStore';
 import { type VehicleType } from '@seirs/shared';
 import { useColors } from '@/context/ThemeContext';
 
@@ -81,6 +82,21 @@ export default function SendPackageScreen() {
   } = useBusinessStore();
 
   const mapRef = useRef<MapView>(null);
+  /**
+   * Founder 2026-08-16: the review map is a thumbnail, and a sender
+   * checking where five parcels are going cannot read it. Tapping opens
+   * the same pins full screen.
+   */
+  const fullMapRef = useRef<MapView>(null);
+  const [mapFull, setMapFull] = useState(false);
+  /**
+   * Counter the sender tapped for details (founder 2026-08-16: "shouldn't
+   * the user be able to see that as well, maybe tap to get more details
+   * and copy address"). Everything shown comes from what the partner
+   * entered at registration.
+   */
+  const [storeSheet, setStoreSheet] = useState<StoreLite | null>(null);
+  const [copied, setCopied] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const cardRefs = useRef<Record<number, View | null>>({});
 
@@ -350,6 +366,16 @@ export default function SendPackageScreen() {
       pickupAddress:   store.storeAddress,
       pickupLat:       store.lat ?? undefined,
       pickupLng:       store.lng ?? undefined,
+      // Trading hours are copied into the draft, not read back off the
+      // nearby list: that list is transient, and a guard that depends on
+      // it silently stops guarding the moment the list is cleared.
+      pickupStoreInfo: {
+        id: store.id, storeName: store.storeName, storeAddress: store.storeAddress,
+        phone: store.phone ?? null, photoUrl: store.photoUrl ?? null,
+        openTime: store.openTime ?? null, closeTime: store.closeTime ?? null,
+        operatingDays: store.operatingDays ?? [], isOpenNow: store.isOpenNow ?? null,
+        distanceKm: store.distanceKm ?? null,
+      },
     });
     setPickupQuery(store.storeAddress);
   };
@@ -358,6 +384,13 @@ export default function SendPackageScreen() {
     updateStop(idx, {
       destinationStoreId:   store.id,
       destinationStoreName: store.storeName,
+      destinationStoreInfo: {
+        id: store.id, storeName: store.storeName, storeAddress: store.storeAddress,
+        phone: store.phone ?? null, photoUrl: store.photoUrl ?? null,
+        openTime: store.openTime ?? null, closeTime: store.closeTime ?? null,
+        operatingDays: store.operatingDays ?? [], isOpenNow: store.isOpenNow ?? null,
+        distanceKm: store.distanceKm ?? null,
+      },
       address:              store.storeAddress,
       lat:                  store.lat ?? undefined,
       lng:                  store.lng ?? undefined,
@@ -542,11 +575,12 @@ export default function SendPackageScreen() {
       // You cannot walk packages into a counter that is shut. Sending a
       // driver there now would strand the run (found on device
       // 2026-08-16: a Mon-Sat counter offered "Send now" on a Sunday).
-      if (draft.pickupMode === 'store' && scheduleNow) {
-        const st = (nearby[-1] ?? []).find((s: any) => s.id === draft.pickupStoreId);
-        if (st && st.isOpenNow === false) {
-          return { message: `${st.storeName} is closed right now. Schedule a time while it is open.` };
-        }
+      if (draft.pickupMode === 'store' && scheduleNow && draft.pickupStoreInfo?.isOpenNow === false) {
+        return {
+          message: `${draft.pickupStoreInfo.storeName} is closed right now${
+            draft.pickupStoreInfo.openTime ? ` (opens ${draft.pickupStoreInfo.openTime})` : ''
+          }. Schedule a time while it is open.`,
+        };
       }
       return null;
     }
@@ -909,7 +943,12 @@ export default function SendPackageScreen() {
                               {s.address}
                             </Text>
                           </View>
-                          <Pressable onPress={() => updateStop(i, { destinationStoreId: undefined, destinationStoreName: undefined })}>
+                          {/* Same as the pickup counter: re-fetch, or the
+                              sender is stranded with an empty list. */}
+                          <Pressable onPress={() => {
+                            updateStop(i, { destinationStoreId: undefined, destinationStoreName: undefined, destinationStoreInfo: null });
+                            if (s.lat != null && s.lng != null) findStoresNear(i, s.lat, s.lng);
+                          }}>
                             <Text style={[styles.changeTxt, { color: colors.primary }]}>Change</Text>
                           </Pressable>
                         </View>
@@ -1060,7 +1099,9 @@ export default function SendPackageScreen() {
               </Text>
               {([
                 { key: 'door',  title: 'A driver collects from me', sub: 'Rider comes to your address', icon: 'Bike' },
-                { key: 'store', title: "I'll drop them at a counter", sub: 'Cheaper: no pickup leg, drop any time the shop is open', icon: 'Store' },
+                // Founder 2026-08-16: say what actually happens, not what
+                // it costs. "Cheaper" is a claim; this is the instruction.
+                { key: 'store', title: "I'll drop them at a counter", sub: 'You drop them off, a driver collects from the counter', icon: 'Store' },
               ] as const).map((opt) => {
                 const active = (draft.pickupMode ?? 'door') === opt.key;
                 return (
@@ -1089,7 +1130,7 @@ export default function SendPackageScreen() {
               })}
 
               <Text style={[styles.label, { color: colors.textSecond }]}>
-                {draft.pickupMode === 'store' ? 'Your area' : 'Pickup address'} <Text style={{ color: '#DC2626' }}>*</Text>
+                {draft.pickupMode === 'store' ? 'Find a counter near' : 'Pickup address'} <Text style={{ color: '#DC2626' }}>*</Text>
               </Text>
               <TextInput
                 style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
@@ -1097,7 +1138,7 @@ export default function SendPackageScreen() {
                 onChangeText={onChangePickup}
                 onFocus={(e) => { setActiveField({ kind: 'pickup' }); handleFieldFocus(e, 260); }}
                 placeholder={draft.pickupMode === 'store'
-                  ? 'Area you will drop from, e.g. Yaba'
+                  ? 'Search a place, e.g. Yaba'
                   : 'Where the driver collects everything'}
                 placeholderTextColor={colors.textThird}
               />
@@ -1106,20 +1147,45 @@ export default function SendPackageScreen() {
               {draft.pickupMode === 'store' && (
                 <View style={{ marginTop: 8 }}>
                   {draft.pickupStoreId ? (
-                    <View style={[styles.storePicked, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+                    <Pressable
+                      style={[styles.storePicked, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
+                      onPress={() => draft.pickupStoreInfo && setStoreSheet(draft.pickupStoreInfo)}
+                    >
                       <Icon name="Store" size={16} color={colors.primary} />
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.storeName, { color: colors.text }]} numberOfLines={1}>
                           {draft.pickupStoreName}
                         </Text>
-                        <Text style={[styles.storeMeta, { color: colors.textSecond }]} numberOfLines={1}>
-                          You drop here · a driver collects from the counter
+                        {/* Founder 2026-08-16: once a counter is chosen the
+                            sender needs the practical details, WHERE to
+                            carry the parcels and WHEN the shop is open,
+                            not a restatement of the option they picked. */}
+                        <Text style={[styles.storeMeta, { color: colors.textSecond }]} numberOfLines={2}>
+                          {draft.pickupAddress}
+                        </Text>
+                        <Text style={[styles.storeMeta, { color: colors.textThird }]} numberOfLines={1}>
+                          {draft.pickupStoreInfo ? storeMetaLine(draft.pickupStoreInfo) : ''}
+                        </Text>
+                        <Text style={[styles.detailsLink, { color: colors.primary }]}>
+                          Hours, phone and directions
                         </Text>
                       </View>
-                      <Pressable onPress={() => setDraft({ pickupStoreId: undefined, pickupStoreName: undefined })}>
+                      {/* Clearing the pick has to bring the list back.
+                          Without the re-fetch, Change left the sender on
+                          "No counter near that area yet" with no way to
+                          choose another (found on device 2026-08-16). */}
+                      <Pressable onPress={() => {
+                        setDraft({
+                          pickupStoreId: undefined, pickupStoreName: undefined,
+                          pickupStoreInfo: null,
+                        });
+                        if (draft.pickupLat != null && draft.pickupLng != null) {
+                          findStoresNear(-1, draft.pickupLat, draft.pickupLng);
+                        }
+                      }}>
                         <Text style={[styles.changeTxt, { color: colors.primary }]}>Change</Text>
                       </Pressable>
-                    </View>
+                    </Pressable>
                   ) : nearbyBusy[-1] ? (
                     <ActivityIndicator color={colors.accent} style={{ paddingVertical: 12 }} />
                   ) : (nearby[-1]?.length ?? 0) > 0 ? (
@@ -1155,7 +1221,7 @@ export default function SendPackageScreen() {
                     <Text style={[styles.hint, { color: colors.textThird }]}>
                       {draft.pickupLat != null
                         ? 'No counter near that area yet. A driver can collect from you instead.'
-                        : 'Type your area and we will show the counters you can drop at.'}
+                        : 'Type a place nearby and we will show the counters you can drop at.'}
                     </Text>
                   )}
                 </View>
@@ -1346,6 +1412,15 @@ export default function SendPackageScreen() {
                       <Polyline coordinates={route.coords} strokeWidth={4} strokeColor={colors.primary} />
                     )}
                   </MapView>
+                  <Pressable
+                    style={StyleSheet.absoluteFill}
+                    onPress={() => setMapFull(true)}
+                    accessibilityLabel="Open the map full screen"
+                  />
+                  <View style={[styles.expandChip, { backgroundColor: colors.surface }]}>
+                    <Icon name="Maximize2" size={13} color={colors.text} />
+                    <Text style={[styles.mapBadgeTxt, { color: colors.text }]}>Tap to expand</Text>
+                  </View>
                   <View style={[styles.mapBadge, { backgroundColor: colors.surface }]}>
                     <Text style={[styles.mapBadgeTxt, { color: colors.text }]}>
                       {route.distanceText ?? `~${routeKm}km`}
@@ -1421,6 +1496,184 @@ export default function SendPackageScreen() {
             </View>
           )}
         </ScrollView>
+
+        {/* Counter details. Hours, phone and address exactly as the
+            partner registered them, with a copy so the sender can paste
+            the address into their own maps app. */}
+        <Modal visible={!!storeSheet} animationType="slide" transparent onRequestClose={() => setStoreSheet(null)}>
+          {/* Dismiss area is a SIBLING of the sheet, not its parent. A
+              Pressable wrapping another Pressable made the buttons inside
+              stop responding (found on device 2026-08-16: Copy address
+              did nothing). */}
+          <View style={styles.sheetBackdrop}>
+            <Pressable style={{ flex: 1 }} onPress={() => setStoreSheet(null)} />
+            <View
+              style={[styles.sheet, { backgroundColor: colors.background, paddingBottom: 16 + insets.bottom }]}
+            >
+              <View style={styles.sheetGrip} />
+              {!!storeSheet && (
+                <>
+                  {!!storeSheet.photoUrl && (
+                    <Image source={{ uri: storeSheet.photoUrl }} style={styles.sheetPhoto} />
+                  )}
+                  <Text style={[styles.sheetTitle, { color: colors.text }]}>{storeSheet.storeName}</Text>
+                  <Text style={[styles.sheetAddr, { color: colors.textSecond }]}>{storeSheet.storeAddress}</Text>
+
+                  <View style={[styles.sheetRow, { borderTopColor: colors.border }]}>
+                    <Icon name="Clock" size={16} color={colors.textThird} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sheetLabel, { color: colors.textThird }]}>Opening hours</Text>
+                      <Text style={[styles.sheetValue, { color: colors.text }]}>
+                        {storeSheet.openTime && storeSheet.closeTime
+                          ? `${storeSheet.openTime} - ${storeSheet.closeTime}`
+                          : 'Not provided'}
+                      </Text>
+                      <Text style={[styles.sheetValue, { color: colors.textSecond }]}>
+                        {storeSheet.operatingDays?.length
+                          ? storeSheet.operatingDays.map((d) => String(d).slice(0, 3)).join(', ')
+                          : 'Days not provided'}
+                      </Text>
+                      <Text style={[styles.sheetValue, { color: storeSheet.isOpenNow ? '#16A34A' : '#DC2626' }]}>
+                        {storeSheet.isOpenNow ? 'Open right now' : 'Closed right now'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {!!storeSheet.phone && (
+                    <View style={[styles.sheetRow, { borderTopColor: colors.border }]}>
+                      <Icon name="Phone" size={16} color={colors.textThird} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.sheetLabel, { color: colors.textThird }]}>Counter phone</Text>
+                        <Text style={[styles.sheetValue, { color: colors.text }]}>{storeSheet.phone}</Text>
+                      </View>
+                      <Pressable
+                        style={[styles.sheetBtn, { backgroundColor: colors.surfaceSecond }]}
+                        onPress={() => Linking.openURL(`tel:${storeSheet.phone}`)}
+                      >
+                        <Text style={[styles.sheetBtnTxt, { color: colors.primary }]}>Call</Text>
+                      </Pressable>
+                    </View>
+                  )}
+
+                  {storeSheet.distanceKm != null && (
+                    <View style={[styles.sheetRow, { borderTopColor: colors.border }]}>
+                      <Icon name="MapPin" size={16} color={colors.textThird} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.sheetLabel, { color: colors.textThird }]}>Distance</Text>
+                        <Text style={[styles.sheetValue, { color: colors.text }]}>
+                          {storeSheet.distanceKm < 1 ? 'Under 1km away' : `${storeSheet.distanceKm}km away`}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                    <Pressable
+                      style={[styles.sheetAction, { backgroundColor: colors.surfaceSecond }]}
+                      onPress={async () => {
+                        const addr = storeSheet.storeAddress;
+                        // Clipboard is a native module. When it is present
+                        // this is a silent one-tap copy; when it is not,
+                        // fall back to the system share sheet rather than
+                        // failing quietly, which is what happened here on
+                        // device (2026-08-16).
+                        try {
+                          if (typeof (Clipboard as any)?.setStringAsync === 'function') {
+                            await Clipboard.setStringAsync(addr);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 1800);
+                            return;
+                          }
+                          throw new Error('clipboard unavailable');
+                        } catch {
+                          try { await Share.share({ message: addr }); } catch {}
+                        }
+                      }}
+                    >
+                      <Icon name={copied ? 'Check' : 'Copy'} size={15} color={colors.text} />
+                      <Text style={[styles.sheetActionTxt, { color: colors.text }]}>
+                        {copied ? 'Address copied' : 'Copy address'}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.sheetAction, { backgroundColor: colors.primary }]}
+                      onPress={() => setStoreSheet(null)}
+                    >
+                      <Text style={[styles.sheetActionTxt, { color: '#fff' }]}>Done</Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Full-screen route map (founder 2026-08-16). Same pins and
+            polyline as the thumbnail, with room to actually read them. */}
+        <Modal visible={mapFull} animationType="slide" onRequestClose={() => setMapFull(false)}>
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
+            {!!pickupPoint && dropPoints.length > 0 && (
+              <MapView
+                provider={PROVIDER_GOOGLE}
+                style={{ flex: 1 }}
+                ref={fullMapRef}
+                initialRegion={{
+                  latitude: pickupPoint.latitude,
+                  longitude: pickupPoint.longitude,
+                  latitudeDelta: 0.12,
+                  longitudeDelta: 0.12,
+                }}
+                onMapReady={() => {
+                  fullMapRef.current?.fitToCoordinates([pickupPoint, ...dropPoints], {
+                    edgePadding: { top: 90, right: 60, bottom: 140, left: 60 },
+                    animated: false,
+                  });
+                }}
+              >
+                <Marker coordinate={pickupPoint} title={draft.pickupStoreName ?? 'Pickup'} description={draft.pickupAddress} anchor={{ x: 0.5, y: 0.5 }}>
+                  <View style={[styles.pinBase, { backgroundColor: '#22C55E' }]}>
+                    <Text style={styles.pinTxt}>P</Text>
+                  </View>
+                </Marker>
+                {dropPoints.map((pt, i) => (
+                  <Marker
+                    key={i}
+                    coordinate={pt}
+                    title={`Package ${i + 1}`}
+                    description={[
+                      draft.stops[i]?.receiverFirstName,
+                      draft.stops[i]?.destinationStoreName ?? draft.stops[i]?.address,
+                    ].filter(Boolean).join(' · ') || undefined}
+                    anchor={{ x: 0.5, y: 0.5 }}
+                  >
+                    <View style={[styles.pinBase, { backgroundColor: '#EF4444' }]}>
+                      <Text style={styles.pinTxt}>{i + 1}</Text>
+                    </View>
+                  </Marker>
+                ))}
+                {route.coords.length > 1 && (
+                  <Polyline coordinates={route.coords} strokeWidth={5} strokeColor={colors.primary} />
+                )}
+              </MapView>
+            )}
+            <Pressable
+              style={[styles.mapCloseBtn, { backgroundColor: colors.surface, top: insets.top + 12 }]}
+              onPress={() => setMapFull(false)}
+            >
+              <Icon name="X" size={20} color={colors.text} />
+            </Pressable>
+            <View style={[styles.mapLegend, { backgroundColor: colors.surface, paddingBottom: 12 + insets.bottom }]}>
+              <Text style={[styles.mapLegendTxt, { color: colors.text }]}>
+                P {draft.pickupMode === 'store' ? `· drop at ${draft.pickupStoreName ?? 'counter'}` : '· pickup'}
+                {'   '}
+                {dropPoints.map((_, i) => `${i + 1}`).join('  ')} · {dropPoints.length} drop{dropPoints.length === 1 ? '' : 's'}
+              </Text>
+              <Text style={[styles.mapLegendSub, { color: colors.textThird }]}>
+                {route.distanceText ?? `~${routeKm}km`}{route.durationText ? ` · ${route.durationText}` : ''}
+              </Text>
+            </View>
+          </View>
+        </Modal>
 
         {/* Footer CTA */}
         <View style={[styles.footer, { borderTopColor: colors.border, paddingBottom: 12 + insets.bottom, backgroundColor: colors.background }]}>
@@ -1563,6 +1816,45 @@ const styles = StyleSheet.create({
   totalRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 10, marginTop: 6 },
   totalLabel: { fontSize: 14, fontWeight: '700' },
   totalValue: { fontSize: 18, fontWeight: '900' },
+  expandChip: {
+    position: 'absolute', top: 10, right: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999,
+  },
+  mapCloseBtn: {
+    position: 'absolute', left: 16, width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  mapLegend: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    paddingHorizontal: 18, paddingTop: 12,
+    borderTopLeftRadius: 16, borderTopRightRadius: 16,
+  },
+  mapLegendTxt: { fontSize: 13, fontWeight: '700' },
+  mapLegendSub: { fontSize: 12, marginTop: 2 },
+  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingTop: 10 },
+  sheetGrip: {
+    width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.4)',
+    alignSelf: 'center', marginBottom: 14,
+  },
+  sheetPhoto: { width: '100%', height: 140, borderRadius: 12, marginBottom: 12 },
+  sheetTitle: { fontSize: 18, fontWeight: '800' },
+  sheetAddr:  { fontSize: 13, marginTop: 3, marginBottom: 6 },
+  sheetRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    borderTopWidth: 1, paddingVertical: 12,
+  },
+  sheetLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sheetValue: { fontSize: 14, fontWeight: '600', marginTop: 2 },
+  sheetBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+  sheetBtnTxt: { fontSize: 13, fontWeight: '700' },
+  sheetAction: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 7, paddingVertical: 13, borderRadius: 12,
+  },
+  sheetActionTxt: { fontSize: 14, fontWeight: '700' },
+  detailsLink: { fontSize: 12, fontWeight: '700', marginTop: 4 },
   footer: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1 },
   footerError: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
