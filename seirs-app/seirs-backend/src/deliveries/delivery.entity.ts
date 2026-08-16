@@ -343,6 +343,15 @@ export class Delivery {
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
   partnerHandlingNgn: number;
 
+  /**
+   * When loyalty earned on this delivery was reversed after a refund.
+   * Doubles as the idempotency guard: the business ledger is a bare
+   * counter with no per-entry history, so without this a second
+   * cancellation pass would subtract the points twice.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  loyaltyClawedBackAt: Date | null;
+
   // Proof of delivery
   @Column({ nullable: true })
   proofPhotoUrl: string;

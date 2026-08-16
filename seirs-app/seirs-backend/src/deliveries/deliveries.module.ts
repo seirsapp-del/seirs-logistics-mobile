@@ -159,6 +159,11 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "deliveries"
           ADD COLUMN IF NOT EXISTS "partnerHandlingNgn" numeric(12,2) NOT NULL DEFAULT 0
       `);
+      // Loyalty reversal guard for refunded runs (2026-08-16).
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "loyaltyClawedBackAt" timestamptz NULL
+      `);
       // Per-package destination partner store (2026-08-16).
       await this.ds.query(`
         ALTER TABLE "delivery_stops"

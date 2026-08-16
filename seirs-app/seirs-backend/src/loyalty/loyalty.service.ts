@@ -434,21 +434,65 @@ export class LoyaltyService {
   }
 
   /**
-   * Reverse loyalty points awarded for a delivery that was later refunded.
+   * Reverse loyalty points earned on a delivery that was later refunded.
+   *
+   * This existed but nothing ever called it, so a book-then-cancel loop
+   * minted points: a cancelled business run left 101 points standing on
+   * a fully refunded 10,103 fare (found on device 2026-08-16). It is now
+   * called from the same place the escrow refund fires, which every app
+   * goes through.
+   *
+   * Two ledgers, because the two sides are modelled differently:
+   *   - customers keep an append-only ledger, so the reversal is a
+   *     negative entry and the history stays readable;
+   *   - business accounts keep a bare counter, so it is decremented and
+   *     floored at zero (points may already have been spent).
+   *
+   * Idempotent via deliveries.loyaltyClawedBackAt: the counter has no
+   * per-entry history to dedupe against, and cancellation can be
+   * reached more than once.
    */
   async clawbackForDelivery(deliveryId: string): Promise<void> {
+    const delivery = await this.deliveriesRepo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery || delivery.loyaltyClawedBackAt) return;
+
+    // Customer side: reverse every earn entry tied to this delivery.
     const earned = await this.repo.find({
-      where: { relatedDeliveryId: deliveryId, reason: 'delivery_complete' },
+      where: [
+        { relatedDeliveryId: deliveryId, reason: 'delivery_complete' },
+        { relatedDeliveryId: deliveryId, reason: 'bank_transfer_bonus' },
+        { relatedDeliveryId: deliveryId, reason: 'rate_driver' },
+      ],
     });
     for (const e of earned) {
+      if (e.delta <= 0) continue;   // never "reverse" a redemption
       await this.recordEntry({
         userId:            e.userId,
         delta:             -e.delta,
         reason:            'refund_clawback',
         relatedDeliveryId: deliveryId,
-        note:              `Clawback of ${e.delta} pts (delivery ${deliveryId} refunded)`,
+        note:              `Clawback of ${e.delta} pts (delivery ${delivery.trackingCode} refunded)`,
       });
     }
+
+    // Business side: same rate the payment webhook awards at, 1 pt per
+    // N100 of the fare that was refunded.
+    if ((delivery as any).source === 'business_app' && delivery.customer?.id) {
+      const pts = Math.floor(Number(delivery.price ?? 0) / 100);
+      if (pts > 0) {
+        await this.deliveriesRepo.manager.query(
+          `UPDATE business_accounts
+              SET "loyaltyPoints" = GREATEST("loyaltyPoints" - $2, 0)
+            WHERE "ownerId" = $1`,
+          [delivery.customer.id, pts],
+        );
+      }
+    }
+
+    await this.deliveriesRepo.update(deliveryId, { loyaltyClawedBackAt: new Date() });
   }
 
   // ── Reads ────────────────────────────────────────────────────────────────

@@ -1691,6 +1691,17 @@ export class DeliveriesService {
         this.paymentsService
           .refundEscrow(id, updated.customer.id, withholdNgn)
           .catch((err) => this.logger.error(`Escrow refund failed: ${err.message}`));
+
+        /**
+         * Money going back means the points earned on it go back too.
+         * Without this, booking and cancelling minted loyalty: a
+         * refunded business run left 101 points standing (2026-08-16).
+         * Sits beside the refund so every app is covered by one hook,
+         * and is idempotent, so repeated cancellations are harmless.
+         */
+        this.loyaltyService
+          ?.clawbackForDelivery(id)
+          .catch((err: any) => this.logger.error(`Loyalty clawback failed for ${id}: ${err?.message ?? err}`));
       }
     }
 
@@ -1733,6 +1744,15 @@ export class DeliveriesService {
           } catch (err: any) {
             this.logger.error(`Auto-expiry refund failed for ${d.trackingCode}: ${err?.message ?? err}`);
           }
+        }
+        // This sweep sets the status directly rather than going through
+        // updateStatus, so it needs its own clawback: otherwise a booking
+        // that expires unclaimed keeps the points it earned on a fare
+        // that was refunded in full.
+        try {
+          await this.loyaltyService?.clawbackForDelivery(d.id);
+        } catch (err: any) {
+          this.logger.error(`Auto-expiry loyalty clawback failed for ${d.trackingCode}: ${err?.message ?? err}`);
         }
         if (d.customer?.id && this.notificationsService) {
           this.notificationsService
