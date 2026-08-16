@@ -27,6 +27,8 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useMultiStopDirections } from '@/components/useMultiStopDirections';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { Illustration } from '@/components/Illustration';
@@ -72,6 +74,7 @@ export default function SendPackageScreen() {
     draft, setDraft, addStop, removeStop, updateStop, resetDraft,
   } = useBusinessStore();
 
+  const mapRef = useRef<MapView>(null);
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -242,6 +245,26 @@ export default function SendPackageScreen() {
     return Math.round(km * 1.45 * 10) / 10;
   }, [draft.pickupLat, draft.pickupLng, draft.stops]);
 
+  /**
+   * Route the driver will actually take (founder 2026-08-16: "not once
+   * does the user see a map. imagine using Google Maps without seeing
+   * where you are going"). Correct call: moving off the map-first wizard
+   * dropped the map entirely. The review step now draws the real
+   * road-following route with a numbered pin per package, so the sender
+   * confirms WHERE everything goes before paying. Google's own distance
+   * replaces the straight-line estimate the moment it resolves.
+   */
+  const pickupPoint = draft.pickupLat != null && draft.pickupLng != null
+    ? { latitude: draft.pickupLat, longitude: draft.pickupLng }
+    : null;
+  const dropPoints = draft.stops
+    .filter((st) => st.lat != null && st.lng != null)
+    .map((st) => ({ latitude: st.lat as number, longitude: st.lng as number }));
+  const route = useMultiStopDirections(step === 3 ? pickupPoint : null, step === 3 ? dropPoints : []);
+  const routeKm = route.distanceMeters != null
+    ? Math.round((route.distanceMeters / 1000) * 10) / 10
+    : totalKm;
+
   // ── Quote (unified engine, per-package aware) ────────────────────────
   const [quote, setQuote] = useState<any>(null);
   // A price that never arrives must SAY so: an endless "..." is the same
@@ -269,7 +292,7 @@ export default function SendPackageScreen() {
     } as any)
       .then(setQuote)
       .catch((e: any) => setQuoteError(e?.message ?? 'Could not price this run.'));
-  }, [step, totalKm, draft.stops, draft.vehicleType, quoteReloadKey]);
+  }, [step, routeKm, draft.stops, draft.vehicleType, quoteReloadKey]);
 
   // Per-package attribution preview: identical math to the backend
   // (surcharge-weighted equal shares, last line absorbs rounding).
@@ -390,11 +413,11 @@ export default function SendPackageScreen() {
         vehicleType: draft.vehicleType,
         categoryCode: draft.stops[0]?.categoryCode ?? draft.categoryCode ?? 'standard_parcel',
         weightKg: draft.stops.reduce((sum, s) => sum + Number(s.weightKg ?? 0), 0),
-        km: totalKm,
-        estimatedDriveMinutes: Math.round(totalKm * 3),
+        km: routeKm,
+        estimatedDriveMinutes: route.durationSeconds != null ? Math.round(route.durationSeconds / 60) : Math.round(routeKm * 3),
         scheduledAt,
         isInterState: false,
-        isLongDistance: totalKm > 100,
+        isLongDistance: routeKm > 100,
         isRecurring: false,
       });
 
@@ -805,13 +828,66 @@ export default function SendPackageScreen() {
           {/* ─── STEP 3: REVIEW & PAY ──────────────────────────────── */}
           {step === 3 && (
             <View style={{ gap: 12 }}>
+              {!!pickupPoint && dropPoints.length > 0 && (
+                <View style={[styles.mapCard, { borderColor: colors.border }]}>
+                  <MapView
+                    provider={PROVIDER_GOOGLE}
+                    style={styles.map}
+                    initialRegion={{
+                      latitude: pickupPoint.latitude,
+                      longitude: pickupPoint.longitude,
+                      latitudeDelta: 0.12,
+                      longitudeDelta: 0.12,
+                    }}
+                    onLayout={() => {
+                      mapRef.current?.fitToCoordinates([pickupPoint, ...dropPoints], {
+                        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                        animated: false,
+                      });
+                    }}
+                    ref={mapRef}
+                  >
+                    {/* Pickup is one green pin; every package gets its own
+                        NUMBERED red pin so a five-drop run reads at a glance
+                        (founder 2026-08-16). */}
+                    <Marker coordinate={pickupPoint} title="Pickup" anchor={{ x: 0.5, y: 0.5 }}>
+                      <View style={[styles.pinBase, { backgroundColor: '#22C55E' }]}>
+                        <Text style={styles.pinTxt}>P</Text>
+                      </View>
+                    </Marker>
+                    {dropPoints.map((pt, i) => (
+                      <Marker
+                        key={i}
+                        coordinate={pt}
+                        title={`Package ${i + 1}`}
+                        description={[draft.stops[i]?.receiverFirstName, draft.stops[i]?.packageDescription].filter(Boolean).join(' · ') || undefined}
+                        anchor={{ x: 0.5, y: 0.5 }}
+                      >
+                        <View style={[styles.pinBase, { backgroundColor: '#EF4444' }]}>
+                          <Text style={styles.pinTxt}>{i + 1}</Text>
+                        </View>
+                      </Marker>
+                    ))}
+                    {route.coords.length > 1 && (
+                      <Polyline coordinates={route.coords} strokeWidth={4} strokeColor={colors.primary} />
+                    )}
+                  </MapView>
+                  <View style={[styles.mapBadge, { backgroundColor: colors.surface }]}>
+                    <Text style={[styles.mapBadgeTxt, { color: colors.text }]}>
+                      {route.distanceText ?? `~${routeKm}km`}
+                      {route.durationText ? ` · ${route.durationText}` : ''}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
               <View style={[styles.sumCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.sumTitle, { color: colors.text }]}>Route</Text>
                 <Text style={[styles.sumLine, { color: colors.textSecond }]} numberOfLines={1}>
                   From {draft.pickupAddress || '…'}
                 </Text>
                 <Text style={[styles.sumLine, { color: colors.textSecond }]}>
-                  {draft.stops.length} drop{draft.stops.length === 1 ? '' : 's'} · ~{totalKm}km · {VEHICLE_LABEL[draft.vehicleType]}
+                  {draft.stops.length} drop{draft.stops.length === 1 ? '' : 's'} · {route.distanceText ?? `~${routeKm}km`} · {VEHICLE_LABEL[draft.vehicleType]}
                   {scheduleNow ? ' · Send now' : ` · ${TIME_SLOTS.find(t => t.hour === scheduledHour)?.label ?? ''}`}
                 </Text>
               </View>
@@ -942,6 +1018,18 @@ const styles = StyleSheet.create({
   recBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   recTxt:   { color: '#fff', fontSize: 10, fontWeight: '700' },
   vehSub:  { fontSize: 12, marginTop: 2 },
+  mapCard:  { height: 220, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  map:      { ...StyleSheet.absoluteFillObject },
+  mapBadge: {
+    position: 'absolute', left: 12, bottom: 12,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
+  },
+  mapBadgeTxt: { fontSize: 12, fontWeight: '700' },
+  pinBase: {
+    width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
+  pinTxt: { color: '#fff', fontSize: 13, fontWeight: '800' },
   sumCard:  { borderRadius: 16, borderWidth: 1, padding: 14 },
   sumTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8 },
   sumLine:  { fontSize: 13, marginBottom: 3 },

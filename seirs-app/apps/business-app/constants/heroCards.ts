@@ -117,7 +117,9 @@ export const HERO_CARDS: HeroCard[] = [
     publishedAt:'2026-05-18T09:00:00Z',
   },
 
-  // ── Card 4: COMING SOON / NEW FEATURE ────────────────────────────────
+  // ── Card 4: LIVE FEATURE (was "coming soon" until 2026-08-16,
+  //    when multi-package shipped: a launched feature must not
+  //    advertise itself as unreleased) ────────────────────────────────
   {
     id:         'feature-multistop',
     kind:       'image',
