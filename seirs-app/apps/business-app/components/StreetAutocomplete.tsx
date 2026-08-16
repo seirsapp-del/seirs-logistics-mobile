@@ -43,9 +43,15 @@ interface Props {
    * Silently no-op if omitted, so existing callers keep working.
    */
   onCoordsResolved?: (lat: number, lng: number) => void;
+  /**
+   * Let the host screen lift this field clear of the keyboard. Swapping a
+   * plain TextInput for this component silently dropped the host's focus
+   * handler, so the field went back to typing blind (2026-08-16).
+   */
+  onFocus?: (e: any) => void;
 }
 
-export function StreetAutocomplete({ label, value, onChangeText, state, placeholder, onCoordsResolved }: Props) {
+export function StreetAutocomplete({ label, value, onChangeText, state, placeholder, onCoordsResolved, onFocus }: Props) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [searching,   setSearching]   = useState(false);
   const [focused,     setFocused]     = useState(false);
@@ -111,7 +117,7 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
           style={styles.input}
           value={value}
           onChangeText={onChange}
-          onFocus={() => setFocused(true)}
+          onFocus={(e) => { setFocused(true); onFocus?.(e); }}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
           placeholder={placeholder ?? 'Start typing a street or landmark…'}
           placeholderTextColor="#9CA3AF"

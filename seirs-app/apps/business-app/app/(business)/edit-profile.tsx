@@ -7,6 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
+import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { usersApi, businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
@@ -349,13 +350,20 @@ export default function BusinessEditProfileScreen() {
                   placeholder="RC1234567" placeholderTextColor={colors.textThird} />
               </View>
 
+              {/* Was a plain text box, so a business could save an address
+                  that never geocodes, and this address is what a rider is
+                  sent to (founder 2026-08-16). Same Nigeria-scoped
+                  autocomplete the registration form uses, biased to the
+                  state chosen below. */}
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.label, { color: colors.textSecond }]}>STREET ADDRESS</Text>
-                <TextInput
-              onFocus={onFieldFocus}
-                  value={streetAddress} onChangeText={setStreetAddress} editable={isOwner}
-                  style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: isOwner ? 1 : 0.6 }]}
-                  placeholder="15 Adeola Odeku" placeholderTextColor={colors.textThird} />
+                <StreetAutocomplete
+                  label="STREET ADDRESS"
+                  value={streetAddress}
+                  onChangeText={setStreetAddress}
+                  state={state}
+                  onFocus={onFieldFocus}
+                  placeholder="15 Adeola Odeku"
+                />
               </View>
 
               <View style={{ flexDirection: 'row', gap: 12 }}>
