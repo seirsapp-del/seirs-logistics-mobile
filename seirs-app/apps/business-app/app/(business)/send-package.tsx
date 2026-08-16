@@ -543,24 +543,13 @@ export default function SendPackageScreen() {
           {/* ─── STEP 0: PACKAGES ──────────────────────────────────── */}
           {step === 0 && (
             <View style={{ gap: 18 }}>
-              {/* Store drop, the customer app's first card: for business
-                  runs it is the cheaper alternative to a door pickup. */}
-              <Pressable
-                style={[styles.storeCard, { borderColor: colors.accent + '55', backgroundColor: colors.accent + '12' }]}
-                onPress={() => router.push('/(business)/drop-at-store' as any)}
-              >
-                <View style={[styles.storeIcon, { backgroundColor: colors.surface }]}>
-                  <Icon name="Store" size={18} color={colors.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.storeTitle, { color: colors.text }]}>Drop at a partner store instead</Text>
-                  <Text style={[styles.storeSub, { color: colors.textSecond }]}>
-                    Take them to a counter near you, skip the pickup leg.
-                  </Text>
-                </View>
-                <Icon name="ChevronRight" size={16} color={colors.accent} />
-              </Pressable>
-
+              {/* The run-level "drop at a partner store" card was removed
+                  here (founder 2026-08-16): store drop is a DESTINATION
+                  choice and now lives on every package below. The other
+                  half, a sender carrying packages to a counter instead of
+                  a door pickup, is a different product (drop codes + QR at
+                  the counter) and gets wired into the Pickup step properly
+                  rather than as a link that throws away this form. */}
               {draft.stops.map((s, i) => (
                 <View key={i} style={[styles.pkgCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={styles.pkgHead}>
@@ -1186,13 +1175,6 @@ const styles = StyleSheet.create({
   },
   photoHint: { fontSize: 11 },
   hint:      { fontSize: 11, lineHeight: 15, marginTop: 4, marginBottom: 2 },
-  storeCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 1.5, borderRadius: 14, padding: 14,
-  },
-  storeIcon:  { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  storeTitle: { fontSize: 14, fontWeight: '700' },
-  storeSub:   { fontSize: 12, marginTop: 2 },
   useLocRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 },
   useLocTxt:  { fontSize: 13, fontWeight: '600' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
