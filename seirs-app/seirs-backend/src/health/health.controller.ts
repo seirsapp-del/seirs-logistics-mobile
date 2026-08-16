@@ -75,6 +75,14 @@ export class HealthController {
       try {
         await this.ticketsRepo.find({ order: { lastMessageAt: 'DESC' }, take: 1 });
       } catch (e: any) { readError = `orm: ${e?.message ?? 'unknown'}`; }
+      // Both failing endpoints touch the user relation, which the plain
+      // find above does not. Probe the join on its own.
+      try {
+        await this.ticketsRepo.find({
+          where: { user: { id: '00000000-0000-0000-0000-000000000000' } },
+          take: 1,
+        });
+      } catch (e: any) { readError = `relation: ${e?.message ?? 'unknown'}`; }
       const chat = await this.dataSource.query(
         `SELECT column_name, is_nullable FROM information_schema.columns
           WHERE table_name = 'chat_messages' AND column_name IN ('ticketId','deliveryId')`,
