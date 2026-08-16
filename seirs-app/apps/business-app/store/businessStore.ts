@@ -1,4 +1,6 @@
-import { create } from 'zustand';
+import { create, type StateCreator } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface DeliveryStop {
   address:        string;
@@ -94,7 +96,7 @@ const EMPTY_DRAFT: DraftDelivery = {
   routeWasAutoOptimized:  false,
 };
 
-export const useBusinessStore = create<BusinessStore>((set) => ({
+const createBusinessStore: StateCreator<BusinessStore> = (set) => ({
   draft:      EMPTY_DRAFT,
   setDraft:   (patch) => set((s) => ({ draft: { ...s.draft, ...patch } })),
   resetDraft: () => set({ draft: EMPTY_DRAFT }),
@@ -110,4 +112,19 @@ export const useBusinessStore = create<BusinessStore>((set) => ({
     })),
   reorderStops: (newOrder) =>
     set((s) => ({ draft: { ...s.draft, stops: newOrder } })),
-}));
+});
+
+/**
+ * The draft is persisted (founder 2026-08-16): a business part-way
+ * through ten packages must not lose them to an app restart, and photos
+ * picked minutes ago should still be attached. Only the draft is stored;
+ * nothing else in this store is worth surviving a restart.
+ */
+export const useBusinessStore = create<BusinessStore>()(
+  persist(createBusinessStore, {
+    name: 'seirs_business_draft',
+    storage: createJSONStorage(() => AsyncStorage),
+    partialize: ((state: BusinessStore) => ({ draft: state.draft })) as any,
+  }),
+);
+
