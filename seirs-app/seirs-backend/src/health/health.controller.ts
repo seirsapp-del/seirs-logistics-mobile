@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { SupportTicket } from '../support/support-ticket.entity';
+import { DataSource, Repository } from 'typeorm';
 import { Public } from '../common/decorators/public.decorator';
 import { PricingService } from '../pricing/pricing.service';
 
@@ -27,6 +28,7 @@ export class HealthController {
 
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
+    @InjectRepository(SupportTicket) private readonly ticketsRepo: Repository<SupportTicket>,
     private readonly pricing: PricingService,
   ) {}
 
@@ -68,6 +70,11 @@ export class HealthController {
              FROM "support_tickets" ORDER BY "lastMessageAt" DESC LIMIT 1`,
         );
       } catch (e: any) { readError = e?.message ?? 'unknown'; }
+      // The app reads through TypeORM, not raw SQL, so probe that path
+      // too: a mapping fault shows up here and nowhere else.
+      try {
+        await this.ticketsRepo.find({ order: { lastMessageAt: 'DESC' }, take: 1 });
+      } catch (e: any) { readError = `orm: ${e?.message ?? 'unknown'}`; }
       const chat = await this.dataSource.query(
         `SELECT column_name, is_nullable FROM information_schema.columns
           WHERE table_name = 'chat_messages' AND column_name IN ('ticketId','deliveryId')`,

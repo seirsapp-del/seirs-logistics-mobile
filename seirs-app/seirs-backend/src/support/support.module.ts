@@ -99,6 +99,30 @@ export class SupportModule implements OnModuleInit {
       `);
     }
 
+    /**
+     * Legacy columns from an older support_tickets table are NOT NULL and
+     * the current entity never sets them, so every insert failed and
+     * opening a ticket returned a bare 500 (2026-08-16). Relaxing them
+     * keeps the old admin queries working while letting the current
+     * entity write.
+     */
+    for (const [col, dflt] of [
+      ['description', "''"],
+      ['priority',    "'normal'"],
+      ['replies',     '0'],
+      ['slaBreached', 'false'],
+      ['category',    "'other'"],
+      ['userEmail',   "''"],
+      ['userName',    "''"],
+    ] as Array<[string, string]>) {
+      await this.run(`relax ${col}`, `
+        ALTER TABLE "support_tickets" ALTER COLUMN "${col}" DROP NOT NULL
+      `);
+      await this.run(`default ${col}`, `
+        ALTER TABLE "support_tickets" ALTER COLUMN "${col}" SET DEFAULT ${dflt}
+      `);
+    }
+
     await this.run('idx user/status', `
       CREATE INDEX IF NOT EXISTS "support_tickets_user_status_idx"
         ON "support_tickets" ("userId", "status")
