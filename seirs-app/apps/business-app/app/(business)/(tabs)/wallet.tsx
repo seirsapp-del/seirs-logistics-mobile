@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/Icon';
 import { Drawer } from '@/components/Drawer';
-import { businessApi, partnerApi } from '@/services/api';
+import { businessApi, paymentsApi, partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 
@@ -45,7 +45,10 @@ export default function WalletScreen() {
   useEffect(() => {
     const loads: Promise<any>[] = [
       businessApi.wallet().catch(() => null),
-      businessApi.transactions().catch(() => []),
+      // Points come from payments that actually settled, not from the
+      // retired wallet ledger: this feed was still listing naira debits
+      // like "-N10,103" for a sender who holds no balance (2026-08-16).
+      paymentsApi.history().catch(() => []),
       businessApi.loyalty().catch(() => null),
     ];
     if (canPartner) loads.push(partnerApi.payouts(1).catch(() => null));
@@ -166,23 +169,25 @@ export default function WalletScreen() {
                   </Text>
                 </View>
               ) : (
-                txns.map((t, i) => {
-                  const isDebit = t.type !== 'credit';
-                  const earned = isDebit ? Math.floor(Number(t.amount ?? 0) / 100) : 0;
+                txns
+                  .filter((t: any) => t.status === 'success' && t.purpose === 'delivery')
+                  .map((t: any, i: number) => {
+                  const earned = Math.floor(Number(t.amountKobo ?? 0) / 100 / 100);
                   return (
                     <View key={t.id ?? i} style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={[styles.rowIcon, { backgroundColor: isDebit ? '#FEF3C7' : '#DCFCE7' }]}>
-                        <Icon name={isDebit ? 'Package' : 'Plus'} size={16} color={isDebit ? '#D97706' : '#16A34A'} />
+                      <View style={[styles.rowIcon, { backgroundColor: '#FEF3C7' }]}>
+                        <Icon name="Star" size={16} color="#D97706" />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.rowTitle, { color: colors.text }]}>{t.description ?? t.type}</Text>
+                        <Text style={[styles.rowTitle, { color: colors.text }]}>
+                          {t.delivery?.trackingCode ?? 'Delivery'}
+                        </Text>
                         <Text style={[styles.rowSub, { color: colors.textThird }]}>
                           {new Date(t.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          {earned > 0 ? ` · +${earned} pts` : ''}
                         </Text>
                       </View>
-                      <Text style={[styles.rowAmt, { color: isDebit ? colors.text : '#16A34A' }]}>
-                        {isDebit ? '-' : '+'}{fmt(Number(t.amount ?? 0))}
+                      <Text style={[styles.rowAmt, { color: '#16A34A' }]}>
+                        +{earned} pts
                       </Text>
                     </View>
                   );
