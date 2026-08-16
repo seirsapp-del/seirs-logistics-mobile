@@ -85,9 +85,20 @@ export default function SendPackageScreen() {
       .catch(() => {});
   }, []);
 
-  const maxPackages =
-    Number((rateCard as any)?.vehicleRates?.[draft.vehicleType]?.maxPackages)
-    || DEFAULT_MAX_PACKAGES[draft.vehicleType] || 5;
+  /**
+   * Packages come FIRST, vehicle comes after (founder 2026-08-16: the
+   * add button used to say "1/5 for Okada" before anyone had picked a
+   * vehicle, which both quoted a vehicle nobody chose and capped the
+   * list at the smallest one). Step one is therefore bounded by the
+   * LARGEST vehicle on the rate card; the vehicle step then narrows to
+   * what can actually carry what was entered.
+   */
+  const vehicleCap = (v: string) =>
+    Number((rateCard as any)?.vehicleRates?.[v]?.maxPackages) || DEFAULT_MAX_PACKAGES[v] || 5;
+  const vehiclePayload = (v: string) =>
+    Number((rateCard as any)?.vehicleRates?.[v]?.maxPayloadKg ?? 0);
+  const absoluteMaxPackages = VEHICLE_ORDER.reduce((max, v) => Math.max(max, vehicleCap(v)), 0) || 150;
+  const maxPackages = vehicleCap(draft.vehicleType);
 
   // ── Address autocomplete (pickup + per-package) ──────────────────────
   type Field = { kind: 'pickup' } | { kind: 'pkg'; idx: number } | null;
@@ -301,10 +312,27 @@ export default function SendPackageScreen() {
     return null;
   };
 
+  /**
+   * Smallest vehicle that actually fits the packages entered, the way
+   * the customer app auto-recommends from weight and category. Runs when
+   * the user reaches the vehicle step so the pre-selection is never a
+   * vehicle that cannot carry the load.
+   */
+  const recommendVehicle = () => {
+    const count = draft.stops.length;
+    const kg = draft.stops.reduce((sum, st) => sum + Number(st.weightKg ?? 0), 0);
+    const fits = VEHICLE_ORDER.find((v) => {
+      const payload = vehiclePayload(v);
+      return vehicleCap(v) >= count && (payload === 0 || payload >= kg);
+    });
+    if (fits && fits !== draft.vehicleType) setDraft({ vehicleType: fits });
+  };
+
   const next = () => {
     const err = validateStep();
     if (err) { setError(err); return; }
     setError(null);
+    if (step === 1) recommendVehicle();
     if (step < 3) setStep((s) => (s + 1) as any);
   };
   const back = () => {
@@ -569,6 +597,19 @@ export default function SendPackageScreen() {
                     keyboardType="phone-pad"
                   />
 
+                  <Text style={[styles.label, { color: colors.textSecond }]}>
+                    Delivery address <Text style={{ color: '#DC2626' }}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
+                    value={pkgQueries[i] ?? ''}
+                    onChangeText={(v) => onChangePkgAddress(i, v)}
+                    onFocus={() => setActiveField({ kind: 'pkg', idx: i })}
+                    placeholder="Street, area, city"
+                    placeholderTextColor={colors.textThird}
+                  />
+                  {renderSuggestions('pkg', i)}
+
                   <Text style={[styles.label, { color: colors.textSecond }]}>If nobody is available</Text>
                   <View style={styles.chipWrap}>
                     {([
@@ -631,34 +672,26 @@ export default function SendPackageScreen() {
                     placeholderTextColor={colors.textThird}
                   />
 
-                  <Text style={[styles.label, { color: colors.textSecond }]}>
-                    Delivery address <Text style={{ color: '#DC2626' }}>*</Text>
-                  </Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
-                    value={pkgQueries[i] ?? ''}
-                    onChangeText={(v) => onChangePkgAddress(i, v)}
-                    onFocus={() => setActiveField({ kind: 'pkg', idx: i })}
-                    placeholder="Street, area, city"
-                    placeholderTextColor={colors.textThird}
-                  />
-                  {renderSuggestions('pkg', i)}
                 </View>
               ))}
 
-              {draft.stops.length < maxPackages ? (
-                <Pressable
-                  style={[styles.addBtn, { borderColor: colors.accent, backgroundColor: colors.primaryLight }]}
-                  onPress={() => { addStop({ address: '', recipientName: '', recipientPhone: '' }); setPkgQueries(q => [...q, '']); }}
-                >
-                  <Icon name="Plus" size={16} color={colors.accent} />
-                  <Text style={[styles.addBtnText, { color: colors.accent }]}>
-                    Add another package ({draft.stops.length}/{maxPackages} for {VEHICLE_LABEL[draft.vehicleType] ?? 'this vehicle'})
+              {draft.stops.length < absoluteMaxPackages ? (
+                <>
+                  <Pressable
+                    style={[styles.addBtn, { borderColor: colors.accent, backgroundColor: colors.primaryLight }]}
+                    onPress={() => { addStop({ address: '', recipientName: '', recipientPhone: '' }); setPkgQueries(q => [...q, '']); }}
+                  >
+                    <Icon name="Plus" size={16} color={colors.accent} />
+                    <Text style={[styles.addBtnText, { color: colors.accent }]}>Add another package</Text>
+                  </Pressable>
+                  <Text style={[styles.capNote, { color: colors.textThird }]}>
+                    {draft.stops.length} package{draft.stops.length === 1 ? '' : 's'} so far
+                    {totalWeight > 0 ? ` · ${totalWeight}kg` : ''}. We suggest the right vehicle next.
                   </Text>
-                </Pressable>
+                </>
               ) : (
                 <Text style={[styles.capNote, { color: colors.textSecond }]}>
-                  {VEHICLE_LABEL[draft.vehicleType]} carries up to {maxPackages} packages: pick a bigger vehicle in step 3 for more.
+                  {absoluteMaxPackages} packages is the most a single run can carry. Book the rest as a second run.
                 </Text>
               )}
             </View>
@@ -720,8 +753,12 @@ export default function SendPackageScreen() {
           {step === 2 && (
             <View style={{ gap: 10 }}>
               {VEHICLE_ORDER.map((v) => {
-                const cap = Number((rateCard as any)?.vehicleRates?.[v]?.maxPackages) || DEFAULT_MAX_PACKAGES[v] || 5;
-                const payload = Number((rateCard as any)?.vehicleRates?.[v]?.maxPayloadKg ?? 0);
+                const cap = vehicleCap(v);
+                const payload = vehiclePayload(v);
+                const isRecommended = v === VEHICLE_ORDER.find((x) => {
+                  const pl = vehiclePayload(x);
+                  return vehicleCap(x) >= draft.stops.length && (pl === 0 || pl >= totalWeight);
+                });
                 const overCount = draft.stops.length > cap;
                 const overWeight = payload > 0 && totalWeight > payload;
                 const disabled = overCount || overWeight;
@@ -736,7 +773,14 @@ export default function SendPackageScreen() {
                     onPress={() => setDraft({ vehicleType: v })}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.vehName, { color: colors.text }]}>{VEHICLE_LABEL[v]}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.vehName, { color: colors.text }]}>{VEHICLE_LABEL[v]}</Text>
+                        {isRecommended && !disabled && (
+                          <View style={[styles.recBadge, { backgroundColor: colors.accent }]}>
+                            <Text style={styles.recTxt}>Recommended</Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={[styles.vehSub, { color: colors.textSecond }]}>
                         {disabled
                           ? overCount ? `Max ${cap} packages` : `Max ${payload}kg`
@@ -885,6 +929,8 @@ const styles = StyleSheet.create({
   hourChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1 },
   vehRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 14, padding: 14 },
   vehName: { fontSize: 15, fontWeight: '700' },
+  recBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  recTxt:   { color: '#fff', fontSize: 10, fontWeight: '700' },
   vehSub:  { fontSize: 12, marginTop: 2 },
   sumCard:  { borderRadius: 16, borderWidth: 1, padding: 14 },
   sumTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8 },
