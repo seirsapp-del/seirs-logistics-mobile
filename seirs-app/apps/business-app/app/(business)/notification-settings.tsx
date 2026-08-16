@@ -22,34 +22,28 @@ import { usersApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
 type ToggleKey =
-  | 'delivery_updates' | 'driver_assigned' | 'delivery_completed' | 'delivery_cancelled'
-  | 'payment_success'  | 'payment_failed'
-  | 'counter_dropoff'  | 'counter_payout'
+  | 'delivery_updates' | 'driver_assigned'
   | 'rewards_update'   | 'promo_alerts'
-  | 'app_updates'      | 'marketing';
+  | 'marketing';
 
+/**
+ * ONLY the alerts a business may genuinely switch off.
+ *
+ * Delivery completion, cancellations and failures, payment receipts and
+ * problems, payouts, counter handovers, security and app updates are not
+ * choices: they tell
+ * you your goods, your money or your account moved, and a sender who
+ * silences them simply does not find out. They are not listed here
+ * either, because a locked row is clutter pretending to be a setting
+ * (founder 2026-08-16: "some of the always on options shouldnt be shows
+ * at all . it should be normal notification by default").
+ */
 const SECTIONS: { title: string; items: { key: ToggleKey; icon: string; label: string; sub: string }[] }[] = [
   {
     title: 'DELIVERIES',
     items: [
-      { key: 'delivery_updates',   icon: 'Package',      label: 'Delivery updates',   sub: 'Every status change on a run you booked' },
-      { key: 'driver_assigned',    icon: 'Bike',         label: 'Driver assigned',    sub: 'When a rider accepts and is on the way' },
-      { key: 'delivery_completed', icon: 'CheckCircle2', label: 'Delivered',          sub: 'When a package reaches its receiver' },
-      { key: 'delivery_cancelled', icon: 'AlertCircle',  label: 'Cancelled or failed', sub: 'Including auto-cancelled bookings and refunds' },
-    ],
-  },
-  {
-    title: 'PAYMENTS',
-    items: [
-      { key: 'payment_success', icon: 'CreditCard', label: 'Payment received', sub: 'Confirmation each time a booking is paid' },
-      { key: 'payment_failed',  icon: 'XCircle',    label: 'Payment problems', sub: 'Declined cards and failed charges' },
-    ],
-  },
-  {
-    title: 'PARTNER COUNTER',
-    items: [
-      { key: 'counter_dropoff', icon: 'Store',    label: 'Counter handovers', sub: 'Parcels dropped at or collected from your counter' },
-      { key: 'counter_payout',  icon: 'Banknote', label: 'Earnings and payouts', sub: 'When counter earnings are settled to your bank' },
+      { key: 'delivery_updates', icon: 'Package', label: 'Every status change', sub: 'Picked up, in transit, and each stop along the way' },
+      { key: 'driver_assigned',  icon: 'Bike',    label: 'Driver assigned',     sub: 'When a rider accepts and is on the way' },
     ],
   },
   {
@@ -62,8 +56,7 @@ const SECTIONS: { title: string; items: { key: ToggleKey; icon: string; label: s
   {
     title: 'GENERAL',
     items: [
-      { key: 'app_updates', icon: 'RefreshCw', label: 'App updates', sub: 'New features and important changes' },
-      { key: 'marketing',   icon: 'Megaphone', label: 'Marketing',   sub: 'News from SEIRS. Safety and account alerts always send.' },
+      { key: 'marketing', icon: 'Megaphone', label: 'Marketing', sub: 'News and stories from SEIRS' },
     ],
   },
 ];
@@ -108,7 +101,8 @@ export default function NotificationSettingsScreen() {
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }}>
           <Text style={[styles.intro, { color: colors.textSecond }]}>
-            Choose what SEIRS sends you. Safety and account-security alerts are always sent.
+            Turn off what you do not need. Anything about your goods, your money
+            or your account always sends, so nothing important passes you silently.
           </Text>
 
           {SECTIONS.map((section) => (
@@ -128,9 +122,9 @@ export default function NotificationSettingsScreen() {
                       <Text style={[styles.sub, { color: colors.textThird }]}>{item.sub}</Text>
                     </View>
                     <Switch
-                      value={isOn(item.key)}
-                      onValueChange={() => toggle(item.key)}
-                      trackColor={{ false: colors.border, true: colors.primary }}
+                        value={isOn(item.key)}
+                        onValueChange={() => toggle(item.key)}
+                        trackColor={{ false: colors.border, true: colors.primary }}
                       thumbColor="#fff"
                     />
                   </View>
@@ -157,5 +151,7 @@ const styles = StyleSheet.create({
   row:         { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   iconWrap:    { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   label:       { fontSize: 14, fontWeight: '600' },
+  lockedChip:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
+  lockedText:  { fontSize: 11, fontWeight: '700' },
   sub:         { fontSize: 12, marginTop: 2, lineHeight: 16 },
 });

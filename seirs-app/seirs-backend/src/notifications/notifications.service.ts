@@ -36,6 +36,40 @@ export class NotificationsService {
     await this.usersRepo.update(userId, { fcmToken: trimmed });
   }
 
+  /**
+   * Which preference key, if any, gates a notification type.
+   *
+   * users.notificationPrefs existed and was editable, but nothing on the
+   * send path ever read it, so every switch in the apps was decorative
+   * (found 2026-08-16 while shipping the business settings screen).
+   *
+   * Types absent from this map are never suppressed. Payment receipts are
+   * deliberately absent (founder 2026-08-16: "payment recieved cant be
+   * optional who would want to know if their payment went through"), as
+   * are completions, failures, payouts, job offers, SOS, chat and system
+   * messages. The apps do not list them as settings at all, rather than
+   * showing a locked row that pretends to be one.
+   */
+  private static readonly PREF_KEY_BY_TYPE: Partial<Record<NotificationType, string>> = {
+    [NotificationType.DELIVERY_ASSIGNED]: 'driver_assigned',
+    [NotificationType.STATUS_UPDATE]:     'delivery_updates',
+  };
+
+  /** False when the recipient has explicitly switched this type off. */
+  private async wantsNotification(userId: string, type: NotificationType): Promise<boolean> {
+    const key = NotificationsService.PREF_KEY_BY_TYPE[type];
+    if (!key) return true;
+    try {
+      const rows = await this.repo.manager.query(
+        'SELECT "notificationPrefs" AS p FROM users WHERE id = $1 LIMIT 1', [userId],
+      );
+      const prefs = rows?.[0]?.p ?? {};
+      return prefs[key] !== false;   // never set means on
+    } catch {
+      return true;                   // never lose a notification to a lookup failure
+    }
+  }
+
   async create(
     userId: string,
     title: string,
@@ -44,6 +78,11 @@ export class NotificationsService {
     deliveryId?: string,
     trackingCode?: string,
   ): Promise<Notification> {
+    if (!(await this.wantsNotification(userId, type))) {
+      // Suppressed by the recipient's own preference. Nothing is stored
+      // and nothing is pushed, so the inbox matches what they asked for.
+      return this.repo.create({ userId, title, body, type, deliveryId, trackingCode });
+    }
     const notif = this.repo.create({ userId, title, body, type, deliveryId, trackingCode });
     const saved = await this.repo.save(notif);
 
