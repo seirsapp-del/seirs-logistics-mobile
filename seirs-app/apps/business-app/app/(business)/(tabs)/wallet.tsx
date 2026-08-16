@@ -1,160 +1,283 @@
+/**
+ * Business · Wallet tab = REWARDS + EARNINGS (founder redesign 2026-08-16).
+ *
+ * "We are not a bank": nobody deposits money here. The tab now mirrors
+ * the customer app's Rewards (points hero + how-to-earn + activity) and
+ * the driver app's Earnings, reshaped for partner stores: the Earnings
+ * segment activates only once the account is an APPROVED partner, and
+ * shows what SEIRS owes them (pending payouts) plus payout history with
+ * weekly settlement to their business bank account. Legacy prepaid
+ * credit, where it still exists, is shown draining against bookings.
+ */
 import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
-import { Drawer } from '@/components/Drawer';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/Icon';
-import { businessApi } from '@/services/api';
-import { useColors, useTheme } from '@/context/ThemeContext';
+import { Drawer } from '@/components/Drawer';
+import { businessApi, partnerApi } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
+import { useColors } from '@/context/ThemeContext';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
+type Segment = 'rewards' | 'earnings';
+
 export default function WalletScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
-  const { isDark } = useTheme();
+  const { user } = useAuth();
+  const canPartner = !!(user as any)?.capabilities?.canPartner;
+
+  const [segment,  setSegment]  = useState<Segment>('rewards');
   const [wallet,   setWallet]   = useState<any>(null);
   const [txns,     setTxns]     = useState<any[]>([]);
   const [loyalty,  setLoyalty]  = useState<any>(null);
-  const [loading,    setLoading]    = useState(true);
+  const [payouts,  setPayouts]  = useState<any[]>([]);
+  const [loading,  setLoading]  = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      businessApi.wallet(),
-      businessApi.transactions(),
-      businessApi.loyalty(),
-    ]).then(([w, t, l]) => {
+    const loads: Promise<any>[] = [
+      businessApi.wallet().catch(() => null),
+      businessApi.transactions().catch(() => []),
+      businessApi.loyalty().catch(() => null),
+    ];
+    if (canPartner) loads.push(partnerApi.payouts(1).catch(() => null));
+    Promise.all(loads).then(([w, t, l, p]) => {
       setWallet(w);
       setTxns(Array.isArray(t) ? t : t?.items ?? []);
       setLoyalty(l);
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+      const rows = Array.isArray(p) ? p : p?.items ?? [];
+      setPayouts(rows);
+    }).finally(() => setLoading(false));
+  }, [canPartner]);
 
-  const txnIcon = (type: string) => {
-    if (type === 'credit') return 'Plus';
-    if (type === 'delivery') return 'Package';
-    return 'Minus';
-  };
+  const points = Number(loyalty?.points ?? 0);
+  const legacyCredit = Number(wallet?.balance ?? 0);
+  const pendingOwed = payouts
+    .filter((p: any) => p?.status && p.status !== 'paid')
+    .reduce((sum: number, p: any) => sum + Number(p.amount ?? 0), 0);
+  const paidOut = payouts
+    .filter((p: any) => p?.status === 'paid')
+    .reduce((sum: number, p: any) => sum + Number(p.amount ?? 0), 0);
+
+  const segments: Array<{ key: Segment; label: string; locked?: boolean }> = [
+    { key: 'rewards', label: 'Rewards' },
+    { key: 'earnings', label: 'Earnings', locked: !canPartner },
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Drawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <ScrollView showsVerticalScrollIndicator={false}>
-
-        {/* Funding is gone (founder 2026-08-16: "we are not a bank").
-            Businesses pay per booking through Flutterwave; nobody
-            deposits money with SEIRS. Any remaining legacy balance
-            simply drains against upcoming bookings. This screen becomes
-            the full Billing home in the pay-per-booking rebuild. */}
         <LinearGradient
           colors={['#0F2B4C', '#1a3a5c']}
-          style={[styles.hero, { paddingTop: insets.top + 20 }]}
+          style={[styles.hero, { paddingTop: insets.top + 16 }]}
         >
-          <Pressable onPress={() => setDrawerOpen(true)} hitSlop={10} style={{ marginBottom: 14 }}>
-            <Icon name="AlignLeft" size={22} color="#fff" />
-          </Pressable>
-          <Text style={styles.heroLabel}>Billing</Text>
+          <View style={styles.heroTop}>
+            <Pressable onPress={() => setDrawerOpen(true)} hitSlop={10}>
+              <Icon name="AlignLeft" size={22} color="#fff" />
+            </Pressable>
+            <Text style={styles.heroTitle}>Wallet</Text>
+            <View style={{ width: 22 }} />
+          </View>
+
+          {/* Segmented control: Earnings unlocks with partner approval. */}
+          <View style={styles.segRow}>
+            {segments.map((seg) => {
+              const active = segment === seg.key;
+              return (
+                <Pressable
+                  key={seg.key}
+                  style={[styles.segBtn, active && styles.segBtnActive]}
+                  onPress={() => {
+                    if (seg.locked) { router.push('/(business)/apply-partner' as any); return; }
+                    setSegment(seg.key);
+                  }}
+                >
+                  {seg.locked && <Icon name="Lock" size={12} color={active ? '#0F2B4C' : 'rgba(255,255,255,0.7)'} />}
+                  <Text style={[styles.segText, active && styles.segTextActive]}>{seg.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
           {loading ? (
-            <ActivityIndicator color="#fff" style={{ marginVertical: 12 }} />
+            <ActivityIndicator color="#fff" style={{ marginVertical: 18 }} />
+          ) : segment === 'rewards' ? (
+            <View style={styles.heroBody}>
+              <Text style={styles.heroLabel}>Total rewards</Text>
+              <View style={styles.pointsRow}>
+                <Text style={styles.heroBig}>{points.toLocaleString()}</Text>
+                <Text style={styles.heroUnit}>points</Text>
+              </View>
+              <Text style={styles.heroNote}>Earn 1 point per ₦100 spent on deliveries.</Text>
+            </View>
           ) : (
-            <>
-              <Text style={styles.heroBalance}>{fmt(wallet?.balance ?? 0)}</Text>
+            <View style={styles.heroBody}>
+              <Text style={styles.heroLabel}>SEIRS owes your store</Text>
+              <Text style={styles.heroBig}>{fmt(pendingOwed)}</Text>
               <Text style={styles.heroNote}>
-                {Number(wallet?.balance ?? 0) > 0
-                  ? 'Remaining credit: it is spent on your next bookings. New bookings are paid per booking via Flutterwave.'
-                  : 'You pay per booking via Flutterwave. No deposits, no top-ups.'}
+                Paid out so far: {fmt(paidOut)} · settled weekly to your business bank account.
               </Text>
-            </>
+            </View>
           )}
         </LinearGradient>
 
-        {loyalty && (
-          <View style={[styles.loyaltyCard, {
-            backgroundColor: isDark ? '#2A1B47' : '#F5F3FF',
-            borderColor:     isDark ? '#5E3FB1' : '#DDD6FE',
-          }]}>
-            <View style={styles.loyaltyLeft}>
-              <Icon name="Star" size={20} color="#D97706" />
-              <View>
-                <Text style={[styles.loyaltyTitle, { color: colors.text }]}>Loyalty Points</Text>
-                <Text style={styles.loyaltySub}>Earn 1 point per ₦100 spent</Text>
-              </View>
-            </View>
-            <View style={styles.loyaltyRight}>
-              <Text style={styles.loyaltyPoints}>{loyalty.points ?? 0}</Text>
-              <Text style={styles.loyaltyLabel}>pts</Text>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.txnsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Transaction History</Text>
-          {loading ? (
-            <ActivityIndicator color={colors.accent} />
-          ) : txns.length === 0 ? (
-            <View style={styles.empty}>
-              <Icon name="CreditCard" size={32} color={colors.textThird} />
-              <Text style={[styles.emptyText, { color: colors.textThird }]}>No transactions yet</Text>
-            </View>
-          ) : (
-            txns.map((t, i) => (
-              <View
-                key={t.id ?? i}
-                style={[styles.txnRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              >
-                <View style={[styles.txnIcon, { backgroundColor: t.type === 'credit' ? '#DCFCE7' : '#FEF3C7' }]}>
-                  <Icon name={txnIcon(t.type)} size={16}
-                    color={t.type === 'credit' ? '#16A34A' : '#D97706'} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.txnDesc, { color: colors.text }]}>{t.description ?? t.type}</Text>
-                  <Text style={[styles.txnDate, { color: colors.textThird }]}>
-                    {new Date(t.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </Text>
-                </View>
-                <Text style={[styles.txnAmount, { color: t.type === 'credit' ? '#16A34A' : '#DC2626' }]}>
-                  {t.type === 'credit' ? '+' : '-'}{fmt(t.amount)}
+        {segment === 'rewards' ? (
+          <>
+            {legacyCredit > 0 && (
+              <View style={[styles.noteCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Icon name="Info" size={16} color={colors.textSecond} />
+                <Text style={[styles.noteText, { color: colors.textSecond }]}>
+                  Remaining credit {fmt(legacyCredit)}: it is spent on your next bookings.
+                  New bookings pay per booking via Flutterwave.
                 </Text>
               </View>
-            ))
-          )}
-        </View>
+            )}
+
+            {!canPartner && (
+              <Pressable
+                style={[styles.teaser, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
+                onPress={() => router.push('/(business)/apply-partner' as any)}
+              >
+                <Icon name="Store" size={18} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.teaserTitle, { color: colors.primary }]}>Earn with SEIRS</Text>
+                  <Text style={[styles.teaserSub, { color: colors.textSecond }]}>
+                    Partner stores hold packages at their counter and get weekly payouts.
+                  </Text>
+                </View>
+                <Icon name="ChevronRight" size={18} color={colors.primary} />
+              </Pressable>
+            )}
+
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Activity</Text>
+              {loading ? (
+                <ActivityIndicator color={colors.accent} />
+              ) : txns.length === 0 ? (
+                <View style={styles.empty}>
+                  <Icon name="Star" size={32} color={colors.textThird} />
+                  <Text style={[styles.emptyText, { color: colors.textThird }]}>
+                    Book your first delivery to start earning points.
+                  </Text>
+                </View>
+              ) : (
+                txns.map((t, i) => {
+                  const isDebit = t.type !== 'credit';
+                  const earned = isDebit ? Math.floor(Number(t.amount ?? 0) / 100) : 0;
+                  return (
+                    <View key={t.id ?? i} style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={[styles.rowIcon, { backgroundColor: isDebit ? '#FEF3C7' : '#DCFCE7' }]}>
+                        <Icon name={isDebit ? 'Package' : 'Plus'} size={16} color={isDebit ? '#D97706' : '#16A34A'} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.rowTitle, { color: colors.text }]}>{t.description ?? t.type}</Text>
+                        <Text style={[styles.rowSub, { color: colors.textThird }]}>
+                          {new Date(t.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {earned > 0 ? ` · +${earned} pts` : ''}
+                        </Text>
+                      </View>
+                      <Text style={[styles.rowAmt, { color: isDebit ? colors.text : '#16A34A' }]}>
+                        {isDebit ? '-' : '+'}{fmt(Number(t.amount ?? 0))}
+                      </Text>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </>
+        ) : (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Payouts</Text>
+            {loading ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : payouts.length === 0 ? (
+              <View style={styles.empty}>
+                <Icon name="Banknote" size={32} color={colors.textThird} />
+                <Text style={[styles.emptyText, { color: colors.textThird }]}>
+                  No payouts yet. Packages handled at your counter earn a fee;
+                  fees settle weekly to your business bank account.
+                </Text>
+              </View>
+            ) : (
+              payouts.map((p: any, i: number) => (
+                <View key={p.id ?? i} style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={[styles.rowIcon, { backgroundColor: p.status === 'paid' ? '#DCFCE7' : '#FEF3C7' }]}>
+                    <Icon name="Banknote" size={16} color={p.status === 'paid' ? '#16A34A' : '#D97706'} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.rowTitle, { color: colors.text }]}>
+                      {p.status === 'paid' ? 'Paid to bank' : 'Pending payout'}
+                    </Text>
+                    <Text style={[styles.rowSub, { color: colors.textThird }]}>
+                      {p.paidAt
+                        ? new Date(p.paidAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : 'Settles with the weekly run'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.rowAmt, { color: p.status === 'paid' ? '#16A34A' : colors.text }]}>
+                    {fmt(Number(p.amount ?? 0))}
+                  </Text>
+                </View>
+              ))
+            )}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  hero:          { paddingHorizontal: 24, paddingBottom: 32 },
-  heroLabel:     { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 6 },
-  heroBalance:   { fontSize: 34, fontWeight: '900', color: '#fff', marginBottom: 20 },
-  heroNote:      { fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 17, maxWidth: 300 },
-  loyaltyCard:   {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderRadius: 14, margin: 16, padding: 16, borderWidth: 1,
+  hero:      { paddingHorizontal: 20, paddingBottom: 24 },
+  heroTop:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  heroTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  segRow: {
+    flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12, padding: 4, marginBottom: 18,
   },
-  loyaltyLeft:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  loyaltyTitle:  { fontSize: 14, fontWeight: '700' },
-  loyaltySub:    { fontSize: 11, color: '#D97706', marginTop: 2 },
-  loyaltyRight:  { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
-  loyaltyPoints: { fontSize: 28, fontWeight: '900', color: '#D97706' },
-  loyaltyLabel:  { fontSize: 13, color: '#D97706', fontWeight: '600' },
-  txnsSection:   { padding: 16 },
-  sectionTitle:  { fontSize: 16, fontWeight: '700', marginBottom: 14 },
-  empty:         { alignItems: 'center', paddingVertical: 40, gap: 12 },
-  emptyText:     { fontSize: 14 },
-  txnRow:        {
+  segBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 8, borderRadius: 9,
+  },
+  segBtnActive:  { backgroundColor: '#fff' },
+  segText:       { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600' },
+  segTextActive: { color: '#0F2B4C' },
+  heroBody:  { alignItems: 'flex-start' },
+  heroLabel: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 4 },
+  pointsRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  heroBig:   { fontSize: 36, fontWeight: '900', color: '#fff' },
+  heroUnit:  { fontSize: 15, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
+  heroNote:  { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 8, lineHeight: 17, maxWidth: 300 },
+  noteCard: {
+    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
+    margin: 16, marginBottom: 0, padding: 14, borderRadius: 12, borderWidth: 1,
+  },
+  noteText:  { flex: 1, fontSize: 12, lineHeight: 17 },
+  teaser: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    margin: 16, marginBottom: 0, padding: 16, borderRadius: 14, borderWidth: 1,
+  },
+  teaserTitle: { fontSize: 14, fontWeight: '700' },
+  teaserSub:   { fontSize: 12, marginTop: 2, lineHeight: 16 },
+  section:      { padding: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 14 },
+  empty:        { alignItems: 'center', paddingVertical: 40, gap: 12, paddingHorizontal: 24 },
+  emptyText:    { fontSize: 13, textAlign: 'center', lineHeight: 19 },
+  row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1,
   },
-  txnIcon:       {
-    width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
-  },
-  txnDesc:       { fontSize: 13, fontWeight: '600' },
-  txnDate:       { fontSize: 11, marginTop: 2 },
-  txnAmount:     { fontSize: 14, fontWeight: '700' },
+  rowIcon:  { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  rowTitle: { fontSize: 13, fontWeight: '600' },
+  rowSub:   { fontSize: 11, marginTop: 2 },
+  rowAmt:   { fontSize: 14, fontWeight: '700' },
 });

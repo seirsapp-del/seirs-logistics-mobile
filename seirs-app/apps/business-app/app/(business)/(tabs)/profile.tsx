@@ -8,11 +8,14 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Modal, Image } from 'react-native';
 import { useEffect, useState } from 'react';
 import QRCode from 'react-native-qrcode-svg';
+import * as ImagePicker from 'expo-image-picker';
+import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/Icon';
 import { useAuth } from '@/context/AuthContext';
+import { uploadApi, usersApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
 const SITE = 'https://seirs-website.vercel.app';
@@ -24,6 +27,31 @@ export default function BusinessProfileTab() {
   const { t } = useTranslation();
   const { user, logout, refresh } = useAuth();
   const [qrVisible, setQrVisible] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  /**
+   * Storefront photo (founder 2026-08-16): businesses put a face on the
+   * account with a picture of their store front. Uploads to avatars/,
+   * saves via the profile endpoint, then refresh() pulls the new URL
+   * into the stored session.
+   */
+  const changePhoto = async () => {
+    if (photoBusy) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+    setPhotoBusy(true);
+    try {
+      const up = await uploadApi.file(result.assets[0].uri, 'image/jpeg', 'avatars');
+      await usersApi.updateProfile({ profilePhoto: up.url });
+      await refresh();
+    } catch (e: any) {
+      Alert.alert('Could not update photo', e?.message ?? 'Try again.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
 
   // The login-time snapshot goes stale (partner approval, photo, company
   // edits). Refresh whenever the tab mounts so what you see is current.
@@ -85,13 +113,18 @@ export default function BusinessProfileTab() {
       </Text>
 
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        {user?.profilePhoto ? (
-          <Image source={{ uri: user.profilePhoto }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>{initial}</Text>
+        <Pressable onPress={changePhoto} disabled={photoBusy}>
+          {user?.profilePhoto ? (
+            <Image source={{ uri: user.profilePhoto }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+              <Text style={styles.avatarText}>{initial}</Text>
+            </View>
+          )}
+          <View style={[styles.cameraBadge, { backgroundColor: colors.accent }]}>
+            <Icon name="Camera" size={11} color="#fff" />
           </View>
-        )}
+        </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
             {user?.companyName ?? user?.name}
@@ -163,6 +196,11 @@ const styles = StyleSheet.create({
   },
   avatar:     { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  cameraBadge: {
+    position: 'absolute', right: -2, bottom: -2, width: 20, height: 20,
+    borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
   name:       { fontSize: 17, fontWeight: '700' },
   sub:        { fontSize: 13, marginTop: 2 },
   idRow: {
