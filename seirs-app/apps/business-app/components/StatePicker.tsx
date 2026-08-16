@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { NIGERIAN_STATES } from '@/constants/nigerian-states';
+import { useColors } from '@/context/ThemeContext';
 
 interface Props {
   label?:    string;
@@ -21,6 +22,11 @@ interface Props {
 }
 
 export function StatePicker({ label, value, onChange, placeholder = 'Select state' }: Props) {
+  /**
+   * Hardcoded light styles rendered this as a white box on the dark
+   * business form, the same break the street field had (2026-08-16).
+   */
+  const colors = useColors();
   const [open,   setOpen]   = useState(false);
   const [search, setSearch] = useState('');
   const insets = useSafeAreaInsets();
@@ -39,9 +45,9 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
 
   return (
     <>
-      {!!label && <Text style={styles.label}>{label}</Text>}
-      <Pressable style={styles.trigger} onPress={() => setOpen(true)}>
-        <Text style={[styles.triggerText, !value && styles.triggerPlaceholder]}>
+      {!!label && <Text style={[styles.label, { color: colors.textSecond }]}>{label}</Text>}
+      <Pressable style={[styles.trigger, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setOpen(true)}>
+        <Text style={[styles.triggerText, { color: colors.text }, !value && styles.triggerPlaceholder]}>
           {value || placeholder}
         </Text>
         <Icon name="ChevronDown" size={16} color="#9CA3AF" />
@@ -53,19 +59,19 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
         presentationStyle="fullScreen"
         onRequestClose={() => setOpen(false)}
       >
-        <View style={[styles.modal, { paddingTop: insets.top }]}>
-          <View style={styles.modalHeader}>
+        <View style={[styles.modal, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <Pressable style={styles.closeBtn} onPress={() => setOpen(false)}>
-              <Icon name="X" size={22} color="#0F2B4C" />
+              <Icon name="X" size={22} color={colors.text} />
             </Pressable>
-            <Text style={styles.modalTitle}>Select State</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Select State</Text>
             <View style={{ width: 40 }} />
           </View>
 
-          <View style={styles.searchWrap}>
-            <Icon name="Search" size={16} color="#9CA3AF" />
+          <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Icon name="Search" size={16} color={colors.textThird} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               value={search}
               onChangeText={setSearch}
               placeholder="Search state…"
@@ -75,6 +81,8 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
           </View>
 
           <FlatList
+            style={{ backgroundColor: colors.background }}
+            contentContainerStyle={{ paddingBottom: 40 }}
             data={filtered}
             keyExtractor={(s) => s}
             keyboardShouldPersistTaps="handled"
@@ -85,10 +93,10 @@ export function StatePicker({ label, value, onChange, placeholder = 'Select stat
             }
             renderItem={({ item }) => (
               <Pressable
-                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                style={({ pressed }) => [styles.row, { backgroundColor: colors.surface, borderBottomColor: colors.border }, pressed && { backgroundColor: colors.surfaceSecond }]}
                 onPress={() => pick(item)}
               >
-                <Text style={[styles.rowText, value === item && styles.rowTextActive]}>{item}</Text>
+                <Text style={[styles.rowText, { color: colors.text }, value === item && [styles.rowTextActive, { color: colors.primary }]]}>{item}</Text>
                 {value === item && <Icon name="Check" size={16} color="#3A7BD5" />}
               </Pressable>
             )}

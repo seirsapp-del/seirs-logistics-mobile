@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Icon } from '@/components/Icon';
 import { mapsApi } from '@/services/api';
+import { useColors } from '@/context/ThemeContext';
 
 // Places lookups go through our backend (security review 2026-08-12):
 // the Google key is no longer shipped inside the app.
@@ -52,6 +53,12 @@ interface Props {
 }
 
 export function StreetAutocomplete({ label, value, onChangeText, state, placeholder, onCoordsResolved, onFocus }: Props) {
+  /**
+   * Built for the light registration screen with hardcoded #fff, so on
+   * the dark Edit Business Details form it rendered as a white box
+   * amongst dark ones (founder spotted it 2026-08-16). Theme it.
+   */
+  const colors = useColors();
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [searching,   setSearching]   = useState(false);
   const [focused,     setFocused]     = useState(false);
@@ -111,10 +118,10 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
 
   return (
     <View>
-      {!!label && <Text style={styles.label}>{label}</Text>}
-      <View style={styles.inputWrap}>
+      {!!label && <Text style={[styles.label, { color: colors.textSecond }]}>{label}</Text>}
+      <View style={[styles.inputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: colors.text }]}
           value={value}
           onChangeText={onChange}
           onFocus={(e) => { setFocused(true); onFocus?.(e); }}
@@ -126,7 +133,7 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
       </View>
 
       {showDropdown && (
-        <View style={styles.dropdown}>
+        <View style={[styles.dropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {predictions.map((p) => (
             <Pressable
               key={p.place_id}
@@ -135,9 +142,9 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
             >
               <Icon name="MapPin" size={16} color="#3A7BD5" />
               <View style={{ flex: 1 }}>
-                <Text style={styles.rowMain} numberOfLines={1}>{p.main_text}</Text>
+                <Text style={[styles.rowMain, { color: colors.text }]} numberOfLines={1}>{p.main_text}</Text>
                 {!!p.secondary_text && (
-                  <Text style={styles.rowSub} numberOfLines={1}>{p.secondary_text}</Text>
+                  <Text style={[styles.rowSub, { color: colors.textSecond }]} numberOfLines={1}>{p.secondary_text}</Text>
                 )}
               </View>
             </Pressable>

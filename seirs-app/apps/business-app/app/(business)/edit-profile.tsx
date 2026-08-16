@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
+import { StatePicker } from '@/components/StatePicker';
 import { usersApi, businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
@@ -376,12 +377,16 @@ export default function BusinessEditProfileScreen() {
                     placeholder="Lekki" placeholderTextColor={colors.textThird} />
                 </View>
                 <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}>
-                  <Text style={[styles.label, { color: colors.textSecond }]}>STATE</Text>
-                  <TextInput
-              onFocus={onFieldFocus}
-                    value={state} onChangeText={setState} editable={isOwner}
-                    style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: isOwner ? 1 : 0.6 }]}
-                    placeholder="Lagos" placeholderTextColor={colors.textThird} />
+                  {/* Free text let a business save "Lagoss" and it is what
+                      biases the street search below (founder 2026-08-16).
+                      Same 36-states-plus-FCT picker the registration form
+                      uses. */}
+                  <StatePicker
+                    label="STATE"
+                    value={state}
+                    onChange={setState}
+                    placeholder="Select state"
+                  />
                 </View>
               </View>
             </>
