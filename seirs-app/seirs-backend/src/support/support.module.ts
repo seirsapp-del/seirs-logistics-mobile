@@ -123,6 +123,30 @@ export class SupportModule implements OnModuleInit {
       `);
     }
 
+    /**
+     * The legacy table created these as varchar while users.id and the
+     * delivery ids are uuid, so every query joining a ticket to its user
+     * died on "operator does not exist: uuid = character varying". That
+     * is what broke opening AND listing tickets in all three apps
+     * (2026-08-16). Casting in place keeps the existing rows.
+     */
+    for (const col of ['userId', 'linkedDeliveryId', 'assignedAgentId']) {
+      await this.run(`cast ${col} to uuid`, `
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+             WHERE table_name = 'support_tickets'
+               AND column_name = '${col}'
+               AND data_type <> 'uuid'
+          ) THEN
+            EXECUTE 'ALTER TABLE "support_tickets"
+                       ALTER COLUMN "${col}" TYPE uuid USING NULLIF("${col}", '''')::uuid';
+          END IF;
+        END $$;
+      `);
+    }
+
     await this.run('idx user/status', `
       CREATE INDEX IF NOT EXISTS "support_tickets_user_status_idx"
         ON "support_tickets" ("userId", "status")
