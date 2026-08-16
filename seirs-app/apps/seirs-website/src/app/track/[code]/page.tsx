@@ -56,6 +56,19 @@ interface PublicDelivery {
   etaMinutes:     number | null;
   etaAsOf:        string | null;
   events:         DeliveryEventDTO[];
+  /** Present when tracked by a per-package SRS-P- code: the receiver's
+   *  scoped view of THEIR parcel in a multi-package run. */
+  package?: {
+    code:               string;
+    sequenceOrder:      number;
+    description:        string | null;
+    photoUrl:           string | null;
+    status:             string;
+    recipientFirstName: string | null;
+    address:            string;
+    arrivedAt:          string | null;
+    deliveredAt:        string | null;
+  } | null;
 }
 
 const STATUS_META: Record<string, { label: string; color: string; icon: any }> = {
@@ -190,7 +203,7 @@ export default function PublicTrackingPage() {
               Seirs Tracking
             </div>
             <div className="mt-1 font-mono text-xl font-bold text-slate-900">
-              {delivery.trackingCode}
+              {delivery.package?.code ?? delivery.trackingCode}
             </div>
           </div>
           <button
@@ -203,6 +216,38 @@ export default function PublicTrackingPage() {
             <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
           </button>
         </div>
+
+        {delivery.package && (
+          <div className="mx-5 mt-5 flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            {delivery.package.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={delivery.package.photoUrl}
+                alt="Package"
+                className="h-14 w-14 rounded-lg object-cover"
+              />
+            ) : null}
+            <div className="min-w-0">
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                {delivery.package.recipientFirstName
+                  ? `Package for ${delivery.package.recipientFirstName}`
+                  : `Package ${delivery.package.sequenceOrder}`}
+              </div>
+              {delivery.package.description && (
+                <div className="mt-0.5 truncate text-sm font-medium text-slate-800">
+                  {delivery.package.description}
+                </div>
+              )}
+              <div className="mt-0.5 text-xs text-slate-500">
+                {delivery.package.deliveredAt
+                  ? 'Delivered'
+                  : delivery.package.arrivedAt
+                  ? 'Driver at your address'
+                  : 'Drop ' + delivery.package.sequenceOrder + ' on this route'}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Status hero */}
         <div className={`m-5 flex items-center gap-4 rounded-xl border p-4 ${colorClasses.bg} ${colorClasses.border}`}>

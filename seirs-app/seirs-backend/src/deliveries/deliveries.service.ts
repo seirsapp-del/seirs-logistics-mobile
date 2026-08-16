@@ -4,6 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { LessThan, Repository, MoreThan } from 'typeorm';
 import { secureCode } from '../common/utils/auth-codes';
 import { Delivery, DeliveryStatus, PackageSize, UrgencyLevel } from './delivery.entity';
+import { DeliveryStop } from './delivery-stop.entity';
 import { DeliveryEvent, DeliveryEventType, EventActorRole } from './delivery-event.entity';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
@@ -739,10 +740,30 @@ export class DeliveriesService {
   }
 
   async findByTracking(trackingCode: string) {
-    const delivery = await this.repo.findOne({
-      where: { trackingCode },
-      relations: ['driver', 'driver.user'],
-    });
+    /**
+     * Per-package codes (SRS-P-..., multi-package rebuild 2026-08-16)
+     * resolve to their stop first, then the parent run: the receiver of
+     * package 3 tracks THEIR parcel without borrowing the sender's run
+     * code or seeing the other receivers' details.
+     */
+    const raw = String(trackingCode ?? '').trim().toUpperCase();
+    let packageStop: DeliveryStop | null = null;
+    let delivery: Delivery | null;
+    if (raw.startsWith('SRS-P-')) {
+      packageStop = await this.repo.manager
+        .getRepository(DeliveryStop)
+        .findOne({ where: { packageTrackingCode: raw } });
+      if (!packageStop) throw new NotFoundException('Package not found.');
+      delivery = await this.repo.findOne({
+        where: { id: packageStop.deliveryId },
+        relations: ['driver', 'driver.user'],
+      });
+    } else {
+      delivery = await this.repo.findOne({
+        where: { trackingCode },
+        relations: ['driver', 'driver.user'],
+      });
+    }
     if (!delivery) throw new NotFoundException('Delivery not found.');
 
     // Attach the event log inline. Kept oldest-first so the client can
@@ -832,6 +853,22 @@ export class DeliveriesService {
       id:             delivery.id,
       trackingCode:   delivery.trackingCode,
       status:         delivery.status,
+      // Scoped package view when tracked by an SRS-P- code: first name
+      // only (public endpoint), the package's own photo/description and
+      // ITS stop timeline rather than the whole manifest's.
+      package: packageStop
+        ? {
+            code:               packageStop.packageTrackingCode,
+            sequenceOrder:      packageStop.sequenceOrder,
+            description:        packageStop.packageDescription ?? null,
+            photoUrl:           Array.isArray(packageStop.packagePhotoUrls) ? (packageStop.packagePhotoUrls[0] ?? null) : null,
+            status:             packageStop.status,
+            recipientFirstName: (packageStop.recipientName ?? '').split(' ')[0] || null,
+            address:            packageStop.address,
+            arrivedAt:          packageStop.arrivedAt ?? null,
+            deliveredAt:        packageStop.deliveredAt ?? null,
+          }
+        : null,
       pickupAddress:  delivery.pickupAddress,
       dropoffAddress: feeLocked
         ? 'SEIRS Partner Store (settle the redirect fee to reveal the pickup location)'
