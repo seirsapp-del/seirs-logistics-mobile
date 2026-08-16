@@ -45,6 +45,33 @@ export class HealthController {
       dbError = err?.message ?? 'unknown';
     }
 
+    /**
+     * Support schema probe. Support was returning 500 on both reading and
+     * writing tickets with no way to see why from outside (2026-08-16),
+     * and the self-heal logs are not reachable without a Railway login.
+     * A health check that reports which subsystem is broken, and how, is
+     * worth having permanently.
+     */
+    let support: Record<string, unknown> = { ok: false };
+    try {
+      const cols = await this.dataSource.query(
+        `SELECT column_name FROM information_schema.columns
+          WHERE table_name = 'support_tickets' ORDER BY column_name`,
+      );
+      const chat = await this.dataSource.query(
+        `SELECT column_name, is_nullable FROM information_schema.columns
+          WHERE table_name = 'chat_messages' AND column_name IN ('ticketId','deliveryId')`,
+      );
+      await this.dataSource.query('SELECT COUNT(*) FROM "support_tickets"');
+      support = {
+        ok: true,
+        ticketColumns: cols.map((c: any) => c.column_name),
+        chatMessages: chat,
+      };
+    } catch (err: any) {
+      support = { ok: false, error: err?.message ?? 'unknown' };
+    }
+
     // ── Pricing system smoke test ──────────────────────────────────
     // Canned input: 5 km motorcycle delivery of small parcel. Should
     // always return a non-zero customer total if the rate card seeded
@@ -88,6 +115,7 @@ export class HealthController {
       version:   process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? 'dev',
       env:       process.env.NODE_ENV ?? 'development',
       db:        { reachable: dbOk, ...(dbError ? { error: dbError } : {}) },
+      support,
       pricing,
     };
   }
