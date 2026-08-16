@@ -53,10 +53,10 @@ export default function BusinessEditProfileScreen() {
   const scrollY = useRef(0);
   const focusedRef = useRef<any>(null);
   const [kbH, setKbH] = useState(0);
-  const ensureVisible = (node: any, height: number) => {
+  const ensureVisible = (node: any, height: number, extra = 0) => {
     if (!node || typeof node.measureInWindow !== 'function' || !height) return;
     node.measureInWindow((_x: number, y: number, _w: number, h: number) => {
-      const overlap = (y + h + 24) - (Dimensions.get('window').height - height);
+      const overlap = (y + h + 24 + extra) - (Dimensions.get('window').height - height);
       if (overlap > 0) scrollRef.current?.scrollTo({ y: Math.max(0, scrollY.current + overlap), animated: true });
     });
   };
@@ -64,14 +64,23 @@ export default function BusinessEditProfileScreen() {
     const show = Keyboard.addListener('keyboardDidShow', (e) => {
       const h = e.endCoordinates.height;
       setKbH(h);
-      if (focusedRef.current) setTimeout(() => ensureVisible(focusedRef.current, h), 60);
+      const f = focusedRef.current;
+      if (f) setTimeout(() => ensureVisible(f.node ?? f, h, f.extra ?? 0), 60);
     });
     const hide = Keyboard.addListener('keyboardDidHide', () => setKbH(0));
     return () => { show.remove(); hide.remove(); };
   }, []);
-  const onFieldFocus = (e: any) => {
-    focusedRef.current = e?.target;
-    if (kbH > 0) setTimeout(() => ensureVisible(e?.target, kbH), 60);
+  /**
+   * `extra` reserves space BELOW the field. The address input drops a
+   * suggestion list underneath it, and lifting only the input left every
+   * suggestion under the keyboard: they existed in the view tree, so a
+   * dump looked fine, but nothing was visible to type against (founder
+   * 2026-08-16: "i typed a random location and it didnt pick nothing
+   * up").
+   */
+  const onFieldFocus = (e: any, extra = 0) => {
+    focusedRef.current = { node: e?.target, extra };
+    if (kbH > 0) setTimeout(() => ensureVisible(e?.target, kbH, extra), 60);
   };
   const router = useRouter();
   const colors = useColors();
@@ -362,7 +371,13 @@ export default function BusinessEditProfileScreen() {
                   value={streetAddress}
                   onChangeText={setStreetAddress}
                   state={state}
-                  onFocus={onFieldFocus}
+                  onFocus={(ev: any) => onFieldFocus(ev, 300)}
+                  onSuggestionsShown={() => {
+                    // Re-lift once the list actually exists, so it lands
+                    // above the keyboard instead of behind it.
+                    const f = focusedRef.current;
+                    if (f && kbH > 0) ensureVisible(f.node ?? f, kbH, 300);
+                  }}
                   onPlaceResolved={(info) => {
                     // Fill City and State from the address the owner
                     // actually picked, instead of leaving three fields to

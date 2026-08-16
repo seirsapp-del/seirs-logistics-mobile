@@ -12,7 +12,7 @@
  * (no map preview, no GPS button): register forms don't need the
  * full bottom-sheet treatment.
  */
-import { useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native';
@@ -56,9 +56,16 @@ interface Props {
    * 2026-08-16). Google already knows both, so the host can fill them.
    */
   onPlaceResolved?: (info: { city?: string; state?: string; lat?: number; lng?: number }) => void;
+  /**
+   * Fires when the suggestion list appears. The host lifts the field on
+   * FOCUS, but the list only arrives ~300ms later after the fetch, so by
+   * then nothing re-scrolls and the suggestions sit behind the keyboard:
+   * present in the tree, invisible on the phone (founder 2026-08-16).
+   */
+  onSuggestionsShown?: () => void;
 }
 
-export function StreetAutocomplete({ label, value, onChangeText, state, placeholder, onCoordsResolved, onFocus, onPlaceResolved }: Props) {
+export function StreetAutocomplete({ label, value, onChangeText, state, placeholder, onCoordsResolved, onFocus, onPlaceResolved, onSuggestionsShown }: Props) {
   /**
    * Built for the light registration screen with hardcoded #fff, so on
    * the dark Edit Business Details form it rendered as a white box
@@ -146,6 +153,9 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
   };
 
   const showDropdown = focused && predictions.length > 0;
+  useEffect(() => {
+    if (showDropdown) onSuggestionsShown?.();
+  }, [showDropdown]);
 
   return (
     <View>
