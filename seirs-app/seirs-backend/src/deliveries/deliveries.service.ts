@@ -419,16 +419,11 @@ export class DeliveriesService {
 
     const saved = await this.repo.save(delivery);
 
-    // Immediate bookings dispatch now; scheduled ones are held by the
-    // dispatch cron until 15 minutes before their slot.
-    const dispatchNow = !scheduledFor || scheduledFor.getTime() <= Date.now() + 15 * 60 * 1000;
-    if (dispatchNow) {
-      this.runAutoMatch(saved).catch((err) =>
-        this.logger.error(`Auto-match failed for ${saved.id}: ${err.message}`)
-      );
-    } else {
-      this.logger.log(`Delivery ${saved.trackingCode} scheduled for ${scheduledFor!.toISOString()}; dispatch deferred`);
-    }
+    // Dispatch waits for MONEY, not just creation (2026-08-16): the fare
+    // escrows via /payments/initiate (card webhook, wallet, COD), and
+    // whichever path secures it calls kickDispatch. Before this gate a
+    // driver could accept a booking whose payment was abandoned.
+    this.logger.log(`Delivery ${saved.trackingCode} created; dispatch awaits payment hold`);
 
     return saved;
   }
@@ -445,6 +440,7 @@ export class DeliveriesService {
         .createQueryBuilder('d')
         .where('d.status = :status', { status: DeliveryStatus.PENDING })
         .andWhere('d.driver IS NULL')
+        .andWhere('d."paymentHeldAt" IS NOT NULL')
         .andWhere(`d.scheduledFor IS NOT NULL`)
         .andWhere(`d.scheduledFor <= NOW() + interval '15 minutes'`)
         .take(50)
@@ -562,6 +558,8 @@ export class DeliveriesService {
       .createQueryBuilder('d')
       .where('d.status = :status', { status: DeliveryStatus.PENDING })
       .andWhere('d.driver IS NULL')
+      // Only funded bookings reach drivers (paid-dispatch gate 2026-08-16).
+      .andWhere('d."paymentHeldAt" IS NOT NULL')
       // Scheduled pickups surface 15 minutes before their slot, not
       // hours early (night-ops build 2026-08-11).
       .andWhere(`(d.scheduledFor IS NULL OR d.scheduledFor <= NOW() + interval '15 minutes')`);

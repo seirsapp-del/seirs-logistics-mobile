@@ -12,6 +12,7 @@ import { RecurringTemplate } from './recurring-template.entity';
 import { User } from '../users/user.entity';
 import { MailModule } from '../mail/mail.module';
 import { PricingModule } from '../pricing/pricing.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { RoutingModule } from '../routing/routing.module';
 import { Delivery } from '../deliveries/delivery.entity';
 import { DeliveryStop } from '../deliveries/delivery-stop.entity';
@@ -19,6 +20,7 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
 
 @Module({
   imports: [
+    PaymentsModule,
     TypeOrmModule.forFeature([
       User,
       BusinessAccount,

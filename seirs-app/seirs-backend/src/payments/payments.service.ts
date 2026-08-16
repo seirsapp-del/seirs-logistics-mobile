@@ -20,6 +20,9 @@ const toNaira = (kobo:  number) => kobo / 100;
 
 @Injectable()
 export class PaymentsService {
+  /** Wired by DeliveriesModule.onModuleInit: post-payment dispatch. */
+  deliveriesServiceRef?: { kickDispatch: (deliveryId: string) => Promise<void> };
+
   private readonly logger = new Logger(PaymentsService.name);
 
   // Set lazily to avoid circular dependency with FraudModule
@@ -269,6 +272,9 @@ export class PaymentsService {
 
   async initiateCardPayment(delivery: Delivery, customer: User, opts?: {
     paymentOption?: 'card' | 'banktransfer' | 'ussd' | 'mobilemoney';
+    /** Deep-link back into the right app: business checkouts return to
+     *  seirsbusiness:// rather than the customer scheme. */
+    redirectUrl?: string;
   }): Promise<{
     authorizationUrl: string;
     reference:        string;
@@ -283,7 +289,7 @@ export class PaymentsService {
       email:       customer.email,
       phone:       customer.phone ?? '',
       name:        customer.name,
-      redirectUrl: 'seirsmobile://payment-callback',
+      redirectUrl: opts?.redirectUrl ?? 'seirsmobile://payment-callback',
       meta: {
         deliveryId:   delivery.id,
         trackingCode: delivery.trackingCode,
@@ -371,7 +377,10 @@ export class PaymentsService {
       provider:     'internal',
       escrowStatus: EscrowStatus.HELD,
     });
-    return this.paymentsRepo.save(payment);
+    const saved = await this.paymentsRepo.save(payment);
+    try { await this.deliveriesServiceRef?.kickDispatch(delivery.id); }
+    catch (e: any) { this.logger.warn(`COD dispatch kick failed: ${e.message}`); }
+    return saved;
   }
 
   // Wallet payment - deduct from customer wallet immediately
@@ -402,7 +411,10 @@ export class PaymentsService {
       provider:     'internal',
       escrowStatus: EscrowStatus.HELD,
     });
-    return this.paymentsRepo.save(payment);
+    const savedWallet = await this.paymentsRepo.save(payment);
+    try { await this.deliveriesServiceRef?.kickDispatch(delivery.id); }
+    catch (e: any) { this.logger.warn(`Wallet dispatch kick failed: ${e.message}`); }
+    return savedWallet;
   }
 
   // ── Verify Flutterwave payment (webhook + manual) ─────────────────────────
@@ -508,9 +520,29 @@ export class PaymentsService {
       payment.escrowStatus = EscrowStatus.HELD;
       this.logger.log(`Payment confirmed: ${txRef} (₦${result.amount})`);
 
-      // Award loyalty points to the customer for this paid delivery.
-      // Bank-transfer bonus uses the original payment.method.
-      if (payment.customer && payment.delivery) {
+      // Money is secured: mark the delivery funded and let dispatch run.
+      if (payment.delivery?.id) {
+        try { await this.deliveriesServiceRef?.kickDispatch(payment.delivery.id); }
+        catch (e: any) { this.logger.warn(`Post-payment dispatch failed for ${txRef}: ${e.message}`); }
+      }
+
+      const isBusinessRun = (payment.delivery as any)?.source === 'business_app';
+      if (isBusinessRun && payment.customer) {
+        // Business bookings earn on the BUSINESS ledger at the platform
+        // rate (1 pt per N100 spent), never on the personal one: the two
+        // ledgers surface in different apps and double-awarding the same
+        // naira would double the liability.
+        try {
+          await this.dataSource.query(
+            `UPDATE business_accounts SET "loyaltyPoints" = "loyaltyPoints" + $2 WHERE "ownerId" = $1`,
+            [payment.customer.id, Math.floor(toNaira(payment.amountKobo) / 100)],
+          );
+        } catch (e: any) {
+          this.logger.warn(`Business loyalty award failed for ${txRef}: ${e.message}`);
+        }
+      } else if (payment.customer && payment.delivery) {
+        // Award loyalty points to the customer for this paid delivery.
+        // Bank-transfer bonus uses the original payment.method.
         try {
           await this.loyaltyService.awardDeliveryPoints({
             userId:     payment.customer.id,

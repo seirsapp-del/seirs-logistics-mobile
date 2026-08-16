@@ -87,6 +87,9 @@ export class DeliveriesModule implements OnModuleInit {
     this.deliveriesService.deliveryEventsRepo   = this.deliveryEventsRepo;
     this.deliveriesService.storeDropoffsRepo    = this.storeDropoffsRepo;
     this.deliveriesService.feesServiceRef       = this.feesService;
+    // Post-payment dispatch: the webhook confirms escrow inside
+    // PaymentsService, which then needs to kick matching over here.
+    (this.paymentsService as any).deliveriesServiceRef = this.deliveriesService;
 
     // Give NotificationsService a reference to the gateway for WS delivery
     this.notificationsService.trackingGateway = this.trackingGateway;
@@ -127,6 +130,11 @@ export class DeliveriesModule implements OnModuleInit {
       await this.ds.query(`
         ALTER TABLE "delivery_stops"
           ADD COLUMN IF NOT EXISTS "stopCode" varchar(12) NULL
+      `);
+      // Paid-dispatch gate (2026-08-16): dispatch waits for money.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "paymentHeldAt" timestamptz NULL
       `);
       // Multi-package rebuild (2026-08-16): each stop is one package with
       // its own photo set, description, category, weight, public tracking

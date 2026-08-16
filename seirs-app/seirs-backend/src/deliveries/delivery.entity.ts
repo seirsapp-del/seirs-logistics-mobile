@@ -314,6 +314,15 @@ export class Delivery {
   @Column({ type: 'enum', enum: DeliverySource, default: DeliverySource.CUSTOMER_APP })
   source: DeliverySource;
 
+  /**
+   * Set the moment the fare is actually secured (Flutterwave escrow HELD,
+   * wallet drain, or COD hold). Dispatch is gated on it (2026-08-16):
+   * before this, drivers could accept and deliver bookings whose payment
+   * was never completed.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  paymentHeldAt: Date | null;
+
   // Proof of delivery
   @Column({ nullable: true })
   proofPhotoUrl: string;

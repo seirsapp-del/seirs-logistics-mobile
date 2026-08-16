@@ -917,7 +917,6 @@ export const businessApi = {
   },
 
   wallet:        () => request<any>('GET', '/business/wallet'),
-  fundWallet:    (amount: number) => request<any>('POST', '/business/wallet/fund', { amount }),
   transactions:  (page = 1) => request<any>('GET', `/business/wallet/transactions?page=${page}`),
   team:          () => request<any>('GET', '/business/team'),
   inviteTeamMember: (data: { email: string; name: string; teamRole: string }) =>

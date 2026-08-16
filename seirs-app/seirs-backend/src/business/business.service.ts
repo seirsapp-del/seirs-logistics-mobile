@@ -15,6 +15,7 @@ import { PartnerPayout } from './partner-payout.entity';
 import { RecurringTemplate, RecurringCadence } from './recurring-template.entity';
 import { MailService } from '../mail/mail.service';
 import { PricingService } from '../pricing/pricing.service';
+import { PaymentsService } from '../payments/payments.service';
 import { RoutingService } from '../routing/routing.service';
 import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery.entity';
 import { DeliveriesService } from '../deliveries/deliveries.service';
@@ -103,6 +104,7 @@ export class BusinessService {
     @InjectRepository(DeliveryStop)        private stopsRepo:       Repository<DeliveryStop>,
     @InjectRepository(RecurringTemplate)   private recurringRepo:   Repository<RecurringTemplate>,
     private mailService: MailService,
+    private paymentsService: PaymentsService,
     private pricing: PricingService,
     private routing: RoutingService,
     private dataSource: DataSource,
@@ -534,39 +536,38 @@ export class BusinessService {
     };
     const packageShares = attributePackagePrices();
 
-    // ── Wallet pre-flight (cheap check before opening transaction) ────
-    // The real authoritative check happens inside the transaction with a
-    // row lock; this is just to fail fast for the common case so we don't
-    // spin up a transaction for an obvious overdraft.
+    /**
+     * Pay-per-booking (founder 2026-08-15: "we are not a bank"). If the
+     * account still holds legacy credit covering the whole fare, it
+     * drains here exactly as before. Otherwise the booking is created
+     * UNPAID and a Flutterwave checkout is initiated: the paid-dispatch
+     * gate keeps it away from drivers until the webhook confirms escrow,
+     * and the 1-hour expiry sweep cleans up abandoned checkouts.
+     */
     const total = breakdown.customer.total;
-    if (Number(biz.walletBalance) < total) {
-      throw new BadRequestException(
-        `Insufficient wallet balance. Booking costs ₦${total.toFixed(2)}, you have ₦${biz.walletBalance}.`,
-      );
-    }
+    const useCredit = Number(biz.walletBalance) >= total;
 
     // ── Transaction: Delivery + Stops + Wallet ─────────────────────────
-    return this.dataSource.transaction(async (mgr) => {
-      // CRITICAL: re-read the business account row WITH a pessimistic
-      // write lock so two concurrent bookings can't both pass the
-      // pre-flight check with the same stale balance and end up
-      // over-spending. Postgres SERIALIZABLE-equivalent for this row.
-      const lockedBiz = await mgr.createQueryBuilder(BusinessAccount, 'b')
-        .setLock('pessimistic_write')
-        .where('b.id = :id', { id: biz.id })
-        .getOne();
-      if (!lockedBiz) {
-        throw new NotFoundException('Business account vanished mid-transaction.');
-      }
-      const liveBalance = Number(lockedBiz.walletBalance);
-      if (liveBalance < total) {
-        // Another booking debited the wallet between the pre-flight
-        // check and this point. Fail clearly so the client can retry
-        // after topping up.
-        throw new BadRequestException(
-          `Wallet was debited by another booking while you were submitting. ` +
-          `Current balance: ₦${liveBalance.toFixed(2)} - needed ₦${total.toFixed(2)}.`,
-        );
+    const txResult = await this.dataSource.transaction(async (mgr) => {
+      // CRITICAL (credit path): re-read the account row WITH a pessimistic
+      // write lock so two concurrent bookings can't both drain the same
+      // legacy balance. The Flutterwave path never touches the balance.
+      let liveBalance = 0;
+      if (useCredit) {
+        const lockedBiz = await mgr.createQueryBuilder(BusinessAccount, 'b')
+          .setLock('pessimistic_write')
+          .where('b.id = :id', { id: biz.id })
+          .getOne();
+        if (!lockedBiz) {
+          throw new NotFoundException('Business account vanished mid-transaction.');
+        }
+        liveBalance = Number(lockedBiz.walletBalance);
+        if (liveBalance < total) {
+          throw new BadRequestException(
+            `Another booking used your remaining credit while you were submitting. ` +
+            `Current credit: ₦${liveBalance.toFixed(2)} - please retry (this booking will pay via Flutterwave).`,
+          );
+        }
       }
 
       const trackingCode = this.generateTrackingNumber();
@@ -605,6 +606,10 @@ export class BusinessService {
         scheduledFor: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
         status: DeliveryStatus.PENDING,
         source: DeliverySource.BUSINESS_APP,
+        // Credit-paid bookings are funded the moment they book; card
+        // bookings stay NULL until the webhook confirms escrow (the
+        // paid-dispatch gate keys off this).
+        paymentHeldAt: useCredit ? new Date() : null,
       } as any);
       const savedDelivery = await mgr.save(delivery);
 
@@ -692,6 +697,10 @@ export class BusinessService {
       await mgr.save(stopRows);
 
       // ── Wallet debit + ledger (uses live row-locked balance) ────────
+      if (!useCredit) {
+        return { delivery: savedDelivery, stops: stopRows, breakdown, wallet: null as any };
+      }
+
       const balBefore = liveBalance;
       const balAfter  = balBefore - total;
       // Loyalty accrues here, on spend, per the agreed plan: 1 point per
@@ -719,6 +728,28 @@ export class BusinessService {
         wallet:   { balanceBefore: balBefore, balanceAfter: balAfter },
       };
     });
+
+    if (useCredit) {
+      return { ...txResult, payment: { method: 'credit' as const } };
+    }
+
+    // Unpaid booking: hand the app a Flutterwave checkout. The paid-
+    // dispatch gate holds the job until the webhook confirms escrow.
+    const owner = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!owner) throw new NotFoundException('Account not found.');
+    const init = await this.paymentsService.initiateCardPayment(
+      txResult.delivery as any,
+      owner,
+      { redirectUrl: 'seirsbusiness://payment-callback' },
+    );
+    return {
+      ...txResult,
+      payment: {
+        method:           'flutterwave' as const,
+        authorizationUrl: init.authorizationUrl,
+        reference:        init.reference,
+      },
+    };
   }
 
   // ── Stop-level transitions (called by driver app) ────────────────────
@@ -1046,35 +1077,11 @@ export class BusinessService {
     };
   }
 
-  async fundWallet(userId: string, amount: number) {
-    if (!amount || amount < 100) throw new BadRequestException('Minimum funding amount is ₦100.');
-    const biz = await this.getBizAccount(userId);
-
-    const balBefore = Number(biz.walletBalance);
-    const balAfter  = balBefore + amount;
-    await this.bizRepo.update(biz.id, { walletBalance: balAfter });
-
-    // Points on funding removed 2026-08-15. The agreed loyalty plan earns
-    // on SPEND, never on funding: rewarding a top-up rewards parked cash, a
-    // perk with no revenue behind it, exactly the class the no-uncapped-
-    // perks rule exists to stop. The award now happens where the wallet is
-    // debited for a delivery, at the platform rate (10 pts per ₦1,000, the
-    // same POINTS_PER_NAIRA the customer side uses).
-
-    const tx = this.walletTxRepo.create({
-      businessAccountId: biz.id,
-      type:          'credit',
-      amount,
-      description:   'Wallet top-up',
-      reference:     uuidv4(),
-      balanceBefore: balBefore,
-      balanceAfter:  balAfter,
-    });
-    await this.walletTxRepo.save(tx);
-
-    return { balance: balAfter, pointsEarned: 0, message: 'Wallet funded successfully.' };
-  }
-
+  /**
+   * fundWallet is GONE (founder 2026-08-16: "we are not a bank"). Nobody
+   * deposits money with SEIRS; bookings pay per booking via Flutterwave
+   * and legacy balances drain against fares in createDelivery.
+   */
   async getTransactions(userId: string, page = 1) {
     const biz  = await this.getBizAccount(userId);
     const take = 20;

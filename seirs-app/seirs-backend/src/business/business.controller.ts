@@ -86,10 +86,7 @@ export class BusinessController {
     return this.svc.getWallet(user.id);
   }
 
-  @Post('business/wallet/fund')
-  fundWallet(@CurrentUser() user: User, @Body('amount') amount: number) {
-    return this.svc.fundWallet(user.id, amount);
-  }
+  // POST business/wallet/fund is gone (2026-08-16): we are not a bank.
 
   @Get('business/wallet/transactions')
   getTransactions(
