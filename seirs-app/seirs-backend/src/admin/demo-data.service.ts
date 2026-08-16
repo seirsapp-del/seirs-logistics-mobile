@@ -257,6 +257,17 @@ export class DemoDataService {
     } else {
       Object.assign(store, patch);
     }
+    /**
+     * An approved store must carry its public code: the partner dashboard
+     * shows "Code pending approval" without one, so a demo store that is
+     * live and taking drop-offs still looked unapproved to its owner
+     * (found on device 2026-08-16). The PartnerStore module backfills
+     * codes at boot, but that runs BEFORE this seeder creates the row, so
+     * a seeded store never received one.
+     */
+    if (!store.storeCode) {
+      store.storeCode = `PART-${secureCode(4)}`;
+    }
     return this.storeRepo.save(store);
   }
 
