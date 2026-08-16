@@ -1,6 +1,6 @@
 import {
   Package, PackageCheck, PackageX, PackagePlus, ScanLine, LayoutDashboard, TrendingUp,
-  Settings, LogOut, ArrowLeft, ArrowRight, ChevronRight, Search, X, Calendar, CheckSquare, Check, Maximize2,
+  Settings, LogOut, ArrowLeft, ArrowRight, ChevronRight, Search, X, Calendar, CheckSquare, Check, Maximize2, Gift,
   AlertCircle, Clock, Wallet, Banknote, Users, UserPlus, UserMinus, Camera,
   CheckCircle2, User, Circle, Store, Briefcase, Upload, FileText, Plus, Minus,
   MapPin, Truck, Bike, Car, Box, Weight, ChevronDown, ChevronUp, Eye, EyeOff,
@@ -20,7 +20,7 @@ import type { LucideIcon } from 'lucide-react-native';
 
 const ICONS: Record<string, LucideIcon> = {
   Package, PackageCheck, PackageX, PackagePlus, ScanLine, LayoutDashboard, TrendingUp,
-  Settings, LogOut, ArrowLeft, ArrowRight, ChevronRight, Search, X, Calendar, CheckSquare, Check, Maximize2,
+  Settings, LogOut, ArrowLeft, ArrowRight, ChevronRight, Search, X, Calendar, CheckSquare, Check, Maximize2, Gift,
   AlertCircle, Clock, Wallet, Banknote, Users, UserPlus, UserMinus, Camera,
   CheckCircle2, User, Circle, Store, Briefcase, Upload, FileText, Plus, Minus,
   MapPin, Truck, Bike, Car, Box, Weight, ChevronDown, ChevronUp, Eye, EyeOff,

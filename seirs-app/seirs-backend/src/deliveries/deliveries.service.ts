@@ -741,7 +741,7 @@ export class DeliveriesService {
 
   async findByTracking(trackingCode: string) {
     /**
-     * Per-package codes (SRS-P-..., multi-package rebuild 2026-08-16)
+     * Per-package codes (SRS-XXXXXXXX, multi-package rebuild 2026-08-16)
      * resolve to their stop first, then the parent run: the receiver of
      * package 3 tracks THEIR parcel without borrowing the sender's run
      * code or seeing the other receivers' details.
@@ -749,7 +749,10 @@ export class DeliveriesService {
     const raw = String(trackingCode ?? '').trim().toUpperCase();
     let packageStop: DeliveryStop | null = null;
     let delivery: Delivery | null;
-    if (raw.startsWith('SRS-P-')) {
+    // SRS- is the package family. A run code is SEIRS-, which does not
+    // start with SRS-, so there is no ambiguity; the older SRS-P- codes
+    // already issued match this too.
+    if (raw.startsWith('SRS-')) {
       packageStop = await this.repo.manager
         .getRepository(DeliveryStop)
         .findOne({ where: { packageTrackingCode: raw } });
@@ -853,7 +856,7 @@ export class DeliveriesService {
       id:             delivery.id,
       trackingCode:   delivery.trackingCode,
       status:         delivery.status,
-      // Scoped package view when tracked by an SRS-P- code: first name
+      // Scoped package view when tracked by a per-package code: first name
       // only (public endpoint), the package's own photo/description and
       // ITS stop timeline rather than the whole manifest's.
       package: packageStop

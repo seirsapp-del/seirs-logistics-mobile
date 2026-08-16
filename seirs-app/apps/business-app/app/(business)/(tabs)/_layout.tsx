@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 
 function TabIcon({ name, focused }: { name: any; focused: boolean }) {
   const { isDark } = useTheme();
@@ -28,6 +29,13 @@ function TabIcon({ name, focused }: { name: any; focused: boolean }) {
  */
 export default function BusinessTabsLayout() {
   const insets = useSafeAreaInsets();
+  /**
+   * Senders have REWARDS, not a wallet: SEIRS holds no money for them
+   * (founder, restated 2026-08-16). Only an approved partner counter has
+   * a real balance in here, its EARNINGS, so only they see "Wallet".
+   */
+  const { user, businessRole } = useAuth();
+  const isPartner = !!user?.capabilities?.canPartner || businessRole === 'partner';
   const { isDark } = useTheme();
   const theme = Colors[isDark ? 'dark' : 'light'];
 
@@ -72,7 +80,7 @@ export default function BusinessTabsLayout() {
           rewards are the anchor between work (left) and people (right). */}
       <Tabs.Screen
         name="wallet"
-        options={{ title: 'Wallet', tabBarIcon: ({ focused }) => <TabIcon name="Wallet" focused={focused} /> }}
+        options={{ title: isPartner ? 'Wallet' : 'Rewards', tabBarIcon: ({ focused }) => <TabIcon name={isPartner ? 'Wallet' : 'Gift'} focused={focused} /> }}
       />
       <Tabs.Screen
         name="messages"

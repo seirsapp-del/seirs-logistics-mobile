@@ -81,7 +81,8 @@ export class DeliveryStop {
   @Column({ type: 'numeric', precision: 8, scale: 2, nullable: true })
   weightKg: number | null;
 
-  // Public per-package tracking code (SRS-P-XXXXXXXX). Unlike stopCode
+  // Public per-package tracking code (SRS-XXXXXXXX; some early rows hold
+  // the old SRS-P- shape and still resolve). Unlike stopCode
   // (a claim code the recipient shows at the door), this one resolves on
   // the public /track page so each receiver can follow their own parcel.
   @Index()

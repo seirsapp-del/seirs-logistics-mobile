@@ -33,11 +33,18 @@ function generateStopCode(): string {
   return 'STP-' + secureCode(8);
 }
 
-// Public per-package tracking code: SRS-P- prefix keeps it visually part
-// of the tracking family while support can tell package codes from run
-// codes (SRS-) and claim codes (STP-) at a glance.
+/**
+ * Public per-package tracking code: SRS-XXXXXXXX (founder's format,
+ * 2026-08-16).
+ *
+ * It briefly carried a -P- segment so support could spot a package code,
+ * but that was redundant: a run is SEIRS-, a package is SRS-, and the two
+ * were never ambiguous. All the -P- did was make the code the receiver
+ * reads longer. Codes already issued as SRS-P- stay valid, since both
+ * shapes start with SRS-.
+ */
 function generatePackageCode(): string {
-  return 'SRS-P-' + secureCode(8);
+  return 'SRS-' + secureCode(8);
 }
 
 const clamp = (n: number, min: number, max: number) =>
