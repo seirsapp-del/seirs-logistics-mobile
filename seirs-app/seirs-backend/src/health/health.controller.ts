@@ -55,18 +55,29 @@ export class HealthController {
     let support: Record<string, unknown> = { ok: false };
     try {
       const cols = await this.dataSource.query(
-        `SELECT column_name FROM information_schema.columns
-          WHERE table_name = 'support_tickets' ORDER BY column_name`,
+        `SELECT column_name, is_nullable FROM information_schema.columns
+          WHERE table_name = 'support_tickets'
+            AND is_nullable = 'NO' ORDER BY column_name`,
       );
+      // Mimic the read the app actually performs, so a failure here names
+      // the reason instead of surfacing as a bare 500 from the endpoint.
+      let readError: string | null = null;
+      try {
+        await this.dataSource.query(
+          `SELECT "id","userId","topic","status","subject","lastMessageAt"
+             FROM "support_tickets" ORDER BY "lastMessageAt" DESC LIMIT 1`,
+        );
+      } catch (e: any) { readError = e?.message ?? 'unknown'; }
       const chat = await this.dataSource.query(
         `SELECT column_name, is_nullable FROM information_schema.columns
           WHERE table_name = 'chat_messages' AND column_name IN ('ticketId','deliveryId')`,
       );
       await this.dataSource.query('SELECT COUNT(*) FROM "support_tickets"');
       support = {
-        ok: true,
-        ticketColumns: cols.map((c: any) => c.column_name),
+        ok: !readError,
+        notNullColumns: cols.map((c: any) => c.column_name),
         chatMessages: chat,
+        ...(readError ? { readError } : {}),
       };
     } catch (err: any) {
       support = { ok: false, error: err?.message ?? 'unknown' };
