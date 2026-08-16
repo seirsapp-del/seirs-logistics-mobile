@@ -103,6 +103,16 @@ export default function BusinessDashboard() {
             <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
           ) : (
             <>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+              <View style={styles.actions}>
+                <ActionCard icon="Package"         label="Send a Package" sub="One or many packages, one payment"
+                  onPress={() => router.push('/(business)/send-package' as any)} primary />
+                <ActionCard icon="FileSpreadsheet" label="CSV Upload"   sub="Bulk import from file"
+                  onPress={() => router.push('/(business)/csv-upload' as any)} />
+                <ActionCard icon="Truck"           label="Special Cargo" sub="Trucks, cold chain & heavy loads"
+                  onPress={() => router.push('/(business)/send-package' as any)} />
+              </View>
+
               <View style={styles.statsGrid}>
                 {stats.map((s) => (
                   <View
@@ -116,16 +126,6 @@ export default function BusinessDashboard() {
                     <Text style={[styles.statLabel, { color: colors.textSecond }]}>{s.label}</Text>
                   </View>
                 ))}
-              </View>
-
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
-              <View style={styles.actions}>
-                <ActionCard icon="Package"         label="Send a Package" sub="One or many packages, one payment"
-                  onPress={() => router.push('/(business)/send-package' as any)} primary />
-                <ActionCard icon="FileSpreadsheet" label="CSV Upload"   sub="Bulk import from file"
-                  onPress={() => router.push('/(business)/csv-upload' as any)} />
-                <ActionCard icon="Truck"           label="Special Cargo" sub="Trucks, cold chain & heavy loads"
-                  onPress={() => router.push('/(business)/send-package' as any)} />
               </View>
 
               <View style={styles.sectionHeader}>

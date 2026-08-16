@@ -116,6 +116,17 @@ export class DeliveryStop {
   @Column({ type: 'varchar', length: 80, nullable: true })
   fallbackNeighbourName: string | null;
 
+  /**
+   * Destination partner store for THIS package (2026-08-16). A run can
+   * mix door drops and store drops, and two packages can go to two
+   * different counters, so the choice belongs on the stop, never on the
+   * delivery. address/lat/lng still carry the store's location so
+   * routing and pricing need no special case.
+   */
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  destinationStoreId: string | null;
+
   @Column()
   recipientName: string;
 

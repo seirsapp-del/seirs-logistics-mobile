@@ -596,25 +596,83 @@ export class PartnerStoreService {
     };
   }
 
-  async listCapacityNearby(_lat?: number, _lng?: number, _radiusKm = 10) {
-    // Returns every store a sender may drop at, with live capacity.
-    // Status semantics match publicDirectory: 'approved' (KYC done) and
-    // 'active' are both listable: this used to accept only 'active', so
-    // approved stores (including the demo store) were invisible in the
-    // drop-at-store screens while showing on the website directory
-    // (founder catch 2026-08-15). Geofiltering by haversine still moves
-    // to a follow-up when the customer UI wires lat/lng through.
+  /**
+   * Partner stores near a POINT, with everything a sender needs to pick
+   * one (founder 2026-08-16: "it should show the partner stores closest
+   * to wherever they are sending to, with details about each store").
+   *
+   * Previously this ignored lat/lng entirely and returned every active
+   * store, which is useless when the question is "which counter is near
+   * my receiver". Now: approved-or-active, accepting new packages,
+   * haversine-sorted by distance from the destination, with address,
+   * distance, live capacity, opening hours, an open-now flag and the
+   * storefront photo so the sender recognises the place.
+   */
+  async listCapacityNearby(lat?: number, lng?: number, radiusKm = 10) {
     const stores = await this.storeRepo.find({
       where: { status: In(['approved', 'active'] as any[]), acceptingNew: true as any },
+      take: 200,
     });
-    return Promise.all(
-      stores.map(async s => ({
-        id:           s.id,
-        storeName:    s.storeName,
-        storeAddress: s.storeAddress,
-        ...(await this.getCapacity(s.id)),
-      })),
-    );
+
+    const hasOrigin = Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+    const originLat = Number(lat), originLng = Number(lng);
+    const distanceKm = (aLat: number, aLng: number) => {
+      const R = 6371, dLat = ((aLat - originLat) * Math.PI) / 180, dLng = ((aLng - originLng) * Math.PI) / 180;
+      const h = Math.sin(dLat / 2) ** 2 +
+        Math.cos((originLat * Math.PI) / 180) * Math.cos((aLat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    };
+
+    // Lagos time, because opening hours are local trading hours.
+    const now = new Date(Date.now() + 60 * 60 * 1000);
+    const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][now.getUTCDay()];
+    const minutesNow = now.getUTCHours() * 60 + now.getUTCMinutes();
+    const toMinutes = (hhmm?: string | null) => {
+      const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm ?? ''));
+      return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    };
+
+    const withGeo = stores.map((st) => {
+      const sLat = st.storeLat != null ? Number(st.storeLat) : null;
+      const sLng = st.storeLng != null ? Number(st.storeLng) : null;
+      const km = hasOrigin && sLat != null && sLng != null ? distanceKm(sLat, sLng) : null;
+      return { st, sLat, sLng, km };
+    });
+
+    const inRange = hasOrigin
+      // Stores without coordinates are kept: an admin has not geocoded
+      // them yet, and hiding a real counter is worse than ranking it last.
+      ? withGeo.filter((r) => r.km == null || r.km <= radiusKm)
+      : withGeo;
+
+    inRange.sort((a, b) => (a.km ?? Number.MAX_SAFE_INTEGER) - (b.km ?? Number.MAX_SAFE_INTEGER));
+    const top = inRange.slice(0, 15);
+
+    return Promise.all(top.map(async ({ st, sLat, sLng, km }) => {
+      const cap = await this.getCapacity(st.id);
+      const days = (st.operatingDays ?? []).map((d) => String(d).slice(0, 3).toLowerCase());
+      const openM = toMinutes(st.openTime), closeM = toMinutes(st.closeTime);
+      const openToday = days.length === 0 || days.includes(dayName);
+      const isOpenNow = openToday && openM != null && closeM != null
+        ? minutesNow >= openM && minutesNow < closeM
+        : openToday;
+      return {
+        id:            st.id,
+        storeName:     st.storeName,
+        storeAddress:  st.storeAddress,
+        lat:           sLat,
+        lng:           sLng,
+        distanceKm:    km != null ? Math.round(km * 10) / 10 : null,
+        phone:         st.phone,
+        photoUrl:      st.storefrontPhotoUrl ?? null,
+        openTime:      st.openTime,
+        closeTime:     st.closeTime,
+        operatingDays: st.operatingDays ?? [],
+        isOpenNow,
+        acceptingNew:  st.acceptingNew,
+        ...cap,
+      };
+    }));
   }
 
   /**

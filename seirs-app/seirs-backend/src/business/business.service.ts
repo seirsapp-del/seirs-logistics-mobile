@@ -79,6 +79,8 @@ export interface CreateMultiStopDeliveryDto {
     declaredValueNgn?:      number;
     fallbackPref?:          string;
     fallbackNeighbourName?: string;
+    /** Deliver this package to a partner counter instead of a door. */
+    destinationStoreId?:    string;
   }>;
   vehicleType:      string;
   categoryCode:     string;
@@ -658,6 +660,7 @@ export class BusinessService {
         declaredValueNgn:      s.declaredValueNgn ?? null,
         fallbackPref:          s.fallbackPref ?? null,
         fallbackNeighbourName: s.fallbackNeighbourName ?? null,
+        destinationStoreId:    s.destinationStoreId ?? null,
         address:       s.address,
         lat:           s.lat,
         lng:           s.lng,

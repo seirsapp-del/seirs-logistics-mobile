@@ -25,6 +25,14 @@ export interface DeliveryStop {
   declaredValueNgn?:      number;
   fallbackPref?:          'hand_only' | 'neighbour' | 'gate' | 'store';
   fallbackNeighbourName?: string;
+  /**
+   * Destination for THIS package (founder 2026-08-16): a door address or
+   * a partner counter near the receiver. Two packages in one run can go
+   * to two different stores, so it lives per package.
+   */
+  destinationMode?:      'address' | 'store';
+  destinationStoreId?:   string;
+  destinationStoreName?: string;
 }
 
 export interface DraftDelivery {

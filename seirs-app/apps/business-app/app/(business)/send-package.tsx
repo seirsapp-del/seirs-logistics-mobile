@@ -33,7 +33,7 @@ import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { Illustration } from '@/components/Illustration';
 import {
-  businessApi, configApi, mapsApi, uploadApi, pricingApi,
+  businessApi, configApi, mapsApi, uploadApi, pricingApi, dropoffApi,
   type ServiceCategory, type RateCard,
 } from '@/services/api';
 import { useBusinessStore } from '@/store/businessStore';
@@ -59,10 +59,15 @@ const DEFAULT_MAX_PACKAGES: Record<string, number> = {
   van: 40, truck_small: 80, truck_large: 150,
 };
 
-const TIME_SLOTS = Array.from({ length: 24 }, (_, hour) => ({
-  hour,
-  label: hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`,
-}));
+// Scheduled pickups run 5 AM to 9 PM (platform operating window).
+// Send Now stays 24/7: this list is only for booking ahead.
+const TIME_SLOTS = Array.from({ length: 17 }, (_, i) => {
+  const hour = i + 5;
+  return {
+    hour,
+    label: hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`,
+  };
+});
 
 interface Prediction { place_id: string; main_text: string; secondary_text: string }
 
@@ -154,6 +159,11 @@ export default function SendPackageScreen() {
         const idx = activeField.idx;
         setPkgQueries(prev => { const next = [...prev]; next[idx] = address; return next; });
         updateStop(idx, { address, lat: loc.lat, lng: loc.lng });
+        // Store mode: the typed place is the AREA, so immediately show
+        // the counters around it rather than making them search again.
+        if (draft.stops[idx]?.destinationMode === 'store') {
+          findStoresNear(idx, loc.lat, loc.lng);
+        }
       }
       setPredictions([]);
       setActiveField(null);
@@ -182,6 +192,37 @@ export default function SendPackageScreen() {
         ))}
       </View>
     );
+  };
+
+  /**
+   * Partner stores near where a package is going (founder 2026-08-16:
+   * "it should show the partner stores closest to whatever location
+   * they are trying to send to, with details about each"). The sender
+   * locates the destination the normal way, then picks a counter near
+   * it; no second form, no separate screen.
+   */
+  const [nearby, setNearby] = useState<Record<number, any[]>>({});
+  const [nearbyBusy, setNearbyBusy] = useState<Record<number, boolean>>({});
+  const findStoresNear = async (idx: number, lat: number, lng: number) => {
+    setNearbyBusy((b) => ({ ...b, [idx]: true }));
+    try {
+      const rows = await dropoffApi.listCapacityNearby(lat, lng, 15);
+      setNearby((n) => ({ ...n, [idx]: Array.isArray(rows) ? rows : [] }));
+    } catch {
+      setNearby((n) => ({ ...n, [idx]: [] }));
+    } finally {
+      setNearbyBusy((b) => ({ ...b, [idx]: false }));
+    }
+  };
+  const chooseStore = (idx: number, store: any) => {
+    updateStop(idx, {
+      destinationStoreId:   store.id,
+      destinationStoreName: store.storeName,
+      address:              store.storeAddress,
+      lat:                  store.lat ?? undefined,
+      lng:                  store.lng ?? undefined,
+    });
+    setPkgQueries((q) => { const next = [...q]; next[idx] = store.storeAddress; return next; });
   };
 
   // ── Photos ───────────────────────────────────────────────────────────
@@ -228,6 +269,7 @@ export default function SendPackageScreen() {
   // ── Schedule ─────────────────────────────────────────────────────────
   const [scheduleNow, setScheduleNow] = useState(true);
   const [scheduledHour, setScheduledHour] = useState<number | null>(null);
+  const [scheduledDayOffset, setScheduledDayOffset] = useState<0 | 1>(0);
 
   // ── Route distance (straight-line stand-in; server prices road km) ───
   const totalKm = useMemo(() => {
@@ -322,6 +364,8 @@ export default function SendPackageScreen() {
         if (s.fallbackPref === 'neighbour' && !s.fallbackNeighbourName?.trim())
           return `Package ${i + 1}: name the neighbour who may collect.`;
         if (!s.recipientPhone?.trim())      return `Package ${i + 1} needs the receiver's phone.`;
+        if (s.destinationMode === 'store' && !s.destinationStoreId)
+          return `Package ${i + 1}: choose the partner store it goes to.`;
         if (s.lat == null || s.lng == null) return `Package ${i + 1} needs a delivery address picked from the suggestions.`;
       }
       return null;
@@ -385,7 +429,12 @@ export default function SendPackageScreen() {
         photoUrlsPerPackage.push(urls);
       }
       const scheduledAt = !scheduleNow && scheduledHour != null
-        ? (() => { const d = new Date(); d.setHours(scheduledHour, 0, 0, 0); if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1); return d.toISOString(); })()
+        ? (() => {
+            const d = new Date();
+            d.setDate(d.getDate() + scheduledDayOffset);
+            d.setHours(scheduledHour, 0, 0, 0);
+            return d.toISOString();
+          })()
         : undefined;
 
       const res = await businessApi.createDelivery({
@@ -406,6 +455,7 @@ export default function SendPackageScreen() {
           declaredValueNgn: s.declaredValueNgn ?? undefined,
           fallbackPref: s.fallbackPref ?? undefined,
           fallbackNeighbourName: s.fallbackPref === 'neighbour' ? (s.fallbackNeighbourName?.trim() || undefined) : undefined,
+          destinationStoreId: s.destinationMode === 'store' ? s.destinationStoreId : undefined,
           packageDescription: s.packageDescription?.trim() || undefined,
           categoryCode: s.categoryCode ?? draft.categoryCode ?? undefined,
           weightKg: s.weightKg ?? undefined,
@@ -626,17 +676,112 @@ export default function SendPackageScreen() {
                   />
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>
-                    Delivery address <Text style={{ color: '#DC2626' }}>*</Text>
+                    Where is it going? <Text style={{ color: '#DC2626' }}>*</Text>
                   </Text>
+                  <View style={styles.destRow}>
+                    {([
+                      { key: 'address', label: 'To an address', icon: 'MapPin' },
+                      { key: 'store',   label: 'To a partner store', icon: 'Store' },
+                    ] as const).map((opt) => {
+                      const active = (s.destinationMode ?? 'address') === opt.key;
+                      return (
+                        <Pressable
+                          key={opt.key}
+                          style={[styles.destBtn,
+                            { backgroundColor: colors.surfaceSecond, borderColor: colors.border },
+                            active && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                          onPress={() => {
+                            updateStop(i, {
+                              destinationMode: opt.key,
+                              destinationStoreId: undefined,
+                              destinationStoreName: undefined,
+                            });
+                            if (opt.key === 'store' && s.lat != null && s.lng != null) {
+                              findStoresNear(i, s.lat, s.lng);
+                            }
+                          }}
+                        >
+                          <Icon name={opt.icon as any} size={14} color={active ? '#fff' : colors.textSecond} />
+                          <Text style={[styles.destTxt, { color: colors.text }, active && { color: '#fff' }]}>{opt.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+
                   <TextInput
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={pkgQueries[i] ?? ''}
                     onChangeText={(v) => onChangePkgAddress(i, v)}
                     onFocus={() => setActiveField({ kind: 'pkg', idx: i })}
-                    placeholder="Street, area, city"
+                    placeholder={s.destinationMode === 'store'
+                      ? 'Area the receiver is in, e.g. Yaba'
+                      : 'Street, area, city'}
                     placeholderTextColor={colors.textThird}
                   />
                   {renderSuggestions('pkg', i)}
+
+                  {s.destinationMode === 'store' && (
+                    <View style={{ marginTop: 8 }}>
+                      {s.destinationStoreId ? (
+                        <View style={[styles.storePicked, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+                          <Icon name="Store" size={16} color={colors.primary} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.storeName, { color: colors.text }]} numberOfLines={1}>
+                              {s.destinationStoreName}
+                            </Text>
+                            <Text style={[styles.storeMeta, { color: colors.textSecond }]} numberOfLines={1}>
+                              {s.address}
+                            </Text>
+                          </View>
+                          <Pressable onPress={() => updateStop(i, { destinationStoreId: undefined, destinationStoreName: undefined })}>
+                            <Text style={[styles.changeTxt, { color: colors.primary }]}>Change</Text>
+                          </Pressable>
+                        </View>
+                      ) : nearbyBusy[i] ? (
+                        <ActivityIndicator color={colors.accent} style={{ paddingVertical: 12 }} />
+                      ) : (nearby[i]?.length ?? 0) > 0 ? (
+                        <>
+                          <Text style={[styles.hint, { color: colors.textThird }]}>
+                            {nearby[i].length} counter{nearby[i].length === 1 ? '' : 's'} near there. Tap one to send this package to it.
+                          </Text>
+                          {nearby[i].map((store: any) => (
+                            <Pressable
+                              key={store.id}
+                              style={[styles.storeCardRow, { backgroundColor: colors.surfaceSecond, borderColor: colors.border }]}
+                              onPress={() => chooseStore(i, store)}
+                            >
+                              {store.photoUrl ? (
+                                <Image source={{ uri: store.photoUrl }} style={styles.storeThumb} />
+                              ) : (
+                                <View style={[styles.storeThumb, { backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }]}>
+                                  <Icon name="Store" size={18} color={colors.textThird} />
+                                </View>
+                              )}
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.storeName, { color: colors.text }]} numberOfLines={1}>{store.storeName}</Text>
+                                <Text style={[styles.storeMeta, { color: colors.textSecond }]} numberOfLines={1}>
+                                  {store.storeAddress}
+                                </Text>
+                                <Text style={[styles.storeMeta, { color: colors.textThird }]} numberOfLines={1}>
+                                  {store.distanceKm != null ? `${store.distanceKm}km away · ` : ''}
+                                  {store.isOpenNow ? 'Open now' : 'Closed now'}
+                                  {store.openTime ? ` (${store.openTime}-${store.closeTime})` : ''}
+                                  {store.bucket === 'full' ? ' · Full' : store.bucket === 'limited' ? ' · Nearly full' : ' · Space available'}
+                                </Text>
+                              </View>
+                              <Icon name="ChevronRight" size={16} color={colors.textThird} />
+                            </Pressable>
+                          ))}
+                        </>
+                      ) : (
+                        <Text style={[styles.hint, { color: colors.textThird }]}>
+                          {(s.lat != null)
+                            ? 'No partner counter near that area yet. Send to the address instead.'
+                            : 'Type the area the receiver is in and we will show the counters around it.'}
+                        </Text>
+                      )}
+                    </View>
+                  )}
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>If nobody is available</Text>
                   <View style={styles.chipWrap}>
@@ -745,34 +890,87 @@ export default function SendPackageScreen() {
                 <Text style={[styles.useLocTxt, { color: colors.accent }]}>Use my current location</Text>
               </Pressable>
 
-              <Text style={[styles.label, { color: colors.textSecond, marginTop: 8 }]}>When?</Text>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                {[{ k: true, label: 'Send now' }, { k: false, label: 'Schedule' }].map(({ k, label }) => (
+              {/* When: two real option cards, not two anonymous pills
+                  (founder 2026-08-16: "it should be more visible and
+                  properly designed so they can see it"). */}
+              <Text style={[styles.label, { color: colors.textSecond, marginTop: 14 }]}>When should the driver come?</Text>
+              {([
+                { now: true,  title: 'Send now',      sub: 'We match a driver straight away', icon: 'Zap' },
+                { now: false, title: 'Schedule it',   sub: 'Pick a pickup hour, today or tomorrow', icon: 'Clock' },
+              ] as const).map((opt) => {
+                const active = scheduleNow === opt.now;
+                return (
                   <Pressable
-                    key={label}
-                    style={[styles.schedBtn,
-                      { backgroundColor: colors.surfaceSecond, borderColor: colors.border },
-                      scheduleNow === k && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-                    onPress={() => setScheduleNow(k)}
+                    key={opt.title}
+                    style={[styles.whenCard,
+                      { backgroundColor: colors.surface, borderColor: colors.border },
+                      active && { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
+                    onPress={() => setScheduleNow(opt.now)}
                   >
-                    <Text style={[styles.schedTxt, { color: colors.text }, scheduleNow === k && { color: '#fff' }]}>{label}</Text>
+                    <View style={[styles.whenIcon, { backgroundColor: active ? colors.primary : colors.surfaceSecond }]}>
+                      <Icon name={opt.icon as any} size={18} color={active ? '#fff' : colors.textSecond} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.whenTitle, { color: colors.text }]}>{opt.title}</Text>
+                      <Text style={[styles.whenSub, { color: colors.textSecond }]}>{opt.sub}</Text>
+                    </View>
+                    {active && <Icon name="CheckCircle2" size={20} color={colors.primary} />}
                   </Pressable>
-                ))}
-              </View>
+                );
+              })}
+
               {!scheduleNow && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                  {TIME_SLOTS.map(({ hour, label }) => (
-                    <Pressable
-                      key={hour}
-                      style={[styles.hourChip,
-                        { backgroundColor: colors.surfaceSecond, borderColor: colors.border },
-                        scheduledHour === hour && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-                      onPress={() => setScheduledHour(hour)}
-                    >
-                      <Text style={[styles.chipTxt, { color: colors.text }, scheduledHour === hour && { color: '#fff' }]}>{label}</Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
+                <View style={[styles.schedPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={[styles.label, { color: colors.textSecond, marginTop: 0 }]}>Day</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {([
+                      { key: 0, label: 'Today' },
+                      { key: 1, label: 'Tomorrow' },
+                    ] as const).map((d) => {
+                      const active = scheduledDayOffset === d.key;
+                      return (
+                        <Pressable
+                          key={d.key}
+                          style={[styles.dayChip,
+                            { backgroundColor: colors.surfaceSecond, borderColor: colors.border },
+                            active && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                          onPress={() => { setScheduledDayOffset(d.key); setScheduledHour(null); }}
+                        >
+                          <Text style={[styles.chipTxt, { color: colors.text }, active && { color: '#fff' }]}>{d.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+
+                  <Text style={[styles.label, { color: colors.textSecond }]}>Pickup hour</Text>
+                  <View style={styles.chipWrap}>
+                    {TIME_SLOTS.map(({ hour, label }) => {
+                      // Scheduled pickups run 5 AM to 9 PM; past hours today
+                      // are not offerable.
+                      const tooLateToday = scheduledDayOffset === 0 && hour <= new Date().getHours();
+                      const disabled = tooLateToday;
+                      const active = scheduledHour === hour;
+                      return (
+                        <Pressable
+                          key={hour}
+                          disabled={disabled}
+                          style={[styles.hourChip,
+                            { backgroundColor: colors.surfaceSecond, borderColor: colors.border, opacity: disabled ? 0.35 : 1 },
+                            active && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                          onPress={() => setScheduledHour(hour)}
+                        >
+                          <Text style={[styles.chipTxt, { color: colors.text }, active && { color: '#fff' }]}>{label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+
+                  <Text style={[styles.hint, { color: scheduledHour == null ? '#DC2626' : colors.textSecond }]}>
+                    {scheduledHour == null
+                      ? 'Pick an hour to continue.'
+                      : `Driver arrives ${scheduledDayOffset === 0 ? 'today' : 'tomorrow'} around ${TIME_SLOTS.find(t => t.hour === scheduledHour)?.label}.`}
+                  </Text>
+                </View>
               )}
             </View>
           )}
@@ -1006,12 +1204,37 @@ const styles = StyleSheet.create({
   },
   addBtnText: { fontSize: 14, fontWeight: '700' },
   capNote:    { fontSize: 12, lineHeight: 17 },
+  destRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  destBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1,
+  },
+  destTxt: { fontSize: 12.5, fontWeight: '600' },
+  storePicked: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1.5, borderRadius: 12, padding: 12,
+  },
+  storeCardRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1, borderRadius: 12, padding: 10, marginTop: 8,
+  },
+  storeThumb: { width: 46, height: 46, borderRadius: 10 },
+  storeName:  { fontSize: 13, fontWeight: '700' },
+  storeMeta:  { fontSize: 11, marginTop: 1 },
+  changeTxt:  { fontSize: 12, fontWeight: '700' },
   suggBlock: { borderWidth: 1, borderRadius: 12, marginTop: 4, overflow: 'hidden' },
   suggRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderTopWidth: 1 },
   suggMain:  { fontSize: 13, fontWeight: '500' },
   suggSub:   { fontSize: 11, marginTop: 1 },
-  schedBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
-  schedTxt: { fontSize: 14, fontWeight: '600' },
+  whenCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1.5, borderRadius: 14, padding: 14, marginBottom: 10,
+  },
+  whenIcon:  { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  whenTitle: { fontSize: 15, fontWeight: '700' },
+  whenSub:   { fontSize: 12, marginTop: 2 },
+  schedPanel: { borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 4 },
+  dayChip:  { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, borderWidth: 1 },
   hourChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1 },
   vehRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 14, padding: 14 },
   vehName: { fontSize: 15, fontWeight: '700' },
