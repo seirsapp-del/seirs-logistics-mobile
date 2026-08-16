@@ -31,7 +31,7 @@ import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { Illustration } from '@/components/Illustration';
 import {
-  businessApi, configApi, mapsApi, uploadApi,
+  businessApi, configApi, mapsApi, uploadApi, pricingApi,
   type ServiceCategory, type RateCard,
 } from '@/services/api';
 import { useBusinessStore } from '@/store/businessStore';
@@ -244,6 +244,10 @@ export default function SendPackageScreen() {
 
   // ── Quote (unified engine, per-package aware) ────────────────────────
   const [quote, setQuote] = useState<any>(null);
+  // A price that never arrives must SAY so: an endless "..." is the same
+  // class of silent failure as a blank screen.
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteReloadKey, setQuoteReloadKey] = useState(0);
   useEffect(() => {
     if (step !== 3) return;
     const packages = draft.stops.map(s => ({
@@ -252,19 +256,20 @@ export default function SendPackageScreen() {
     }));
     const totalWeight = packages.reduce((sum, p) => sum + p.weightKg, 0);
     setQuote(null);
-    import('@/services/api').then(({ pricingApi }) =>
-      pricingApi.quote({
-        vehicleType: draft.vehicleType,
-        categoryCode: packages[0]?.categoryCode ?? 'standard_parcel',
-        km: totalKm,
-        stopCount: draft.stops.length,
-        weightKg: totalWeight,
-        estimatedDwellMinutes: draft.stops.length * 4,
-        packages,
-        pickupCoords: draft.pickupLat != null ? { latitude: draft.pickupLat, longitude: draft.pickupLng } : undefined,
-      } as any),
-    ).then(setQuote).catch(() => setQuote(null));
-  }, [step, totalKm, draft.stops, draft.vehicleType]);
+    setQuoteError(null);
+    pricingApi.quote({
+      vehicleType: draft.vehicleType,
+      categoryCode: packages[0]?.categoryCode ?? 'standard_parcel',
+      km: totalKm,
+      stopCount: draft.stops.length,
+      weightKg: totalWeight,
+      estimatedDwellMinutes: draft.stops.length * 4,
+      packages,
+      pickupCoords: draft.pickupLat != null ? { latitude: draft.pickupLat, longitude: draft.pickupLng } : undefined,
+    } as any)
+      .then(setQuote)
+      .catch((e: any) => setQuoteError(e?.message ?? 'Could not price this run.'));
+  }, [step, totalKm, draft.stops, draft.vehicleType, quoteReloadKey]);
 
   // Per-package attribution preview: identical math to the backend
   // (surcharge-weighted equal shares, last line absorbs rounding).
@@ -829,6 +834,11 @@ export default function SendPackageScreen() {
                     </Text>
                   </View>
                 ))}
+                {!!quoteError && (
+                  <Pressable onPress={() => setQuoteReloadKey((k) => k + 1)} style={styles.quoteErrBox}>
+                    <Text style={styles.quoteErrTxt}>{quoteError} Tap to try again.</Text>
+                  </Pressable>
+                )}
                 <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
                   <Text style={[styles.totalLabel, { color: colors.text }]}>Total · one payment</Text>
                   <Text style={[styles.totalValue, { color: colors.primary }]}>
@@ -940,6 +950,8 @@ const styles = StyleSheet.create({
   lineName:  { fontSize: 13, fontWeight: '600' },
   lineSub:   { fontSize: 11, marginTop: 1 },
   linePrice: { fontSize: 13, fontWeight: '700' },
+  quoteErrBox: { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 10, marginTop: 8 },
+  quoteErrTxt: { color: '#DC2626', fontSize: 12, fontWeight: '600' },
   totalRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 10, marginTop: 6 },
   totalLabel: { fontSize: 14, fontWeight: '700' },
   totalValue: { fontSize: 18, fontWeight: '900' },
