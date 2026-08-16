@@ -10,6 +10,15 @@ export interface DeliveryStop {
   recipientName:  string;
   recipientPhone: string;
   note?:          string;
+  /**
+   * Multi-package rebuild (2026-08-16): each stop IS one package with
+   * its own identity (founder spec). Photo is REQUIRED at submit;
+   * category/weight default from the run-level picks until edited.
+   */
+  photoUri?:            string;   // local uri until upload at submit
+  packageDescription?:  string;
+  categoryCode?:        string;
+  weightKg?:            number;
 }
 
 export interface DraftDelivery {

@@ -76,7 +76,7 @@ export class UploadService implements OnModuleInit {
   async uploadBuffer(
     buffer: Buffer,
     originalName: string,
-    folder: 'kyc' | 'proof' | 'avatars' | 'cms' | 'chat' | 'documents',
+    folder: 'kyc' | 'proof' | 'avatars' | 'cms' | 'chat' | 'documents' | 'packages',
   ): Promise<string> {
     if (!this.enabled || !this.s3) {
       // Dev fallback: return a fake URL so the app doesn't crash without R2 set up

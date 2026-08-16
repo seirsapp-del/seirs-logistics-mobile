@@ -8,7 +8,7 @@ import { extname } from 'path';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { UploadService } from './upload.service';
 
-type UploadFolder = 'kyc' | 'proof' | 'avatars' | 'cms' | 'chat' | 'documents';
+type UploadFolder = 'kyc' | 'proof' | 'avatars' | 'cms' | 'chat' | 'documents' | 'packages';
 
 @UseGuards(JwtAuthGuard)
 @Controller('upload')
@@ -34,7 +34,7 @@ export class UploadController {
   ) {
     if (!file) throw new BadRequestException('No file provided.');
 
-    const validFolders: UploadFolder[] = ['kyc', 'proof', 'avatars', 'cms', 'chat', 'documents'];
+    const validFolders: UploadFolder[] = ['kyc', 'proof', 'avatars', 'cms', 'chat', 'documents', 'packages'];
     const dest: UploadFolder = validFolders.includes(folder as UploadFolder)
       ? (folder as UploadFolder)
       : 'kyc';

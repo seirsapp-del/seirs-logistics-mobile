@@ -20,7 +20,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, StatusBar,
   ActivityIndicator, Switch, Alert, Keyboard, ScrollView,
-  LayoutAnimation, Platform, UIManager,
+  LayoutAnimation, Platform, UIManager, Image, Linking,
 } from 'react-native';
 
 // Required on Android to enable LayoutAnimation. iOS has it on by default.
@@ -30,6 +30,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 import BottomSheet, {
   BottomSheetTextInput,
   BottomSheetScrollView,
@@ -38,7 +39,7 @@ import { Calendar as RNCalendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import {
-  businessApi, configApi, pricingApi, mapsApi,
+  businessApi, configApi, pricingApi, mapsApi, uploadApi,
   type ServiceCategory, type RateCard, type PriceBreakdown,
 } from '@/services/api';
 import { useBusinessStore, type DeliveryStop } from '@/store/businessStore';
@@ -71,6 +72,13 @@ function buildScheduledFor(isoDate: string, hour: number): Date {
   const [y, m, d] = isoDate.split('-').map(Number);
   return new Date(y, m - 1, d, hour, 0, 0, 0);
 }
+
+// Mirror of the backend DEFAULT_MAX_PACKAGES: the rate card's
+// vehicleRates.<type>.maxPackages overrides when the admin sets it.
+const DEFAULT_MAX_PACKAGES: Record<string, number> = {
+  bicycle: 3, motorcycle: 5, tricycle: 15, car: 20,
+  van: 40, truck_small: 80, truck_large: 150,
+};
 
 const VEHICLE_ORDER: VehicleType[] = [
   'bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large',
@@ -484,6 +492,23 @@ export default function NewDeliveryScreen() {
     setStep(s => (s - 1) as 0 | 1 | 2);
   };
 
+  // ── Per-package photo (REQUIRED, founder spec 2026-08-15) ────────
+  const pickPackagePhoto = async (idx: number) => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Photo needed', 'Allow photo access so each package has its picture for handoff proof.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      updateStop(idx, { photoUri: result.assets[0].uri });
+    }
+  };
+
+  const maxPackages =
+    Number((rateCard as any)?.vehicleRates?.[draft.vehicleType]?.maxPackages)
+    || DEFAULT_MAX_PACKAGES[draft.vehicleType] || 5;
+
   // ── Submit ───────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!canContinue0 || !canContinue1 || !canContinue2) return;
@@ -497,6 +522,20 @@ export default function NewDeliveryScreen() {
         ? buildScheduledFor(scheduledDate, scheduledHour).toISOString()
         : undefined;
 
+      // Every package's photo is required (founder 2026-08-15) and
+      // uploads before booking so the driver and the receipt carry it.
+      const missingPhoto = draft.stops.findIndex((st) => !st.photoUri);
+      if (missingPhoto !== -1) {
+        Alert.alert('Photo required', `Package ${missingPhoto + 1} needs a photo before booking.`);
+        setLoading(false);
+        return;
+      }
+      const photoUrls: string[] = [];
+      for (const st of draft.stops) {
+        const up = await uploadApi.file(st.photoUri!, 'image/jpeg', 'packages');
+        photoUrls.push(up.url);
+      }
+
       const res = await businessApi.createDelivery({
         pickupAddress: draft.pickupAddress,
         pickupLat:     draft.pickupLat!,
@@ -509,6 +548,10 @@ export default function NewDeliveryScreen() {
           recipientPhone: s.recipientPhone.trim(),
           notes:          s.note?.trim() || undefined,
           sequenceOrder:  idx + 1,
+          packagePhotoUrls:   [photoUrls[idx]],
+          packageDescription: s.packageDescription?.trim() || undefined,
+          categoryCode:       s.categoryCode ?? draft.categoryCode ?? undefined,
+          weightKg:           s.weightKg ?? draft.weightKg ?? undefined,
         })),
         vehicleType:           draft.vehicleType,
         categoryCode:          draft.categoryCode!,
@@ -526,11 +569,27 @@ export default function NewDeliveryScreen() {
 
       const trackingCode = res?.delivery?.trackingCode ?? res?.trackingCode ?? res?.id?.slice(0, 8);
       resetDraft();
-      Alert.alert(
-        'Delivery Created',
-        `Tracking: ${trackingCode}\nWallet balance: ₦${(res?.wallet?.balanceAfter ?? 0).toLocaleString()}`,
-        [{ text: 'OK', onPress: () => router.replace('/(business)/(tabs)/deliveries' as any) }],
-      );
+      if (res?.payment?.method === 'flutterwave' && res?.payment?.authorizationUrl) {
+        // Pay-per-booking: finish checkout in the browser. The booking
+        // reaches drivers only after Flutterwave confirms the money.
+        Alert.alert(
+          'Complete payment',
+          `Booking ${trackingCode} is reserved. Finish payment in the browser: drivers see the job the moment your payment confirms.`,
+          [{
+            text: 'Pay now',
+            onPress: async () => {
+              try { await Linking.openURL(res.payment.authorizationUrl); } catch {}
+              router.replace('/(business)/(tabs)/deliveries' as any);
+            },
+          }],
+        );
+      } else {
+        Alert.alert(
+          'Delivery booked',
+          `Tracking: ${trackingCode}` + (res?.wallet ? `\nRemaining credit: ₦${(res.wallet.balanceAfter ?? 0).toLocaleString()}` : ''),
+          [{ text: 'OK', onPress: () => router.replace('/(business)/(tabs)/deliveries' as any) }],
+        );
+      }
     } catch (e: any) {
       Alert.alert('Could not create delivery', e?.message ?? 'Please try again.');
     } finally { setLoading(false); }
@@ -791,7 +850,7 @@ export default function NewDeliveryScreen() {
             <View style={{ gap: 12 }}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Pickup &amp; Stops</Text>
               <Text style={[styles.sectionHint, { color: colors.textSecond }]}>
-                Up to 5 stops per booking. We'll find the shortest route automatically: turn off below if you want a specific order.
+                One package per drop, each with its own photo and tracking code. We'll find the shortest route automatically: turn off below if you want a specific order.
               </Text>
 
               <View style={[styles.inputBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -813,13 +872,81 @@ export default function NewDeliveryScreen() {
                 <View key={i} style={[styles.stopCard, { backgroundColor: colors.surfaceSecond, borderColor: colors.border }]}>
                   <View style={styles.stopHeader}>
                     <View style={[styles.stopBadge, { backgroundColor: colors.primary }]}>
-                      <Text style={styles.stopBadgeText}>Stop {i + 1}</Text>
+                      <Text style={styles.stopBadgeText}>Package {i + 1}</Text>
                     </View>
                     {draft.stops.length > 1 && (
                       <Pressable onPress={() => removeStop(i)} hitSlop={8}>
                         <Icon name="Trash2" size={16} color="#DC2626" />
                       </Pressable>
                     )}
+                  </View>
+
+                  {/* Photo is REQUIRED per package (founder 2026-08-15):
+                      condition on record before the driver ever touches it. */}
+                  <Pressable
+                    style={[styles.photoBtn, { backgroundColor: colors.surface, borderColor: stop.photoUri ? '#16A34A' : colors.border }]}
+                    onPress={() => pickPackagePhoto(i)}
+                  >
+                    {stop.photoUri ? (
+                      <>
+                        <Image source={{ uri: stop.photoUri }} style={styles.photoThumb} />
+                        <Text style={[styles.photoBtnText, { color: '#16A34A' }]}>Photo added · tap to change</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="Camera" size={18} color={colors.accent} />
+                        <Text style={[styles.photoBtnText, { color: colors.accent }]}>Add package photo (required)</Text>
+                      </>
+                    )}
+                  </Pressable>
+
+                  <Text style={[styles.miniLabel, { color: colors.textSecond }]}>What is this package?</Text>
+                  <BottomSheetTextInput
+                    style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                    value={stop.packageDescription ?? ''}
+                    onChangeText={(v) => updateStop(i, { packageDescription: v })}
+                    onFocus={handleInputFocus}
+                    placeholder="e.g. Two cartons of shoes"
+                    placeholderTextColor={colors.textThird}
+                  />
+
+                  <View style={styles.pkgMetaRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.miniLabel, { color: colors.textSecond }]}>Weight (kg)</Text>
+                      <BottomSheetTextInput
+                        style={[styles.miniInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                        value={stop.weightKg != null ? String(stop.weightKg) : ''}
+                        onChangeText={(v) => {
+                          const n = Number(v.replace(',', '.'));
+                          updateStop(i, { weightKg: Number.isFinite(n) && v !== '' ? n : undefined });
+                        }}
+                        onFocus={handleInputFocus}
+                        placeholder={draft.weightKg != null ? String(draft.weightKg) : 'e.g. 3'}
+                        placeholderTextColor={colors.textThird}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <View style={{ flex: 1.4 }}>
+                      <Text style={[styles.miniLabel, { color: colors.textSecond }]}>Category</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                        {catalog.map((cat) => {
+                          const active = (stop.categoryCode ?? draft.categoryCode) === cat.code;
+                          return (
+                            <Pressable
+                              key={cat.code}
+                              style={[styles.pkgCatChip,
+                                { backgroundColor: colors.surface, borderColor: colors.border },
+                                active && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                              onPress={() => updateStop(i, { categoryCode: cat.code })}
+                            >
+                              <Text style={[styles.pkgCatTxt, { color: colors.text }, active && { color: '#fff' }]}>
+                                {cat.name}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
                   </View>
 
                   <View style={[styles.inputBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -869,13 +996,15 @@ export default function NewDeliveryScreen() {
                 </View>
               ))}
 
-              {draft.stops.length < 5 && (
+              {draft.stops.length < maxPackages && (
                 <Pressable
                   style={[styles.addStopBtn, { borderColor: colors.accent, backgroundColor: colors.primaryLight }]}
                   onPress={() => addStop({ address: '', recipientName: '', recipientPhone: '' })}
                 >
                   <Icon name="Plus" size={16} color={colors.accent} />
-                  <Text style={[styles.addStopText, { color: colors.accent }]}>Add Stop (max 5)</Text>
+                  <Text style={[styles.addStopText, { color: colors.accent }]}>
+                    Add another package ({draft.stops.length}/{maxPackages} for {VEHICLE_LABEL[draft.vehicleType as VehicleType] ?? draft.vehicleType})
+                  </Text>
                 </Pressable>
               )}
 
@@ -1143,6 +1272,16 @@ const styles = StyleSheet.create({
   suggMain: { fontSize: 14, fontWeight: '500' },
   suggSub: { fontSize: 12, marginTop: 2 },
 
+  photoBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8,
+  },
+  photoThumb:  { width: 44, height: 44, borderRadius: 8 },
+  photoBtnText: { fontSize: 13, fontWeight: '600', flex: 1 },
+  pkgMetaRow:  { flexDirection: 'row', gap: 10, alignItems: 'flex-end' },
+  pkgCatChip:  { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
+  pkgCatTxt:   { fontSize: 12, fontWeight: '600' },
   catGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   catChip:    { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5 },
   catChipTxt: { fontSize: 13, fontWeight: '600' },

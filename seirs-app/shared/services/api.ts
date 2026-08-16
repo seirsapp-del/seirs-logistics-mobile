@@ -92,7 +92,7 @@ export async function request<T>(
 }
 
 // ─── Upload ───────────────────────────────────────────────────────────────────
-export type UploadFolder = 'kyc' | 'proof' | 'avatars' | 'cms' | 'chat';
+export type UploadFolder = 'kyc' | 'proof' | 'avatars' | 'cms' | 'chat' | 'documents' | 'packages';
 
 async function _uploadCore(uri: string, mimeType = 'image/jpeg', folder?: UploadFolder): Promise<{ url: string }> {
   const token = await getToken();
