@@ -344,17 +344,31 @@ export class BusinessService {
    */
   async getSpendStatement(userId: string) {
     const biz = await this.getBizAccount(userId);
+    /**
+     * Reads the payments actually taken, not the retired wallet ledger.
+     *
+     * It used to sum business_wallet_transactions, which stopped being
+     * written the moment senders stopped holding balances, and counted a
+     * cancelled, fully refunded run as 10,103 of spend on the 2026
+     * statement (found 2026-08-16). A statement that overstates spend is
+     * worse than none: it goes to an accountant.
+     *
+     * Refunded payments are excluded, and only delivery charges count, so
+     * the card-tokenisation charge never appears as business spend.
+     */
     const rows: Array<{ year: number; spent: string; payments: string; topups: string }> =
       await this.walletTxRepo.query(
-        `SELECT EXTRACT(YEAR FROM "createdAt")::int AS year,
-                COALESCE(SUM(CASE WHEN type = 'debit'  THEN amount END), 0) AS spent,
-                COUNT(CASE WHEN type = 'debit' THEN 1 END)                  AS payments,
-                COALESCE(SUM(CASE WHEN type = 'credit' THEN amount END), 0) AS topups
-         FROM business_wallet_transactions
-         WHERE "businessAccountId" = $1
+        `SELECT EXTRACT(YEAR FROM p."createdAt")::int              AS year,
+                COALESCE(SUM(p."amountKobo"), 0) / 100.0           AS spent,
+                COUNT(*)                                          AS payments,
+                0                                                 AS topups
+         FROM payments p
+         WHERE p."customerId" = $1
+           AND p.status = 'success'
+           AND p.purpose = 'delivery'
          GROUP BY 1
          ORDER BY 1 DESC`,
-        [biz.id],
+        [biz.ownerId],
       );
     return {
       companyName: biz.companyName,

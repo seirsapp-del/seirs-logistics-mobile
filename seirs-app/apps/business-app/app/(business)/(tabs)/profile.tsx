@@ -72,7 +72,7 @@ export default function BusinessProfileTab() {
       items: [
         { icon: 'Pencil',   label: t('drawer.editProfile', { defaultValue: 'Edit Business Details' }), onPress: () => router.push('/(business)/edit-profile' as any) },
         { icon: 'Users',    label: t('drawer.teamMembers', { defaultValue: 'Team Members' }),          onPress: () => router.push('/(business)/team' as any) },
-        { icon: 'Banknote', label: t('drawer.billing',     { defaultValue: 'Billing & Invoices' }),    onPress: () => router.push('/(business)/wallet' as any) },
+        { icon: 'Banknote', label: t('drawer.billing',     { defaultValue: 'Billing & Invoices' }),    onPress: () => router.push('/(business)/billing' as any) },
         { icon: 'FileText', label: t('drawer.documents',   { defaultValue: 'Documents' }),             onPress: () => router.push('/(business)/documents' as any) },
       ],
     },

@@ -31,6 +31,7 @@ export {
   dropoffApi,
   deliveriesApi,
   documentsApi,
+  paymentsApi,
 } from '@seirs/shared/services/api';
 
 export type {
