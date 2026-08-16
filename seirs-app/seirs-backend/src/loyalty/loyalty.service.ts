@@ -478,9 +478,21 @@ export class LoyaltyService {
       });
     }
 
-    // Business side: same rate the payment webhook awards at, 1 pt per
-    // N100 of the fare that was refunded.
-    if ((delivery as any).source === 'business_app' && delivery.customer?.id) {
+    /**
+     * Business side: same rate the payment webhook awards at, 1 pt per
+     * N100 of the fare that was refunded.
+     *
+     * ONLY for a fare that was actually paid. The counter keeps no
+     * per-entry history, so this is a blind decrement, and running it on
+     * an unpaid booking destroys points earned somewhere else: cancelling
+     * an unpaid probe took 20 points off an account that had never been
+     * awarded any for it (found immediately after shipping the clawback,
+     * 2026-08-16). paymentHeldAt is set by the same webhook that awards
+     * the points, so it is the honest test for "was anything granted".
+     */
+    if ((delivery as any).source === 'business_app'
+        && delivery.customer?.id
+        && delivery.paymentHeldAt) {
       const pts = Math.floor(Number(delivery.price ?? 0) / 100);
       if (pts > 0) {
         await this.deliveriesRepo.manager.query(
