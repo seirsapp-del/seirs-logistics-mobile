@@ -50,9 +50,15 @@ interface Props {
    * handler, so the field went back to typing blind (2026-08-16).
    */
   onFocus?: (e: any) => void;
+  /**
+   * City and State sat next to this field as separate free-text boxes, so
+   * a picked Lagos address could sit above a hand-typed "Abuja" (founder
+   * 2026-08-16). Google already knows both, so the host can fill them.
+   */
+  onPlaceResolved?: (info: { city?: string; state?: string; lat?: number; lng?: number }) => void;
 }
 
-export function StreetAutocomplete({ label, value, onChangeText, state, placeholder, onCoordsResolved, onFocus }: Props) {
+export function StreetAutocomplete({ label, value, onChangeText, state, placeholder, onCoordsResolved, onFocus, onPlaceResolved }: Props) {
   /**
    * Built for the light registration screen with hardcoded #fff, so on
    * the dark Edit Business Details form it rendered as a white box
@@ -72,7 +78,17 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
       // autocomplete prioritises matches that contain the state's name. Also
       // restrict to Nigeria via `components=country:ng`.
       const query = state ? `${text}, ${state}, Nigeria` : `${text}, Nigeria`;
-      const json = await mapsApi.autocomplete({ input: query, components: 'country:ng' });
+      let json = await mapsApi.autocomplete({ input: query, components: 'country:ng' });
+      /**
+       * The state is only a HINT. Appending it used to make an address in
+       * any other state unfindable: typing "Wuse 2 Abuja" while the state
+       * still said Lagos returned nothing at all, with no explanation
+       * (found on device 2026-08-16). If the biased query finds nothing,
+       * search Nigeria-wide, and let the picked place correct the state.
+       */
+      if (state && (json?.status !== 'OK' || !(json?.predictions ?? []).length)) {
+        json = await mapsApi.autocomplete({ input: `${text}, Nigeria`, components: 'country:ng' });
+      }
       if (json.status === 'OK') {
         setPredictions((json.predictions ?? []).map((p: any) => ({
           place_id:       p.place_id,
@@ -104,14 +120,29 @@ export function StreetAutocomplete({ label, value, onChangeText, state, placehol
     // this place_id. Cheap: one extra HTTP call, only on pick, only
     // when onCoordsResolved is wired. Silent-fails so a network glitch
     // never blocks the address being saved.
-    if (!onCoordsResolved) return;
+    if (!onCoordsResolved && !onPlaceResolved) return;
     try {
-      const json = await mapsApi.placeDetails(p.place_id, 'geometry');
+      const json = await mapsApi.placeDetails(p.place_id, 'geometry,address_components');
       const loc  = json?.result?.geometry?.location;
       if (loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
-        onCoordsResolved(loc.lat, loc.lng);
+        onCoordsResolved?.(loc.lat, loc.lng);
       }
-    } catch { /* silent: coords are optional, address save should not fail */ }
+      if (onPlaceResolved) {
+        // Google labels the Nigerian state as administrative_area_level_1
+        // and the town as locality, falling back to the LGA when a place
+        // has no locality of its own.
+        const parts: any[] = json?.result?.address_components ?? [];
+        const pick = (type: string) =>
+          parts.find((c) => Array.isArray(c.types) && c.types.includes(type))?.long_name;
+        const stateName = String(pick('administrative_area_level_1') ?? '').replace(/\s+State$/i, '').trim();
+        const cityName  = pick('locality') ?? pick('administrative_area_level_2') ?? pick('sublocality');
+        onPlaceResolved({
+          city:  cityName ? String(cityName).trim() : undefined,
+          state: stateName || undefined,
+          lat: loc?.lat, lng: loc?.lng,
+        });
+      }
+    } catch { /* silent: extras are optional, the address save must not fail */ }
   };
 
   const showDropdown = focused && predictions.length > 0;

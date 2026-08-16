@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -19,6 +20,11 @@ import {
   installGlobalErrorHandler,
   setReporterUserIdGetter,
 } from '@seirs/shared/services/errorReporter';
+
+// The LogBox banner floats above the tab bar and swallows taps on it
+// (founder 2026-08-16: it ate a Profile tap mid-test). Dev-only UI,
+// never shown in a release build; warnings still reach Metro.
+LogBox.ignoreAllLogs(true);
 
 configureApi(API_BASE);
 // Business app stores session under a separate key so it can coexist with

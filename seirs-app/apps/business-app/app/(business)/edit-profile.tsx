@@ -363,6 +363,13 @@ export default function BusinessEditProfileScreen() {
                   onChangeText={setStreetAddress}
                   state={state}
                   onFocus={onFieldFocus}
+                  onPlaceResolved={(info) => {
+                    // Fill City and State from the address the owner
+                    // actually picked, instead of leaving three fields to
+                    // disagree with each other.
+                    if (info.city)  setCity(info.city);
+                    if (info.state) setState(info.state);
+                  }}
                   placeholder="15 Adeola Odeku"
                 />
               </View>
