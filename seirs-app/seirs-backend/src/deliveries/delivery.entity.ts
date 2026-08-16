@@ -334,6 +334,15 @@ export class Delivery {
   @Column({ type: 'uuid', nullable: true })
   pickupStoreId: string | null;
 
+  /**
+   * Total paid to partner counters on this run (founder 2026-08-16).
+   * Kept on the delivery so the receipt can show it as its own line and
+   * partner payouts can be reconciled against what the sender actually
+   * paid, even after the fee value is later edited in the catalogue.
+   */
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  partnerHandlingNgn: number;
+
   // Proof of delivery
   @Column({ nullable: true })
   proofPhotoUrl: string;

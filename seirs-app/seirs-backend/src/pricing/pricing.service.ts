@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { FeesService } from '../fees/fees.service';
 import { RateCard } from './rate-card.entity';
 import { ServiceCategory } from './service-category.entity';
 import { DEFAULT_RATE_CARD, DEFAULT_SERVICE_CATEGORIES } from './pricing.seed';
@@ -36,6 +37,8 @@ export interface PriceBreakdown {
     discounts:      { bulk: number; recurring: number; loyalty: number; welcome: number };
     vatBase:        number;     // pre-VAT subtotal
     vat:            number;
+    /** Paid straight through to partner counters, not SEIRS revenue. */
+    partnerHandling: number;
     total:          number;     // final customer pays
   };
 
@@ -85,6 +88,14 @@ export interface PricingInput {
    * rules are enforced, and the vehicle's maxPackages cap applies.
    */
   packages?: Array<{ categoryCode: string; weightKg: number }>;
+  /**
+   * Number of parcel-to-counter handovers on this run (founder
+   * 2026-08-16). One for each parcel dropped at a pickup counter, plus
+   * one for each parcel delivered into a counter. Each is paid to the
+   * partner at the catalogue rate. Quoting and booking both pass this,
+   * so the review screen and the charge can never disagree.
+   */
+  partnerStoreTouches?: number;
   scheduledAt?:  Date;             // if undefined, treated as "now"
 
   /**
@@ -138,6 +149,7 @@ export class PricingService implements OnModuleInit {
     private readonly rateCardRepo: Repository<RateCard>,
     @InjectRepository(ServiceCategory)
     private readonly categoryRepo: Repository<ServiceCategory>,
+    private readonly fees: FeesService,
   ) {}
 
   /**
@@ -460,7 +472,18 @@ export class PricingService implements OnModuleInit {
     );
 
     const vat   = subtotalVatBase * Number(card.vatRate);
-    const total = subtotalVatBase + vat;
+    const total0 = subtotalVatBase + vat;
+
+    /**
+     * Partner counter handling. A disbursement to the shop, added AFTER
+     * VAT because SEIRS is passing it through rather than selling it, and
+     * excluded from seirsNet below for the same reason.
+     */
+    const partnerHandling = (input.partnerStoreTouches ?? 0) > 0
+      ? Math.round((await this.fees.getValueOr('partner_store_handling_ngn', 500))
+          * (input.partnerStoreTouches ?? 0) * 100) / 100
+      : 0;
+    const total = Math.round((total0 + partnerHandling) * 100) / 100;
 
     // ── Driver side ── (same regional multiplier, full fuel pass-through)
     const dBase           = (vehicleOv.base  ?? v.baseFareDriver)    * mult;
@@ -494,7 +517,7 @@ export class PricingService implements OnModuleInit {
         timeSurcharges: { night: nightSur, peak: peakSur, weekend: weekendSur },
         zoneSurcharges: { interState: interStateSur, longDistance: longDistanceSur, overnight: overnightSur, restricted: restrictedSur },
         discounts:      { bulk: bulkDisc, recurring: recurringDisc, loyalty: loyaltyDisc, welcome: welcomeDisc },
-        vatBase: subtotalVatBase, vat, total,
+        vatBase: subtotalVatBase, vat, partnerHandling, total,
       },
       driver: {
         base: dBase, distanceLabour: dDistanceLabour, distanceFuel: dDistanceFuel,

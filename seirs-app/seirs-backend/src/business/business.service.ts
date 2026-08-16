@@ -17,6 +17,7 @@ import { MailService } from '../mail/mail.service';
 import { PricingService } from '../pricing/pricing.service';
 import { PaymentsService } from '../payments/payments.service';
 import { RoutingService } from '../routing/routing.service';
+import { FeesService } from '../fees/fees.service';
 import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery.entity';
 import { DeliveriesService } from '../deliveries/deliveries.service';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
@@ -117,6 +118,7 @@ export class BusinessService {
     private paymentsService: PaymentsService,
     private pricing: PricingService,
     private routing: RoutingService,
+    private fees: FeesService,
     private dataSource: DataSource,
     @Inject(forwardRef(() => DeliveriesService))
     private deliveriesService: DeliveriesService,
@@ -523,6 +525,11 @@ export class BusinessService {
       isLongDistance: dto.isLongDistance,
       isRecurring:    dto.isRecurring,
       packages,
+      // One handover per parcel dropped at a pickup counter, plus one per
+      // parcel delivered into a counter.
+      partnerStoreTouches:
+        (dto.pickupStoreId ? dto.stops.length : 0) +
+        dto.stops.filter((st) => st.destinationStoreId).length,
     });
 
     /**
@@ -547,6 +554,28 @@ export class BusinessService {
     const packageShares = attributePackagePrices();
 
     /**
+     * Partner counter handling (founder 2026-08-16: "once the store is
+     * involved we have to pay them"). A counter is paid for every parcel
+     * it touches: once when the sender drops the run off there, and once
+     * for each parcel delivered into a counter. The rate is a catalogue
+     * row, so it moves without a deploy.
+     *
+     * It rides on the per-package share too, otherwise the receipt lines
+     * would not add up to what the sender is charged.
+     */
+    const handlingRate = await this.fees.getValueOr('partner_store_handling_ngn', 500);
+    const perStopHandling = dto.stops.map((st) =>
+      (dto.pickupStoreId ? handlingRate : 0) + (st.destinationStoreId ? handlingRate : 0));
+    // computePrice already added this to customer.total via
+    // partnerStoreTouches; this is the same money, split per package.
+    const partnerHandlingNgn = Number(breakdown.customer.partnerHandling ?? 0);
+    if (packageShares) {
+      for (let i = 0; i < packageShares.length; i++) {
+        packageShares[i] = Math.round((packageShares[i] + (perStopHandling[i] ?? 0)) * 100) / 100;
+      }
+    }
+
+    /**
      * Pay-per-booking (founder 2026-08-15: "we are not a bank"). If the
      * account still holds legacy credit covering the whole fare, it
      * drains here exactly as before. Otherwise the booking is created
@@ -554,7 +583,10 @@ export class BusinessService {
      * gate keeps it away from drivers until the webhook confirms escrow,
      * and the 1-hour expiry sweep cleans up abandoned checkouts.
      */
-    const total = breakdown.customer.total;
+    // Counter handling is already inside customer.total (added by the
+    // pricing engine from partnerStoreTouches), so this stays the single
+    // charged/escrowed/refunded figure.
+    const total = Number(breakdown.customer.total);
     const useCredit = Number(biz.walletBalance) >= total;
 
     // ── Transaction: Delivery + Stops + Wallet ─────────────────────────
@@ -589,6 +621,7 @@ export class BusinessService {
         pickupLat:      dto.pickupLat,
         pickupLng:      dto.pickupLng,
         pickupStoreId:  dto.pickupStoreId ?? null,
+        partnerHandlingNgn,
         // For single-stop bookings, populate dropoff* too so the legacy
         // single-leg dispatcher / driver app keeps working until phase 5
         // wires stops everywhere.

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { FeesModule } from '../fees/fees.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RateCard } from './rate-card.entity';
 import { ServiceCategory } from './service-category.entity';
@@ -16,7 +17,7 @@ import { PricingController } from './pricing.controller';
  * no-ops - admin updates come through the dashboard.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([RateCard, ServiceCategory])],
+  imports: [FeesModule, TypeOrmModule.forFeature([RateCard, ServiceCategory])],
   providers: [PricingService],
   controllers: [PricingController],
   exports: [PricingService],

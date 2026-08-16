@@ -24,7 +24,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
   ActivityIndicator, Alert, Image, Linking, KeyboardAvoidingView, Platform,
-  Keyboard, findNodeHandle,
+  Keyboard, Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -96,45 +96,113 @@ export default function SendPackageScreen() {
    */
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      const h = e.endCoordinates.height;
+      setKeyboardHeight(h);
+      // The height is only trustworthy here, so this is where the lift
+      // actually happens for a field focused while the keyboard was down.
+      const f = focusedRef.current;
+      if (f) setTimeout(() => ensureVisible(f.node, h, f.extra), 60);
+    });
     const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
     return () => { show.remove(); hide.remove(); };
   }, []);
 
-  const scrollNodeHandle = () => (scrollRef.current ? findNodeHandle(scrollRef.current) : null);
+  /**
+   * Live scroll offset. measureInWindow gives SCREEN coordinates, so we
+   * need to know where the list currently sits to turn a screen position
+   * into a scroll target.
+   */
+  const scrollY = useRef(0);
 
-  const handleFieldFocus = (e: any) => {
-    const node = e?.target;
-    const scrollNode = scrollNodeHandle();
-    if (!node || !scrollNode || typeof node.measureLayout !== 'function') return;
-    setTimeout(() => {
-      try {
-        node.measureLayout(
-          scrollNode,
-          (_x: number, y: number) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 110), animated: true }),
-          () => {},
-        );
-      } catch { /* best effort */ }
-    }, 80);
+  /**
+   * Keep the focused field above the keyboard.
+   *
+   * This used to call node.measureLayout(findNodeHandle(scroll), ...),
+   * which threw "ref.measureLayout must be called with a ref to a native
+   * component" on EVERY focus: this React Native version wants a ref
+   * there, not a node-handle number, and the red toast swallowed the
+   * keystrokes that followed (found on device 2026-08-16).
+   *
+   * measureInWindow needs no ancestor at all, so there is nothing to get
+   * wrong, and it answers the real question directly: is this field under
+   * the keyboard, and by how much?
+   */
+  /**
+   * How far, and whether you can actually walk in right now.
+   *
+   * "Closed now (08:00-18:00)" read as "come back later today" even when
+   * the counter never opens on a Sunday at all (seen on device
+   * 2026-08-16: a Mon-Sat shop at 13:50 Lagos). Say which kind of closed
+   * it is, and never print "0km away".
+   */
+  const storeMetaLine = (store: any) => {
+    const bits: string[] = [];
+    if (store.distanceKm != null) {
+      bits.push(store.distanceKm < 1 ? 'under 1km away' : `${store.distanceKm}km away`);
+    }
+    if (store.isOpenNow) {
+      bits.push(`Open now${store.closeTime ? ` until ${store.closeTime}` : ''}`);
+    } else {
+      const days: string[] = Array.isArray(store.operatingDays) ? store.operatingDays : [];
+      const today = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][
+        new Date(Date.now() + 60 * 60 * 1000).getUTCDay()   // Lagos, UTC+1
+      ];
+      const opensToday = days.length === 0 || days.some((d) => String(d).slice(0, 3) === today);
+      bits.push(opensToday
+        ? `Closed now${store.openTime ? ` · opens ${store.openTime}` : ''}`
+        : `Closed today${days.length ? ` · ${days.map((d) => String(d).slice(0, 3)).join(' ')} ${store.openTime}-${store.closeTime}` : ''}`);
+    }
+    return bits.join(' · ');
   };
 
+  /** Field waiting to be lifted clear, remembered until we know the height. */
+  const focusedRef = useRef<{ node: any; extra: number } | null>(null);
+
+  const ensureVisible = (node: any, kbH: number, extra = 0) => {
+    if (!node || typeof node.measureInWindow !== 'function' || !kbH) return;
+    node.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+      const kbTop   = Dimensions.get('window').height - kbH;
+      const overlap = (y + h + 24 + extra) - kbTop;
+      if (overlap > 0) {
+        scrollRef.current?.scrollTo({ y: Math.max(0, scrollY.current + overlap), animated: true });
+      }
+    });
+  };
+
+  /**
+   * `extra` reserves space BELOW the field. Address inputs drop a
+   * suggestion list underneath, and lifting only the input still left the
+   * suggestions under the keyboard, which is the complaint that started
+   * all of this.
+   */
+  const handleFieldFocus = (e: any, extra = 0) => {
+    const node = e?.target;
+    focusedRef.current = { node, extra };
+    // On the FIRST focus the keyboard is still opening and its height is
+    // unknown, so measuring now says "no overlap" and nothing scrolls
+    // (found on device 2026-08-16: the field stayed under the keyboard and
+    // you could not see what you typed). Only act here when the keyboard
+    // is already up; otherwise keyboardDidShow below does it with the real
+    // height.
+    if (keyboardHeight > 0) setTimeout(() => ensureVisible(node, keyboardHeight, extra), 80);
+  };
+
+  /** Bring a package card to the top of the viewport (validation jumps). */
   const scrollToPackage = (idx: number) => {
     const node = cardRefs.current[idx] as any;
-    const scrollNode = scrollNodeHandle();
-    if (!node || !scrollNode || typeof node.measureLayout !== 'function') return;
+    if (!node || typeof node.measureInWindow !== 'function') return;
     setTimeout(() => {
-      try {
-        node.measureLayout(
-          scrollNode,
-          (_x: number, y: number) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 70), animated: true }),
-          () => {},
-        );
-      } catch { /* best effort */ }
+      node.measureInWindow((_x: number, y: number) => {
+        // 150 keeps the card clear of the sticky step header.
+        scrollRef.current?.scrollTo({ y: Math.max(0, scrollY.current + y - 150), animated: true });
+      });
     }, 60);
   };
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
 
   // ── Rate card + catalog (prices + caps + category chips) ─────────────
   const [catalog, setCatalog] = useState<ServiceCategory[]>([]);
@@ -341,6 +409,14 @@ export default function SendPackageScreen() {
   // ── Schedule ─────────────────────────────────────────────────────────
   const [scheduleNow, setScheduleNow] = useState(true);
   const [scheduledHour, setScheduledHour] = useState<number | null>(null);
+
+  /**
+   * A refusal should stop shouting once it has been answered. Picking the
+   * hour the banner asked for left "Pick a pickup hour" on screen, which
+   * reads as "still broken" (found on device 2026-08-16). Any edit clears
+   * it; Continue re-validates and puts it back if the fix was not enough.
+   */
+  useEffect(() => { setError(null); }, [draft, scheduleNow, scheduledHour, step]);
   const [scheduledDayOffset, setScheduledDayOffset] = useState<0 | 1>(0);
 
   // ── Route distance (straight-line stand-in; server prices road km) ───
@@ -402,6 +478,11 @@ export default function SendPackageScreen() {
       weightKg: totalWeight,
       estimatedDwellMinutes: draft.stops.length * 4,
       packages,
+      // Counters are paid per parcel they touch, so the quote has to know
+      // about them or the review total would not match the charge.
+      partnerStoreTouches:
+        (draft.pickupStoreId ? draft.stops.length : 0) +
+        draft.stops.filter((s) => s.destinationStoreId).length,
       pickupCoords: draft.pickupLat != null ? { latitude: draft.pickupLat, longitude: draft.pickupLng } : undefined,
     } as any)
       .then(setQuote)
@@ -416,13 +497,24 @@ export default function SendPackageScreen() {
     if (!total || !n) return null;
     const pctOf = (code?: string | null) =>
       Number(catalog.find(c => c.code === (code ?? draft.categoryCode))?.surchargePercent ?? 0);
+    // Counter handling is a flat per-parcel disbursement, so it is split
+    // out first and given back to the exact parcels that incurred it,
+    // instead of being spread across the run by category weight.
+    const handling = Number(quote?.customer?.partnerHandling ?? 0);
+    const touches =
+      (draft.pickupStoreId ? draft.stops.length : 0) +
+      draft.stops.filter((s) => s.destinationStoreId).length;
+    const rate = touches > 0 ? handling / touches : 0;
+    const perStopHandling = draft.stops.map((s) =>
+      (draft.pickupStoreId ? rate : 0) + (s.destinationStoreId ? rate : 0));
+    const carriage = total - handling;
     const weights = draft.stops.map(s => 1 + pctOf(s.categoryCode) / 100);
     const wSum = weights.reduce((a, b) => a + b, 0);
-    const shares = weights.map(w => Math.round((total * w / wSum) * 100) / 100);
-    const drift = Math.round((total - shares.reduce((a, b) => a + b, 0)) * 100) / 100;
+    const shares = weights.map(w => Math.round((carriage * w / wSum) * 100) / 100);
+    const drift = Math.round((carriage - shares.reduce((a, b) => a + b, 0)) * 100) / 100;
     shares[n - 1] = Math.round((shares[n - 1] + drift) * 100) / 100;
-    return shares;
-  }, [quote, draft.stops, catalog, draft.categoryCode]);
+    return shares.map((s, i) => Math.round((s + (perStopHandling[i] ?? 0)) * 100) / 100);
+  }, [quote, draft.stops, catalog, draft.categoryCode, draft.pickupStoreId]);
 
   // ── Validation per step ──────────────────────────────────────────────
   const validateStep = (): { message: string; packageIndex?: number } | null => {
@@ -447,6 +539,15 @@ export default function SendPackageScreen() {
         return { message: 'Choose the counter you will drop the packages at.' };
       if (draft.pickupLat == null || draft.pickupLng == null) return { message: 'Pick the pickup address from the suggestions.' };
       if (!scheduleNow && scheduledHour == null) return { message: 'Pick a pickup hour, or switch to Send now.' };
+      // You cannot walk packages into a counter that is shut. Sending a
+      // driver there now would strand the run (found on device
+      // 2026-08-16: a Mon-Sat counter offered "Send now" on a Sunday).
+      if (draft.pickupMode === 'store' && scheduleNow) {
+        const st = (nearby[-1] ?? []).find((s: any) => s.id === draft.pickupStoreId);
+        if (st && st.isOpenNow === false) {
+          return { message: `${st.storeName} is closed right now. Schedule a time while it is open.` };
+        }
+      }
       return null;
     }
     if (step === 2) {
@@ -607,12 +708,9 @@ export default function SendPackageScreen() {
           contentContainerStyle={{ padding: 20, paddingBottom: 24 + insets.bottom + keyboardHeight }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
         >
-          {!!error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
 
           {/* Illustration header, the customer pattern. */}
           <View style={styles.stepHero}>
@@ -790,7 +888,7 @@ export default function SendPackageScreen() {
                     style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                     value={pkgQueries[i] ?? ''}
                     onChangeText={(v) => onChangePkgAddress(i, v)}
-                    onFocus={(e) => { setActiveField({ kind: 'pkg', idx: i }); handleFieldFocus(e); }}
+                    onFocus={(e) => { setActiveField({ kind: 'pkg', idx: i }); handleFieldFocus(e, 260); }}
                     placeholder={s.destinationMode === 'store'
                       ? 'Area the receiver is in, e.g. Yaba'
                       : 'Street, area, city'}
@@ -841,9 +939,7 @@ export default function SendPackageScreen() {
                                   {store.storeAddress}
                                 </Text>
                                 <Text style={[styles.storeMeta, { color: colors.textThird }]} numberOfLines={1}>
-                                  {store.distanceKm != null ? `${store.distanceKm}km away · ` : ''}
-                                  {store.isOpenNow ? 'Open now' : 'Closed now'}
-                                  {store.openTime ? ` (${store.openTime}-${store.closeTime})` : ''}
+                                  {storeMetaLine(store)}
                                   {store.bucket === 'full' ? ' · Full' : store.bucket === 'limited' ? ' · Nearly full' : ' · Space available'}
                                 </Text>
                               </View>
@@ -999,8 +1095,10 @@ export default function SendPackageScreen() {
                 style={[styles.input, { backgroundColor: colors.surfaceSecond, borderColor: colors.border, color: colors.text }]}
                 value={pickupQuery}
                 onChangeText={onChangePickup}
-                onFocus={(e) => { setActiveField({ kind: 'pickup' }); handleFieldFocus(e); }}
-                placeholder="Where the driver collects everything"
+                onFocus={(e) => { setActiveField({ kind: 'pickup' }); handleFieldFocus(e, 260); }}
+                placeholder={draft.pickupMode === 'store'
+                  ? 'Area you will drop from, e.g. Yaba'
+                  : 'Where the driver collects everything'}
                 placeholderTextColor={colors.textThird}
               />
               {renderSuggestions('pickup')}
@@ -1046,9 +1144,7 @@ export default function SendPackageScreen() {
                             <Text style={[styles.storeName, { color: colors.text }]} numberOfLines={1}>{store.storeName}</Text>
                             <Text style={[styles.storeMeta, { color: colors.textSecond }]} numberOfLines={1}>{store.storeAddress}</Text>
                             <Text style={[styles.storeMeta, { color: colors.textThird }]} numberOfLines={1}>
-                              {store.distanceKm != null ? (store.distanceKm < 1 ? 'under 1km away · ' : `${store.distanceKm}km away · `) : ''}
-                              {store.isOpenNow ? 'Open now' : 'Closed now'}
-                              {store.openTime ? ` (${store.openTime}-${store.closeTime})` : ''}
+                              {storeMetaLine(store)}
                             </Text>
                           </View>
                           <Icon name="ChevronRight" size={16} color={colors.textThird} />
@@ -1295,6 +1391,21 @@ export default function SendPackageScreen() {
                     <Text style={styles.quoteErrTxt}>{quoteError} Tap to try again.</Text>
                   </Pressable>
                 )}
+                {Number(quote?.customer?.partnerHandling ?? 0) > 0 && (
+                  <View style={styles.lineRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.lineName, { color: colors.text }]} numberOfLines={1}>
+                        Partner counter handling
+                      </Text>
+                      <Text style={[styles.lineSub, { color: colors.textThird }]} numberOfLines={2}>
+                        Paid to the shop for every parcel it takes in or hands over. Already included in the package prices above.
+                      </Text>
+                    </View>
+                    <Text style={[styles.linePrice, { color: colors.textSecond }]}>
+                      ₦{Math.round(Number(quote.customer.partnerHandling)).toLocaleString()}
+                    </Text>
+                  </View>
+                )}
                 <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
                   <Text style={[styles.totalLabel, { color: colors.text }]}>Total · one payment</Text>
                   <Text style={[styles.totalValue, { color: colors.primary }]}>
@@ -1313,6 +1424,17 @@ export default function SendPackageScreen() {
 
         {/* Footer CTA */}
         <View style={[styles.footer, { borderTopColor: colors.border, paddingBottom: 12 + insets.bottom, backgroundColor: colors.background }]}>
+          {/* The reason lives WITH the button that was refused. The error
+              box at the top of the scroll was useless the moment we
+              started jumping to the offending package: the sender saw the
+              right card and no explanation (found on device 2026-08-16).
+              Here it is always on screen, whatever the scroll position. */}
+          {!!error && (
+            <View style={styles.footerError}>
+              <Icon name="AlertCircle" size={15} color="#DC2626" />
+              <Text style={styles.footerErrorText}>{error}</Text>
+            </View>
+          )}
           <Pressable
             style={[styles.cta, { backgroundColor: colors.primary }, loading && { opacity: 0.6 }]}
             disabled={loading}
@@ -1442,6 +1564,12 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 14, fontWeight: '700' },
   totalValue: { fontSize: 18, fontWeight: '900' },
   footer: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1 },
+  footerError: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#EF444418', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10,
+  },
+  footerErrorText: { flex: 1, color: '#DC2626', fontSize: 13, fontWeight: '600' },
   cta:     { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   ctaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

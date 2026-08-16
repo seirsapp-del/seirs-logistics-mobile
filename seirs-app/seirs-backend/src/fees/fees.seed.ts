@@ -31,6 +31,15 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'One-time fee for returning an unclaimed package to the sender after 72 hours of overstay.',
     category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 500 },
 
+  // Founder decision 2026-08-16: whenever a partner counter touches a
+  // parcel, the counter gets paid. Charged PER PARCEL PER COUNTER, so a
+  // parcel dropped at counter A and delivered to counter B carries two
+  // (both shops did the work). Set to 0 to switch counters off as a
+  // paid service without a code change.
+  { key: 'partner_store_handling_ngn',  name: 'Partner Counter Handling Fee',
+    description: 'Paid to a partner store each time it hands over or receives a parcel. Charged per parcel per counter, added to the sender\'s total and shown as its own receipt line.',
+    category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 500 },
+
   // ── Surge ──────────────────────────────────────────────────────────────
   { key: 'surge_multiplier_peak',       name: 'Surge Multiplier (peak)',
     description: 'Auto-applied multiplier on base fare during demand spikes. Platform keeps 50% of the surge slice.',

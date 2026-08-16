@@ -154,6 +154,11 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "deliveries"
           ADD COLUMN IF NOT EXISTS "pickupStoreId" uuid NULL
       `);
+      // What the partner counters earned on this run (2026-08-16).
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "partnerHandlingNgn" numeric(12,2) NOT NULL DEFAULT 0
+      `);
       // Per-package destination partner store (2026-08-16).
       await this.ds.query(`
         ALTER TABLE "delivery_stops"

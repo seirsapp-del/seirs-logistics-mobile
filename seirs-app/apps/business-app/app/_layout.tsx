@@ -41,8 +41,6 @@ function NavigationGuard() {
     if (isLoading) return;
 
     const inAuth    = segments[0] === '(auth)';
-    const inBiz     = segments[0] === '(business)';
-    const inPartner = segments[0] === '(partner)';
     // Deep-linked from the password-reset email (seirsbusiness://
     // reset-password?token=...). Must stay reachable while signed out.
     // Cast: expo-router's generated route union lags new files until
@@ -54,13 +52,20 @@ function NavigationGuard() {
       return;
     }
 
-    if (isAuthenticated && !inReset) {
-      if (businessRole === 'sender' && !inBiz) {
-        router.replace('/(business)' as any);
-      } else if (businessRole === 'partner' && !inPartner) {
-        router.replace('/(partner)' as any);
-      }
+    // Signed in but still sitting on an auth screen: send them into the
+    // app. This used to switch on businessRole === 'sender' | 'partner'
+    // and silently did NOTHING for any other value. The backend also
+    // issues 'owner' for the account owner, so owners tapped Sign In,
+    // authenticated fine, and stayed on the login screen with no error
+    // (found on device 2026-08-16). Anything that is not a partner lands
+    // on the business side, which is home for every business account.
+    if (isAuthenticated && !inReset && inAuth) {
+      router.replace(businessRole === 'partner' ? '/(partner)' as any : '/(business)' as any);
     }
+    // Deliberately no business <-> partner bouncing once inside: partner
+    // is a capability of a business account, not a separate app, so the
+    // user moves between the two themselves (drawer in, "Back to
+    // business" out). The old rule fought those controls.
   }, [isAuthenticated, businessRole, isLoading, segments]);
 
   return null;
@@ -135,7 +140,12 @@ export default function RootLayout() {
   const [i18nReady, setI18nReady] = useState(false);
 
   useEffect(() => {
-    initI18n().then(() => setI18nReady(true));
+    // A rejected init used to leave i18nReady false forever, which holds
+    // the splash screen up with no error anywhere (founder 2026-08-16).
+    // Render with fallback strings instead of never rendering at all.
+    initI18n()
+      .then(() => setI18nReady(true))
+      .catch((e) => { console.warn('i18n init failed, continuing:', e?.message); setI18nReady(true); });
   }, []);
 
   if (!i18nReady) return null;
