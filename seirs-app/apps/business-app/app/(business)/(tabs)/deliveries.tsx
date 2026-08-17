@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'expo-router';
 import {
   View, Text, Pressable, StyleSheet, FlatList, TextInput, ActivityIndicator, Alert,
 } from 'react-native';
@@ -52,6 +53,7 @@ export default function DeliveriesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [status,     setStatus]     = useState('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const router = useRouter();
   const [search,     setSearch]     = useState('');
   const [page,       setPage]       = useState(1);
   const [hasMore,    setHasMore]    = useState(false);
@@ -100,8 +102,14 @@ export default function DeliveriesScreen() {
       ?? item.pickupAddress
       ?? '-';
     const isCancellable = item.status === 'pending' || item.status === 'assigned';
+    // The card could not be opened at all, so a sender could see "2
+    // stops" and never learn which parcel was where, or get the code
+    // their receiver needs (founder 2026-08-17).
     return (
-      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Pressable
+        onPress={() => router.push(`/(business)/delivery/${item.id}` as any)}
+        style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      >
         <View style={styles.cardTop}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.trackNum, { color: colors.text }]}>
@@ -142,7 +150,7 @@ export default function DeliveriesScreen() {
             </Pressable>
           )}
         </View>
-      </View>
+      </Pressable>
     );
   };
 

@@ -410,20 +410,42 @@ export class BusinessService {
 
   // ─── Business Sender: Deliveries ────────────────────────────────────────────
 
-  async getDeliveries(userId: string, page = 1, status?: string) {
+  /**
+   * A sender's own runs, optionally filtered.
+   *
+   * The app has always sent a search term and this ignored it, so the
+   * box reading "Search by tracking number" filtered nothing at all
+   * (founder 2026-08-17, typing a run code and watching every run stay
+   * on screen). Matching covers the run code, any package code inside
+   * it, a receiver's name and the addresses, since those are what a
+   * sender actually remembers.
+   */
+  async getDeliveries(userId: string, page = 1, status?: string, search?: string) {
     const take = 20;
     const skip = (page - 1) * take;
 
-    const where: any = { customer: { id: userId } };
-    if (status) where.status = status;
+    const qb = this.deliveriesRepo.createQueryBuilder('d')
+      .leftJoinAndSelect('d.stops', 'stops')
+      .where('d."customerId" = :userId', { userId })
+      .orderBy('d.createdAt', 'DESC')
+      .skip(skip)
+      .take(take);
 
-    const [items, total] = await this.deliveriesRepo.findAndCount({
-      where,
-      relations: ['stops'],
-      order: { createdAt: 'DESC' },
-      take,
-      skip,
-    });
+    if (status) qb.andWhere('d.status = :status', { status });
+
+    const q = (search ?? '').trim();
+    if (q) {
+      qb.andWhere(`(
+             d."trackingCode"            ILIKE :like
+          OR stops."packageTrackingCode" ILIKE :like
+          OR stops."receiverFirstName"   ILIKE :like
+          OR stops."recipientName"       ILIKE :like
+          OR stops.address               ILIKE :like
+          OR d."pickupAddress"           ILIKE :like
+        )`, { like: `%${q}%` });
+    }
+
+    const [items, total] = await qb.getManyAndCount();
 
     // Ensure stops are sorted by sequenceOrder for the UI.
     items.forEach(d => {

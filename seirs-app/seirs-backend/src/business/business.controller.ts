@@ -33,8 +33,9 @@ export class BusinessController {
     @CurrentUser() user: User,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('status') status?: string,
+    @Query('search') search?: string,
   ) {
-    return this.svc.getDeliveries(user.id, page, status);
+    return this.svc.getDeliveries(user.id, page, status, search);
   }
 
   @Get('business/deliveries/:id')
