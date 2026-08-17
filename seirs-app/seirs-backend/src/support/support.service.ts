@@ -23,6 +23,14 @@ const MAX_TICKETS_OPENED_PER_24H   = 10;
 // Idle threshold before a ticket auto-closes. 7 days matches the
 // support-toolkit decisions.
 const AUTO_CLOSE_IDLE_DAYS = 7;
+/**
+ * How long a CLOSED ticket is kept before it is deleted outright
+ * (founder 2026-08-17: "after a ticket is closed can you make it auto
+ * delete in 7 day, i think thats enough time"). Closing only hides a
+ * ticket from the working queue; the thread and its messages stayed on
+ * the user's phone forever, and nothing ever removed them.
+ */
+const PURGE_CLOSED_AFTER_DAYS = 7;
 
 // Which admin sub-roles can act as support agents. Kept as a set so
 // tests can pass a stub user without hitting the admin service.
@@ -291,6 +299,38 @@ export class SupportService {
    * Marks tickets idle for AUTO_CLOSE_IDLE_DAYS as closed. Cheap
    * indexed scan on (status, lastMessageAt). Safe to run repeatedly.
    */
+  /**
+   * Deletes tickets closed longer than PURGE_CLOSED_AFTER_DAYS ago, with
+   * their messages.
+   *
+   * The clock starts at whichever close stamp exists, falling back to
+   * lastMessageAt so a ticket closed by an agent (which sets resolvedAt,
+   * not autoClosedAt) is not kept forever. Messages go first: they are
+   * linked by a plain ticketId column rather than a foreign key, so
+   * nothing would cascade and they would be orphaned rows.
+   */
+  async purgeClosedTickets(): Promise<{ deleted: number }> {
+    const cutoff = new Date(Date.now() - PURGE_CLOSED_AFTER_DAYS * 86_400_000);
+    const doomed: Array<{ id: string }> = await this.tickets.query(
+      `SELECT id FROM "support_tickets"
+        WHERE status = 'closed'
+          AND COALESCE("autoClosedAt", "resolvedAt", "lastMessageAt") < $1
+        LIMIT 500`,
+      [cutoff],
+    );
+    if (!doomed.length) return { deleted: 0 };
+
+    const ids = doomed.map((t) => t.id);
+    await this.messages.query(
+      `DELETE FROM "chat_messages" WHERE "ticketId" = ANY($1::uuid[])`, [ids],
+    );
+    await this.tickets.query(
+      `DELETE FROM "support_tickets" WHERE id = ANY($1::uuid[])`, [ids],
+    );
+    this.logger.log(`Purged ${ids.length} ticket(s) closed over ${PURGE_CLOSED_AFTER_DAYS} days ago`);
+    return { deleted: ids.length };
+  }
+
   async sweepIdleTickets(): Promise<{ closed: number }> {
     const cutoff = new Date(Date.now() - AUTO_CLOSE_IDLE_DAYS * 86_400_000);
     const result = await this.tickets

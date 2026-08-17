@@ -22,7 +22,14 @@ export class DocumentsController {
     return this.docs.listMine(user.id);
   }
 
-  @UseGuards(AdminGuard)
+  /**
+   * JwtAuthGuard must run first. AdminGuard alone reads req.user.role,
+   * and nothing had populated req.user, so this rejected every caller
+   * with "Admin access required" including a signed-in super admin
+   * (founder 2026-08-17, trying to send a document to a user). Every
+   * other controller carries the pair at class level; this one did not.
+   */
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Post('admin-send/:userId')
   adminSend(
     @Param('userId') userId: string,

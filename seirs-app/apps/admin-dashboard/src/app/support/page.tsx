@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Inbox, MessageSquare, RefreshCw, CheckCircle2, XCircle, User,
-  Building2, Bike, Filter, Send, AlertCircle, UserPlus,
+  Building2, Bike, Filter, Send, AlertCircle, UserPlus, Paperclip,
 } from 'lucide-react';
 import Link from 'next/link';
 import { adminApi } from '@/lib/api';
@@ -124,6 +124,32 @@ export default function SupportInboxPage() {
   }, []);
 
   useEffect(() => { if (selectedId) loadThread(selectedId); }, [selectedId, loadThread]);
+
+  /**
+   * Send a file back to the customer.
+   *
+   * Users could attach from day one; agents could not, because the agent
+   * endpoint takes text only and this bar had no control (founder
+   * 2026-08-17). Support answering a billing question could not send the
+   * receipt. Uses the same "📎 <url>" body the apps already parse and
+   * render, so no client change is needed.
+   */
+  const [attaching, setAttaching] = useState(false);
+
+  const attachFile = async (file: File) => {
+    if (!selectedId || !file) return;
+    setAttaching(true);
+    try {
+      const { url } = await adminApi.upload.image(file, 'documents');
+      await adminApi.support.reply(selectedId, `📎 ${url}`);
+      await loadThread(selectedId);
+      await loadQueue();
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not attach that file');
+    } finally {
+      setAttaching(false);
+    }
+  };
 
   const sendReply = async () => {
     if (!selectedId || !reply.trim() || sending) return;
@@ -495,6 +521,24 @@ export default function SupportInboxPage() {
                       rows={2}
                       className="flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
                     />
+                    <label
+                      className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                      title="Attach an image or PDF (max 10MB)"
+                    >
+                      <Paperclip size={14} />
+                      {attaching ? 'Sending…' : 'Attach'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,application/pdf"
+                        className="hidden"
+                        disabled={attaching}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) attachFile(f);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
                     <button
                       onClick={sendReply}
                       disabled={!reply.trim() || sending}

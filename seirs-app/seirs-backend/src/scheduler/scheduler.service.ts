@@ -88,6 +88,24 @@ export class SchedulerService {
     }
   }
 
+  /**
+   * Daily: delete tickets closed more than a week ago, and their
+   * messages. Closing a ticket only takes it out of the working queue;
+   * the thread stayed on the user's phone forever until this
+   * (founder 2026-08-17). Runs at 03:00 so a large delete never lands
+   * during Lagos trading hours.
+   */
+  @Cron('0 3 * * *')
+  async purgeClosedSupportTickets() {
+    if (!this.supportService?.purgeClosedTickets) return;
+    try {
+      const { deleted } = await this.supportService.purgeClosedTickets();
+      if (deleted > 0) this.logger.log(`Purged ${deleted} closed support ticket(s)`);
+    } catch (e: any) {
+      this.logger.warn(`support purge skipped: ${e?.message ?? e}`);
+    }
+  }
+
   // Every hour: log a platform health summary
   @Cron(CronExpression.EVERY_HOUR)
   async logHealthSummary() {
