@@ -148,8 +148,10 @@ export default function PartnerDashboard() {
                   <Icon name="ScanLine" size={24} color={colors.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.scanLabel, { color: colors.text }]}>Quick Scan (legacy)</Text>
-                  <Text style={[styles.scanSub, { color: colors.textSecond }]}>Mark a BusinessPackage as collected (older flow)</Text>
+                  {/* "Quick Scan (legacy)" and "BusinessPackage" are our
+                      words, not a shopkeeper's (founder QA 2026-08-17). */}
+                  <Text style={[styles.scanLabel, { color: colors.text }]}>Scan a package code</Text>
+                  <Text style={[styles.scanSub, { color: colors.textSecond }]}>Mark a package collected by typing or scanning its code</Text>
                 </View>
                 <Icon name="ChevronRight" size={18} color={colors.textThird} />
               </Pressable>

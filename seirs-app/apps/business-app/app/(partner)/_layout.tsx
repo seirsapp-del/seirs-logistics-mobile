@@ -76,6 +76,10 @@ export default function PartnerLayout() {
 
       {/* Reachable screens that must NOT occupy a tab slot. */}
       <Tabs.Screen name="messages"         options={{ href: null }} />
+      {/* Nested routes register as their own tabs too, so the raw path
+          "messages/[chatId]" was showing in the bar's overflow as if it
+          were a destination (founder QA 2026-08-17). */}
+      <Tabs.Screen name="messages/[chatId]" options={{ href: null }} />
       <Tabs.Screen name="billing"          options={{ href: null }} />
       <Tabs.Screen name="capacity"         options={{ href: null }} />
       <Tabs.Screen name="storage"          options={{ href: null }} />

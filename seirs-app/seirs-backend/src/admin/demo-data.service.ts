@@ -268,7 +268,21 @@ export class DemoDataService {
     if (!store.storeCode) {
       store.storeCode = `PART-${secureCode(4)}`;
     }
-    return this.storeRepo.save(store);
+    const saved = await this.storeRepo.save(store);
+
+    /**
+     * The link has to point BOTH ways. The store carried userId, but the
+     * user's partnerStoreId was never set, and every partner endpoint
+     * resolves the store through user.partnerStoreId. The whole partner
+     * side therefore answered 403 "Partner store not found": empty store
+     * settings, zero earnings, zero capacity and a dashboard reading
+     * "Code pending approval" for a counter that was live and listed in
+     * customer searches (found 2026-08-17).
+     */
+    if (owner.partnerStoreId !== saved.id) {
+      await this.usersRepo.update(owner.id, { partnerStoreId: saved.id });
+    }
+    return saved;
   }
 
   // ── Delivery history + earnings ledger ──────────────────────────────────
