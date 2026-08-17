@@ -52,14 +52,23 @@ export default function ReceiveDropoffScreen() {
 
   // ── Scan ─────────────────────────────────────────────────────────────────
 
-  const lookupCode = async (code: string) => {
+  /**
+   * `resumeScan` decides where a failure leaves the user.
+   *
+   * Both error paths used to force scanning back on. From the camera that
+   * is right, but from manual entry it re-triggered the permission gate,
+   * which replaced the whole screen and swallowed the error message that
+   * had just been set: a shopkeeper typing a wrong code was silently
+   * dumped on "Camera Access Required" (founder QA 2026-08-17).
+   */
+  const lookupCode = async (code: string, resumeScan = true) => {
     setLoading(true);
     setError('');
     try {
       const res = await partnerApi.storeDropoffByCode(code);
       if (res.status !== 'scheduled') {
         setError(`This drop-off is already in status: ${res.status}. Cannot receive again.`);
-        setScanning(true);
+        if (resumeScan) setScanning(true);
         return;
       }
       setDropoff(res);
@@ -67,7 +76,7 @@ export default function ReceiveDropoffScreen() {
       setStep('details');
     } catch (e: any) {
       setError(e.message ?? 'Drop-off not found. Check the code.');
-      setScanning(true);
+      if (resumeScan) setScanning(true);
     } finally {
       setLoading(false);
       cooldown.current = false;
@@ -85,7 +94,7 @@ export default function ReceiveDropoffScreen() {
 
   const handleManualLookup = async () => {
     if (!manualCode.trim()) return;
-    await lookupCode(manualCode.trim().toUpperCase());
+    await lookupCode(manualCode.trim().toUpperCase(), false);
   };
 
   // ── Details: weight + photo ─────────────────────────────────────────────

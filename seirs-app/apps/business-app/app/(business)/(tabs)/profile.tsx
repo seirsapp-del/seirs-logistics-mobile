@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/Icon';
 import { useAuth } from '@/context/AuthContext';
 import { uploadApi, usersApi } from '@/services/api';
-import { useColors } from '@/context/ThemeContext';
+import { useColors, useTheme } from '@/context/ThemeContext';
 
 const SITE = 'https://seirs-website.vercel.app';
 
@@ -24,6 +24,7 @@ export default function BusinessProfileTab() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const { isDark, setTheme, useSystemTheme } = useTheme();
   const { t } = useTranslation();
   const { user, logout, refresh } = useAuth();
   const [qrVisible, setQrVisible] = useState(false);
@@ -95,6 +96,23 @@ export default function BusinessProfileTab() {
         // screen, and there is nothing to configure: everything about a
         // delivery, a payment or the account always sends.
         { icon: 'Globe', label: t('drawer.language',      { defaultValue: 'Language' }),      onPress: () => router.push('/(business)/language' as any) },
+        /**
+         * There was no way to change the theme at all. An older build had
+         * a toggle, so an account could be pinned to light permanently
+         * while the phone sat in dark mode, with nothing in the UI to
+         * undo it (found 2026-08-17). This cycles Light, Dark and Follow
+         * phone, and says which is active.
+         */
+        { icon: isDark ? 'Moon' : 'Sun',
+          label: `Appearance: ${isDark ? 'Dark' : 'Light'}`,
+          onPress: () => {
+            Alert.alert('Appearance', 'How should the app look?', [
+              { text: 'Follow my phone', onPress: () => { void useSystemTheme(); } },
+              { text: 'Light',           onPress: () => setTheme('light') },
+              { text: 'Dark',            onPress: () => setTheme('dark') },
+              { text: 'Cancel', style: 'cancel' },
+            ]);
+          } },
       ],
     },
     {
