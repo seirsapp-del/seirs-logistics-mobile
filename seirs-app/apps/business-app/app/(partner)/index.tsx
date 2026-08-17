@@ -9,7 +9,7 @@ import { Icon } from '@/components/Icon';
 import { Drawer } from '@/components/Drawer';
 import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
-import { useColors } from '@/context/ThemeContext';
+import { useColors, useTheme } from '@/context/ThemeContext';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
@@ -18,6 +18,7 @@ export default function PartnerDashboard() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useColors();
+  const { isDark } = useTheme();
   const { user } = useAuth();
   const [data,       setData]       = useState<any>(null);
   const [loading,    setLoading]    = useState(true);
@@ -111,29 +112,34 @@ export default function PartnerDashboard() {
 
               {/* Amber receive card: semantic warm-coloured action */}
               <Pressable
-                style={[styles.scanBtn, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}
+                /* Was a cream #FFF7ED card with white icon circles: a
+                   light-mode panel glaring out of a dark screen while
+                   every other card used the shared palette (founder
+                   2026-08-17). The amber still marks "receive", it is
+                   just tinted onto the surface instead of replacing it. */
+                style={[styles.scanBtn, { backgroundColor: isDark ? '#D9770622' : '#FFF7ED', borderColor: isDark ? '#D9770655' : '#FED7AA' }]}
                 onPress={() => router.push('/(partner)/receive-dropoff' as any)}
               >
-                <View style={[styles.scanIcon, { backgroundColor: '#fff' }]}>
+                <View style={[styles.scanIcon, { backgroundColor: isDark ? colors.surface : '#fff' }]}>
                   <Icon name="PackagePlus" size={24} color="#D97706" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.scanLabel, { color: '#0F2B4C' }]}>Receive Drop-off</Text>
-                  <Text style={[styles.scanSub, { color: '#92400E' }]}>Sender walking in to drop a package at your store</Text>
+                  <Text style={[styles.scanLabel, { color: colors.text }]}>Receive Drop-off</Text>
+                  <Text style={[styles.scanSub, { color: isDark ? '#F59E0B' : '#92400E' }]}>Sender walking in to drop a package at your store</Text>
                 </View>
                 <Icon name="ChevronRight" size={18} color="#9CA3AF" />
               </Pressable>
 
               {/* Green release card: semantic success-coloured action */}
               <Pressable
-                style={[styles.scanBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
+                style={[styles.scanBtn, { backgroundColor: isDark ? '#16A34A22' : '#F0FDF4', borderColor: isDark ? '#16A34A55' : '#BBF7D0' }]}
                 onPress={() => router.push('/(partner)/release-pickup' as any)}
               >
-                <View style={[styles.scanIcon, { backgroundColor: '#fff' }]}>
+                <View style={[styles.scanIcon, { backgroundColor: isDark ? colors.surface : '#fff' }]}>
                   <Icon name="PackageCheck" size={24} color="#16A34A" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.scanLabel, { color: '#0F2B4C' }]}>Release to Recipient</Text>
+                  <Text style={[styles.scanLabel, { color: colors.text }]}>Release to Recipient</Text>
                   <Text style={[styles.scanSub, { color: '#14532D' }]}>Hand a package to recipient with ID + OTP verification</Text>
                 </View>
                 <Icon name="ChevronRight" size={18} color="#9CA3AF" />

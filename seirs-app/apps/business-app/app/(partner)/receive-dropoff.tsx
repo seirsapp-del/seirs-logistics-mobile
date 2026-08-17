@@ -174,7 +174,14 @@ export default function ReceiveDropoffScreen() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (!permission) return <View style={[styles.centered, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>;
-  if (!permission.granted && step === 'scan') {
+  /**
+   * The gate ignored `scanning`, so "Use manual code entry instead" set
+   * the flag and the same screen re-rendered: a shopkeeper who declines
+   * camera access, or whose camera is broken, could not receive a
+   * drop-off at all despite the screen promising manual entry (founder
+   * QA 2026-08-17).
+   */
+  if (!permission.granted && step === 'scan' && scanning) {
     return (
       <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <Icon name="Camera" size={48} color={colors.textThird} />
