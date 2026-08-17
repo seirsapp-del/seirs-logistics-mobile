@@ -169,7 +169,7 @@ export default function SupportTicketThreadScreen() {
         </View>
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
         {loading && !thread ? (
           <View style={styles.center}><ActivityIndicator color={theme.primary} /></View>
         ) : (
@@ -197,7 +197,12 @@ export default function SupportTicketThreadScreen() {
                   </View>
                 );
               }
-              const isMe   = item.senderId === myUserId;
+              // The API returns the sender as an OBJECT and has no senderId
+              // field, so this compared undefined to the user id and every
+              // message rendered as the agent's: a thread where nobody could
+              // tell who said what (founder 2026-08-17). senderId is kept as
+              // a fallback for any older payload.
+              const isMe = ((item as any).sender?.id ?? (item as any).senderId) === myUserId;
               const attachedUrl = parseAttached(item.body);
               const hasImage    = !!attachedUrl;
               return (
