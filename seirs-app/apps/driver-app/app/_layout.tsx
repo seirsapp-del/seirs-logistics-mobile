@@ -20,6 +20,24 @@ import {
   setReporterUserIdGetter,
 } from '@seirs/shared/services/errorReporter';
 
+import { Text as RNText, TextInput as RNTextInput } from 'react-native';
+
+/**
+ * Cap how far system font scaling can stretch the UI.
+ *
+ * At 1.5x the dashboard broke badly on device: headlines overlapped
+ * their subtitles, "Stories" rendered as "Stor", "Send a Package" as
+ * "Send a.", and every tab label truncated (tested 2026-08-17). Text
+ * still grows for readers who need it, which matters, but stops before
+ * it tears the layout apart. Raising this means auditing the
+ * fixed-height rows first.
+ */
+const MAX_FONT_SCALE = 1.25;
+// @ts-ignore defaultProps is the supported way to set this app-wide
+RNText.defaultProps = { ...(RNText.defaultProps ?? {}), maxFontSizeMultiplier: MAX_FONT_SCALE };
+// @ts-ignore
+RNTextInput.defaultProps = { ...(RNTextInput.defaultProps ?? {}), maxFontSizeMultiplier: MAX_FONT_SCALE };
+
 configureApi(API_BASE);
 
 configureErrorReporter({

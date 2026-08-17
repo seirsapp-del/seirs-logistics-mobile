@@ -13,7 +13,7 @@
  */
 import {
   View, Text, StyleSheet, FlatList, Pressable, TextInput, StatusBar,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -205,14 +205,32 @@ export default function SupportTicketThreadScreen() {
               const isMe = ((item as any).sender?.id ?? (item as any).senderId) === myUserId;
               const attachedUrl = parseAttached(item.body);
               const hasImage    = !!attachedUrl;
+              const isDoc       = !!attachedUrl && /\.pdf(\?|$)/i.test(attachedUrl);
               return (
                 <View style={[styles.bubbleWrap, isMe && styles.bubbleWrapMe]}>
-                  {hasImage ? (
+                  {hasImage && !isDoc ? (
                     <Pressable
                       onPress={() => setViewerUrl(attachedUrl!)}
                       style={[styles.imageBubble, { borderColor: theme.border, backgroundColor: isDark ? '#1A1A1A' : '#F1F5F9' }]}
                     >
                       <Image source={{ uri: attachedUrl! }} style={styles.imageThumb} resizeMode="cover" />
+                    </Pressable>
+                  ) : hasImage && isDoc ? (
+                    /* A PDF is not an image. Rendering every attachment
+                       through <Image> left an empty black frame where the
+                       document should be (founder 2026-08-17, support sent
+                       a PDF and it arrived blank). */
+                    <Pressable
+                      onPress={() => Linking.openURL(attachedUrl!)}
+                      style={[styles.docBubble, { borderColor: theme.border, backgroundColor: isDark ? '#1A1A1A' : '#F1F5F9' }]}
+                    >
+                      <Ionicons name="document-text-outline" size={22} color={theme.primary} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.docName, { color: theme.text }]} numberOfLines={1}>
+                          {decodeURIComponent((attachedUrl!.split('/').pop() ?? 'Document').split('?')[0])}
+                        </Text>
+                        <Text style={[styles.docHint, { color: theme.textThird }]}>Tap to open</Text>
+                      </View>
                     </Pressable>
                   ) : (
                     <View style={[
@@ -301,6 +319,9 @@ const styles = StyleSheet.create({
 
   imageBubble: { maxWidth: 220, borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1 },
   imageThumb:  { width: 220, height: 220 },
+  docBubble:   { flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: 260, padding: 12, borderRadius: 14, borderWidth: 1 },
+  docName:     { fontSize: 13, fontWeight: '700' },
+  docHint:     { fontSize: 11, marginTop: 2 },
 
   systemWrap: { alignItems: 'center', marginVertical: 4 },
   systemPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
