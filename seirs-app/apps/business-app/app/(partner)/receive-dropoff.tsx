@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, Vibration,
-  TextInput, ScrollView, KeyboardAvoidingView, Platform, Image,
+  TextInput, ScrollView, KeyboardAvoidingView, Platform, Image, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -17,6 +17,27 @@ import { useColors } from '@/context/ThemeContext';
 
 type Step = 'scan' | 'details' | 'confirm';
 
+/**
+ * Lift for the on-screen keyboard.
+ *
+ * The manual-code sheet is pinned to the bottom of the screen, so when
+ * the keyboard opened it covered the sheet ENTIRELY: the label, the
+ * input and the Look up button all sat behind it and the partner typed
+ * a code they could not see (founder, on device: "the last field the
+ * keyboard was above the typing space"). KeyboardAvoidingView does not
+ * help an absolutely-positioned child, so the sheet is moved by the
+ * measured keyboard height instead.
+ */
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+  return height;
+}
+
 interface Dropoff {
   id:             string;
   dropCode:       string;
@@ -28,10 +49,13 @@ interface Dropoff {
   declaredValueNgn?: number;
   status:         string;
   mode:           string;
+  recipientAddress?:     string | null;
+  destinationStoreName?: string | null;
 }
 
 export default function ReceiveDropoffScreen() {
   const insets = useSafeAreaInsets();
+  const kbHeight = useKeyboardHeight();
   const router = useRouter();
   const colors = useColors();
   const [permission, requestPermission] = useCameraPermissions();
@@ -46,6 +70,9 @@ export default function ReceiveDropoffScreen() {
   const [photoUri,        setPhotoUri]        = useState('');
   const [photoUploadedUrl, setPhotoUploadedUrl] = useState('');
   const [senderOtp,       setSenderOtp]       = useState('');
+  const [otpSentTo,       setOtpSentTo]       = useState('');
+  const [sendingOtp,      setSendingOtp]      = useState(false);
+  const [resendIn,        setResendIn]        = useState(0);
 
   const lastScan = useRef<string | null>(null);
   const cooldown = useRef(false);
@@ -121,6 +148,30 @@ export default function ReceiveDropoffScreen() {
     }
   };
 
+  // Ticks the resend cooldown down. Staff hammering the button would
+  // otherwise trip the server's 3-per-minute limit and lock the sender
+  // out of their own code while they are standing at the counter.
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
+  const sendOtp = async () => {
+    if (!dropoff || sendingOtp || resendIn > 0) return;
+    setSendingOtp(true);
+    setError('');
+    try {
+      const r = await partnerApi.storeIssueOtp(dropoff.dropCode, 'receive');
+      setOtpSentTo(r.sentTo ?? '');
+      setResendIn(30);
+    } catch (e: any) {
+      setError(e.message ?? 'Could not send the code. Check your connection and try again.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
   const submitDetails = async () => {
     if (!photoUri) { Alert.alert('Photo required', 'Take a picture of the package on your counter.'); return; }
     if (!weightKg || Number.isNaN(Number(weightKg))) { Alert.alert('Weight required', 'Enter the measured weight in kg.'); return; }
@@ -130,6 +181,9 @@ export default function ReceiveDropoffScreen() {
       const uploaded = await uploadApi.uploadFile(photoUri, 'partner-receive');
       setPhotoUploadedUrl(uploaded.url);
       setStep('confirm');
+      // The sender is standing right there: get the code moving before
+      // staff has to think about it.
+      sendOtp();
     } catch (e: any) {
       setError(e.message ?? 'Photo upload failed. Try again.');
     } finally {
@@ -240,7 +294,7 @@ export default function ReceiveDropoffScreen() {
         )}
 
         {!scanning && (
-          <View style={[styles.manualSheet, { paddingBottom: insets.bottom + 24, backgroundColor: colors.surface }]}>
+          <View style={[styles.manualSheet, { bottom: kbHeight > 0 ? kbHeight + insets.bottom : 0, paddingBottom: (kbHeight > 0 ? 24 : insets.bottom + 24), backgroundColor: colors.surface }]}>
             <Text style={[styles.sheetTitle, { color: colors.text }]}>Enter drop-off code</Text>
             <Text style={[styles.sheetSub, { color: colors.textSecond }]}>SDR-XXXXXXXX or 6-character backup</Text>
             <TextInput
@@ -290,6 +344,22 @@ export default function ReceiveDropoffScreen() {
             <Text style={[styles.cardLabel, { color: colors.textSecond }]}>FOR DELIVERY TO</Text>
             <Text style={[styles.cardValue, { color: colors.text }]}>{dropoff.recipientName}</Text>
             <Text style={[styles.cardSub, { color: colors.textSecond }]}>{dropoff.recipientPhone}</Text>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            {/* Staff could see the recipient and the code but never the
+                destination, so they could not sort the shelf or answer
+                "where is it going" (founder, mid-QA 2026-08-18). */}
+            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>GOING TO</Text>
+            <Text style={[styles.cardSub, { color: colors.text }]}>
+              {dropoff.destinationStoreName
+                ? `Counter: ${dropoff.destinationStoreName}`
+                : dropoff.recipientAddress || 'Destination not recorded'}
+            </Text>
+            <Text style={[styles.cardSubtle, { color: colors.textThird }]}>
+              {dropoff.destinationStoreName
+                ? 'Recipient collects from that counter'
+                : 'Driver delivers to this address'}
+            </Text>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <Text style={[styles.cardLabel, { color: colors.textSecond }]}>DROP-OFF CODE</Text>
             <Text style={[styles.codeChip, { color: colors.accent }]}>{dropoff.dropCode}</Text>
@@ -357,7 +427,9 @@ export default function ReceiveDropoffScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.cardLabel, { color: colors.textSecond }]}>SENDER VERIFICATION</Text>
             <Text style={[styles.cardSubtle, { color: colors.textSecond }]}>
-              Ask the sender to read the 6-digit code from the verification email they received when they scheduled this drop-off.
+              {otpSentTo
+                ? `A 6-digit code was just sent to ${otpSentTo}. Ask the sender to read it out.`
+                : 'Send the sender a 6-digit code, then ask them to read it out.'}
             </Text>
             <TextInput
               keyboardType="number-pad"
@@ -371,7 +443,21 @@ export default function ReceiveDropoffScreen() {
                 { backgroundColor: colors.background, borderColor: colors.border, color: colors.text, fontSize: 28, textAlign: 'center', letterSpacing: 8, fontWeight: '700' },
               ]}
             />
-            <Text style={[styles.helperText, { color: colors.textSecond }]}>If they didn&apos;t receive an email, ask them to request a new code from their app.</Text>
+            <Pressable onPress={() => sendOtp()} disabled={sendingOtp || resendIn > 0} hitSlop={8}>
+              <Text style={[styles.helperText, {
+                color: (sendingOtp || resendIn > 0) ? colors.textThird : colors.accent,
+                fontWeight: '700',
+              }]}>
+                {sendingOtp
+                  ? 'Sending code...'
+                  : resendIn > 0
+                    ? `Send a new code in ${resendIn}s`
+                    : otpSentTo ? 'Send a new code' : 'Send the code'}
+              </Text>
+            </Pressable>
+            <Text style={[styles.helperText, { color: colors.textThird }]}>
+              The code expires after 10 minutes. It goes to the email on the sender&apos;s SEIRS account.
+            </Text>
           </View>
 
           {error !== '' && <Text style={styles.errorText}>{error}</Text>}

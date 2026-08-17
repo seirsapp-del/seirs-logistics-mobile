@@ -104,7 +104,7 @@ export class PartnerStoreController {
   // Either dropCode (SDR-XXXXXXXX) or 6-char backup - server treats them the same.
   @Get('dropoff/:code')
   getByCode(@Param('code') code: string) {
-    return this.svc.findByCode(code);
+    return this.svc.findByCodeDetailed(code);
   }
 
   // GET /api/v1/partner-store/dropoff/me
@@ -115,6 +115,17 @@ export class PartnerStoreController {
   }
 
   // ── Partner staff side ─────────────────────────────────────────────────
+
+  // POST /api/v1/partner-store/issue-otp
+  // Staff at the counter asks the system to mail the person in front of
+  // them a fresh code. Scoped to the store the package is actually at.
+  @Post('issue-otp')
+  issueOtp(
+    @CurrentUser() staff: any,
+    @Body() body: { code: string; purpose?: 'receive' | 'release' },
+  ) {
+    return this.svc.issueDropoffOtp(staff.id, body.code, body.purpose ?? 'receive');
+  }
 
   // POST /api/v1/partner-store/receive
   @Post('receive')

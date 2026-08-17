@@ -1010,6 +1010,15 @@ export const partnerApi = {
   // BusinessPackage inventory above which is for partner-as-pickup-point).
   storeDropoffByCode: (code: string) =>
     request<any>('GET', `/partner-store/dropoff/${encodeURIComponent(code)}`),
+  /**
+   * Ask the system to mail a fresh handoff code to the person at the
+   * counter. Booking a drop-off never issued one, so the code the
+   * Verify screen asked for did not exist and nothing could be received
+   * (found on device 2026-08-18).
+   */
+  storeIssueOtp: (code: string, purpose: 'receive' | 'release' = 'receive') =>
+    request<{ sent: boolean; sentTo: string; expiresInMinutes: number }>(
+      'POST', '/partner-store/issue-otp', { code, purpose }),
   storeReceive: (body: { code: string; weightKg: number; receivedPhotoUrl: string; senderOtp: string }) =>
     request<any>('POST', '/partner-store/receive', body),
   storeRelease: (body: {

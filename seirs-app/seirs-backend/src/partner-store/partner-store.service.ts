@@ -77,6 +77,13 @@ function isOpenNow(days: string[] | null, open: string, close: string): boolean 
   } catch { return false; }
 }
 
+/** "amaka.eze@gmail.com" -> "am•••@gmail.com" */
+function maskEmail(email: string): string {
+  const [user, domain] = email.split('@');
+  if (!user || !domain) return '';
+  return `${user.slice(0, 2)}${'•'.repeat(3)}@${domain}`;
+}
+
 @Injectable()
 export class PartnerStoreService {
   private readonly logger = new Logger(PartnerStoreService.name);
@@ -394,6 +401,46 @@ export class PartnerStoreService {
     return this.dropoffRepo.save(dropoff);
   }
 
+  /**
+   * Send the handoff code to the person standing at the counter.
+   *
+   * The Verify Sender screen told staff to ask for "the code from the
+   * verification email they received when they scheduled this drop-off",
+   * but booking a drop-off never issued an OTP and never sent a mail, so
+   * the code being asked for did not exist (found on device
+   * 2026-08-18). Nothing could be received or released.
+   *
+   * Issuing at booking time would not have worked either: the code lives
+   * ten minutes and a sender books, then travels. So the code is
+   * requested AT the counter, which is also how a locker pickup works.
+   *
+   * Receiving verifies the SENDER; releasing verifies the RECIPIENT, and
+   * when the recipient has no SEIRS account the code goes to the sender
+   * to read out, per the existing forward-the-PIN pattern.
+   */
+  async issueDropoffOtp(staffUserId: string, code: string, purpose: 'receive' | 'release') {
+    const dropoff = await this.findByCode(code);
+    const storeId = purpose === 'receive'
+      ? dropoff.pickupStoreId
+      : (dropoff.dropoffStoreId ?? dropoff.pickupStoreId);
+
+    const staff = await this.usersRepo.findOne({ where: { id: staffUserId } });
+    if (!staff || staff.partnerStoreId !== storeId) {
+      throw new ForbiddenException('You are not registered as staff for this store');
+    }
+
+    const targetUserId = purpose === 'receive'
+      ? dropoff.senderUserId
+      : (dropoff.recipientUserId ?? dropoff.senderUserId);
+
+    await this.identityService.issueHandoffOtp(dropoff.id, targetUserId);
+
+    // Enough for staff to say "check the email on your phone" without
+    // reading a stranger's full address aloud across the counter.
+    const target = await this.usersRepo.findOne({ where: { id: targetUserId } });
+    return { sent: true, sentTo: maskEmail(target?.email ?? ''), expiresInMinutes: 10 };
+  }
+
   // Partner staff scans the QR (or types the backup code) and confirms
   // the package details + photo + sender identity. After this, the
   // package is officially in their custody.
@@ -425,6 +472,10 @@ export class PartnerStoreService {
       idNumber:   dropoff.senderUserId, // last-4 will store last-4 of user UUID - adequate for audit
       otp:        body.senderOtp,
       proofPhotoUrl: body.receivedPhotoUrl,
+      // No Delivery exists until a driver leg is created below, so name
+      // the OTP owner outright instead of letting identity look for one.
+      subjectUserId:   dropoff.senderUserId,
+      subjectValueNgn: Number(dropoff.declaredValueNgn ?? 0),
     } as any);
 
     await this.dropoffRepo.update(dropoff.id, {
@@ -506,6 +557,14 @@ export class PartnerStoreService {
       seirsCode:   body.seirsCode,
       typedName:   body.typedName,
       proofPhotoUrl: body.collectedPhotoUrl,
+      // The person collecting is the RECIPIENT, not the sender who paid.
+      // Resolving through the driver-leg delivery would have named the
+      // sender as the OTP owner and released the package to the wrong
+      // verification.
+      subjectUserId:     dropoff.recipientUserId,
+      subjectValueNgn:   Number(dropoff.declaredValueNgn ?? 0),
+      receiverFirstName: dropoff.recipientName?.split(' ')[0] ?? null,
+      receiverLastName:  dropoff.recipientName?.split(' ').slice(1).join(' ') || null,
     } as any);
 
     await this.dropoffRepo.update(dropoff.id, {
@@ -543,6 +602,31 @@ export class PartnerStoreService {
     }
     if (!row) throw new NotFoundException('Drop-off not found');
     return row;
+  }
+
+  /**
+   * A drop-off plus where it is actually going.
+   *
+   * Counter staff were shown the recipient, the code and the
+   * description, and nothing about the destination (founder, mid-QA:
+   * "did the sender give an address their sending to"). They did: the
+   * booking is rejected without one. Staff just could not see it, so
+   * they could not sort the shelf, could not tell a walk-in customer
+   * where their parcel was headed, and could not spot a package
+   * addressed to their own counter.
+   */
+  async findByCodeDetailed(code: string) {
+    const row = await this.findByCode(code);
+    let destinationStoreName: string | null = null;
+    if (row.dropoffStoreId) {
+      const store = await this.storeRepo.findOne({
+        where: { id: row.dropoffStoreId },
+        select: ['id', 'storeName', 'storeAddress'],
+      });
+      destinationStoreName = store?.storeName ?? null;
+      if (store?.storeAddress) destinationStoreName += ` (${store.storeAddress})`;
+    }
+    return { ...row, destinationStoreName };
   }
 
   async listForSender(senderUserId: string) {

@@ -13,6 +13,20 @@ import { FeesService } from '../fees/fees.service';
 import { generateOtp } from '../common/utils/auth-codes';
 
 const OTP_TTL_MIN = 10;
+
+/**
+ * Who a handoff is being verified against.
+ *
+ * Resolved either from a Delivery or, for a partner drop-off that has
+ * no driver leg yet, handed in directly by the caller.
+ */
+interface HandoffSubject {
+  id:                 string;
+  recipientUserId:    string;
+  valueNgn:           number;
+  receiverFirstName?: string | null;
+  receiverLastName?:  string | null;
+}
 const RATE_LIMIT_PER_MIN = 3;
 // Higher than the OTP limit: a partner store working through a queue of
 // collections legitimately scans several QRs a minute. Still far below
@@ -137,36 +151,71 @@ export class IdentityService {
       typedName?: string;
       // Both methods may attach a proof photo
       proofPhotoUrl?: string;
+      /**
+       * A handoff that has no delivery behind it yet.
+       *
+       * A sender who books a partner drop-off walks into the store
+       * before any driver exists, so there is no Delivery row: the
+       * partner app passed the DROP-OFF id here and the lookup below
+       * threw "Delivery not found", which is what store staff saw on
+       * screen when they tried to take a package in (found on device
+       * 2026-08-18). The counter could not receive anything at all.
+       *
+       * When the caller already knows who owns the OTP it says so, and
+       * the delivery lookup is skipped. handoff_records.deliveryId is a
+       * plain indexed column, not a foreign key, so the drop-off id
+       * records fine and the chain stays queryable by that id.
+       */
+      subjectUserId?:      string;
+      subjectValueNgn?:    number;
+      receiverFirstName?:  string | null;
+      receiverLastName?:   string | null;
     },
     actorUserId?: string,
   ): Promise<{ recordId: string; recipientUserId: string }> {
     if (actorUserId) await this.assertDeliveryParty(payload.deliveryId, actorUserId);
 
-    const delivery = await this.deliveriesRepo.findOne({
-      where: { id: payload.deliveryId },
-      relations: ['customer'],
-    });
-    if (!delivery) throw new NotFoundException('Delivery not found');
-
-    // For Spec V8 the recipient is the customer who placed the order. When
-    // we add proxy receivers (e.g. "send to my office"), this resolves to
-    // the proxy User instead.
-    const recipientUserId = delivery.customer.id;
+    let subject: HandoffSubject;
+    if (payload.subjectUserId) {
+      subject = {
+        id:                payload.deliveryId,
+        recipientUserId:   payload.subjectUserId,
+        valueNgn:          Number(payload.subjectValueNgn ?? 0),
+        receiverFirstName: payload.receiverFirstName ?? null,
+        receiverLastName:  payload.receiverLastName ?? null,
+      };
+    } else {
+      const delivery = await this.deliveriesRepo.findOne({
+        where: { id: payload.deliveryId },
+        relations: ['customer'],
+      });
+      if (!delivery) throw new NotFoundException('Delivery not found');
+      // For Spec V8 the recipient is the customer who placed the order.
+      // When we add proxy receivers (e.g. "send to my office"), this
+      // resolves to the proxy User instead.
+      subject = {
+        id:                delivery.id,
+        recipientUserId:   delivery.customer.id,
+        valueNgn:          Number(delivery.price ?? 0),
+        receiverFirstName: (delivery as any).receiverFirstName ?? null,
+        receiverLastName:  (delivery as any).receiverLastName ?? null,
+      };
+    }
 
     if (payload.method === HandoffMethod.PHYSICAL_ID) {
-      return this.verifyPhysicalId(payload, delivery, recipientUserId);
+      return this.verifyPhysicalId(payload, subject);
     }
     if (payload.method === HandoffMethod.SEIRS_ID) {
-      return this.verifySeirsId(payload, delivery, recipientUserId);
+      return this.verifySeirsId(payload, subject);
     }
     throw new BadRequestException('Unknown verification method');
   }
 
   private async verifyPhysicalId(
     payload: any,
-    delivery: Delivery,
-    recipientUserId: string,
+    subject: HandoffSubject,
   ): Promise<{ recordId: string; recipientUserId: string }> {
+    const { recipientUserId } = subject;
     if (!payload.idType || !payload.idNumber || !payload.otp) {
       throw new BadRequestException('idType, idNumber and otp are required for physical ID verification');
     }
@@ -175,7 +224,7 @@ export class IdentityService {
     const otpRow = await this.otpRepo
       .createQueryBuilder('o')
       .addSelect('o.codeHash')
-      .where('o.deliveryId = :did', { did: delivery.id })
+      .where('o.deliveryId = :did', { did: subject.id })
       .andWhere('o.recipientUserId = :uid', { uid: recipientUserId })
       .andWhere('o.consumed = false')
       .andWhere('o.expiresAt > NOW()')
@@ -189,7 +238,7 @@ export class IdentityService {
 
     // High-value packages require ID photo (Spec V8 - threshold from Fee Catalogue)
     const threshold = await this.feesService.getValueOr('high_value_threshold_ngn', 100000);
-    if (Number(delivery.price) >= threshold && !payload.idPhotoUrl) {
+    if (subject.valueNgn >= threshold && !payload.idPhotoUrl) {
       throw new BadRequestException(
         `High-value delivery (₦${threshold.toLocaleString()}+) requires a photo of recipient holding the ID`,
       );
@@ -199,7 +248,7 @@ export class IdentityService {
 
     const idStr = String(payload.idNumber);
     const record = await this.recordRepo.save(this.recordRepo.create({
-      deliveryId:    delivery.id,
+      deliveryId:    subject.id,
       stage:         payload.stage,
       method:        HandoffMethod.PHYSICAL_ID,
       fromUserId:    payload.fromUserId ?? null,
@@ -214,9 +263,9 @@ export class IdentityService {
 
   private async verifySeirsId(
     payload: any,
-    delivery: Delivery,
-    recipientUserId: string,
+    subject: HandoffSubject,
   ): Promise<{ recordId: string; recipientUserId: string }> {
+    const { recipientUserId } = subject;
     if (!payload.seirsCode || !payload.typedName) {
       throw new BadRequestException('seirsCode and typedName are required for SEIRS ID verification');
     }
@@ -240,9 +289,9 @@ export class IdentityService {
     // holder's registered name - whichever the collector answers with.
     const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
     const typed = norm(payload.typedName);
-    const declaredFirst = (delivery as any).receiverFirstName ? norm((delivery as any).receiverFirstName) : null;
+    const declaredFirst = subject.receiverFirstName ? norm(subject.receiverFirstName) : null;
     const declaredFull  = declaredFirst
-      ? norm(`${(delivery as any).receiverFirstName} ${(delivery as any).receiverLastName ?? ''}`)
+      ? norm(`${subject.receiverFirstName} ${subject.receiverLastName ?? ''}`)
       : null;
     const accountNorm   = norm(recipient.name);
     const accountFirst  = accountNorm.split(' ')[0];
@@ -258,7 +307,7 @@ export class IdentityService {
     }
 
     const record = await this.recordRepo.save(this.recordRepo.create({
-      deliveryId:    delivery.id,
+      deliveryId:    subject.id,
       stage:         payload.stage,
       method:        HandoffMethod.SEIRS_ID,
       fromUserId:    payload.fromUserId ?? null,

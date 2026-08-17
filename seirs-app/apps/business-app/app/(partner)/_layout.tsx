@@ -4,6 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { useColors } from '@/context/ThemeContext';
 
+/** Hidden task screens: no tab button, and no tab bar over the content. */
+const HIDDEN = { href: null, tabBarStyle: { display: 'none' } } as const;
+
 function TabIcon({ name, focused }: { name: any; focused: boolean }) {
   const colors = useColors();
   return (
@@ -74,18 +77,26 @@ export default function PartnerLayout() {
         options={{ title: 'Store', tabBarIcon: ({ focused }) => <TabIcon name="Settings" focused={focused} /> }}
       />
 
-      {/* Reachable screens that must NOT occupy a tab slot. */}
-      <Tabs.Screen name="messages"         options={{ href: null }} />
+      {/* Reachable screens that must NOT occupy a tab slot.
+
+          href: null only removes the BUTTON. The bar itself still
+          floated over these screens, and on Receive Drop-off it sat
+          directly on top of the "Continue" button: tapping Continue hit
+          the Scan tab, so a partner could weigh the parcel, photograph
+          it, press Continue and never actually take it in (found on
+          device 2026-08-18). These are focused tasks with their own
+          close button, so the bar is hidden outright. */}
+      <Tabs.Screen name="messages"         options={HIDDEN} />
       {/* Nested routes register as their own tabs too, so the raw path
           "messages/[chatId]" was showing in the bar's overflow as if it
           were a destination (founder QA 2026-08-17). */}
-      <Tabs.Screen name="messages/[chatId]" options={{ href: null }} />
-      <Tabs.Screen name="billing"          options={{ href: null }} />
-      <Tabs.Screen name="capacity"         options={{ href: null }} />
-      <Tabs.Screen name="storage"          options={{ href: null }} />
-      <Tabs.Screen name="language"         options={{ href: null }} />
-      <Tabs.Screen name="receive-dropoff"  options={{ href: null }} />
-      <Tabs.Screen name="release-pickup"   options={{ href: null }} />
+      <Tabs.Screen name="messages/[chatId]" options={HIDDEN} />
+      <Tabs.Screen name="billing"          options={HIDDEN} />
+      <Tabs.Screen name="capacity"         options={HIDDEN} />
+      <Tabs.Screen name="storage"          options={HIDDEN} />
+      <Tabs.Screen name="language"         options={HIDDEN} />
+      <Tabs.Screen name="receive-dropoff"  options={HIDDEN} />
+      <Tabs.Screen name="release-pickup"   options={HIDDEN} />
     </Tabs>
   );
 }
