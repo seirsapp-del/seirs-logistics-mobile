@@ -48,6 +48,33 @@ export class SupportService {
    * first message inline, and inserts an auto-response system message
    * outside business hours so the user knows we saw it.
    */
+
+  /**
+   * Is this requester a support agent?
+   *
+   * This used to read user.adminRole only. Spec V8 dynamic roles put the
+   * assignment in roleId and that OVERRIDES the legacy enum, so an admin
+   * given the support role the modern way has adminRole null and was
+   * refused: the support desk showed no tickets at all while users were
+   * filing them (founder 2026-08-16, checking the admin dashboard).
+   * Both are honoured now.
+   */
+  private async isAgent(requester: any): Promise<boolean> {
+    if (AGENT_ROLES.has(String(requester?.adminRole ?? ''))) return true;
+    if (!requester?.roleId) return false;
+    try {
+      const row = await this.tickets.manager
+        .createQueryBuilder()
+        .select('r.slug', 'slug')
+        .from('roles', 'r')
+        .where('r.id = :id', { id: requester.roleId })
+        .getRawOne<{ slug: string }>();
+      return AGENT_ROLES.has(String(row?.slug ?? ''));
+    } catch {
+      return false;
+    }
+  }
+
   async create(userId: string, body: {
     topic:              TicketTopic;
     subject:            string;
@@ -115,7 +142,7 @@ export class SupportService {
     if (!ticket) throw new NotFoundException('Ticket not found');
 
     const isOwner = ticket.user?.id === requester.id;
-    const isAgent = AGENT_ROLES.has(String((requester as any).adminRole ?? ''));
+    const isAgent = await this.isAgent(requester);
     if (!isOwner && !isAgent) throw new ForbiddenException('Not your ticket');
 
     const messages = await this.messages
@@ -156,7 +183,7 @@ export class SupportService {
     limit?:      number;
     accountType?: string;
   } = {}) {
-    if (!AGENT_ROLES.has(String((requester as any).adminRole ?? ''))) {
+    if (!(await this.isAgent(requester))) {
       throw new ForbiddenException('Support agent role required');
     }
     const qb = this.tickets.createQueryBuilder('t')
@@ -176,7 +203,7 @@ export class SupportService {
    * this is the first agent message on the thread.
    */
   async agentReply(ticketId: string, agent: User, bodyText: string): Promise<ChatMessage> {
-    if (!AGENT_ROLES.has(String((agent as any).adminRole ?? ''))) {
+    if (!(await this.isAgent(agent))) {
       throw new ForbiddenException('Support agent role required');
     }
     const ticket = await this.tickets.findOne({ where: { id: ticketId } });
@@ -203,7 +230,7 @@ export class SupportService {
 
   /** Agent-triggered resolve / close. */
   async setStatus(ticketId: string, agent: User, status: TicketStatus): Promise<SupportTicket> {
-    if (!AGENT_ROLES.has(String((agent as any).adminRole ?? ''))) {
+    if (!(await this.isAgent(agent))) {
       throw new ForbiddenException('Support agent role required');
     }
     const ticket = await this.tickets.findOne({ where: { id: ticketId } });

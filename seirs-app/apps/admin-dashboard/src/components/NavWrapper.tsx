@@ -1,6 +1,6 @@
 ﻿'use client';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import AdminNav from './AdminNav';
 import TopBar from './TopBar';
 import { ConfirmProvider } from './ConfirmDialog';
@@ -14,9 +14,53 @@ const IDLE_CHECK_MS    = 60_000;
 // to login (server token expires + isSessionExpired() agrees).
 const REFRESH_EVERY_MS = 10 * 60_000;
 
+
+/**
+ * Keep the reading position when a page reloads its data.
+ *
+ * Every list page swaps its whole table for a "Loading..." block while
+ * refreshing. The scroll container's content collapses to nothing, the
+ * browser resets scrollTop to 0, and when the table comes back the admin
+ * is at the top again: clicking any button far down the page threw them
+ * to the top (founder 2026-08-16). Twenty-five pages share the pattern,
+ * so this is fixed once, here, where the scrolling actually happens.
+ *
+ * The saved position is dropped on navigation, so moving to another page
+ * still starts at the top as it should.
+ */
+function useScrollPreservation(pathname: string) {
+  const ref  = useRef<HTMLElement>(null);
+  const last = useRef(0);
+
+  useEffect(() => { last.current = 0; }, [pathname]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const onScroll = () => { if (el.scrollTop > 0) last.current = el.scrollTop; };
+    el.addEventListener('scroll', onScroll, { passive: true });
+
+    // When the content grows back tall enough to hold the old position
+    // again, put the admin back where they were.
+    const obs = new ResizeObserver(() => {
+      const target = last.current;
+      if (target > 0 && el.scrollTop === 0 && el.scrollHeight - el.clientHeight >= target) {
+        el.scrollTop = target;
+      }
+    });
+    if (el.firstElementChild) obs.observe(el.firstElementChild);
+
+    return () => { el.removeEventListener('scroll', onScroll); obs.disconnect(); };
+  }, [pathname]);
+
+  return ref;
+}
+
 export default function NavWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
+  const mainRef  = useScrollPreservation(pathname);
   const isLogin  = pathname === '/login';
   const isPublicAuth = pathname === '/forgot-password' || pathname === '/reset-password';
   const isChromeless = isLogin || isPublicAuth;
@@ -58,7 +102,7 @@ export default function NavWrapper({ children }: { children: React.ReactNode }) 
         <AdminNav />
         <div className="flex-1 flex flex-col overflow-hidden">
           <TopBar />
-          <main className="flex-1 overflow-y-auto bg-[#F5F5F0]">
+          <main ref={mainRef} className="flex-1 overflow-y-auto bg-[#F5F5F0]">
             {children}
           </main>
         </div>
