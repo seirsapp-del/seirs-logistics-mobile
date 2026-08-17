@@ -1842,7 +1842,7 @@ export class AdminService {
     const limit = 20;
     const qb = this.ticketsRepo.createQueryBuilder('t')
       .leftJoinAndSelect('t.user', 'u')
-      .orderBy('t."lastMessageAt"', 'DESC')
+      .orderBy('t.lastMessageAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
     if (status) qb.andWhere('t.status = :status', { status });

@@ -186,9 +186,19 @@ export class SupportService {
     if (!(await this.isAgent(requester))) {
       throw new ForbiddenException('Support agent role required');
     }
+    /**
+     * orderBy takes the PROPERTY name, not a pre-quoted column. Written
+     * as t."lastMessageAt" it broke alias resolution once the user join
+     * was selected and threw "Cannot read properties of undefined
+     * (reading 'databaseName')", which reached the admin dashboard as a
+     * bare Internal Server Error on the Support Inbox (founder
+     * 2026-08-16). Repository.find worked all along because it builds
+     * the clause itself, which is why the fault looked like a
+     * permissions problem.
+     */
     const qb = this.tickets.createQueryBuilder('t')
       .leftJoinAndSelect('t.user', 'u')
-      .orderBy('t."lastMessageAt"', 'DESC');
+      .orderBy('t.lastMessageAt', 'DESC');
 
     if (opts.status)      qb.andWhere('t.status = :s',              { s: opts.status });
     if (opts.topic)       qb.andWhere('t.topic = :tp',              { tp: opts.topic });

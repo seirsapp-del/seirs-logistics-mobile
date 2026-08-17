@@ -89,7 +89,7 @@ export class HealthController {
       try {
         await this.ticketsRepo.createQueryBuilder('t')
           .leftJoinAndSelect('t.user', 'u')
-          .orderBy('t."lastMessageAt"', 'DESC')
+          .orderBy('t.lastMessageAt', 'DESC')
           .take(5)
           .getMany();
       } catch (e: any) { readError = `queue: ${e?.message ?? 'unknown'}`; }
