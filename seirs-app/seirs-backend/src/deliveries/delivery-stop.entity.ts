@@ -10,6 +10,11 @@ export enum DeliveryStopStatus {
   ARRIVED   = 'arrived',     // driver tapped "Arrived at stop"
   DELIVERED = 'delivered',   // recipient confirmed
   FAILED    = 'failed',      // unreachable / refused / wrong address
+  // The run itself was cancelled, so nobody ever attempted this parcel.
+  // Distinct from FAILED, which means a real delivery attempt did not
+  // succeed: a cancelled run left its packages reading "pending" forever
+  // on the sender's screen (founder 2026-08-17).
+  CANCELLED = 'cancelled',
 }
 
 /**

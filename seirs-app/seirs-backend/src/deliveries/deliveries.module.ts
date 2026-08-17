@@ -159,6 +159,21 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "deliveries"
           ADD COLUMN IF NOT EXISTS "partnerHandlingNgn" numeric(12,2) NOT NULL DEFAULT 0
       `);
+      // Packages of a cancelled run need their own terminal state, so the
+      // stop status enum gains 'cancelled' (2026-08-17).
+      await this.ds.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_stops_status_enum')
+             AND NOT EXISTS (
+               SELECT 1 FROM pg_enum e
+                 JOIN pg_type t ON t.oid = e.enumtypid
+                WHERE t.typname = 'delivery_stops_status_enum' AND e.enumlabel = 'cancelled'
+             ) THEN
+            ALTER TYPE "delivery_stops_status_enum" ADD VALUE 'cancelled';
+          END IF;
+        END $$;
+      `);
       // Loyalty reversal guard for refunded runs (2026-08-16).
       await this.ds.query(`
         ALTER TABLE "deliveries"

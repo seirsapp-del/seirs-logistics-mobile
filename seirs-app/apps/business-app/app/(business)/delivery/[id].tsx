@@ -197,7 +197,10 @@ export default function DeliveryDetailScreen() {
 
 const styles = StyleSheet.create({
   center:   { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header:   { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  // paddingTop matters: SafeAreaView clears the status bar itself, but
+  // with none the back button and title sat flush against the
+  // notification bar (founder 2026-08-17).
+  header:   { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, borderBottomWidth: 1 },
   backBtn:  { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   title:    { fontSize: 16, fontWeight: '800' },
   sub:      { fontSize: 12, marginTop: 2 },

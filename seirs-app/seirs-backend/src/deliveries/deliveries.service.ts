@@ -4,7 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { LessThan, Repository, MoreThan } from 'typeorm';
 import { secureCode } from '../common/utils/auth-codes';
 import { Delivery, DeliveryStatus, PackageSize, UrgencyLevel } from './delivery.entity';
-import { DeliveryStop } from './delivery-stop.entity';
+import { DeliveryStop, DeliveryStopStatus } from './delivery-stop.entity';
 import { DeliveryEvent, DeliveryEventType, EventActorRole } from './delivery-event.entity';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
@@ -1670,6 +1670,31 @@ export class DeliveriesService {
           });
         })
         .catch((err: any) => this.logger.error(`Referral bonus check failed: ${err?.message ?? err}`));
+    }
+
+    /**
+     * A terminal run means its packages are terminal too. Without this a
+     * cancelled run still listed every parcel as "pending", so the sender
+     * saw a cancelled booking whose packages looked like they were still
+     * coming (founder 2026-08-17). Only undelivered stops are touched: a
+     * parcel already handed over stays delivered.
+     */
+    if (status === DeliveryStatus.CANCELLED || status === DeliveryStatus.FAILED) {
+      try {
+        await this.repo.manager.getRepository(DeliveryStop)
+          .createQueryBuilder()
+          .update(DeliveryStop)
+          .set({ status: status === DeliveryStatus.CANCELLED
+            ? DeliveryStopStatus.CANCELLED
+            : DeliveryStopStatus.FAILED })
+          .where('"deliveryId" = :id', { id })
+          .andWhere('status NOT IN (:...done)', {
+            done: [DeliveryStopStatus.DELIVERED, DeliveryStopStatus.FAILED, DeliveryStopStatus.CANCELLED],
+          })
+          .execute();
+      } catch (e: any) {
+        this.logger.warn(`stop status sync skipped for ${id}: ${e?.message ?? e}`);
+      }
     }
 
     // Refund escrow if delivery failed or cancelled
