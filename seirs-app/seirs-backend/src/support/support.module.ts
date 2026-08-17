@@ -170,6 +170,23 @@ export class SupportModule implements OnModuleInit {
       ALTER TABLE "chat_messages" ALTER COLUMN "deliveryId" DROP NOT NULL
     `);
 
+    /**
+     * userAccountType is stamped on the ticket at creation, so tickets
+     * filed before the classifier was fixed still read 'customer' for
+     * business senders. Founder 2026-08-16: the demo store's id is
+     * CUST-XB4KBEPL because the account began life as a customer and a
+     * prefix never mutates, which is exactly why the prefix cannot be
+     * the test. Backfill from the account's business link instead.
+     */
+    await this.run('backfill business account type', `
+      UPDATE "support_tickets" t
+         SET "userAccountType" = 'business'
+        FROM "users" u
+       WHERE u.id = t."userId"
+         AND t."userAccountType" IS DISTINCT FROM 'business'
+         AND (u."businessAccountId" IS NOT NULL OR u."businessRole" IS NOT NULL)
+    `);
+
     this.logger.log('support schema self-heal complete');
   }
 }

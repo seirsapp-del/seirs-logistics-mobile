@@ -344,9 +344,20 @@ export class SupportService {
     // to 'customer' since the majority of tickets will be from that
     // segment.
     const anyU = user as any;
-    if (anyU.driverId || anyU.role === 'driver')     return 'driver';
-    if (anyU.businessId || anyU.role === 'business') return 'business';
-    if (anyU.role === 'admin')                       return 'admin';
+    if (anyU.driverId || anyU.role === 'driver') return 'driver';
+    /**
+     * A business sender keeps role 'customer' and carries the business
+     * link in businessAccountId; businessId has never been a field. Every
+     * business ticket was therefore filed as 'customer' and the account
+     * type filter could not surface one (found 2026-08-16: demo.store,
+     * an account with a company and a partner counter, listed as
+     * customer).
+     */
+    if (anyU.businessAccountId || anyU.businessRole || anyU.role === 'business'
+        || String(anyU.accountId ?? '').startsWith('BIZ-')) {
+      return 'business';
+    }
+    if (anyU.role === 'admin') return 'admin';
     return 'customer';
   }
 
