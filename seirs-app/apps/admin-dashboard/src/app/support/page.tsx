@@ -15,9 +15,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Inbox, MessageSquare, RefreshCw, CheckCircle2, XCircle, User,
-  Building2, Bike, Filter, Send, AlertCircle,
+  Building2, Bike, Filter, Send, AlertCircle, UserPlus,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { getUser } from '@/lib/auth';
 
 interface Ticket {
   id:                string;
@@ -135,6 +136,25 @@ export default function SupportInboxPage() {
       alert(`Send failed: ${e?.message ?? 'unknown'}`);
     } finally {
       setSending(false);
+    }
+  };
+
+  /**
+   * Taking a ticket. Carried over from the separate Ticketing page, which
+   * was a second front door onto the same support_tickets table (founder
+   * 2026-08-16: "why do we have ticketing and support inbox"). Ticketing
+   * could assign and this could not, so the capability moved here before
+   * that page was retired.
+   */
+  const assignToMe = async () => {
+    const me = getUser();
+    if (!selectedId || !me?.id) return;
+    try {
+      await adminApi.tickets.assign(selectedId, me.id);
+      await loadThread(selectedId);
+      await loadQueue();
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not assign ticket');
     }
   };
 
@@ -391,6 +411,12 @@ export default function SupportInboxPage() {
                       title="Re-open the customer-driver chat for this delivery (24h, audit-logged)"
                     >
                       <MessageSquare size={12} /> Re-open chat
+                    </button>
+                  )}
+                  {!thread.ticket.assignedAgentId && (
+                    <button onClick={assignToMe}
+                      className="flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">
+                      <UserPlus size={12} /> Assign to me
                     </button>
                   )}
                   {thread.ticket.status !== 'resolved' && (
