@@ -116,6 +116,35 @@ export class PartnerStoreController {
 
   // ── Partner staff side ─────────────────────────────────────────────────
 
+  // POST /api/v1/partner-store/quote
+  // What a drop-off will cost, before the sender commits to it.
+  @Post('quote')
+  quote(
+    @Body() body: {
+      pickupStoreId: string;
+      mode: any;
+      dropoffStoreId?: string;
+      recipientLat?: number;
+      recipientLng?: number;
+      weightKg: number;
+      categoryCode?: string;
+      declaredValueNgn?: number;
+    },
+  ) {
+    return this.svc.quoteDropoff(body);
+  }
+
+  // POST /api/v1/partner-store/dropoff/:id/pay
+  // Sender pays the fare, or the difference the counter's scale found.
+  @Post('dropoff/:id/pay')
+  payDropoff(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() body: { kind?: 'fare' | 'topup' },
+  ) {
+    return this.svc.payForDropoff(user.id, id, body?.kind ?? 'fare');
+  }
+
   // POST /api/v1/partner-store/issue-otp
   // Staff at the counter asks the system to mail the person in front of
   // them a fresh code. Scoped to the store the package is actually at.

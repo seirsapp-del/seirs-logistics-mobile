@@ -10,6 +10,8 @@ import { PartnerSponsorship, SponsorshipStatus } from './partner-sponsorship.ent
 import { User } from '../users/user.entity';
 import { Delivery } from '../deliveries/delivery.entity';
 import { FeesService } from '../fees/fees.service';
+import { PricingService } from '../pricing/pricing.service';
+import { PaymentsService } from '../payments/payments.service';
 import { IdentityService } from '../identity/identity.service';
 import { HandoffMethod, HandoffStage } from '../identity/handoff-record.entity';
 import { MailService } from '../mail/mail.service';
@@ -77,6 +79,23 @@ function isOpenNow(days: string[] | null, open: string, close: string): boolean 
   } catch { return false; }
 }
 
+/**
+ * Straight-line km between two points.
+ *
+ * PricingService has no such helper despite bulk.service.ts calling
+ * PricingService.haversineKm (that module does not type-check and is
+ * evidently not in the build).
+ */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 /** "amaka.eze@gmail.com" -> "am•••@gmail.com" */
 function maskEmail(email: string): string {
   const [user, domain] = email.split('@');
@@ -95,6 +114,8 @@ export class PartnerStoreService {
     @InjectRepository(PartnerSponsorship)   private sponsorshipRepo: Repository<PartnerSponsorship>,
     @InjectRepository(Delivery)             private deliveriesRepo:  Repository<Delivery>,
     private readonly feesService:    FeesService,
+    private readonly pricing:        PricingService,
+    private readonly payments:       PaymentsService,
     private readonly identityService: IdentityService,
     private readonly mailService:    MailService,
   ) {}
@@ -148,6 +169,12 @@ export class PartnerStoreService {
       const price = Number(dropoff.prePaidAmountNgn ?? 0) > 0
         ? Number(dropoff.prePaidAmountNgn)
         : await this.feesService.getValueOr('store_leg_fallback_fee', 1500);
+      // The driver's cut comes from the rate card at booking. It used to
+      // be price * 0.7 hard-coded here, which both ignored the card and
+      // paid out a share of money that was never collected.
+      const driverCut = Number(dropoff.driverEarningsNgn ?? 0) > 0
+        ? Number(dropoff.driverEarningsNgn)
+        : +(price * 0.7).toFixed(2);
 
       const delivery = (await this.deliveriesRepo.save(this.deliveriesRepo.create({
         trackingCode,
@@ -161,7 +188,7 @@ export class PartnerStoreService {
         packageDescription: (dropoff as any).description ?? 'Partner-store package',
         weightKg:           dropoff.weightKg as any,
         price:              price as any,
-        driverEarnings:     +(price * 0.7).toFixed(2) as any,
+        driverEarnings:     driverCut as any,
         vehicleType:        'motorcycle',
       } as any))) as unknown as Delivery;
 
@@ -325,6 +352,8 @@ export class PartnerStoreService {
     mode:             DropoffMode;
     dropoffStoreId?:  string;
     recipientAddress?: string;
+    recipientLat?:    number | null;
+    recipientLng?:    number | null;
     recipientUserId?: string;
     recipientName:    string;
     recipientPhone:   string;
@@ -389,6 +418,8 @@ export class PartnerStoreService {
       mode:               body.mode,
       dropoffStoreId:     body.dropoffStoreId ?? null,
       recipientAddress:   body.recipientAddress ?? null,
+      recipientLat:       (body as any).recipientLat ?? null,
+      recipientLng:       (body as any).recipientLng ?? null,
       recipientUserId:    body.recipientUserId ?? null,
       recipientName:      body.recipientName,
       recipientPhone:     body.recipientPhone,
@@ -398,7 +429,123 @@ export class PartnerStoreService {
       declaredValueNgn:   body.declaredValueNgn ?? 0,
       status:             DropoffStatus.SCHEDULED,
     });
+
+    // Price it with the live rate card and record the three-way split.
+    // prePaidAmountNgn is the fare owed; paidAt stays null until
+    // Flutterwave confirms, and receiving refuses an unpaid package.
+    const quote = await this.quoteDropoff({
+      pickupStoreId:  body.pickupStoreId,
+      mode:           body.mode,
+      dropoffStoreId: body.dropoffStoreId,
+      recipientLat:   (body as any).recipientLat ?? null,
+      recipientLng:   (body as any).recipientLng ?? null,
+      weightKg:       body.weightKg,
+      declaredValueNgn: body.declaredValueNgn,
+    });
+    dropoff.prePaidAmountNgn   = quote.totalNgn as any;
+    dropoff.partnerHandlingNgn = quote.partnerHandlingNgn as any;
+    dropoff.driverEarningsNgn  = quote.driverEarningsNgn as any;
+
     return this.dropoffRepo.save(dropoff);
+  }
+
+  /**
+   * What a store drop-off costs, and how it splits three ways.
+   *
+   * Booking one used to charge nothing: no quote, no Flutterwave call,
+   * no escrow (founder 2026-08-18: "what about payment"). Receiving then
+   * created a driver leg at a flat fallback fee and handed the driver a
+   * hard-coded 70% of money nobody had collected.
+   *
+   * This runs the SAME rate card the app's Send a Package flow uses, so
+   * the two cannot drift and every number stays admin-tunable: the
+   * driver's cut, the counter handling fee and the SEIRS margin all come
+   * out of the card rather than a constant in here.
+   *
+   * Counter touches, which is what the handling fee is charged per:
+   * dropping at a counter is one, and a package the recipient collects
+   * from a second counter is two.
+   */
+  async quoteDropoff(input: {
+    pickupStoreId:   string;
+    mode:            DropoffMode;
+    dropoffStoreId?: string | null;
+    recipientLat?:   number | null;
+    recipientLng?:   number | null;
+    weightKg:        number;
+    categoryCode?:   string;
+    declaredValueNgn?: number;
+  }) {
+    const store = await this.storeRepo.findOne({ where: { id: input.pickupStoreId } });
+    if (!store) throw new NotFoundException('Pickup store not found');
+
+    const originLat = (store as any).storeLat != null ? Number((store as any).storeLat) : null;
+    const originLng = (store as any).storeLng != null ? Number((store as any).storeLng) : null;
+
+    let destLat = input.recipientLat ?? null;
+    let destLng = input.recipientLng ?? null;
+    if (input.mode === DropoffMode.STORE_TO_STORE && input.dropoffStoreId) {
+      const dest = await this.storeRepo.findOne({ where: { id: input.dropoffStoreId } });
+      destLat = (dest as any)?.storeLat != null ? Number((dest as any).storeLat) : null;
+      destLng = (dest as any)?.storeLng != null ? Number((dest as any).storeLng) : null;
+    }
+
+    // Straight-line distance, then the rate card's own circuity factor
+    // turns it into road distance. Same treatment bulk upload gives an
+    // address-only row.
+    const km = (originLat != null && originLng != null && destLat != null && destLng != null)
+      ? haversineKm(originLat, originLng, destLat, destLng)
+      : 0;
+
+    const touches = input.mode === DropoffMode.STORE_TO_STORE ? 2 : 1;
+
+    const breakdown = await this.pricing.computePrice({
+      vehicleType:  'motorcycle',
+      categoryCode: input.categoryCode ?? 'general',
+      km,
+      stopCount:    1,
+      weightKg:     Number(input.weightKg ?? 0),
+      estimatedDwellMinutes: 0,
+      partnerStoreTouches:   touches,
+      pickupCoords:  (originLat != null && originLng != null) ? { latitude: originLat, longitude: originLng } : undefined,
+      dropoffCoords: (destLat != null && destLng != null) ? { latitude: destLat, longitude: destLng } : undefined,
+    } as any);
+
+    return {
+      km:                 Math.round(km * 10) / 10,
+      totalNgn:           Number(breakdown.customer.total),
+      partnerHandlingNgn: Number(breakdown.customer.partnerHandling),
+      driverEarningsNgn:  Number(breakdown.driver.total),
+      seirsNetNgn:        Number(breakdown.seirsNet),
+      counterTouches:     touches,
+    };
+  }
+
+  /**
+   * Start a Flutterwave checkout for a drop-off fare, or for the
+   * difference the counter's scale found.
+   *
+   * Flutterwave is the only processor SEIRS uses. Senders hold no
+   * balance, so this is a per-booking charge, same as any other SEIRS
+   * booking.
+   */
+  async payForDropoff(senderUserId: string, dropoffId: string, kind: 'fare' | 'topup') {
+    const dropoff = await this.dropoffRepo.findOne({ where: { id: dropoffId } });
+    if (!dropoff) throw new NotFoundException('Drop-off not found');
+    if (dropoff.senderUserId !== senderUserId) {
+      throw new ForbiddenException('This drop-off belongs to another account');
+    }
+
+    const amount = kind === 'topup'
+      ? Number(dropoff.topUpOwedNgn ?? 0)
+      : Number(dropoff.prePaidAmountNgn ?? 0);
+    const already = kind === 'topup' ? dropoff.topUpPaidAt : dropoff.paidAt;
+    if (already) throw new BadRequestException('This has already been paid.');
+
+    const sender = await this.usersRepo.findOne({ where: { id: senderUserId } });
+    if (!sender) throw new NotFoundException('Sender not found');
+
+    return this.payments.initiateDropoffPayment(dropoff.id, sender, amount, kind);
   }
 
   /**
@@ -453,6 +600,43 @@ export class PartnerStoreService {
     const dropoff = await this.findByCode(body.code);
     if (dropoff.status !== DropoffStatus.SCHEDULED) {
       throw new BadRequestException(`Cannot receive - current status is ${dropoff.status}`);
+    }
+
+    /**
+     * Nothing crosses the counter unpaid.
+     *
+     * The fare is charged when the sender books. Weight is only DECLARED
+     * then, so the counter weighs it for real: if the measured weight
+     * prices higher, the difference is owed before the store takes
+     * custody, and staff are told the exact figure to ask for rather
+     * than being left to argue about it.
+     */
+    if (!dropoff.paidAt) {
+      throw new BadRequestException(
+        `This drop-off has not been paid for. Ask the sender to complete payment in their SEIRS app, then scan again.`,
+      );
+    }
+
+    const measured = Number(body.weightKg ?? 0);
+    if (measured > Number(dropoff.weightKg ?? 0)) {
+      const requote = await this.quoteDropoff({
+        pickupStoreId:  dropoff.pickupStoreId,
+        mode:           dropoff.mode as DropoffMode,
+        dropoffStoreId: dropoff.dropoffStoreId,
+        recipientLat:   (dropoff as any).recipientLat ?? null,
+        recipientLng:   (dropoff as any).recipientLng ?? null,
+        weightKg:       measured,
+        declaredValueNgn: dropoff.declaredValueNgn,
+      });
+      const owed = Math.max(0, Math.round((requote.totalNgn - Number(dropoff.prePaidAmountNgn ?? 0)) * 100) / 100);
+      if (owed > 0 && !dropoff.topUpPaidAt) {
+        await this.dropoffRepo.update(dropoff.id, { topUpOwedNgn: owed as any });
+        throw new BadRequestException(
+          `Measured ${measured}kg against ${Number(dropoff.weightKg)}kg declared. ` +
+          `The sender owes a further ₦${owed.toLocaleString()}. ` +
+          'Ask them to pay it in their SEIRS app, then scan again.',
+        );
+      }
     }
 
     // Validate the staff actually works at this store

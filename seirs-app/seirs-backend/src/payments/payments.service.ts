@@ -366,21 +366,65 @@ export class PaymentsService {
     return { authorizationUrl: paymentLink, reference: txRef, amountNgn: amount };
   }
 
-  // COD - recorded as pending until driver confirms delivery
-  async initiateCOD(delivery: Delivery, customer: User): Promise<Payment> {
-    const payment = this.paymentsRepo.create({
-      customer,
-      delivery,
-      amountKobo:   toKobo(delivery.price),
-      method:       PaymentMethod.COD,
-      status:       PaymentStatus.PENDING,
-      provider:     'internal',
-      escrowStatus: EscrowStatus.HELD,
+  /**
+   * Cash on delivery is not a SEIRS product (founder, 2026-08-13 and
+   * again 2026-08-18: "we shouldn't have cash on delivery").
+   *
+   * The method that created a COD payment is deleted rather than left
+   * dormant. It marked the escrow HELD without a naira ever arriving and
+   * then kicked dispatch, so anything that called it would have sent a
+   * driver out against money SEIRS did not have. /payments/initiate
+   * already rejects the method; the enum value stays only so historical
+   * rows still read.
+   */
+
+  /**
+   * Pay for a partner store drop-off, or top up an under-declared one.
+   *
+   * A drop-off has no Delivery until the counter takes the package in,
+   * so the Payment row carries dropoffId instead of a delivery relation.
+   * The webhook settles it and stamps paidAt on the drop-off, which is
+   * what the counter checks before accepting anything.
+   */
+  async initiateDropoffPayment(
+    dropoffId: string,
+    customer: User,
+    amountNgn: number,
+    kind: 'fare' | 'topup' = 'fare',
+  ): Promise<{ authorizationUrl: string; reference: string; amountNgn: number }> {
+    if (!(amountNgn > 0)) {
+      throw new BadRequestException('Nothing to pay on this drop-off.');
+    }
+
+    const txRef = `SRS-${kind === 'topup' ? 'TOP' : 'DRP'}-${uuidv4().slice(0, 8).toUpperCase()}`;
+    const { paymentLink } = await this.flutterwaveService.initializePayment({
+      txRef,
+      amount:      amountNgn,
+      currency:    'NGN',
+      email:       customer.email,
+      phone:       customer.phone ?? '',
+      name:        customer.name,
+      redirectUrl: 'seirsmobile://payment-callback',
+      meta: {
+        purpose:    kind === 'topup' ? 'store_topup' : 'store_dropoff',
+        dropoffId,
+        customerId: customer.id,
+      },
     });
-    const saved = await this.paymentsRepo.save(payment);
-    try { await this.deliveriesServiceRef?.kickDispatch(delivery.id); }
-    catch (e: any) { this.logger.warn(`COD dispatch kick failed: ${e.message}`); }
-    return saved;
+
+    await this.paymentsRepo.save(this.paymentsRepo.create({
+      customer,
+      dropoffId,
+      amountKobo:        toKobo(amountNgn),
+      method:            PaymentMethod.CARD,
+      status:            PaymentStatus.PENDING,
+      purpose:           kind === 'topup' ? PaymentPurpose.STORE_TOPUP : PaymentPurpose.STORE_DROPOFF,
+      provider:          'flutterwave',
+      providerReference: txRef,
+      authorizationUrl:  paymentLink,
+    }));
+
+    return { authorizationUrl: paymentLink, reference: txRef, amountNgn };
   }
 
   // Wallet payment - deduct from customer wallet immediately
@@ -508,6 +552,30 @@ export class PaymentsService {
           );
         }
         this.logger.log(`Redirect fee settled: ${txRef} (₦${result.amount})`);
+        return payment;
+      }
+
+      /**
+       * A drop-off fare settles here rather than falling through to the
+       * escrow branch below: there is no Delivery to escrow against yet.
+       * Stamping paidAt is what lets the counter accept the package, so
+       * an unpaid booking simply cannot cross it.
+       */
+      if (payment.purpose === PaymentPurpose.STORE_DROPOFF || payment.purpose === PaymentPurpose.STORE_TOPUP) {
+        await this.paymentsRepo.update(payment.id, {
+          status:                   PaymentStatus.SUCCESS,
+          escrowStatus:             EscrowStatus.HELD,
+          flutterwaveTransactionId: result.transactionId,
+        });
+        payment.status = PaymentStatus.SUCCESS;
+        if (payment.dropoffId) {
+          const col = payment.purpose === PaymentPurpose.STORE_TOPUP ? 'topUpPaidAt' : 'paidAt';
+          await this.dataSource.query(
+            `UPDATE store_dropoffs SET "${col}" = NOW() WHERE id = $1 AND "${col}" IS NULL`,
+            [payment.dropoffId],
+          );
+        }
+        this.logger.log(`Store drop-off ${payment.purpose} settled: ${txRef} (NGN ${result.amount})`);
         return payment;
       }
 

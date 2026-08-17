@@ -97,6 +97,48 @@ export class StoreDropoff {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   prePaidAmountNgn: number;
 
+  /**
+   * What the sender actually paid, and when.
+   *
+   * Booking a store drop-off charged nothing at all: no quote, no
+   * Flutterwave call, no escrow (founder, mid-QA 2026-08-18: "what about
+   * payment"). Receiving then created a driver leg priced off a fallback
+   * fee and paid the driver 70% of money nobody had collected.
+   *
+   * prePaidAmountNgn above already existed but only the demo seeder ever
+   * wrote it. It is now the real fare, set when the sender pays.
+   */
+  /**
+   * Where a door delivery is actually going. Without coordinates the
+   * quote had no distance to price and a cross-Lagos run cost the same
+   * as one down the street.
+   */
+  @Column({ type: 'decimal', precision: 9, scale: 6, nullable: true })
+  recipientLat: number | null;
+
+  @Column({ type: 'decimal', precision: 9, scale: 6, nullable: true })
+  recipientLng: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  paidAt: Date | null;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  partnerHandlingNgn: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  driverEarningsNgn: number;
+
+  /**
+   * Weight is declared at booking and measured at the counter. When the
+   * measured weight costs more, the difference is owed before the store
+   * accepts the package.
+   */
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  topUpOwedNgn: number;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  topUpPaidAt: Date | null;
+
   // LEGACY (2026-08-09): daily accrual removed per founder decision.
   // No fee build-up while a package waits. Column kept for historical
   // rows; new policy uses the working-day clock + flat return fee.

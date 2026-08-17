@@ -1,4 +1,4 @@
-import { Logger, Module, OnModuleInit } from '@nestjs/common';
+import { Logger, Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { PartnerStoreService } from './partner-store.service';
@@ -10,6 +10,8 @@ import { User } from '../users/user.entity';
 import { Delivery } from '../deliveries/delivery.entity';
 import { FeesModule } from '../fees/fees.module';
 import { IdentityModule } from '../identity/identity.module';
+import { PricingModule } from '../pricing/pricing.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { MailModule } from '../mail/mail.module';
 
 /**
@@ -24,6 +26,8 @@ import { MailModule } from '../mail/mail.module';
     TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery]),
     FeesModule,
     IdentityModule,
+    PricingModule,
+    forwardRef(() => PaymentsModule),
     MailModule,
   ],
   controllers: [PartnerStoreController],
@@ -62,6 +66,23 @@ export class PartnerStoreModule implements OnModuleInit {
        WHERE s."userId" = u.id
          AND u."partnerStoreId" IS NULL
     `);
+    // Money on a drop-off (2026-08-18). Production does not auto-sync,
+    // so the columns are added here alongside the rest of the self-heal.
+    await this.run('dropoff money columns', `
+        ALTER TABLE "store_dropoffs"
+          ADD COLUMN IF NOT EXISTS "recipientLat" numeric(9,6) NULL,
+          ADD COLUMN IF NOT EXISTS "recipientLng" numeric(9,6) NULL,
+          ADD COLUMN IF NOT EXISTS "paidAt" timestamptz NULL,
+          ADD COLUMN IF NOT EXISTS "partnerHandlingNgn" numeric(12,2) NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS "driverEarningsNgn" numeric(12,2) NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS "topUpOwedNgn" numeric(12,2) NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS "topUpPaidAt" timestamptz NULL
+      `);
+    // Drop-off payments hang off the drop-off, not a delivery.
+    await this.run('payments.dropoffId', `
+        ALTER TABLE "payments"
+          ADD COLUMN IF NOT EXISTS "dropoffId" uuid NULL
+      `);
     await this.run('step1', `
         ALTER TABLE "partner_stores"
           ADD COLUMN IF NOT EXISTS "storeLat" numeric(9,6) NULL

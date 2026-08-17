@@ -43,6 +43,15 @@ export enum PaymentPurpose {
   // DELIVERY default, so the webhook put a verification charge into
   // escrow as though it were a fare.
   CARD_VERIFICATION = 'card_verify',
+  /**
+   * A partner store drop-off, which has no Delivery behind it when the
+   * sender pays: the driver leg is only created once the counter takes
+   * the package in. The drop-off id travels in providerReference meta
+   * and dropoffId instead of the delivery relation.
+   */
+  STORE_DROPOFF = 'store_dropoff',
+  /** The difference owed when the counter weighs heavier than declared. */
+  STORE_TOPUP   = 'store_topup',
 }
 
 @Entity('payments')
@@ -53,6 +62,10 @@ export class Payment {
   @ManyToOne(() => User, { eager: true })
   @JoinColumn()
   customer: User;
+
+  /** Set for STORE_DROPOFF / STORE_TOPUP, which have no delivery yet. */
+  @Column({ type: 'uuid', nullable: true })
+  dropoffId: string | null;
 
   @ManyToOne(() => Delivery, { eager: false, nullable: true })
   @JoinColumn()
