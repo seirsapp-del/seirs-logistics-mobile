@@ -140,7 +140,7 @@ export default function PartnerDashboard() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.scanLabel, { color: colors.text }]}>Release to Recipient</Text>
-                  <Text style={[styles.scanSub, { color: '#14532D' }]}>Hand a package to recipient with ID + OTP verification</Text>
+                  <Text style={[styles.scanSub, { color: isDark ? '#86EFAC' : '#14532D' }]}>Hand a package to recipient with ID + OTP verification</Text>
                 </View>
                 <Icon name="ChevronRight" size={18} color="#9CA3AF" />
               </Pressable>
