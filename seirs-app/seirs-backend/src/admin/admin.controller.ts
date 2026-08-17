@@ -260,8 +260,8 @@ export class AdminController {
 
   // GET /api/v1/admin/deliveries?status=pending&page=1
   @Get('deliveries')
-  getDeliveries(@Query() q: { page?: number; limit?: number; status?: string }) {
-    return this.adminService.getDeliveries(q.page ?? 1, q.limit ?? 20, q.status);
+  getDeliveries(@Query() q: { page?: number; limit?: number; status?: string; search?: string }) {
+    return this.adminService.getDeliveries(q.page ?? 1, q.limit ?? 20, q.status, q.search);
   }
 
   // GET /api/v1/admin/deliveries/:id

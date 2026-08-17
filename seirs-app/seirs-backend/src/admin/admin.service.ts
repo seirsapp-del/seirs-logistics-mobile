@@ -1343,25 +1343,55 @@ export class AdminService {
 
   // ── Deliveries ────────────────────────────────────────────────────────────
 
-  async getDeliveries(page: number, limit: number, status?: string) {
+  /**
+   * Delivery list for the admin desk.
+   *
+   * Loads each run's packages so a multi-package booking can be opened
+   * without a second request, and accepts a free-text search so support
+   * can paste whatever the person on the phone read out: a run code, a
+   * single package code, an email, a name or an id (founder 2026-08-16).
+   * Without this a package code found nothing at all, which is the one
+   * thing a receiver actually has.
+   */
+  async getDeliveries(page: number, limit: number, status?: string, search?: string) {
     const qb = this.deliveriesRepo
       .createQueryBuilder('d')
       .leftJoinAndSelect('d.customer', 'customer')
       .leftJoinAndSelect('d.driver', 'driver')
+      .leftJoinAndSelect('d.stops', 'stops')
       .orderBy('d.createdAt', 'DESC')
+      .addOrderBy('stops.sequenceOrder', 'ASC')
       .skip((page - 1) * limit)
       .take(limit);
 
-    if (status) qb.where('d.status = :status', { status });
+    if (status) qb.andWhere('d.status = :status', { status });
+
+    const q = (search ?? '').trim();
+    if (q) {
+      const like = `%${q}%`;
+      qb.andWhere(`(
+             d."trackingCode"          ILIKE :like
+          OR stops."packageTrackingCode" ILIKE :like
+          OR customer.email            ILIKE :like
+          OR customer.name             ILIKE :like
+          OR customer."accountId"      ILIKE :like
+          OR stops."receiverFirstName" ILIKE :like
+          OR CAST(d.id AS text)        = :exact
+          OR CAST(customer.id AS text) = :exact
+        )`, { like, exact: q });
+    }
 
     const [deliveries, total] = await qb.getManyAndCount();
     return { deliveries, total, page, limit };
   }
 
   async getDeliveryDetail(id: string) {
+    // Packages included: a multi-package run is meaningless on a detail
+    // page without them (founder 2026-08-16).
     const d = await this.deliveriesRepo.findOne({
       where: { id },
-      relations: ['customer', 'driver', 'driver.user'],
+      relations: ['customer', 'driver', 'driver.user', 'stops'],
+      order: { stops: { sequenceOrder: 'ASC' } } as any,
     });
     if (!d) throw new NotFoundException('Delivery not found.');
     return d;

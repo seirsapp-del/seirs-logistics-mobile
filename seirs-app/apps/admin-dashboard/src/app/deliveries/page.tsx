@@ -1,8 +1,9 @@
 ﻿'use client';
-import { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
+import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation , ChevronRight, ChevronDown} from 'lucide-react';
 import { useConfirm } from '@/components/ConfirmDialog';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -33,14 +34,33 @@ function DeliveriesContent() {
    */
   const [assigning, setAssigning] = useState<any>(null);
 
-  const load = (p = 1) => {
+  /**
+   * Free-text search (founder 2026-08-16). Support is usually handed a
+   * PACKAGE code by a receiver, which matched nothing here before, so the
+   * query covers run codes, package codes, customer name, email, account
+   * id and receiver first name. Matches are highlighted and the run that
+   * contains a matched package opens itself.
+   */
+  const [search, setSearch]     = useState('');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const q = search.trim().toLowerCase();
+
+  const load = (p = 1, term = search) => {
     setLoading(true);
-    adminApi.deliveries(p, statusFilter || undefined)
+    adminApi.deliveries(p, statusFilter || undefined, term.trim() || undefined)
       .then(setData).catch(() => {}).finally(() => setLoading(false));
     setPage(p);
   };
 
   useEffect(() => { load(1); }, [statusFilter]);
+
+  // Debounced so a support agent typing a code does not fire a request
+  // per keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => load(1, search), 350);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const handleCancel = async (id: string) => {
     const ok = await confirm({
@@ -76,6 +96,20 @@ function DeliveriesContent() {
           </div>
         </div>
 
+        <div className="mb-4">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search run code, package code (SRS-…), customer, email or account id"
+            className="w-full max-w-xl rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#3A7BD5]"
+          />
+          {search.trim() !== '' && (
+            <span className="ml-3 text-xs text-[#0F2B4C]/50">
+              {data?.total ?? 0} match{(data?.total ?? 0) === 1 ? '' : 'es'}
+            </span>
+          )}
+        </div>
+
         {loading ? (
           <div className="text-center py-20 text-[#0F2B4C]/30">Loading…</div>
         ) : (
@@ -91,8 +125,36 @@ function DeliveriesContent() {
                 </thead>
                 <tbody className="divide-y divide-[#F5F5F0]">
                   {data?.deliveries?.map((d: any) => (
-                    <tr key={d.id} className="hover:bg-[#F5F5F0] transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs font-bold text-[#0F2B4C]">{d.trackingCode}</td>
+                  <React.Fragment key={d.id}>
+                    <tr className="hover:bg-[#F5F5F0] transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {(d.stops?.length ?? 0) > 1 && (
+                            <button
+                              onClick={() => setExpanded((m) => ({ ...m, [d.id]: !m[d.id] }))}
+                              className="text-[#3A7BD5] hover:text-[#0F2B4C]"
+                              title={expanded[d.id] ? 'Hide packages' : `Show ${d.stops.length} packages`}
+                            >
+                              {expanded[d.id] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </button>
+                          )}
+                          <Link
+                            href={`/deliveries/${d.id}`}
+                            className={`font-mono text-xs font-bold hover:underline ${
+                              q && d.trackingCode?.toLowerCase().includes(q)
+                                ? 'bg-yellow-200 text-[#0F2B4C] px-1 rounded'
+                                : 'text-[#0F2B4C]'
+                            }`}
+                          >
+                            {d.trackingCode}
+                          </Link>
+                        </div>
+                        {(d.stops?.length ?? 0) > 1 && (
+                          <div className="mt-0.5 text-[10px] text-[#0F2B4C]/40">
+                            {d.stops.length} packages
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-[#0F2B4C]/70">{d.customer?.name ?? '-'}</td>
                       <td className="px-4 py-3 max-w-xs">
                         <div className="flex items-start gap-1 text-xs text-[#0F2B4C]/60 mb-0.5" title={d.pickupAddress}>
@@ -139,6 +201,46 @@ function DeliveriesContent() {
                         )}
                       </td>
                     </tr>
+                    {(d.stops?.length ?? 0) > 1 && (expanded[d.id] || (q && d.stops.some((st: any) =>
+                        (st.packageTrackingCode ?? '').toLowerCase().includes(q) ||
+                        (st.receiverFirstName ?? '').toLowerCase().includes(q)))) && (
+                      d.stops.map((st: any) => {
+                        const hit = !!q && (
+                          (st.packageTrackingCode ?? '').toLowerCase().includes(q) ||
+                          (st.receiverFirstName ?? '').toLowerCase().includes(q)
+                        );
+                        return (
+                          <tr key={st.id} className={hit ? 'bg-yellow-50' : 'bg-[#FAFAF7]'}>
+                            <td className="px-4 py-2 pl-10">
+                              <span className={`font-mono text-[11px] font-semibold ${
+                                hit ? 'bg-yellow-200 px-1 rounded text-[#0F2B4C]' : 'text-[#0F2B4C]/70'
+                              }`}>
+                                {st.packageTrackingCode ?? `Stop ${st.sequenceOrder}`}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-xs text-[#0F2B4C]/70">
+                              {[st.receiverFirstName, st.receiverLastName].filter(Boolean).join(' ') || st.recipientName || '-'}
+                            </td>
+                            <td className="px-4 py-2 text-xs text-[#0F2B4C]/60 max-w-xs truncate" title={st.address}>
+                              {st.destinationStoreName ? `Counter: ${st.destinationStoreName}` : st.address}
+                            </td>
+                            <td className="px-4 py-2">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${STATUS_COLORS[st.status] ?? 'bg-[#0F2B4C]/5'}`}>
+                                {(st.status ?? 'pending').replace('_', ' ')}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-xs text-[#0F2B4C]/70">
+                              {st.packagePriceNgn ? `₦${Math.round(Number(st.packagePriceNgn)).toLocaleString()}` : ''}
+                            </td>
+                            <td className="px-4 py-2 text-[10px] text-[#0F2B4C]/40">
+                              {st.weightKg ? `${Number(st.weightKg)}kg` : ''}
+                            </td>
+                            <td className="px-4 py-2" />
+                          </tr>
+                        );
+                      })
+                    )}
+                  </React.Fragment>
                   ))}
                 </tbody>
               </table>
