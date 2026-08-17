@@ -83,6 +83,16 @@ export class HealthController {
           take: 1,
         });
       } catch (e: any) { readError = `relation: ${e?.message ?? 'unknown'}`; }
+      // Exactly what the admin Support Inbox runs. It reports Internal
+      // Server Error in the dashboard and there is no way to call it
+      // without an agent account, so it is reproduced here.
+      try {
+        await this.ticketsRepo.createQueryBuilder('t')
+          .leftJoinAndSelect('t.user', 'u')
+          .orderBy('t."lastMessageAt"', 'DESC')
+          .take(5)
+          .getMany();
+      } catch (e: any) { readError = `queue: ${e?.message ?? 'unknown'}`; }
       const chat = await this.dataSource.query(
         `SELECT column_name, is_nullable FROM information_schema.columns
           WHERE table_name = 'chat_messages' AND column_name IN ('ticketId','deliveryId')`,
