@@ -152,7 +152,16 @@ export class SupportService {
       .orderBy('m."createdAt"', 'ASC')
       .getMany();
 
-    return { ticket, messages };
+    // Same scoping as the queue: the ticket owner's bank details are not
+    // support's business, and messages carry an eager sender too.
+    const safeUser = (u: any) => (u ? {
+      id: u.id, name: u.name, email: u.email,
+      phone: u.phone ?? null, accountId: u.accountId ?? null,
+    } : null);
+    return {
+      ticket:   { ...ticket, user: safeUser((ticket as any).user) } as any,
+      messages: messages.map((m: any) => ({ ...m, sender: safeUser(m.sender) })) as any,
+    };
   }
 
   /** User reply to their own ticket. Refuses if the ticket is closed. */
@@ -204,7 +213,31 @@ export class SupportService {
     if (opts.topic)       qb.andWhere('t.topic = :tp',              { tp: opts.topic });
     if (opts.accountType) qb.andWhere('t."userAccountType" = :at',  { at: opts.accountType });
 
-    return qb.take(Math.min(Math.max(opts.limit ?? 30, 1), 100)).getMany();
+    const rows = await qb.take(Math.min(Math.max(opts.limit ?? 30, 1), 100)).getMany();
+
+    /**
+     * Scope the user down to what support needs to work a ticket.
+     *
+     * The relation is eager, so returning rows straight from the query
+     * handed every agent the whole User row: bank account name, number
+     * and code, date of birth, apple id, admin role, capabilities. A
+     * support agent needs to know who is complaining and how to reach
+     * them, not their bank details (found 2026-08-16 while reading the
+     * queue response). Full records stay available to those with the
+     * users permission, one click away in the dashboard.
+     */
+    return rows.map((t) => ({
+      ...t,
+      user: t.user
+        ? {
+            id:        t.user.id,
+            name:      t.user.name,
+            email:     t.user.email,
+            phone:     t.user.phone ?? null,
+            accountId: (t.user as any).accountId ?? null,
+          }
+        : null,
+    })) as any;
   }
 
   /**

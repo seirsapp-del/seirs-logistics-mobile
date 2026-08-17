@@ -165,7 +165,7 @@ export const NAV_SECTIONS: NavSection[] = [
       // Ticketing removed from the nav 2026-08-16: it was a second view
       // of the same support_tickets data that Support Inbox serves. The
       // route still redirects there for old links.
-      { href: '/support',     label: 'Support Inbox',    icon: 'Inbox',     permission: 'support'      },
+      { href: '/support',     label: 'Support Inbox',    icon: 'Inbox',     permission: 'support',     badge: 'tickets' },
       { href: '/suggestions', label: 'User Suggestions', icon: 'Lightbulb', permission: 'suggestions'  },
     ],
   },

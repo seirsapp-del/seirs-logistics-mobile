@@ -2,6 +2,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { clearSession, getUser } from '@/lib/auth';
+import { adminApi } from '@/lib/api';
 import {
   LayoutDashboard, Map, Package, Truck, Users, Store, ArrowRightLeft, Briefcase,
   Wallet, Tag, DollarSign, Share2, Shield, ShieldAlert, ShieldCheck, Copy, ClipboardCheck,
@@ -39,7 +40,36 @@ const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: 
 // up with its neighbours instead of disappearing into the section label.
 const FALLBACK_ICON = CircleDot;
 
+/**
+ * Live count of tickets waiting on support, shown against Support Inbox.
+ * The nav config has carried a `badge` field all along and nothing ever
+ * rendered it, so an unanswered ticket was invisible until someone
+ * thought to open the page (founder 2026-08-16: "so we dont forget or
+ * miss any tickets").
+ */
+function useOpenTicketCount() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      adminApi.support.queue({ limit: 100 })
+        .then((list: any[]) => {
+          if (!alive) return;
+          setCount((list ?? []).filter(
+            (t) => t.status === 'open' || t.status === 'awaiting_agent',
+          ).length);
+        })
+        .catch(() => { if (alive) setCount(0); });
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+  return count;
+}
+
 export default function AdminNav() {
+  const openTickets = useOpenTicketCount();
   const router   = useRouter();
   const pathname = usePathname();
   const [user,      setUser]      = useState<any>(null);
@@ -156,6 +186,18 @@ export default function AdminNav() {
                     <Icon size={16} />
                     {!collapsed && (
                       <span className="text-[13px] font-medium flex-1 truncate">{item.label}</span>
+                    )}
+                    {item.badge === 'tickets' && openTickets > 0 && (
+                      <span
+                        className={`rounded-full bg-red-500 text-white text-[10px] font-bold leading-none ${
+                          collapsed
+                            ? 'absolute top-1.5 right-1.5 h-4 min-w-4 px-1 flex items-center justify-center'
+                            : 'px-1.5 py-0.5'
+                        }`}
+                        title={`${openTickets} ticket${openTickets === 1 ? '' : 's'} waiting on support`}
+                      >
+                        {openTickets > 99 ? '99+' : openTickets}
+                      </span>
                     )}
                     {/* Tooltip when collapsed */}
                     {collapsed && (

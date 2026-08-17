@@ -36,6 +36,24 @@ export default function DashboardPage() {
   const [liveUpdatedAt, setLiveUpdatedAt] = useState<Date | null>(null);
   const [drill, setDrill] = useState<DrillKey | null>(null);
 
+  /**
+   * Open support tickets, surfaced on the landing page so nothing sits
+   * unanswered (founder 2026-08-16: "the number of ticket should be
+   * visible in the dasboard and we can click it so we dont forget or
+   * miss any tickets"). Silent on failure: an admin without the support
+   * permission simply does not see the card.
+   */
+  const [openTickets, setOpenTickets] = useState<number | null>(null);
+
+  const loadTickets = () => {
+    adminApi.support
+      .queue({ limit: 100 })
+      .then((list: any[]) => setOpenTickets(
+        (list ?? []).filter((t) => t.status === 'open' || t.status === 'awaiting_agent').length,
+      ))
+      .catch(() => setOpenTickets(null));
+  };
+
   const load = () => {
     setLoading(true);
     setError(null);
@@ -49,6 +67,8 @@ export default function DashboardPage() {
       setError(e?.message ?? 'Could not load dashboard. Backend may be waking up (Railway cold start).');
     }).finally(() => setLoading(false));
   };
+
+  useEffect(() => { loadTickets(); }, []);
 
   const loadLive = () => {
     adminApi.liveDashboard().then((d) => {
@@ -322,6 +342,15 @@ export default function DashboardPage() {
                 href="/deliveries?status=pending"
                 urgent={(stats?.deliveries.pending ?? 0) > 5}
               />
+              {openTickets !== null && (
+                <QuickCard
+                  title="Open Support Tickets"
+                  count={openTickets}
+                  desc="Waiting on a reply from support"
+                  href="/support"
+                  urgent={openTickets > 0}
+                />
+              )}
               <QuickCard
                 title="Active Deliveries"
                 count={stats?.deliveries.active ?? 0}

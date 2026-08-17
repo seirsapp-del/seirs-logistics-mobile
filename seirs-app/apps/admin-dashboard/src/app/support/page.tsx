@@ -17,6 +17,7 @@ import {
   Inbox, MessageSquare, RefreshCw, CheckCircle2, XCircle, User,
   Building2, Bike, Filter, Send, AlertCircle, UserPlus,
 } from 'lucide-react';
+import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 
@@ -33,7 +34,7 @@ interface Ticket {
   autoClosedAt:      string | null;
   lastMessageAt:     string;
   createdAt:         string;
-  user?:             { id: string; name: string; email: string };
+  user?:             { id: string; name: string; email: string; phone?: string | null; accountId?: string | null };
 }
 
 interface Message {
@@ -277,7 +278,9 @@ export default function SupportInboxPage() {
                             </span>
                           </div>
                           {t.user && (
-                            <div className="mt-1 truncate text-[11px] text-gray-500">{t.user.name}</div>
+                            <div className="mt-1 truncate text-[11px] text-gray-500">
+                              {t.user.name}{t.user.email ? ` · ${t.user.email}` : ''}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -307,8 +310,25 @@ export default function SupportInboxPage() {
               <div className="border-b border-gray-200 bg-white px-5 py-3 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-bold text-gray-900">{thread.ticket.subject}</div>
+                  {/* The sender's name opens their full record. An agent
+                      seeing only a name cannot check the account behind the
+                      complaint: past deliveries, verification state, other
+                      tickets (founder 2026-08-16). */}
                   <div className="mt-0.5 text-[11px] text-gray-500">
-                    {thread.ticket.user?.name ?? 'User'} · {thread.ticket.userAccountType} · {thread.ticket.topic}
+                    {thread.ticket.user?.id ? (
+                      <Link
+                        href={`/users/${thread.ticket.user.id}`}
+                        className="font-semibold text-[#3A7BD5] hover:underline"
+                        title="Open this customer's full record"
+                      >
+                        {thread.ticket.user.name ?? 'User'}
+                      </Link>
+                    ) : (
+                      <>{thread.ticket.user?.name ?? 'User'}</>
+                    )}
+                    {thread.ticket.user?.email ? ` · ${thread.ticket.user.email}` : ''}
+                    {thread.ticket.user?.phone ? ` · ${thread.ticket.user.phone}` : ''}
+                    {' · '}{thread.ticket.userAccountType} · {thread.ticket.topic}
                     {thread.ticket.linkedDeliveryId && ` · delivery ${thread.ticket.linkedDeliveryId.slice(0, 8)}`}
                   </div>
                 </div>
