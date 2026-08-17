@@ -174,6 +174,16 @@ export class DeliveriesModule implements OnModuleInit {
           END IF;
         END $$;
       `);
+      // Runs cancelled before the stop sweep existed still list their
+      // packages as pending on the sender's screen. Bring them in line.
+      await this.ds.query(`
+        UPDATE "delivery_stops" s
+           SET status = 'cancelled'
+          FROM "deliveries" d
+         WHERE d.id = s."deliveryId"
+           AND d.status = 'cancelled'
+           AND s.status NOT IN ('delivered', 'failed', 'cancelled')
+      `);
       // Loyalty reversal guard for refunded runs (2026-08-16).
       await this.ds.query(`
         ALTER TABLE "deliveries"
