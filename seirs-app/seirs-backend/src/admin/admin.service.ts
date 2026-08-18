@@ -740,12 +740,29 @@ export class AdminService {
    * a 404 (audit 2026-08-18). Returns zeros when nothing has been set,
    * which the page reads as "no target" rather than as a failure.
    */
-  /** Write a store's coordinates so it can be approved and routed to. */
-  async setPartnerStoreLocation(storeId: string, lat: number, lng: number) {
+  /**
+   * Fill in the parts of a partner application the shopkeeper could not
+   * supply themselves. Sets fields only; approval stays a human step.
+   */
+  async completeStoreApplication(
+    storeId: string,
+    patch: { lat?: number; lng?: number; storefrontPhotoUrl?: string },
+  ) {
+    const sets: string[] = [];
+    const params: any[] = [storeId];
+    if (patch.lat !== undefined && patch.lng !== undefined) {
+      params.push(patch.lat, patch.lng);
+      sets.push(`"storeLat" = $${params.length - 1}`, `"storeLng" = $${params.length}`);
+    }
+    if (patch.storefrontPhotoUrl !== undefined) {
+      params.push(patch.storefrontPhotoUrl);
+      sets.push(`"storefrontPhotoUrl" = $${params.length}`);
+    }
     const rows = await this.dataSource.query(
-      `UPDATE "partner_stores" SET "storeLat" = $2, "storeLng" = $3
-        WHERE id = $1 RETURNING id, "storeName", "storeLat", "storeLng"`,
-      [storeId, lat, lng],
+      `UPDATE "partner_stores" SET ${sets.join(', ')}
+        WHERE id = $1
+    RETURNING id, "storeName", "storeLat", "storeLng", "storefrontPhotoUrl", status`,
+      params,
     );
     if (!rows?.length) throw new NotFoundException('Partner store not found.');
     return rows[0];

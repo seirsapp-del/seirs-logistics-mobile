@@ -301,35 +301,58 @@ export class AdminController {
   }
 
   /**
-   * Set a store's map location on their behalf.
+   * Complete a partner's application on their behalf.
    *
-   * Approval is correctly refused for a store with no coordinates,
-   * because a counter that cannot be routed to is a counter that cannot
-   * receive anything. The only remedy was to ask the partner to
-   * re-enter their address through the suggestion list, which leaves
-   * support unable to fix an obvious case themselves (audit
-   * 2026-08-18).
+   * Approval hard-requires map coordinates and a storefront photo, and
+   * both requirements are right: a counter with no location silently
+   * never becomes a driver job, and the photo is our evidence that real
+   * premises were reviewed. But there was no way for support to supply
+   * either. The only remedy was "ask the partner to do it again", which
+   * strands every shopkeeper who sent their photo over WhatsApp or
+   * typed their address as free text (audit 2026-08-18).
    *
-   * Coordinates are validated as being on Earth and inside Nigeria's
-   * rough bounding box, so a transposed pair lands as a rejection here
-   * rather than as a driver sent to the Gulf of Guinea.
+   * This fills the fields; it does NOT approve. A human still reviews
+   * and approves, so the evidence requirement stands rather than being
+   * quietly bypassed.
+   *
+   * Coordinates are checked against Nigeria's rough bounding box, so a
+   * transposed pair is rejected here rather than sending a driver into
+   * the Gulf of Guinea.
    */
-  @Patch('partner-stores/:id/location')
-  setStoreLocation(
+  @Patch('partner-stores/:id/application')
+  completeStoreApplication(
     @Param('id') id: string,
-    @Body() body: { lat: number; lng: number },
+    @Body() body: { lat?: number; lng?: number; storefrontPhotoUrl?: string },
   ) {
-    const lat = Number(body?.lat);
-    const lng = Number(body?.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      throw new BadRequestException('lat and lng must be numbers.');
+    const patch: { lat?: number; lng?: number; storefrontPhotoUrl?: string } = {};
+
+    if (body?.lat !== undefined || body?.lng !== undefined) {
+      const lat = Number(body.lat);
+      const lng = Number(body.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        throw new BadRequestException('lat and lng must both be numbers.');
+      }
+      if (lat < 4 || lat > 14 || lng < 2 || lng > 15) {
+        throw new BadRequestException(
+          `(${lat}, ${lng}) is outside Nigeria. Check the pair is not transposed.`,
+        );
+      }
+      patch.lat = lat;
+      patch.lng = lng;
     }
-    if (lat < 4 || lat > 14 || lng < 2 || lng > 15) {
-      throw new BadRequestException(
-        `(${lat}, ${lng}) is outside Nigeria. Check the pair is not transposed.`,
-      );
+
+    if (body?.storefrontPhotoUrl !== undefined) {
+      const url = String(body.storefrontPhotoUrl).trim();
+      if (!/^https?:\/\//i.test(url)) {
+        throw new BadRequestException('storefrontPhotoUrl must be an http(s) URL.');
+      }
+      patch.storefrontPhotoUrl = url;
     }
-    return this.adminService.setPartnerStoreLocation(id, lat, lng);
+
+    if (Object.keys(patch).length === 0) {
+      throw new BadRequestException('Nothing to update. Send lat and lng, or storefrontPhotoUrl.');
+    }
+    return this.adminService.completeStoreApplication(id, patch);
   }
 
   // PATCH /api/v1/admin/partner-stores/:id/reject  { note: string }
