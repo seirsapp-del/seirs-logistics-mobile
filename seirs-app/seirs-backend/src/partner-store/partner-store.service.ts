@@ -522,6 +522,16 @@ export class PartnerStoreService {
       driverEarningsNgn:  Number(breakdown.driver.total),
       seirsNetNgn:        Number(breakdown.seirsNet),
       counterTouches:     touches,
+      /**
+       * Every line that makes the total.
+       *
+       * The summary above is what a sender needs; this is what an admin
+       * needs to answer "why is it that much" and to audit a split
+       * (founder 2026-08-18: the admin should see the full receipt
+       * breakdown). It carries the rate card snapshot id, so any past
+       * quote can be reproduced exactly.
+       */
+      breakdown,
     };
   }
 
