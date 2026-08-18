@@ -83,9 +83,10 @@ function isOpenNow(days: string[] | null, open: string, close: string): boolean 
 /**
  * Straight-line km between two points.
  *
- * PricingService has no such helper despite bulk.service.ts calling
- * PricingService.haversineKm (that module does not type-check and is
- * evidently not in the build).
+ * The rate-card PricingService has no such helper. bulk.service.ts does
+ * call PricingService.haversineKm, but that is a DIFFERENT class: the
+ * legacy 90-line calculator in deliveries/pricing.service.ts, which
+ * still carries a static haversine.
  */
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
