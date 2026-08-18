@@ -961,13 +961,23 @@ export class PaymentsService {
   async updateBankDetails(
     userId: string,
     data: { bankName: string; bankCode: string; bankAccountNumber: string; bankAccountName: string },
+    /**
+     * Applied straight away, skipping the change-review ticket.
+     *
+     * Replacing an existing payout account normally parks as pending and
+     * opens a ticket for a human to look at, which is right when the
+     * account holder asks for it. An admin doing it IS that human, so
+     * routing their change into a queue addressed to themselves just
+     * fails to apply the change.
+     */
+    force = false,
   ) {
     const wallet   = await this.getOrCreateWallet({ id: userId } as User);
     const usersRepo = this.dataSource.getRepository(User);
     const user     = await usersRepo.findOne({ where: { id: userId } });
     const hasExisting = !!(user?.bankAccountNumber || wallet.bankAccountNumber);
 
-    if (!hasExisting) {
+    if (!hasExisting || force) {
       // First-time setup: apply immediately to BOTH rows. Payouts
       // (EarningsService.payoutDriver) read from the USER row; writing
       // only to the wallet used to leave payouts permanently failing

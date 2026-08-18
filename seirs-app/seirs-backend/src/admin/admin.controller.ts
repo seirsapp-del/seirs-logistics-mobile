@@ -77,7 +77,7 @@ export class AdminController {
       bankCode:          body.bankCode,
       bankAccountNumber: body.accountNumber,
       bankAccountName:   resolved.accountName,
-    });
+    }, true);
     return { updated: true, accountName: resolved.accountName };
   }
 
