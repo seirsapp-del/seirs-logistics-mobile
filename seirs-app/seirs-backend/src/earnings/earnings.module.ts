@@ -5,11 +5,13 @@ import { User } from '../users/user.entity';
 import { EarningsService } from './earnings.service';
 import { EarningsController } from './earnings.controller';
 import { FlutterwaveModule } from '../payments/flutterwave.module';
+import { FeesModule } from '../fees/fees.module';
 
 @Module({
   imports:     [
     TypeOrmModule.forFeature([DriverEarning, User]),
     FlutterwaveModule,
+    FeesModule,
   ],
   providers:   [EarningsService],
   controllers: [EarningsController],

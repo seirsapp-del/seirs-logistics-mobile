@@ -12,6 +12,7 @@ import { Delivery } from '../deliveries/delivery.entity';
 import { FeesService } from '../fees/fees.service';
 import { PricingService } from '../pricing/pricing.service';
 import { PaymentsService } from '../payments/payments.service';
+import { PartnerPayout } from '../business/partner-payout.entity';
 import { IdentityService } from '../identity/identity.service';
 import { HandoffMethod, HandoffStage } from '../identity/handoff-record.entity';
 import { MailService } from '../mail/mail.service';
@@ -113,6 +114,7 @@ export class PartnerStoreService {
     @InjectRepository(User)                 private usersRepo:       Repository<User>,
     @InjectRepository(PartnerSponsorship)   private sponsorshipRepo: Repository<PartnerSponsorship>,
     @InjectRepository(Delivery)             private deliveriesRepo:  Repository<Delivery>,
+    @InjectRepository(PartnerPayout)        private payoutsRepo:     Repository<PartnerPayout>,
     private readonly feesService:    FeesService,
     private readonly pricing:        PricingService,
     private readonly payments:       PaymentsService,
@@ -549,6 +551,97 @@ export class PartnerStoreService {
   }
 
   /**
+   * Put a counter's handling fee into their payout ledger.
+   *
+   * Written as its own step so both ends of the journey pay the same
+   * way, and so the rate always comes from the Fee Catalogue rather
+   * than a constant.
+   */
+  private async creditPartner(storeId: string, amountNgn: number, note: string): Promise<void> {
+    if (!(amountNgn > 0)) return;
+    try {
+      await this.payoutsRepo.save(this.payoutsRepo.create({
+        partnerStoreId: storeId,
+        amount:         amountNgn as any,
+        status:         'pending',
+        period:         this.payoutPeriodLabel(),
+      }));
+      this.logger.log(`partner ${storeId} credited NGN ${amountNgn} (${note})`);
+    } catch (e: any) {
+      this.logger.error(`partner credit failed for ${storeId}: ${e?.message ?? e}`);
+    }
+  }
+
+  /** ISO-week label, matching the existing business-package payouts. */
+  private payoutPeriodLabel(): string {
+    const d = new Date();
+    const onejan = new Date(d.getFullYear(), 0, 1);
+    const week = Math.ceil((((d.getTime() - onejan.getTime()) / 86400000) + onejan.getDay() + 1) / 7);
+    return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
+  }
+
+  /**
+   * Pay a partner what their counter has earned.
+   *
+   * Partners accrued payout rows and had no way whatsoever to get the
+   * money: only drivers had a withdrawal path, so a store could work
+   * every package on the shelf and watch a number grow forever (found
+   * 2026-08-18, while wiring the live money test).
+   *
+   * Funds clear after an admin-tunable delay so the launch policy and
+   * the test can differ without a deploy. Rows are marked processing
+   * BEFORE the transfer and only paid on success, so a failed transfer
+   * cannot be silently swallowed or double-spent.
+   */
+  async withdrawPartnerEarnings(ownerUserId: string) {
+    const owner = await this.usersRepo.findOne({ where: { id: ownerUserId } });
+    if (!owner?.partnerStoreId) throw new ForbiddenException('You do not run a partner store');
+    if (!owner.bankCode || !owner.bankAccountNumber) {
+      throw new BadRequestException('Add a payout bank account before withdrawing.');
+    }
+
+    const holdHours = await this.feesService.getValueOr('partner_payout_hold_hours', 24 * 7);
+    const cutoff = new Date(Date.now() - holdHours * 3600 * 1000);
+
+    const due = await this.payoutsRepo
+      .createQueryBuilder('p')
+      .where('p."partnerStoreId" = :s', { s: owner.partnerStoreId })
+      .andWhere(`p.status = 'pending'`)
+      .andWhere('p."createdAt" <= :cutoff', { cutoff })
+      .getMany();
+
+    const amount = due.reduce((sum, r) => sum + Number(r.amount), 0);
+    if (!(amount > 0)) {
+      throw new BadRequestException(
+        `Nothing has cleared yet. Counter earnings become withdrawable ${holdHours} hours after they are earned.`,
+      );
+    }
+
+    const ids = due.map(r => r.id);
+    await this.payoutsRepo.update(ids, { status: 'processing' });
+
+    const reference = `SRS-PPO-${Date.now().toString(36).toUpperCase()}`;
+    const result = await this.payments.transferOut({
+      amountNaira:   amount,
+      bankCode:      owner.bankCode,
+      accountNumber: owner.bankAccountNumber,
+      accountName:   owner.bankAccountName ?? owner.name,
+      reference,
+      narration:     'Seirs partner counter earnings',
+    });
+
+    if (!result.success) {
+      // Straight back to pending: the money was never sent, so it must
+      // stay withdrawable rather than being stranded in processing.
+      await this.payoutsRepo.update(ids, { status: 'pending' });
+      throw new BadRequestException('The transfer did not go through. Nothing was deducted, try again shortly.');
+    }
+
+    await this.payoutsRepo.update(ids, { status: 'paid', paidAt: new Date() });
+    return { paidNgn: amount, reference, entries: ids.length, transferId: result.transferId ?? null };
+  }
+
+  /**
    * Send the handoff code to the person standing at the counter.
    *
    * The Verify Sender screen told staff to ask for "the code from the
@@ -662,6 +755,18 @@ export class PartnerStoreService {
       subjectValueNgn: Number(dropoff.declaredValueNgn ?? 0),
     } as any);
 
+    // The counter has earned its handling fee the moment it takes
+    // custody. Nothing credited the partner on this path at all: only
+    // the separate business-package flow paid them, and it paid a
+    // hard-coded rate rather than the catalogue one, so a store working
+    // real drop-offs earned nothing (found 2026-08-18).
+    await this.creditPartner(
+      dropoff.pickupStoreId,
+      Number(dropoff.partnerHandlingNgn ?? 0)
+        || await this.feesService.getValueOr('partner_store_handling_ngn', 500),
+      `Received ${dropoff.dropCode}`,
+    );
+
     await this.dropoffRepo.update(dropoff.id, {
       status:           DropoffStatus.RECEIVED_AT_STORE,
       weightKg:         body.weightKg,
@@ -750,6 +855,15 @@ export class PartnerStoreService {
       receiverFirstName: dropoff.recipientName?.split(' ')[0] ?? null,
       receiverLastName:  dropoff.recipientName?.split(' ').slice(1).join(' ') || null,
     } as any);
+
+    // Second counter touch: handing the package to the recipient is
+    // paid the same as taking it in.
+    const releaseStore = dropoff.dropoffStoreId ?? dropoff.pickupStoreId;
+    await this.creditPartner(
+      releaseStore,
+      await this.feesService.getValueOr('partner_store_handling_ngn', 500),
+      `Released ${dropoff.dropCode}`,
+    );
 
     await this.dropoffRepo.update(dropoff.id, {
       status:           DropoffStatus.COLLECTED,

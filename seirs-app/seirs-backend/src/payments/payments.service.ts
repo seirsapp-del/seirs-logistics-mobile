@@ -379,6 +379,26 @@ export class PaymentsService {
    */
 
   /**
+   * Send money out to a bank account.
+   *
+   * A thin pass-through so callers outside this module (partner counter
+   * payouts) do not have to reach into FlutterwaveService themselves.
+   * Never throws: the caller decides what a failed transfer means for
+   * its own ledger, which for a payout means putting the rows straight
+   * back to pending rather than stranding them.
+   */
+  async transferOut(params: {
+    amountNaira:   number;
+    bankCode:      string;
+    accountNumber: string;
+    accountName:   string;
+    reference:     string;
+    narration:     string;
+  }): Promise<{ success: boolean; transferId?: string }> {
+    return this.flutterwaveService.transferToBank(params);
+  }
+
+  /**
    * Pay for a partner store drop-off, or top up an under-declared one.
    *
    * A drop-off has no Delivery until the counter takes the package in,

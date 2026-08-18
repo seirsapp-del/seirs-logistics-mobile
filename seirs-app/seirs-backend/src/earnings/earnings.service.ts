@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual, In } from 'typeorm';
 import { DriverEarning, DriverEarningStatus } from './driver-earning.entity';
 import { FlutterwaveService } from '../payments/flutterwave.service';
+import { FeesService } from '../fees/fees.service';
 import { User } from '../users/user.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
@@ -59,7 +60,22 @@ export class EarningsService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly flutterwave: FlutterwaveService,
+    private readonly fees: FeesService,
   ) {}
+
+  /**
+   * How long a driver's earning sits before it can be withdrawn.
+   *
+   * Was a hard-coded 2 business days, which is right for live but makes
+   * a payout test unwatchable: the founder wanted to see a real payout,
+   * a failed payout and a pay-in inside one sitting rather than waiting
+   * out a weekend (2026-08-18). Now a Fee Catalogue row, so the delay is
+   * dialled from the dashboard and set back to 2 for launch without a
+   * deploy. 0 clears immediately.
+   */
+  private async clearanceBusinessDays(): Promise<number> {
+    return this.fees.getValueOr('driver_clearance_business_days', STANDARD_CLEARANCE_BUSINESS_DAYS);
+  }
 
   // ── Recording earnings (called from delivery-completion handler) ─────────
 
@@ -78,7 +94,7 @@ export class EarningsService {
     const seirsCut    = +(grossAmount * cutPct).toFixed(2);
     const driverNet   = +(grossAmount - seirsCut).toFixed(2);
 
-    const availableAt = addBusinessDays(new Date(), STANDARD_CLEARANCE_BUSINESS_DAYS);
+    const availableAt = addBusinessDays(new Date(), await this.clearanceBusinessDays());
 
     const entry = this.repo.create({
       driverId:    params.driverId,
@@ -355,7 +371,7 @@ export class EarningsService {
       available: availableRow,
       instantEligible: instantRow,
       instantFeePct:   feePct,
-      clearanceBusinessDays: STANDARD_CLEARANCE_BUSINESS_DAYS,
+      clearanceBusinessDays: await this.clearanceBusinessDays(),
       nextPayoutEta: 'Automatic payout daily at 2 PM (Lagos time)',
     };
   }

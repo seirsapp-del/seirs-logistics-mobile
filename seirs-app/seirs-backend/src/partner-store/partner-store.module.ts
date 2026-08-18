@@ -11,6 +11,7 @@ import { Delivery } from '../deliveries/delivery.entity';
 import { FeesModule } from '../fees/fees.module';
 import { IdentityModule } from '../identity/identity.module';
 import { PricingModule } from '../pricing/pricing.module';
+import { PartnerPayout } from '../business/partner-payout.entity';
 import { PaymentsModule } from '../payments/payments.module';
 import { MailModule } from '../mail/mail.module';
 
@@ -23,7 +24,7 @@ import { MailModule } from '../mail/mail.module';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery]),
+    TypeOrmModule.forFeature([StoreDropoff, PartnerStore, User, PartnerSponsorship, Delivery, PartnerPayout]),
     FeesModule,
     IdentityModule,
     PricingModule,

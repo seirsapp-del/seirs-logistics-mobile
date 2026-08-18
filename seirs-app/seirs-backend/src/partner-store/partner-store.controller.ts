@@ -116,6 +116,13 @@ export class PartnerStoreController {
 
   // ── Partner staff side ─────────────────────────────────────────────────
 
+  // POST /api/v1/partner-store/withdraw
+  // Partner cashes out cleared counter earnings to their bank.
+  @Post('withdraw')
+  withdraw(@CurrentUser() user: any) {
+    return this.svc.withdrawPartnerEarnings(user.id);
+  }
+
   // POST /api/v1/partner-store/quote
   // What a drop-off will cost, before the sender commits to it.
   @Post('quote')
