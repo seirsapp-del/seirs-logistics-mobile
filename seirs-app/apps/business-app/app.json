@@ -11,18 +11,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "co.seirs.business",
-      "config": {
-        "googleMapsApiKey": "AIzaSyDEeXCs8LeFarQl4FBSq8e-Da8opA5XW74"
-      }
+      "bundleIdentifier": "co.seirs.business"
     },
     "android": {
       "package": "co.seirs.business",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM"
-        }
-      },
       "adaptiveIcon": {
         "backgroundColor": "#0F2B4C",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -38,24 +30,38 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-splash-screen", {
-        "image": "./assets/images/splash-icon.png",
-        "imageWidth": 200,
-        "resizeMode": "contain",
-        "backgroundColor": "#0F2B4C",
-        "dark": { "backgroundColor": "#0F2B4C" }
-      }],
-      ["expo-camera", {
-        "cameraPermission": "Seirs Business needs camera access to scan QR codes on packages."
-      }],
-      ["expo-image-picker", {
-        "photosPermission": "Seirs Business needs access to your photos for document uploads."
-      }],
-      ["expo-location", {
-        "locationWhenInUsePermission": "Seirs Business needs your location to set pickup and dropoff points on the map.",
-        "isIosBackgroundLocationEnabled": false,
-        "isAndroidBackgroundLocationEnabled": false
-      }]
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0F2B4C",
+          "dark": {
+            "backgroundColor": "#0F2B4C"
+          }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Seirs Business needs camera access to scan QR codes on packages."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Seirs Business needs access to your photos for document uploads."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Seirs Business needs your location to set pickup and dropoff points on the map.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -66,7 +72,9 @@
         "projectId": "7c2abbf0-953d-4766-9280-621fda9219af"
       }
     },
-    "runtimeVersion": { "policy": "appVersion" },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "updates": {
       "url": "https://u.expo.dev/7c2abbf0-953d-4766-9280-621fda9219af"
     }

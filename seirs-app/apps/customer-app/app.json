@@ -11,18 +11,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "co.seirs.customer",
-      "config": {
-        "googleMapsApiKey": "AIzaSyDEeXCs8LeFarQl4FBSq8e-Da8opA5XW74"
-      }
+      "bundleIdentifier": "co.seirs.customer"
     },
     "android": {
       "package": "co.seirs.customer",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM"
-        }
-      },
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -38,26 +30,40 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-splash-screen", {
-        "image": "./assets/images/splash-icon.png",
-        "imageWidth": 300,
-        "resizeMode": "contain",
-        "backgroundColor": "#FFFFFF",
-        "dark": { "backgroundColor": "#FFFFFF" }
-      }],
-      ["expo-location", {
-        "locationWhenInUsePermission": "Seirs needs your location to find nearby dispatch riders.",
-        "isIosBackgroundLocationEnabled": false,
-        "isAndroidBackgroundLocationEnabled": false
-      }],
-      ["expo-image-picker", {
-        "photosPermission": "Seirs needs access to your photos.",
-        "cameraPermission": "Seirs needs camera access."
-      }],
-      ["expo-notifications", {
-        "icon":  "./assets/images/icon.png",
-        "color": "#0F2B4C"
-      }]
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 300,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF",
+          "dark": {
+            "backgroundColor": "#FFFFFF"
+          }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Seirs needs your location to find nearby dispatch riders.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Seirs needs access to your photos.",
+          "cameraPermission": "Seirs needs camera access."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#0F2B4C"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -68,7 +74,9 @@
         "projectId": "7de6509a-fde9-46be-ab0b-a36a0b7bd002"
       }
     },
-    "runtimeVersion": { "policy": "appVersion" },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "updates": {
       "url": "https://u.expo.dev/7de6509a-fde9-46be-ab0b-a36a0b7bd002"
     }

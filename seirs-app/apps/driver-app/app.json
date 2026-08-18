@@ -11,18 +11,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "co.seirs.driver",
-      "config": {
-        "googleMapsApiKey": "AIzaSyDEeXCs8LeFarQl4FBSq8e-Da8opA5XW74"
-      }
+      "bundleIdentifier": "co.seirs.driver"
     },
     "android": {
       "package": "co.seirs.driver",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCl-9atGvhkQb9acFyVkLv9HyDMPUgjIIM"
-        }
-      },
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -40,23 +32,34 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-splash-screen", {
-        "image": "./assets/images/splash-icon.png",
-        "imageWidth": 200,
-        "resizeMode": "contain",
-        "backgroundColor": "#000000",
-        "dark": { "backgroundColor": "#000000" }
-      }],
-      ["expo-location", {
-        "locationAlwaysAndWhenInUsePermission": "Seirs Driver needs your location to assign deliveries and show customers where their package is.",
-        "locationWhenInUsePermission": "Seirs Driver needs your location for active deliveries.",
-        "isIosBackgroundLocationEnabled": true,
-        "isAndroidBackgroundLocationEnabled": true
-      }],
-      ["expo-image-picker", {
-        "photosPermission": "Seirs Driver needs access to your photos for KYC documents.",
-        "cameraPermission": "Seirs Driver needs camera access for proof of delivery photos."
-      }]
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#000000",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Seirs Driver needs your location to assign deliveries and show customers where their package is.",
+          "locationWhenInUsePermission": "Seirs Driver needs your location for active deliveries.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Seirs Driver needs access to your photos for KYC documents.",
+          "cameraPermission": "Seirs Driver needs camera access for proof of delivery photos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -67,7 +70,9 @@
         "projectId": "e05f509d-a1ba-4e9c-a56b-42082e65df0d"
       }
     },
-    "runtimeVersion": { "policy": "appVersion" },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "updates": {
       "url": "https://u.expo.dev/e05f509d-a1ba-4e9c-a56b-42082e65df0d"
     }

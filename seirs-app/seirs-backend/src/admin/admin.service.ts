@@ -740,6 +740,17 @@ export class AdminService {
    * a 404 (audit 2026-08-18). Returns zeros when nothing has been set,
    * which the page reads as "no target" rather than as a failure.
    */
+  /** Write a store's coordinates so it can be approved and routed to. */
+  async setPartnerStoreLocation(storeId: string, lat: number, lng: number) {
+    const rows = await this.dataSource.query(
+      `UPDATE "partner_stores" SET "storeLat" = $2, "storeLng" = $3
+        WHERE id = $1 RETURNING id, "storeName", "storeLat", "storeLng"`,
+      [storeId, lat, lng],
+    );
+    if (!rows?.length) throw new NotFoundException('Partner store not found.');
+    return rows[0];
+  }
+
   async getDashboardTargets() {
     const read = async (key: string) => {
       const row = await this.configRepo.findOne({ where: { key } });

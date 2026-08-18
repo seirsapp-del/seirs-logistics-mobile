@@ -744,12 +744,13 @@ export class PartnerStoreService {
     return { paidNgn: amount, reference, entries: ids.length, transferId: result.transferId ?? null };
   }
 
-  /** Counter handling fee for a parcel of this weight, from the catalogue. */
+  /**
+   * Counter handling fee for this weight. Delegates to the pricing
+   * engine so the drop-off flow and the main booking flow cannot charge
+   * a different fee for the same parcel.
+   */
   private async counterFeeFor(weightKg: number): Promise<number> {
-    if (weightKg > 50) return this.feesService.getValueOr('counter_fee_bulk_ngn', 1500);
-    if (weightKg > 20) return this.feesService.getValueOr('counter_fee_large_ngn', 900);
-    if (weightKg > 5)  return this.feesService.getValueOr('counter_fee_medium_ngn', 500);
-    return this.feesService.getValueOr('counter_fee_small_ngn', 300);
+    return this.pricing.counterFeeForWeight(weightKg);
   }
 
   /**
@@ -939,9 +940,28 @@ export class PartnerStoreService {
       }
     }
 
-    if (!dropoff.recipientUserId) {
+    /**
+     * A receiver does not need a SEIRS account to collect.
+     *
+     * This used to refuse outright unless the recipient was a registered
+     * user, which is most of Nigeria: parcels are collected by a
+     * neighbour, a shop boy, a security man, a cousin. Requiring an
+     * account at a corner shop counter would have killed counter
+     * adoption on its own (founder 2026-08-18: "we should allow this as
+     * long as they gave the otp code").
+     *
+     * The code is the proof of entitlement, exactly as a locker PIN is.
+     * When the receiver has no account the OTP goes to the SENDER, who
+     * forwards it to whoever is actually collecting, and the handoff is
+     * recorded against the sender because they are the party who
+     * authorised the release. The typed-name path still needs an account,
+     * because it verifies a SEIRS ID.
+     */
+    const collectorUserId = dropoff.recipientUserId ?? dropoff.senderUserId;
+    if (!dropoff.recipientUserId && body.method !== HandoffMethod.PHYSICAL_ID) {
       throw new BadRequestException(
-        'Recipient is unknown - only registered SEIRS users can collect via this flow',
+        'This receiver has no SEIRS account, so they must collect with the code sent to the sender. ' +
+        'Send them a code and use the code path.',
       );
     }
 
@@ -961,7 +981,7 @@ export class PartnerStoreService {
       // Resolving through the driver-leg delivery would have named the
       // sender as the OTP owner and released the package to the wrong
       // verification.
-      subjectUserId:     dropoff.recipientUserId,
+      subjectUserId:     collectorUserId,
       subjectValueNgn:   Number(dropoff.declaredValueNgn ?? 0),
       receiverFirstName: dropoff.recipientName?.split(' ')[0] ?? null,
       receiverLastName:  dropoff.recipientName?.split(' ').slice(1).join(' ') || null,

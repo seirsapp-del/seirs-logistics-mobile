@@ -300,6 +300,38 @@ export class AdminController {
     return this.partnerStoreService.adminApproveStore(id, admin.id, body?.note);
   }
 
+  /**
+   * Set a store's map location on their behalf.
+   *
+   * Approval is correctly refused for a store with no coordinates,
+   * because a counter that cannot be routed to is a counter that cannot
+   * receive anything. The only remedy was to ask the partner to
+   * re-enter their address through the suggestion list, which leaves
+   * support unable to fix an obvious case themselves (audit
+   * 2026-08-18).
+   *
+   * Coordinates are validated as being on Earth and inside Nigeria's
+   * rough bounding box, so a transposed pair lands as a rejection here
+   * rather than as a driver sent to the Gulf of Guinea.
+   */
+  @Patch('partner-stores/:id/location')
+  setStoreLocation(
+    @Param('id') id: string,
+    @Body() body: { lat: number; lng: number },
+  ) {
+    const lat = Number(body?.lat);
+    const lng = Number(body?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new BadRequestException('lat and lng must be numbers.');
+    }
+    if (lat < 4 || lat > 14 || lng < 2 || lng > 15) {
+      throw new BadRequestException(
+        `(${lat}, ${lng}) is outside Nigeria. Check the pair is not transposed.`,
+      );
+    }
+    return this.adminService.setPartnerStoreLocation(id, lat, lng);
+  }
+
   // PATCH /api/v1/admin/partner-stores/:id/reject  { note: string }
   // Rejection reason is required so user knows what to fix on re-apply.
   @Patch('partner-stores/:id/reject')

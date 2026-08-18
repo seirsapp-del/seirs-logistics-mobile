@@ -434,6 +434,22 @@ export class PricingService implements OnModuleInit {
    * VAT is applied after all surcharges and discounts. Driver share is
    * computed per-line so the breakdown stays auditable.
    */
+  /**
+   * The counter handling fee for a parcel of this weight.
+   *
+   * One shopkeeper lifting a 40kg sack does not do the same work as one
+   * accepting an envelope, and a single flat rate overcharged the small
+   * end (where most parcels are) while undercharging the heavy end.
+   * Every tier is a Fee Catalogue row.
+   */
+  async counterFeeForWeight(weightKg: number): Promise<number> {
+    const fallback = await this.fees.getValueOr('partner_store_handling_ngn', 500);
+    if (weightKg > 50) return this.fees.getValueOr('counter_fee_bulk_ngn',   1500);
+    if (weightKg > 20) return this.fees.getValueOr('counter_fee_large_ngn',   900);
+    if (weightKg > 5)  return this.fees.getValueOr('counter_fee_medium_ngn',  500);
+    return this.fees.getValueOr('counter_fee_small_ngn', fallback);
+  }
+
   async computePrice(input: PricingInput): Promise<PriceBreakdown> {
     const card = await this.getActiveRateCard();
     const category = await this.getCategoryByCode(input.categoryCode);
@@ -591,13 +607,22 @@ export class PricingService implements OnModuleInit {
     const total0 = subtotalVatBase + vat;
 
     /**
-     * Partner counter handling. A disbursement to the shop, added AFTER
-     * VAT because SEIRS is passing it through rather than selling it, and
-     * excluded from seirsNet below for the same reason.
+     * Partner counter handling, tiered by weight.
+     *
+     * There were briefly TWO counter fees: this flat one and the tiered
+     * set the drop-off flow used, so the same parcel could be charged
+     * differently depending on which path quoted it (founder spotted it,
+     * 2026-08-18). The tiered set is the endorsed policy and is now the
+     * only one; partner_store_handling_ngn survives purely as the
+     * fallback if a tier row is missing.
+     *
+     * Still added AFTER VAT and still excluded from seirsNet below,
+     * because the shop's share is passed through rather than sold. What
+     * SEIRS keeps of it is counted separately, at the split.
      */
-    const partnerHandling = (input.partnerStoreTouches ?? 0) > 0
-      ? Math.round((await this.fees.getValueOr('partner_store_handling_ngn', 500))
-          * (input.partnerStoreTouches ?? 0) * 100) / 100
+    const counterTouches = input.partnerStoreTouches ?? 0;
+    const partnerHandling = counterTouches > 0
+      ? Math.round(await this.counterFeeForWeight(input.weightKg) * counterTouches * 100) / 100
       : 0;
     const total = Math.round((total0 + partnerHandling) * 100) / 100;
 
