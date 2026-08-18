@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, Navigation, Package, User, Bike, Store } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Package, User, Bike, Store, Receipt } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -135,6 +135,59 @@ export default function DeliveryDetailPage() {
           <Row label="Cancellation fee"        value={d.cancellationFeeNgn ? naira(d.cancellationFeeNgn) : null} />
         </section>
       </div>
+
+      {/* The full receipt. Admin only: these splits are our cost model
+          and must never appear on anything a sender can print. */}
+      {d.receipt && (
+        <section className="mt-4 rounded-xl border border-[#E5E7EB] bg-white overflow-hidden">
+          <h2 className="flex items-center gap-1.5 border-b border-[#E5E7EB] bg-[#F5F5F0] px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-[#0F2B4C]/40">
+            <Receipt size={12} /> Full receipt
+            {d.receipt.unpaid && (
+              <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                nothing collected
+              </span>
+            )}
+          </h2>
+          <div className="grid gap-x-8 p-4 md:grid-cols-2">
+            <div>
+              <h3 className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[#0F2B4C]/40">What the customer paid</h3>
+              <Row label="Quoted"    value={naira(d.receipt.customerPaid)} />
+              <Row label="Collected" value={naira(d.receipt.actuallyCollected)} />
+            </div>
+            <div>
+              <h3 className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[#0F2B4C]/40">Where it went</h3>
+              <Row label="Driver"            value={naira(d.receipt.driverPay)} />
+              <Row label="Partner counters"  value={d.receipt.partnerHandling > 0 ? naira(d.receipt.partnerHandling) : null} />
+              <Row label="Card processing"   value={`- ${naira(d.receipt.processorCost)}`} />
+              <Row label="NIPOST levy"       value={`- ${naira(d.receipt.postalLevy)}`} />
+              <Row label="Gross margin"      value={naira(d.receipt.grossMargin)} />
+              <Row
+                label="SEIRS keeps"
+                value={
+                  <span className={d.receipt.contribution < 0 ? 'text-red-600' : 'text-emerald-700'}>
+                    {naira(d.receipt.contribution)} ({d.receipt.contributionPct}%)
+                  </span>
+                }
+              />
+            </div>
+          </div>
+          {Array.isArray(d.receipt.payments) && d.receipt.payments.length > 0 && (
+            <div className="border-t border-[#E5E7EB] px-4 py-3">
+              <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[#0F2B4C]/40">Payments</h3>
+              {d.receipt.payments.map((p: any, i: number) => (
+                <div key={i} className="flex flex-wrap items-center gap-x-3 py-1 text-xs text-[#0F2B4C]/70">
+                  <span className="font-mono font-semibold text-[#0F2B4C]">{naira(Number(p.amountKobo) / 100)}</span>
+                  <span className="capitalize">{String(p.purpose ?? '').replace('_', ' ')}</span>
+                  <span className={p.status === 'success' ? 'text-emerald-600' : 'text-amber-600'}>{p.status}</span>
+                  {p.escrowStatus && <span className="text-[#0F2B4C]/40">escrow {p.escrowStatus}</span>}
+                  {p.providerReference && <span className="font-mono text-[#0F2B4C]/40">{p.providerReference}</span>}
+                  <span className="text-[#0F2B4C]/40">{new Date(p.createdAt).toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {stops.length > 0 && (
         <section className="mt-4 rounded-xl border border-[#E5E7EB] bg-white overflow-hidden">

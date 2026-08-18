@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
+import FuelDriftBanner from '@/components/FuelDriftBanner';
 import {
   Users, Truck, ClipboardList, Zap, Package,
   Clock, TrendingUp, ChevronRight, AlertTriangle,
@@ -144,6 +145,10 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen">
       <main className="p-6 lg:p-8 max-w-7xl mx-auto">
+
+        {/* Fuel is the largest variable cost in the business and the one
+            most likely to drift unnoticed. It belongs above the fold. */}
+        <FuelDriftBanner />
 
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">

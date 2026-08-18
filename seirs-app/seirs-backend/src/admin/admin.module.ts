@@ -6,6 +6,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { DemoDataService } from './demo-data.service';
 import { MoneyResetService } from './money-reset.service';
+import { FeesModule } from '../fees/fees.module';
 import { User, UserRole } from '../users/user.entity';
 import { ArchivedUser } from '../users/archived-user.entity';
 import { UsersModule } from '../users/users.module';
@@ -49,6 +50,7 @@ import { StoreDropoff } from '../partner-store/store-dropoff.entity';
     DriversModule,
     PaymentsModule,
     UsersModule,
+    FeesModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, DemoDataService, MoneyResetService],

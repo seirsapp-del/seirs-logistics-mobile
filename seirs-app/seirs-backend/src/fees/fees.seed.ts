@@ -156,9 +156,13 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'seirs_plus_subscription',     name: 'SEIRS Plus (customer)',
     description: 'Customer monthly subscription - free booking fee, priority dispatch, 5% delivery discount.',
     category: FeeCategory.SUBSCRIPTION, unit: FeeUnit.PER_MONTH,  value: 2000 },
+  // Was NGN 5,000 per WEEK, which is NGN 21,667 a month against a Lagos
+  // rider income of NGN 150k-300k: between 7% and 14% of everything they
+  // earn, priced like Western SaaS rather than like a rider's wallet
+  // (review 2026-08-18). Monthly, and small enough to be an easy yes.
   { key: 'driver_premium_subscription', name: 'Driver Premium',
-    description: 'Driver weekly flat fee as alternative to commission cut - for high-volume drivers who prefer predictability.',
-    category: FeeCategory.SUBSCRIPTION, unit: FeeUnit.PER_WEEK,   value: 5000 },
+    description: 'Monthly flat fee a driver can pay instead of the commission cut, for high-volume drivers who prefer predictability. Must stay comfortably under 3% of a typical rider month.',
+    category: FeeCategory.SUBSCRIPTION, unit: FeeUnit.PER_MONTH,  value: 4000 },
 
   // ── Partner ────────────────────────────────────────────────────────────
   { key: 'partner_sponsored_placement', name: 'Partner Sponsored Placement',

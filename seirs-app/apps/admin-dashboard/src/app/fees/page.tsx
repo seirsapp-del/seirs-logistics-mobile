@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api';
+import FuelDriftBanner from '@/components/FuelDriftBanner';
 import { DollarSign, Save, X, History, Search, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface Fee {
@@ -145,6 +146,9 @@ export default function FeeCataloguePage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* The fuel rows live on this page, so the warning about them does too. */}
+      <FuelDriftBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

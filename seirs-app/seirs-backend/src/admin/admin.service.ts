@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not, MoreThan, Repository } from 'typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { In, Not, MoreThan, Repository, DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { User, UserRole, AdminSubRole } from '../users/user.entity';
@@ -12,6 +12,7 @@ import { FraudService } from '../fraud/fraud.service';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { PaymentsService } from '../payments/payments.service';
+import { FeesService } from '../fees/fees.service';
 import { DriversService } from '../drivers/drivers.service';
 import { CmsItem, ContentType, ContentStatus } from './cms-item.entity';
 import { SupportTicket, TicketStatus } from '../support/support-ticket.entity';
@@ -66,6 +67,8 @@ export class AdminService {
     private readonly usersService: UsersService,
     private readonly paymentsService: PaymentsService,
     private readonly driversService: DriversService,
+    private readonly feesService: FeesService,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   // ── Spec V8 §3.13. NDPR admin tools (A32 + A33) ──────────────────────────
@@ -1394,7 +1397,60 @@ export class AdminService {
       order: { stops: { sequenceOrder: 'ASC' } } as any,
     });
     if (!d) throw new NotFoundException('Delivery not found.');
-    return d;
+
+    /**
+     * The full receipt, for admin eyes only.
+     *
+     * A customer receipt shows what they paid and what it was for. This
+     * shows where every naira went: the driver's cut, the counter's cut,
+     * VAT, and what SEIRS actually kept after the processor, the postal
+     * levy and the failed-delivery provision (founder 2026-08-18: the
+     * admin should be able to see the full receipt breakdown).
+     *
+     * Never expose these splits to a sender. They are our cost model.
+     */
+    const payments = await this.dataSource.query(
+      `SELECT "amountKobo", method, status, purpose, "escrowStatus",
+              "providerReference", "flutterwaveTransactionId", "createdAt"
+         FROM payments
+        WHERE "deliveryId" = $1
+        ORDER BY "createdAt" ASC`,
+      [d.id],
+    ).catch(() => []);
+
+    const price          = Number(d.price ?? 0);
+    const driverPay      = Number((d as any).driverEarnings ?? 0);
+    const partnerHandling = Number((d as any).partnerHandlingNgn ?? 0);
+    const collected      = (payments as any[])
+      .filter(p => p.status === 'success')
+      .reduce((sum, p) => sum + Number(p.amountKobo ?? 0) / 100, 0);
+
+    const [processorPct, levyPct] = await Promise.all([
+      this.feesService.getValueOr('card_processing_pct', 1.4),
+      this.feesService.getValueOr('nipost_postal_fund_pct', 2),
+    ]);
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const processorCost = r2(price * (processorPct / 100));
+    const postalLevy    = r2(price * (levyPct / 100));
+    const grossMargin   = r2(price - driverPay - partnerHandling);
+    const contribution  = r2(grossMargin - processorCost - postalLevy);
+
+    return {
+      ...d,
+      receipt: {
+        customerPaid:   price,
+        actuallyCollected: r2(collected),
+        driverPay,
+        partnerHandling,
+        processorCost,
+        postalLevy,
+        grossMargin,
+        contribution,
+        contributionPct: price > 0 ? Math.round((contribution / price) * 1000) / 10 : 0,
+        unpaid:         collected <= 0,
+        payments,
+      },
+    };
   }
 
   /**

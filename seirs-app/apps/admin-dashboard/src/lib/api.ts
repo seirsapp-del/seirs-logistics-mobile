@@ -177,6 +177,18 @@ export const adminApi = {
 
   pricing: {
     get:    ()           => req<any>('/admin/pricing'),
+    /**
+     * How far the pump price has drifted from the active rate card.
+     * Fuel is corrected from the Fee Catalogue so drivers are always
+     * reimbursed properly, but the card's own customer rates go stale
+     * behind it and somebody has to be told to republish.
+     */
+    fuelDrift: ()        => req<{
+      petrol: { card: number; live: number; driftPct: number };
+      diesel: { card: number; live: number; driftPct: number };
+      thresholdPct: number;
+      stale: boolean;
+    }>('/pricing/fuel-drift'),
     update: (data: any)  => req<any>('/admin/pricing', { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
