@@ -2,17 +2,19 @@
 /**
  * Warns when the pump price has left the rate card behind.
  *
- * Fuel is reimbursed from the Fee Catalogue, so drivers are paid the
- * real price the moment it is corrected there. The rate card is a
- * separate thing: it still carries the fuel assumption that its
- * CUSTOMER-facing rates were built on, and it is republished rarely.
- * When the two diverge far enough, customers are being quoted off stale
- * assumptions even though drivers are being paid correctly.
+ * The rate card is the single source of truth for fuel: it is what
+ * drivers are reimbursed from and what customers are quoted. The Fee
+ * Catalogue holds today's actual pump price purely as a reference, so
+ * the two can be compared.
  *
- * This went unnoticed until a review found the card assuming NGN 950
- * petrol against a real pump price near NGN 1,380, which had every
- * driver silently subsidising their own fuel (2026-08-18). Nobody should
- * have to go looking for that again.
+ * A card is republished rarely and Nigerian pump prices are not rare.
+ * A review found the card assuming NGN 950 petrol against a real price
+ * near NGN 1,380, which had every driver silently subsidising their own
+ * fuel: a truck driver on a 400km run was NGN 53,333 short (2026-08-18).
+ *
+ * Correcting it was always possible, by editing the pricing form and
+ * publishing. It was never done, because that is friction. Hence the
+ * button: one action, a proper new card version, a full audit trail.
  */
 import { useEffect, useState } from 'react';
 import { Fuel, X } from 'lucide-react';
@@ -30,6 +32,23 @@ const naira = (v: number) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`
 export default function FuelDriftBanner() {
   const [drift, setDrift]     = useState<Drift | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [done, setDone]       = useState<string | null>(null);
+
+  const sync = async () => {
+    setSyncing(true);
+    try {
+      const r = await adminApi.pricing.syncFuel();
+      setDone(r.published
+        ? `Published rate card version ${r.version}. Customer rates now match the pump.`
+        : (r.message ?? 'Already up to date.'));
+      adminApi.pricing.fuelDrift().then(setDrift).catch(() => {});
+    } catch (e: any) {
+      setDone(e?.message ?? 'Could not publish. Try the pricing page.');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     adminApi.pricing.fuelDrift().then(setDrift).catch(() => setDrift(null));
@@ -50,10 +69,19 @@ export default function FuelDriftBanner() {
         </p>
         <p className="mt-0.5 text-amber-800/80">
           {worst.label} is {naira(worst.live)}/litre today; the active rate card was built on{' '}
-          {naira(worst.card)}. Drivers are already reimbursed at the real price, but customer
-          rates are still priced off the old one. Republish the rate card to bring them back
-          in line.
+          {naira(worst.card)}. Fuel is reimbursed from the card, so every driver is paying the
+          difference out of their own pocket on every trip until it is republished.
         </p>
+        <div className="mt-2.5 flex flex-wrap items-center gap-3">
+          <button
+            onClick={sync}
+            disabled={syncing}
+            className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
+          >
+            {syncing ? 'Publishing…' : 'Apply pump prices and publish'}
+          </button>
+          {done && <span className="text-xs font-medium text-amber-900">{done}</span>}
+        </div>
         <p className="mt-1.5 text-xs text-amber-800/60">
           Petrol {naira(drift.petrol.live)} vs {naira(drift.petrol.card)} ({drift.petrol.driftPct > 0 ? '+' : ''}{drift.petrol.driftPct}%)
           {' · '}

@@ -189,6 +189,17 @@ export const adminApi = {
       thresholdPct: number;
       stale: boolean;
     }>('/pricing/fuel-drift'),
+    /**
+     * Copy today's pump prices into a new rate card version in one
+     * action. Correcting fuel was always possible by editing the form
+     * and publishing; it was never done because that is friction, and
+     * the card drifted 45% behind while drivers absorbed the gap.
+     */
+    syncFuel: ()         => req<{
+      published: boolean; version?: number; message?: string;
+      from?: { petrol: number; diesel: number };
+      to?:   { petrol: number; diesel: number };
+    }>('/admin/rate-card/sync-fuel', { method: 'POST', body: '{}' }),
     update: (data: any)  => req<any>('/admin/pricing', { method: 'PATCH', body: JSON.stringify(data) }),
   },
 

@@ -80,18 +80,35 @@ function mergeFromBackend(remote: any): RateCard {
       ...d.zone,
       ...(remote.zoneSurcharges ?? {}),
     },
-    dwell: remote.dwell ? {
-      freeMinutes:        num(remote.dwell.freeMinutes,        d.dwell.freeMinutes),
-      perMinuteNgn:       num(remote.dwell.perMinuteNgn,       d.dwell.perMinuteNgn),
-      capMinutes:         num(remote.dwell.capMinutes,         d.dwell.capMinutes),
-      driverPerMinuteNgn: num(remote.dwell.driverPerMinuteNgn, d.dwell.driverPerMinuteNgn),
+    /**
+     * Waiting-time rules.
+     *
+     * This read `remote.dwell`, which the backend has never sent: the
+     * card calls it `stopAndDwell` and names every field differently.
+     * The branch therefore always fell through to the local defaults, so
+     * editing waiting-time rates in the dashboard changed nothing in
+     * this app and nobody could tell, because the local defaults happened
+     * to match the seed (audit 2026-08-18).
+     */
+    dwell: remote.stopAndDwell ? {
+      freeMinutes:        num(remote.stopAndDwell.freeDwellThresholdMinutes, d.dwell.freeMinutes),
+      perMinuteNgn:       num(remote.stopAndDwell.perDwellMinuteCustomer,    d.dwell.perMinuteNgn),
+      capMinutes:         num(remote.stopAndDwell.dwellCapMinutes,           d.dwell.capMinutes),
+      driverPerMinuteNgn: num(remote.stopAndDwell.perDwellMinuteDriver,      d.dwell.driverPerMinuteNgn),
     } : d.dwell,
-    cancellation: remote.cancellation ? {
-      preAssignNgn:    num(remote.cancellation.preAssignNgn,    d.cancellation.preAssignNgn),
-      postAssignNgn:   num(remote.cancellation.postAssignNgn,   d.cancellation.postAssignNgn),
-      midRouteFlatNgn: num(remote.cancellation.midRouteFlatNgn, d.cancellation.midRouteFlatNgn),
-      noShowFlatNgn:   num(remote.cancellation.noShowFlatNgn,   d.cancellation.noShowFlatNgn),
-      noShowWaitMin:   num(remote.cancellation.noShowWaitMin,   d.cancellation.noShowWaitMin),
+    /**
+     * Cancellation and no-show. Same problem as dwell above: this read
+     * `remote.cancellation`, which does not exist. The backend keeps
+     * these under `feeRules` with different names, so every admin edit
+     * to a cancellation fee stopped at the API and this app carried on
+     * charging its bundled defaults.
+     */
+    cancellation: remote.feeRules ? {
+      preAssignNgn:    num(remote.feeRules.cancelPreAssignCustomer,  d.cancellation.preAssignNgn),
+      postAssignNgn:   num(remote.feeRules.cancelPostAssignCustomer, d.cancellation.postAssignNgn),
+      midRouteFlatNgn: num(remote.feeRules.returnTripBaseFee,        d.cancellation.midRouteFlatNgn),
+      noShowFlatNgn:   num(remote.feeRules.senderNoShowFlat,         d.cancellation.noShowFlatNgn),
+      noShowWaitMin:   num(remote.feeRules.senderNoShowWaitMinutes,  d.cancellation.noShowWaitMin),
     } : d.cancellation,
     cod: remote.cod ? {
       enabled:         bool(remote.cod.enabled,         d.cod.enabled),
