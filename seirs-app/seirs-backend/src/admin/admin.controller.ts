@@ -134,6 +134,20 @@ export class AdminController {
     return this.adminService.getUsers(q.page ?? 1, q.limit ?? 20, q.role);
   }
 
+  /**
+   * Users with a pending deletion, soonest purge first. Powers /recycle-bin.
+   *
+   * Declared ABOVE users/:id deliberately. Nest matches routes in
+   * declaration order, so with :id first this literal path was captured
+   * as an id of "pending-deletion", Postgres rejected it as a UUID, and
+   * the recycle bin answered 500 (audit 2026-08-18). Any further literal
+   * paths under users/ must go above the wildcard too.
+   */
+  @Get('users/pending-deletion')
+  listPendingDeletions() {
+    return this.adminService.listPendingDeletions();
+  }
+
   // GET /api/v1/admin/users/:id
   @Get('users/:id')
   getUserDetail(@Param('id') id: string) {
@@ -712,13 +726,6 @@ export class AdminController {
     return this.adminService.revealIdentityDocs(id, admin, req.ip);
   }
 
-  // GET /api/v1/admin/users/pending-deletion
-  // Lists every user with a pending deletion (self- or admin-scheduled)
-  // ordered by soonest purge first. Powers the /recycle-bin admin page.
-  @Get('users/pending-deletion')
-  listPendingDeletions() {
-    return this.adminService.listPendingDeletions();
-  }
 
   // POST /api/v1/admin/users/:id/soft-delete  { reason }
   // Admin schedules a deletion on behalf of a user with the same 30-day
