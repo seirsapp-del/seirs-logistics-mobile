@@ -41,12 +41,17 @@ const CATEGORY_LABEL: Record<string, string> = {
   pool:          'Pool & Multi-stop',
   financial:     'Financial Services',
   dev_platform:  'Developer Platform',
+  loyalty:       'Loyalty & Referrals',
   config:        'System Config',
 };
 
+// Ordered by how often someone actually needs them. Partner and Loyalty
+// used to sit near the end, and System Config had become a 24-row
+// dumping ground at the very bottom that nobody scrolled to.
 const CATEGORY_ORDER = [
-  'commission', 'customer_fee', 'driver_fee', 'storage', 'surge',
-  'pool', 'zone', 'subscription', 'partner', 'financial', 'dev_platform', 'config',
+  'commission', 'customer_fee', 'driver_fee', 'partner', 'loyalty',
+  'storage', 'surge', 'pool', 'zone', 'subscription', 'financial',
+  'dev_platform', 'config',
 ];
 
 // Format the raw stored value into the right human-readable string

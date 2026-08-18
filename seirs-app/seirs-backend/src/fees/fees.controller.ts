@@ -60,7 +60,7 @@ export class FeesController {
   @Patch('admin/fees/:key')
   update(
     @Param('key') key: string,
-    @Body() body: { value?: number; active?: boolean; currentNote?: string; unit?: any },
+    @Body() body: { value?: number; active?: boolean; currentNote?: string; unit?: any; category?: any },
     @CurrentUser() admin: any,
   ) {
     return this.feesService.update(key, body, admin);

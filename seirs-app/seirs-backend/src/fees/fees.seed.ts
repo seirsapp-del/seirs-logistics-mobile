@@ -69,23 +69,23 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // sack, and SEIRS kept none of it however many counters were involved.
   { key: 'counter_fee_small_ngn',       name: 'Counter Handling, up to 5kg',
     description: 'Handling fee for a parcel up to 5kg at one counter.',
-    category: FeeCategory.STORAGE, unit: FeeUnit.FLAT_NGN, value: 300 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 300 },
 
   { key: 'counter_fee_medium_ngn',      name: 'Counter Handling, 5 to 20kg',
     description: 'Handling fee for a parcel between 5kg and 20kg at one counter.',
-    category: FeeCategory.STORAGE, unit: FeeUnit.FLAT_NGN, value: 500 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 500 },
 
   { key: 'counter_fee_large_ngn',       name: 'Counter Handling, 20 to 50kg',
     description: 'Handling fee for a parcel between 20kg and 50kg at one counter.',
-    category: FeeCategory.STORAGE, unit: FeeUnit.FLAT_NGN, value: 900 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 900 },
 
   { key: 'counter_fee_bulk_ngn',        name: 'Counter Handling, over 50kg',
     description: 'Handling fee for a parcel over 50kg at one counter.',
-    category: FeeCategory.STORAGE, unit: FeeUnit.FLAT_NGN, value: 1500 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 1500 },
 
   { key: 'counter_partner_share_pct',   name: 'Counter Fee, Partner Share',
     description: 'Share of the handling fee the shop keeps. The remainder is SEIRS network revenue. The fee used to pass through whole, so the counter network earned the platform nothing.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 70 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.PERCENT, value: 70 },
 
   // OFF until trunk runs are actually batched. The consolidated price
   // divides one run across many parcels, but each drop-off still creates
@@ -93,19 +93,19 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // charging for a sixth of a run while paying for six whole ones.
   { key: 'consolidated_dispatch_enabled', name: 'Consolidated Dispatch Live',
     description: 'Set to 1 only once counter-to-counter parcels are genuinely batched onto shared trunk runs. Until then counter journeys are priced per parcel, like any other trip.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 0 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 0 },
 
   { key: 'trunk_assumed_parcels',       name: 'Assumed Parcels per Trunk Run',
     description: 'Divisor behind consolidated counter-to-counter pricing. Start pessimistic and raise it only on measured load data.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 6 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 6 },
 
   { key: 'consolidated_floor_ngn',      name: 'Consolidated Journey Floor Price',
     description: 'The price below which a counter-to-counter parcel never sells, however empty the run turns out to be.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 800 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 800 },
 
   { key: 'counter_volume_bonus_cap_ngn', name: 'Counter Volume Bonus Cap',
     description: 'Maximum monthly bonus a single counter can earn for driving density. Every incentive carries a ceiling.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 25000 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 25000 },
 
   // ── Fuel, corrected from the dashboard rather than the rate card ───────
   // A rate card freezes fuel at publication and is republished rarely.
@@ -144,7 +144,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
 
   { key: 'driver_new_period_days',      name: 'New Driver Period (days)',
     description: 'How long a driver counts as new for withdrawal caps and holdback.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 30 },
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.FLAT_NGN, value: 30 },
 
   { key: 'driver_new_holdback_pct',     name: 'New Driver Holdback',
     description: 'Share of a new driver payout held back against chargebacks and disputes.',
@@ -152,50 +152,50 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
 
   { key: 'instant_payout_min_age_hours', name: 'Instant Payout Minimum Age (hours)',
     description: 'How old an uncleared earning must be before it can be pulled forward for the instant fee.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 24 },
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.FLAT_NGN, value: 24 },
 
   // ── Loyalty, which is a liability ──────────────────────────────────────
   // Every point issued is a discount owed later, so the earn rate and the
   // abuse ceilings belong on the dashboard rather than in a deploy.
   { key: 'loyalty_points_per_1000_ngn', name: 'Points per NGN 1,000 Spent',
     description: 'Base earn rate before any tier multiplier.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 10 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 10 },
 
   { key: 'loyalty_referral_bonus',      name: 'Referral Bonus (points)',
     description: 'Points awarded when a referred user completes their first qualifying delivery.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 200 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 200 },
 
   { key: 'loyalty_max_referrals_month', name: 'Referral Cap per Month',
     description: 'Most referral bonuses one account can earn in a calendar month.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 10 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 10 },
 
   { key: 'loyalty_referral_min_ngn',    name: 'Referral Qualifying Delivery',
     description: 'Minimum delivery value before a referral counts, so a token order cannot farm bonuses.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 1000 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 1000 },
 
   { key: 'loyalty_referral_flag_count', name: 'Referral Fraud Flag Threshold',
     description: 'Referrals inside seven days that trigger an admin review.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 5 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 5 },
 
   { key: 'loyalty_streak_bonus',        name: 'Monthly Streak Bonus (points)',
     description: 'Points for hitting the monthly delivery streak target.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 50 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 50 },
 
   { key: 'loyalty_streak_target',       name: 'Monthly Streak Target',
     description: 'Deliveries in a calendar month that earn the streak bonus.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 5 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 5 },
 
   { key: 'loyalty_bank_transfer_bonus', name: 'Bank Transfer Bonus (points)',
     description: 'Small nudge toward the payment method that costs least to process.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 5 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 5 },
 
   { key: 'loyalty_rate_driver_bonus',   name: 'Rate a Driver Bonus (points)',
     description: 'Points for leaving a driver rating.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 5 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 5 },
 
   { key: 'loyalty_point_lifetime_months', name: 'Point Lifetime (months)',
     description: 'How long an unspent point survives before expiring.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 12 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 12 },
 
   // ── Payout timing ──────────────────────────────────────────────────────
   // Both were constants in code. They are here so the launch policy and
@@ -204,11 +204,11 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // pay-in inside one sitting rather than waiting out a weekend.
   { key: 'driver_clearance_business_days', name: 'Driver Earnings Clearance (business days)',
     description: 'Business days a completed trip waits before the driver can withdraw it. 0 makes earnings withdrawable immediately.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 2 },
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.FLAT_NGN, value: 2 },
 
   { key: 'partner_payout_hold_hours',   name: 'Partner Payout Hold (hours)',
     description: 'Hours a counter handling fee waits before the partner can withdraw it. 168 is the weekly Monday payout; 0 makes it immediate.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 168 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 168 },
 
   // ── Night operations (founder 2026-08-11: 24/7 scheduling) ─────────────
   // Founder decision 2026-08-15: a PENDING booking that no driver takes

@@ -23,6 +23,19 @@ export class FeesService implements OnModuleInit {
   // Idempotent seed - only inserts rows that don't already exist by key.
   // Existing fees are NEVER overwritten so production values persist.
   async onModuleInit() {
+    /**
+     * Postgres enums do not grow by themselves and production runs with
+     * schema sync off, so a new FeeCategory value has to be added by
+     * hand or every insert using it fails.
+     */
+    try {
+      await this.feesRepo.query(
+        `ALTER TYPE "fees_category_enum" ADD VALUE IF NOT EXISTS 'loyalty'`,
+      );
+    } catch (e: any) {
+      this.logger.error(`fee category self-heal FAILED: ${e?.message ?? e}`);
+    }
+
     const existing  = await this.feesRepo.find({ select: ['key'] });
     const existingKeys = new Set(existing.map(f => f.key));
     const toInsert  = FEE_SEEDS.filter(f => !existingKeys.has(f.key!));
@@ -108,7 +121,14 @@ export class FeesService implements OnModuleInit {
      * do it from the dashboard: seeds only apply to an empty table, so
      * the only route was a deploy (review 2026-08-18).
      */
-    patch: { value?: number; active?: boolean; currentNote?: string; unit?: FeeUnit },
+    /**
+     * category is editable because where a row APPEARS is part of
+     * whether anyone can find it. Twenty-four rows were seeded into
+     * System Config, which renders last after eleven other groups, so
+     * the founder went looking for counter and loyalty settings and
+     * could not find them (2026-08-18).
+     */
+    patch: { value?: number; active?: boolean; currentNote?: string; unit?: FeeUnit; category?: FeeCategory },
     admin: { id?: string; sub?: string; name?: string },
   ) {
     const existing = await this.getOne(key);
@@ -116,6 +136,11 @@ export class FeesService implements OnModuleInit {
     const newValue  = patch.value  != null ? Number(patch.value)  : Number(existing.value);
     const newActive = patch.active != null ? patch.active         : existing.active;
     const newUnit   = patch.unit   != null ? patch.unit           : existing.unit;
+    const newCat    = patch.category != null ? patch.category      : existing.category;
+
+    if (patch.category != null && !Object.values(FeeCategory).includes(patch.category)) {
+      throw new BadRequestException(`category must be one of: ${Object.values(FeeCategory).join(', ')}`);
+    }
 
     if (patch.unit != null && !Object.values(FeeUnit).includes(patch.unit)) {
       throw new BadRequestException(`unit must be one of: ${Object.values(FeeUnit).join(', ')}`);
@@ -127,7 +152,8 @@ export class FeesService implements OnModuleInit {
 
     // Skip writing if nothing actually changed - don't pollute history
     if (Number(existing.value) === newValue && existing.active === newActive
-        && existing.unit === newUnit && patch.currentNote == null) {
+        && existing.unit === newUnit && existing.category === newCat
+        && patch.currentNote == null) {
       return existing;
     }
 
@@ -148,6 +174,7 @@ export class FeesService implements OnModuleInit {
       value:             newValue,
       active:            newActive,
       unit:              newUnit,
+      category:          newCat,
       currentNote:       patch.currentNote ?? existing.currentNote,
       lastUpdatedById:   admin.id ?? admin.sub,
       lastUpdatedByName: admin.name ?? 'Admin',

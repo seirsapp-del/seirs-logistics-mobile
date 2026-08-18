@@ -24,6 +24,10 @@ export enum FeeCategory {
   POOL          = 'pool',
   FINANCIAL     = 'financial',
   DEV_PLATFORM  = 'dev_platform',
+  // Points are a liability, not a fee, and burying ten of them in
+  // System Config made them unfindable (founder 2026-08-18: "i couldnt
+  // find a lot of it").
+  LOYALTY       = 'loyalty',
   CONFIG        = 'config',
 }
 
