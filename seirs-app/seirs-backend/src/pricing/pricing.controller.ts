@@ -36,7 +36,20 @@ export class PricingController {
     private readonly categoryRepo: Repository<ServiceCategory>,
   ) {}
 
-  // ── Public config endpoints (apps fetch on boot) ─────────────────────
+  /**
+   * How far the pump price has drifted from the active rate card.
+   *
+   * Powers the admin warning. Fuel is corrected from the catalogue so
+   * drivers are always reimbursed correctly, but the card's own
+   * customer-facing rates go stale behind it, and somebody has to be
+   * told to republish.
+   */
+  @Get('pricing/fuel-drift')
+  fuelDrift() {
+    return this.pricing.fuelDrift();
+  }
+
+  // ── Public config endpoints (apps fetch on boot) ─────────────────────  // ── Public config endpoints (apps fetch on boot) ─────────────────────
 
   @Public()
   @Get('config/rate-card')

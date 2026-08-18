@@ -45,10 +45,79 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Auto-applied multiplier on base fare during demand spikes. Platform keeps 50% of the surge slice.',
     category: FeeCategory.SURGE,        unit: FeeUnit.PERCENT,    value: 150 },
 
-  // ── Night operations (founder 2026-08-11: 24/7 scheduling) ─────────────
-  // Founder decision 2026-08-15: a PENDING booking that no driver takes
-  // within this window is auto-cancelled and refunded IN FULL (the fare
-  // was escrowed at booking; without this it sat locked forever).
+  // ── The real cost of serving a job ─────────────────────────────────────
+  // None of these were modelled, so every quote reported a margin the
+  // company never actually saw (review 2026-08-18).
+  { key: 'card_processing_pct',         name: 'Card Processing Cost',
+    description: 'What Flutterwave takes on a collected payment. Modelled as a cost so quoted margin is the margin we keep.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 1.4 },
+
+  { key: 'nipost_postal_fund_pct',      name: 'NIPOST Postal Fund Levy',
+    description: 'Statutory contribution required of courier operators. Confirm with counsel whether the base is gross bookings or net revenue before scaling.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 2 },
+
+  { key: 'door_delivery_failure_pct',   name: 'Door Delivery Failure Rate',
+    description: 'Share of door deliveries that find nobody home and need a second trip at no extra revenue. Counter deliveries are exempt because a shop does not go out. Replace with measured data as soon as it exists.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 8 },
+
+  { key: 'min_job_margin_ngn',          name: 'Minimum Job Margin',
+    description: 'The least SEIRS may keep on a job after every real cost. Quotes below this are flagged. Set to 0 to disable the floor.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 150 },
+
+  // ── Counter economics ──────────────────────────────────────────────────
+  // A flat handling fee overcharged an envelope and undercharged a 40kg
+  // sack, and SEIRS kept none of it however many counters were involved.
+  { key: 'counter_fee_small_ngn',       name: 'Counter Handling, up to 5kg',
+    description: 'Handling fee for a parcel up to 5kg at one counter.',
+    category: FeeCategory.STORAGE, unit: FeeUnit.FLAT_NGN, value: 300 },
+
+  { key: 'counter_fee_medium_ngn',      name: 'Counter Handling, 5 to 20kg',
+    description: 'Handling fee for a parcel between 5kg and 20kg at one counter.',
+    category: FeeCategory.STORAGE, unit: FeeUnit.FLAT_NGN, value: 500 },
+
+  { key: 'counter_fee_large_ngn',       name: 'Counter Handling, 20 to 50kg',
+    description: 'Handling fee for a parcel between 20kg and 50kg at one counter.',
+    category: FeeCategory.STORAGE, unit: FeeUnit.FLAT_NGN, value: 900 },
+
+  { key: 'counter_fee_bulk_ngn',        name: 'Counter Handling, over 50kg',
+    description: 'Handling fee for a parcel over 50kg at one counter.',
+    category: FeeCategory.STORAGE, unit: FeeUnit.FLAT_NGN, value: 1500 },
+
+  { key: 'counter_partner_share_pct',   name: 'Counter Fee, Partner Share',
+    description: 'Share of the handling fee the shop keeps. The remainder is SEIRS network revenue. The fee used to pass through whole, so the counter network earned the platform nothing.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 70 },
+
+  { key: 'trunk_assumed_parcels',       name: 'Assumed Parcels per Trunk Run',
+    description: 'Divisor behind consolidated counter-to-counter pricing. Start pessimistic and raise it only on measured load data.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 6 },
+
+  { key: 'consolidated_floor_ngn',      name: 'Consolidated Journey Floor Price',
+    description: 'The price below which a counter-to-counter parcel never sells, however empty the run turns out to be.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 800 },
+
+  { key: 'counter_volume_bonus_cap_ngn', name: 'Counter Volume Bonus Cap',
+    description: 'Maximum monthly bonus a single counter can earn for driving density. Every incentive carries a ceiling.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 25000 },
+
+  // ── Fuel, corrected from the dashboard rather than the rate card ───────
+  // A rate card freezes fuel at publication and is republished rarely.
+  // Nigerian pump prices are not rare. The card said petrol was NGN 950
+  // while the pump was near NGN 1,380, and since fuel is a full
+  // pass-through the entire gap came out of the driver's pocket: a truck
+  // driver on a 400km run was NGN 53,333 short on fuel alone. These rows
+  // are corrected the day the pump moves, with no deploy.
+  { key: 'current_petrol_price_ngn',    name: 'Petrol Pump Price (per litre)',
+    description: 'Current petrol price. Drivers are reimbursed at this rate, so it must track the real pump price or riders subsidise every trip.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 1380 },
+
+  { key: 'current_diesel_price_ngn',    name: 'Diesel Pump Price (per litre)',
+    description: 'Current diesel price, used for van and truck fuel reimbursement.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 1650 },
+
+  { key: 'fuel_reprice_trigger_pct',    name: 'Fuel Drift Warning Threshold',
+    description: 'How far the pump price may drift from the active rate card before the dashboard warns that the card needs republishing.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 10 },
+
   // ── Payout timing ──────────────────────────────────────────────────────
   // Both were constants in code. They are here so the launch policy and
   // a test run can differ without a deploy: during the live money test
@@ -62,6 +131,10 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Hours a counter handling fee waits before the partner can withdraw it. 168 is the weekly Monday payout; 0 makes it immediate.',
     category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 168 },
 
+  // ── Night operations (founder 2026-08-11: 24/7 scheduling) ─────────────
+  // Founder decision 2026-08-15: a PENDING booking that no driver takes
+  // within this window is auto-cancelled and refunded IN FULL (the fare
+  // was escrowed at booking; without this it sat locked forever).
   { key: 'pending_booking_expiry_minutes', name: 'Pending Booking Expiry (minutes)',
     description: 'Minutes a paid booking may wait for a driver before it auto-cancels with a full refund.',
     category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 60 },

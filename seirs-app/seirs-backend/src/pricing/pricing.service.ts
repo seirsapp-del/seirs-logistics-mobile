@@ -53,8 +53,21 @@ export interface PriceBreakdown {
     total:            number;
   };
 
-  // Platform retention
+  // Platform retention, before the cost of collecting it
   seirsNet: number;
+
+  /**
+   * What serving the job really costs, and what is left afterwards.
+   * seirsNet flatters the business; contribution is the honest number.
+   */
+  trueCosts: {
+    cardProcessing:   number;
+    postalFundLevy:   number;
+    failureProvision: number;
+    contribution:     number;
+    belowFloor:       boolean;
+    marginFloorNgn:   number;
+  };
 
   // The rate card snapshot id so future audits can reproduce this
   // calculation exactly.
@@ -71,6 +84,11 @@ export const DEFAULT_MAX_PACKAGES: Record<string, number> = {
   bicycle: 3, motorcycle: 5, tricycle: 15, car: 20,
   van: 40, truck_small: 80, truck_large: 150,
 };
+
+/** Pump prices in naira per litre, as they are TODAY rather than as the rate card froze them. */
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+export interface FuelPrices { petrol: number; diesel: number; }
 
 export interface PricingInput {
   vehicleType:   string;          // bicycle | motorcycle | ... | truck_large
@@ -228,14 +246,61 @@ export class PricingService implements OnModuleInit {
    * Uses regional fuel-price override when the pickup state's region has
    * one (e.g. SS zone's higher pump prices), else baseline.
    */
-  fuelPerKm(card: RateCard, vehicleType: string, region?: ResolvedRegion): number {
+  fuelPerKm(card: RateCard, vehicleType: string, region?: ResolvedRegion, live?: FuelPrices): number {
     const v = card.vehicleRates[vehicleType];
     if (!v || v.fuelType === 'none' || v.kmPerLitre <= 0) return 0;
     const override = region?.fuelPrices;
     const price = v.fuelType === 'petrol'
-      ? (override?.petrolNgn ?? card.fuelPrices.petrolPerLitreNgn)
-      : (override?.dieselNgn ?? card.fuelPrices.dieselPerLitreNgn);
+      ? (override?.petrolNgn ?? live?.petrol ?? card.fuelPrices.petrolPerLitreNgn)
+      : (override?.dieselNgn ?? live?.diesel ?? card.fuelPrices.dieselPerLitreNgn);
     return price / v.kmPerLitre;
+  }
+
+  /**
+   * Today's pump price, from the Fee Catalogue.
+   *
+   * The rate card fixes fuel at the moment it is published, and a rate
+   * card is republished rarely. Nigerian pump prices are not rare: the
+   * card said petrol was NGN 950 while it was actually about NGN 1,380,
+   * and because fuel is a full pass-through the whole 45% gap came out
+   * of the driver's pocket. A truck driver on a 400km run was short
+   * NGN 53,333 in fuel alone (review 2026-08-18).
+   *
+   * Reading the price from the catalogue instead means it is corrected
+   * from the dashboard the day the pump moves, with no deploy and no
+   * rate card republication. A regional override still wins, because a
+   * state that genuinely pays more should keep paying more.
+   */
+  async livePumpPrices(card: RateCard): Promise<FuelPrices> {
+    const [petrol, diesel] = await Promise.all([
+      this.fees.getValueOr('current_petrol_price_ngn', Number(card.fuelPrices.petrolPerLitreNgn)),
+      this.fees.getValueOr('current_diesel_price_ngn', Number(card.fuelPrices.dieselPerLitreNgn)),
+    ]);
+    return { petrol, diesel };
+  }
+
+  /**
+   * How far the live pump price has drifted from what the active rate
+   * card assumes. Drives the admin warning: past the threshold, the
+   * card's customer-facing rates are stale even though the driver's
+   * fuel is being corrected, and it should be republished.
+   */
+  async fuelDrift() {
+    const card = await this.getActiveRateCard();
+    const live = await this.livePumpPrices(card);
+    const cardPetrol = Number(card.fuelPrices.petrolPerLitreNgn);
+    const cardDiesel = Number(card.fuelPrices.dieselPerLitreNgn);
+    const pct = (live_: number, card_: number) =>
+      card_ > 0 ? Math.round(((live_ - card_) / card_) * 1000) / 10 : 0;
+    const threshold = await this.fees.getValueOr('fuel_reprice_trigger_pct', 10);
+    const petrolDrift = pct(live.petrol, cardPetrol);
+    const dieselDrift = pct(live.diesel, cardDiesel);
+    return {
+      petrol: { card: cardPetrol, live: live.petrol, driftPct: petrolDrift },
+      diesel: { card: cardDiesel, live: live.diesel, driftPct: dieselDrift },
+      thresholdPct: threshold,
+      stale: Math.abs(petrolDrift) >= threshold || Math.abs(dieselDrift) >= threshold,
+    };
   }
 
   /**
@@ -396,7 +461,8 @@ export class PricingService implements OnModuleInit {
 
     const region = this.resolveRegion(card, pickupState);
     const mult   = region.rateMultiplier;
-    const fuelKm = this.fuelPerKm(card, input.vehicleType, region);
+    const livePump = await this.livePumpPrices(card);
+    const fuelKm = this.fuelPerKm(card, input.vehicleType, region, livePump);
 
     // Per-vehicle override (e.g. SS region might override van base only).
     const vehicleOv = region.vehicleOverrides?.[input.vehicleType] ?? {};
@@ -505,6 +571,35 @@ export class PricingService implements OnModuleInit {
     // (partner store cuts handled separately in partner-store flows)
     const seirsNet = subtotalVatBase - driverTotal;
 
+    /**
+     * What the gross margin above actually costs us to collect.
+     *
+     * None of these were modelled anywhere, so every quote reported a
+     * margin the company never saw (review 2026-08-18):
+     *
+     *   - the card processor takes its cut of every naira collected;
+     *   - NIPOST requires a share of revenue for the Postal Fund, which
+     *     is statutory and unavoidable;
+     *   - a door delivery that finds nobody home becomes a second trip
+     *     at no extra revenue, which is the largest hidden cost in
+     *     Nigerian last-mile and appeared in no dashboard we had.
+     *
+     * Counter deliveries carry no failed-delivery provision: a shop is
+     * open when it is open and never goes out.
+     */
+    const [processorPct, levyPct, failureRate, marginFloor] = await Promise.all([
+      this.fees.getValueOr('card_processing_pct', 1.4),
+      this.fees.getValueOr('nipost_postal_fund_pct', 2),
+      this.fees.getValueOr('door_delivery_failure_pct', 8),
+      this.fees.getValueOr('min_job_margin_ngn', 0),
+    ]);
+
+    const usesCounter    = (input.partnerStoreTouches ?? 0) > 0;
+    const processorCost  = round2(total * (processorPct / 100));
+    const postalLevy     = round2(total * (levyPct / 100));
+    const failureProvision = usesCounter ? 0 : round2(driverTotal * (failureRate / 100));
+    const contribution   = round2(seirsNet - processorCost - postalLevy - failureProvision);
+
     return {
       vehicleType:  input.vehicleType,
       categoryCode: input.categoryCode,
@@ -525,6 +620,18 @@ export class PricingService implements OnModuleInit {
         total: driverTotal,
       },
       seirsNet,
+      /**
+       * Gross margin less every real cost of serving the job. This, not
+       * seirsNet, is what the company actually keeps.
+       */
+      trueCosts: {
+        cardProcessing:    processorCost,
+        postalFundLevy:    postalLevy,
+        failureProvision,
+        contribution,
+        belowFloor:        marginFloor > 0 && contribution < marginFloor,
+        marginFloorNgn:    marginFloor,
+      },
       rateCardSnapshotId: card.id,
     };
   }

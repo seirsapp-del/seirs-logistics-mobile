@@ -97,6 +97,8 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 /** "amaka.eze@gmail.com" -> "am•••@gmail.com" */
 function maskEmail(email: string): string {
   const [user, domain] = email.split('@');
@@ -500,28 +502,71 @@ export class PartnerStoreService {
       : 0;
 
     const touches = input.mode === DropoffMode.STORE_TO_STORE ? 2 : 1;
+    const weightKg = Number(input.weightKg ?? 0);
+
+    /**
+     * A counter-to-counter parcel rides a SHARED trunk run and needs no
+     * last-mile trip at either end, so it is far cheaper for SEIRS to
+     * fulfil than a door delivery. The engine charged it the full
+     * per-parcel door distance and then added a fee per counter on top,
+     * which made the cheapest journey to serve the most expensive one to
+     * buy: 2km cost NGN 729 to the door and NGN 1,729 counter to counter
+     * (review 2026-08-18). No customer would ever choose the counter, so
+     * the network could never reach the density that justifies it.
+     *
+     * The trunk leg is now divided across the parcels expected to share
+     * it. The divisor is deliberately pessimistic and a floor sits under
+     * the result, because a half-empty run must not be sold at a loss.
+     */
+    const consolidated = input.mode === DropoffMode.STORE_TO_STORE;
+    const assumedParcels = consolidated
+      ? Math.max(1, await this.feesService.getValueOr('trunk_assumed_parcels', 6))
+      : 1;
 
     const breakdown = await this.pricing.computePrice({
-      vehicleType:  'motorcycle',
+      // A shared trunk run is a keke carrying a load, not an okada
+      // carrying one parcel.
+      vehicleType:  consolidated ? 'tricycle' : 'motorcycle',
       // 'general' is not a real category and made every quote 404. A
       // walk-in parcel with nothing declared is a standard parcel.
       categoryCode: input.categoryCode ?? 'standard_parcel',
       km,
       stopCount:    1,
-      weightKg:     Number(input.weightKg ?? 0),
+      // The trunk vehicle carries the whole shelf, so it is priced on
+      // the whole load rather than on this one parcel.
+      weightKg:     consolidated ? weightKg * assumedParcels : weightKg,
       estimatedDwellMinutes: 0,
-      partnerStoreTouches:   touches,
+      partnerStoreTouches:   0, // counter fees are applied below, tiered
       pickupCoords:  (originLat != null && originLng != null) ? { latitude: originLat, longitude: originLng } : undefined,
       dropoffCoords: (destLat != null && destLng != null) ? { latitude: destLat, longitude: destLng } : undefined,
     } as any);
 
+    const counterFee = await this.counterFeeFor(weightKg);
+    const partnerSharePct = await this.feesService.getValueOr('counter_partner_share_pct', 70);
+    const handlingTotal   = counterFee * touches;
+    const partnerKeeps    = round2(handlingTotal * (partnerSharePct / 100));
+    const seirsCounterCut = round2(handlingTotal - partnerKeeps);
+
+    const transportShare = round2(Number(breakdown.customer.total) / assumedParcels);
+    const driverShare    = round2(Number(breakdown.driver.total) / assumedParcels);
+    const netShare       = round2(Number(breakdown.seirsNet) / assumedParcels);
+
+    const floor = await this.feesService.getValueOr('consolidated_floor_ngn', 800);
+    const rawTotal = round2(transportShare + handlingTotal);
+    const total = consolidated ? Math.max(rawTotal, floor) : rawTotal;
+
     return {
       km:                 Math.round(km * 10) / 10,
-      totalNgn:           Number(breakdown.customer.total),
-      partnerHandlingNgn: Number(breakdown.customer.partnerHandling),
-      driverEarningsNgn:  Number(breakdown.driver.total),
-      seirsNetNgn:        Number(breakdown.seirsNet),
+      totalNgn:           total,
+      partnerHandlingNgn: partnerKeeps,
+      driverEarningsNgn:  driverShare,
+      seirsNetNgn:        round2(netShare + seirsCounterCut + (total - rawTotal)),
       counterTouches:     touches,
+      consolidated,
+      assumedParcels,
+      counterFeeEach:     counterFee,
+      seirsCounterCut,
+      hitFloor:           consolidated && rawTotal < floor,
       /**
        * Every line that makes the total.
        *
@@ -651,6 +696,14 @@ export class PartnerStoreService {
 
     await this.payoutsRepo.update(ids, { status: 'paid', paidAt: new Date() });
     return { paidNgn: amount, reference, entries: ids.length, transferId: result.transferId ?? null };
+  }
+
+  /** Counter handling fee for a parcel of this weight, from the catalogue. */
+  private async counterFeeFor(weightKg: number): Promise<number> {
+    if (weightKg > 50) return this.feesService.getValueOr('counter_fee_bulk_ngn', 1500);
+    if (weightKg > 20) return this.feesService.getValueOr('counter_fee_large_ngn', 900);
+    if (weightKg > 5)  return this.feesService.getValueOr('counter_fee_medium_ngn', 500);
+    return this.feesService.getValueOr('counter_fee_small_ngn', 300);
   }
 
   /**
