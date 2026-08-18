@@ -49,6 +49,19 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // Founder decision 2026-08-15: a PENDING booking that no driver takes
   // within this window is auto-cancelled and refunded IN FULL (the fare
   // was escrowed at booking; without this it sat locked forever).
+  // ── Payout timing ──────────────────────────────────────────────────────
+  // Both were constants in code. They are here so the launch policy and
+  // a test run can differ without a deploy: during the live money test
+  // the founder needs to watch a real payout, a failed payout and a
+  // pay-in inside one sitting rather than waiting out a weekend.
+  { key: 'driver_clearance_business_days', name: 'Driver Earnings Clearance (business days)',
+    description: 'Business days a completed trip waits before the driver can withdraw it. 0 makes earnings withdrawable immediately.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 2 },
+
+  { key: 'partner_payout_hold_hours',   name: 'Partner Payout Hold (hours)',
+    description: 'Hours a counter handling fee waits before the partner can withdraw it. 168 is the weekly Monday payout; 0 makes it immediate.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 168 },
+
   { key: 'pending_booking_expiry_minutes', name: 'Pending Booking Expiry (minutes)',
     description: 'Minutes a paid booking may wait for a driver before it auto-cancels with a full refund.',
     category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 60 },
