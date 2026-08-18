@@ -175,7 +175,33 @@ export class PricingService implements OnModuleInit {
    * tables are empty. Subsequent boots are no-ops.
    */
   async onModuleInit() {
+    await this.selfHealSchema();
     await this.seedIfEmpty();
+  }
+
+  /**
+   * Add columns production cannot add for itself.
+   *
+   * Production runs with synchronize off, so a new entity column exists
+   * in code and not in the database, and every SELECT against the table
+   * fails. Adding `insurance` took /config/rate-card down with a 500,
+   * which is the endpoint all three apps call on boot to price anything
+   * (2026-08-18). The whole platform could not quote.
+   *
+   * Same self-heal pattern the partner-store module uses: idempotent,
+   * per-statement, and a failure is logged rather than crashing boot.
+   */
+  private async selfHealSchema() {
+    const statements = [
+      ['rate_cards.insurance', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "insurance" jsonb NULL`],
+    ];
+    for (const [label, sql] of statements) {
+      try {
+        await this.rateCardRepo.query(sql);
+      } catch (e: any) {
+        this.logger.error(`pricing self-heal FAILED [${label}]: ${e?.message ?? e}`);
+      }
+    }
   }
 
   private async seedIfEmpty() {
