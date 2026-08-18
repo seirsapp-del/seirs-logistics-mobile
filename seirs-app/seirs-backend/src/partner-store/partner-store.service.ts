@@ -97,6 +97,19 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/**
+ * Smallest vehicle that can carry a consolidated trunk load. Caps match
+ * the rate card's maxPayloadKg. An okada is never a trunk vehicle: the
+ * whole point of the run is that it carries many parcels at once.
+ */
+function pickTrunkVehicle(loadKg: number): string {
+  if (loadKg <= 100)   return 'tricycle';
+  if (loadKg <= 200)   return 'car';
+  if (loadKg <= 800)   return 'van';
+  if (loadKg <= 3000)  return 'truck_small';
+  return 'truck_large';
+}
+
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** "amaka.eze@gmail.com" -> "am•••@gmail.com" */
@@ -523,10 +536,17 @@ export class PartnerStoreService {
       ? Math.max(1, await this.feesService.getValueOr('trunk_assumed_parcels', 6))
       : 1;
 
+    /**
+     * The trunk vehicle has to be able to carry the whole shelf. Fixing
+     * it at a keke worked until six 30kg parcels were quoted together
+     * and the 180kg load blew past the tricycle payload cap, failing the
+     * quote outright. Pick the smallest vehicle that actually fits.
+     */
+    const trunkLoadKg = consolidated ? weightKg * assumedParcels : weightKg;
+    const trunkVehicle = consolidated ? pickTrunkVehicle(trunkLoadKg) : 'motorcycle';
+
     const breakdown = await this.pricing.computePrice({
-      // A shared trunk run is a keke carrying a load, not an okada
-      // carrying one parcel.
-      vehicleType:  consolidated ? 'tricycle' : 'motorcycle',
+      vehicleType:  trunkVehicle,
       // 'general' is not a real category and made every quote 404. A
       // walk-in parcel with nothing declared is a standard parcel.
       categoryCode: input.categoryCode ?? 'standard_parcel',
@@ -534,7 +554,7 @@ export class PartnerStoreService {
       stopCount:    1,
       // The trunk vehicle carries the whole shelf, so it is priced on
       // the whole load rather than on this one parcel.
-      weightKg:     consolidated ? weightKg * assumedParcels : weightKg,
+      weightKg:     trunkLoadKg,
       estimatedDwellMinutes: 0,
       partnerStoreTouches:   0, // counter fees are applied below, tiered
       pickupCoords:  (originLat != null && originLng != null) ? { latitude: originLat, longitude: originLng } : undefined,
