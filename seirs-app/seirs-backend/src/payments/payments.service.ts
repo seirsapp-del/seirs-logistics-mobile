@@ -379,6 +379,17 @@ export class PaymentsService {
    */
 
   /**
+   * Resolve a NUBAN to the name it actually belongs to.
+   *
+   * Exposed on the service so callers outside this module do not reach
+   * into FlutterwaveService directly, and so every path that stores a
+   * payout account stores the RESOLVED name rather than a typed one.
+   */
+  async verifyBank(bankCode: string, accountNumber: string): Promise<{ accountName: string } | null> {
+    return this.flutterwaveService.verifyBankAccount({ bankCode, accountNumber });
+  }
+
+  /**
    * Send money out to a bank account.
    *
    * A thin pass-through so callers outside this module (partner counter

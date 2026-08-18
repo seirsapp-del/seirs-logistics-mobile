@@ -51,6 +51,37 @@ export class AdminController {
   seedDemoData() { return this.demoDataService.seedDemoAccounts(); }
 
   /**
+   * Set a user's payout bank account on their behalf.
+   *
+   * Drivers and partners add their own from their app, but support has
+   * no way to fix a wrong account for someone who cannot get into that
+   * screen, and the live money test needs payout accounts on a driver
+   * and a partner who are not the person holding the phone.
+   *
+   * The account is resolved with Flutterwave first and the RESOLVED name
+   * is what gets stored, so a typo lands as a failed lookup here rather
+   * than as a transfer into a stranger's account later.
+   */
+  @UseGuards(SuperAdminGuard)
+  @Patch('users/:id/bank-details')
+  async setUserBank(
+    @Param('id') id: string,
+    @Body() body: { bankCode: string; bankName: string; accountNumber: string },
+  ) {
+    const resolved = await this.paymentsService.verifyBank(body.bankCode, body.accountNumber);
+    if (!resolved) {
+      throw new BadRequestException('That account could not be resolved. Check the bank and the number.');
+    }
+    await this.paymentsService.updateBankDetails(id, {
+      bankName:          body.bankName,
+      bankCode:          body.bankCode,
+      bankAccountNumber: body.accountNumber,
+      bankAccountName:   resolved.accountName,
+    });
+    return { updated: true, accountName: resolved.accountName };
+  }
+
+  /**
    * Clear every seeded naira before the live money test.
    *
    * Defaults to a dry run that only counts, because this is production
