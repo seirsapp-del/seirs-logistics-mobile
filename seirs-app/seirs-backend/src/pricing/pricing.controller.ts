@@ -10,6 +10,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { SuperAdminGuard } from '../common/guards/super-admin.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 /**
  * Pricing system surface area.
@@ -91,6 +92,57 @@ export class PricingController {
   // Super admin only (2026-08-13 RBAC audit). Publishing a rate card
   // changes what every future delivery costs, platform-wide.
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  /**
+   * Copy today's pump prices into a new rate card version, in one action.
+   *
+   * Correcting fuel was technically possible all along: edit the two
+   * fields on the pricing page and publish. It was simply never done,
+   * and the card drifted 45% behind the pump while every driver
+   * silently absorbed the difference (review 2026-08-18). Friction is
+   * why maintenance does not happen, so the fix is one button rather
+   * than a second source of truth.
+   *
+   * This is a normal publish: it increments the version, deactivates the
+   * old card and records why, so the price change is auditable like any
+   * other.
+   */
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
+  @Post('admin/rate-card/sync-fuel')
+  async syncFuel(@CurrentUser() admin: any) {
+    const current = await this.rateCardRepo.findOne({ where: { isActive: true } });
+    if (!current) throw new BadRequestException('No active rate card to update.');
+
+    const live = await this.pricing.livePumpPrices(current);
+    const before = {
+      petrol: Number(current.fuelPrices.petrolPerLitreNgn),
+      diesel: Number(current.fuelPrices.dieselPerLitreNgn),
+    };
+    if (before.petrol === live.petrol && before.diesel === live.diesel) {
+      return { published: false, message: 'The rate card already matches the pump price.', ...before };
+    }
+
+    await this.rateCardRepo.update(current.id, { isActive: false, deactivatedAt: new Date() });
+    const fresh = this.rateCardRepo.create({
+      ...current,
+      id: undefined,
+      version: (current.version ?? 0) + 1,
+      isActive: true,
+      activatedAt: new Date(),
+      deactivatedAt: null,
+      createdAt: undefined,
+      fuelPrices: { petrolPerLitreNgn: live.petrol, dieselPerLitreNgn: live.diesel },
+      activatedBy:  admin?.name ?? admin?.email ?? 'admin',
+      changeReason: `Fuel synced to pump price: petrol NGN ${before.petrol} to ${live.petrol}, diesel NGN ${before.diesel} to ${live.diesel}.`,
+    });
+    const saved = await this.rateCardRepo.save(fresh as any);
+    return {
+      published: true,
+      version:   (saved as any).version,
+      from:      before,
+      to:        { petrol: live.petrol, diesel: live.diesel },
+    };
+  }
+
   @Put('admin/rate-card')
   async publishRateCard(@Body() body: Partial<RateCard> & { changeReason: string; activatedBy: string }) {
     if (!body.changeReason) {

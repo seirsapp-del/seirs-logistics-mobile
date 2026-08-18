@@ -77,6 +77,28 @@ export class EarningsService {
     return this.fees.getValueOr('driver_clearance_business_days', STANDARD_CLEARANCE_BUSINESS_DAYS);
   }
 
+  /**
+   * Payout policy, from the Fee Catalogue.
+   *
+   * These were constants: the minimum withdrawal, the daily ceilings, and
+   * how long a new driver counts as new. They are risk controls, and risk
+   * controls need tuning the week fraud shows up, not at the next deploy
+   * (audit 2026-08-18). Every one keeps its old value as a code fallback,
+   * so behaviour is unchanged until somebody deliberately changes it.
+   */
+  private async payoutPolicy() {
+    const [minPayout, capNew, capEstablished, newDriverDays, holdbackPct, instantAgeHours] =
+      await Promise.all([
+        this.fees.getValueOr('driver_min_payout_ngn',        MIN_PAYOUT_NAIRA),
+        this.fees.getValueOr('driver_daily_cap_new_ngn',     MAX_DAILY_PAYOUT_NEW_DRIVER),
+        this.fees.getValueOr('driver_daily_cap_ngn',         MAX_DAILY_PAYOUT_ESTABLISHED),
+        this.fees.getValueOr('driver_new_period_days',       NEW_DRIVER_HOLDBACK_DAYS),
+        this.fees.getValueOr('driver_new_holdback_pct',      NEW_DRIVER_HOLDBACK_PERCENT * 100),
+        this.fees.getValueOr('instant_payout_min_age_hours', INSTANT_MIN_AGE_HOURS),
+      ]);
+    return { minPayout, capNew, capEstablished, newDriverDays, holdbackPct, instantAgeHours };
+  }
+
   // ── Recording earnings (called from delivery-completion handler) ─────────
 
   /**
@@ -169,7 +191,9 @@ export class EarningsService {
       .addSelect('SUM(e.driver_net)', 'total')
       .where('e.status = :s', { s: 'available' })
       .groupBy('e.driver_id')
-      .having('SUM(e.driver_net) >= :min', { min: MIN_PAYOUT_NAIRA })
+      .having('SUM(e.driver_net) >= :min', {
+        min: await this.fees.getValueOr('driver_min_payout_ngn', MIN_PAYOUT_NAIRA),
+      })
       .getRawMany<{ driverId: string; total: string }>();
 
     let processed = 0;
@@ -235,17 +259,17 @@ export class EarningsService {
       // wallets table missing the column yet (pre-self-heal): no freeze.
     }
 
-    // Apply new-driver cap.
+    // Apply new-driver cap. Every threshold comes from the catalogue.
+    const policy = await this.payoutPolicy();
     const driverAgeDays = Math.floor((Date.now() - new Date(driver.createdAt).getTime()) / (24 * 3600 * 1000));
-    const dailyCap = driverAgeDays < NEW_DRIVER_HOLDBACK_DAYS
-      ? MAX_DAILY_PAYOUT_NEW_DRIVER
-      : MAX_DAILY_PAYOUT_ESTABLISHED;
+    const isNewDriver = driverAgeDays < policy.newDriverDays;
+    const dailyCap = isNewDriver ? policy.capNew : policy.capEstablished;
 
     // A driver-requested amount tightens the cap; it can never widen it.
     if (requestedNaira !== undefined) {
       const req = Number(requestedNaira);
-      if (!Number.isFinite(req) || req < MIN_PAYOUT_NAIRA) {
-        throw new BadRequestException(`Minimum withdrawal is ₦${MIN_PAYOUT_NAIRA}`);
+      if (!Number.isFinite(req) || req < policy.minPayout) {
+        throw new BadRequestException(`Minimum withdrawal is ₦${policy.minPayout.toLocaleString()}`);
       }
     }
     const effectiveCap = requestedNaira !== undefined
@@ -263,7 +287,7 @@ export class EarningsService {
 
     let eligible = available;
     if (instant) {
-      const instantCutoff = new Date(Date.now() - INSTANT_MIN_AGE_HOURS * 3600 * 1000);
+      const instantCutoff = new Date(Date.now() - policy.instantAgeHours * 3600 * 1000);
       const instantRows = await this.repo.find({
         where: { driverId, status: 'pending', createdAt: LessThanOrEqual(instantCutoff) },
         order: { createdAt: 'ASC' },
@@ -282,14 +306,14 @@ export class EarningsService {
       if (!clearedIds.has(e.id)) instantPortion += Number(e.driverNet);
     }
 
-    if (runningTotal < MIN_PAYOUT_NAIRA) {
-      throw new BadRequestException(`Available payout ₦${runningTotal} is below minimum ₦${MIN_PAYOUT_NAIRA}`);
+    if (runningTotal < policy.minPayout) {
+      throw new BadRequestException(`Available payout ₦${runningTotal} is below minimum ₦${policy.minPayout.toLocaleString()}`);
     }
 
     // Apply new-driver 10% holdback (kept as available for next round).
     let payoutAmount = runningTotal;
-    if (driverAgeDays < NEW_DRIVER_HOLDBACK_DAYS) {
-      payoutAmount = +(runningTotal * (1 - NEW_DRIVER_HOLDBACK_PERCENT)).toFixed(2);
+    if (isNewDriver) {
+      payoutAmount = +(runningTotal * (1 - policy.holdbackPct / 100)).toFixed(2);
     }
 
     // Instant fee on the not-yet-cleared portion only.
@@ -349,7 +373,8 @@ export class EarningsService {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart  = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const instantCutoff = new Date(Date.now() - INSTANT_MIN_AGE_HOURS * 3600 * 1000);
+    const instantAgeHours = await this.fees.getValueOr('instant_payout_min_age_hours', INSTANT_MIN_AGE_HOURS);
+    const instantCutoff = new Date(Date.now() - instantAgeHours * 3600 * 1000);
 
     const [todayRows, weekRows, monthRows, allTimeRows, pendingRow, availableRow, instantRow, feePct] = await Promise.all([
       this.sumByPeriod(driverId, todayStart),

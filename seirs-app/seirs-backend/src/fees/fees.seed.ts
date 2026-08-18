@@ -126,6 +126,77 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'How far the pump price may drift from the active rate card before the dashboard warns that the card needs republishing.',
     category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 10 },
 
+  // ── Driver payout policy ───────────────────────────────────────────────
+  // These were constants in the earnings service. They are risk controls,
+  // and risk controls need tuning the week a pattern shows up rather than
+  // at the next deploy (audit 2026-08-18).
+  { key: 'driver_min_payout_ngn',       name: 'Minimum Driver Withdrawal',
+    description: 'Smallest amount a driver may withdraw. Stops transfer fees eating tiny payouts.',
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.FLAT_NGN, value: 1000 },
+
+  { key: 'driver_daily_cap_ngn',        name: 'Daily Withdrawal Cap',
+    description: 'Most an established driver may withdraw in one day.',
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.FLAT_NGN, value: 200000 },
+
+  { key: 'driver_daily_cap_new_ngn',    name: 'Daily Withdrawal Cap (new driver)',
+    description: 'Tighter daily ceiling while a driver is still inside the new-driver period.',
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.FLAT_NGN, value: 50000 },
+
+  { key: 'driver_new_period_days',      name: 'New Driver Period (days)',
+    description: 'How long a driver counts as new for withdrawal caps and holdback.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 30 },
+
+  { key: 'driver_new_holdback_pct',     name: 'New Driver Holdback',
+    description: 'Share of a new driver payout held back against chargebacks and disputes.',
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.PERCENT, value: 10 },
+
+  { key: 'instant_payout_min_age_hours', name: 'Instant Payout Minimum Age (hours)',
+    description: 'How old an uncleared earning must be before it can be pulled forward for the instant fee.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 24 },
+
+  // ── Loyalty, which is a liability ──────────────────────────────────────
+  // Every point issued is a discount owed later, so the earn rate and the
+  // abuse ceilings belong on the dashboard rather than in a deploy.
+  { key: 'loyalty_points_per_1000_ngn', name: 'Points per NGN 1,000 Spent',
+    description: 'Base earn rate before any tier multiplier.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 10 },
+
+  { key: 'loyalty_referral_bonus',      name: 'Referral Bonus (points)',
+    description: 'Points awarded when a referred user completes their first qualifying delivery.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 200 },
+
+  { key: 'loyalty_max_referrals_month', name: 'Referral Cap per Month',
+    description: 'Most referral bonuses one account can earn in a calendar month.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 10 },
+
+  { key: 'loyalty_referral_min_ngn',    name: 'Referral Qualifying Delivery',
+    description: 'Minimum delivery value before a referral counts, so a token order cannot farm bonuses.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 1000 },
+
+  { key: 'loyalty_referral_flag_count', name: 'Referral Fraud Flag Threshold',
+    description: 'Referrals inside seven days that trigger an admin review.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 5 },
+
+  { key: 'loyalty_streak_bonus',        name: 'Monthly Streak Bonus (points)',
+    description: 'Points for hitting the monthly delivery streak target.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 50 },
+
+  { key: 'loyalty_streak_target',       name: 'Monthly Streak Target',
+    description: 'Deliveries in a calendar month that earn the streak bonus.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 5 },
+
+  { key: 'loyalty_bank_transfer_bonus', name: 'Bank Transfer Bonus (points)',
+    description: 'Small nudge toward the payment method that costs least to process.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 5 },
+
+  { key: 'loyalty_rate_driver_bonus',   name: 'Rate a Driver Bonus (points)',
+    description: 'Points for leaving a driver rating.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 5 },
+
+  { key: 'loyalty_point_lifetime_months', name: 'Point Lifetime (months)',
+    description: 'How long an unspent point survives before expiring.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 12 },
+
   // ── Payout timing ──────────────────────────────────────────────────────
   // Both were constants in code. They are here so the launch policy and
   // a test run can differ without a deploy: during the live money test

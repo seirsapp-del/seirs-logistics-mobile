@@ -6,6 +6,7 @@ import { LoyaltyPoint, LoyaltyReason } from './loyalty-point.entity';
 import { User } from '../users/user.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { MailService } from '../mail/mail.service';
+import { FeesService } from '../fees/fees.service';
 
 /**
  * Loyalty Points service.
@@ -62,7 +63,42 @@ export class LoyaltyService {
     @InjectRepository(Delivery)
     private readonly deliveriesRepo: Repository<Delivery>,
     private readonly mailService: MailService,
+    private readonly fees: FeesService,
   ) {}
+
+  /**
+   * Loyalty policy, from the Fee Catalogue.
+   *
+   * Points are a liability: every one issued is a discount the company
+   * owes later. The earn rate, the bonuses and the abuse ceilings were
+   * all constants, so tuning any of them meant a deploy, and the caps
+   * that keep the programme affordable could not be tightened the day a
+   * pattern showed up (audit 2026-08-18). Each keeps its shipped value
+   * as a fallback, so nothing changes until somebody decides it should.
+   */
+  private async policy() {
+    const [
+      pointsPer1000, bankTransferBonus, referralBonus, rateDriverBonus,
+      streakBonus, streakTarget, maxReferralsPerMonth, lifetimeMonths,
+      referralMinNaira, referralFlagThreshold,
+    ] = await Promise.all([
+      this.fees.getValueOr('loyalty_points_per_1000_ngn',   POINTS_PER_NAIRA * 1000),
+      this.fees.getValueOr('loyalty_bank_transfer_bonus',   BANK_TRANSFER_BONUS),
+      this.fees.getValueOr('loyalty_referral_bonus',        REFERRAL_BONUS),
+      this.fees.getValueOr('loyalty_rate_driver_bonus',     RATE_DRIVER_BONUS),
+      this.fees.getValueOr('loyalty_streak_bonus',          MONTHLY_STREAK_BONUS),
+      this.fees.getValueOr('loyalty_streak_target',         MONTHLY_STREAK_TARGET),
+      this.fees.getValueOr('loyalty_max_referrals_month',   MAX_REFERRALS_PER_MONTH),
+      this.fees.getValueOr('loyalty_point_lifetime_months', POINT_LIFETIME_MONTHS),
+      this.fees.getValueOr('loyalty_referral_min_ngn',      REFERRAL_MIN_DELIVERY_NAIRA),
+      this.fees.getValueOr('loyalty_referral_flag_count',   REFERRAL_FLAG_THRESHOLD),
+    ]);
+    return {
+      pointsPer1000, bankTransferBonus, referralBonus, rateDriverBonus,
+      streakBonus, streakTarget, maxReferralsPerMonth, lifetimeMonths,
+      referralMinNaira, referralFlagThreshold,
+    };
+  }
 
   // ── Tier-drop warning cron ────────────────────────────────────────────────
   // Runs daily at 6 AM. Finds users whose next-30-days point expirations
@@ -171,8 +207,9 @@ export class LoyaltyService {
     const tier = await this.getTier(params.userId);
     const multiplier = TIER_EARN_MULTIPLIER[tier];
 
-    let pts = Math.max(1, Math.floor(params.naira * POINTS_PER_NAIRA * multiplier));
-    if (params.paidViaBankTransfer) pts += BANK_TRANSFER_BONUS;
+    const pol = await this.policy();
+    let pts = Math.max(1, Math.floor((params.naira / 1000) * pol.pointsPer1000 * multiplier));
+    if (params.paidViaBankTransfer) pts += pol.bankTransferBonus;
 
     return this.recordEntry({
       userId:            params.userId,
@@ -193,11 +230,12 @@ export class LoyaltyService {
     const count = await this.repo.count({
       where: { userId: referrerUserId, reason: 'referral_bonus', createdAt: MoreThan(since) as any },
     });
-    if (count >= MAX_REFERRALS_PER_MONTH) return null;
+    const pol = await this.policy();
+    if (count >= pol.maxReferralsPerMonth) return null;
 
     return this.recordEntry({
       userId: referrerUserId,
-      delta:  REFERRAL_BONUS,
+      delta:  pol.referralBonus,
       reason: 'referral_bonus',
       note:   `Referral bonus #${count + 1} this month (LEGACY. no sybil checks)`,
     });
@@ -288,7 +326,7 @@ export class LoyaltyService {
       .createQueryBuilder('d')
       .where('d.customerId = :uid', { uid: referredUserId })
       .andWhere('d.status = :st', { st: DeliveryStatus.DELIVERED })
-      .andWhere('d.price >= :min', { min: REFERRAL_MIN_DELIVERY_NAIRA })
+      .andWhere('d.price >= :min', { min: (await this.policy()).referralMinNaira })
       .getCount()
       .catch(() => 0);
     if (qualifyingCount === 0) {
@@ -304,7 +342,8 @@ export class LoyaltyService {
         createdAt: MoreThan(monthStart) as any,
       },
     });
-    if (monthCount >= MAX_REFERRALS_PER_MONTH) {
+    const pol2 = await this.policy();
+    if (monthCount >= pol2.maxReferralsPerMonth) {
       return { awarded: null, reason: 'monthly_cap_reached', flaggedForReview: false };
     }
 
@@ -318,11 +357,11 @@ export class LoyaltyService {
         createdAt: MoreThan(weekCutoff) as any,
       },
     });
-    const flagged = weekCount >= REFERRAL_FLAG_THRESHOLD;
+    const flagged = weekCount >= pol2.referralFlagThreshold;
 
     const awarded = await this.recordEntry({
       userId:            referrerUserId,
-      delta:             REFERRAL_BONUS,
+      delta:             pol2.referralBonus,
       reason:            'referral_bonus',
       relatedDeliveryId: triggerDeliveryId ?? null,
       note:              `Referral bonus #${monthCount + 1} this month; referred:${referredUserId}${flagged ? ' [FLAG:high_velocity]' : ''}`,
@@ -341,7 +380,7 @@ export class LoyaltyService {
   async awardRateDriver(userId: string, deliveryId: string): Promise<LoyaltyPoint> {
     return this.recordEntry({
       userId,
-      delta:             RATE_DRIVER_BONUS,
+      delta:             await this.fees.getValueOr('loyalty_rate_driver_bonus', RATE_DRIVER_BONUS),
       reason:            'rate_driver',
       relatedDeliveryId: deliveryId,
     });
@@ -352,12 +391,13 @@ export class LoyaltyService {
     const completedThisMonth = await this.repo.count({
       where: { userId, reason: 'delivery_complete', createdAt: MoreThan(monthStart) as any },
     });
-    if (completedThisMonth !== MONTHLY_STREAK_TARGET) return null;
+    const pol3 = await this.policy();
+    if (completedThisMonth !== pol3.streakTarget) return null;
     return this.recordEntry({
       userId,
-      delta:  MONTHLY_STREAK_BONUS,
+      delta:  pol3.streakBonus,
       reason: 'monthly_streak',
-      note:   `Streak bonus for hitting ${MONTHLY_STREAK_TARGET} deliveries this month`,
+      note:   `Streak bonus for hitting ${pol3.streakTarget} deliveries this month`,
     });
   }
 
@@ -611,7 +651,7 @@ export class LoyaltyService {
     note?:              string;
   }): Promise<LoyaltyPoint> {
     const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + POINT_LIFETIME_MONTHS);
+    expiresAt.setMonth(expiresAt.getMonth() + await this.fees.getValueOr('loyalty_point_lifetime_months', POINT_LIFETIME_MONTHS));
 
     const entry = this.repo.create({
       userId:            params.userId,

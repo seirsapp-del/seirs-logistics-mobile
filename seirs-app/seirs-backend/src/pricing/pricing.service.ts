@@ -246,30 +246,28 @@ export class PricingService implements OnModuleInit {
    * Uses regional fuel-price override when the pickup state's region has
    * one (e.g. SS zone's higher pump prices), else baseline.
    */
-  fuelPerKm(card: RateCard, vehicleType: string, region?: ResolvedRegion, live?: FuelPrices): number {
+  fuelPerKm(card: RateCard, vehicleType: string, region?: ResolvedRegion): number {
     const v = card.vehicleRates[vehicleType];
     if (!v || v.fuelType === 'none' || v.kmPerLitre <= 0) return 0;
     const override = region?.fuelPrices;
     const price = v.fuelType === 'petrol'
-      ? (override?.petrolNgn ?? live?.petrol ?? card.fuelPrices.petrolPerLitreNgn)
-      : (override?.dieselNgn ?? live?.diesel ?? card.fuelPrices.dieselPerLitreNgn);
+      ? (override?.petrolNgn ?? card.fuelPrices.petrolPerLitreNgn)
+      : (override?.dieselNgn ?? card.fuelPrices.dieselPerLitreNgn);
     return price / v.kmPerLitre;
   }
 
   /**
-   * Today's pump price, from the Fee Catalogue.
+   * What fuel actually costs at the pump today, as a REFERENCE.
    *
-   * The rate card fixes fuel at the moment it is published, and a rate
-   * card is republished rarely. Nigerian pump prices are not rare: the
-   * card said petrol was NGN 950 while it was actually about NGN 1,380,
-   * and because fuel is a full pass-through the whole 45% gap came out
-   * of the driver's pocket. A truck driver on a 400km run was short
-   * NGN 53,333 in fuel alone (review 2026-08-18).
+   * The rate card remains the single source of truth for money: it is
+   * what drivers are reimbursed from and what customers are quoted, and
+   * publishing a new version leaves a proper audit trail of why a price
+   * changed. Briefly this was overridden from the catalogue, which split
+   * the truth in two: the admin pricing page showed one fuel price while
+   * reimbursement used another, so editing the visible one did nothing.
    *
-   * Reading the price from the catalogue instead means it is corrected
-   * from the dashboard the day the pump moves, with no deploy and no
-   * rate card republication. A regional override still wins, because a
-   * state that genuinely pays more should keep paying more.
+   * These values exist only to answer "has the card fallen behind", and
+   * to be copied into a new card version in one action when it has.
    */
   async livePumpPrices(card: RateCard): Promise<FuelPrices> {
     const [petrol, diesel] = await Promise.all([
@@ -461,8 +459,7 @@ export class PricingService implements OnModuleInit {
 
     const region = this.resolveRegion(card, pickupState);
     const mult   = region.rateMultiplier;
-    const livePump = await this.livePumpPrices(card);
-    const fuelKm = this.fuelPerKm(card, input.vehicleType, region, livePump);
+    const fuelKm = this.fuelPerKm(card, input.vehicleType, region);
 
     // Per-vehicle override (e.g. SS region might override van base only).
     const vehicleOv = region.vehicleOverrides?.[input.vehicleType] ?? {};
@@ -479,7 +476,26 @@ export class PricingService implements OnModuleInit {
     // estimated dwell is already covered by base + stop bonuses; this
     // line is for actual measured overage on completed deliveries.
     // At booking time it's zero - we'll add it post-delivery.
-    const dwellOver      = 0;
+    /**
+     * Waiting time, which the card has always priced and the engine has
+     * always thrown away.
+     *
+     * perDwellMinuteCustomer, perDwellMinuteDriver, the free threshold
+     * and the cap were all configured and none of them were read: dwell
+     * was pinned at zero and estimatedDwellMinutes was discarded (audit
+     * 2026-08-18). A rider held up twenty-five minutes at a market stall
+     * earned nothing for it, which in Lagos is a large part of a day.
+     *
+     * The free threshold protects a customer who is simply a bit slow to
+     * come down; the cap stops an open-ended charge on a booking nobody
+     * is watching.
+     */
+    const sd = card.stopAndDwell;
+    const billableDwell = Math.min(
+      Math.max(0, (input.estimatedDwellMinutes ?? 0) - sd.freeDwellThresholdMinutes),
+      sd.dwellCapMinutes,
+    );
+    const dwellOver      = round2(billableDwell * sd.perDwellMinuteCustomer);
 
     const subtotalPreSurcharge = base + distanceLabour + distanceFuel + stopBonuses + dwellOver;
 
@@ -556,7 +572,7 @@ export class PricingService implements OnModuleInit {
     const dDistanceLabour = (vehicleOv.perKm ?? v.labourPerKmDriver) * mult * input.km;
     const dDistanceFuel   = fuelKm * input.km;          // full pass-through
     const dStopBonuses    = card.stopAndDwell.perStopBonusDriver * extraStops;
-    const dDwellOver      = 0;
+    const dDwellOver      = round2(billableDwell * sd.perDwellMinuteDriver);
 
     // Driver share of time + zone surcharges (configurable %)
     const dNightShare   = nightSur   * (t.night.driverSharePercent   / 100);

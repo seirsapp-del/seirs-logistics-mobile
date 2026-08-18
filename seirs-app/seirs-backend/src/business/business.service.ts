@@ -23,7 +23,14 @@ import { DeliveriesService } from '../deliveries/deliveries.service';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
 import { secureCode } from '../common/utils/auth-codes';
 
-const PER_PACKAGE_RATE = 500; // ₦500 per package stored
+/**
+ * Fallback only. The live rate is partner_store_handling_ngn in the Fee
+ * Catalogue, which is the same fee the drop-off flow pays. This constant
+ * silently disagreed with it: an admin could change the catalogue rate
+ * and packages stored through THIS path kept paying 500 forever
+ * (audit 2026-08-18).
+ */
+const PER_PACKAGE_RATE_FALLBACK = 500;
 
 // Per-stop verification code for multi-drop runs. STP- prefix keeps it
 // visually distinct from SRS- tracking codes and SDR- drop codes so
@@ -1498,7 +1505,7 @@ export class BusinessService {
     // Credit partner earnings
     const earning = this.payoutsRepo.create({
       partnerStoreId: store.id,
-      amount:         PER_PACKAGE_RATE,
+      amount:         await this.fees.getValueOr('partner_store_handling_ngn', PER_PACKAGE_RATE_FALLBACK),
       status:         'pending',
       period:         this.currentWeekLabel(),
     });
@@ -1526,13 +1533,15 @@ export class BusinessService {
       order: { collectedAt: 'ASC' },
     });
 
-    // Build daily buckets
+    // Build daily buckets. The rate is read once so the statement and
+    // the credit that produced it always agree.
+    const perPackageRate = await this.fees.getValueOr('partner_store_handling_ngn', PER_PACKAGE_RATE_FALLBACK);
     const dayMap = new Map<string, { amount: number; packages: number }>();
     for (const pkg of collectedPkgs) {
       const d   = new Date(pkg.collectedAt!);
       const key = d.toISOString().slice(0, 10);
       const cur = dayMap.get(key) ?? { amount: 0, packages: 0 };
-      cur.amount   += PER_PACKAGE_RATE;
+      cur.amount   += perPackageRate;
       cur.packages += 1;
       dayMap.set(key, cur);
     }
@@ -1558,7 +1567,7 @@ export class BusinessService {
       totalEarnings,
       totalPackages:  collectedPkgs.length,
       pendingPayout,
-      perPackageRate: PER_PACKAGE_RATE,
+      perPackageRate,
       nextPayoutDate: nextMonday.toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'short' }),
       days,
       payouts,
