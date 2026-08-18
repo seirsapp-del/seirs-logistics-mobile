@@ -153,6 +153,25 @@ export class HealthController {
       db:        { reachable: dbOk, ...(dbError ? { error: dbError } : {}) },
       support,
       pricing,
+      /**
+       * Live or test money.
+       *
+       * Before anyone types a real card into this app we need to know
+       * which Flutterwave environment the deploy is pointed at, and
+       * nobody can read Railway's env from here. Reports the MODE only:
+       * the key itself is never echoed, only whether it carries the
+       * TEST marker Flutterwave puts in sandbox keys.
+       */
+      payments: (() => {
+        const k = process.env.FLUTTERWAVE_SECRET_KEY ?? '';
+        if (!k) return { provider: 'flutterwave', configured: false, mode: 'none' };
+        return {
+          provider:   'flutterwave',
+          configured: true,
+          mode:       /TEST/i.test(k) ? 'test' : 'live',
+          webhookHashSet: Boolean(process.env.FLW_WEBHOOK_HASH),
+        };
+      })(),
     };
   }
 }
