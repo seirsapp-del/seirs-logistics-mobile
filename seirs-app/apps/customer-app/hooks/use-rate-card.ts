@@ -27,7 +27,11 @@ import { configApi } from '@/services/api';
 import { DEFAULT_RATE_CARD, type RateCard } from '@/constants/rateCard';
 
 const CACHE_KEY        = 'seirs.rateCard.active';
-const CACHE_VERSION    = 'v1';   // bump if RateCard shape changes incompatibly
+// v2: vehicle rates, category surcharges, dwell, cancellation, discounts
+// and the per-stop bonus now genuinely merge from the backend. A card
+// cached under v1 holds pre-merge numbers (a motorcycle base of 700
+// where the card says 300), so it must be discarded rather than shown.
+const CACHE_VERSION    = 'v2';
 const REFRESH_INTERVAL = 5 * 60 * 1000;   // 5 min — matches backend cache TTL
 
 // Module-level: every calc function in rateCard.ts reads from this. Starts
@@ -49,6 +53,71 @@ export function getActiveRateCard(): RateCard {
  * customer+driver fields). Everything else is admin-editable from the
  * dashboard and propagates here on the next 5-min refresh.
  */
+
+/**
+ * Vehicle ids differ on each side, which is the reason this translation
+ * was never written and vehicle pricing stayed bundled in the app.
+ *
+ * The app names vehicles the way a Lagos passenger does; the backend
+ * uses the canonical taxonomy. Left of the arrow is a local id, right is
+ * the rate card key.
+ *
+ * `danfo` has no backend counterpart: it is a fourteen-seater passenger
+ * bus and the card's `van` is a cargo van with a payload rating, so
+ * mapping them would price passengers off a freight rate. It keeps its
+ * bundled values until the card carries a passenger-bus entry.
+ */
+const RIDE_VEHICLE_MAP: Record<string, string> = {
+  okada: 'motorcycle',
+  keke:  'tricycle',
+  car:   'car',
+};
+
+const PACKAGE_VEHICLE_MAP: Record<string, string> = {
+  bicycle:    'bicycle',
+  motorcycle: 'motorcycle',
+  keke:       'tricycle',
+  car:        'car',
+  van:        'van',
+  truck_sm:   'truck_small',
+  truck_lg:   'truck_large',
+};
+
+/**
+ * Overlay the published customer rates onto a bundled vehicle list.
+ *
+ * Only the PRICING fields move. Labels, icons, accent colours, ETAs and
+ * feature lists are presentation and the backend knows nothing about
+ * them, so they stay exactly as shipped. A vehicle with no counterpart
+ * on the card is returned untouched rather than zeroed.
+ */
+function mergeVehicles<T extends { id: string }>(
+  local: readonly T[],
+  remoteRates: any,
+  idMap: Record<string, string>,
+  num: (v: any, fallback: number) => number,
+  isPackage: boolean,
+): readonly T[] {
+  if (!remoteRates) return local;
+  return local.map((v) => {
+    const r = remoteRates[idMap[v.id] ?? ''];
+    if (!r) return v;
+    const merged: any = {
+      ...v,
+      base:       num(r.baseFareCustomer,    (v as any).base),
+      perKm:      num(r.labourPerKmCustomer, (v as any).perKm),
+      kmPerLitre: num(r.kmPerLitre,          (v as any).kmPerLitre),
+    };
+    if (typeof r.fuelType === 'string') merged.fuelType = r.fuelType;
+    // Bicycles carry Infinity locally, which no JSON payload can express.
+    if (!Number.isFinite(merged.kmPerLitre)) merged.kmPerLitre = (v as any).kmPerLitre;
+    if (isPackage && Number.isFinite(Number(r.maxPayloadKg))) {
+      merged.maxKg = Number(r.maxPayloadKg);
+    }
+    return merged as T;
+  });
+}
+
 function mergeFromBackend(remote: any): RateCard {
   if (!remote) return DEFAULT_RATE_CARD;
 
@@ -67,6 +136,23 @@ function mergeFromBackend(remote: any): RateCard {
 
   return {
     ...d,
+    /**
+     * Vehicle rates and category surcharges used to be excluded here,
+     * so the base fare, the per-km rate and every category surcharge
+     * stayed frozen at whatever shipped in the binary. An admin could
+     * change any of them, watch the new rate card publish, and this app
+     * would keep quoting the old numbers (audit 2026-08-18). They were
+     * not even the same numbers: the card put a motorcycle base at
+     * NGN 300 while the app charged NGN 700.
+     */
+    ride: {
+      ...d.ride,
+      vehicles: mergeVehicles(d.ride.vehicles, remote.vehicleRates, RIDE_VEHICLE_MAP, num, false),
+    },
+    package: {
+      ...d.package,
+      vehicles: mergeVehicles(d.package.vehicles, remote.vehicleRates, PACKAGE_VEHICLE_MAP, num, true),
+    },
     version:       remote.version ? String(remote.version) : d.version,
     effectiveFrom: remote.activatedAt ? String(remote.activatedAt) : d.effectiveFrom,
     vatPct:        num(remote.vatRate, d.vatPct),
@@ -110,6 +196,13 @@ function mergeFromBackend(remote: any): RateCard {
       noShowFlatNgn:   num(remote.feeRules.senderNoShowFlat,         d.cancellation.noShowFlatNgn),
       noShowWaitMin:   num(remote.feeRules.senderNoShowWaitMinutes,  d.cancellation.noShowWaitMin),
     } : d.cancellation,
+    /**
+     * COD and insurance are NOT on the rate card. These branches read
+     * keys that have never existed, so they always fell through, which
+     * is harmless for COD (we do not run it) but means insurance rates
+     * are bundled and cannot be changed without a release. Left as-is
+     * and flagged rather than faked.
+     */
     cod: remote.cod ? {
       enabled:         bool(remote.cod.enabled,         d.cod.enabled),
       handlingFlatNgn: num(remote.cod.handlingFlatNgn,  d.cod.handlingFlatNgn),
@@ -123,23 +216,34 @@ function mergeFromBackend(remote: any): RateCard {
       declaredValueThresholdNgn: num(remote.insurance.declaredValueThresholdNgn,  d.insurance.declaredValueThresholdNgn),
       maxCoverageNgn:            num(remote.insurance.maxCoverageNgn,             d.insurance.maxCoverageNgn),
     } : d.insurance,
+    /**
+     * Discounts. The backend spells these ...OffPercent and the app read
+     * ...OffPct, so none of them ever merged: a welcome discount changed
+     * in the dashboard never reached a customer.
+     */
     discounts: remote.discounts ? {
-      bulkUploadOffPct:           num(remote.discounts.bulkUploadOffPct,           d.discounts.bulkUploadOffPct),
+      bulkUploadOffPct:           num(remote.discounts.bulkUploadOffPercent,       d.discounts.bulkUploadOffPct),
       bulkUploadMinPackages:      num(remote.discounts.bulkUploadMinPackages,      d.discounts.bulkUploadMinPackages),
-      recurringOffPct:            num(remote.discounts.recurringOffPct,            d.discounts.recurringOffPct),
-      welcomeOffPct:              num(remote.discounts.welcomeOffPct,              d.discounts.welcomeOffPct),
+      recurringOffPct:            num(remote.discounts.recurringOffPercent,        d.discounts.recurringOffPct),
+      welcomeOffPct:              num(remote.discounts.welcomeOffPercent,          d.discounts.welcomeOffPct),
       welcomeMaxNgn:              num(remote.discounts.welcomeMaxNgn,              d.discounts.welcomeMaxNgn),
       loyaltyPointValueNgn:       num(remote.discounts.loyaltyPointValueNgn,       d.discounts.loyaltyPointValueNgn),
       loyaltyMaxPointsPerBooking: num(remote.discounts.loyaltyMaxPointsPerBooking, d.discounts.loyaltyMaxPointsPerBooking),
       maxTotalPct:                num(remote.discounts.maxTotalPct,                d.discounts.maxTotalPct),
     } : d.discounts,
-    returnTrip: remote.returnTrip ? {
-      callAttempts:    num(remote.returnTrip.callAttempts,    d.returnTrip.callAttempts),
-      callIntervalMin: num(remote.returnTrip.callIntervalMin, d.returnTrip.callIntervalMin),
-      returnFlatNgn:   num(remote.returnTrip.returnFlatNgn,   d.returnTrip.returnFlatNgn),
-      storageFlatNgn:  num(remote.returnTrip.storageFlatNgn,  d.returnTrip.storageFlatNgn),
+    /**
+     * Return-trip rules sit under feeRules on the card. The interval and
+     * the storage flat have no counterpart there yet, so they keep their
+     * bundled values rather than being zeroed.
+     */
+    returnTrip: remote.feeRules ? {
+      callAttempts:    num(remote.feeRules.returnCallAttempts, d.returnTrip.callAttempts),
+      callIntervalMin: d.returnTrip.callIntervalMin,
+      returnFlatNgn:   num(remote.feeRules.returnTripBaseFee,  d.returnTrip.returnFlatNgn),
+      storageFlatNgn:  d.returnTrip.storageFlatNgn,
     } : d.returnTrip,
-    perStopBonus:    num(remote.perStopBonus, d.perStopBonus),
+    // Lives under stopAndDwell on the card, not at the top level.
+    perStopBonus:    num(remote.stopAndDwell?.perStopBonusCustomer, d.perStopBonus),
     zoneOverrides:   backendRegions.zoneOverrides  ?? d.zoneOverrides,
     stateOverrides:  backendRegions.stateOverrides ?? d.stateOverrides,
   };
@@ -155,10 +259,50 @@ async function loadCached(): Promise<void> {
   } catch { /* ignore — fall back to DEFAULT_RATE_CARD */ }
 }
 
+/**
+ * Category ids differ on the two sides for one entry.
+ * Everything else lines up by name.
+ */
+const CATEGORY_MAP: Record<string, string> = { agricultural: 'farm_produce' };
+
+/**
+ * Overlay published category surcharges onto the bundled ones.
+ *
+ * Only the percentage moves. The driver share and the forbidden-vehicle
+ * list stay bundled deliberately: those are safety hard-stops, and a
+ * safety rule that can be switched off remotely is not a safety rule.
+ */
+function mergeCategories(local: any, catalog: any[]): any {
+  if (!Array.isArray(catalog) || catalog.length === 0) return local;
+  const byCode = new Map(catalog.map((c: any) => [c.code, c]));
+  const out: any = { ...local };
+  for (const key of Object.keys(local)) {
+    const remote = byCode.get(CATEGORY_MAP[key] ?? key);
+    if (!remote) continue;
+    const pct = Number(remote.surchargePercent);
+    if (!Number.isFinite(pct)) continue;
+    out[key] = { ...local[key], pct };
+  }
+  return out;
+}
+
 async function fetchAndCache(force = false): Promise<void> {
   try {
-    const remote = await configApi.rateCard(force);
-    const merged = mergeFromBackend(remote);
+    /**
+     * The catalog is fetched alongside the card because category
+     * surcharges live there, not on the card. This app never asked for
+     * it at all, so every surcharge an admin set (fragile at 20%, for
+     * one) stopped at the API (audit 2026-08-18).
+     *
+     * Its failure is tolerated on purpose: a card without surcharges
+     * still prices, a missing card does not.
+     */
+    const [remote, catalog] = await Promise.all([
+      configApi.rateCard(force),
+      configApi.serviceCatalog(force).catch(() => [] as any[]),
+    ]);
+    const base = mergeFromBackend(remote);
+    const merged = { ...base, categories: mergeCategories(base.categories, catalog as any[]) };
     _activeCard = merged;
     AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ cacheVersion: CACHE_VERSION, card: merged }))
       .catch(() => { /* cache write is best-effort */ });
