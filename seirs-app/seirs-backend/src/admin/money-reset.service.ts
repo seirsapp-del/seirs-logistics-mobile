@@ -46,7 +46,6 @@ export class MoneyResetService {
     counted['Wallets holding a balance'] = await this.count('wallets', '"balanceKobo" <> 0');
     counted['Deliveries with a price']   = await this.count('deliveries', '"price" > 0');
     counted['Drop-offs with a fare']     = await this.count('store_dropoffs', '"prePaidAmountNgn" > 0');
-    counted['Users holding points']      = await this.count('users', '"loyaltyPoints" > 0');
 
     if (!confirm) {
       return {
@@ -62,8 +61,11 @@ export class MoneyResetService {
     }
     // Balances and counters are zeroed rather than deleted: the wallet
     // and the user must survive, only the money in them goes.
+    // A user's point total is the sum of the loyalty_points ledger, not
+    // a column on the user, so clearing the ledger above is the whole
+    // job. The dry run asking users for a loyaltyPoints column is what
+    // showed that.
     await this.exec(`UPDATE "wallets" SET "balanceKobo" = 0`, done);
-    await this.exec(`UPDATE "users" SET "loyaltyPoints" = 0 WHERE "loyaltyPoints" <> 0`, done);
     await this.exec(
       `UPDATE "store_dropoffs" SET "prePaidAmountNgn" = 0, "partnerHandlingNgn" = 0,
               "driverEarningsNgn" = 0, "topUpOwedNgn" = 0, "paidAt" = NULL, "topUpPaidAt" = NULL`,
