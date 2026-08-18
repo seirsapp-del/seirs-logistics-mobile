@@ -110,6 +110,16 @@ function pickTrunkVehicle(loadKg: number): string {
   return 'truck_large';
 }
 
+/** Smallest vehicle that can carry ONE parcel to a door. */
+function pickDoorVehicle(kg: number): string {
+  if (kg <= 20)   return 'motorcycle';
+  if (kg <= 100)  return 'tricycle';
+  if (kg <= 200)  return 'car';
+  if (kg <= 800)  return 'van';
+  if (kg <= 3000) return 'truck_small';
+  return 'truck_large';
+}
+
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** "amaka.eze@gmail.com" -> "am•••@gmail.com" */
@@ -543,7 +553,9 @@ export class PartnerStoreService {
      * quote outright. Pick the smallest vehicle that actually fits.
      */
     const trunkLoadKg = consolidated ? weightKg * assumedParcels : weightKg;
-    const trunkVehicle = consolidated ? pickTrunkVehicle(trunkLoadKg) : 'motorcycle';
+    // The door leg needs sizing too: a 30kg parcel quoted at okada blew
+    // past the 20kg payload cap and failed the quote outright.
+    const trunkVehicle = consolidated ? pickTrunkVehicle(trunkLoadKg) : pickDoorVehicle(weightKg);
 
     const breakdown = await this.pricing.computePrice({
       vehicleType:  trunkVehicle,
