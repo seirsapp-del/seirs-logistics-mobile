@@ -87,6 +87,14 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Share of the handling fee the shop keeps. The remainder is SEIRS network revenue. The fee used to pass through whole, so the counter network earned the platform nothing.',
     category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 70 },
 
+  // OFF until trunk runs are actually batched. The consolidated price
+  // divides one run across many parcels, but each drop-off still creates
+  // its own driver leg, so switching this on before batching exists means
+  // charging for a sixth of a run while paying for six whole ones.
+  { key: 'consolidated_dispatch_enabled', name: 'Consolidated Dispatch Live',
+    description: 'Set to 1 only once counter-to-counter parcels are genuinely batched onto shared trunk runs. Until then counter journeys are priced per parcel, like any other trip.',
+    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 0 },
+
   { key: 'trunk_assumed_parcels',       name: 'Assumed Parcels per Trunk Run',
     description: 'Divisor behind consolidated counter-to-counter pricing. Start pessimistic and raise it only on measured load data.',
     category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 6 },

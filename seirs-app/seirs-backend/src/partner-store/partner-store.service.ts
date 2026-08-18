@@ -541,7 +541,20 @@ export class PartnerStoreService {
      * it. The divisor is deliberately pessimistic and a floor sits under
      * the result, because a half-empty run must not be sold at a loss.
      */
-    const consolidated = input.mode === DropoffMode.STORE_TO_STORE;
+    /**
+     * Consolidated pricing is OFF until consolidated dispatch exists.
+     *
+     * The price divides a trunk run across the parcels expected to share
+     * it, but every drop-off still creates its OWN driver leg, so six
+     * parcels are six separate trips. Charging a sixth of a run while
+     * paying for six whole runs loses money on every single parcel.
+     *
+     * The pricing is built, tested and switchable, and the switch stays
+     * off until trunk runs are actually batched. Turning it on before
+     * then is the most expensive mistake available in this file.
+     */
+    const batchingLive = (await this.feesService.getValueOr('consolidated_dispatch_enabled', 0)) > 0;
+    const consolidated = input.mode === DropoffMode.STORE_TO_STORE && batchingLive;
     const assumedParcels = consolidated
       ? Math.max(1, await this.feesService.getValueOr('trunk_assumed_parcels', 6))
       : 1;
