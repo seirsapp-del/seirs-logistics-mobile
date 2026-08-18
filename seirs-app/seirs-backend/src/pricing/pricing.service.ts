@@ -594,10 +594,27 @@ export class PricingService implements OnModuleInit {
       this.fees.getValueOr('min_job_margin_ngn', 0),
     ]);
 
+    /**
+     * The failure provision models a LAST-MILE parcel arriving at a door
+     * with nobody behind it. It must not be charged against scheduled
+     * freight: a van or truck delivering to a business has an agreed
+     * slot and a person waiting, and applying a door-failure rate to a
+     * NGN 377,000 truck run produced a NGN 30,000 phantom cost that
+     * turned a profitable job negative on paper.
+     *
+     * A counter delivery carries no provision either, because a shop is
+     * open when it is open and never goes out. That difference is a real
+     * part of why counters are worth more than doors.
+     */
+    const scheduledFreight = input.vehicleType === 'van'
+      || input.vehicleType === 'truck_small'
+      || input.vehicleType === 'truck_large';
     const usesCounter    = (input.partnerStoreTouches ?? 0) > 0;
     const processorCost  = round2(total * (processorPct / 100));
     const postalLevy     = round2(total * (levyPct / 100));
-    const failureProvision = usesCounter ? 0 : round2(driverTotal * (failureRate / 100));
+    const failureProvision = (usesCounter || scheduledFreight)
+      ? 0
+      : round2(driverTotal * (failureRate / 100));
     const contribution   = round2(seirsNet - processorCost - postalLevy - failureProvision);
 
     return {
