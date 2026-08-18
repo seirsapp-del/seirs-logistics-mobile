@@ -171,6 +171,17 @@ export const DEFAULT_RATE_CARD = {
     returnCallAttempts: 3,
   },
 
+  // Off until there is an underwriter. See the entity for the exact
+  // steps to switch it on; the short version is that enabling this
+  // without a policy sells a promise the company cannot keep.
+  insurance: {
+    enabled:                   false,
+    premiumPct:                0,
+    minPremiumNgn:             0,
+    declaredValueThresholdNgn: 0,
+    maxCoverageNgn:            0,
+  },
+
   partnerStore: {
     perPackageFeeNgn: 500,
     overstayTier1StartDay: 3,

@@ -197,24 +197,33 @@ function mergeFromBackend(remote: any): RateCard {
       noShowWaitMin:   num(remote.feeRules.senderNoShowWaitMinutes,  d.cancellation.noShowWaitMin),
     } : d.cancellation,
     /**
-     * COD and insurance are NOT on the rate card. These branches read
-     * keys that have never existed, so they always fell through, which
-     * is harmless for COD (we do not run it) but means insurance rates
-     * are bundled and cannot be changed without a release. Left as-is
-     * and flagged rather than faked.
+     * Cash on delivery is not a SEIRS product (founder, twice: 2026-08-13
+     * and again 2026-08-18). It is pinned off here rather than merged,
+     * so no rate card can ever switch it back on by accident.
      */
-    cod: remote.cod ? {
-      enabled:         bool(remote.cod.enabled,         d.cod.enabled),
-      handlingFlatNgn: num(remote.cod.handlingFlatNgn,  d.cod.handlingFlatNgn),
-      handlingPct:     num(remote.cod.handlingPct,      d.cod.handlingPct),
-      handlingCapNgn:  num(remote.cod.handlingCapNgn,   d.cod.handlingCapNgn),
-    } : d.cod,
+    cod: { ...d.cod, enabled: false },
+    /**
+     * Goods-in-transit cover, which now lives on the rate card and is
+     * editable from the dashboard. It ships disabled with every value at
+     * zero until SEIRS has an underwriter, so nothing is charged and
+     * nothing is promised.
+     */
     insurance: remote.insurance ? {
-      enabled:                   bool(remote.insurance.enabled,                   d.insurance.enabled),
-      premiumPct:                num(remote.insurance.premiumPct,                 d.insurance.premiumPct),
-      minPremiumNgn:             num(remote.insurance.minPremiumNgn,              d.insurance.minPremiumNgn),
-      declaredValueThresholdNgn: num(remote.insurance.declaredValueThresholdNgn,  d.insurance.declaredValueThresholdNgn),
-      maxCoverageNgn:            num(remote.insurance.maxCoverageNgn,             d.insurance.maxCoverageNgn),
+      enabled:                   bool(remote.insurance.enabled,                  d.insurance.enabled),
+      /**
+       * The app multiplies declared value by this directly, so it is a
+       * FRACTION: 0.02 means 2%. The dashboard field is labelled as a
+       * percentage, because that is how an underwriter quotes. Anything
+       * above 1 is therefore a percentage and is converted, so typing
+       * "2" for two percent cannot become a 200% premium.
+       */
+      premiumPct:                (() => {
+        const raw = num(remote.insurance.premiumPct, d.insurance.premiumPct);
+        return raw > 1 ? raw / 100 : raw;
+      })(),
+      minPremiumNgn:             num(remote.insurance.minPremiumNgn,             d.insurance.minPremiumNgn),
+      declaredValueThresholdNgn: num(remote.insurance.declaredValueThresholdNgn, d.insurance.declaredValueThresholdNgn),
+      maxCoverageNgn:            num(remote.insurance.maxCoverageNgn,            d.insurance.maxCoverageNgn),
     } : d.insurance,
     /**
      * Discounts. The backend spells these ...OffPercent and the app read

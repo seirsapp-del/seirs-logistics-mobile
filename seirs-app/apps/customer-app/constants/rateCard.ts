@@ -424,14 +424,16 @@ export const DEFAULT_RATE_CARD: RateCard = {
   },
 
   insurance: {
-    // DEFAULTED OFF - accepting premium without a claims pipeline is a
-    // refund magnet. Admin flips to true when claims handling + the
-    // photo-at-pickup + typed-name-handover process is live.
+    // OFF, and every value at zero until SEIRS has an underwriter
+    // (founder 2026-08-18). Accepting a premium with no policy behind it
+    // sells a promise the company cannot keep. The live values come from
+    // the rate card, so these are only what ships before the first fetch;
+    // zero here means a stale binary can never quote a premium either.
     enabled:                   false,
-    premiumPct:                0.02,
-    minPremiumNgn:             500,
-    declaredValueThresholdNgn: 50000,
-    maxCoverageNgn:            2000000,
+    premiumPct:                0,
+    minPremiumNgn:             0,
+    declaredValueThresholdNgn: 0,
+    maxCoverageNgn:            0,
   },
 
   // Discounts tightened for a bootstrapped launch. SEIRS service fee is

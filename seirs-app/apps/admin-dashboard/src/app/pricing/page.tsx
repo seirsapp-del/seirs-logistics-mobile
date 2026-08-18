@@ -254,6 +254,67 @@ export default function PricingPage() {
         </Row>
       </Card>
 
+      {/* ── Insurance ─────────────────────────────────────────────── */}
+      <Card
+        title="Goods-in-transit insurance"
+        hint="OFF until SEIRS has an underwriter. Everything sits at zero, so nothing is charged and nothing is promised. Read the steps below before switching it on."
+      >
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+          <p className="font-semibold">When a partner is signed, set it up in this order:</p>
+          <ol className="mt-1.5 list-decimal space-y-1 pl-4">
+            <li>Set <b>Premium</b> to the underwriter&apos;s rate on declared value.</li>
+            <li>Set <b>Minimum premium</b> to the floor they charge per parcel.</li>
+            <li>Set <b>Offer cover above</b> to the declared value where cover starts being worth collecting.</li>
+            <li>Set <b>Maximum payout</b> to what the policy actually pays. Never leave this at zero once enabled, or the app offers cover with no stated limit.</li>
+            <li>Tick <b>Enabled</b> last, then <b>Publish</b>.</li>
+          </ol>
+          <p className="mt-2">
+            Do not enable this before a policy exists. Charging a premium with no underwriter
+            behind it sells a promise the company cannot keep. Your commission on referred
+            policies is a separate Fee Catalogue row, <b>insurance_referral_commission</b>.
+          </p>
+        </div>
+        <Row>
+          <label className="flex items-center gap-2 text-sm text-[#0F2B4C]">
+            <input
+              type="checkbox"
+              checked={Boolean(card.insurance?.enabled)}
+              onChange={(e) => patchPath('insurance.enabled', e.target.checked as any)}
+              className="h-4 w-4 rounded border-[#0F2B4C]/30"
+            />
+            <span>Enabled <span className="text-[#0F2B4C]/50">(leave off until an underwriter is signed)</span></span>
+          </label>
+        </Row>
+        <Row>
+          <FieldNumber
+            label="Premium % of declared value"
+            value={card.insurance?.premiumPct ?? 0}
+            onChange={(v) => patchPath('insurance.premiumPct', v)}
+            hint="Enter as a percentage, e.g. 2 for 2%. Leave 0 while unset."
+          />
+          <FieldNumber
+            label="Minimum premium ₦"
+            value={card.insurance?.minPremiumNgn ?? 0}
+            onChange={(v) => patchPath('insurance.minPremiumNgn', v)}
+            hint="Floor charged per parcel."
+          />
+        </Row>
+        <Row>
+          <FieldNumber
+            label="Offer cover above declared value ₦"
+            value={card.insurance?.declaredValueThresholdNgn ?? 0}
+            onChange={(v) => patchPath('insurance.declaredValueThresholdNgn', v)}
+            hint="Below this, cover is not offered."
+          />
+          <FieldNumber
+            label="Maximum payout ₦"
+            value={card.insurance?.maxCoverageNgn ?? 0}
+            onChange={(v) => patchPath('insurance.maxCoverageNgn', v)}
+            hint="What the policy actually pays. Must not stay 0 once enabled."
+          />
+        </Row>
+      </Card>
+
       {/* ── Per-vehicle rates ─────────────────────────────────────── */}
       <Card title="Per-vehicle rates" hint="Base fare (connection fee) + labour per km. Fuel is added on top automatically using the prices above.">
         <table className="w-full text-sm">

@@ -199,6 +199,40 @@ export class RateCard {
     returnCallAttempts:        number;
   };
 
+  /**
+   * Goods-in-transit cover.
+   *
+   * Off until SEIRS has an underwriter (founder 2026-08-18: "the
+   * insurance we will add it when we have a partner but for now it
+   * should be editable in the admin dashboard and we will set it to
+   * zero"). Every value ships at zero and disabled, so nothing is
+   * charged and nothing is promised.
+   *
+   * To switch it on once a partner is signed:
+   *   1. enabled -> true
+   *   2. premiumPct -> the underwriter's rate on declared value
+   *      (a referral commission on this is a separate Fee Catalogue row,
+   *      insurance_referral_commission)
+   *   3. minPremiumNgn -> the floor the underwriter charges per parcel
+   *   4. declaredValueThresholdNgn -> the value above which cover is
+   *      offered at all; below it the premium is not worth collecting
+   *   5. maxCoverageNgn -> the ceiling the policy actually pays out.
+   *      Never leave this at zero while enabled is true, or the app
+   *      offers cover with no stated limit.
+   *
+   * Publish the rate card afterwards. Do NOT enable this before a policy
+   * exists: charging a premium against no underwriter is selling a
+   * promise the company cannot keep.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  insurance: {
+    enabled:                   boolean;
+    premiumPct:                number;
+    minPremiumNgn:             number;
+    declaredValueThresholdNgn: number;
+    maxCoverageNgn:            number;
+  } | null;
+
   /** Partner store economics. */
   @Column({ type: 'jsonb' })
   partnerStore: {
