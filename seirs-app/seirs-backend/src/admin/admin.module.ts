@@ -71,6 +71,29 @@ export class AdminModule implements OnModuleInit {
    * backup or a fresh environment self-heals the same way.
    */
   async onModuleInit() {
+    /**
+     * Account-deletion columns production never got.
+     *
+     * The entity has carried these for a while, production runs with
+     * synchronize off, and nothing self-healed them. Any query that
+     * selects the whole User row therefore failed, which is why the
+     * recycle bin returned a 500 and no admin could see or cancel a
+     * pending deletion (audit 2026-08-18).
+     */
+    for (const sql of [
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deletionRequestedAt" timestamptz NULL`,
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deletionScheduledAt" timestamptz NULL`,
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deletionRequestedBy" varchar(128) NULL`,
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deletionReason" text NULL`,
+      `CREATE INDEX IF NOT EXISTS "users_deletion_scheduled_idx" ON "users" ("deletionScheduledAt")`,
+    ]) {
+      try {
+        await this.usersRepo.query(sql);
+      } catch (e: any) {
+        this.logger.error(`admin self-heal FAILED [${sql.slice(0, 60)}]: ${e?.message ?? e}`);
+      }
+    }
+
     try {
       const missing = await this.usersRepo.find({
         where:  { role: UserRole.ADMIN, accountId: IsNull() },

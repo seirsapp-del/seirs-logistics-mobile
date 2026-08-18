@@ -733,6 +733,26 @@ export class AdminService {
   // Getter + setter for the dashboard monthly targets. Kept as generic
   // key/value ops so more targets can be added without new endpoints. UI
   // uses PATCH /admin/dashboard/targets with { revenueNgn, deliveries }.
+  /**
+   * The monthly targets the dashboard compares actuals against.
+   *
+   * Only the setter existed, so the home page asked for targets and got
+   * a 404 (audit 2026-08-18). Returns zeros when nothing has been set,
+   * which the page reads as "no target" rather than as a failure.
+   */
+  async getDashboardTargets() {
+    const read = async (key: string) => {
+      const row = await this.configRepo.findOne({ where: { key } });
+      const n = Number(row?.value);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const [revenueNgn, deliveries] = await Promise.all([
+      read('dashboard_target_monthly_revenue_ngn'),
+      read('dashboard_target_monthly_deliveries'),
+    ]);
+    return { revenueNgn, deliveries };
+  }
+
   async setDashboardTargets(patch: { revenueNgn?: number; deliveries?: number }) {
     const upsert = async (key: string, value: number) => {
       const existing = await this.configRepo.findOne({ where: { key } });

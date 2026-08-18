@@ -194,6 +194,14 @@ export class PricingService implements OnModuleInit {
   private async selfHealSchema() {
     const statements = [
       ['rate_cards.insurance', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "insurance" jsonb NULL`],
+      // Cards published before the column existed carry NULL, which
+      // would leave the admin editor with nothing to write into.
+      // Disabled and zeroed: no premium, no promise.
+      ['rate_cards.insurance backfill', `
+        UPDATE "rate_cards"
+           SET "insurance" = '{"enabled":false,"premiumPct":0,"minPremiumNgn":0,"declaredValueThresholdNgn":0,"maxCoverageNgn":0}'::jsonb
+         WHERE "insurance" IS NULL
+      `],
     ];
     for (const [label, sql] of statements) {
       try {

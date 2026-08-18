@@ -100,6 +100,15 @@ export class AdminController {
   @Get('dashboard/live')
   getLiveDashboard() { return this.adminService.getLiveDashboard(); }
 
+  /**
+   * GET the monthly targets the dashboard draws its target-vs-actual
+   * bars against. Only the PATCH existed, so the home page asked for
+   * targets, got a 404, and the bars had nothing to compare against
+   * (audit 2026-08-18).
+   */
+  @Get('dashboard/targets')
+  getDashboardTargets() { return this.adminService.getDashboardTargets(); }
+
   // PATCH /api/v1/admin/dashboard/targets  { revenueNgn?, deliveries? }
   // Updates the monthly targets stored in platform_config that power the
   // target-vs-actual bars on the dashboard.
