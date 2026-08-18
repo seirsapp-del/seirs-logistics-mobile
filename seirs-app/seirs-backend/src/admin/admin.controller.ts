@@ -5,6 +5,7 @@ import {
 import { Request } from 'express';
 import { AdminService } from './admin.service';
 import { DemoDataService } from './demo-data.service';
+import { MoneyResetService } from './money-reset.service';
 import { PartnerStoreService } from '../partner-store/partner-store.service';
 import { DriversService } from '../drivers/drivers.service';
 import { DriverTripStatus } from '../drivers/driver-trip.entity';
@@ -28,6 +29,7 @@ export class AdminController {
     private readonly driversService:      DriversService,
     private readonly paymentsService:     PaymentsService,
     private readonly demoDataService:     DemoDataService,
+    private readonly moneyResetService:   MoneyResetService,
   ) {}
 
   // ── Overview ──────────────────────────────────────────────────────────────
@@ -47,6 +49,18 @@ export class AdminController {
   @UseGuards(SuperAdminGuard)
   @Post('demo-data/seed')
   seedDemoData() { return this.demoDataService.seedDemoAccounts(); }
+
+  /**
+   * Clear every seeded naira before the live money test.
+   *
+   * Defaults to a dry run that only counts, because this is production
+   * and the wipe cannot be undone. Super admin only, same as seeding.
+   */
+  @UseGuards(SuperAdminGuard)
+  @Post('money/reset')
+  resetMoney(@Body() body: { confirm?: boolean }) {
+    return this.moneyResetService.run(body?.confirm === true);
+  }
 
   // GET /api/v1/admin/dashboard/live
   // Live ops pulse. Powers the anomalies panel, speed-of-service cards,

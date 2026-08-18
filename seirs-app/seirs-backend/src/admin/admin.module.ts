@@ -5,6 +5,7 @@ import { AccountIdPrefix, generateUuidAccountId } from '../common/utils/auth-cod
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { DemoDataService } from './demo-data.service';
+import { MoneyResetService } from './money-reset.service';
 import { User, UserRole } from '../users/user.entity';
 import { ArchivedUser } from '../users/archived-user.entity';
 import { UsersModule } from '../users/users.module';
@@ -50,7 +51,7 @@ import { StoreDropoff } from '../partner-store/store-dropoff.entity';
     UsersModule,
   ],
   controllers: [AdminController],
-  providers: [AdminService, DemoDataService],
+  providers: [AdminService, DemoDataService, MoneyResetService],
   exports: [AdminService],
 })
 export class AdminModule implements OnModuleInit {
