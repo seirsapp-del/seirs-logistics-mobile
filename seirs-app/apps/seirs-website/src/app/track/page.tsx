@@ -81,11 +81,12 @@ export default function TrackIndexPage() {
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              // Real codes are SRS- plus 8 characters (generateTrackingCode).
-              // The first placeholder here showed "SRS4K92B", the wrong shape,
-              // which would have had people hunting for a code that does not
-              // look like the one they were sent.
-              placeholder="e.g. SRS-1A2B3C4D"
+              // Two shapes are valid and the lookup accepts both. SRS- is a
+              // PACKAGE code, which is what a receiver is sent; SEIRS- is the
+              // RUN code the sender holds for a whole multi-package booking.
+              // The hint leads with the package shape because receivers are
+              // the ones who come here.
+              placeholder="e.g. SRS-1A2B3C4D or SEIRS-1A2B3C4D"
               maxLength={24}
               aria-label="Tracking code"
               autoComplete="off"

@@ -273,9 +273,13 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     category: FeeCategory.FINANCIAL,    unit: FeeUnit.PERCENT,    value: 8 },
 
   // ── Pricing config ─────────────────────────────────────────────────────
-  { key: 'current_fuel_price',          name: 'Current Fuel Price (₦/L)',
-    description: 'Admin-overridable Nigerian petrol price used by the auto-adjust pricing engine. Update when NNPCL changes the pump rate.',
-    category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 770 },
+  // RETIRED. Superseded by current_petrol_price_ngn and
+  // current_diesel_price_ngn, which the fuel drift check and the rate
+  // card sync actually read. This row was never wired to anything and
+  // sat at 770 while the pump was near 1,380, so anyone reading the
+  // catalogue for "what does fuel cost" got a wrong answer from a value
+  // that changed nothing (audit 2026-08-18). Kept out of new
+  // environments; existing rows are harmless but should be deleted.
   { key: 'high_value_threshold_ngn',    name: 'High-Value Package Threshold',
     description: 'Order value at which extra recipient verification kicks in (Spec V8 §1.17: physical ID photo required at handoff). Raised 50k -> 100k 2026-08-09 per founder decision.',
     category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 100000 },
