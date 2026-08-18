@@ -503,7 +503,9 @@ export class PartnerStoreService {
 
     const breakdown = await this.pricing.computePrice({
       vehicleType:  'motorcycle',
-      categoryCode: input.categoryCode ?? 'general',
+      // 'general' is not a real category and made every quote 404. A
+      // walk-in parcel with nothing declared is a standard parcel.
+      categoryCode: input.categoryCode ?? 'standard_parcel',
       km,
       stopCount:    1,
       weightKg:     Number(input.weightKg ?? 0),
