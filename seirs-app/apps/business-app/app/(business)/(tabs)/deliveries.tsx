@@ -82,7 +82,7 @@ export default function DeliveriesScreen() {
   const handleCancel = (item: Delivery) => {
     Alert.alert(
       'Cancel delivery?',
-      `Tracking: ${item.trackingNumber ?? item.trackingCode ?? item.id.slice(0, 8)}. The driver will be notified and the wallet will be refunded if funds are still in escrow. This cannot be undone.`,
+      `Tracking: ${item.trackingNumber ?? item.trackingCode ?? item.id.slice(0, 8)}. The driver will be notified. If you already paid and the fare is still held, it is refunded to the card you paid with. This cannot be undone.`,
       [
         { text: 'Keep', style: 'cancel' },
         { text: 'Cancel delivery', style: 'destructive', onPress: async () => {
@@ -175,6 +175,13 @@ export default function DeliveriesScreen() {
             </Text>
           </View>
           <Text style={[styles.price, { color: colors.text }]}>{fmt(item.price)}</Text>
+        </View>
+
+        {/* Actions get their own row. Vehicle, stops, date, price, Pay now
+            and Cancel on ONE line ran Cancel into the screen edge and left
+            the two buttons touching (founder 2026-08-19). */}
+        {(isUnpaid || isCancellable) && (
+        <View style={styles.cardActions}>
           {isUnpaid && (
             <Pressable
               onPress={() => handlePay(item)}
@@ -190,14 +197,14 @@ export default function DeliveriesScreen() {
           {isCancellable && (
             <Pressable
               onPress={() => handleCancel(item)}
-              style={styles.cancelLink}
+              style={styles.cancelBtn}
               hitSlop={8}
             >
-              <Icon name="X" size={12} color="#DC2626" />
-              <Text style={styles.cancelLinkText}>Cancel</Text>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
             </Pressable>
           )}
         </View>
+        )}
       </Pressable>
     );
   };
@@ -324,11 +331,19 @@ const styles = StyleSheet.create({
   badge:        { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText:    { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
   cardBottom:   { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  cardActions:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
+                  gap: 10, marginTop: 12 },
+  // Cancel reads as a button beside Pay now rather than a bare red link
+  // with an X, which looked like a dismiss control rather than an action
+  // (founder 2026-08-19).
+  cancelBtn:     { borderWidth: 1, borderColor: '#DC2626', borderRadius: 999,
+                   paddingHorizontal: 14, paddingVertical: 6 },
+  cancelBtnText: { fontSize: 12.5, fontWeight: '700', color: '#DC2626' },
   meta:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText:     { fontSize: 11, textTransform: 'capitalize' },
   price:        { marginLeft: 'auto', fontSize: 13, fontWeight: '700' },
   cancelLink:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 12 },
-  payLink:      { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, marginRight: 10 },
+  payLink:      { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   payLinkText:  { fontSize: 12.5, fontWeight: '700' },
   cancelLinkText: { color: '#DC2626', fontSize: 11, fontWeight: '700' },
   empty:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
