@@ -1,4 +1,11 @@
-import PDFDocument from 'pdfkit';
+/**
+ * pdfkit ships as CommonJS and this project does not enable
+ * esModuleInterop, so a default import compiles to `pdfkit_1.default`,
+ * which is undefined at runtime: "pdfkit_1.default is not a
+ * constructor". require gets the callable itself.
+ */
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PDFDocument = require('pdfkit');
 import * as QRCode from 'qrcode';
 
 const NAVY  = '#0F2B4C';
