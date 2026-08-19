@@ -391,26 +391,75 @@ export class BusinessService {
    * Yearly payout statement for partner stores: PAID payouts only
    * (money actually received), grouped by the year it was paid.
    */
-  async getPartnerPayoutStatement(userId: string) {
+  /**
+   * A partner statement you could hand to an accountant.
+   *
+   * This returned one row per YEAR: a single total and a count, with
+   * nothing behind it. A shop asking "which packages made up my
+   * NGN 46,000" could not be answered from the app, and neither could a
+   * tax filing (founder 2026-08-19: "does it look like a receipt from a
+   * store or like a bank statement, and can they choose from when to
+   * when").
+   *
+   * It is a bank statement now: pick a window, get every line in it with
+   * a running balance, plus the totals for the period. Defaults to the
+   * last 90 days when no window is given, which is the common case of
+   * opening the screen and just looking.
+   */
+  async getPartnerPayoutStatement(userId: string, from?: string, to?: string) {
     const store = await this.getPartnerStore(userId);
-    const rows: Array<{ year: number; paid: string; payouts: string }> =
-      await this.payoutsRepo.query(
-        `SELECT EXTRACT(YEAR FROM "paidAt")::int AS year,
-                COALESCE(SUM(amount), 0)         AS paid,
-                COUNT(*)                         AS payouts
+
+    const toDate   = to   ? new Date(to)   : new Date();
+    const fromDate = from ? new Date(from) : new Date(toDate.getTime() - 90 * 24 * 3600 * 1000);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      throw new BadRequestException('from and to must be valid dates (YYYY-MM-DD).');
+    }
+    if (fromDate > toDate) {
+      throw new BadRequestException('The start date cannot be after the end date.');
+    }
+    // Include the whole closing day, not up to midnight of it.
+    toDate.setHours(23, 59, 59, 999);
+
+    const lines: Array<any> = await this.payoutsRepo.query(
+      `SELECT id, amount::float AS amount, status, period,
+              "paidAt", "createdAt"
          FROM partner_payouts
-         WHERE "partnerStoreId" = $1 AND status = 'paid' AND "paidAt" IS NOT NULL
-         GROUP BY 1
-         ORDER BY 1 DESC`,
-        [store.id],
-      );
+        WHERE "partnerStoreId" = $1
+          AND COALESCE("paidAt", "createdAt") BETWEEN $2 AND $3
+        ORDER BY COALESCE("paidAt", "createdAt") ASC`,
+      [store.id, fromDate.toISOString(), toDate.toISOString()],
+    );
+
+    let running = 0;
+    const entries = lines.map((l) => {
+      const settled = l.status === 'paid';
+      if (settled) running += Number(l.amount);
+      return {
+        id:        l.id,
+        date:      l.paidAt ?? l.createdAt,
+        narrative: settled ? `Counter earnings paid (${l.period})` : `Counter earnings earned (${l.period})`,
+        amountNgn: Number(l.amount),
+        status:    l.status,
+        settled,
+        runningPaidNgn: Math.round(running * 100) / 100,
+      };
+    });
+
+    const paid    = entries.filter(e => e.settled).reduce((a, e) => a + e.amountNgn, 0);
+    const pending = entries.filter(e => !e.settled).reduce((a, e) => a + e.amountNgn, 0);
+
     return {
       storeName: store.storeName,
-      years: rows.map(r => ({
-        year:     Number(r.year),
-        paidNgn:  Number(r.paid),
-        payouts:  Number(r.payouts),
-      })),
+      storeCode: (store as any).storeCode ?? null,
+      from:      fromDate.toISOString(),
+      to:        toDate.toISOString(),
+      openingNote: 'Counter handling fees are your share of the fee charged to the sender.',
+      entries,
+      totals: {
+        paidNgn:    Math.round(paid * 100) / 100,
+        pendingNgn: Math.round(pending * 100) / 100,
+        entries:    entries.length,
+      },
     };
   }
 

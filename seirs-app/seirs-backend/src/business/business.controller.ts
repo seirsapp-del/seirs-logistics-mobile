@@ -158,9 +158,16 @@ export class BusinessController {
   }
 
   // Yearly paid-payout statement for the partner's records/taxes.
+  // GET /api/v1/business/partner/statement?from=YYYY-MM-DD&to=YYYY-MM-DD
+  // Bank-statement shape: every line in the window with a running total.
+  // Defaults to the last 90 days.
   @Get('partner/statement')
-  partnerStatement(@CurrentUser() user: User) {
-    return this.svc.getPartnerPayoutStatement(user.id);
+  getPartnerStatement(
+    @CurrentUser() user: User,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.svc.getPartnerPayoutStatement(user.id, from, to);
   }
 
   @Get('partner/inventory')
