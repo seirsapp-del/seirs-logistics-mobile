@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 
 // Spec V8 §1.9 + §1.17: customer presents this screen when collecting
 // at a partner store or as the recipient at the door. Partner staff /
-// driver scans the QR (or types the 6-char backup code) to verify the
+// driver scans the QR (or types the SEIRS ID as a backup) to verify the
 // holder is the booking owner; recipient then says their full name to
 // match what's on the partner's screen.
 export default function SeirsIdScreen() {
@@ -138,7 +138,7 @@ export default function SeirsIdScreen() {
         <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.howTitle, { color: theme.text }]}>How handoff verification works</Text>
           {[
-            { step: '1', text: 'Partner staff (or your driver) scans this QR or types the 6-char code.' },
+            { step: '1', text: 'Partner staff (or your driver) scans this QR, or types the SEIRS ID shown above.' },
             { step: '2', text: 'They see your registered name on their screen.' },
             { step: '3', text: 'Say your full name out loud: they type it to confirm the match.' },
             { step: '4', text: 'The handoff is logged in your delivery audit trail.' },

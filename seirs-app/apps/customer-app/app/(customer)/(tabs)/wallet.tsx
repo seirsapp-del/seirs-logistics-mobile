@@ -54,16 +54,18 @@ export default function WalletScreen() {
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [pulse,     setPulse]     = useState<any>(null);
   const [promo,     setPromo]     = useState<any>(null);
+  const [referrals, setReferrals] = useState<any[]>([]);
   const [loading,   setLoading]   = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [l, d, p, pr] = await Promise.all([
+      const [l, d, p, pr, rf] = await Promise.all([
         loyaltyApi.balance().catch(() => null),
         deliveriesApi.myDeliveries(1, 60).catch(() => null),
         deliveriesApi.communityPulse().catch(() => null),
         deliveriesApi.featuredPromotion().catch(() => null),
+        loyaltyApi.myReferrals().catch(() => null),
       ]);
       if (l) {
         setBalance(l.balance ?? 0);
@@ -74,6 +76,7 @@ export default function WalletScreen() {
       setDeliveries(items);
       if (p) setPulse(p);
       if (pr) setPromo(pr);
+      setReferrals(Array.isArray(rf) ? rf : []);
     } finally {
       setLoading(false);
     }
@@ -114,6 +117,11 @@ export default function WalletScreen() {
 
   const deliveredCount = deliveries.filter((d: any) => d.status === 'delivered').length;
 
+  const paidReferrals = useMemo(
+    () => referrals.filter((r: any) => r?.bonusPaid).length,
+    [referrals],
+  );
+
   const achievements: Achievement[] = useMemo(() => [
     { key: 'first',    label: 'First delivery',  icon: Sparkles, color: '#3A7BD5', earned: deliveredCount >= 1  },
     { key: 'regular',  label: 'Regular',         icon: Package,  color: '#3A7BD5', earned: deliveredCount >= 3  },
@@ -122,8 +130,13 @@ export default function WalletScreen() {
     { key: 'gold',     label: 'Gold tier',       icon: Award,    color: '#FFD700', earned: tier === 'gold' || tier === 'platinum' },
     { key: 'platinum', label: 'Platinum tier',   icon: Award,    color: '#E5E4E2', earned: tier === 'platinum' },
     { key: 'streak',   label: '4-week streak',   icon: Flame,    color: '#F97316', earned: streak >= 4 },
-    { key: 'referral', label: 'Referral hero',   icon: Users,    color: '#22C55E', earned: false /* wired via loyaltyApi.myReferrals in a follow-up */ },
-  ], [deliveredCount, tier, streak]);
+    // Earned on a referral that actually PAID OUT. Counting sign-ups
+    // would award this for an invite that never completed a delivery,
+    // which is not what the badge says. Until this was wired the flag was
+    // hardcoded false, so the badge could never be earned by anyone no
+    // matter what they did (device sweep 2026-08-19).
+    { key: 'referral', label: 'Referral hero',   icon: Users,    color: '#22C55E', earned: paidReferrals >= 1 },
+  ], [deliveredCount, tier, streak, paidReferrals]);
   const earnedCount = achievements.filter(a => a.earned).length;
 
   const monthDelta = useMemo(() => {

@@ -144,7 +144,7 @@ export default function ReferralScreen() {
           <Text style={[styles.howTitle, { color: theme.text }]}>How it works</Text>
           {[
             { step: '1', text: 'Share your referral code with friends' },
-            { step: '2', text: 'Friend signs up and completes their first ride' },
+            { step: '2', text: 'Friend signs up and completes their first delivery' },
             { step: '3', text: 'You both get rewarded!' },
           ].map(s => (
             <View key={s.step} style={styles.howRow}>
