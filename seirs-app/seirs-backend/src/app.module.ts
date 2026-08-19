@@ -19,6 +19,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { FraudModule } from './fraud/fraud.module';
 import { BulkModule } from './bulk/bulk.module';
+import { StatementsModule } from './statements/statements.module';
 import { RoutingModule } from './routing/routing.module';
 import { MapsModule } from './maps/maps.module';
 import { MailModule } from './mail/mail.module';
@@ -105,6 +106,7 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
     SchedulerModule,
     FraudModule,
     BulkModule,
+    StatementsModule,
     RoutingModule,
     MapsModule,
     MailModule,
