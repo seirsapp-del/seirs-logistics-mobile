@@ -24,6 +24,8 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { Icon } from '@/components/Icon';
 import { businessApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
@@ -167,11 +169,40 @@ export default function CsvUploadScreen() {
     setStep('done');
   };
 
-  const downloadTemplate = () => {
-    Alert.alert(
-      'CSV Template',
-      `Column headers (in order):\n\n${TEMPLATE_HEADERS.join(', ')}\n\nGroup multiple rows into one multi-stop booking by giving them the same booking_ref. Empty booking_ref = standalone single-stop delivery.\n\nFull example:\n\n${TEMPLATE_CSV}`,
-    );
+  /**
+   * Hand over a real .csv file, not a wall of text.
+   *
+   * This used to open an Alert containing the headers and four example
+   * rows. You cannot save an alert, open it in Excel, or hand it to
+   * whoever keeps your spreadsheets: the one thing a template exists for
+   * was the one thing it could not do (found on device 2026-08-19).
+   *
+   * Written to the cache and shared through the OS sheet, so it lands in
+   * Drive, WhatsApp, email or Files like any other download.
+   */
+  const downloadTemplate = async () => {
+    try {
+      // expo-file-system's current API is Paths/File; the old
+      // cacheDirectory + writeAsStringAsync helpers are gone.
+      const file = new File(Paths.cache, 'seirs-bulk-template.csv');
+      if (file.exists) file.delete();
+      file.create();
+      file.write(TEMPLATE_CSV);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'text/csv',
+          dialogTitle: 'SEIRS bulk upload template',
+          UTI: 'public.comma-separated-values-text',
+        });
+        return;
+      }
+      Alert.alert('Template saved', `Saved to ${file.uri}`);
+    } catch (e: any) {
+      Alert.alert(
+        'Could not create the template',
+        e?.message ?? 'Try again, or copy the column names from the help text above.',
+      );
+    }
   };
 
   // ── Render ──────────────────────────────────────────────────────────
