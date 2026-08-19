@@ -180,10 +180,26 @@ export class DevPlatformService {
 
   // Enqueue a webhook event for delivery - called by other modules
   // (e.g. when a delivery transitions to "delivered").
-  async enqueue(event: string, payload: Record<string, any>) {
-    // Fan out to all subscribed endpoints
+  /**
+   * Fan an event out to the endpoints belonging to ONE owner.
+   *
+   * This used to select every active endpoint on the platform and filter
+   * only by event name, with no owner condition at all. Every merchant
+   * subscribed to order.delivered received the order id, tracking code
+   * and status of every OTHER merchant's deliveries. A cross-tenant
+   * leak, and the more integrations succeeded the worse it got (audit
+   * 2026-08-19).
+   *
+   * ownerUserId is required. An event with no owner is dropped rather
+   * than broadcast, because broadcasting is the bug.
+   */
+  async enqueue(event: string, payload: Record<string, any>, ownerUserId?: string) {
+    if (!ownerUserId) {
+      this.logger.warn(`Webhook ${event} dropped: no owner. Refusing to broadcast.`);
+      return { queued: 0 };
+    }
     const subscribers = await this.endpointsRepo.find({
-      where: { active: true },
+      where: { active: true, ownerUserId },
     });
     const targets = subscribers.filter(s => (s.events ?? []).includes(event));
     if (targets.length === 0) return { queued: 0 };

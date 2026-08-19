@@ -1394,7 +1394,9 @@ export class DeliveriesService {
   ) {
     const delivery = await this.repo.findOne({
       where: { id },
-      relations: ['driver', 'driver.user'],
+      // customer is loaded here because the webhook fan-out below needs
+      // to know WHOSE order this is; without it events were broadcast.
+      relations: ['driver', 'driver.user', 'customer'],
     });
     if (!delivery) throw new NotFoundException('Delivery not found.');
 
@@ -1595,12 +1597,16 @@ export class DeliveriesService {
       };
       const eventName = eventMap[String(status)];
       if (eventName) {
+        // The owner is required: without it the fan-out used to go to
+        // every merchant on the platform, not just the one whose order
+        // this is.
+        const ownerId = (delivery as any).customerId ?? delivery.customer?.id;
         this.devPlatformService.enqueue(eventName, {
           orderId:      id,
           trackingCode: delivery.trackingCode,
           status,
           occurredAt:   new Date().toISOString(),
-        }).catch(() => {});
+        }, ownerId).catch(() => {});
       }
     }
 
