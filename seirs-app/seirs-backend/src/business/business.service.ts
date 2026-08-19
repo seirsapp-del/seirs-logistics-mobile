@@ -1248,10 +1248,16 @@ export class BusinessService {
     });
     await this.teamRepo.save(member);
 
-    await this.mailService.sendEmailVerification(
+    // Was sendEmailVerification with the invitation sentence passed as
+    // the OTP, which produced an email headed "Verify your email" whose
+    // code box contained a sentence and which offered no way to accept.
+    const inviter = await this.usersRepo.findOne({ where: { id: userId } });
+    await this.mailService.sendTeamInvite(
       data.email,
       data.name,
-      'You have been invited to join a Seirs business account.',
+      biz.companyName ?? 'a Seirs business',
+      data.teamRole,
+      inviter?.name,
     ).catch(() => {});
 
     return { message: 'Invitation sent.', member };

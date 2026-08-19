@@ -251,6 +251,58 @@ export class MailService {
     await this.send(to, 'Welcome to Seirs Logistics!', html);
   }
 
+  /**
+   * Invite someone onto a business account's team.
+   *
+   * This used to reuse sendEmailVerification with the invitation
+   * sentence passed in as the OTP, so the invitee received an email
+   * headed "Verify your email", telling them to use a code that expires
+   * in 15 minutes, with the sentence "You have been invited to join a
+   * Seirs business account." rendered inside the code box at 36px with
+   * 12px letter-spacing. It also closed with "If you didn't create a
+   * Seirs account, ignore this email", and offered no way to accept
+   * (founder spotted it in Resend, 2026-08-19).
+   *
+   * An invitation is its own thing: who invited you, to what, as what,
+   * and a way in.
+   */
+  async sendTeamInvite(
+    to: string,
+    name: string,
+    businessName: string,
+    role: string,
+    invitedBy?: string,
+  ) {
+    const roleLabel = String(role || 'team member').replace(/_/g, ' ');
+    const html = baseTemplate(`
+      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">You have been added to ${businessName}</h2>
+      <p>Hi ${name},</p>
+      <p>
+        ${invitedBy ? `${invitedBy} has invited you` : 'You have been invited'}
+        to join <strong>${businessName}</strong> on Seirs as a
+        <strong>${roleLabel}</strong>.
+      </p>
+      <p>To accept, download the Seirs Business app and sign up with this
+         email address. Your invitation is recognised automatically.</p>
+      <div style="margin:24px 0;text-align:center">
+        <a href="https://seirs-website.vercel.app/for-business"
+           style="display:inline-block;background:${BRAND_NAVY};color:#ffffff;
+                  text-decoration:none;padding:14px 28px;border-radius:10px;
+                  font-weight:bold;font-size:15px">Get the Seirs Business app</a>
+      </div>
+      <p style="font-size:13px;color:#6B7280">
+        As a ${roleLabel} you will be able to work on this business account.
+        You will never be able to see or change its payout details.
+      </p>
+      <p style="font-size:13px;color:#9CA3AF">
+        Not expecting this? You can ignore this email and nothing happens.
+        You are only added once you sign up with this address.
+      </p>
+    `);
+
+    await this.send(to, `${businessName} invited you to Seirs`, html);
+  }
+
   // ── Delivery assigned ────────────────────────────────────────────────────────
 
   async sendDeliveryAssigned(
