@@ -46,6 +46,7 @@ export class MoneyResetService {
     counted['Wallets holding a balance'] = await this.count('wallets', '"balanceKobo" <> 0');
     counted['Deliveries with a price']   = await this.count('deliveries', '"price" > 0');
     counted['Drop-offs with a fare']     = await this.count('store_dropoffs', '"prePaidAmountNgn" > 0');
+    counted['Business accounts with points'] = await this.count('business_accounts', '"loyaltyPoints" > 0');
 
     if (!confirm) {
       return {
@@ -65,6 +66,16 @@ export class MoneyResetService {
     // a column on the user, so clearing the ledger above is the whole
     // job. The dry run asking users for a loyaltyPoints column is what
     // showed that.
+    /**
+     * Business loyalty lives on a COLUMN, not in the ledger.
+     *
+     * Customers accrue points as loyalty_points rows; a business account
+     * carries a running total on business_accounts.loyaltyPoints. The
+     * first wipe cleared the ledger and left the column, so the business
+     * app still showed 340 points against an empty ledger (found on
+     * device 2026-08-19).
+     */
+    await this.exec(`UPDATE "business_accounts" SET "loyaltyPoints" = 0 WHERE "loyaltyPoints" <> 0`, done);
     await this.exec(`UPDATE "wallets" SET "balanceKobo" = 0`, done);
     await this.exec(
       `UPDATE "store_dropoffs" SET "prePaidAmountNgn" = 0, "partnerHandlingNgn" = 0,
