@@ -889,6 +889,16 @@ export class DeliveriesService {
           }
         : null,
       pickupAddress:  delivery.pickupAddress,
+      // The pickup's coordinates, so the tracking map can draw where the
+      // package started. The payload has always returned pickupAddress
+      // in full and never its coordinates, which left the customer map
+      // able to plot only the destination (device QA 2026-08-19).
+      // Unconditional, matching pickupAddress: the fee lock below hides
+      // where the package WENT, not where it came from, and the address
+      // is already public on this endpoint so the coordinates reveal
+      // nothing further.
+      pickupLat:      delivery.pickupLat != null ? Number(delivery.pickupLat) : null,
+      pickupLng:      delivery.pickupLng != null ? Number(delivery.pickupLng) : null,
       dropoffAddress: feeLocked
         ? 'SEIRS Partner Store (settle the redirect fee to reveal the pickup location)'
         : delivery.dropoffAddress,
