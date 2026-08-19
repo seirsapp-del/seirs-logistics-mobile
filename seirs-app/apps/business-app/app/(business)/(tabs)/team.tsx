@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator,
-  TextInput, Alert, Modal,
+  TextInput, Alert, Modal, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
@@ -36,6 +36,13 @@ export default function TeamScreen() {
   const [loading,  setLoading]  = useState(true);
   const [showAdd,  setShowAdd]  = useState(false);
   const [invite,   setInvite]   = useState({ name: '', email: '', teamRole: 'dispatcher' });
+  // Height of the on-screen keyboard, so the sheet above can clear it.
+  const [kbHeight, setKbHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', e => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const [inviting, setInviting] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
 
@@ -161,8 +168,36 @@ export default function TeamScreen() {
 
       <Modal visible={showAdd} transparent animationType="slide">
         <Pressable style={styles.overlay} onPress={() => setShowAdd(false)} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 24, backgroundColor: colors.surface }]}>
+        {/* The sheet is pinned to the bottom, so opening the keyboard to
+            type an email buried the Role choices and the Send button
+            underneath it: the field being typed into stayed visible but
+            the control needed to submit did not, and the only way out
+            was to know to dismiss the keyboard first (found on device
+            2026-08-19). The app draws edge to edge, so the window never
+            shrinks on its own and the sheet has to be lifted by the
+            measured keyboard height. */}
+        <View style={[
+          styles.sheet,
+          {
+            // Edge to edge means RN reports the keyboard without the
+            // navigation-bar inset, so lifting by the raw height left the
+            // Send button a hundred pixels short. Same correction as the
+            // partner manual-code sheet.
+            marginBottom:  kbHeight > 0 ? kbHeight + insets.bottom : 0,
+            paddingBottom: kbHeight > 0 ? 24 : insets.bottom + 24,
+            backgroundColor: colors.surface,
+          },
+        ]}>
           <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+          {/* Scrollable: with the keyboard up there is roughly half a
+              screen left, and the title, two fields and three role cards
+              are taller than that. Without this the Send button sat below
+              the fold with no way to reach it. */}
+          <ScrollView
+            style={{ flexShrink: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
           <Text style={[styles.sheetTitle, { color: colors.text }]}>Invite Team Member</Text>
 
           <Text style={[styles.label, { color: colors.textSecond }]}>Full Name</Text>
@@ -221,6 +256,8 @@ export default function TeamScreen() {
               );
             })}
           </View>
+
+          </ScrollView>
 
           <Pressable
             style={[
