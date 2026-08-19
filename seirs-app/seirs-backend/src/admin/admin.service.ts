@@ -32,7 +32,7 @@ const PRICING_SINGLETON_ID = 'singleton';
 
 // Universal-search hit shape. Kept flat so the UI can render a mixed list
 // without switching on type for anything except the leading icon.
-export type SearchHitType = 'user' | 'driver' | 'delivery';
+export type SearchHitType = 'user' | 'driver' | 'delivery' | 'statement';
 export interface SearchHit {
   type:      SearchHitType;
   id:        string;
@@ -887,6 +887,37 @@ export class AdminService {
         sublabel: `${dv.status} · ₦${Number(dv.price ?? 0).toLocaleString()}`,
         href:     `/deliveries?q=${encodeURIComponent(dv.trackingCode ?? dv.id)}`,
       });
+    }
+
+    /**
+     * Statement codes.
+     *
+     * A partner or a bank rings support holding a statement and reads out
+     * its code. Search covered users, drivers and deliveries and not
+     * statements, so the one identifier printed on the document was the
+     * one thing an agent could not look up (founder 2026-08-19).
+     */
+    if (/^stm/i.test(q) || q.length >= 4) {
+      const stmtRows = await this.dataSource.query(
+        `SELECT code, "subjectName", "subjectType", "periodFrom", "periodTo",
+                "totalPaidNgn"::float AS paid
+           FROM statement_records
+          WHERE code ILIKE $1 OR "subjectName" ILIKE $1
+          ORDER BY "createdAt" DESC
+          LIMIT $2`,
+        [like, takePerType],
+      ).catch(() => []);
+      for (const st of stmtRows as any[]) {
+        const from = new Date(st.periodFrom).toISOString().slice(0, 10);
+        const to   = new Date(st.periodTo).toISOString().slice(0, 10);
+        hits.push({
+          type:     'statement',
+          id:       st.code,
+          label:    st.code,
+          sublabel: `${st.subjectName} · ${st.subjectType} · ${from} to ${to} · ₦${Number(st.paid ?? 0).toLocaleString()}`,
+          href:     `/verify/${st.code}`,
+        });
+      }
     }
 
     return { hits: hits.slice(0, limit) };

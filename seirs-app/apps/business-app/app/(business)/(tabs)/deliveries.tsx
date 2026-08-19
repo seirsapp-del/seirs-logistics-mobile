@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import {
-  View, Text, Pressable, StyleSheet, FlatList, TextInput, ActivityIndicator, Alert,
+  View, Text, Pressable, StyleSheet, FlatList, TextInput, ActivityIndicator, Alert, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { Drawer } from '@/components/Drawer';
-import { businessApi } from '@/services/api';
+import { businessApi, paymentsApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
 const STATUSES = ['all', 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled'];
@@ -43,12 +43,15 @@ interface Delivery {
   createdAt:       string;
   stops?:          any[];
   isMultiStop?:    boolean;
+  /** Set when the fare has actually been collected and escrowed. */
+  paymentHeldAt?:  string | null;
 }
 
 export default function DeliveriesScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [paying, setPaying] = useState<string | null>(null);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [status,     setStatus]     = useState('all');
@@ -94,6 +97,37 @@ export default function DeliveriesScreen() {
     );
   };
 
+  /**
+   * Let an unpaid booking be paid for.
+   *
+   * A booking whose payment did not go through sat as Pending with
+   * Cancel as its ONLY action: the sender could not retry, could not
+   * open a checkout, and could do nothing but throw the order away
+   * (founder, on device 2026-08-19). A dead-end order is a lost sale and
+   * a support ticket.
+   */
+  const handlePay = async (item: Delivery) => {
+    try {
+      setPaying(item.id);
+      const res = await paymentsApi.initiate(item.id, 'card', 'card');
+      const url = res?.authorizationUrl;
+      if (!url) {
+        Alert.alert('Could not start payment', res?.error ?? 'Please try again in a moment.');
+        return;
+      }
+      const opened = await Linking.canOpenURL(url);
+      if (!opened) {
+        Alert.alert('Could not open checkout', 'Your device blocked the payment page.');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (e: any) {
+      Alert.alert('Could not start payment', e?.message ?? 'Please try again in a moment.');
+    } finally {
+      setPaying(null);
+    }
+  };
+
   const renderItem = ({ item }: { item: Delivery }) => {
     const c = STATUS_COLOR[item.status] ?? colors.textThird;
     const stopCount = item.stops?.length ?? (item.isMultiStop ? 0 : 1);
@@ -102,6 +136,8 @@ export default function DeliveriesScreen() {
       ?? item.pickupAddress
       ?? '-';
     const isCancellable = item.status === 'pending' || item.status === 'assigned';
+    // Pending AND never collected: the sender still owes for this one.
+    const isUnpaid = item.status === 'pending' && !item.paymentHeldAt;
     // The card could not be opened at all, so a sender could see "2
     // stops" and never learn which parcel was where, or get the code
     // their receiver needs (founder 2026-08-17).
@@ -139,6 +175,18 @@ export default function DeliveriesScreen() {
             </Text>
           </View>
           <Text style={[styles.price, { color: colors.text }]}>{fmt(item.price)}</Text>
+          {isUnpaid && (
+            <Pressable
+              onPress={() => handlePay(item)}
+              disabled={paying === item.id}
+              hitSlop={8}
+              style={[styles.payLink, { borderColor: colors.primary }]}
+            >
+              <Text style={[styles.payLinkText, { color: colors.primary }]}>
+                {paying === item.id ? 'Opening…' : 'Pay now'}
+              </Text>
+            </Pressable>
+          )}
           {isCancellable && (
             <Pressable
               onPress={() => handleCancel(item)}
@@ -280,6 +328,8 @@ const styles = StyleSheet.create({
   metaText:     { fontSize: 11, textTransform: 'capitalize' },
   price:        { marginLeft: 'auto', fontSize: 13, fontWeight: '700' },
   cancelLink:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 12 },
+  payLink:      { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, marginRight: 10 },
+  payLinkText:  { fontSize: 12.5, fontWeight: '700' },
   cancelLinkText: { color: '#DC2626', fontSize: 11, fontWeight: '700' },
   empty:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyText:    { fontSize: 14 },
