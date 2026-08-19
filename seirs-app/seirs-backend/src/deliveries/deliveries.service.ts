@@ -756,11 +756,27 @@ export class DeliveriesService {
       packageStop = await this.repo.manager
         .getRepository(DeliveryStop)
         .findOne({ where: { packageTrackingCode: raw } });
-      if (!packageStop) throw new NotFoundException('Package not found.');
-      delivery = await this.repo.findOne({
-        where: { id: packageStop.deliveryId },
-        relations: ['driver', 'driver.user'],
-      });
+      delivery = packageStop
+        ? await this.repo.findOne({
+            where: { id: packageStop.deliveryId },
+            relations: ['driver', 'driver.user'],
+          })
+        /**
+         * An SRS- code is not proof of a stop.
+         *
+         * Runs booked before the multi-package rebuild carry an SRS- code
+         * of their own on the delivery, with no delivery_stops row behind
+         * it. Treating the prefix as proof made this throw "Package not
+         * found" for every one of them, so the Track Package screen could
+         * not track a single delivery on such an account: the code shown
+         * on the customer's own Trip Details came back "no delivery found
+         * with that code" (device QA 2026-08-19). Fall back to the run's
+         * own code before giving up. A miss on both is still a 404.
+         */
+        : await this.repo.findOne({
+            where: { trackingCode: raw },
+            relations: ['driver', 'driver.user'],
+          });
     } else {
       delivery = await this.repo.findOne({
         where: { trackingCode },
