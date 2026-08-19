@@ -41,6 +41,87 @@ const STATUS_CONFIG: Record<string, {
 /** The states where a package is actually in motion. */
 const IN_FLIGHT = ['assigned', 'picked_up', 'in_transit'];
 
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/** "11 Aug 13:47", or just "13:47" when the day is already on screen. */
+function stamp(iso?: string | null, withDate = true): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return withDate ? `${d.getDate()} ${MONTHS[d.getMonth()]} ${hh}:${mm}` : `${hh}:${mm}`;
+}
+
+const sameDay = (a?: string | null, b?: string | null) =>
+  !!a && !!b && new Date(a).toDateString() === new Date(b).toDateString();
+
+/**
+ * When the package was booked.
+ *
+ * Deliberately the EARLIEST timestamp on the record rather than
+ * createdAt. Seeded runs exist whose createdAt is a day after their
+ * deliveredAt, and once steps carry times that reads "Booked 12 Aug,
+ * Delivered 11 Aug" (device QA 2026-08-19). Taking the minimum is also
+ * simply correct for real data, where createdAt already is the minimum.
+ */
+function bookedAt(d: any): string | null {
+  const times = [d?.createdAt, d?.assignedAt, d?.pickedUpAt, d?.deliveredAt]
+    .filter(Boolean)
+    .map((t: string) => new Date(t).getTime())
+    .filter((n: number) => !Number.isNaN(n));
+  return times.length ? new Date(Math.min(...times)).toISOString() : null;
+}
+
+/**
+ * Who is holding the package right now, for the whole journey rather
+ * than only at the end (founder 2026-08-19).
+ *
+ * Handoff records are the truth when they exist: the backend already
+ * folds them into the event log with labels like "Driver dropped at
+ * partner" and a signature name. Before any handoff is recorded we fall
+ * back to the status, so an in-flight package can still answer "who has
+ * my package" instead of going quiet until it lands.
+ */
+function custodyOf(d: any, driverName?: string | null) {
+  if (!d) return null;
+  const events: any[] = Array.isArray(d.events) ? d.events : [];
+  const lastHandoff = [...events].reverse().find(e => e?.type === 'handoff');
+  const status = String(d.status ?? '');
+
+  if (lastHandoff) {
+    const who = lastHandoff.meta?.signatureName;
+    return {
+      who:    lastHandoff.description ?? 'Hand-off recorded',
+      detail: [who ? `Signed by ${who}` : null, stamp(lastHandoff.createdAt, false)]
+        .filter(Boolean).join(' · '),
+      where:  d.dropoffAddress ?? null,
+    };
+  }
+
+  if (status === 'delivered') {
+    return {
+      who:    'Delivered',
+      detail: d.deliveredAt ? stamp(d.deliveredAt) : null,
+      where:  d.dropoffAddress ?? null,
+    };
+  }
+  if (status === 'pending') {
+    return { who: 'Looking for a rider', detail: 'Nobody is carrying it yet', where: null };
+  }
+  if (IN_FLIGHT.includes(status)) {
+    const named = driverName ? `With ${driverName}` : 'With your rider';
+    return {
+      who:    status === 'assigned' ? `${named}, heading to pickup` : `${named}, on the way`,
+      detail: null,
+      where:  d.dropoffAddress ?? null,
+    };
+  }
+  if (status === 'failed')    return { who: 'Delivery could not be completed', detail: null, where: d.dropoffAddress ?? null };
+  if (status === 'cancelled') return { who: 'Cancelled before delivery', detail: null, where: null };
+  return null;
+}
+
 const STEP_KEYS = ['tracking.shortFinding', 'tracking.shortAssigned', 'tracking.shortPickedUp', 'tracking.shortInTransit', 'tracking.shortDelivered'];
 
 export default function TrackScreen() {
@@ -114,6 +195,48 @@ export default function TrackScreen() {
 
   const currentStatus = deliveryStatus ?? deliveryData?.status ?? null;
   const statusInfo    = currentStatus ? STATUS_CONFIG[currentStatus] : null;
+
+  /** The state colour, taken from the status config's own gradient. */
+  const statusAccent = statusInfo?.gradient?.[0] ?? theme.border;
+
+  /**
+   * The five steps with a time against each.
+   *
+   * Driven off the delivery's own timestamps rather than the event log,
+   * because older runs come back with `events: []` and a timeline built
+   * only on events renders blank on exactly the deliveries worth showing
+   * (device QA 2026-08-19). Events refine the picture when present.
+   */
+  const journey = (() => {
+    const d = deliveryData;
+    if (!d) return [] as Array<{ key: string; when: string; done: boolean; current: boolean }>;
+    const booked = bookedAt(d);
+    const at: Array<string | null> = [
+      booked,
+      d.assignedAt  ?? null,
+      d.pickedUpAt  ?? null,
+      d.pickedUpAt  ?? null,   // in transit has no column of its own
+      d.deliveredAt ?? null,
+    ];
+    const step = statusInfo?.step ?? 0;
+    let lastShown: string | null = null;
+    return STEP_KEYS.map((key, i) => {
+      const iso  = at[i];
+      const show = iso ? stamp(iso, !sameDay(iso, lastShown)) : '';
+      if (iso) lastShown = iso;
+      return {
+        key,
+        when:    step >= i + 1 ? show : '',
+        done:    step >= i + 1,
+        current: step === i + 1,
+      };
+    });
+  })();
+
+  const custody = custodyOf(
+    deliveryData,
+    assignedDriver?.name ?? deliveryData?.driver?.name ?? null,
+  );
 
   /**
    * Whether the details card has anything to put under its rule. The
@@ -189,75 +312,94 @@ export default function TrackScreen() {
         {/* Result */}
         {deliveryData && (
           <>
-            {/* Status card */}
-            <View style={[styles.cardWrap, Shadows.md]}>
-              <LinearGradient
-                colors={statusInfo?.gradient ?? ['#A1A1AA', '#71717A']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.statusCard}
-              >
-                <View style={styles.statusIconWrap}>
-                  <Ionicons name={statusInfo?.icon as any ?? 'cube'} size={32} color="#fff" />
+            {/* Status, as a bar rather than a wall of colour.
+                The gradient hero took a quarter of the screen to say one
+                word, and green was carrying a mood instead of a state
+                (founder review 2026-08-19). The state now lives in a
+                coloured edge and a chip, which is how the business app
+                does it. */}
+            <View style={[
+              styles.statusBar,
+              { backgroundColor: theme.surface, borderLeftColor: statusAccent },
+              Shadows.sm,
+            ]}>
+              <Ionicons name={statusInfo?.icon as any ?? 'cube'} size={20} color={statusAccent} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.statusBarLabel, { color: theme.text }]}>
+                  {statusInfo ? t(statusInfo.labelKey) : t('common.loading')}
+                </Text>
+                <Text style={[styles.statusBarCode, { color: theme.textSecond }]}>
+                  {deliveryData.trackingCode}
+                </Text>
+              </View>
+              {/* LIVE means this package is moving right now, not that
+                  our socket happens to be connected. */}
+              {isConnected && IN_FLIGHT.includes(String(currentStatus)) && (
+                <View style={[styles.liveChip, { backgroundColor: theme.success + '22' }]}>
+                  <View style={[styles.liveDot, { backgroundColor: theme.success }]} />
+                  <Text style={[styles.liveChipText, { color: theme.success }]}>LIVE</Text>
                 </View>
-                <Text style={styles.statusLabel}>{statusInfo ? t(statusInfo.labelKey) : t('common.loading')}</Text>
-                <Text style={styles.trackingCode}>{deliveryData.trackingCode}</Text>
-                {/* LIVE means this package is moving right now, not that
-                    our socket happens to be connected. It used to mean
-                    the latter, so a package delivered a week ago still
-                    wore the badge (founder review 2026-08-19). */}
-                {isConnected && IN_FLIGHT.includes(String(currentStatus)) && (
-                  <View style={styles.livePill}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.liveText}>LIVE</Text>
-                  </View>
-                )}
-              </LinearGradient>
+              )}
             </View>
 
-            {/* Progress steps */}
+            {/* The journey, one line per step, each carrying its own
+                time. The old stepper was five tall rows with no times at
+                all, and its final node showed a bare number where every
+                other node showed a check. */}
             <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>{t('tracking.title')}</Text>
-              {STEP_KEYS.map((stepKey, i) => {
-                const stepNum    = i + 1;
-                const currentStep = statusInfo?.step ?? 0;
-                const done       = stepNum < currentStep;
-                const active     = stepNum === currentStep;
-                const pending    = stepNum > currentStep;
-                return (
-                  <View key={stepKey} style={{ position: 'relative' }}>
-                    <View style={styles.stepRow}>
-                      <View style={[
-                        styles.stepDot,
-                        done    && { backgroundColor: '#22C55E' },
-                        active  && { backgroundColor: theme.primary },
-                        pending && { backgroundColor: theme.border },
-                      ]}>
-                        {done
-                          ? <Ionicons name="checkmark" size={14} color="#fff" />
-                          : <Text style={styles.stepNum}>{stepNum}</Text>}
-                      </View>
-                      <Text style={[
-                        styles.stepLabel,
-                        { color: pending ? theme.textSecond : theme.text },
-                        active && { fontWeight: FontWeight.bold },
-                      ]}>
-                        {t(stepKey)}
-                      </Text>
-                    </View>
-                    {i < STEP_KEYS.length - 1 && (
-                      <View style={[styles.stepLine, { backgroundColor: done ? '#22C55E' : theme.border }]} />
-                    )}
-                  </View>
-                );
-              })}
+              <Text style={[styles.cardTitle, { color: theme.text }]}>Journey</Text>
+              {journey.map(step => (
+                <View key={step.key} style={styles.tlRow}>
+                  <View style={[
+                    styles.tlDot,
+                    { backgroundColor: step.done ? theme.success : theme.border },
+                  ]} />
+                  <Text style={[
+                    styles.tlWhat,
+                    { color: step.done ? theme.text : theme.textSecond },
+                    step.current && { fontWeight: FontWeight.bold as any },
+                  ]}>
+                    {t(step.key)}
+                  </Text>
+                  <Text style={[styles.tlWhen, { color: theme.textThird }]}>{step.when}</Text>
+                </View>
+              ))}
             </View>
+
+            {/* Who is holding it, at every stage rather than only at the
+                end: a package that has been rerouted to a partner store
+                or signed for by somebody else is exactly when a sender
+                needs telling (founder 2026-08-19). */}
+            {custody && (
+              <View style={[
+                styles.custodyCard,
+                { backgroundColor: theme.surface, borderLeftColor: theme.primary },
+                Shadows.sm,
+              ]}>
+                <Text style={[styles.cardTitle, { color: theme.text }]}>Who has it</Text>
+                <Text style={[styles.custodyWho, { color: theme.text }]}>{custody.who}</Text>
+                {!!custody.detail && (
+                  <Text style={[styles.custodyLine, { color: theme.textSecond }]}>{custody.detail}</Text>
+                )}
+                {!!custody.where && (
+                  <View style={styles.custodyWhereRow}>
+                    <Ionicons name="location-outline" size={12} color={theme.textThird} />
+                    <Text style={[styles.custodyLine, { color: theme.textSecond, flex: 1 }]}>
+                      {custody.where}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
 
             {/* The map. Sits above the driver card because "where is it"
                 is the question this screen exists to answer, and the
                 socket was already delivering the answer with nowhere to
                 put it. */}
             <View style={[styles.card, { backgroundColor: theme.surface, padding: 0, overflow: 'hidden' }, Shadows.sm]}>
+              <Text style={[styles.cardTitle, { color: theme.text, paddingHorizontal: Spacing.md, paddingTop: Spacing.md }]}>
+                {currentStatus === 'delivered' ? 'Where it went' : 'Where it is'}
+              </Text>
               <DeliveryTrackMap
                 pickup={{ lat: deliveryData.pickupLat, lng: deliveryData.pickupLng }}
                 dropoff={{ lat: deliveryData.dropoffLat, lng: deliveryData.dropoffLng }}
@@ -531,6 +673,34 @@ const styles = StyleSheet.create({
   liveText:      { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 1 },
 
   card:       { marginHorizontal: Spacing.md, borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.md },
+
+  // Direction A: status as a bar, journey with times, custody card.
+  statusBar: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    marginHorizontal: Spacing.md, borderRadius: Radius.xl, borderLeftWidth: 3,
+    paddingVertical: Spacing.md, paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  statusBarLabel: { fontSize: FontSize.md, fontWeight: FontWeight.bold as any, textTransform: 'capitalize' },
+  statusBarCode:  { fontSize: FontSize.xs, letterSpacing: 0.5, marginTop: 1 },
+  liveChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.full,
+  },
+  liveChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any, letterSpacing: 0.5 },
+
+  tlRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: 5 },
+  tlDot:  { width: 8, height: 8, borderRadius: 4 },
+  tlWhat: { fontSize: FontSize.sm, flex: 1 },
+  tlWhen: { fontSize: FontSize.xs, fontVariant: ['tabular-nums'] },
+
+  custodyCard: {
+    marginHorizontal: Spacing.md, borderRadius: Radius.xl, borderLeftWidth: 3,
+    padding: Spacing.md, marginBottom: Spacing.md,
+  },
+  custodyWho:  { fontSize: FontSize.md, fontWeight: FontWeight.semibold as any },
+  custodyLine: { fontSize: FontSize.sm, marginTop: 2 },
+  custodyWhereRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 2 },
   cardTitle:  { fontSize: FontSize.base, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
 
   stepRow:    { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },

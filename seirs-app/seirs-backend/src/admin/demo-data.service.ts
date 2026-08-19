@@ -308,6 +308,26 @@ export class DemoDataService {
       const deliveredAt = new Date(Date.now() - d.daysAgo * 24 * 60 * 60 * 1000);
       const driverEarnings = +(d.price * (1 - PLATFORM_COMMISSION)).toFixed(2);
 
+      /**
+       * A believable run, backwards from when it landed.
+       *
+       * Every demo delivery used to stamp assignedAt, pickedUpAt and
+       * deliveredAt with the SAME instant, and let createdAt default to
+       * now, so a run seeded today but dated a week ago was booked after
+       * it was delivered. Nothing displayed that until the tracking
+       * screen started showing a time against each step, at which point
+       * the timeline read "Booked 12 Aug, Delivered 11 Aug" and every
+       * step claimed the same minute (device QA 2026-08-19).
+       *
+       * Longer drops take longer: the offsets scale with the distance
+       * band the drop already carries in its price.
+       */
+      const mins  = (n: number) => new Date(deliveredAt.getTime() - n * 60 * 1000);
+      const haul  = Math.round(d.price / 90);          // ~15-38 min of riding
+      const bookedAtDate = mins(haul + 26);
+      const assignedAt   = mins(haul + 19);
+      const pickedUpAt   = mins(haul);
+
       // TypeORM's create() resolves to the ARRAY overload when the
       // literal is cast `as any` (documented gotcha: TS2339 'id' does
       // not exist on Delivery[]). Cast the awaited result, not the input.
@@ -322,8 +342,9 @@ export class DemoDataService {
         urgency: UrgencyLevel.STANDARD, vehicleType: 'motorcycle',
         price: d.price, driverEarnings, distanceKm: 8 + Math.random() * 10,
         status: DeliveryStatus.DELIVERED, source: DeliverySource.CUSTOMER_APP,
-        assignedAt: deliveredAt, pickedUpAt: deliveredAt, deliveredAt,
-        actualStartedAt: deliveredAt, actualCompletedAt: deliveredAt,
+        createdAt: bookedAtDate,
+        assignedAt, pickedUpAt, deliveredAt,
+        actualStartedAt: pickedUpAt, actualCompletedAt: deliveredAt,
         customerRating: d.rating,
         customerComment: d.rating === 5 ? 'Fast and professional, thank you!' : 'Good service, arrived a bit later than hoped.',
       } as any))) as unknown as Delivery;
