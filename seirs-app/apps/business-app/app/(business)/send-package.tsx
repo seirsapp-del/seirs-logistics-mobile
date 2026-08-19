@@ -712,17 +712,29 @@ export default function SendPackageScreen() {
       const trackingCode = res?.delivery?.trackingCode ?? '';
       resetDraft();
       if (res?.payment?.method === 'flutterwave' && res?.payment?.authorizationUrl) {
-        Alert.alert(
-          'Complete payment',
-          `Booking ${trackingCode} is reserved. Finish payment in the browser: drivers see the job the moment your payment confirms.`,
-          [{
-            text: 'Pay now',
-            onPress: async () => {
-              try { await Linking.openURL(res.payment.authorizationUrl); } catch {}
-              router.replace('/(business)/(tabs)/deliveries' as any);
-            },
-          }],
-        );
+        /**
+         * Straight to checkout, no interstitial.
+         *
+         * This popped an alert saying payment would finish "in the
+         * browser" and made the sender tap Pay now a second time, having
+         * already tapped Pay on the review screen (founder 2026-08-19).
+         * A confirmation step that confirms nothing is just a step: the
+         * sender has reviewed the order and chosen to pay, so open the
+         * checkout.
+         *
+         * The booking is already reserved at this point, so landing on
+         * Deliveries means an abandoned checkout is visibly waiting with
+         * its own Pay now rather than disappearing.
+         */
+        try {
+          await Linking.openURL(res.payment.authorizationUrl);
+        } catch {
+          Alert.alert(
+            'Could not open checkout',
+            `Booking ${trackingCode} is saved and unpaid. Open it from Deliveries and tap Pay now to try again.`,
+          );
+        }
+        router.replace('/(business)/(tabs)/deliveries' as any);
       } else {
         Alert.alert(
           'Run booked',

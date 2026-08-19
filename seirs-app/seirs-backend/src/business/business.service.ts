@@ -1267,17 +1267,22 @@ export class BusinessService {
    * wanted to add a package had to cancel and rebook, losing the
    * tracking code and any payment already taken (founder 2026-08-19).
    *
-   * What may change depends on how far the order has gone, because the
-   * limit is physical, not procedural:
+   * What may change depends on how far the order has gone:
    *
    *   unpaid and pending  - everything, nothing is committed yet
-   *   paid, no driver     - address, receiver, instructions. Not weight
-   *                         or category: those priced the job, and
-   *                         re-pricing a paid order is a refund problem,
-   *                         not an edit
-   *   driver assigned     - instructions only. The driver is en route
-   *                         with a destination already in hand
-   *   picked up or later  - nothing. The parcel is in someone's hands
+   *   paid, any stage     - instructions only
+   *   picked up or later  - nothing, the parcel is in someone's hands
+   *
+   * Once money has changed hands the destination is fixed, full stop
+   * (founder 2026-08-19). The first cut let a paid order keep its
+   * coordinates but change its address TEXT, which is a hole: pay for a
+   * short hop, retype the address as somewhere across the state, and
+   * either the driver works from contradictory information or the extra
+   * distance is free. The fare priced a specific journey; changing the
+   * journey means cancelling for a refund and booking the real one.
+   *
+   * Editing before payment is where this belongs, which is why the send
+   * flow ends on a review step rather than charging straight away.
    */
   async editMyDelivery(
     userId: string,
@@ -1310,64 +1315,45 @@ export class BusinessService {
       );
     }
 
-    const paid     = Boolean((delivery as any).paymentHeldAt);
-    const assigned = status === 'assigned';
+    const paid = Boolean((delivery as any).paymentHeldAt);
 
-    const updates: Record<string, any> = {};
-    const rejected: string[] = [];
-
-    const wantsDestination =
+    const wantsJourneyChange =
       patch.dropoffAddress !== undefined ||
       patch.dropoffLat !== undefined ||
+      patch.dropoffLng !== undefined ||
       patch.recipientName !== undefined ||
       patch.recipientPhone !== undefined;
 
-    if (wantsDestination) {
-      if (assigned) {
-        rejected.push('destination and receiver, because a driver is already on the way');
-      } else {
-        if (patch.dropoffAddress !== undefined) updates.dropoffAddress = patch.dropoffAddress.trim();
-        if (patch.dropoffLat !== undefined)     updates.dropoffLat = patch.dropoffLat;
-        if (patch.dropoffLng !== undefined)     updates.dropoffLng = patch.dropoffLng;
-        if (patch.recipientName !== undefined)  updates.recipientName = patch.recipientName.trim();
-        if (patch.recipientPhone !== undefined) updates.recipientPhone = patch.recipientPhone.trim();
-
-        // Moving the destination on a PAID order changes the distance the
-        // job was priced on. Refuse rather than silently under- or
-        // over-charging; the sender can cancel for a refund and rebook.
-        if (paid && (patch.dropoffLat !== undefined || patch.dropoffLng !== undefined)) {
-          throw new BadRequestException(
-            'This order is already paid, so its destination cannot be moved: the fare was calculated for the original distance. ' +
-            'Cancel it for a refund and book again, or contact support.',
-          );
-        }
-      }
+    if (paid && wantsJourneyChange) {
+      throw new BadRequestException(
+        'This order is already paid, so the destination and receiver are fixed: the fare was calculated for this exact journey. ' +
+        'You can still add or change instructions for the driver. To send somewhere else, cancel for a refund and book again.',
+      );
     }
 
-    // Instructions are safe at every stage before pickup: they change
-    // nothing that was priced and the driver reads them on arrival.
+    const updates: Record<string, any> = {};
+    if (!paid) {
+      if (patch.dropoffAddress !== undefined) updates.dropoffAddress = patch.dropoffAddress.trim();
+      if (patch.dropoffLat !== undefined)     updates.dropoffLat = patch.dropoffLat;
+      if (patch.dropoffLng !== undefined)     updates.dropoffLng = patch.dropoffLng;
+      if (patch.recipientName !== undefined)  updates.recipientName = patch.recipientName.trim();
+      if (patch.recipientPhone !== undefined) updates.recipientPhone = patch.recipientPhone.trim();
+    }
+    // Instructions stay open until pickup: they change nothing that was
+    // priced, and the driver reads them on arrival.
     if (patch.deliveryInstructions !== undefined) {
       updates.deliveryInstructions = patch.deliveryInstructions.trim();
     }
 
     if (Object.keys(updates).length === 0) {
-      throw new BadRequestException(
-        rejected.length
-          ? `Cannot change ${rejected.join('; ')}.`
-          : 'Nothing to change.',
-      );
+      throw new BadRequestException('Nothing to change.');
     }
 
     await this.deliveriesRepo.update(deliveryId, updates);
 
     return {
       updated: Object.keys(updates),
-      rejected,
-      editableNow: assigned
-        ? ['deliveryInstructions']
-        : paid
-          ? ['dropoffAddress', 'recipientName', 'recipientPhone', 'deliveryInstructions']
-          : ['everything'],
+      editableNow: paid ? ['deliveryInstructions'] : ['everything'],
     };
   }
 
