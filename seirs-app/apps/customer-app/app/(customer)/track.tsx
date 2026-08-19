@@ -19,6 +19,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
 import { deliveriesApi, dropoffApi } from '@/services/api';
+import DeliveryTrackMap from '@/components/DeliveryTrackMap';
 
 // Labels looked up via t(`tracking.step${cap}`) at render so language
 // switches reflect live.
@@ -232,6 +233,20 @@ export default function TrackScreen() {
                   </View>
                 );
               })}
+            </View>
+
+            {/* The map. Sits above the driver card because "where is it"
+                is the question this screen exists to answer, and the
+                socket was already delivering the answer with nowhere to
+                put it. */}
+            <View style={[styles.card, { backgroundColor: theme.surface, padding: 0, overflow: 'hidden' }, Shadows.sm]}>
+              <DeliveryTrackMap
+                pickup={{ lat: deliveryData.pickupLat, lng: deliveryData.pickupLng }}
+                dropoff={{ lat: deliveryData.dropoffLat, lng: deliveryData.dropoffLng }}
+                driver={driverLocation}
+                isDark={isDark}
+                theme={theme}
+              />
             </View>
 
             {/* Driver card */}

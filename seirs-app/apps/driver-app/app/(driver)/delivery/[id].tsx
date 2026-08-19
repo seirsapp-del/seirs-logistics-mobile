@@ -116,6 +116,54 @@ export default function DeliveryDetailScreen() {
     ]);
   };
 
+  /**
+   * The whole remaining run, handed to Google Maps in one link.
+   *
+   * A multi-stop run used to mean coming back into this screen and
+   * pressing Navigate again at every drop, so a six-drop run was six
+   * round trips through the app while the driver was in traffic. The
+   * Maps URL API takes waypoints, so the rest of the run goes over in
+   * sequence order with the last undelivered stop as the destination.
+   *
+   * Origin is left out on purpose: Maps then starts from wherever the
+   * driver actually is, which is the only correct answer mid-run.
+   *
+   * Waze has no multi-stop URL, so this one is Google only. Per-stop
+   * Navigate still offers both.
+   */
+  const openWholeRun = () => {
+    if (!delivery) return;
+
+    const legs: Array<{ lat: number; lng: number }> = [];
+    // Before pickup the run starts at the pickup, not at the first drop.
+    if (delivery.status === 'assigned' && Number.isFinite(delivery.pickupLat) && Number.isFinite(delivery.pickupLng)) {
+      legs.push({ lat: delivery.pickupLat, lng: delivery.pickupLng });
+    }
+    for (const st of delivery.stops) {
+      if (st.status === 'delivered' || st.status === 'failed') continue;
+      if (!Number.isFinite(st.lat) || !Number.isFinite(st.lng)) continue;
+      legs.push({ lat: st.lat, lng: st.lng });
+    }
+    if (legs.length < 2) {
+      Alert.alert('Nothing left to route', 'Use Navigate on the stop itself.');
+      return;
+    }
+
+    // The URL API carries a destination plus 9 waypoints. Past that we
+    // hand over as many as fit and the driver comes back for the rest,
+    // which still beats one stop at a time.
+    const capped = legs.slice(0, 10);
+    const dest   = capped[capped.length - 1];
+    const mid    = capped.slice(0, -1).map(l => `${l.lat},${l.lng}`).join('|');
+    const url =
+      'https://www.google.com/maps/dir/?api=1&travelmode=driving'
+      + `&destination=${dest.lat},${dest.lng}`
+      + `&waypoints=${encodeURIComponent(mid)}`;
+
+    Linking.openURL(url).catch(() =>
+      Alert.alert('Could not open Maps', 'Navigate to each stop instead.'));
+  };
+
   const handleArrived = async (stop: Stop) => {
     if (!delivery || acting) return;
     setActing(stop.id);
@@ -229,9 +277,20 @@ export default function DeliveryDetailScreen() {
         </View>
 
         {delivery.isMultiStop && (
-          <Text style={[styles.progressLine, { color: theme.textSecond }]}>
-            {done}/{delivery.stops.length} delivered · {arrived} arrived · {pending} pending
-          </Text>
+          <>
+            <Text style={[styles.progressLine, { color: theme.textSecond }]}>
+              {done}/{delivery.stops.length} delivered · {arrived} arrived · {pending} pending
+            </Text>
+            <Pressable
+              style={[styles.navBtn, { backgroundColor: theme.accent, marginTop: Spacing.md }]}
+              onPress={openWholeRun}
+            >
+              <Ionicons name="navigate-circle" size={16} color="#fff" />
+              <Text style={styles.navBtnText}>
+                Navigate the rest of the run ({pending + arrived} stops)
+              </Text>
+            </Pressable>
+          </>
         )}
 
         {/* Pickup card */}

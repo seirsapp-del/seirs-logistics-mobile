@@ -10,9 +10,17 @@
  */
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft, MapPin, Navigation, Package, User, Bike, Store, Receipt } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+
+/* Leaflet reaches for `window` the moment it is imported, so the map can
+   only ever load in the browser. */
+const DeliveryMap = dynamic(() => import('@/components/DeliveryMap'), {
+  ssr: false,
+  loading: () => <div className="h-[320px] animate-pulse rounded-[10px] bg-[#F5F5F0]" />,
+});
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-amber-100 text-amber-700',
@@ -42,6 +50,8 @@ export default function DeliveryDetailPage() {
   const [d, setD]         = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [route, setRoute]           = useState<any>(null);
+  const [routeError, setRouteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -49,6 +59,33 @@ export default function DeliveryDetailPage() {
       .then(setD)
       .catch((e: any) => setError(e?.message ?? 'Could not load this run'))
       .finally(() => setLoading(false));
+  }, [id]);
+
+  /**
+   * The map follows a live run on its own rather than behind a refresh
+   * button: tiles are free and the driver position comes from pings SEIRS
+   * already collects, so a look costs nothing. Our own API is not free
+   * though, which is why the endpoint returns `live` and polling stops the
+   * moment the run is over.
+   */
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const tick = async () => {
+      try {
+        const r = await adminApi.deliveryRoute(id);
+        if (cancelled) return;
+        setRoute(r);
+        setRouteError(null);
+        if (r?.live) timer = setTimeout(tick, 15_000);
+      } catch (e: any) {
+        if (!cancelled) setRouteError(e?.message ?? 'Could not load the route');
+      }
+    };
+    tick();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, [id]);
 
   if (loading) return <div className="p-8 text-sm text-[#0F2B4C]/40">Loading…</div>;
@@ -111,9 +148,15 @@ export default function DeliveryDetailPage() {
             : <div className="text-sm text-[#0F2B4C]/40">Not assigned yet</div>}
         </section>
 
-        <section className="rounded-xl border border-[#E5E7EB] bg-white p-4">
+        <section className="rounded-xl border border-[#E5E7EB] bg-white p-4 md:col-span-2">
           <h2 className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#0F2B4C]/40">
             <MapPin size={12} /> Route
+            {route?.live && (
+              <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                following live
+              </span>
+            )}
           </h2>
           <div className="flex items-start gap-1.5 text-xs text-[#0F2B4C]/70">
             <MapPin size={11} className="mt-0.5 shrink-0 text-[#3A7BD5]" />
@@ -125,6 +168,23 @@ export default function DeliveryDetailPage() {
               <span>{d.dropoffAddress}</span>
             </div>
           )}
+
+          <div className="mt-3">
+            {routeError ? (
+              <div className="rounded-[10px] bg-[#F5F5F0] p-4 text-xs text-red-600">{routeError}</div>
+            ) : !route ? (
+              <div className="h-[320px] animate-pulse rounded-[10px] bg-[#F5F5F0]" />
+            ) : route.points?.length ? (
+              <DeliveryMap points={route.points} trail={route.trail ?? []} />
+            ) : (
+              /* Addresses are typed, coordinates are geocoded, and an old
+                 or hand-entered run can have the first without the second.
+                 Say so plainly instead of showing an empty map. */
+              <div className="rounded-[10px] bg-[#F5F5F0] p-4 text-xs text-[#0F2B4C]/50">
+                No coordinates were recorded for this run, so there is nothing to plot.
+              </div>
+            )}
+          </div>
         </section>
 
         <section className="rounded-xl border border-[#E5E7EB] bg-white p-4">

@@ -171,6 +171,8 @@ export const adminApi = {
   deliveries:     (page = 1, status?: string, search?: string) =>
     req<any>(`/admin/deliveries?page=${page}${status ? `&status=${status}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
   delivery:       (id: string) => req<any>(`/admin/deliveries/${id}`),
+  /** Pickup, ordered stops, live driver position and GPS trail, for the map. */
+  deliveryRoute:  (id: string) => req<any>(`/admin/deliveries/${id}/route`),
   cancelDelivery: (id: string) => req<any>(`/admin/deliveries/${id}/cancel`, { method: 'PATCH' }),
   reassignDelivery: (id: string, driverId: string) =>
     req<any>(`/admin/deliveries/${id}/reassign`, { method: 'PATCH', body: JSON.stringify({ driverId }) }),

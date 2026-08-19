@@ -22,6 +22,7 @@
  */
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 export interface MapPoint {
   lat:    number;
@@ -66,6 +67,15 @@ export default function DeliveryMap({ points, trail = [], height = 320 }: Props)
   const elRef  = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
+  /**
+   * The viewport is fitted once and then left alone.
+   *
+   * While a run is live this redraws every 15 seconds as the driver
+   * moves, and re-fitting on each of those would snatch the map back
+   * from anyone who had panned or zoomed to look at something. Markers
+   * still move; the camera stays where the human put it.
+   */
+  const fittedRef = useRef(false);
 
   // Create once.
   useEffect(() => {
@@ -112,9 +122,13 @@ export default function DeliveryMap({ points, trail = [], height = 320 }: Props)
         { color: COLOR.driver, weight: 4, opacity: 0.85 }).addTo(layer);
     }
 
+    if (fittedRef.current) return;
     const all = [...ordered, ...trail.map(t => [t.lat, t.lng] as [number, number])];
-    if (all.length === 1) map.setView(all[0] as any, 14);
-    else if (all.length > 1) map.fitBounds(L.latLngBounds(all as any), { padding: [36, 36] });
+    if (all.length === 1) { map.setView(all[0] as any, 14); fittedRef.current = true; }
+    else if (all.length > 1) {
+      map.fitBounds(L.latLngBounds(all as any), { padding: [36, 36] });
+      fittedRef.current = true;
+    }
   }, [points, trail]);
 
   return (
