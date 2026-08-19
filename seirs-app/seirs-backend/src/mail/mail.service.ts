@@ -12,7 +12,13 @@ const BRAND_NAVY = '#0F2B4C';
 // stripped by Gmail.
 const LOGO_WHITE_URL = 'https://seirs-website.vercel.app/seirs-logo-white.png';
 
-function baseTemplate(content: string): string {
+/**
+ * `footerNote` overrides the default "you have a SEIRS account" line.
+ * That line is false in an invitation, which goes to someone who does
+ * not have an account: telling them they do is both wrong and the sort
+ * of thing that makes a real email look like a phish.
+ */
+function baseTemplate(content: string, footerNote?: string): string {
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -46,7 +52,7 @@ function baseTemplate(content: string): string {
               <td style="background:#F9FAFB;padding:20px 32px;border-top:1px solid #E5E7EB">
                 <p style="margin:0 0 6px;font-size:12px;color:#9CA3AF">
                   © ${new Date().getFullYear()} Seirs Logistics · Lagos, Nigeria<br/>
-                  You're receiving this because you have a SEIRS account.
+                  ${footerNote ?? "You're receiving this because you have a SEIRS account."}
                 </p>
                 <p style="margin:0;font-size:12px">
                   <a href="https://seirs-website.vercel.app/faq" style="color:${BRAND_BLUE};text-decoration:none">Help centre</a>
@@ -273,9 +279,24 @@ export class MailService {
     role: string,
     invitedBy?: string,
   ) {
-    const roleLabel = String(role || 'team member').replace(/_/g, ' ');
+    /**
+     * What each role may actually do, in the invitee's words.
+     *
+     * The first version said "you will be able to work on this business
+     * account" for every role, which overstates a Viewer badly: read-only
+     * is the whole point of that role and the invite implied otherwise.
+     */
+    const ROLE_COPY: Record<string, { label: string; can: string }> = {
+      owner:      { label: 'Owner',      can: 'full access to everything on the account, including billing.' },
+      manager:    { label: 'Manager',    can: 'create deliveries and view every order on the account.' },
+      dispatcher: { label: 'Dispatcher', can: 'create and track deliveries.' },
+      viewer:     { label: 'Viewer',     can: 'view the dashboard. You will not be able to change anything.' },
+    };
+    const key = String(role || '').toLowerCase();
+    const roleInfo = ROLE_COPY[key] ?? { label: 'Team member', can: 'work on this business account.' };
+    const roleLabel = roleInfo.label;
     const html = baseTemplate(`
-      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">You have been added to ${businessName}</h2>
+      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">You have been invited to ${businessName}</h2>
       <p>Hi ${name},</p>
       <p>
         ${invitedBy ? `${invitedBy} has invited you` : 'You have been invited'}
@@ -291,14 +312,13 @@ export class MailService {
                   font-weight:bold;font-size:15px">Get the Seirs Business app</a>
       </div>
       <p style="font-size:13px;color:#6B7280">
-        As a ${roleLabel} you will be able to work on this business account.
-        You will never be able to see or change its payout details.
+        As a ${roleLabel} you will be able to ${roleInfo.can}
       </p>
       <p style="font-size:13px;color:#9CA3AF">
         Not expecting this? You can ignore this email and nothing happens.
         You are only added once you sign up with this address.
       </p>
-    `);
+    `, `You're receiving this because ${businessName} invited you to their Seirs account.`);
 
     await this.send(to, `${businessName} invited you to Seirs`, html);
   }

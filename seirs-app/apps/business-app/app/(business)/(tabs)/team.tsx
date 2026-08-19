@@ -59,11 +59,33 @@ export default function TeamScreen() {
     if (!invite.name.trim() || !invite.email.trim()) return;
     setInviting(true);
     try {
-      await businessApi.inviteTeamMember(invite);
+      /**
+       * Report what actually happened, not what we hoped.
+       *
+       * This always said "An email has been sent", even when the send
+       * failed: the server swallowed mail errors and the app never
+       * looked at the response. An invite was reported as delivered and
+       * never arrived (founder, 2026-08-19). The invitation is still
+       * saved either way, so the owner is told to resend rather than
+       * being left thinking their colleague was contacted.
+       */
+      const res: any = await businessApi.inviteTeamMember(invite);
+      const email = invite.email;
       setShowAdd(false);
       setInvite({ name: '', email: '', teamRole: 'dispatcher' });
       load();
-      Alert.alert('Invitation Sent', `An email has been sent to ${invite.email}`);
+      if (res?.emailSent === false) {
+        Alert.alert(
+          'Invitation saved, email not sent',
+          `${email} is on your team as pending, but the invitation email could not be delivered. ` +
+          `Remove and re-invite to try again.` +
+          (res?.emailError ? `
+
+Reason: ${res.emailError}` : ''),
+        );
+      } else {
+        Alert.alert('Invitation Sent', `An email has been sent to ${email}`);
+      }
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'Failed to send invitation.');
     } finally {
