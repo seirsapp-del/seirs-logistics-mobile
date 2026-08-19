@@ -24,6 +24,7 @@ Last updated 2026-08-18.
 | Return-leg matching for interstate | A truck to Kano must come back. Either the price carries the return or the second half is sold to someone else. |
 | Checkpoint levy allowance on long haul | Informal levies are reported at ₦50,000-100,000 per long-haul trip and are currently the driver's private problem. |
 | Counter scorecard | Volume, dwell time, disputes, earnings per counter, so partner quality is measurable and any density bonus is paid on evidence. |
+| Edit an order after booking | There is no edit path at all: no backend route, no UI. A sender who wants to add a package or fix an address must cancel and rebook. Worst for an UNPAID pending order, where nothing has been committed and there is no reason to refuse. Start there: allow full edit while `paymentHeldAt` is null, allow address and instruction edits before pickup, refuse once a driver has collected. |
 | Danfo on the rate card | A 14-seater passenger bus. The card only carries a cargo van with a payload rating, so danfo pricing cannot be admin-controlled until a passenger-bus entry exists. |
 | Translations | 5 of 49 screens use `t()`. Founder decision: do the whole extraction once, when launch-ready. |
 | Insurance go-live | On the rate card, disabled, all values zero. Switch-on order is documented on the admin Pricing page. Needs an underwriter first. |
