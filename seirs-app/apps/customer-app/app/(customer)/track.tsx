@@ -38,6 +38,9 @@ const STATUS_CONFIG: Record<string, {
   cancelled:  { labelKey: 'tracking.stepCancelled', step: 0, gradient: ['#6B7280', '#4B5563'], icon: 'close-circle' },
 };
 
+/** The states where a package is actually in motion. */
+const IN_FLIGHT = ['assigned', 'picked_up', 'in_transit'];
+
 const STEP_KEYS = ['tracking.shortFinding', 'tracking.shortAssigned', 'tracking.shortPickedUp', 'tracking.shortInTransit', 'tracking.shortDelivered'];
 
 export default function TrackScreen() {
@@ -111,6 +114,17 @@ export default function TrackScreen() {
 
   const currentStatus = deliveryStatus ?? deliveryData?.status ?? null;
   const statusInfo    = currentStatus ? STATUS_CONFIG[currentStatus] : null;
+
+  /**
+   * Whether the details card has anything to put under its rule. The
+   * public tracking payload carries no price, distance or description,
+   * so hiding the chips alone left a divider with dead space beneath it.
+   */
+  const hasMeta = !!deliveryData && (
+    !!deliveryData.packageDescription ||
+    deliveryData.distanceKm != null ||
+    deliveryData.price != null
+  );
 
   const handleSearch = async () => {
     if (!code.trim()) return;
@@ -188,7 +202,11 @@ export default function TrackScreen() {
                 </View>
                 <Text style={styles.statusLabel}>{statusInfo ? t(statusInfo.labelKey) : t('common.loading')}</Text>
                 <Text style={styles.trackingCode}>{deliveryData.trackingCode}</Text>
-                {isConnected && (
+                {/* LIVE means this package is moving right now, not that
+                    our socket happens to be connected. It used to mean
+                    the latter, so a package delivered a week ago still
+                    wore the badge (founder review 2026-08-19). */}
+                {isConnected && IN_FLIGHT.includes(String(currentStatus)) && (
                   <View style={styles.livePill}>
                     <View style={styles.liveDot} />
                     <Text style={styles.liveText}>LIVE</Text>
@@ -389,13 +407,14 @@ export default function TrackScreen() {
                   <Text style={[styles.detailValue, { color: theme.text }]}>{deliveryData.dropoffAddress}</Text>
                 </View>
               </View>
-              <View style={[styles.divider, { backgroundColor: theme.divider }]} />
+              {hasMeta && <View style={[styles.divider, { backgroundColor: theme.divider }]} />}
               {/* Tracking is a PUBLIC endpoint and carries no price,
                   distance or description: a recipient tracking a parcel
                   has no business seeing what the sender paid. Each chip
                   renders only when its value actually arrived, because
                   the row used to print a bare "km" and a lone naira sign
                   on every delivery (device QA 2026-08-19). */}
+              {hasMeta && (
               <View style={styles.metaRow}>
                 {!!deliveryData.packageDescription && (
                   <View style={styles.metaChip}>
@@ -415,6 +434,7 @@ export default function TrackScreen() {
                   </Text>
                 )}
               </View>
+              )}
             </View>
           </>
         )}

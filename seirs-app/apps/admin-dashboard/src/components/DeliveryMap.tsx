@@ -76,11 +76,24 @@ export default function DeliveryMap({ points, trail = [], height = 320 }: Props)
    * still move; the camera stays where the human put it.
    */
   const fittedRef = useRef(false);
+  /** Last known extent of the run, so "Fit route" always has a target. */
+  const boundsRef = useRef<L.LatLngBounds | null>(null);
 
   // Create once.
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
-    const map = L.map(elRef.current, { zoomControl: true, attributionControl: true });
+    const map = L.map(elRef.current, {
+      zoomControl: true,
+      attributionControl: true,
+      /**
+       * The map sits in the middle of a scrolling page, and Leaflet
+       * grabs the wheel for zoom by default, so scrolling the order page
+       * with the pointer over the map zoomed the map instead of moving
+       * the page. Use the +/- controls to zoom; dragging to pan still
+       * works (device check 2026-08-19).
+       */
+      scrollWheelZoom: false,
+    });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors',
@@ -122,18 +135,45 @@ export default function DeliveryMap({ points, trail = [], height = 320 }: Props)
         { color: COLOR.driver, weight: 4, opacity: 0.85 }).addTo(layer);
     }
 
-    if (fittedRef.current) return;
     const all = [...ordered, ...trail.map(t => [t.lat, t.lng] as [number, number])];
+    if (all.length > 1) boundsRef.current = L.latLngBounds(all as any);
+
+    if (fittedRef.current) return;
     if (all.length === 1) { map.setView(all[0] as any, 14); fittedRef.current = true; }
     else if (all.length > 1) {
-      map.fitBounds(L.latLngBounds(all as any), { padding: [36, 36] });
+      map.fitBounds(boundsRef.current!, { padding: [36, 36] });
       fittedRef.current = true;
     }
   }, [points, trail]);
 
+  const fitRoute = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (boundsRef.current) map.fitBounds(boundsRef.current, { padding: [36, 36] });
+    else {
+      const one = points.find(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+      if (one) map.setView([one.lat, one.lng], 14);
+    }
+  };
+
   return (
     <div>
-      <div ref={elRef} style={{ height, width: '100%', borderRadius: 10, overflow: 'hidden' }} />
+      <div style={{ position: 'relative' }}>
+        <div ref={elRef} style={{ height, width: '100%', borderRadius: 10, overflow: 'hidden' }} />
+        <button
+          type="button"
+          onClick={fitRoute}
+          title="Bring the whole run back into view"
+          style={{
+            position: 'absolute', right: 10, top: 10, zIndex: 500,
+            background: '#fff', border: '1px solid #C7CDD4', borderRadius: 6,
+            padding: '4px 9px', fontSize: 11, fontWeight: 600,
+            color: '#0F2B4C', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+          }}
+        >
+          Fit route
+        </button>
+      </div>
       <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-[#0F2B4C]/50">
         <span><span style={{ color: COLOR.pickup }}>&#9679;</span> Pickup</span>
         <span><span style={{ color: COLOR.stop }}>&#9679;</span> Stops, numbered in order</span>
