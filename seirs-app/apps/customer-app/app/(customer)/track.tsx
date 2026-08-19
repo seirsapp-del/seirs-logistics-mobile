@@ -256,13 +256,13 @@ export default function TrackScreen() {
                 <View style={styles.driverRow}>
                   <View style={[styles.driverAvatar, { backgroundColor: theme.primary }]}>
                     <Text style={styles.driverAvatarText}>
-                      {(assignedDriver?.name ?? deliveryData.driver?.user?.name ?? 'D')[0]}
+                      {(assignedDriver?.name ?? deliveryData.driver?.name ?? deliveryData.driver?.user?.name ?? 'D')[0]}
                     </Text>
                   </View>
                   <View style={styles.driverInfo}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={[styles.driverName, { color: theme.text }]}>
-                        {assignedDriver?.name ?? deliveryData.driver?.user?.name}
+                        {assignedDriver?.name ?? deliveryData.driver?.name ?? deliveryData.driver?.user?.name}
                       </Text>
                       {/* Verified Pro badge: the Premium perk customers
                           were promised (Spec V8 §2.13), now real. */}
@@ -280,7 +280,7 @@ export default function TrackScreen() {
                       <View style={styles.ratingRow}>
                         <Ionicons name="star" size={12} color="#FFBE0B" />
                         <Text style={[styles.driverMetaText, { color: theme.textSecond }]}>
-                          {(assignedDriver?.rating ?? deliveryData.driver?.rating ?? 0).toFixed(1)}
+                          {Number(assignedDriver?.rating ?? deliveryData.driver?.rating ?? 0).toFixed(1)}
                         </Text>
                       </View>
                     </View>
@@ -390,18 +390,30 @@ export default function TrackScreen() {
                 </View>
               </View>
               <View style={[styles.divider, { backgroundColor: theme.divider }]} />
+              {/* Tracking is a PUBLIC endpoint and carries no price,
+                  distance or description: a recipient tracking a parcel
+                  has no business seeing what the sender paid. Each chip
+                  renders only when its value actually arrived, because
+                  the row used to print a bare "km" and a lone naira sign
+                  on every delivery (device QA 2026-08-19). */}
               <View style={styles.metaRow}>
-                <View style={styles.metaChip}>
-                  <Ionicons name="cube-outline" size={14} color={theme.textSecond} />
-                  <Text style={[styles.metaItem, { color: theme.textSecond }]}>{deliveryData.packageDescription}</Text>
-                </View>
-                <View style={styles.metaChip}>
-                  <Ionicons name="map-outline" size={14} color={theme.textSecond} />
-                  <Text style={[styles.metaItem, { color: theme.textSecond }]}>{deliveryData.distanceKm} km</Text>
-                </View>
-                <Text style={[styles.metaPrice, { color: theme.primary }]}>
-                  ₦{deliveryData.price?.toLocaleString()}
-                </Text>
+                {!!deliveryData.packageDescription && (
+                  <View style={styles.metaChip}>
+                    <Ionicons name="cube-outline" size={14} color={theme.textSecond} />
+                    <Text style={[styles.metaItem, { color: theme.textSecond }]}>{deliveryData.packageDescription}</Text>
+                  </View>
+                )}
+                {deliveryData.distanceKm != null && (
+                  <View style={styles.metaChip}>
+                    <Ionicons name="map-outline" size={14} color={theme.textSecond} />
+                    <Text style={[styles.metaItem, { color: theme.textSecond }]}>{Number(deliveryData.distanceKm).toFixed(1)} km</Text>
+                  </View>
+                )}
+                {deliveryData.price != null && (
+                  <Text style={[styles.metaPrice, { color: theme.primary }]}>
+                    ₦{Number(deliveryData.price).toLocaleString()}
+                  </Text>
+                )}
               </View>
             </View>
           </>
