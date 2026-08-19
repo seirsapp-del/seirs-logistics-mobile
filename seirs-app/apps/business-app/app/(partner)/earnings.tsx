@@ -88,8 +88,17 @@ export default function EarningsScreen() {
             </View>
             <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.summaryLabel, { color: colors.textThird }]}>Per Package</Text>
-              <Text style={[styles.summaryAmount, { color: colors.text, fontSize: 18 }]}>{fmt(data?.perPackageRate ?? 0)}</Text>
-              <Text style={[styles.summaryMetaText, { color: colors.textThird }]}>flat rate</Text>
+              {/* The handling fee is tiered by weight and split with the
+                  platform, so a single "flat rate" figure told partners
+                  they keep the whole fee when they keep a share of it
+                  (found on device 2026-08-19). Show the range and be
+                  explicit that it is their share. */}
+              <Text style={[styles.summaryAmount, { color: colors.text, fontSize: 18 }]}>
+                {fmt(data?.perPackageRate ?? 0)}
+              </Text>
+              <Text style={[styles.summaryMetaText, { color: colors.textThird }]}>
+                your share, by weight
+              </Text>
             </View>
           </View>
 

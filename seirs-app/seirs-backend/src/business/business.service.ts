@@ -1535,7 +1535,20 @@ export class BusinessService {
 
     // Build daily buckets. The rate is read once so the statement and
     // the credit that produced it always agree.
-    const perPackageRate = await this.fees.getValueOr('partner_store_handling_ngn', PER_PACKAGE_RATE_FALLBACK);
+    /**
+     * What the shop actually keeps on a typical parcel.
+     *
+     * This reported the whole handling fee, so the earnings screen told
+     * partners they earn NGN 500 flat when the fee is tiered by weight
+     * AND split with the platform: on a small parcel they keep 70% of
+     * NGN 300 (found on device 2026-08-19). Reported at the medium tier,
+     * which is the common case, and after the split.
+     */
+    const [tierFee, sharePct] = await Promise.all([
+      this.fees.getValueOr('counter_fee_medium_ngn', PER_PACKAGE_RATE_FALLBACK),
+      this.fees.getValueOr('counter_partner_share_pct', 70),
+    ]);
+    const perPackageRate = Math.round(tierFee * (sharePct / 100));
     const dayMap = new Map<string, { amount: number; packages: number }>();
     for (const pkg of collectedPkgs) {
       const d   = new Date(pkg.collectedAt!);
