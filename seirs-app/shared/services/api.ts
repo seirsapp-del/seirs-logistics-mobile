@@ -932,11 +932,6 @@ export const businessApi = {
 
   wallet:        () => request<any>('GET', '/business/wallet'),
   transactions:  (page = 1) => request<any>('GET', `/business/wallet/transactions?page=${page}`),
-  team:          () => request<any>('GET', '/business/team'),
-  inviteTeamMember: (data: { email: string; name: string; teamRole: string }) =>
-    request<any>('POST', '/business/team/invite', data),
-  removeTeamMember: (memberId: string) =>
-    request<any>('DELETE', `/business/team/${memberId}`),
   loyalty:       () => request<any>('GET', '/business/loyalty'),
   specialists:   () => request<any>('GET', '/business/specialists'),
 

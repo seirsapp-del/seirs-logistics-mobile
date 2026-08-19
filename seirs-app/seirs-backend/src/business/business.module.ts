@@ -4,7 +4,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { FeesModule } from '../fees/fees.module';
 import { BusinessController } from './business.controller';
 import { BusinessService } from './business.service';
-import { BusinessAccount, BusinessTeamMember } from './business-account.entity';
+import { BusinessAccount } from './business-account.entity';
 import { PartnerStore } from './partner-store.entity';
 import { BusinessPackage } from './business-package.entity';
 import { BusinessWalletTx } from './business-wallet-tx.entity';
@@ -25,7 +25,6 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
     TypeOrmModule.forFeature([
       User,
       BusinessAccount,
-      BusinessTeamMember,
       PartnerStore,
       BusinessPackage,
       BusinessWalletTx,

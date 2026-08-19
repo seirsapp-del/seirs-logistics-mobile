@@ -80,7 +80,19 @@ export class AdminModule implements OnModuleInit {
      * recycle bin returned a 500 and no admin could see or cancel a
      * pending deletion (audit 2026-08-18).
      */
+    /**
+     * Team members were removed from the product entirely (founder
+     * 2026-08-19, "delete it completely, no back doors"). The roles were
+     * advertised in the UI as access restrictions while being enforced
+     * on three routes out of dozens, which is a false security claim
+     * rather than an unfinished feature.
+     *
+     * The table goes with it. Leaving it would keep invited-but-inactive
+     * rows and a shape that invites someone to wire it back up without
+     * doing the enforcement work first.
+     */
     for (const sql of [
+      `DROP TABLE IF EXISTS "business_team_members"`,
       `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deletionRequestedAt" timestamptz NULL`,
       `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deletionScheduledAt" timestamptz NULL`,
       `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deletionRequestedBy" varchar(128) NULL`,

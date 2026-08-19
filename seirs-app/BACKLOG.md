@@ -28,6 +28,29 @@ Last updated 2026-08-18.
 | Translations | 5 of 49 screens use `t()`. Founder decision: do the whole extraction once, when launch-ready. |
 | Insurance go-live | On the rate card, disabled, all values zero. Switch-on order is documented on the admin Pricing page. Needs an underwriter first. |
 
+## Removed on purpose
+
+**Business team members, deleted entirely 2026-08-19.** Not hidden, not
+flagged off: the screen, the three routes, the API client methods, the
+invite email, the invite activation, the role enum and the
+`business_team_members` table are all gone, and the table is dropped on
+boot.
+
+The reason was not scope. The UI advertised roles as access restrictions
+("Viewer: read-only access to dashboard") while `requireTeamRole` was
+applied to three routes out of dozens, so a Viewer could do nearly
+everything. That is a false security claim, which is worse than having
+no roles at all. Along the way the invite was also a dead end: rows were
+created `pending` and nothing ever set them `active`, so an invited
+colleague could register, verify, sign in and still have no access.
+
+A business account now has exactly one actor, its owner, enforced by
+`requireOwner`.
+
+**If multi-user access is ever rebuilt:** enforce the role check on
+EVERY business route first, then add the screen. Not the other way
+round. The old shape is in git history at the commit that removed it.
+
 ## Dead code and known compromises
 
 | Thing | State |

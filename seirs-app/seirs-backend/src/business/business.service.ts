@@ -7,7 +7,7 @@ import { Cron } from '@nestjs/schedule';
 import { Repository, MoreThanOrEqual, LessThanOrEqual, DataSource, In } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../users/user.entity';
-import { BusinessAccount, BusinessTeamMember } from './business-account.entity';
+import { BusinessAccount } from './business-account.entity';
 import { PartnerStore } from './partner-store.entity';
 import { BusinessPackage, PackageStatus } from './business-package.entity';
 import { BusinessWalletTx } from './business-wallet-tx.entity';
@@ -120,7 +120,6 @@ export class BusinessService {
   constructor(
     @InjectRepository(User)                private usersRepo:       Repository<User>,
     @InjectRepository(BusinessAccount)     private bizRepo:         Repository<BusinessAccount>,
-    @InjectRepository(BusinessTeamMember)  private teamRepo:        Repository<BusinessTeamMember>,
     @InjectRepository(PartnerStore)        private storeRepo:       Repository<PartnerStore>,
     @InjectRepository(BusinessPackage)     private packagesRepo:    Repository<BusinessPackage>,
     @InjectRepository(BusinessWalletTx)    private walletTxRepo:    Repository<BusinessWalletTx>,
@@ -1211,128 +1210,10 @@ export class BusinessService {
     return { items, total, page, hasMore: skip + items.length < total };
   }
 
-  // ─── Business Sender: Team ───────────────────────────────────────────────────
-
-  async getTeam(userId: string) {
-    const biz = await this.getBizAccount(userId);
-    const user = await this.usersRepo.findOne({ where: { id: userId } });
-    const members = await this.teamRepo.find({ where: { businessAccountId: biz.id } });
-
-    // Always include the owner at the top
-    const owner = {
-      id:       userId,
-      name:     user!.name,
-      email:    user!.email,
-      teamRole: 'owner',
-      status:   'active',
-    };
-
-    return { members: [owner, ...members] };
-  }
-
-  async inviteTeamMember(userId: string, data: { name: string; email: string; teamRole: string }) {
-    const biz = await this.getBizAccount(userId);
-    await this.requireTeamRole(userId, biz.id, ['owner', 'manager']);
-
-    const existing = await this.teamRepo.findOne({
-      where: { businessAccountId: biz.id, email: data.email.toLowerCase() },
-    });
-    if (existing) throw new BadRequestException('This email is already in your team.');
-
-    const member = this.teamRepo.create({
-      businessAccountId: biz.id,
-      name:     data.name,
-      email:    data.email.toLowerCase(),
-      teamRole: data.teamRole as any,
-      status:   'pending',
-    });
-    await this.teamRepo.save(member);
-
-    // Was sendEmailVerification with the invitation sentence passed as
-    // the OTP, which produced an email headed "Verify your email" whose
-    // code box contained a sentence and which offered no way to accept.
-    /**
-     * A failed invite email must not report success.
-     *
-     * This was `.catch(() => {})`, so if the send threw the owner still
-     * saw "Invitation sent." and the colleague never heard anything. The
-     * founder caught exactly that: an invite reported as sent that never
-     * appeared in Resend at all (2026-08-19).
-     *
-     * The member row still stands either way, because the invitation is
-     * real and the owner can resend. What changes is that the response
-     * tells the truth about the email.
-     */
-    const inviter = await this.usersRepo.findOne({ where: { id: userId } });
-    let emailSent = true;
-    let emailError: string | null = null;
-    try {
-      await this.mailService.sendTeamInvite(
-        data.email,
-        data.name,
-        biz.companyName ?? 'a Seirs business',
-        data.teamRole,
-        inviter?.name,
-      );
-    } catch (e: any) {
-      emailSent = false;
-      emailError = e?.message ?? 'Unknown mail error';
-      this.logger.error(`Team invite email failed for ${data.email}: ${emailError}`);
-    }
-
-    return {
-      message: emailSent
-        ? 'Invitation sent.'
-        : 'Invitation saved, but the email could not be sent. Try resending it.',
-      emailSent,
-      emailError,
-      member,
-    };
-  }
-
-  async removeTeamMember(userId: string, memberId: string) {
-    const biz = await this.getBizAccount(userId);
-    await this.requireTeamRole(userId, biz.id, ['owner', 'manager']);
-    const member = await this.teamRepo.findOne({
-      where: { id: memberId, businessAccountId: biz.id },
-    });
-    if (!member) throw new NotFoundException('Team member not found.');
-    // Spec V8 §4.6 - owner row can't be removed via this endpoint
-    // (gets removed automatically when the account is closed).
-    if (member.teamRole === 'owner') {
-      throw new ForbiddenException('Cannot remove the account owner via this endpoint.');
-    }
-    await this.teamRepo.delete(memberId);
-    return { message: 'Team member removed.' };
-  }
-
-  // Spec V8 §4.6 - team-role gate. Owner detected by biz.ownerId match;
-  // other roles by email match against a BusinessTeamMember row (members
-  // aren't stored with userId - they can sign up before/after being
-  // invited, and we match on email at join time). Throws
-  // ForbiddenException with TEAM_ROLE_REQUIRED if the caller's role
-  // isn't in `allowed`.
-  private async requireTeamRole(userId: string, businessAccountId: string, allowed: string[]) {
-    const biz = await this.bizRepo.findOne({ where: { id: businessAccountId } });
-    if (!biz) throw new NotFoundException('Business account not found.');
-    if (biz.ownerId === userId && allowed.includes('owner')) return;
-
-    const user = await this.usersRepo.findOne({ where: { id: userId } });
-    if (!user) throw new ForbiddenException('User not found.');
-    const member = await this.teamRepo.findOne({
-      where: { businessAccountId, email: user.email.toLowerCase(), status: 'active' as any },
-    });
-    if (!member || !allowed.includes(member.teamRole)) {
-      throw new ForbiddenException(
-        `TEAM_ROLE_REQUIRED: this action requires one of [${allowed.join(', ')}].`,
-      );
-    }
-  }
-
   // ─── Business Sender: Cancel scheduled delivery (Spec V8 - B13) ──────────
   async cancelMyDelivery(userId: string, deliveryId: string, reason?: string) {
     const biz = await this.getBizAccount(userId);
-    await this.requireTeamRole(userId, biz.id, ['owner', 'manager', 'dispatcher']);
+    await this.requireOwner(userId, biz.id);
 
     const delivery = await this.deliveriesRepo.findOne({
       where: { id: deliveryId },
@@ -1363,7 +1244,6 @@ export class BusinessService {
   // ─── Business profile editor (Spec V8 - B21) ────────────────────────────
   async getBusinessProfile(userId: string) {
     const biz = await this.getBizAccount(userId);
-    const myRole = await this.lookupMyTeamRole(userId, biz.id);
     return {
       id:              biz.id,
       companyName:     biz.companyName,
@@ -1374,7 +1254,6 @@ export class BusinessService {
       streetAddress:   biz.streetAddress,
       status:          biz.status,
       walletBalance:   Number(biz.walletBalance ?? 0),
-      myTeamRole:      myRole,
       createdAt:       biz.createdAt,
     };
   }
@@ -1384,7 +1263,7 @@ export class BusinessService {
     businessAddress?: string; state?: string; city?: string; streetAddress?: string;
   }) {
     const biz = await this.getBizAccount(userId);
-    await this.requireTeamRole(userId, biz.id, ['owner']);  // owner-only per spec
+    await this.requireOwner(userId, biz.id);
 
     const updates: Partial<BusinessAccount> = {};
     if (body.companyName     !== undefined) updates.companyName     = body.companyName.trim();
@@ -1401,15 +1280,22 @@ export class BusinessService {
     return this.getBusinessProfile(userId);
   }
 
-  private async lookupMyTeamRole(userId: string, businessAccountId: string): Promise<string> {
+  /**
+   * Only the owner acts on a business account.
+   *
+   * Team members were removed entirely (founder 2026-08-19): the roles
+   * were advertised in the UI as access restrictions while being
+   * enforced on three routes out of dozens, which is a false security
+   * claim rather than an unfinished feature. Anyone reintroducing
+   * multi-user access starts by enforcing it everywhere, not by adding
+   * a screen.
+   */
+  private async requireOwner(userId: string, businessAccountId: string): Promise<void> {
     const biz = await this.bizRepo.findOne({ where: { id: businessAccountId } });
-    if (biz?.ownerId === userId) return 'owner';
-    const user = await this.usersRepo.findOne({ where: { id: userId } });
-    if (!user) return 'viewer';
-    const member = await this.teamRepo.findOne({
-      where: { businessAccountId, email: user.email.toLowerCase() },
-    });
-    return member?.teamRole ?? 'viewer';
+    if (!biz) throw new NotFoundException('Business account not found.');
+    if (biz.ownerId !== userId) {
+      throw new ForbiddenException('Only the account owner can do this.');
+    }
   }
 
   // ─── Business Sender: Loyalty ────────────────────────────────────────────────

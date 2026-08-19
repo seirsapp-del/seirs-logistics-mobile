@@ -15,7 +15,7 @@ import { OAuth2Client } from 'google-auth-library';
 import * as appleSignin from 'apple-signin-auth';
 import { User, UserRole } from '../users/user.entity';
 import { Driver } from '../drivers/driver.entity';
-import { BusinessAccount, BusinessTeamMember } from '../business/business-account.entity';
+import { BusinessAccount } from '../business/business-account.entity';
 import { PartnerStore, PartnerStoreStatus } from '../business/partner-store.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -203,42 +203,9 @@ export class AuthService {
     });
 
     user.emailVerified = true;
-    await this.activatePendingTeamInvites(user.email);
     await this.mailService.sendWelcome(user.email, user.name);
 
     return this.buildAuthResponse(user);
-  }
-
-  /**
-   * Turn a pending team invitation into real access.
-   *
-   * Inviting someone created a business_team_members row with status
-   * 'pending' and NOTHING anywhere ever set it to 'active', while
-   * requireTeamRole only accepts active members. So an invited colleague
-   * could install the app, register, sign in, and still have no access
-   * to the business that invited them, forever (audit 2026-08-19).
-   *
-   * Matching on the verified email address is what makes this safe: the
-   * invite named an address, and the person has just proved they control
-   * it by completing the OTP. An unverified account activates nothing.
-   */
-  private async activatePendingTeamInvites(email: string): Promise<void> {
-    try {
-      const normalised = AuthService.canonicalEmail(email);
-      const result = await this.usersRepo.query(
-        `UPDATE "business_team_members"
-            SET status = 'active'
-          WHERE lower(email) = lower($1) AND status = 'pending'
-      RETURNING id, "businessAccountId", "teamRole"`,
-        [normalised],
-      );
-      if (result?.length) {
-        this.logger.log(`Activated ${result.length} team invite(s) for ${normalised}`);
-      }
-    } catch (e: any) {
-      // Never block a signup because an invite could not be linked.
-      this.logger.warn(`team invite activation failed for ${email}: ${e?.message ?? e}`);
-    }
   }
 
   async resendOtp(email: string) {

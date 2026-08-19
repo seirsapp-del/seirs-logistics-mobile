@@ -97,21 +97,6 @@ export class BusinessController {
     return this.svc.getTransactions(user.id, page);
   }
 
-  @Get('business/team')
-  getTeam(@CurrentUser() user: User) {
-    return this.svc.getTeam(user.id);
-  }
-
-  @Post('business/team/invite')
-  inviteTeamMember(@CurrentUser() user: User, @Body() body: any) {
-    return this.svc.inviteTeamMember(user.id, body);
-  }
-
-  @Delete('business/team/:id')
-  removeTeamMember(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.svc.removeTeamMember(user.id, id);
-  }
-
   @Get('business/loyalty')
   getLoyalty(@CurrentUser() user: User) {
     return this.svc.getLoyalty(user.id);
@@ -129,7 +114,7 @@ export class BusinessController {
   }
 
   // Spec V8 - B21 Business profile editor.
-  // GET returns the full BusinessAccount snapshot + caller's teamRole.
+  // GET returns the full BusinessAccount snapshot.
   // PATCH owner-only; takes any subset of the editable fields.
   @Get('business/account')
   getBusinessAccount(@CurrentUser() user: User) {

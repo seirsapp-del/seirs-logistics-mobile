@@ -7,13 +7,6 @@ export enum BusinessAccountStatus {
   SUSPENDED = 'suspended',
 }
 
-export enum BusinessTeamRole {
-  OWNER      = 'owner',
-  MANAGER    = 'manager',
-  DISPATCHER = 'dispatcher',
-  VIEWER     = 'viewer',
-}
-
 @Entity('business_accounts')
 export class BusinessAccount {
   @PrimaryGeneratedColumn('uuid')
@@ -57,28 +50,4 @@ export class BusinessAccount {
 
   @UpdateDateColumn()
   updatedAt: Date;
-}
-
-@Entity('business_team_members')
-export class BusinessTeamMember {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column()
-  businessAccountId: string;
-
-  @Column()
-  name: string;
-
-  @Column()
-  email: string;
-
-  @Column({ default: BusinessTeamRole.DISPATCHER })
-  teamRole: BusinessTeamRole;
-
-  @Column({ default: 'pending' })
-  status: 'active' | 'pending';
-
-  @CreateDateColumn()
-  createdAt: Date;
 }

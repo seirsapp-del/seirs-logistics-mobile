@@ -90,14 +90,6 @@ export default function BusinessTabsLayout() {
         name="profile"
         options={{ title: 'Profile', tabBarIcon: ({ focused }) => <TabIcon name="User" focused={focused} /> }}
       />
-      {/* Team is drawer-only now (founder 2026-08-10: six tabs felt
-          cramped; team management is low-frequency). href: null hides
-          it from the bar while keeping the route alive for the
-          drawer's "Team Members" entry. */}
-      <Tabs.Screen
-        name="team"
-        options={{ href: null }}
-      />
     </Tabs>
   );
 }
