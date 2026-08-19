@@ -35,7 +35,7 @@ const DOC_OPTIONS: Array<{ value: IdentityDocType; label: string; note: string }
 
 const BENEFITS = [
   { icon: ShieldCheck, label: 'Trust badge on your profile' },
-  { icon: CheckCircle2, label: 'Higher wallet + reward limits' },
+  { icon: CheckCircle2, label: 'Higher reward and delivery limits' },
   { icon: CheckCircle2, label: 'Access to insured deliveries' },
   { icon: CheckCircle2, label: 'Interstate delivery' },
   { icon: CheckCircle2, label: 'Priority support (front of the line)' },

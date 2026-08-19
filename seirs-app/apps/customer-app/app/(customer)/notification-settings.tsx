@@ -12,13 +12,13 @@ import { usersApi } from '@/services/api';
 
 type ToggleKey =
   | 'trip_updates' | 'driver_assigned' | 'trip_completed' | 'trip_cancelled'
-  | 'payment_success' | 'payment_failed' | 'wallet_topup'
+  | 'payment_success' | 'payment_failed'
   | 'promo_alerts' | 'referral_bonus' | 'rewards_update'
   | 'app_updates' | 'safety_alerts' | 'marketing';
 
 const DEFAULTS: Record<ToggleKey, boolean> = {
   trip_updates: true, driver_assigned: true, trip_completed: true, trip_cancelled: true,
-  payment_success: true, payment_failed: true, wallet_topup: true,
+  payment_success: true, payment_failed: true,
   promo_alerts: true, referral_bonus: true, rewards_update: false,
   app_updates: false, safety_alerts: true, marketing: false,
 };
@@ -46,7 +46,6 @@ export default function NotificationSettingsScreen() {
       items: [
         { key: 'payment_success', icon: 'card-outline',         label: t('settings.paymentSuccess'), sub: t('settings.paymentSuccessSub') },
         { key: 'payment_failed',  icon: 'alert-circle-outline', label: t('settings.paymentFailed'),  sub: t('settings.paymentFailedSub') },
-        { key: 'wallet_topup',    icon: 'wallet-outline',       label: t('settings.walletTopup'),    sub: t('settings.walletTopupSub') },
       ],
     },
     {

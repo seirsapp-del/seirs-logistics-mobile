@@ -118,7 +118,7 @@ export default function DeleteAccountScreen() {
           {[
             'Your profile, name, phone, photo',
             'Your delivery history (after the 30-day grace window)',
-            'Your wallet balance: withdraw before deleting if there are funds',
+            'Your reward points and tier, which cannot be transferred or paid out',
             'Your saved payment + bank details',
           ].map(t => (
             <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
