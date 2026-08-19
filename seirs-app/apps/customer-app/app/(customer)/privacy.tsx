@@ -3,9 +3,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import * as Location from 'expo-location';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { usersApi } from '@/services/api';
@@ -22,8 +23,36 @@ export default function PrivacyScreen() {
   const isDark = cs === 'dark';
   const { t }  = useTranslation();
 
-  const [locationAlways,  setLocationAlways]  = useState(false);
-  const [locationInUse,   setLocationInUse]   = useState(true);
+  /**
+   * The REAL OS permission, not a guess.
+   *
+   * These were two switches wired to nothing: no permission call, no
+   * persistence, defaults hardcoded to false/true regardless of what the
+   * device actually allowed. Turning off "location tracked even when the
+   * app is closed" changed nothing at all, which is a privacy claim we
+   * could not honour (device sweep 2026-08-19).
+   *
+   * Android does not let an app grant or revoke its own permissions, so
+   * a switch was always the wrong control. We report what is actually
+   * granted and hand the user to system settings to change it.
+   */
+  const [fgGranted, setFgGranted] = useState<boolean | null>(null);
+  const [bgGranted, setBgGranted] = useState<boolean | null>(null);
+
+  const readLocationPerms = useCallback(async () => {
+    try {
+      const fg = await Location.getForegroundPermissionsAsync();
+      setFgGranted(fg.status === 'granted');
+    } catch { setFgGranted(null); }
+    try {
+      const bg = await Location.getBackgroundPermissionsAsync();
+      setBgGranted(bg.status === 'granted');
+    } catch { setBgGranted(null); }
+  }, []);
+
+  useEffect(() => { readLocationPerms(); }, [readLocationPerms]);
+  // Re-read on focus: the user may have just changed it in Settings.
+  useFocusEffect(useCallback(() => { readLocationPerms(); }, [readLocationPerms]));
   const [analyticsShare,  setAnalyticsShare]  = useState(true);
   const [personalisedAds, setPersonalisedAds] = useState(false);
   const [dataSharing,     setDataSharing]     = useState(true);
@@ -78,6 +107,33 @@ export default function PrivacyScreen() {
     }
   };
 
+  /**
+   * A permission we can only REPORT. Android will not let an app grant
+   * its own permission, so this shows what the OS actually says and
+   * sends the user to settings to change it, rather than a switch that
+   * pretends to be in control.
+   */
+  const PermRow = ({ icon, label, sub, granted }: {
+    icon: string; label: string; sub: string; granted: boolean | null;
+  }) => {
+    const on   = granted === true;
+    const tint = granted === null ? theme.textThird : on ? theme.success : theme.textSecond;
+    return (
+      <View style={[styles.row, { borderBottomColor: theme.border }]}>
+        <View style={[styles.rowIcon, { backgroundColor: on ? theme.primary + '15' : theme.surfaceSecond }]}>
+          <Ionicons name={icon as any} size={18} color={on ? theme.primary : theme.textThird} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
+          <Text style={[styles.rowSub, { color: theme.textSecond }]}>{sub}</Text>
+        </View>
+        <Text style={[styles.permState, { color: tint }]}>
+          {granted === null ? 'Unknown' : on ? 'Allowed' : 'Not allowed'}
+        </Text>
+      </View>
+    );
+  };
+
   type RowProps = { icon: string; label: string; sub: string; value: boolean; onChange: (v: boolean) => void };
   const ToggleRow = ({ icon, label, sub, value, onChange }: RowProps) => (
     <View style={[styles.row, { borderBottomColor: theme.border }]}>
@@ -114,20 +170,27 @@ export default function PrivacyScreen() {
         {/* Location */}
         <Text style={[styles.sectionTitle, { color: theme.textSecond }]}>{t('settings.locationAccess')}</Text>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
-          <ToggleRow
-            icon="location"
-            label={t('settings.alwaysAllow')}
-            sub={t('settings.alwaysAllowDesc')}
-            value={locationAlways}
-            onChange={setLocationAlways}
-          />
-          <ToggleRow
+          <PermRow
             icon="locate-outline"
             label={t('settings.whileUsingApp')}
             sub={t('settings.whileUsingAppDesc')}
-            value={locationInUse}
-            onChange={setLocationInUse}
+            granted={fgGranted}
           />
+          <PermRow
+            icon="location"
+            label={t('settings.alwaysAllow')}
+            sub={t('settings.alwaysAllowDesc')}
+            granted={bgGranted}
+          />
+          <Pressable
+            onPress={() => Linking.openSettings()}
+            style={({ pressed }) => [styles.settingsBtn, { borderColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Ionicons name="options-outline" size={16} color={theme.primary} />
+            <Text style={[styles.settingsBtnText, { color: theme.primary }]}>
+              Change in system settings
+            </Text>
+          </Pressable>
         </View>
 
         {/* Data sharing */}
@@ -140,13 +203,7 @@ export default function PrivacyScreen() {
             value={analyticsShare}
             onChange={onToggleAnalytics}
           />
-          <ToggleRow
-            icon="megaphone-outline"
-            label={t('settings.personalisedAds')}
-            sub={t('settings.personalisedAdsDesc')}
-            value={personalisedAds}
-            onChange={onTogglePersonalised}
-          />
+
           <ToggleRow
             icon="share-outline"
             label={t('settings.dataSharing')}
@@ -226,6 +283,14 @@ const styles = StyleSheet.create({
   row:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: 14 },
   rowIcon: { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   rowLabel:{ fontSize: FontSize.base, fontWeight: FontWeight.medium },
+  permState:  { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
+  settingsBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderWidth: 1, borderRadius: Radius.md,
+    paddingVertical: Spacing.sm, marginTop: Spacing.sm, marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  settingsBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any },
   rowSub:  { fontSize: FontSize.xs, marginTop: 2 },
   linkLabel:{ flex: 1, fontSize: FontSize.base, fontWeight: FontWeight.medium },
 
