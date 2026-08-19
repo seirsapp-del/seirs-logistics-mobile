@@ -1260,6 +1260,117 @@ export class BusinessService {
   }
 
   // ─── Business Sender: Cancel scheduled delivery (Spec V8 - B13) ──────────
+  /**
+   * Change an order after booking it.
+   *
+   * There was no edit path at all: a sender who mistyped an address or
+   * wanted to add a package had to cancel and rebook, losing the
+   * tracking code and any payment already taken (founder 2026-08-19).
+   *
+   * What may change depends on how far the order has gone, because the
+   * limit is physical, not procedural:
+   *
+   *   unpaid and pending  - everything, nothing is committed yet
+   *   paid, no driver     - address, receiver, instructions. Not weight
+   *                         or category: those priced the job, and
+   *                         re-pricing a paid order is a refund problem,
+   *                         not an edit
+   *   driver assigned     - instructions only. The driver is en route
+   *                         with a destination already in hand
+   *   picked up or later  - nothing. The parcel is in someone's hands
+   */
+  async editMyDelivery(
+    userId: string,
+    deliveryId: string,
+    patch: {
+      dropoffAddress?: string;
+      dropoffLat?: number;
+      dropoffLng?: number;
+      recipientName?: string;
+      recipientPhone?: string;
+      deliveryInstructions?: string;
+    },
+  ) {
+    const biz = await this.getBizAccount(userId);
+    await this.requireOwner(userId, biz.id);
+
+    const delivery = await this.deliveriesRepo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.customer?.id !== userId && biz.ownerId !== delivery.customer?.id) {
+      throw new ForbiddenException('Delivery belongs to another account.');
+    }
+
+    const status = String(delivery.status);
+    if (!['pending', 'assigned'].includes(status)) {
+      throw new BadRequestException(
+        'This delivery has already been collected, so it can no longer be changed. Contact support if something is wrong.',
+      );
+    }
+
+    const paid     = Boolean((delivery as any).paymentHeldAt);
+    const assigned = status === 'assigned';
+
+    const updates: Record<string, any> = {};
+    const rejected: string[] = [];
+
+    const wantsDestination =
+      patch.dropoffAddress !== undefined ||
+      patch.dropoffLat !== undefined ||
+      patch.recipientName !== undefined ||
+      patch.recipientPhone !== undefined;
+
+    if (wantsDestination) {
+      if (assigned) {
+        rejected.push('destination and receiver, because a driver is already on the way');
+      } else {
+        if (patch.dropoffAddress !== undefined) updates.dropoffAddress = patch.dropoffAddress.trim();
+        if (patch.dropoffLat !== undefined)     updates.dropoffLat = patch.dropoffLat;
+        if (patch.dropoffLng !== undefined)     updates.dropoffLng = patch.dropoffLng;
+        if (patch.recipientName !== undefined)  updates.recipientName = patch.recipientName.trim();
+        if (patch.recipientPhone !== undefined) updates.recipientPhone = patch.recipientPhone.trim();
+
+        // Moving the destination on a PAID order changes the distance the
+        // job was priced on. Refuse rather than silently under- or
+        // over-charging; the sender can cancel for a refund and rebook.
+        if (paid && (patch.dropoffLat !== undefined || patch.dropoffLng !== undefined)) {
+          throw new BadRequestException(
+            'This order is already paid, so its destination cannot be moved: the fare was calculated for the original distance. ' +
+            'Cancel it for a refund and book again, or contact support.',
+          );
+        }
+      }
+    }
+
+    // Instructions are safe at every stage before pickup: they change
+    // nothing that was priced and the driver reads them on arrival.
+    if (patch.deliveryInstructions !== undefined) {
+      updates.deliveryInstructions = patch.deliveryInstructions.trim();
+    }
+
+    if (Object.keys(updates).length === 0) {
+      throw new BadRequestException(
+        rejected.length
+          ? `Cannot change ${rejected.join('; ')}.`
+          : 'Nothing to change.',
+      );
+    }
+
+    await this.deliveriesRepo.update(deliveryId, updates);
+
+    return {
+      updated: Object.keys(updates),
+      rejected,
+      editableNow: assigned
+        ? ['deliveryInstructions']
+        : paid
+          ? ['dropoffAddress', 'recipientName', 'recipientPhone', 'deliveryInstructions']
+          : ['everything'],
+    };
+  }
+
   async cancelMyDelivery(userId: string, deliveryId: string, reason?: string) {
     const biz = await this.getBizAccount(userId);
     await this.requireOwner(userId, biz.id);

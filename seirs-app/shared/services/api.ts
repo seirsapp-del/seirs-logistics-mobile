@@ -936,6 +936,17 @@ export const businessApi = {
   specialists:   () => request<any>('GET', '/business/specialists'),
 
   // Spec V8. B13 Cancel scheduled/pending delivery
+  /**
+   * Change an order after booking. What the server accepts narrows as
+   * the order progresses; it returns `editableNow` so the UI can say
+   * what is still changeable rather than guessing.
+   */
+  editDelivery: (id: string, patch: {
+    dropoffAddress?: string; dropoffLat?: number; dropoffLng?: number;
+    recipientName?: string; recipientPhone?: string; deliveryInstructions?: string;
+  }) => request<{ updated: string[]; rejected: string[]; editableNow: string[] }>(
+    'PATCH', `/business/deliveries/${id}`, patch,
+  ),
   cancelDelivery: (id: string, reason?: string) =>
     request<{ ok: true; status: string }>('POST', `/business/deliveries/${id}/cancel`, { reason }),
 

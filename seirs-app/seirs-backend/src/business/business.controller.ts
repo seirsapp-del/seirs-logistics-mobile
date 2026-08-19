@@ -97,6 +97,21 @@ export class BusinessController {
     return this.svc.getTransactions(user.id, page);
   }
 
+  /**
+   * PATCH /api/v1/business/deliveries/:id
+   * What may change narrows as the order progresses: everything while
+   * unpaid, destination and receiver until a driver is assigned,
+   * instructions until pickup, nothing after.
+   */
+  @Patch('business/deliveries/:id')
+  editDelivery(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
+    return this.svc.editMyDelivery(user.id, id, body ?? {});
+  }
+
   @Get('business/loyalty')
   getLoyalty(@CurrentUser() user: User) {
     return this.svc.getLoyalty(user.id);
