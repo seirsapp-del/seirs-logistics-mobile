@@ -1251,16 +1251,43 @@ export class BusinessService {
     // Was sendEmailVerification with the invitation sentence passed as
     // the OTP, which produced an email headed "Verify your email" whose
     // code box contained a sentence and which offered no way to accept.
+    /**
+     * A failed invite email must not report success.
+     *
+     * This was `.catch(() => {})`, so if the send threw the owner still
+     * saw "Invitation sent." and the colleague never heard anything. The
+     * founder caught exactly that: an invite reported as sent that never
+     * appeared in Resend at all (2026-08-19).
+     *
+     * The member row still stands either way, because the invitation is
+     * real and the owner can resend. What changes is that the response
+     * tells the truth about the email.
+     */
     const inviter = await this.usersRepo.findOne({ where: { id: userId } });
-    await this.mailService.sendTeamInvite(
-      data.email,
-      data.name,
-      biz.companyName ?? 'a Seirs business',
-      data.teamRole,
-      inviter?.name,
-    ).catch(() => {});
+    let emailSent = true;
+    let emailError: string | null = null;
+    try {
+      await this.mailService.sendTeamInvite(
+        data.email,
+        data.name,
+        biz.companyName ?? 'a Seirs business',
+        data.teamRole,
+        inviter?.name,
+      );
+    } catch (e: any) {
+      emailSent = false;
+      emailError = e?.message ?? 'Unknown mail error';
+      this.logger.error(`Team invite email failed for ${data.email}: ${emailError}`);
+    }
 
-    return { message: 'Invitation sent.', member };
+    return {
+      message: emailSent
+        ? 'Invitation sent.'
+        : 'Invitation saved, but the email could not be sent. Try resending it.',
+      emailSent,
+      emailError,
+      member,
+    };
   }
 
   async removeTeamMember(userId: string, memberId: string) {
