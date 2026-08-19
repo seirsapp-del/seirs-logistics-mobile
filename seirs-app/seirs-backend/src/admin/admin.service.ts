@@ -741,6 +741,86 @@ export class AdminService {
    * which the page reads as "no target" rather than as a failure.
    */
   /**
+   * Everything needed to draw one delivery on a map.
+   *
+   * Pickup, every stop in order, where the driver is now, and where they
+   * have actually been. Route on the admin order page was two lines of
+   * text, so answering "where is my package" meant reading coordinates
+   * out to somebody (founder 2026-08-19).
+   *
+   * No routing API is called. The planned line is drawn straight between
+   * stops and the real path comes from the GPS trail SEIRS already
+   * collects, because Directions and Distance Matrix are the calls that
+   * cost money and neither answers where something is.
+   */
+  async getDeliveryRoute(deliveryId: string) {
+    const d = await this.deliveriesRepo.findOne({
+      where: { id: deliveryId },
+      relations: ['stops', 'driver', 'driver.user'],
+      order: { stops: { sequenceOrder: 'ASC' } } as any,
+    });
+    if (!d) throw new NotFoundException('Delivery not found.');
+
+    const points: any[] = [];
+    if (d.pickupLat != null && d.pickupLng != null) {
+      points.push({
+        kind: 'pickup', lat: Number(d.pickupLat), lng: Number(d.pickupLng),
+        label: 'Pickup', detail: d.pickupAddress,
+      });
+    }
+
+    const stops = (d as any).stops ?? [];
+    if (stops.length) {
+      for (const st of stops) {
+        if (st.lat == null || st.lng == null) continue;
+        points.push({
+          kind: 'stop', lat: Number(st.lat), lng: Number(st.lng),
+          label: st.packageTrackingCode ?? `Stop ${st.sequenceOrder}`,
+          detail: [st.address, st.recipientName].filter(Boolean).join(' · '),
+        });
+      }
+    } else if (d.dropoffLat != null && d.dropoffLng != null) {
+      points.push({
+        kind: 'stop', lat: Number(d.dropoffLat), lng: Number(d.dropoffLng),
+        label: 'Drop-off', detail: d.dropoffAddress,
+      });
+    }
+
+    // Live position and breadcrumb, only while there is a driver on it.
+    let trail: Array<{ lat: number; lng: number }> = [];
+    const driverId = (d as any).driverId ?? d.driver?.id;
+    if (driverId) {
+      trail = await this.dataSource.query(
+        `SELECT lat::float AS lat, lng::float AS lng
+           FROM gps_pings
+          WHERE "deliveryId" = $1
+          ORDER BY "recordedAt" ASC
+          LIMIT 500`,
+        [deliveryId],
+      ).catch(() => []);
+      const last = trail[trail.length - 1];
+      if (last) {
+        points.push({
+          kind: 'driver', lat: last.lat, lng: last.lng,
+          label: d.driver?.user?.name ?? 'Driver',
+          detail: 'Last known position',
+        });
+      }
+    }
+
+    return {
+      deliveryId,
+      trackingCode: d.trackingCode,
+      status:       d.status,
+      driver:       d.driver ? { id: d.driver.id, name: d.driver.user?.name } : null,
+      points,
+      trail,
+      /** True while it is worth following: stop polling once it is over. */
+      live: ['assigned', 'picked_up', 'in_transit'].includes(String(d.status)),
+    };
+  }
+
+  /**
    * Fill in the parts of a partner application the shopkeeper could not
    * supply themselves. Sets fields only; approval stays a human step.
    */

@@ -393,6 +393,16 @@ export class AdminController {
     return this.adminService.getDeliveryDetail(id);
   }
 
+  /**
+   * Route, stops and live driver position for the map on the order page.
+   * Polled while the delivery is active; `live` tells the client when to
+   * stop.
+   */
+  @Get('deliveries/:id/route')
+  getDeliveryRoute(@Param('id') id: string) {
+    return this.adminService.getDeliveryRoute(id);
+  }
+
   // PATCH /api/v1/admin/deliveries/:id/reassign  { driverId }
   @Patch('deliveries/:id/reassign')
   reassignDelivery(@Param('id') id: string, @Body() body: { driverId: string }) {
