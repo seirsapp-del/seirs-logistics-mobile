@@ -202,7 +202,11 @@ export default function CsvUploadScreen() {
               1. Pick your CSV file (template available via the icon top-right).{'\n'}
               2. We geocode addresses and price every booking on the server.{'\n'}
               3. Review the preview below: fix any flagged rows.{'\n'}
-              4. Tap Confirm to create the deliveries (wallet debited then).{'\n\n'}
+              {/* Said "wallet debited then". Senders hold no balance with
+                  SEIRS: every booking is paid per booking through
+                  Flutterwave, and only drivers and partner counters have
+                  withdrawable earnings. */}
+              4. Tap Confirm to create the deliveries, then pay for the batch.{'\n\n'}
               <Text style={styles.bold}>Group multi-stop bookings</Text> by giving rows the same{' '}
               <Text style={styles.bold}>booking_ref</Text>. Empty booking_ref = standalone single-stop.
             </Text>
