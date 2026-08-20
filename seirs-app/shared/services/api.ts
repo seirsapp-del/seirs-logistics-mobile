@@ -888,6 +888,7 @@ export const businessApi = {
       weightKg?:              number;
       receiverFirstName?:     string;
       receiverLastName?:      string;
+      receiverPhone?:         string;
       declaredValueNgn?:      number;
       fallbackPref?:          string;
       fallbackNeighbourName?: string;

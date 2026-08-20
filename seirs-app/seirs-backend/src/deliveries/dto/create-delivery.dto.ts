@@ -127,6 +127,10 @@ export class CreateDeliveryDto {
   @IsOptional() @IsString() @MaxLength(60)
   receiverLastName?: string;
 
+  @IsOptional()
+  @IsString()
+  receiverPhone?: string;
+
   @IsOptional() @IsIn(['name', 'code', 'id'])
   receiverVerifyPref?: string;
 

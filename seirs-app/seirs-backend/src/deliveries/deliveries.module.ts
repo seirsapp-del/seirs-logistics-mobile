@@ -219,6 +219,7 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "deliveries"
           ADD COLUMN IF NOT EXISTS "receiverFirstName" varchar(60) NULL,
           ADD COLUMN IF NOT EXISTS "receiverLastName" varchar(60) NULL,
+          ADD COLUMN IF NOT EXISTS "receiverPhone" varchar(32) NULL,
           ADD COLUMN IF NOT EXISTS "receiverVerifyPref" varchar(12) NULL,
           ADD COLUMN IF NOT EXISTS "fallbackPref" varchar(12) NULL,
           ADD COLUMN IF NOT EXISTS "fallbackNeighbourName" varchar(80) NULL

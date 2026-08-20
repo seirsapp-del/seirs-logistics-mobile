@@ -157,6 +157,13 @@ export class Delivery {
   @Column({ type: 'varchar', length: 60, nullable: true })
   receiverLastName: string | null;
 
+  // A number the driver can call at handoff. The customer app collected
+  // no phone at all, so a driver at the door with a wrong flat number had
+  // nothing to fall back on. The business flow already stores this per
+  // stop (DeliveryStop.recipientPhone); this is the single-delivery twin.
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  receiverPhone: string | null;
+
   // How the sender wants the receiver verified: 'name' (driver asks the
   // first name and types it), 'code' (emailed to the SENDER to forward),
   // 'id' (physical ID check). High-value packages ignore 'name'.

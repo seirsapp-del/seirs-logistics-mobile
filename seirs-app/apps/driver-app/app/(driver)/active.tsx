@@ -1,7 +1,7 @@
 import {
   View, Text, Pressable, StyleSheet,
   ScrollView, ActivityIndicator, Alert, Image,
-  Platform, Modal, TextInput,
+  Platform, Modal, TextInput, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -493,6 +493,32 @@ export default function ActiveDeliveryScreen() {
                 <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
                 <Text style={styles.chatBtnText}>Chat</Text>
               </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/* Receiver: who actually takes the package at the door. */}
+        {(delivery.receiverFirstName || delivery.receiverPhone) && (
+          <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Receiver</Text>
+            <View style={styles.customerRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.customerName, { color: theme.text }]}>
+                  {[delivery.receiverFirstName, delivery.receiverLastName].filter(Boolean).join(' ') || 'Not named'}
+                </Text>
+                {!!delivery.receiverPhone && (
+                  <Text style={[styles.customerPhone, { color: theme.textSecond }]}>{delivery.receiverPhone}</Text>
+                )}
+              </View>
+              {!!delivery.receiverPhone && (
+                <Pressable
+                  style={[styles.chatBtn, { backgroundColor: '#16A34A' }]}
+                  onPress={() => Linking.openURL(`tel:${delivery.receiverPhone}`)}
+                >
+                  <Ionicons name="call-outline" size={18} color="#fff" />
+                  <Text style={styles.chatBtnText}>Call</Text>
+                </Pressable>
+              )}
             </View>
           </View>
         )}
