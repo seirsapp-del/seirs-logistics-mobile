@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator,
+  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,6 +44,8 @@ type Trip = {
   driver: { id: string; name: string; profilePhoto?: string } | null;
   rating: number | null;
   trackingCode: string;
+  /** Set once the fare is held. Absent on a booking never paid for. */
+  paymentHeldAt: string | null;
 };
 
 function toTrip(d: any): Trip {
@@ -68,6 +70,7 @@ function toTrip(d: any): Trip {
     driver:         drv,
     rating:         d.customerRating ?? null,
     trackingCode:   d.trackingCode ?? d.id,
+    paymentHeldAt:  d.paymentHeldAt ?? null,
   };
 }
 
@@ -123,6 +126,55 @@ export default function HistoryScreen() {
     await load();
     setRefreshing(false);
   }, [load]);
+
+  const [paying,     setPaying]     = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+
+  const handlePay = (trip: Trip) => {
+    setPaying(trip.id);
+    router.push({ pathname: '/(customer)/payment/[deliveryId]', params: { deliveryId: trip.id } } as any);
+    setPaying(null);
+  };
+
+  const handleCancel = async (trip: Trip) => {
+    // Never quote a cancellation fee from the bundled rate card: ask the
+    // server what it costs right now, exactly as trip-progress does.
+    setCancelling(trip.id);
+    let feeNgn = 0;
+    let cancellable = true;
+    try {
+      const q = await deliveriesApi.cancelQuote(trip.id);
+      feeNgn = Number(q?.feeNgn ?? 0);
+      cancellable = q?.cancellable !== false;
+    } catch {
+      // Fall through and let the server reject it if it must.
+    }
+    setCancelling(null);
+    if (!cancellable) {
+      Alert.alert('Too late to cancel', 'This delivery is already under way. Message your driver from the trip screen.');
+      return;
+    }
+    Alert.alert(
+      'Cancel this booking?',
+      feeNgn > 0
+        ? `Tracking ${trip.trackingCode}. A cancellation fee of NGN ${feeNgn.toLocaleString()} applies and the rest is refunded.`
+        : `Tracking ${trip.trackingCode}. No cancellation fee applies.`,
+      [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Cancel booking', style: 'destructive',
+          onPress: async () => {
+            try {
+              await deliveriesApi.cancel(trip.id);
+              await load(1, false);
+            } catch (e: any) {
+              Alert.alert('Could not cancel', e?.message ?? 'Please try again in a moment.');
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const filtered = trips.filter(t => {
     if (activeTab === 'All')       return true;
@@ -199,6 +251,10 @@ export default function HistoryScreen() {
           const status = STATUS_CONFIG[trip.status] ?? { color: '#A1A1AA', icon: 'ellipse-outline' };
           const statusLabel = t(`status.${trip.status}`, { defaultValue: trip.status });
           const isActive = ACTIVE_STATUSES.has(trip.status);
+          // Same test the business Deliveries card uses: pending AND the
+          // fare was never held means the sender still owes for this one.
+          const isUnpaid      = trip.status === 'pending' && !trip.paymentHeldAt;
+          const isCancellable = trip.status === 'pending' || trip.status === 'assigned';
           return (
             <Pressable
               style={({ pressed }) => [styles.card, { backgroundColor: theme.surface }, Shadows.sm, pressed && { opacity: 0.85 }]}
@@ -258,6 +314,39 @@ export default function HistoryScreen() {
                 </Pressable>
               )}
 
+              {/* Unpaid or still cancellable: same actions row the business
+                  Deliveries card uses. Until now the customer app offered
+                  neither, so a booking whose payment never completed could
+                  not be paid for OR cancelled from the app at all. */}
+              {(isUnpaid || isCancellable) && (
+                <View style={styles.cardActions}>
+                  {isUnpaid && (
+                    <Pressable
+                      onPress={() => handlePay(trip)}
+                      disabled={paying === trip.id}
+                      hitSlop={8}
+                      style={[styles.payLink, { borderColor: theme.primary }]}
+                    >
+                      <Text style={[styles.payLinkText, { color: theme.primary }]}>
+                        {paying === trip.id ? 'Opening…' : 'Pay now'}
+                      </Text>
+                    </Pressable>
+                  )}
+                  {isCancellable && (
+                    <Pressable
+                      onPress={() => handleCancel(trip)}
+                      disabled={cancelling === trip.id}
+                      hitSlop={8}
+                      style={styles.cancelBtn}
+                    >
+                      <Text style={styles.cancelBtnText}>
+                        {cancelling === trip.id ? 'Checking…' : 'Cancel'}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+
               {/* Active trip → live tracking */}
               {isActive && (
                 <Pressable
@@ -277,6 +366,14 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Values taken from the business Deliveries card so the two read alike.
+  cardActions:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
+                   gap: 10, marginTop: 12 },
+  payLink:       { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  payLinkText:   { fontSize: 12.5, fontWeight: '700' },
+  cancelBtn:     { borderWidth: 1, borderColor: '#DC2626', borderRadius: 999,
+                   paddingHorizontal: 14, paddingVertical: 6 },
+  cancelBtnText: { fontSize: 12.5, fontWeight: '700', color: '#DC2626' },
   header:    { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.xs },
   title:     { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
   subtitle:  { fontSize: FontSize.sm, marginTop: 2 },
