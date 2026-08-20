@@ -209,7 +209,11 @@
     "help": "Help & FAQ",
     "privacy": "Privacy Policy",
     "contact": "Contact Support",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "editProfile": "Edit Business Details",
+    "documents": "Documents",
+    "applyPartner": "Apply to be a Partner Store",
+    "contactSupport": "Contact Support"
   },
   "language": {
     "title": "Language",
@@ -367,5 +371,14 @@
       "> A few customers in Yaba and Surulere have turned referrals into ₦10,000+ of credit just by inviting their WhatsApp groups. Worth trying.",
       "Tap Send a package and check Rewards to start sharing your code."
     ]
+  },
+  "profile": {
+    "title": "Profile",
+    "account": "Account",
+    "partner": "Partner network",
+    "preferences": "Preferences",
+    "support": "Support",
+    "seirsIdTap": "SEIRS ID · TAP FOR QR",
+    "qrHint": "Show this at partner counters and handoffs."
   }
 }

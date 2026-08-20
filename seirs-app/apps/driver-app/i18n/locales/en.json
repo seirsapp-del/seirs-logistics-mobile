@@ -316,5 +316,15 @@
       "permBody": "Enable camera or photo access in your phone settings.",
       "errorTitle": "Could not send photo"
     }
+  },
+  "support": {
+    "newTitle": "New support ticket",
+    "topicLabel": "What is this about?",
+    "subjectLabel": "Subject",
+    "messageLabel": "Describe the issue",
+    "submit": "Open ticket",
+    "threadEmpty": "This thread is empty.",
+    "closedNote": "This ticket is closed. Open a new one if you still need help.",
+    "hoursHint": "Support hours: 6am–10pm WAT. Messages sent outside those hours get a reply once we open at 6am."
   }
 }

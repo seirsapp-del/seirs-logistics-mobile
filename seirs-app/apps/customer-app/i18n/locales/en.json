@@ -73,12 +73,9 @@
     "pointsChip": "{{n}} pts",
     "pointsChipEmpty": "Earn points",
     "stories": "Stories",
-    "wallet": "Wallet",
     "alerts": "Alerts",
     "suggestions": "Suggestions",
-    "walletBalance": "Wallet Balance",
     "availableBalance": "Available balance",
-    "topUp": "Top Up",
     "send": "Send",
     "history": "History",
     "recentTrips": "Recent Trips",
@@ -104,10 +101,10 @@
     "schedule": "Schedule",
     "fare": "Fare",
     "confirm": "Confirm",
-    "packagePhotos": "Package photos",
-    "minOnePhoto": "(min 1, max 5)",
-    "description": "Description",
-    "descPlaceholder": "Describe the package contents...",
+    "packagePhotos": "Photos",
+    "minOnePhoto": "at least 1, up to 5",
+    "description": "What is it?",
+    "descPlaceholder": "e.g. Two cartons of shoes",
     "category": "Category",
     "weightKg": "Weight (kg)",
     "errReceiverMissing": "Enter the receiver's first name. The driver asks for this person by name at handoff.",
@@ -174,18 +171,14 @@
     "categoryMarketGoods": "Market Goods",
     "categoryHeavy": "Heavy / Industrial",
     "stepPackage": "Package",
-    "stepAddress": "Address",
+    "stepAddress": "Pickup",
     "stepVehicle": "Vehicle",
-    "stepFare": "Fare",
-    "stepConfirm": "Confirm",
     "step1Caption": "What are you sending?",
-    "step2Caption": "Where to pick up and drop off?",
+    "step2Caption": "Where does the driver collect it?",
     "step3Caption": "Pick a vehicle",
-    "step4Caption": "Review the price",
-    "step5Caption": "Recipient and payment",
+    "step4Caption": "Check every line, then pay.",
     "payCard": "Debit Card (Flutterwave)",
     "payBankTransfer": "Bank Transfer",
-    "payWallet": "Seirs Wallet",
     "weightHint": "Helps us recommend the right vehicle",
     "selectCategory": "Select a category",
     "addPhotos": "Add photos",
@@ -194,7 +187,7 @@
     "dropAtStoreCardTitle": "Drop at a store instead",
     "dropAtStoreCardDesc": "No driver pickup, walk in, drop, done. Cheapest for non-urgent packages.",
     "addPhoto": "Add",
-    "weightPlaceholder": "e.g. 5",
+    "weightPlaceholder": "e.g. 3",
     "whereTo": "Where to?",
     "useMyLocation": "Use my current location",
     "whenLabel": "When?",
@@ -227,7 +220,33 @@
     "errPickupMissing": "Please enter a pickup address.",
     "errDropoffMissing": "Please enter a dropoff address.",
     "errScheduleTime": "Please pick a time for your scheduled delivery.",
-    "errBookingFailed": "Booking failed. Please try again."
+    "errBookingFailed": "Booking failed. Please try again.",
+    "declaredValue": "Package value in NGN (optional)",
+    "declaredValueHint": "e.g. 150000",
+    "declaredValueNote": "High-value packages get ID-verified handoff.",
+    "destAddress": "To an address",
+    "destAddressPlaceholder": "Street, area, city",
+    "destStore": "To a partner store",
+    "destinationLabel": "Where is it going?",
+    "errWeightMissing": "Enter the weight in kg. An estimate is fine: your driver picks the right vehicle from it.",
+    "fallbackLabel": "If nobody is available",
+    "fbGate": "Leave at gate",
+    "fbHand": "Hand to receiver only",
+    "fbNeighbour": "Leave with neighbour",
+    "fbStore": "Drop at partner store",
+    "hvFallbackNote": "High-value packages cannot be left at the gate or with a neighbour.",
+    "instructions": "Instructions for driver (optional)",
+    "instructionsPlaceholder": "e.g. Call when you reach the gate. Ask for security.",
+    "neighbourName": "Neighbour or security's name",
+    "nightFeeNote": "Night pickup: a night fee applies and goes to your driver in full.",
+    "packageCardTitle": "Package 1",
+    "receiverFirst": "First name",
+    "receiverHint": "The driver confirms this first name at handoff. Anyone the receiver trusts can collect.",
+    "receiverLast": "Last name",
+    "receiverName": "Who is receiving?",
+    "receiverPhone": "08012345678",
+    "vehicleBlocked": "Not allowed for this package type",
+    "stepReview": "Review"
   },
   "rewardsTab": {
     "title": "My Rewards",
@@ -238,29 +257,6 @@
     "accountCreditNote": "Promotional credit and refunds. SEIRS does not hold customer money, this is not a savings account.",
     "escrowChip": "₦{{amount}} pending (refunds in transit)",
     "withdrawCredit": "Withdraw available credit"
-  },
-  "wallet": {
-    "myWallet": "My Wallet",
-    "walletBalance": "Wallet Balance",
-    "available": "Available",
-    "pendingEscrow": "Pending (escrow)",
-    "topUp": "Top Up",
-    "withdraw": "Withdraw",
-    "cards": "Cards",
-    "totalSpent": "Total Spent",
-    "totalEarned": "Total Earned",
-    "transactions": "Transactions",
-    "all": "All",
-    "credit": "Credit",
-    "debit": "Debit",
-    "noTransactions": "No transactions",
-    "withdrawFunds": "Withdraw Funds",
-    "withdrawPrompt": "Enter amount to withdraw (₦). Funds will be sent to your registered bank account.",
-    "invalidAmount": "Invalid amount",
-    "insufficientBalance": "Insufficient balance",
-    "withdrawalInitiated": "Withdrawal initiated",
-    "withdrawalMsg": "₦{{amount}} will be sent to your bank account within 24 hours.",
-    "withdrawalFailed": "Withdrawal failed"
   },
   "article": {
     "notFoundTitle": "Article not found",
@@ -355,7 +351,8 @@
     "daysAgo":   "{{n}} days ago",
     "weeksAgo":  "{{n}}w ago",
     "monthsAgo": "{{n}}mo ago",
-    "yearsAgo":  "{{n}}y ago"
+    "yearsAgo":  "{{n}}y ago",
+    "tryAgain": "Please try again."
   },
   "drawer": {
     "profile": "Profile",
@@ -398,7 +395,10 @@
   "messages": {
     "title": "Messages",
     "empty": "No messages yet",
-    "emptyDesc": "Messages from your drivers will appear here during and after trips."
+    "emptyDesc": "Messages from your drivers will appear here during and after trips.",
+    "emptyDesc2": "Driver chats appear here during a delivery. You can also start a conversation with our support team any time.",
+    "emptyTitle": "No conversations yet",
+    "startSupport": "Start a support conversation"
   },
   "tracking": {
     "title": "Track Package",
@@ -560,7 +560,7 @@
   },
   "deleteAccount": {
     "title": "Delete Account",
-    "warning": "This will permanently delete your account, trip history, and wallet balance. This action cannot be undone.",
+    "warning": "This will permanently delete your account, trip history, and reward points. This action cannot be undone.",
     "exportFirst": "Export my data first",
     "exportFailed": "Export failed",
     "exportingMsg": "Your data is being prepared. You will receive an email with the download link within 24 hours.",
@@ -621,7 +621,7 @@
     "descriptionLabel": "Description (optional)",
     "descriptionPlaceholder": "e.g. clothing, documents, small electronics",
     "declaredValueLabel": "Declared value ₦ (optional)",
-    "declaredValuePlaceholder": "If over ₦50,000, recipient must show ID",
+    "declaredValuePlaceholder": "If over ₦{{amount}}, recipient must show ID",
     "recipientHeading": "RECIPIENT",
     "fullName": "Full name",
     "fullNamePlaceholder": "As recipient will type when collecting",
@@ -739,7 +739,15 @@
     "cancelLink": "Cancel this trip",
     "cancelTitle": "Cancel this trip?",
     "cancelConfirmFree": "No cancellation fee will apply.",
-    "cancelConfirmWithFee": "A cancellation fee of ₦{{fee}} will apply."
+    "cancelConfirmWithFee": "A cancellation fee of ₦{{fee}} will apply.",
+    "cancelFailedTitle": "Could not cancel",
+    "cancelledFree": "Your trip is cancelled and you have been refunded in full.",
+    "cancelledTitle": "Trip cancelled",
+    "cancelledWithFee": "Your trip is cancelled. A ₦{{fee}} cancellation fee was kept from your refund.",
+    "loadFailed": "Could not load this trip. Check your connection and try again.",
+    "packageQr": "Package QR",
+    "qrHint": "The driver scans this to confirm they are handing over the right package.",
+    "qrTitle": "Show this to your driver"
   },
   "request2": {
     "title": "Request a Ride",
@@ -809,7 +817,6 @@
   "tabs": {
     "home": "Home",
     "bookings": "Bookings",
-    "wallet": "Wallet",
     "rewards": "Rewards",
     "messages": "Messages",
     "profile": "Profile"
@@ -911,7 +918,6 @@
     "paymentSuccessSub": "Every time a payment goes through",
     "paymentFailed": "Payment Failed",
     "paymentFailedSub": "Failed or declined transactions",
-    "walletTopup": "Wallet Top-up",
     "walletTopupSub": "When your wallet balance is funded",
     "promoAlerts": "Promo Alerts",
     "promoAlertsSub": "New discount codes & offers",
@@ -1002,7 +1008,8 @@
     "pickRating": "Pick a rating",
     "pickRatingMsg": "Tap the stars to score your trip first.",
     "couldNotSubmit": "Could not submit",
-    "tryAgain": "Please try again."
+    "tryAgain": "Please try again.",
+    "reportProblem": "Report a problem with this delivery"
   },
   "profile": {
     "title": "Profile",
@@ -1025,7 +1032,6 @@
     "savedAddressesSub": "Home, office & more",
     "myTrips": "My Trips",
     "myTripsSub": "{{count}} trips completed",
-    "wallet": "Wallet",
     "walletSub": "₦{{balance}} balance",
     "rewards": "Rewards",
     "rewardsSub": "{{points}} points · {{tier}}",
@@ -1049,10 +1055,13 @@
     "termsComingSoon": "Our Terms page goes live with the public launch.",
     "statTrips": "Trips",
     "statPoints": "Points",
-    "statWallet": "Wallet",
     "statTier": "Tier",
     "statRating": "Rating",
-    "version": "SEIRS Logistics v2.0.0 · Build 204"
+    "version": "SEIRS Logistics v2.0.0 · Build 204",
+    "addPhoto": "Add a profile photo",
+    "changePhoto": "Change profile photo",
+    "sos": "SOS Emergency",
+    "sosSub": "Immediate help with live location"
   },
   "chat": {
     "online": "Online",
@@ -1084,6 +1093,17 @@
       "permTitle": "Permission needed",
       "permBody": "Enable camera or photo access in your phone settings.",
       "errorTitle": "Could not send photo"
+    }
+  },
+  "support": {
+    "newTitle": "How can we help?",
+    "detailsTitle": "Tell us more",
+    "threadEmpty": "This thread is empty.",
+    "closedNote": "This ticket is closed. Open a new one if you still need help.",
+    "error": {
+      "title": "Could not open ticket",
+      "sendTitle": "Could not send",
+      "uploadTitle": "Could not upload photo"
     }
   }
 }
