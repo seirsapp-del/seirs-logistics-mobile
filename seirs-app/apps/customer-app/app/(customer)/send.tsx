@@ -240,7 +240,7 @@ export default function SendScreen() {
   // alone, so backing out (or tapping "To a partner store", or taking a
   // call) threw the whole form away. The business app has persisted its
   // draft since its rebuild; this is the customer equivalent.
-  const { draft, patchDraft, clearDraft, hasContent } = useSendDraftStore();
+  const { draft, ready: draftReady, patchDraft, clearDraft, hasContent } = useSendDraftStore();
   const hydrated = useRef(false);
   // Where is it going? Business asks this per package on step 1
   // (destinationMode) instead of hiding store drop behind a banner.
@@ -325,8 +325,7 @@ export default function SendScreen() {
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-  useEffect(() => {
-    if (hydrated.current) return;
+    if (!draftReady || hydrated.current) return;
     hydrated.current = true;
     if (!hasContent()) return;
     setStep(draft.step ?? 0);
@@ -359,9 +358,10 @@ export default function SendScreen() {
     setScheduleNow(draft.scheduleNow ?? true);
     setScheduledHour(draft.scheduledHour ?? null);
     if (draft.paymentId) setPaymentId(draft.paymentId as PaymentId);
-  // Intentionally mount-only: re-running would fight the user's typing.
+  // Runs once, when the stored draft is ready. Re-running would fight the
+  // user's typing.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [draftReady]);
 
   // Mirror the form into the persisted draft. Only after hydration, or the
   // first render would immediately overwrite the saved draft with blanks.
@@ -378,6 +378,8 @@ export default function SendScreen() {
     patchDraft,
   ]);
 
+  // Catalogue and policy values, fetched once on mount.
+  useEffect(() => {
     configApi.serviceCatalog()
       .then(c => { if (Array.isArray(c) && c.length) setCatalog(c); })
       .catch(() => { /* fall back to PACKAGE_CATEGORIES below */ });
