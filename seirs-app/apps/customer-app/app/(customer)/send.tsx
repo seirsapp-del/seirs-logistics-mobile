@@ -421,7 +421,11 @@ export default function SendScreen() {
   const distKmRoute = packages.length > 1
     ? (multi.distanceMeters != null ? multi.distanceMeters / 1000 : 0)
     : (distanceMeters != null ? distanceMeters / 1000 : 0);
-  const kg   = parseFloat(weightKg) || 0;
+  // Weight of the WHOLE run. This drives the vehicle recommendation, so
+  // using package 1's weight alone would have suggested an okada for five
+  // heavy parcels. For a single package the sum is that package, so this
+  // is correct in both cases.
+  const kg = packages.reduce((sum, pk) => sum + (parseFloat(pk.weightKg) || 0), 0);
   const codAmountNgn = codEnabled ? (Number(codAmount) || 0) : 0;
   const pickupCoords  = pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : null;
   const dropoffCoords = dropoff ? { latitude: dropoff.lat, longitude: dropoff.lng } : null;
@@ -468,8 +472,45 @@ export default function SendScreen() {
   // Never silently fall back to the single-package number for a run: a
   // wrong total is worse than an honest "not priced yet".
   const runTotal = Number(runQuote?.customer?.total ?? 0);
-  const fare = packages.length > 1
-    ? { ...localFare, total: runTotal }
+
+  /**
+   * For a run, take the WHOLE breakdown from the server, not just the
+   * total.
+   *
+   * Spreading localFare and overriding only `total` looked harmless and
+   * was not: every itemised line (base, distance, weight, VAT) would
+   * still have been the single-package figure, so the breakdown on screen
+   * would not add up to the total charged. A fare whose lines contradict
+   * its total is exactly the kind of quiet untruth this whole sweep has
+   * been removing.
+   */
+  const fare = packages.length > 1 && runQuote?.customer
+    ? (() => {
+        const c = runQuote.customer;
+        const time = c.timeSurcharges ?? {};
+        const zone = c.zoneSurcharges ?? {};
+        const timeLabels = Object.entries(time)
+          .filter(([, v]) => Number(v) > 0)
+          .map(([k]) => k);
+        return {
+          ...localFare,
+          base:              Number(c.base ?? 0),
+          dist:              Number(c.distanceLabour ?? 0),
+          distFuel:          Number(c.distanceFuel ?? 0),
+          // The server prices weight inside the per-package figures rather
+          // than as its own line, so showing a separate weight surcharge
+          // here would double-count it.
+          weight:            0,
+          handling:          Number(c.stopBonuses ?? 0) + Number(c.dwellOver ?? 0),
+          categorySurcharge: Number(c.categorySurcharge ?? 0),
+          timeSurcharge:     Object.values(time).reduce((a: number, b: any) => a + Number(b || 0), 0),
+          timeLabels,
+          zoneSurcharge:     Number(zone.interState ?? 0) + Number(zone.longDistance ?? 0) + Number(zone.restricted ?? 0),
+          zoneFlat:          Number(zone.overnight ?? 0),
+          vat:               Number(c.vat ?? 0),
+          total:             runTotal,
+        };
+      })()
     : localFare;
 
   // Center on user's GPS once on mount.
@@ -1465,9 +1506,23 @@ export default function SendScreen() {
                 <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.orderSummary')}</Text>
                 {([
                   [t('send.pickup'),         pickup?.address  ?? '-'],
-                  [t('send.dropoff'),        dropoff?.address ?? '-'],
-                  [t('send.summaryDistance'), distanceText ?? `${distKmRoute} km`],
-                  [t('send.category'),       t(`send.${PACKAGE_CATEGORIES.find(c => c.id === category)?.labelKey ?? 'category'}`)],
+                  [t('send.dropoff'), packages.length > 1
+                    ? t('send.summaryDestinations', {
+                        n: packages.length,
+                        defaultValue: `${packages.length} destinations`,
+                      })
+                    : (dropoff?.address ?? '-')],
+                  // For a run this must be the whole route, pickup through
+                  // every package, not pickup to package 1.
+                  [t('send.summaryDistance'), packages.length > 1
+                    ? (multi.distanceText ?? `${distKmRoute.toFixed(1)} km`)
+                    : (distanceText ?? `${distKmRoute} km`)],
+                  [t('send.category'), packages.length > 1
+                    ? t('send.summaryMixed', {
+                        n: packages.length,
+                        defaultValue: `${packages.length} packages`,
+                      })
+                    : t(`send.${PACKAGE_CATEGORIES.find(c => c.id === category)?.labelKey ?? 'category'}`)],
                   [t('send.vehicle2'),       (() => { const v = VEHICLES.find(v => v.id === vehicleId); return v ? t(`send.${v.labelKey}`) : '-'; })()],
                   [t('send.summaryWhen'),    scheduleNow
                                                ? t('send.summarySendNow')
