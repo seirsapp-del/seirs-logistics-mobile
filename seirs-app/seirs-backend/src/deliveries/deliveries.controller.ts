@@ -34,8 +34,11 @@ export class DeliveriesController {
     @CurrentUser() user: User,
     @Query('page',  new DefaultValuePipe(1),  ParseIntPipe) page:  number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
   ) {
-    return this.deliveriesService.findByCustomer(user.id, Math.max(1, page), Math.min(100, Math.max(1, limit)));
+    return this.deliveriesService.findByCustomer(
+      user.id, Math.max(1, page), Math.min(100, Math.max(1, limit)), search,
+    );
   }
 
   // GET /api/v1/deliveries/frequent-addresses

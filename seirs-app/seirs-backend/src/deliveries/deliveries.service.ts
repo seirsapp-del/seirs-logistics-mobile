@@ -502,13 +502,27 @@ export class DeliveriesService {
     );
   }
 
-  async findByCustomer(customerId: string, page = 1, limit = 20) {
-    const [items, total] = await this.repo.findAndCount({
-      where: { customer: { id: customerId } },
-      order: { createdAt: 'DESC' },
-      take: limit,
-      skip: (page - 1) * limit,
-    });
+  async findByCustomer(customerId: string, page = 1, limit = 20, search?: string) {
+    const qb = this.repo
+      .createQueryBuilder('d')
+      .where('d."customerId" = :customerId', { customerId })
+      .orderBy('d."createdAt"', 'DESC')
+      .take(limit)
+      .skip((page - 1) * limit);
+
+    // Search the three things a customer actually remembers about a
+    // booking: the tracking code they were given, and either address.
+    // Without this the Bookings tab could only filter the page already
+    // loaded, which is worse than no search at all.
+    const q = (search ?? '').trim();
+    if (q) {
+      qb.andWhere(
+        '(d."trackingCode" ILIKE :like OR d."pickupAddress" ILIKE :like OR d."dropoffAddress" ILIKE :like)',
+        { like: `%${q}%` },
+      );
+    }
+
+    const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit, pages: Math.ceil(total / limit) };
   }
 

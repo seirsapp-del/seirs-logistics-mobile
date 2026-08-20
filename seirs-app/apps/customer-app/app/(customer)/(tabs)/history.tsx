@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator, Alert,
+  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator, Alert, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -88,6 +88,7 @@ export default function HistoryScreen() {
   const [page,        setPage]        = useState(1);
   const [hasMore,     setHasMore]     = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [search,      setSearch]      = useState('');
 
   const PAGE_SIZE = 20;
 
@@ -97,7 +98,7 @@ export default function HistoryScreen() {
   // rebuild; this is the same behaviour on this side.
   const load = useCallback(async (p = 1, append = false) => {
     try {
-      const res = await deliveriesApi.myDeliveries(p, PAGE_SIZE);
+      const res = await deliveriesApi.myDeliveries(p, PAGE_SIZE, search);
       const rows = (res.items ?? []).map(toTrip);
       setTrips(prev => (append ? [...prev, ...rows] : rows));
       setPage(p);
@@ -108,7 +109,7 @@ export default function HistoryScreen() {
       if (!append) setTrips([]);
       setHasMore(false);
     }
-  }, []);
+  }, [search]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -120,6 +121,11 @@ export default function HistoryScreen() {
   useEffect(() => {
     (async () => { await load(); setLoading(false); })();
   }, [load]);
+
+  useEffect(() => {
+    const t = setTimeout(() => { load(1, false); }, 350);
+    return () => clearTimeout(t);
+  }, [search, load]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -200,6 +206,23 @@ export default function HistoryScreen() {
             {filtered.length} trip{filtered.length !== 1 ? 's' : ''}
           </Text>
         </View>
+      </View>
+
+      <View style={[styles.searchWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Ionicons name="search" size={16} color={theme.textThird} />
+        <TextInput
+          style={[styles.searchInput, { color: theme.text }]}
+          value={search}
+          onChangeText={setSearch}
+          placeholder={t('history.searchPlaceholder', { defaultValue: 'Search tracking code or address…' })}
+          placeholderTextColor={theme.textThird}
+          returnKeyType="search"
+        />
+        {search.length > 0 && (
+          <Pressable onPress={() => setSearch('')} hitSlop={8}>
+            <Ionicons name="close-circle" size={16} color={theme.textThird} />
+          </Pressable>
+        )}
       </View>
 
       {/* Filter tabs */}
@@ -366,6 +389,11 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Search box values taken from the business Deliveries tab.
+  searchWrap:    { flexDirection: 'row', alignItems: 'center', gap: 10,
+                   marginHorizontal: 16, marginTop: 16, borderRadius: 12,
+                   paddingHorizontal: 14, paddingVertical: 11, borderWidth: 1 },
+  searchInput:   { flex: 1, fontSize: 14 },
   // Values taken from the business Deliveries card so the two read alike.
   cardActions:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
                    gap: 10, marginTop: 12 },
