@@ -843,25 +843,6 @@
     "sosSent": "SOS sent",
     "sosSentMsg": "Your emergency alert was sent to SEIRS support and your emergency contacts."
   },
-  "sendMultiple": {
-    "title": "Send Multiple",
-    "subtitle": "Send packages to multiple addresses at once",
-    "pickup": "Pickup",
-    "pickupHint": "Where are we picking up from?",
-    "recipients": "Recipients",
-    "addRecipient": "Add recipient",
-    "recipientName": "Recipient name",
-    "recipientPhone": "Recipient phone",
-    "recipientAddress": "Recipient address",
-    "packageDesc": "Package description",
-    "remove": "Remove",
-    "vehicle": "Vehicle",
-    "estimatedTotal": "Estimated total",
-    "bookAll": "Book All Deliveries",
-    "booking": "Booking…",
-    "success": "All bookings created",
-    "successMsg": "{{count}} deliveries are now active. Track them from the Bookings tab."
-  },
   "report": {
     "title": "Report Issue",
     "category": "Category",

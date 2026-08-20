@@ -597,25 +597,6 @@
     "sosSent": "A ti rán SOS",
     "sosSentMsg": "A rán ìkìlọ̀ pajawiri rẹ sí ìrànlọ́wọ́ SEIRS àti àwọn olùbárasọ̀rọ̀ pajawiri rẹ."
   },
-  "sendMultiple": {
-    "title": "Firanṣẹ Pupọ̀",
-    "subtitle": "Firanṣẹ àwọn idii sí ọ̀pọ̀ adiresi ní ẹ̀ẹ̀kan",
-    "pickup": "Gbigba",
-    "pickupHint": "Níbo ni a fẹ́ gbà láti?",
-    "recipients": "Àwọn Olùgbà",
-    "addRecipient": "Fi olùgbà kún",
-    "recipientName": "Orúkọ olùgbà",
-    "recipientPhone": "Nọmba olùgbà",
-    "recipientAddress": "Adiresi olùgbà",
-    "packageDesc": "Àpèjúwe idii",
-    "remove": "Yọ kúrò",
-    "vehicle": "Ọkọ",
-    "estimatedTotal": "Iye àpapọ̀",
-    "bookAll": "Tẹ Gbogbo Ìfiránṣẹ",
-    "booking": "Ń tẹ̀…",
-    "success": "A ti dá gbogbo ìfiránṣẹ́",
-    "successMsg": "Ìfiránṣẹ́ {{count}} wà lọwọ́ báyìí. Tẹ̀lé wọn láti taàbù Ìfiránṣẹ."
-  },
   "report": {
     "title": "Ròyìn Ìṣòro",
     "category": "Ẹ̀ka",

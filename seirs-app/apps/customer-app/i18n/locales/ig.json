@@ -597,25 +597,6 @@
     "sosSent": "Ezitere SOS",
     "sosSentMsg": "E zigara mkpu mberede gị na nkwado SEIRS na ndị enyemaka mberede gị."
   },
-  "sendMultiple": {
-    "title": "Zipu Ọtụtụ",
-    "subtitle": "Zipu ngwugwu na adreesị dị iche iche n'otu oge",
-    "pickup": "Mbulata",
-    "pickupHint": "Ebee ka anyị ga-ebulata?",
-    "recipients": "Ndị Nnata",
-    "addRecipient": "Tinye onye nnata",
-    "recipientName": "Aha onye nnata",
-    "recipientPhone": "Nọmba ekwentị onye nnata",
-    "recipientAddress": "Adreesị onye nnata",
-    "packageDesc": "Nkọwa ngwugwu",
-    "remove": "Wepu",
-    "vehicle": "Ụgbọ",
-    "estimatedTotal": "Mkpokọta atụmatụ",
-    "bookAll": "Debe Nnyefe Niile",
-    "booking": "Na-edebe…",
-    "success": "Emepụtara ndokwa niile",
-    "successMsg": "Nnyefe {{count}} na-arụ ọrụ ugbu a. Soro ha site na taabụ Ndokwa."
-  },
   "report": {
     "title": "Kọọ Nsogbu",
     "category": "Ụdị",

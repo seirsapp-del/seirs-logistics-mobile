@@ -597,25 +597,6 @@
     "sosSent": "An aika SOS",
     "sosSentMsg": "An aika faɗakarwar gaggawarku ga tallafin SEIRS da abokan tuntuɓar ku na gaggawa."
   },
-  "sendMultiple": {
-    "title": "Aika Da Yawa",
-    "subtitle": "Aika fakiti zuwa adireshi da yawa lokaci ɗaya",
-    "pickup": "Karɓa",
-    "pickupHint": "Ina za mu karɓa daga?",
-    "recipients": "Masu Karɓa",
-    "addRecipient": "Ƙara mai karɓa",
-    "recipientName": "Sunan mai karɓa",
-    "recipientPhone": "Lambar waya ta mai karɓa",
-    "recipientAddress": "Adireshin mai karɓa",
-    "packageDesc": "Bayanin fakiti",
-    "remove": "Cire",
-    "vehicle": "Abin hawa",
-    "estimatedTotal": "Jimillar kimanta",
-    "bookAll": "Yi Oda Duka",
-    "booking": "Ana yin oda…",
-    "success": "An ƙirƙiri duk yin oda",
-    "successMsg": "Tafiyoyi {{count}} suna aiki yanzu. Bi su daga shafin Yin Oda."
-  },
   "report": {
     "title": "Bayar da Rahoton Matsala",
     "category": "Rukuni",
