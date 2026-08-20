@@ -225,6 +225,9 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "disputedAt" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "disputeReason" varchar(40) NULL,
           ADD COLUMN IF NOT EXISTS "disputePhotoUrl" text NULL,
+          ADD COLUMN IF NOT EXISTS "driverAcceptedLat" double precision NULL,
+          ADD COLUMN IF NOT EXISTS "driverAcceptedLng" double precision NULL,
+          ADD COLUMN IF NOT EXISTS "driverAcceptedDistanceKm" double precision NULL,
           ADD COLUMN IF NOT EXISTS "receiverVerifyPref" varchar(12) NULL,
           ADD COLUMN IF NOT EXISTS "fallbackPref" varchar(12) NULL,
           ADD COLUMN IF NOT EXISTS "fallbackNeighbourName" varchar(80) NULL

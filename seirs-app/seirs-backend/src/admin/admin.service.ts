@@ -1650,6 +1650,11 @@ export class AdminService {
       driver,
       status:     DeliveryStatus.ASSIGNED,
       assignedAt: new Date(),
+      // Manual assignment records the rider's position too, or an
+      // admin-assigned job would be the one case with no accept location
+      // and therefore no way to check a distance claim later.
+      driverAcceptedLat: (driver as any)?.lastLat ?? null,
+      driverAcceptedLng: (driver as any)?.lastLng ?? null,
     });
 
     this.logger.log(

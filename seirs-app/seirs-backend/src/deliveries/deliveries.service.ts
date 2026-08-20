@@ -576,6 +576,13 @@ export class DeliveriesService {
       driver:     match.driver,
       status:     DeliveryStatus.ASSIGNED,
       assignedAt: new Date(),
+      // Where the rider was when we chose them, written before anyone has
+      // a reason to argue about it. Compensation for a wasted trip scales
+      // with distance ridden, so without this a claim of "I rode 15km"
+      // could not be checked against anything.
+      driverAcceptedLat:        (match.driver as any)?.lastLat ?? null,
+      driverAcceptedLng:        (match.driver as any)?.lastLng ?? null,
+      driverAcceptedDistanceKm: (match as any)?.distanceKm ?? null,
     });
 
     if (this.trackingGateway) {

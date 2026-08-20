@@ -198,6 +198,26 @@ export default function DeliveryDetailPage() {
                 <div className="text-sm font-semibold text-[#0F2B4C]">{d.driver.user?.name ?? d.driver.id?.slice(0, 8)}</div>
                 <Row label="Phone"   value={d.driver.user?.phone} />
                 <Row label="Vehicle" value={d.driver.vehicleType} />
+                {/* Where the rider was when the job was assigned, recorded
+                    before anyone had a reason to argue about it. A claim of
+                    "I rode 15km to the pickup" can be checked against this
+                    instead of taken on trust. */}
+                {d.driverAcceptedDistanceKm != null && (
+                  <Row
+                    label="Distance at accept"
+                    value={`${Number(d.driverAcceptedDistanceKm).toFixed(1)} km from pickup`}
+                  />
+                )}
+                {d.driverAcceptedLat != null && d.driverAcceptedLng != null && (
+                  <a
+                    className="mt-1 inline-block text-xs font-semibold text-[#3A7BD5] hover:underline"
+                    href={`https://www.google.com/maps?q=${d.driverAcceptedLat},${d.driverAcceptedLng}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Where the rider accepted from
+                  </a>
+                )}
               </>
             : <div className="text-sm text-[#0F2B4C]/40">Not assigned yet</div>}
         </section>

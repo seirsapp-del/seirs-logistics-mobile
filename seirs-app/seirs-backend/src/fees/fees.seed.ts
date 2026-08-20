@@ -231,6 +231,31 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Transport fee owed when a failed door delivery is rerouted to a partner store (nobody home, no sender response). Store identity + collection code stay hidden until settled.',
     category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.FLAT_NGN,   value: 1000 },
 
+  // ── Failed delivery: every deadline is a row, not a constant ───────────
+  // These decide when a parcel escalates, when it starts costing storage
+  // and when it is treated as abandoned. Policy moves, so they live here.
+  { key: 'sender_response_window_minutes', name: 'Sender Response Window (minutes)',
+    description: 'How long a rider waits on the sender after a failed attempt before it escalates to support. Value is MINUTES, not naira.',
+    category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 15 },
+  { key: 'admin_redirect_timeout_minutes', name: 'Admin Redirect Timeout (minutes)',
+    description: 'If support does not answer an escalated failed delivery within this many minutes, the parcel auto-reroutes to the nearest partner counter. Value is MINUTES.',
+    category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 30 },
+  { key: 'storage_free_hours',          name: 'Free Storage Window (hours)',
+    description: 'Hours a parcel may sit at a counter before storage starts accruing. Value is HOURS, not naira.',
+    category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 24 },
+  { key: 'storage_max_days',            name: 'Abandonment Threshold (days)',
+    description: 'Days after which an uncollected parcel is treated as abandoned and may be disposed of. Value is DAYS, not naira.',
+    category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 7 },
+  { key: 'perishable_max_hours',        name: 'Perishable Ceiling (hours)',
+    description: 'Food and other perishables cannot be stored. Hours from a failed attempt to disposal for hot/cold food categories. Value is HOURS.',
+    category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 3 },
+  { key: 'driver_failed_trip_base_ngn', name: 'Failed-Trip Driver Compensation',
+    description: 'Flat amount a rider is paid for a trip that could not complete, on top of fuel for the distance actually ridden. The rider made the trip whoever was at fault.',
+    category: FeeCategory.DRIVER_FEE,   unit: FeeUnit.FLAT_NGN,   value: 200 },
+  { key: 'cancel_processing_pct',       name: 'Cancellation Processing Cost (%)',
+    description: 'Card processing already sunk on a cancelled booking, withheld so a cancellation costs SEIRS nothing. Set to 0 if the processor refunds their fee. A row, not a constant, because processor policy changes.',
+    category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.PERCENT,    value: 1.4 },
+
   // ── Subscriptions ──────────────────────────────────────────────────────
   { key: 'seirs_plus_subscription',     name: 'SEIRS Plus (customer)',
     description: 'Customer monthly subscription - free booking fee, priority dispatch, 5% delivery discount.',

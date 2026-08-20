@@ -183,6 +183,28 @@ export class Delivery {
   @Column({ type: 'text', nullable: true })
   disputePhotoUrl: string | null;
 
+  /**
+   * Where the rider actually was when this job was assigned to them.
+   *
+   * Nothing recorded this, so a rider claiming "I rode 15km to reach the
+   * pickup" could not be checked against anything. Any compensation that
+   * scales with distance ridden, and every dispute about a wasted trip,
+   * needs a number that was written before the argument started.
+   *
+   * Captured from the match itself: the dispatcher already knows the
+   * rider's position and its distance to the pickup at the moment it
+   * chooses them.
+   */
+  @Column({ type: 'double precision', nullable: true })
+  driverAcceptedLat: number | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  driverAcceptedLng: number | null;
+
+  /** Straight-line km from the rider to the pickup at assignment. */
+  @Column({ type: 'double precision', nullable: true })
+  driverAcceptedDistanceKm: number | null;
+
   // How the sender wants the receiver verified: 'name' (driver asks the
   // first name and types it), 'code' (emailed to the SENDER to forward),
   // 'id' (physical ID check). High-value packages ignore 'name'.
