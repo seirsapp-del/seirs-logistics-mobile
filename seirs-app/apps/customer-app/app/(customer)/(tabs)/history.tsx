@@ -82,15 +82,37 @@ export default function HistoryScreen() {
   const [trips, setTrips]         = useState<Trip[]>([]);
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [page,        setPage]        = useState(1);
+  const [hasMore,     setHasMore]     = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = useCallback(async () => {
+  const PAGE_SIZE = 20;
+
+  // The screen used to ask for one page of 50 and ignore the `pages` the API
+  // already returns, so a customer with more than 50 bookings could not reach
+  // the older ones at all. The business Deliveries tab has paged since its
+  // rebuild; this is the same behaviour on this side.
+  const load = useCallback(async (p = 1, append = false) => {
     try {
-      const res = await deliveriesApi.myDeliveries(1, 50);
-      setTrips((res.items ?? []).map(toTrip));
+      const res = await deliveriesApi.myDeliveries(p, PAGE_SIZE);
+      const rows = (res.items ?? []).map(toTrip);
+      setTrips(prev => (append ? [...prev, ...rows] : rows));
+      setPage(p);
+      const pages = Number((res as any)?.pages ?? 0);
+      // Fall back to a short-page check so a missing field cannot strand it.
+      setHasMore(pages ? p < pages : rows.length === PAGE_SIZE);
     } catch {
-      setTrips([]);
+      if (!append) setTrips([]);
+      setHasMore(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    await load(page + 1, true);
+    setLoadingMore(false);
+  }, [loadingMore, hasMore, page, load]);
 
   useEffect(() => {
     (async () => { await load(); setLoading(false); })();
@@ -149,6 +171,11 @@ export default function HistoryScreen() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={loadingMore ? (
+          <View style={styles.empty}><ActivityIndicator color={theme.primary} /></View>
+        ) : null}
         ListEmptyComponent={
           loading ? (
             <View style={styles.empty}><ActivityIndicator color={theme.primary} /></View>
