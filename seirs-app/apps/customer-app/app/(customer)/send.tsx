@@ -14,11 +14,12 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { deliveriesApi, uploadApi, mapsApi, feesApi, configApi } from '@/services/api';
+import { deliveriesApi, uploadApi, mapsApi, feesApi, configApi, pricingApi } from '@/services/api';
 import type { ServiceCategory } from '@/services/api';
 import { useSendDraftStore } from '@/store/useSendDraftStore';
 import { type PickedAddress } from '@/components/AddressPicker';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
+import { useMultiStopDirections } from '@/components/useMultiStopDirections';
 import { DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { Illustration } from '@/components/Illustration';
 import {
@@ -80,6 +81,42 @@ type PaymentId = typeof PAYMENT_METHODS[number]['id'];
 
 // 5 steps total: Address + Schedule are combined ("when & where" in one screen).
 // Labels resolved via t(`send.step${cap}`) at render.
+/**
+ * One package in the run. The business app has booked runs as a list of
+ * these since its rebuild; the customer app carried a single implicit
+ * package spread across a dozen useState calls, which is why it could
+ * never offer "add another".
+ */
+export interface PackageDraft {
+  photos:        string[];
+  description:   string;
+  category:      CategoryId | null;
+  weightKg:      string;
+  receiverFirst: string;
+  receiverLast:  string;
+  receiverPhone: string;
+  destMode:      'address' | 'store';
+  dropoff:       PickedAddress | null;
+  dropoffQuery:  string;
+  fallbackPref:  'hand_only' | 'neighbour' | 'gate' | 'store';
+  neighbourName: string;
+  declaredValue: string;
+  instructions:  string;
+}
+
+export const emptyPackage = (): PackageDraft => ({
+  photos: [], description: '', category: null, weightKg: '',
+  receiverFirst: '', receiverLast: '', receiverPhone: '',
+  destMode: 'address', dropoff: null, dropoffQuery: '',
+  fallbackPref: 'hand_only', neighbourName: '', declaredValue: '',
+  instructions: '',
+});
+
+// Hard ceiling on one run. Vehicle capacity is the real limit and is
+// enforced server-side from the Fee Catalogue; this just stops a runaway
+// form. Same number the backend DTO caps at.
+const MAX_PACKAGES = 20;
+
 const STEPS = ['Package', 'Pickup', 'Vehicle', 'Review'] as const;
 const STEP_KEYS = ['stepPackage', 'stepAddress', 'stepVehicle', 'stepReview'] as const;
 
@@ -151,7 +188,13 @@ function calcFare(
   return calcPackageFare(vid, distKm, kg, opts);
 }
 
-type Field = 'pickup' | 'dropoff';
+// 'pickup' is the run's single collection point. Each package has its
+// own destination, so a focused destination field is identified by index:
+// 'pkg:0', 'pkg:1'. Business encodes the same idea as { kind:'pkg', idx }.
+type Field = 'pickup' | `pkg:${number}`;
+
+const pkgIndexOf = (f: Field | null): number | null =>
+  typeof f === 'string' && f.startsWith('pkg:') ? Number(f.slice(4)) : null;
 interface Prediction { place_id: string; main_text: string; secondary_text: string }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -163,21 +206,26 @@ export default function SendScreen() {
   const insets = useSafeAreaInsets();
   const { t }  = useTranslation();
   const [step,        setStep]        = useState(0);
-  const [photos,      setPhotos]      = useState<string[]>([]);
-  const [description, setDescription] = useState('');
-  const [category,    setCategory]    = useState<CategoryId | null>(null);
-  const [weightKg,    setWeightKg]    = useState('');
+  // The run is a list of packages. Index 0 is the first card; "add another
+  // package" appends. Read-only aliases for index 0 are declared just below
+  // so the validation, pricing and payload code keeps reading the same
+  // names it always did.
+  const [packages, setPackages] = useState<PackageDraft[]>([emptyPackage()]);
+  const updatePkg = useCallback((i: number, patch: Partial<PackageDraft>) => {
+    setPackages(ps => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  }, []);
+  const addPackage = useCallback(() => {
+    setPackages(ps => [...ps, emptyPackage()]);
+  }, []);
+  const removePackage = useCallback((i: number) => {
+    setPackages(ps => (ps.length <= 1 ? ps : ps.filter((_, j) => j !== i)));
+  }, []);
   // Free-text instructions for the driver ("call at gate", "security
   // code 4231"). Auto-posted into the chat as a system message when a
   // driver is assigned so it is impossible to miss.
-  const [instructions, setInstructions] = useState('');
   // Sender-declared package value (optional). At/above the catalogue
   // high-value threshold the driver must ID-verify the recipient.
-  const [declaredValue, setDeclaredValue] = useState('');
   // Receiver system (founder 2026-08-11): who collects + fallback plan.
-  const [receiverFirst,  setReceiverFirst]  = useState('');
-  const [receiverLast,   setReceiverLast]   = useState('');
-  const [receiverPhone,  setReceiverPhone]  = useState('');
   // Above this declared value the recipient must show physical ID, and
   // gate/neighbour drop-off is refused. The number is policy, so it
   // comes from the Fee Catalogue (high_value_threshold_ngn) rather
@@ -196,11 +244,7 @@ export default function SendScreen() {
   const hydrated = useRef(false);
   // Where is it going? Business asks this per package on step 1
   // (destinationMode) instead of hiding store drop behind a banner.
-  const [destMode,       setDestMode]       = useState<'address' | 'store'>('address');
-  const [fallbackPref,   setFallbackPref]   = useState<'hand_only' | 'neighbour' | 'gate' | 'store'>('hand_only');
-  const [neighbourName,  setNeighbourName]  = useState('');
   const [pickup,      setPickup]      = useState<PickedAddress | null>(null);
-  const [dropoff,     setDropoff]     = useState<PickedAddress | null>(null);
   const [vehicleId,   setVehicleId]   = useState<VehicleId>('motorcycle');
   const [scheduleNow,   setScheduleNow]   = useState(true);
   // ISO date string ('YYYY-MM-DD'): driven by the inline calendar.
@@ -256,7 +300,25 @@ export default function SendScreen() {
 
   // Inline autocomplete state for the address step.
   const [pickupQuery,  setPickupQuery]  = useState('');
-  const [dropoffQuery, setDropoffQuery] = useState('');
+
+  // Index-0 aliases. Everything outside the package cards (validation,
+  // fare, review summary, booking payload) speaks about "the package",
+  // and for a single-package run that is packages[0].
+  const pkg0          = packages[0] ?? emptyPackage();
+  const photos        = pkg0.photos;
+  const description   = pkg0.description;
+  const category      = pkg0.category;
+  const weightKg      = pkg0.weightKg;
+  const instructions  = pkg0.instructions;
+  const declaredValue = pkg0.declaredValue;
+  const receiverFirst = pkg0.receiverFirst;
+  const receiverLast  = pkg0.receiverLast;
+  const receiverPhone = pkg0.receiverPhone;
+  const destMode      = pkg0.destMode;
+  const fallbackPref  = pkg0.fallbackPref;
+  const neighbourName = pkg0.neighbourName;
+  const dropoff       = pkg0.dropoff;
+  const dropoffQuery  = pkg0.dropoffQuery;
   const [activeField,  setActiveField]  = useState<Field | null>(null);
   const [predictions,  setPredictions]  = useState<Prediction[]>([]);
   const [searching,    setSearching]    = useState(false);
@@ -268,20 +330,30 @@ export default function SendScreen() {
     hydrated.current = true;
     if (!hasContent()) return;
     setStep(draft.step ?? 0);
-    setPhotos(draft.photos ?? []);
-    setDescription(draft.description ?? '');
-    setCategory((draft.category as CategoryId | null) ?? null);
-    setWeightKg(draft.weightKg ?? '');
-    setInstructions(draft.instructions ?? '');
-    setDeclaredValue(draft.declaredValue ?? '');
-    setReceiverFirst(draft.receiverFirst ?? '');
-    setReceiverLast(draft.receiverLast ?? '');
-    setReceiverPhone(draft.receiverPhone ?? '');
-    setDestMode(draft.destMode ?? 'address');
-    setFallbackPref(draft.fallbackPref ?? 'hand_only');
-    setNeighbourName(draft.neighbourName ?? '');
-    if (draft.pickup)  { setPickup(draft.pickup);   setPickupQuery(draft.pickupQuery ?? ''); }
-    if (draft.dropoff) { setDropoff(draft.dropoff); setDropoffQuery(draft.dropoffQuery ?? ''); }
+    // Drafts saved before multi-package shipped carry flat fields; fall
+    // back to composing a single package from them so an in-flight draft
+    // is not thrown away by the upgrade.
+    const saved = Array.isArray((draft as any).packages) && (draft as any).packages.length
+      ? ((draft as any).packages as PackageDraft[])
+      : [{
+          ...emptyPackage(),
+          photos:        draft.photos ?? [],
+          description:   draft.description ?? '',
+          category:      (draft.category as CategoryId | null) ?? null,
+          weightKg:      draft.weightKg ?? '',
+          instructions:  draft.instructions ?? '',
+          declaredValue: draft.declaredValue ?? '',
+          receiverFirst: draft.receiverFirst ?? '',
+          receiverLast:  draft.receiverLast ?? '',
+          receiverPhone: (draft as any).receiverPhone ?? '',
+          destMode:      draft.destMode ?? 'address',
+          fallbackPref:  draft.fallbackPref ?? 'hand_only',
+          neighbourName: draft.neighbourName ?? '',
+          dropoff:       draft.dropoff ?? null,
+          dropoffQuery:  draft.dropoffQuery ?? '',
+        }];
+    setPackages(saved);
+    if (draft.pickup) { setPickup(draft.pickup); setPickupQuery(draft.pickupQuery ?? ''); }
     if (draft.vehicleId)     setVehicleId(draft.vehicleId as VehicleId);
     if (draft.scheduledDate) setScheduledDate(draft.scheduledDate);
     setScheduleNow(draft.scheduleNow ?? true);
@@ -296,17 +368,12 @@ export default function SendScreen() {
   useEffect(() => {
     if (!hydrated.current) return;
     patchDraft({
-      step, photos, description, category, weightKg, instructions,
-      declaredValue, receiverFirst, receiverLast, receiverPhone,
-      destMode, fallbackPref, neighbourName,
-      pickup, dropoff, pickupQuery, dropoffQuery,
+      step, packages,
+      pickup, pickupQuery,
       vehicleId, scheduleNow, scheduledDate, scheduledHour, paymentId,
-    });
+    } as any);
   }, [
-    step, photos, description, category, weightKg, instructions,
-    declaredValue, receiverFirst, receiverLast, receiverPhone,
-    destMode, fallbackPref, neighbourName,
-    pickup, dropoff, pickupQuery, dropoffQuery,
+    step, packages, pickup, pickupQuery,
     vehicleId, scheduleNow, scheduledDate, scheduledHour, paymentId,
     patchDraft,
   ]);
@@ -342,7 +409,18 @@ export default function SendScreen() {
    * quotes a price for a trip nobody described. 0 means the quote shows
    * the base fare until the route arrives.
    */
-  const distKmRoute = distanceMeters != null ? distanceMeters / 1000 : 0;
+  // A run's distance is pickup -> package 1 -> package 2 -> ..., which the
+  // two-point hook above cannot express. Same hook the business app uses.
+  const multi = useMultiStopDirections(
+    packages.length > 1 && pickup ? { latitude: pickup.lat, longitude: pickup.lng } : null,
+    packages.length > 1
+      ? packages.filter(pk => pk.dropoff).map(pk => ({ latitude: pk.dropoff!.lat, longitude: pk.dropoff!.lng }))
+      : [],
+  );
+
+  const distKmRoute = packages.length > 1
+    ? (multi.distanceMeters != null ? multi.distanceMeters / 1000 : 0)
+    : (distanceMeters != null ? distanceMeters / 1000 : 0);
   const kg   = parseFloat(weightKg) || 0;
   const codAmountNgn = codEnabled ? (Number(codAmount) || 0) : 0;
   const pickupCoords  = pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : null;
@@ -353,10 +431,46 @@ export default function SendScreen() {
     ? ((getActiveRateCard().categories as any)?.[category]?.forbiddenVehicles ?? [])
     : [];
 
-  const fare = calcFare(vehicleId, distKmRoute, kg, {
+  const localFare = calcFare(vehicleId, distKmRoute, kg, {
     categoryId: category, codAmountNgn,
     pickupCoords, dropoffCoords,
   });
+
+  // calcFare prices a single package from the bundled rate card. A run of
+  // several packages has to be priced by the server, which knows the live
+  // card, the per-category surcharges and the multi-stop discount.
+  const [runQuote, setRunQuote] = useState<any>(null);
+  const [runQuoteError, setRunQuoteError] = useState<string | null>(null);
+  useEffect(() => {
+    if (packages.length < 2) { setRunQuote(null); setRunQuoteError(null); return; }
+    const pkgs = packages.map(pk => ({
+      categoryCode: pk.category ?? 'standard_parcel',
+      weightKg:     parseFloat(pk.weightKg) || 0,
+    }));
+    let cancelled = false;
+    setRunQuote(null);
+    setRunQuoteError(null);
+    pricingApi.quote({
+      vehicleType:  vehicleId,
+      categoryCode: pkgs[0]?.categoryCode ?? 'standard_parcel',
+      km:           distKmRoute,
+      stopCount:    packages.length,
+      weightKg:     pkgs.reduce((a, b) => a + b.weightKg, 0),
+      estimatedDwellMinutes: packages.length * 4,
+      packages:     pkgs,
+      pickupCoords: pickup ? { latitude: pickup.lat, longitude: pickup.lng } : undefined,
+    } as any)
+      .then((q: any) => { if (!cancelled) setRunQuote(q); })
+      .catch((e: any) => { if (!cancelled) setRunQuoteError(e?.message ?? 'Could not price this run.'); });
+    return () => { cancelled = true; };
+  }, [packages, vehicleId, distKmRoute, pickup]);
+
+  // Never silently fall back to the single-package number for a run: a
+  // wrong total is worse than an honest "not priced yet".
+  const runTotal = Number(runQuote?.customer?.total ?? 0);
+  const fare = packages.length > 1
+    ? { ...localFare, total: runTotal }
+    : localFare;
 
   // Center on user's GPS once on mount.
   useEffect(() => {
@@ -413,7 +527,8 @@ export default function SendScreen() {
   }, []);
 
   const onChangeQuery = (field: Field, text: string) => {
-    if (field === 'pickup') setPickupQuery(text); else setDropoffQuery(text);
+    const pi = pkgIndexOf(field);
+    if (pi === null) setPickupQuery(text); else updatePkg(pi, { dropoffQuery: text });
     setActiveField(field);
     if (debounce.current) clearTimeout(debounce.current);
     debounce.current = setTimeout(() => fetchPredictions(text), 300);
@@ -429,8 +544,9 @@ export default function SendScreen() {
         address: json.result.formatted_address ?? `${p.main_text}, ${p.secondary_text}`,
         lat: loc.lat, lng: loc.lng,
       };
-      if (activeField === 'pickup') { setPickup(picked); setPickupQuery(picked.address); }
-      else                          { setDropoff(picked); setDropoffQuery(picked.address); }
+      const pi = pkgIndexOf(activeField);
+      if (pi === null) { setPickup(picked); setPickupQuery(picked.address); }
+      else             { updatePkg(pi, { dropoff: picked, dropoffQuery: picked.address }); }
       setPredictions([]);
       setActiveField(null);
       Keyboard.dismiss();
@@ -450,8 +566,9 @@ export default function SendScreen() {
         address = j.results?.[0]?.formatted_address ?? address;
       } catch {}
       const picked: PickedAddress = { address, lat, lng };
-      if (field === 'pickup') { setPickup(picked); setPickupQuery(address); }
-      else                    { setDropoff(picked); setDropoffQuery(address); }
+      const pi = pkgIndexOf(field);
+      if (pi === null) { setPickup(picked); setPickupQuery(address); }
+      else             { updatePkg(pi, { dropoff: picked, dropoffQuery: address }); }
       setPredictions([]);
       setActiveField(null);
       Keyboard.dismiss();
@@ -459,14 +576,15 @@ export default function SendScreen() {
   };
 
   const clearField = (field: Field) => {
-    if (field === 'pickup') { setPickup(null);  setPickupQuery(''); }
-    else                    { setDropoff(null); setDropoffQuery(''); }
+    const pi = pkgIndexOf(field);
+    if (pi === null) { setPickup(null); setPickupQuery(''); }
+    else             { updatePkg(pi, { dropoff: null, dropoffQuery: '' }); }
     setPredictions([]);
   };
 
   // ── Photo picker ─────────────────────────────────────────────────────────
-  const addPhoto = async () => {
-    if (photos.length >= 5) return;
+  const addPhoto = async (pkgIndex = 0) => {
+    if ((packages[pkgIndex]?.photos.length ?? 0) >= 5) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== 'granted') {
       Alert.alert(t('send.alertPermissionTitle'), t('send.alertPermissionBody'));
@@ -474,12 +592,25 @@ export default function SendScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
     if (!result.canceled && result.assets[0]) {
-      setPhotos(p => [...p, result.assets[0].uri]);
+      updatePkg(pkgIndex, {
+        photos: [...(packages[pkgIndex]?.photos ?? []), result.assets[0].uri],
+      });
     }
   };
 
   // ── Step navigation ──────────────────────────────────────────────────────
   const next = () => {
+    if (step === 0) {
+      const bad = packages.findIndex(pk =>
+        pk.photos.length === 0 || !pk.category || !(parseFloat(pk.weightKg) > 0) ||
+        !pk.receiverFirst.trim() || (pk.destMode === 'address' && !pk.dropoff));
+      if (bad > 0) {
+        failField('photos', t('send.errPackageIncomplete', {
+          defaultValue: `Package ${bad + 1} is missing something: each package needs a photo, category, weight, receiver and destination.`,
+        }));
+        return;
+      }
+    }
     if (step === 0 && photos.length === 0) { failField('photos',   t('send.errPhotoMissing'));    return; }
     if (step === 0 && !category)           { failField('category', t('send.errCategoryMissing')); return; }
     // Weight is REQUIRED (founder 2026-08-12): the driver picks a
@@ -521,14 +652,29 @@ export default function SendScreen() {
   };
 
   const handleBook = async () => {
+    // A run is priced by the server. If that quote has not arrived, or it
+    // failed, refuse to book rather than send a booking whose total is 0.
+    if (packages.length > 1 && !(runTotal > 0)) {
+      setError(runQuoteError ?? t('send.errRunNotPriced', {
+        defaultValue: 'Still working out the price for this run. Give it a moment and try again.',
+      }));
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      const urls: string[] = [];
-      for (const uri of photos) {
-        const { url } = await uploadApi.file(uri);
-        urls.push(url);
+      // Upload per package, so each DeliveryStop carries its own photos
+      // rather than the whole run sharing package 1's.
+      const uploaded: string[][] = [];
+      for (const pk of packages) {
+        const forThis: string[] = [];
+        for (const uri of pk.photos) {
+          const { url } = await uploadApi.file(uri);
+          forThis.push(url);
+        }
+        uploaded.push(forThis);
       }
+      const urls = uploaded[0] ?? [];
       await deliveriesApi.create({
         pickupAddress:   pickup?.address ?? '',
         dropoffAddress:  dropoff?.address ?? '',
@@ -554,6 +700,31 @@ export default function SendScreen() {
         receiverPhone:     receiverPhone.trim() || undefined,
         fallbackPref,
         fallbackNeighbourName: fallbackPref === 'neighbour' ? (neighbourName.trim() || undefined) : undefined,
+        // One run, one driver, one payment, one DeliveryStop per package,
+        // each with its own public tracking code. Omitted entirely for a
+        // single package so that path is byte-identical to before.
+        ...(packages.length > 1
+          ? {
+              stops: packages.map((pk, i) => ({
+                address:        pk.dropoff?.address ?? pk.dropoffQuery,
+                lat:            pk.dropoff?.lat ?? 0,
+                lng:            pk.dropoff?.lng ?? 0,
+                recipientName:  [pk.receiverFirst, pk.receiverLast].filter(Boolean).join(' ').trim(),
+                recipientPhone: pk.receiverPhone.trim(),
+                receiverFirstName: pk.receiverFirst.trim() || undefined,
+                receiverLastName:  pk.receiverLast.trim()  || undefined,
+                packageDescription: pk.description.trim() || undefined,
+                categoryCode:   pk.category ?? undefined,
+                weightKg:       parseFloat(pk.weightKg) || undefined,
+                declaredValueNgn: Number(pk.declaredValue) > 0 ? Number(pk.declaredValue) : undefined,
+                fallbackPref:   pk.fallbackPref,
+                fallbackNeighbourName: pk.fallbackPref === 'neighbour'
+                  ? (pk.neighbourName.trim() || undefined) : undefined,
+                packagePhotoUrls: uploaded[i]?.length ? uploaded[i] : undefined,
+                notes:          pk.instructions.trim() || undefined,
+              })),
+            }
+          : {}),
       } as any);
       clearDraft();
       router.replace('/(customer)/history' as any);
@@ -660,11 +831,24 @@ export default function SendScreen() {
                   (styles.pkgCard there). Before this the fields floated
                   loose on the page, which is the single biggest reason the
                   two flows did not read as the same product. */}
-              <View style={[styles.pkgCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              {packages.map((pk, pkgIndex) => {
+              // Shadow the index-0 aliases with THIS package's values, so the
+              // card body below reads the same names whichever card it is.
+              const { photos, description, category, weightKg, receiverFirst,
+                      receiverLast, receiverPhone, destMode, dropoff,
+                      dropoffQuery, fallbackPref, neighbourName, declaredValue,
+                      instructions } = pk;
+              return (
+              <View key={pkgIndex} style={[styles.pkgCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <View style={styles.pkgHead}>
                   <Text style={[styles.pkgTitle, { color: theme.text }]}>
-                    {t('send.packageCardTitle', { defaultValue: 'Package 1' })}
+                    {t('send.packageN', { n: pkgIndex + 1, defaultValue: `Package ${pkgIndex + 1}` })}
                   </Text>
+                  {packages.length > 1 && (
+                    <Pressable onPress={() => removePackage(pkgIndex)} hitSlop={8}>
+                      <X size={16} color={theme.error} strokeWidth={2.5} />
+                    </Pressable>
+                  )}
                 </View>
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
@@ -677,7 +861,7 @@ export default function SendScreen() {
                     <Image source={{ uri }} style={styles.photo} />
                     <Pressable
                       style={[styles.photoRemove, { backgroundColor: theme.error }]}
-                      onPress={() => setPhotos(p => p.filter((_, j) => j !== i))}
+                      onPress={() => updatePkg(pkgIndex, { photos: photos.filter((_, j) => j !== i) })}
                     >
                       <X size={12} color="#fff" strokeWidth={3} />
                     </Pressable>
@@ -686,7 +870,7 @@ export default function SendScreen() {
                 {photos.length < 5 && (
                   <Pressable
                     style={[styles.photoAdd, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}
-                    onPress={addPhoto}
+                    onPress={() => addPhoto(pkgIndex)}
                   >
                     <Camera size={24} color={theme.accent} strokeWidth={1.75} />
                     <Text style={[styles.photoAddText, { color: theme.textSecond }]}>{t('send.addPhoto')}</Text>
@@ -700,7 +884,7 @@ export default function SendScreen() {
                 placeholder={t('send.descPlaceholder')}
                 placeholderTextColor={theme.textThird}
                 value={description}
-                onChangeText={setDescription}
+                onChangeText={v => updatePkg(pkgIndex, { description: v })}
               />
 
               <View onLayout={onFieldLayout('weight')}>
@@ -713,7 +897,7 @@ export default function SendScreen() {
                   placeholderTextColor={theme.textThird}
                   keyboardType="decimal-pad"
                   value={weightKg}
-                  onChangeText={v => { setWeightKg(v); if (invalidField === 'weight') { setInvalidField(null); setError(''); } }}
+                  onChangeText={v => { updatePkg(pkgIndex, { weightKg: v }); if (invalidField === 'weight') { setInvalidField(null); setError(''); } }}
                 />
                 {invalidField === 'weight' && (
                   <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
@@ -737,7 +921,7 @@ export default function SendScreen() {
                   <Pressable
                     key={cat.id}
                     style={[styles.categoryChip, highlight(category === cat.id)]}
-                    onPress={() => setCategory(cat.id)}
+                    onPress={() => updatePkg(pkgIndex, { category: cat.id })}
                   >
                     <Text style={[styles.categoryText, { color: category === cat.id ? theme.accent : theme.text }]}>{cat.label}</Text>
                   </Pressable>
@@ -754,14 +938,14 @@ export default function SendScreen() {
                     placeholder={t('send.receiverFirst', { defaultValue: 'First name' })}
                     placeholderTextColor={theme.textThird}
                     value={receiverFirst}
-                    onChangeText={v => { setReceiverFirst(v); if (invalidField === 'receiver') { setInvalidField(null); setError(''); } }}
+                    onChangeText={v => { updatePkg(pkgIndex, { receiverFirst: v }); if (invalidField === 'receiver') { setInvalidField(null); setError(''); } }}
                   />
                   <TextInput
                     style={[styles.input, { flex: 1, backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
                     placeholder={t('send.receiverLast', { defaultValue: 'Last name' })}
                     placeholderTextColor={theme.textThird}
                     value={receiverLast}
-                    onChangeText={setReceiverLast}
+                    onChangeText={v => updatePkg(pkgIndex, { receiverLast: v })}
                   />
                 </View>
                 {invalidField === 'receiver' && (
@@ -777,7 +961,7 @@ export default function SendScreen() {
                 placeholderTextColor={theme.textThird}
                 keyboardType="phone-pad"
                 value={receiverPhone}
-                onChangeText={setReceiverPhone}
+                onChangeText={v => updatePkg(pkgIndex, { receiverPhone: v })}
               />
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
@@ -797,7 +981,7 @@ export default function SendScreen() {
                         borderColor:     active ? theme.primary : theme.border,
                       }]}
                       onPress={() => {
-                        setDestMode(opt.key);
+                        updatePkg(pkgIndex, { destMode: opt.key });
                         // Store drop is a different product (drop code + QR at
                         // the counter), so it hands off to that flow rather
                         // than pretending to handle it here.
@@ -817,15 +1001,15 @@ export default function SendScreen() {
                   <TextInput
                     style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: fieldBorder('dropoff'), borderWidth: invalidField === 'dropoff' ? 2 : 1, color: theme.text }]}
                     value={dropoffQuery}
-                    onChangeText={(v) => onChangeQuery('dropoff', v)}
-                    onFocus={() => setActiveField('dropoff')}
+                    onChangeText={(v) => onChangeQuery(`pkg:${pkgIndex}`, v)}
+                    onFocus={() => setActiveField(`pkg:${pkgIndex}`)}
                     placeholder={t('send.destAddressPlaceholder', { defaultValue: 'Street, area, city' })}
                     placeholderTextColor={theme.textThird}
                   />
                   {invalidField === 'dropoff' && (
                     <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
                   )}
-                  {activeField === 'dropoff' && predictions.length > 0 && (
+                  {activeField === `pkg:${pkgIndex}` && predictions.length > 0 && (
                     <View style={styles.suggestList}>
                       {predictions.map(pr => (
                         <Pressable
@@ -860,7 +1044,7 @@ export default function SendScreen() {
                   const active = fallbackPref === opt.key;
                   const hv = Number(declaredValue) > 0 && Number(declaredValue) >= highValueNgn;
                   const blocked = hv && (opt.key === 'gate' || opt.key === 'neighbour');
-                  if (blocked && active) setTimeout(() => setFallbackPref('hand_only'), 0);
+                  if (blocked && active) setTimeout(() => updatePkg(pkgIndex, { fallbackPref: 'hand_only' }), 0);
                   return (
                     <Pressable
                       key={opt.key}
@@ -870,7 +1054,7 @@ export default function SendScreen() {
                         borderColor: active ? theme.accent : theme.border,
                         opacity: blocked ? 0.4 : 1,
                       }]}
-                      onPress={() => setFallbackPref(opt.key)}
+                      onPress={() => updatePkg(pkgIndex, { fallbackPref: opt.key })}
                     >
                       <Text style={[styles.timeChipText, { color: active ? '#fff' : theme.text }]}>{opt.label}</Text>
                     </Pressable>
@@ -888,7 +1072,7 @@ export default function SendScreen() {
                   placeholder={t('send.neighbourName', { defaultValue: "Neighbour or security's name" })}
                   placeholderTextColor={theme.textThird}
                   value={neighbourName}
-                  onChangeText={setNeighbourName}
+                  onChangeText={v => updatePkg(pkgIndex, { neighbourName: v })}
                 />
               )}
 
@@ -901,7 +1085,7 @@ export default function SendScreen() {
                 placeholderTextColor={theme.textThird}
                 keyboardType="number-pad"
                 value={declaredValue}
-                onChangeText={setDeclaredValue}
+                onChangeText={v => updatePkg(pkgIndex, { declaredValue: v })}
               />
               <Text style={{ fontSize: FontSize.xs, color: theme.textThird, marginTop: -Spacing.xs, marginBottom: Spacing.sm }}>
                 {t('send.declaredValueNote', { defaultValue: 'High-value packages get ID-verified handoff.' })}
@@ -915,11 +1099,42 @@ export default function SendScreen() {
                 placeholder={t('send.instructionsPlaceholder', { defaultValue: 'e.g. Call when you reach the gate. Ask for security.' })}
                 placeholderTextColor={theme.textThird}
                 value={instructions}
-                onChangeText={setInstructions}
+                onChangeText={v => updatePkg(pkgIndex, { instructions: v })}
                 multiline
                 maxLength={500}
               />
               </View>
+              );
+              })}
+
+              {/* One run, one driver, one payment, a tracking code per
+                  package. Business has booked this way since its rebuild;
+                  the customer app could only ever send one thing. */}
+              {packages.length < MAX_PACKAGES ? (
+                <>
+                  <Pressable
+                    style={[styles.addPkgBtn, { borderColor: theme.accent, backgroundColor: theme.accent + '10' }]}
+                    onPress={addPackage}
+                  >
+                    <Text style={[styles.addPkgText, { color: theme.accent }]}>
+                      {t('send.addAnotherPackage', { defaultValue: '+  Add another package' })}
+                    </Text>
+                  </Pressable>
+                  <Text style={{ fontSize: FontSize.xs, color: theme.textThird }}>
+                    {t('send.packagesSoFar', {
+                      count: packages.length,
+                      defaultValue: `${packages.length} package${packages.length === 1 ? '' : 's'} so far. Each one gets its own tracking code, and you pay once.`,
+                    })}
+                  </Text>
+                </>
+              ) : (
+                <Text style={{ fontSize: FontSize.xs, color: theme.textSecond }}>
+                  {t('send.packagesCapped', {
+                    n: MAX_PACKAGES,
+                    defaultValue: `${MAX_PACKAGES} packages is the most one run can carry. Book the rest as a second run.`,
+                  })}
+                </Text>
+              )}
             </View>
           )}
 
@@ -1326,6 +1541,9 @@ const styles = StyleSheet.create({
   destRow:      { flexDirection: 'row', gap: 8, marginBottom: 8 },
   destBtn:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
   destTxt:      { fontSize: 12.5, fontWeight: '600' as const },
+  addPkgBtn:    { borderWidth: 1, borderStyle: 'dashed' as const, borderRadius: 14,
+                  paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
+  addPkgText:   { fontSize: 14, fontWeight: '700' as const },
   stepHero:        { alignItems: 'center', gap: 8, marginBottom: Spacing.md },
   stepHeroCaption: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, textAlign: 'center' },
 

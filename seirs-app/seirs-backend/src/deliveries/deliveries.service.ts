@@ -420,6 +420,69 @@ export class DeliveriesService {
 
     const saved = await this.repo.save(delivery);
 
+    // Multi-package run. One driver, one pickup, one payment, and a
+    // DeliveryStop row per package so each receiver gets a public
+    // tracking code for THEIR parcel and cannot see the rest of the run.
+    // Same rows and the same code family the business path writes, so
+    // /track, the driver app and admin all read them without changes.
+    if (Array.isArray(dto.stops) && dto.stops.length > 0) {
+      const stopRepo = this.repo.manager.getRepository(DeliveryStop);
+
+      const used = new Set<string>();
+      const nextPackageCode = () => {
+        let c = generateTrackingCode();
+        while (used.has(c)) c = generateTrackingCode();
+        used.add(c);
+        return c;
+      };
+      const nextStopCode = () => 'STP-' + secureCode(8);
+
+      const rows = dto.stops.map((st, idx) => this.repo.manager.create(DeliveryStop, {
+        deliveryId:            saved.id,
+        sequenceOrder:         idx + 1,
+        stopCode:              nextStopCode(),
+        packageTrackingCode:   nextPackageCode(),
+        packagePhotoUrls:      st.packagePhotoUrls ?? null,
+        packageDescription:    st.packageDescription ?? null,
+        categoryCode:          st.categoryCode ?? dto.packageCategory ?? null,
+        weightKg:              st.weightKg ?? null,
+        receiverFirstName:     st.receiverFirstName ?? null,
+        receiverLastName:      st.receiverLastName ?? null,
+        declaredValueNgn:      st.declaredValueNgn ?? null,
+        fallbackPref:          st.fallbackPref ?? null,
+        fallbackNeighbourName: st.fallbackNeighbourName ?? null,
+        address:               st.address,
+        lat:                   st.lat,
+        lng:                   st.lng,
+        recipientName:         st.recipientName,
+        recipientPhone:        st.recipientPhone,
+        notes:                 st.notes ?? null,
+        status:                DeliveryStopStatus.PENDING,
+      } as any));
+
+      // Codes are random, so at volume a clash with HISTORY (not just
+      // within this batch) is a real event. One indexed query catches it
+      // and the row regenerates before insert, so a partial unique index
+      // never fails the whole booking.
+      const codes = rows.map((r: any) => r.packageTrackingCode).filter(Boolean);
+      if (codes.length > 0) {
+        const clashes: Array<{ packageTrackingCode: string }> = await this.repo.manager.query(
+          `SELECT "packageTrackingCode" FROM delivery_stops WHERE "packageTrackingCode" = ANY($1)`,
+          [codes],
+        );
+        if (clashes.length > 0) {
+          const clashed = new Set(clashes.map(c => c.packageTrackingCode));
+          for (const r of rows as any[]) {
+            if (clashed.has(r.packageTrackingCode)) r.packageTrackingCode = nextPackageCode();
+          }
+        }
+      }
+
+      await stopRepo.save(rows);
+      (saved as any).isMultiStop = true;
+      await this.repo.save(saved);
+    }
+
     // Dispatch waits for MONEY, not just creation (2026-08-16): the fare
     // escrows via /payments/initiate (card webhook, wallet, COD), and
     // whichever path secures it calls kickDispatch. Before this gate a

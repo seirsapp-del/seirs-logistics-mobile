@@ -1,5 +1,62 @@
-import { IsBoolean, IsEnum, IsIn, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsEnum, IsIn, IsNumber, IsOptional, IsString, MaxLength, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { PackageSize, UrgencyLevel } from '../delivery.entity';
+
+/**
+ * One package inside a multi-package run.
+ *
+ * The business app has booked runs like this since its rebuild: one
+ * driver, one pickup, one payment, and a separate public tracking code
+ * per package so each receiver can follow their own parcel without
+ * seeing the rest of the run. This is the customer-side equivalent, and
+ * it writes the same DeliveryStop rows the business path writes.
+ */
+export class CreateDeliveryPackageDto {
+  @IsString()
+  address!: string;
+
+  @IsNumber()
+  lat!: number;
+
+  @IsNumber()
+  lng!: number;
+
+  @IsString()
+  recipientName!: string;
+
+  @IsString()
+  recipientPhone!: string;
+
+  @IsOptional() @IsString()
+  receiverFirstName?: string;
+
+  @IsOptional() @IsString()
+  receiverLastName?: string;
+
+  @IsOptional() @IsString()
+  packageDescription?: string;
+
+  @IsOptional() @IsString()
+  categoryCode?: string;
+
+  @IsOptional() @IsNumber()
+  weightKg?: number;
+
+  @IsOptional() @IsNumber()
+  declaredValueNgn?: number;
+
+  @IsOptional() @IsString()
+  fallbackPref?: string;
+
+  @IsOptional() @IsString()
+  fallbackNeighbourName?: string;
+
+  @IsOptional() @IsArray() @IsString({ each: true })
+  packagePhotoUrls?: string[];
+
+  @IsOptional() @IsString()
+  notes?: string;
+}
 
 export class CreateDeliveryDto {
   @IsString()
@@ -139,4 +196,21 @@ export class CreateDeliveryDto {
 
   @IsOptional() @IsString() @MaxLength(80)
   fallbackNeighbourName?: string;
+
+  /**
+   * Optional. When present the booking is a multi-package run: one
+   * driver, one payment, one DeliveryStop row per package, each with its
+   * own public tracking code. Absent means the ordinary single-package
+   * booking, so every existing caller is unaffected.
+   *
+   * Capped so one request cannot spawn an unbounded run; the vehicle
+   * capacity caps in the Fee Catalogue are the real limit and are applied
+   * in the service.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => CreateDeliveryPackageDto)
+  stops?: CreateDeliveryPackageDto[];
 }
