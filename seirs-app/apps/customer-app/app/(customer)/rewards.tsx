@@ -39,13 +39,27 @@ interface Redemption {
   desc:  string;
   cost:  number;
   icon:  keyof typeof Ionicons.glyphMap;
+  /**
+   * Whether redeeming this actually delivers anything.
+   *
+   * loyalty.service.ts only mutates the delivery price for the two
+   * naira-value rewards. Priority and insurance are, in the backend's
+   * own words, "recorded on the ledger but need dispatcher +
+   * insurance-partner wiring to actually deliver value". The app
+   * offered all four identically, so a customer could spend 300 real
+   * points on priority dispatch, get a success alert naming their
+   * tracking code, and receive nothing. Taking points for nothing is
+   * not a rounding error, so these stay visible but unredeemable until
+   * the wiring ships.
+   */
+  live: boolean;
 }
 
 const REDEMPTIONS: Redemption[] = [
-  { type: 'insurance',    label: '₦500 insurance cover',  desc: 'Insure a single delivery up to ₦50,000',            cost: 200,  icon: 'shield-checkmark-outline' },
-  { type: 'priority',     label: 'Priority dispatch',      desc: 'Skip the queue on your next booking',              cost: 300,  icon: 'flash-outline' },
-  { type: 'discount_500', label: '₦500 off',              desc: '₦500 discount on your next delivery',              cost: 500,  icon: 'pricetag-outline' },
-  { type: 'free_delivery',label: 'Free delivery',          desc: 'One free delivery up to ₦2,000',                   cost: 1000, icon: 'gift-outline' },
+  { type: 'insurance',    label: '₦500 insurance cover',  desc: 'Insure a single delivery up to ₦50,000',            cost: 200,  icon: 'shield-checkmark-outline', live: false },
+  { type: 'priority',     label: 'Priority dispatch',      desc: 'Skip the queue on your next booking',              cost: 300,  icon: 'flash-outline', live: false },
+  { type: 'discount_500', label: '₦500 off',              desc: '₦500 discount on your next delivery',              cost: 500,  icon: 'pricetag-outline', live: true },
+  { type: 'free_delivery',label: 'Free delivery',          desc: 'One free delivery up to ₦2,000',                   cost: 1000, icon: 'gift-outline', live: true },
 ];
 
 // Helpers
@@ -102,6 +116,7 @@ export default function RewardsScreen() {
 
   const handleRedeem = async (r: Redemption) => {
     if (points < r.cost) return;
+    if (!r.live) return;   // see Redemption.live
     // Rewards MUST be applied to a specific active delivery. If the user
     // has none, guide them to book one instead of silently deducting points.
     if (activeDeliveries.length === 0) {
@@ -229,7 +244,9 @@ export default function RewardsScreen() {
         {/* Redeem rewards: sorted cheapest first so users see something achievable */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Redeem your points</Text>
         {REDEMPTIONS.map(r => {
-          const canRedeem = points >= r.cost;
+          // A reward that delivers nothing cannot be redeemable, however
+          // many points the customer has. See Redemption.live.
+          const canRedeem = r.live && points >= r.cost;
           const busy      = redeemingType === r.type;
           return (
             <Pressable
@@ -251,6 +268,11 @@ export default function RewardsScreen() {
                 <View style={styles.rewardMeta}>
                   <Ionicons name="star" size={12} color="#FFBE0B" />
                   <Text style={[styles.rewardPoints, { color: theme.textSecond }]}>{r.cost.toLocaleString()} pts</Text>
+                  {!r.live && (
+                    <Text style={[styles.rewardPoints, { color: theme.textThird }]}>
+                      · Not available yet
+                    </Text>
+                  )}
                 </View>
               </View>
               {busy ? (
