@@ -464,16 +464,29 @@ export class DeliveriesService {
       // within this batch) is a real event. One indexed query catches it
       // and the row regenerates before insert, so a partial unique index
       // never fails the whole booking.
+      // Check BOTH tables. A customer single delivery's own trackingCode is
+      // also SRS-, so the package namespace overlaps it, and /track looks up
+      // delivery_stops FIRST: a package code that collided with an existing
+      // delivery's code would shadow that delivery and make it untrackable.
       const codes = rows.map((r: any) => r.packageTrackingCode).filter(Boolean);
       if (codes.length > 0) {
-        const clashes: Array<{ packageTrackingCode: string }> = await this.repo.manager.query(
-          `SELECT "packageTrackingCode" FROM delivery_stops WHERE "packageTrackingCode" = ANY($1)`,
-          [codes],
-        );
-        if (clashes.length > 0) {
-          const clashed = new Set(clashes.map(c => c.packageTrackingCode));
+        const [stopClashes, deliveryClashes]: [Array<{ c: string }>, Array<{ c: string }>] =
+          await Promise.all([
+            this.repo.manager.query(
+              `SELECT "packageTrackingCode" AS c FROM delivery_stops WHERE "packageTrackingCode" = ANY($1)`,
+              [codes],
+            ),
+            this.repo.manager.query(
+              `SELECT "trackingCode" AS c FROM deliveries WHERE "trackingCode" = ANY($1)`,
+              [codes],
+            ),
+          ]);
+        const clashed = new Set([...stopClashes, ...deliveryClashes].map(x => x.c));
+        if (clashed.size > 0) {
           for (const r of rows as any[]) {
-            if (clashed.has(r.packageTrackingCode)) r.packageTrackingCode = nextPackageCode();
+            while (clashed.has(r.packageTrackingCode)) {
+              r.packageTrackingCode = nextPackageCode();
+            }
           }
         }
       }
