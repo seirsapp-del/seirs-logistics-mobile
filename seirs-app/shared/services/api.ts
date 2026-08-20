@@ -128,6 +128,11 @@ export const authApi = {
     role: 'customer' | 'driver'; vehicleType?: string;
     ageConfirmed?: boolean; termsAcceptedAt?: string;
     referralCode?: string;
+    /** Optional at signup. Pre-fills the first booking's pickup. */
+    homeAddress?: {
+      label: string; street: string; city: string; state: string;
+      coords?: { lat: number; lng: number } | null;
+    };
   }) => request<{ message: string; requiresOtp: boolean }>('POST', '/auth/register', {
     ...body,
     // Driver registers with okada/keke etc on the UI. normalize before
@@ -234,8 +239,12 @@ export const userVerificationApi = {
 export const deliveriesApi = {
   quote: (body: object) => request<any>('POST', '/deliveries/quote', normalizeBodyVehicle(body as any)),
   create: (body: object) => request<any>('POST', '/deliveries', normalizeBodyVehicle(body as any)),
-  myDeliveries: (page = 1, limit = 20) =>
-    request<{ items: any[]; total: number; pages: number }>('GET', `/deliveries?page=${page}&limit=${limit}`),
+  myDeliveries: (page = 1, limit = 20, search?: string) =>
+    request<{ items: any[]; total: number; pages: number }>(
+      'GET',
+      `/deliveries?page=${page}&limit=${limit}` +
+        (search && search.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''),
+    ),
   // Suggested addresses based on the current user's delivery history
   // (last 90 days). Ranked by frequency then recency.
   frequentAddresses: () =>

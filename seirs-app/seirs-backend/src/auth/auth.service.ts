@@ -151,6 +151,9 @@ export class AuthService {
       accountId,
       emailVerified:  false,
       referredByCode: dto.referralCode?.trim().toUpperCase() || null,
+      // Optional at signup, so null when the sender skipped it. Same jsonb
+      // shape the profile screen edits later.
+      homeAddress:    dto.homeAddress ?? null,
     });
     await this.usersRepo.save(user);
 
