@@ -843,16 +843,6 @@
     "confirm": "Hazie",
     "scheduledFor": "Ahaziri maka {{when}}"
   },
-  "multiStop2": {
-    "title": "Nnyefe Nke Nwere Nkwụsị Ọtụtụ",
-    "addStop": "Tinye Nkwụsị",
-    "pickup": "Mbulata",
-    "stop": "Nkwụsị {{n}}",
-    "dropoff": "Mbudata",
-    "addressPlaceholder": "Chọọ adreesị…",
-    "removeStop": "Wepu Nkwụsị",
-    "max5": "Ọnụọgụ 5 ka kacha n'otu nnyefe"
-  },
   "dropAtStore": {
     "title": "Hapụ na Ụlọ Ahịa",
     "selectStore": "Họrọ ụlọ ahịa mmekọ",

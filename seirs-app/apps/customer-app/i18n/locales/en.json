@@ -581,16 +581,6 @@
     "confirm": "Schedule",
     "scheduledFor": "Scheduled for {{when}}"
   },
-  "multiStop2": {
-    "title": "Multi-Stop Delivery",
-    "addStop": "Add Stop",
-    "pickup": "Pickup",
-    "stop": "Stop {{n}}",
-    "dropoff": "Drop-off",
-    "addressPlaceholder": "Search address…",
-    "removeStop": "Remove Stop",
-    "max5": "Max 5 stops per delivery"
-  },
   "dropAtStore": {
     "title": "Drop at Store",
     "selectStore": "Select a partner store",

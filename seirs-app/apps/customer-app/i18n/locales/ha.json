@@ -843,16 +843,6 @@
     "confirm": "Tsara",
     "scheduledFor": "An tsara don {{when}}"
   },
-  "multiStop2": {
-    "title": "Bayarwa Mai Tsayawa Da Yawa",
-    "addStop": "Ƙara Tasha",
-    "pickup": "Karɓa",
-    "stop": "Tasha {{n}}",
-    "dropoff": "Saukewa",
-    "addressPlaceholder": "Nemo adireshi…",
-    "removeStop": "Cire Tasha",
-    "max5": "Iyaka tashoshi 5 a kowane bayarwa"
-  },
   "dropAtStore": {
     "title": "Sauke a Shago",
     "selectStore": "Zaɓi shagon abokin tarayya",

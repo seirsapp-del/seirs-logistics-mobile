@@ -843,16 +843,6 @@
     "confirm": "Ṣètò",
     "scheduledFor": "A ṣètò fún {{when}}"
   },
-  "multiStop2": {
-    "title": "Ìfiránṣẹ Ọ̀pọ̀-dúró",
-    "addStop": "Fi Ìdúró Kún",
-    "pickup": "Gbigba",
-    "stop": "Ìdúró {{n}}",
-    "dropoff": "Ìfilọ́",
-    "addressPlaceholder": "Wá adirẹsì…",
-    "removeStop": "Yọ Ìdúró Kúrò",
-    "max5": "Ìdúró 5 ní ó pọjù fún ìfiránṣẹ kọ̀ọ̀kan"
-  },
   "dropAtStore": {
     "title": "Fi Sí Ilé-ìtajà",
     "selectStore": "Yan ilé-ìtajà alábàá",
