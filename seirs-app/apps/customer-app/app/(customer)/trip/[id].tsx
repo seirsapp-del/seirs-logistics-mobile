@@ -102,6 +102,7 @@ export default function TripDetailsScreen() {
     duration:       raw.estimatedTotalMinutes ? `${raw.estimatedTotalMinutes} min` : '-',
     price:          Number(raw.price ?? 0),
     paymentMethod:  raw.paymentMethod ?? '',
+    paymentHeldAt:  raw.paymentHeldAt ?? null,
     vehicleType:    raw.vehicleType ?? '',
     driver:         raw.driver ? {
       id:           raw.driver.id ?? raw.driver.user?.id ?? 'd',
@@ -131,6 +132,8 @@ export default function TripDetailsScreen() {
   const isActive    = ['pending', 'assigned', 'picked_up', 'in_transit', 'in_progress'].includes(trip.status);
   const isCompleted = trip.status === 'completed' || trip.status === 'delivered';
   const isCancelled = trip.status === 'cancelled';
+  // Pending AND the fare was never held: the sender still owes for this.
+  const isUnpaid    = trip.status === 'pending' && !trip.paymentHeldAt;
 
   // Stage timestamps and who actually took the package. All optional:
   // an in-flight trip has no delivery time, and most deliveries go to
@@ -332,15 +335,29 @@ export default function TripDetailsScreen() {
             )}
 
             <View style={[styles.payMethod, { backgroundColor: theme.surfaceSecond }]}>
-              <Ionicons name={PAYMENT_ICONS[trip.paymentMethod] as any ?? 'card-outline'} size={16} color={theme.textSecond} />
-              <Text style={[styles.payMethodText, { color: theme.textSecond }]}>
-                {PAYMENT_LABELS[trip.paymentMethod] ?? 'Paid on this account'}
+              <Ionicons
+                name={isUnpaid ? 'alert-circle-outline' : (PAYMENT_ICONS[trip.paymentMethod] as any ?? 'card-outline')}
+                size={16}
+                color={isUnpaid ? '#DC2626' : theme.textSecond}
+              />
+              <Text style={[styles.payMethodText, { color: isUnpaid ? '#DC2626' : theme.textSecond }]}>
+                {isUnpaid
+                  ? 'Not paid yet'
+                  : (PAYMENT_LABELS[trip.paymentMethod] ?? 'Paid on this account')}
               </Text>
             </View>
           </Card>
 
           {/* Actions */}
           <View style={styles.actions}>
+            {isUnpaid && (
+              <Button
+                label="Pay now"
+                onPress={() => router.push({ pathname: '/(customer)/payment/[deliveryId]', params: { deliveryId: trip.id } } as any)}
+                leftIcon={<Ionicons name="card-outline" size={16} color="#fff" />}
+                fullWidth
+              />
+            )}
             {isActive && (
               <Button
                 label={t('tripDetail.trackPackage')}
