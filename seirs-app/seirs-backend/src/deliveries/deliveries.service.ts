@@ -435,7 +435,17 @@ export class DeliveriesService {
         used.add(c);
         return c;
       };
-      const nextStopCode = () => 'STP-' + secureCode(8);
+      // stopCode carries a partial unique index, so a collision fails the
+      // whole booking insert, not just one row. It needs the same
+      // treatment as the package code: dedup inside the batch here, and
+      // a check against history below.
+      const usedStops = new Set<string>();
+      const nextStopCode = () => {
+        let c = 'STP-' + secureCode(8);
+        while (usedStops.has(c)) c = 'STP-' + secureCode(8);
+        usedStops.add(c);
+        return c;
+      };
 
       const rows = dto.stops.map((st, idx) => this.repo.manager.create(DeliveryStop, {
         deliveryId:            saved.id,
@@ -487,6 +497,20 @@ export class DeliveriesService {
             while (clashed.has(r.packageTrackingCode)) {
               r.packageTrackingCode = nextPackageCode();
             }
+          }
+        }
+      }
+
+      const stopCodes = rows.map((r: any) => r.stopCode).filter(Boolean);
+      if (stopCodes.length > 0) {
+        const stopClash: Array<{ c: string }> = await this.repo.manager.query(
+          `SELECT "stopCode" AS c FROM delivery_stops WHERE "stopCode" = ANY($1)`,
+          [stopCodes],
+        );
+        if (stopClash.length > 0) {
+          const taken = new Set(stopClash.map(x => x.c));
+          for (const r of rows as any[]) {
+            while (taken.has(r.stopCode)) r.stopCode = nextStopCode();
           }
         }
       }
