@@ -164,6 +164,25 @@ export class Delivery {
   @Column({ type: 'varchar', length: 32, nullable: true })
   receiverPhone: string | null;
 
+  /**
+   * A rider raised a problem with this job, most often that the parcel in
+   * front of them is not the parcel that was described.
+   *
+   * Deliberately NOT a DeliveryStatus. Status drives dispatch, the driver
+   * app and every admin filter; adding a state to that enum would ripple
+   * through all of them. A flag records the dispute without changing what
+   * the delivery *is*, so support can act while the job keeps its place.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  disputedAt: Date | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  disputeReason: string | null;
+
+  /** The rider's photo of what they were actually handed. */
+  @Column({ type: 'text', nullable: true })
+  disputePhotoUrl: string | null;
+
   // How the sender wants the receiver verified: 'name' (driver asks the
   // first name and types it), 'code' (emailed to the SENDER to forward),
   // 'id' (physical ID check). High-value packages ignore 'name'.

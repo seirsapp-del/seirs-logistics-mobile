@@ -300,6 +300,19 @@ export const deliveriesApi = {
   // What cancelling costs right now. The fee is priced server-side off
   // the active rate card: never quote a cancellation fee from the
   // bundled client rate card, which can be months out of date.
+  /**
+   * The assigned rider raises a problem with the job in front of them and
+   * attaches a photo. Flags the delivery AND opens a support ticket in one
+   * call, so a half-failure cannot leave a dispute with no ticket.
+   */
+  reportIssue: (id: string, body: {
+    reason: 'mismatch' | 'overweight' | 'absent' | 'unsafe';
+    note?: string;
+    photoUrl?: string;
+  }) =>
+    request<{ ok: true; disputedAt: string; reason: string; ticketId: string | null }>(
+      'POST', `/deliveries/${id}/report-issue`, body,
+    ),
   cancelQuote: (id: string) =>
     request<{
       cancellable: boolean;

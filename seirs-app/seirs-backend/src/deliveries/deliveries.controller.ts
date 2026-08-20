@@ -201,6 +201,19 @@ export class DeliveriesController {
     return this.deliveriesService.cancelByCustomer(id, user.id, body?.reason);
   }
 
+  // POST /api/v1/deliveries/:id/report-issue - the assigned rider raises a
+  // problem with this job (wrong parcel, overweight, sender absent, unsafe)
+  // and attaches a photo. Ownership is checked in the service: the token
+  // proves who the rider is, not that this delivery is theirs.
+  @Post(':id/report-issue')
+  reportIssue(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: { reason: string; note?: string; photoUrl?: string },
+  ) {
+    return this.deliveriesService.reportIssue(id, user.id, body);
+  }
+
   // GET /api/v1/deliveries/:id/cancel-quote - what cancelling costs right now
   @Get(':id/cancel-quote')
   cancelQuote(@Param('id') id: string, @CurrentUser() user: User) {

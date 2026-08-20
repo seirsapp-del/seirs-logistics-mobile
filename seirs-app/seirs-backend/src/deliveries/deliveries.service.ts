@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { TicketTopic } from '../support/support-ticket.entity';
+import { SupportService } from '../support/support.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { LessThan, Repository, MoreThan } from 'typeorm';
@@ -184,6 +186,7 @@ export class DeliveriesService {
     private pricingService: PricingService,
     private routeDistance: RouteDistanceService,
     private rateCardPricing: RateCardPricing,
+    private supportService: SupportService,
   ) {}
 
   /**
@@ -1945,6 +1948,81 @@ export class DeliveriesService {
    * it without a deploy. Falls back to the seeded defaults if the card is
    * missing or malformed, in the same shape as getHighValueThreshold.
    */
+  /**
+   * A rider reports a problem with the job in front of them.
+   *
+   * The case this exists for: the rider is at the pickup, the parcel is
+   * not what the sender described, and until now they had no way to say
+   * so. The only route was to back out of the active job, find Profile ->
+   * Support, open a ticket with no photo, then attach one inside the
+   * thread. Five screens at a roadside with a sender watching, so in
+   * practice the rider either accepted a parcel they should not have or
+   * rang someone personally, and no record existed either way.
+   *
+   * Flags the delivery and opens a support ticket carrying the rider's
+   * photo in one call, so a half-failure cannot leave a dispute with no
+   * ticket or a ticket with no dispute.
+   */
+  async reportIssue(
+    deliveryId: string,
+    driverUserId: string,
+    body: { reason: string; note?: string; photoUrl?: string },
+  ) {
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['driver', 'driver.user', 'customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    // Only the rider actually holding this job may dispute it. A valid
+    // token proves who they are, not that this delivery is theirs.
+    const assignedUserId = (delivery as any).driver?.user?.id ?? null;
+    if (!assignedUserId || assignedUserId !== driverUserId) {
+      throw new ForbiddenException('This delivery is not assigned to you.');
+    }
+
+    const REASONS: Record<string, string> = {
+      mismatch:   'Package does not match the description',
+      overweight: 'Heavier than declared',
+      absent:     'Sender not present or wrong address',
+      unsafe:     'Unsafe or refused item',
+    };
+    const label = REASONS[body?.reason];
+    if (!label) throw new BadRequestException('Unknown reason.');
+
+    delivery.disputedAt      = new Date();
+    delivery.disputeReason   = body.reason;
+    delivery.disputePhotoUrl = body.photoUrl ?? null;
+    await this.repo.save(delivery);
+
+    let ticketId: string | null = null;
+    const lines = [
+      'Rider reported: ' + label + '.',
+      'Tracking ' + delivery.trackingCode + '.',
+      body.note && body.note.trim() ? 'Rider note: ' + body.note.trim() : null,
+      // Same convention the ticket thread uses for images, so the photo
+      // renders inline for the agent instead of arriving as bare text.
+      body.photoUrl ? '📎 ' + body.photoUrl : null,
+    ].filter(Boolean) as string[];
+
+    try {
+      const ticket: any = await this.supportService.create(driverUserId, {
+        topic:            TicketTopic.DELIVERY,
+        subject:          label + ' - ' + delivery.trackingCode,
+        firstMessage:     lines.join('\n'),
+        linkedDeliveryId: delivery.id,
+      });
+      ticketId = ticket?.id ?? null;
+    } catch (e: any) {
+      // The dispute flag is the part that must not be lost. A ticket that
+      // failed to open is recoverable; a rider who reported a problem and
+      // had it silently dropped is not.
+      this.logger.error('reportIssue: ticket creation failed: ' + (e?.message ?? e));
+    }
+
+    return { ok: true, disputedAt: delivery.disputedAt, reason: body.reason, ticketId };
+  }
+
   private async getCancellationRules(): Promise<{
     preAssignNgn: number; postAssignNgn: number; driverShareNgn: number;
   }> {
