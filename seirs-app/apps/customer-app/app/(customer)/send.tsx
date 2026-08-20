@@ -920,6 +920,9 @@ export default function SendScreen() {
                   </Pressable>
                 )}
               </View>
+              {invalidField === 'photos' && (
+                <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
+              )}
 
               <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.description')}</Text>
               <TextInput
@@ -964,7 +967,10 @@ export default function SendScreen() {
                   <Pressable
                     key={cat.id}
                     style={[styles.categoryChip, highlight(category === cat.id)]}
-                    onPress={() => updatePkg(pkgIndex, { category: cat.id })}
+                    onPress={() => {
+                      updatePkg(pkgIndex, { category: cat.id });
+                      if (invalidField === 'category') { setInvalidField(null); setError(''); }
+                    }}
                   >
                     <Text style={[styles.categoryText, { color: category === cat.id ? theme.accent : theme.text }]}>{cat.label}</Text>
                   </Pressable>
@@ -1044,7 +1050,8 @@ export default function SendScreen() {
                   <TextInput
                     style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: fieldBorder('dropoff'), borderWidth: invalidField === 'dropoff' ? 2 : 1, color: theme.text }]}
                     value={dropoffQuery}
-                    onChangeText={(v) => onChangeQuery(`pkg:${pkgIndex}`, v)}
+                    onChangeText={(v) => { onChangeQuery(`pkg:${pkgIndex}`, v);
+                      if (invalidField === 'dropoff') { setInvalidField(null); setError(''); } }}
                     onFocus={() => setActiveField(`pkg:${pkgIndex}`)}
                     placeholder={t('send.destAddressPlaceholder', { defaultValue: 'Street, area, city' })}
                     placeholderTextColor={theme.textThird}
