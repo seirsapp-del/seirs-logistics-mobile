@@ -43,7 +43,7 @@ const PACKAGE_CATEGORIES = [
   { id: 'food_cold',         labelKey: 'categoryFoodCold'        },
   { id: 'medical',           labelKey: 'categoryMedical'         },
   { id: 'bulk_goods',        labelKey: 'categoryBulkGoods'       },
-  { id: 'agricultural',      labelKey: 'categoryAgricultural'    },
+  { id: 'farm_produce',      labelKey: 'categoryAgricultural'    },
   { id: 'building',          labelKey: 'categoryBuilding'        },
   { id: 'lumber',            labelKey: 'categoryLumber'          },
   { id: 'house_move_single', labelKey: 'categoryHouseMoveSingle' },

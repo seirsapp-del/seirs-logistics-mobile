@@ -35,7 +35,7 @@ import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { Illustration } from '@/components/Illustration';
 import {
-  businessApi, configApi, mapsApi, uploadApi, pricingApi, dropoffApi,
+  businessApi, configApi, mapsApi, uploadApi, pricingApi, dropoffApi, feesApi,
   type ServiceCategory, type RateCard,
 } from '@/services/api';
 import { useBusinessStore, type StoreLite } from '@/store/businessStore';
@@ -228,11 +228,15 @@ export default function SendPackageScreen() {
 
   // ── Rate card + catalog (prices + caps + category chips) ─────────────
   const [catalog, setCatalog] = useState<ServiceCategory[]>([]);
+  const [highValueNgn, setHighValueNgn] = useState(100000);
   const [rateCard, setRateCard] = useState<RateCard | null>(null);
   useEffect(() => {
     Promise.all([configApi.serviceCatalog(), configApi.rateCard()])
       .then(([cat, rc]) => { setCatalog(cat); setRateCard(rc); })
       .catch(() => {});
+    feesApi.get('high_value_threshold_ngn')
+      .then(r => { const v = Number(r?.value); if (v > 0) setHighValueNgn(v); })
+      .catch(() => { /* keep the 100000 fallback, same as the backend's */ });
   }, []);
 
   /**
@@ -906,7 +910,7 @@ export default function SendPackageScreen() {
                       value={s.receiverLastName ?? ''}
                       onChangeText={(v) => updateStop(i, { receiverLastName: v })}
                       onFocus={handleFieldFocus}
-                    placeholder="Last name (optional)"
+                    placeholder="Last name"
                       placeholderTextColor={colors.textThird}
                     />
                   </View>
@@ -1042,7 +1046,7 @@ export default function SendPackageScreen() {
                       { key: 'gate',      label: 'Leave at gate' },
                       { key: 'store',     label: 'Drop at partner store' },
                     ] as const).map((opt) => {
-                      const hv = Number(s.declaredValueNgn ?? 0) >= 100000;
+                      const hv = Number(s.declaredValueNgn ?? 0) >= highValueNgn;
                       const blocked = hv && (opt.key === 'gate' || opt.key === 'neighbour');
                       const active = (s.fallbackPref ?? 'hand_only') === opt.key;
                       return (
@@ -1059,7 +1063,7 @@ export default function SendPackageScreen() {
                       );
                     })}
                   </View>
-                  {Number(s.declaredValueNgn ?? 0) >= 100000 && (
+                  {Number(s.declaredValueNgn ?? 0) >= highValueNgn && (
                     <Text style={[styles.hint, { color: colors.textThird }]}>
                       High-value packages cannot be left at the gate or with a neighbour.
                     </Text>
@@ -1084,10 +1088,13 @@ export default function SendPackageScreen() {
                       updateStop(i, { declaredValueNgn: Number.isFinite(n) && v !== '' ? n : undefined });
                     }}
                     onFocus={handleFieldFocus}
-                    placeholder="e.g. 150000. High-value packages get ID-verified handoff."
+                    placeholder="e.g. 150000"
                     placeholderTextColor={colors.textThird}
                     keyboardType="numeric"
                   />
+                  <Text style={[styles.hint, { color: colors.textThird }]}>
+                    High-value packages get ID-verified handoff.
+                  </Text>
 
                   <Text style={[styles.label, { color: colors.textSecond }]}>Instructions for driver (optional)</Text>
                   <TextInput
