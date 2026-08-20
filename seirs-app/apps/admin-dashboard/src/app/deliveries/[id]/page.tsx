@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, Navigation, Package, User, Bike, Store, Receipt } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Package, User, Bike, Store, Receipt, AlertTriangle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 /* Leaflet reaches for `window` the moment it is imported, so the map can
@@ -120,6 +120,44 @@ export default function DeliveryDetailPage() {
         </span>
       </div>
 
+      {d.disputedAt && (
+        <div className="mt-4 rounded-xl border border-[#DC2626]/30 bg-[#DC2626]/5 p-4">
+          <div className="flex items-center gap-2 text-[#DC2626]">
+            <AlertTriangle size={16} />
+            <span className="text-sm font-bold uppercase tracking-wide">
+              Rider reported a problem
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-[#0F2B4C]">
+            {({
+              mismatch:   'Package does not match the description',
+              overweight: 'Heavier than declared',
+              absent:     'Sender not present or wrong address',
+              unsafe:     'Unsafe or refused item',
+            } as Record<string, string>)[d.disputeReason ?? ''] ?? d.disputeReason ?? 'Unspecified'}
+          </p>
+          <p className="mt-1 text-xs text-[#0F2B4C]/50">
+            Reported {new Date(d.disputedAt).toLocaleString()}
+          </p>
+          {d.disputePhotoUrl && (
+            <a
+              href={d.disputePhotoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-block"
+            >
+              {/* The rider's photo of what they were actually handed.
+                  Compare it against the sender's own booking photos below. */}
+              <img
+                src={d.disputePhotoUrl}
+                alt="Rider's photo of the package"
+                className="max-h-48 rounded-lg border border-[#DC2626]/30"
+              />
+            </a>
+          )}
+        </div>
+      )}
+
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <section className="rounded-xl border border-[#E5E7EB] bg-white p-4">
           <h2 className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#0F2B4C]/40">
@@ -133,6 +171,22 @@ export default function DeliveryDetailPage() {
           <Row label="Email"   value={d.customer?.email} />
           <Row label="Phone"   value={d.customer?.phone} />
           <Row label="SEIRS ID" value={d.customer?.accountId} />
+
+          {/* Who actually takes it at the door. The sender names a receiver
+              at booking; support needs that number as much as the driver
+              does when a handoff goes wrong. */}
+          {(d.receiverFirstName || d.receiverPhone) && (
+            <div className="mt-3 border-t border-[#E5E7EB] pt-3">
+              <div className="mb-1 text-xs font-bold uppercase tracking-wide text-[#0F2B4C]/40">
+                Receiver
+              </div>
+              <Row
+                label="Name"
+                value={[d.receiverFirstName, d.receiverLastName].filter(Boolean).join(' ') || '-'}
+              />
+              <Row label="Phone" value={d.receiverPhone} />
+            </div>
+          )}
         </section>
 
         <section className="rounded-xl border border-[#E5E7EB] bg-white p-4">
