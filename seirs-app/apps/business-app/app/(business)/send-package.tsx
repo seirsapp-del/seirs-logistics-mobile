@@ -696,6 +696,8 @@ export default function SendPackageScreen() {
         : undefined;
 
       const res = await businessApi.createDelivery({
+        // Signed quote pin: the review's number is the charged number.
+        quoteToken: (quote as any)?.quotePin?.token,
         pickupAddress: draft.pickupAddress,
         pickupLat: draft.pickupLat!,
         pickupLng: draft.pickupLng!,
@@ -767,6 +769,9 @@ export default function SendPackageScreen() {
         );
       }
     } catch (e: any) {
+      // An expired pin means the price may have moved: re-quote so the
+      // review shows the current number before they book again.
+      if (/expired/i.test(String(e?.message ?? ''))) setQuoteReloadKey(k => k + 1);
       Alert.alert('Could not book', e?.message ?? 'Please try again.');
     } finally { setLoading(false); }
   };
