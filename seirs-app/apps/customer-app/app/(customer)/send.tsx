@@ -508,6 +508,8 @@ export default function SendScreen() {
   // several packages has to be priced by the server, which knows the live
   // card, the per-category surcharges and the multi-stop discount.
   const [runQuote, setRunQuote] = useState<any>(null);
+  // Bumped when the server refuses an expired quote pin: re-prices and re-shows.
+  const [quoteNonce, setQuoteNonce] = useState(0);
   const [runQuoteError, setRunQuoteError] = useState<string | null>(null);
   // Review: which package's own summary is open, and the consent gate.
   const [expandedPkg, setExpandedPkg] = useState<number | null>(null);
@@ -546,7 +548,7 @@ export default function SendScreen() {
       .then((q: any) => { if (!cancelled) setRunQuote(q); })
       .catch((e: any) => { if (!cancelled) setRunQuoteError(e?.message ?? 'Could not price this booking.'); });
     return () => { cancelled = true; };
-  }, [packages, vehicleId, distKmRoute, pickup]);
+  }, [packages, vehicleId, distKmRoute, pickup, quoteNonce]);
 
   // Never silently fall back to the single-package number for a run: a
   // wrong total is worse than an honest "not priced yet".
@@ -841,7 +843,9 @@ export default function SendScreen() {
         uploaded.push(forThis);
       }
       const urls = uploaded[0] ?? [];
-      await deliveriesApi.create({
+      const created: any = await deliveriesApi.create({
+        // The signed pin makes the review's number the charged number.
+        quoteToken: runQuote?.quotePin?.token,
         termsAccepted: tcAgreed,
         pickupAddress:   pickup?.address ?? '',
         dropoffAddress:  dropoff?.address ?? '',
@@ -894,8 +898,27 @@ export default function SendScreen() {
           : {}),
       } as any);
       clearDraft();
-      router.replace('/(customer)/history' as any);
+      // The CTA said "Pay" so paying is what happens next: straight into
+      // the payment screen for the booking just made. Landing on My
+      // Trips with a Pending card made the button a small lie
+      // (founder 2026-08-21). History remains the fallback if the id is
+      // ever missing.
+      if (created?.id) {
+        router.replace({
+          pathname: '/(customer)/payment/[deliveryId]',
+          params: {
+            deliveryId:   created.id,
+            price:        String(Math.round(Number(created.price ?? 0))),
+            trackingCode: created.trackingCode ?? '',
+          },
+        } as any);
+      } else {
+        router.replace('/(customer)/history' as any);
+      }
     } catch (e: any) {
+      // An expired pin means the price may have moved: re-quote so the
+      // number on this screen is current before they tap Pay again.
+      if (/expired/i.test(String(e?.message ?? ''))) setQuoteNonce(n => n + 1);
       setError(e.message ?? t('send.errBookingFailed'));
     } finally {
       setLoading(false);

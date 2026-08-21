@@ -327,10 +327,10 @@ export default function HistoryScreen() {
               </View>
 
               {/* Rate prompt */}
-              {trip.status === 'completed' && !trip.rating && (
+              {trip.status === 'completed' && !trip.rating && trip.driver?.id && (
                 <Pressable
                   style={[styles.rateBtn, { borderColor: '#FFBE0B', backgroundColor: isDark ? '#1A1400' : '#FFFBEB' }]}
-                  onPress={() => router.push({ pathname: '/(customer)/rate/[driverId]', params: { driverId: trip.driver?.id ?? 'd1', tripId: trip.id } })}
+                  onPress={() => router.push({ pathname: '/(customer)/rate/[driverId]', params: { driverId: trip.driver.id, tripId: trip.id } })}
                 >
                   <Ionicons name="star-outline" size={14} color="#FFBE0B" />
                   <Text style={[styles.rateBtnText, { color: '#FFBE0B' }]}>Rate this trip</Text>
@@ -374,7 +374,7 @@ export default function HistoryScreen() {
               {isActive && (
                 <Pressable
                   style={[styles.rateBtn, { borderColor: theme.primary, backgroundColor: isDark ? '#001020' : '#EFF6FF' }]}
-                  onPress={() => router.push({ pathname: '/(customer)/trip-progress', params: { id: trip.id, driverId: trip.driver?.id ?? 'd1' } })}
+                  onPress={() => router.push({ pathname: '/(customer)/track', params: { code: trip.trackingCode } } as any)}
                 >
                   <Ionicons name="navigate-outline" size={14} color={theme.primary} />
                   <Text style={[styles.rateBtnText, { color: theme.primary }]}>Track live</Text>

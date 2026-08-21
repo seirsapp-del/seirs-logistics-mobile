@@ -416,6 +416,7 @@
     "searchBtn": "Track",
     "notFound": "Not Found",
     "notFoundMsg": "No delivery found with that tracking code. Double-check and try again.",
+    "stepAwaitingPayment": "Waiting for payment",
     "stepPending": "Finding Rider",
     "stepAssigned": "Rider Assigned",
     "stepPickedUp": "Package Picked Up",

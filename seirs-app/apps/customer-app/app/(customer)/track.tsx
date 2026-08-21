@@ -15,7 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -32,6 +32,9 @@ const STATUS_CONFIG: Record<string, {
   icon: string;
 }> = {
   // Brand palette only (audit 2026-08-10: purple + off-brand blues removed).
+  // Unpaid booking: dispatch only sees paid work, so nothing is
+  // "finding a rider" yet and this screen must not pretend otherwise.
+  awaiting_payment: { labelKey: 'tracking.stepAwaitingPayment', step: 0, gradient: ['#D97706', '#B45309'], icon: 'card' },
   pending:    { labelKey: 'tracking.stepPending',   step: 1, gradient: ['#3A7BD5', '#2A5FA8'], icon: 'search' },
   assigned:   { labelKey: 'tracking.stepAssigned',  step: 2, gradient: ['#3A7BD5', '#1F4E8C'], icon: 'navigate' },
   picked_up:  { labelKey: 'tracking.stepPickedUp',  step: 3, gradient: ['#FFBE0B', '#D99E00'], icon: 'cube' },
@@ -110,6 +113,13 @@ function custodyOf(d: any, driverName?: string | null) {
     };
   }
   if (status === 'pending') {
+    if (d?.awaitingPayment) {
+      return {
+        who:    'Waiting for payment',
+        detail: 'We start finding a rider the moment payment lands',
+        where:  null,
+      };
+    }
     return { who: 'Looking for a rider', detail: 'Nobody is carrying it yet', where: null };
   }
   if (IN_FLIGHT.includes(status)) {
@@ -332,7 +342,10 @@ export default function TrackScreen() {
     if (params.code) handleSearch();
   }, []);
 
-  const currentStatus = deliveryStatus ?? deliveryData?.status ?? null;
+  const rawStatus     = deliveryStatus ?? deliveryData?.status ?? null;
+  const currentStatus = deliveryData?.awaitingPayment && rawStatus === 'pending'
+    ? 'awaiting_payment'
+    : rawStatus;
   const statusInfo    = currentStatus ? STATUS_CONFIG[currentStatus] : null;
 
   /** The state colour, taken from the status config's own gradient. */
@@ -527,6 +540,20 @@ export default function TrackScreen() {
                       {custody.where}
                     </Text>
                   </View>
+                )}
+                {currentStatus === 'awaiting_payment' && !!deliveryData?.id && (
+                  <Pressable
+                    style={{ marginTop: 10, backgroundColor: '#D97706', borderRadius: 12,
+                             paddingVertical: 12, alignItems: 'center' }}
+                    onPress={() => router.push({
+                      pathname: '/(customer)/payment/[deliveryId]',
+                      params: { deliveryId: deliveryData.id },
+                    } as any)}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>
+                      Complete payment
+                    </Text>
+                  </Pressable>
                 )}
               </View>
             )}
