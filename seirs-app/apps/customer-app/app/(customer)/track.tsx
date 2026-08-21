@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  Share,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -139,12 +141,58 @@ export default function TrackScreen() {
   const [notFound,     setNotFound]     = useState(false);
   const [redirectOpen,  setRedirectOpen]  = useState(false);
   const [redirectStores, setRedirectStores] = useState<any[]>([]);
+  const [payingFee, setPayingFee] = useState(false);
   const [redirectBusy,  setRedirectBusy]  = useState(false);
 
   // Mid-flight rescue (founder 2026-08-10): when the RECIPIENT is not
   // available, the customer can redirect the drop-off to a partner
   // store NEAR THE ORIGINAL DROPOFF (not near the customer's phone).
   // One redirect per delivery: the backend rejects a second attempt.
+  /**
+   * Settle the redirect fee so the store address unmasks.
+   *
+   * The screen used to tell the sender to contact support for this,
+   * while the endpoint behind this button already existed.
+   */
+  const payRedirectFee = async () => {
+    if (!deliveryId) return;
+    setPayingFee(true);
+    try {
+      const res = await deliveriesApi.payRedirectFee(deliveryId);
+      if (res?.authorizationUrl) {
+        await Linking.openURL(res.authorizationUrl);
+      } else {
+        Alert.alert('Could not start payment', 'Please try again in a moment.');
+      }
+    } catch (e: any) {
+      Alert.alert('Could not start payment', e?.message ?? 'Please try again.');
+    } finally {
+      setPayingFee(false);
+    }
+  };
+
+  /**
+   * Hand the bill to the person collecting it.
+   *
+   * The receiver usually owes this and has no SEIRS account, so the
+   * collection page takes payment from anyone holding the link. Sharing
+   * it lets the two of them settle it without SEIRS in the middle.
+   */
+  const shareCollectLink = async () => {
+    const code = deliveryData?.trackingCode;
+    if (!code) return;
+    const url = `https://seirs.app/collect/${code}`;
+    try {
+      await Share.share({
+        message:
+          `Your package ${code} is waiting at a SEIRS partner store. ` +
+          `Settle the collection fee and get the pickup address here: ${url}`,
+      });
+    } catch {
+      /* the user dismissed the share sheet */
+    }
+  };
+
   const openRedirect = async () => {
     setRedirectOpen(true);
     try {
@@ -508,8 +556,33 @@ export default function TrackScreen() {
                 <Text style={{ fontSize: FontSize.sm, color: theme.textSecond, lineHeight: 19 }}>
                   Nobody was available at the door, so your package is safe at a nearby SEIRS partner store.
                   A redirect fee of ₦{Number(deliveryData.redirectFeeOwedNgn).toLocaleString()} (plus any storage days)
-                  applies. Contact support from the app to settle it and receive the pickup location and collection code.
+                  applies. Settle it to reveal the pickup location and collection details.
                 </Text>
+
+                {/* This used to say "contact support to settle it" while a
+                    pay endpoint already existed, which sent people to a
+                    queue instead of a button. */}
+                <Pressable
+                  onPress={payRedirectFee}
+                  disabled={payingFee}
+                  style={{
+                    marginTop: 12, borderRadius: Radius.lg, paddingVertical: 12,
+                    alignItems: 'center', backgroundColor: '#F59E0B', opacity: payingFee ? 0.6 : 1,
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: FontWeight.bold as any, fontSize: FontSize.sm }}>
+                    {payingFee ? 'Opening payment...' : `Pay ₦${Number(deliveryData.redirectFeeOwedNgn).toLocaleString()}`}
+                  </Text>
+                </Pressable>
+
+                {/* The receiver is usually the one who should pay this, and
+                    they have no SEIRS account. Sharing the collection link
+                    lets them settle it themselves. */}
+                <Pressable onPress={shareCollectLink} style={{ marginTop: 8, paddingVertical: 8, alignItems: 'center' }}>
+                  <Text style={{ color: theme.primary, fontWeight: FontWeight.semibold as any, fontSize: FontSize.sm }}>
+                    Send the collection link to the receiver instead
+                  </Text>
+                </Pressable>
               </View>
             )}
 

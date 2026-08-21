@@ -340,6 +340,23 @@ export const deliveriesApi = {
     request<{ deliveryId: string; newDropoffAddress: string; storeId: string }>(
       'POST', `/deliveries/${id}/redirect-to-store`, { storeId },
     ),
+  // Settle the failed-delivery redirect fee. Returns a Flutterwave
+  // hosted-page URL; paying it unmasks the store on tracking and lets
+  // the counter release the package.
+  payRedirectFee: (id: string) =>
+    request<{ authorizationUrl: string; reference: string; amountNgn: number }>(
+      'POST', `/deliveries/${id}/redirect-fee/pay`,
+    ),
+  // Mid-delivery address correction. Support decides; approval only
+  // unlocks payment, and the drop-off moves when the money lands.
+  requestAddressChange: (id: string, body: { address: string; lat?: number; lng?: number }) =>
+    request<any>('POST', `/deliveries/${id}/address-change`, body),
+  getAddressChange: (id: string) =>
+    request<any>('GET', `/deliveries/${id}/address-change`),
+  payAddressChange: (id: string) =>
+    request<{ authorizationUrl: string; reference: string; amountNgn: number }>(
+      'POST', `/deliveries/${id}/address-change/pay`,
+    ),
 };
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
