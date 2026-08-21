@@ -588,15 +588,6 @@ export default function SendPackageScreen() {
       if (draft.pickupMode === 'store' && !draft.pickupStoreId)
         return { message: 'Choose the counter you will drop the packages at.' };
       if (draft.pickupLat == null || draft.pickupLng == null) return { message: 'Pick the pickup address from the suggestions.' };
-      {
-        // The UI gate can be raced by picking the vehicle before the route
-        // resolves, so the booking checks again with the final distance.
-        const vMaxKm = Number((rateCard as any)?.vehicleRates?.[draft.vehicleType]?.maxRouteKm
-          ?? (draft.vehicleType === 'bicycle' ? 3 : 0));
-        if (vMaxKm > 0 && routeKm > vMaxKm) {
-          return { message: `${VEHICLE_LABEL[draft.vehicleType]} only does trips under ${vMaxKm}km. This run is ${Math.round(routeKm)}km: pick another ride.` };
-        }
-      }
       if (!scheduleNow && scheduledHour == null) return { message: 'Pick a pickup hour, or switch to Send now.' };
       // You cannot walk packages into a counter that is shut. Sending a
       // driver there now would strand the run (found on device
@@ -629,6 +620,17 @@ export default function SendPackageScreen() {
     }
     if (step === 2) {
       if (!draft.vehicleType) return { message: 'Pick a vehicle.' };
+      {
+        // Belongs HERE, on the step where the ride can be changed. The
+        // first cut sat in the pickup validation and deadlocked the
+        // founder: blocked one step before the screen that could fix it
+        // (seen live, 2026-08-21).
+        const vMaxKm = Number((rateCard as any)?.vehicleRates?.[draft.vehicleType]?.maxRouteKm
+          ?? (draft.vehicleType === 'bicycle' ? 3 : 0));
+        if (vMaxKm > 0 && routeKm > vMaxKm) {
+          return { message: `${VEHICLE_LABEL[draft.vehicleType]} only does trips under ${vMaxKm}km. This run is ${Math.round(routeKm)}km: pick another ride.` };
+        }
+      }
       if (draft.stops.length > maxPackages)
         return { message: `${draft.stops.length} packages exceed the ${VEHICLE_LABEL[draft.vehicleType]} limit of ${maxPackages}. Choose a larger vehicle or remove packages.` };
       return null;
