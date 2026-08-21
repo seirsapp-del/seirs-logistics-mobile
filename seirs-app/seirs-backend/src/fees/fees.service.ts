@@ -36,15 +36,49 @@ export class FeesService implements OnModuleInit {
       this.logger.error(`fee category self-heal FAILED: ${e?.message ?? e}`);
     }
 
-    const existing  = await this.feesRepo.find({ select: ['key'] });
+    // Same story for units: eleven rows carry durations or counts, and
+    // rendering them as naira put "N7" on the abandonment threshold.
+    // Must run BEFORE the seed below, or a fresh database rejects the
+    // first row carrying one of these labels.
+    for (const label of ['minutes', 'hours', 'days', 'count', 'hour_of_day']) {
+      try {
+        await this.feesRepo.query(
+          `ALTER TYPE "fees_unit_enum" ADD VALUE IF NOT EXISTS '${label}'`,
+        );
+      } catch (e: any) {
+        this.logger.error(`fee unit self-heal FAILED for '${label}': ${e?.message ?? e}`);
+      }
+    }
+
+    const existing  = await this.feesRepo.find({ select: ['key', 'unit'] });
     const existingKeys = new Set(existing.map(f => f.key));
     const toInsert  = FEE_SEEDS.filter(f => !existingKeys.has(f.key!));
-    if (toInsert.length === 0) {
+    if (toInsert.length > 0) {
+      await this.feesRepo.save(toInsert.map(f => this.feesRepo.create(f)));
+      this.logger.log(`Seeded ${toInsert.length} new fees into the Fee Catalogue`);
+    } else {
       this.logger.log(`Fee Catalogue already seeded (${existing.length} fees present)`);
-      return;
     }
-    await this.feesRepo.save(toInsert.map(f => this.feesRepo.create(f)));
-    this.logger.log(`Seeded ${toInsert.length} new fees into the Fee Catalogue`);
+
+    // The seed is insert-only for VALUES, which belong to the admin. The
+    // unit is code-owned metadata with no editor in the dashboard, so a
+    // row whose stored unit disagrees with the seed is simply stale.
+    // Production rows all predate the non-monetary units, which is how
+    // "7 days" came to render as a price.
+    const unitByKey = new Map(existing.map(f => [f.key, String(f.unit)]));
+    let fixed = 0;
+    for (const seed of FEE_SEEDS) {
+      const stored = unitByKey.get(seed.key!);
+      if (stored && seed.unit && stored !== String(seed.unit)) {
+        try {
+          await this.feesRepo.update(seed.key!, { unit: seed.unit });
+          fixed++;
+        } catch (e: any) {
+          this.logger.error(`unit sync failed for ${seed.key}: ${e?.message ?? e}`);
+        }
+      }
+    }
+    if (fixed) this.logger.log(`Corrected the unit on ${fixed} existing fee row(s)`);
   }
 
   // ── Public read path (cached) ──────────────────────────────────────────
