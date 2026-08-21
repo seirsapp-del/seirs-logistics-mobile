@@ -448,7 +448,12 @@ export default function SendScreen() {
   const [runQuote, setRunQuote] = useState<any>(null);
   const [runQuoteError, setRunQuoteError] = useState<string | null>(null);
   useEffect(() => {
-    if (packages.length < 2) { setRunQuote(null); setRunQuoteError(null); return; }
+    // Every booking is priced by the engine that will charge it. The
+    // first live booking proved why: the local formula showed 2,144 and
+    // the server charged 1,684, because the two disagreed about regional
+    // rates and a deprecated service fee. No route yet means nothing to
+    // quote, so the local estimate holds the screen until one resolves.
+    if (!(distKmRoute > 0) || !vehicleId) { setRunQuote(null); setRunQuoteError(null); return; }
     const pkgs = packages.map(pk => ({
       categoryCode: pk.category ?? 'standard_parcel',
       weightKg:     parseFloat(pk.weightKg) || 0,
@@ -462,12 +467,18 @@ export default function SendScreen() {
       km:           distKmRoute,
       stopCount:    packages.length,
       weightKg:     pkgs.reduce((a, b) => a + b.weightKg, 0),
-      estimatedDwellMinutes: packages.length * 4,
-      packages:     pkgs,
-      pickupCoords: pickup ? { latitude: pickup.lat, longitude: pickup.lng } : undefined,
+      // Mirror create(): a single package books with zero dwell, so the
+      // quote must price with zero dwell or the two drift again.
+      estimatedDwellMinutes: packages.length > 1 ? packages.length * 4 : 0,
+      // The blended per-package path is for real runs only.
+      packages:     packages.length > 1 ? pkgs : undefined,
+      pickupCoords:  pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : undefined,
+      dropoffCoords: packages.length === 1 && packages[0].dropoff
+        ? { latitude: packages[0].dropoff.lat, longitude: packages[0].dropoff.lng }
+        : undefined,
     } as any)
       .then((q: any) => { if (!cancelled) setRunQuote(q); })
-      .catch((e: any) => { if (!cancelled) setRunQuoteError(e?.message ?? 'Could not price this run.'); });
+      .catch((e: any) => { if (!cancelled) setRunQuoteError(e?.message ?? 'Could not price this booking.'); });
     return () => { cancelled = true; };
   }, [packages, vehicleId, distKmRoute, pickup]);
 
@@ -486,7 +497,7 @@ export default function SendScreen() {
    * its total is exactly the kind of quiet untruth this whole sweep has
    * been removing.
    */
-  const fare = packages.length > 1 && runQuote?.customer
+  const fare = runQuote?.customer
     ? (() => {
         const c = runQuote.customer;
         const time = c.timeSurcharges ?? {};
@@ -695,9 +706,11 @@ export default function SendScreen() {
   };
 
   const handleBook = async () => {
-    // A run is priced by the server. If that quote has not arrived, or it
-    // failed, refuse to book rather than send a booking whose total is 0.
-    if (packages.length > 1 && !(runTotal > 0)) {
+    // Every booking is priced by the server. If that quote has not
+    // arrived, or it failed, refuse to book rather than charge a total
+    // the customer never saw. This is what "shown and charged can never
+    // drift" costs: a moment of waiting instead of a silent lie.
+    if (!(runTotal > 0)) {
       setError(runQuoteError ?? t('send.errRunNotPriced', {
         defaultValue: 'Still working out the price for this run. Give it a moment and try again.',
       }));
