@@ -1559,9 +1559,12 @@ export default function SendScreen() {
                 const blocked = forbiddenForCategory.includes(v);
                 const overWeight = payload > 0 && kg > payload;
                 const overCount = packages.length > cap;
-                const maxKm = v === 'bicycle'
-                  ? Number(rates?.bicycle?.maxRouteKm ?? BICYCLE_MAX_KM_FALLBACK)
-                  : 0;
+                // Any vehicle the admin gives a maxRouteKm honours it;
+                // bicycle simply has a sane fallback so the human-powered
+                // tier is short-hop even before the card row exists
+                // (founder 2026-08-21: the knob must be per-vehicle).
+                const maxKm = Number(rates?.[v]?.maxRouteKm
+                  ?? (v === 'bicycle' ? BICYCLE_MAX_KM_FALLBACK : 0));
                 const overKm = maxKm > 0 && distKmRoute > maxKm;
                 const disabled = blocked || overWeight || overCount || overKm;
                 const isRecommended = v === VEHICLE_ORDER.find((x) => {
