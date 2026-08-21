@@ -1654,9 +1654,27 @@ export default function SendScreen() {
                   <MapView
                     provider={PROVIDER_GOOGLE}
                     style={styles.mapInline}
-                    initialRegion={DEFAULT_MAP_REGION}
+                    
                     customMapStyle={isDark ? DARK_MAP : []}
                     pointerEvents="none"
+                    // Fit on BOTH events: layout can fire before the map is
+                    // ready, and ready alone misses re-layouts. Without the
+                    // second hook this card sat on the default region,
+                    // which for a tester in Berlin meant German streets
+                    // above a Lagos delivery.
+                    initialRegion={{
+                      latitude: pickup.lat, longitude: pickup.lng,
+                      latitudeDelta: 0.1, longitudeDelta: 0.1,
+                    }}
+                    onMapReady={() => {
+                      const pts = [
+                        { latitude: pickup.lat, longitude: pickup.lng },
+                        ...packages.filter(pk => pk.dropoff).map(pk => ({ latitude: pk.dropoff!.lat, longitude: pk.dropoff!.lng })),
+                      ];
+                      if (pts.length > 1) {
+                        mapRef.current?.fitToCoordinates(pts, { edgePadding: { top: 40, right: 40, bottom: 40, left: 40 }, animated: false });
+                      }
+                    }}
                     onLayout={() => {
                       const pts = [
                         { latitude: pickup.lat, longitude: pickup.lng },
@@ -1765,6 +1783,8 @@ export default function SendScreen() {
                   [t('send.dropoff'), packages.length > 1
                     ? t('send.summaryDestinations', { n: packages.length, defaultValue: `${packages.length} destinations` })
                     : (dropoff?.address ?? '-')],
+                  [t('send.summaryPackages', { defaultValue: 'Packages' }),
+                    `${packages.length} package${packages.length === 1 ? '' : 's'}`],
                   [t('send.summaryDistance'), distKmRoute > 0 ? `${distKmRoute.toFixed(1)} km` : '-'],
                   [t('send.vehicle2'),       VEHICLE_LABEL[Object.keys(LOCAL_VEHICLE_ID).find(k => LOCAL_VEHICLE_ID[k] === vehicleId) ?? ''] ?? vehicleId],
                   [t('send.summaryWhen'),    scheduleNow
