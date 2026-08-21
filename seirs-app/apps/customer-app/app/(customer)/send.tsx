@@ -61,10 +61,17 @@ import { getActiveRateCard } from '@/hooks/use-rate-card';
 const VEHICLES = PACKAGE_VEHICLES;
 // Business Vehicle step, ported verbatim (founder 2026-08-21: exactly).
 const VEHICLE_LABEL: Record<string, string> = {
-  bicycle: 'Bicycle', motorcycle: 'Okada', tricycle: 'Keke',
+  // Bicycle / On-foot is the inclusion tier (founder 2026-08-21): a
+  // person with no vehicle at all can carry a schoolbook 2km and get
+  // paid. It was wrongly dropped in the business-parity port; business
+  // gets it too, not the other way round.
+  bicycle: 'Bicycle / On-foot', motorcycle: 'Okada', tricycle: 'Keke',
   car: 'Car', van: 'Danfo / Van', truck_small: 'Small Truck', truck_large: 'Large Truck',
 };
-const VEHICLE_ORDER = ['motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'];
+const VEHICLE_ORDER = ['bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'];
+// Short-hop ceiling for the human-powered tier. Read from the rate card
+// when the admin adds vehicleRates.bicycle.maxRouteKm; 3km until then.
+const BICYCLE_MAX_KM_FALLBACK = 3;
 const DEFAULT_MAX_PACKAGES: Record<string, number> = {
   bicycle: 3, motorcycle: 5, tricycle: 15, car: 20,
   van: 40, truck_small: 80, truck_large: 150,
@@ -1552,7 +1559,11 @@ export default function SendScreen() {
                 const blocked = forbiddenForCategory.includes(v);
                 const overWeight = payload > 0 && kg > payload;
                 const overCount = packages.length > cap;
-                const disabled = blocked || overWeight || overCount;
+                const maxKm = v === 'bicycle'
+                  ? Number(rates?.bicycle?.maxRouteKm ?? BICYCLE_MAX_KM_FALLBACK)
+                  : 0;
+                const overKm = maxKm > 0 && distKmRoute > maxKm;
+                const disabled = blocked || overWeight || overCount || overKm;
                 const isRecommended = v === VEHICLE_ORDER.find((x) => {
                   if (forbiddenForCategory.includes(x)) return false;
                   const pl = Number(rates?.[x]?.maxPayloadKg ?? 0);
@@ -1582,8 +1593,9 @@ export default function SendScreen() {
                         {disabled
                           ? blocked
                             ? t('send.vehicleBlocked', { defaultValue: 'Not allowed for this package type' })
+                            : overKm ? `Under ${maxKm}km trips only`
                             : overCount ? `Max ${cap} packages` : `Max ${payload}kg`
-                          : `Up to ${cap} packages · ${payload > 0 ? `${payload}kg` : 'no'} payload`}
+                          : `Up to ${cap} packages${payload > 0 ? ` · ${payload}kg payload` : ''}${maxKm > 0 ? ` · under ${maxKm}km` : ''}`}
                       </Text>
                     </View>
                     {active && <CheckCircle size={18} color={theme.primary} strokeWidth={2} />}

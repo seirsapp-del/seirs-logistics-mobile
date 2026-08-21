@@ -52,10 +52,12 @@ const STEP_CAPTIONS = [
 ] as const;
 
 const VEHICLE_LABEL: Record<string, string> = {
-  bicycle: 'Bicycle', motorcycle: 'Okada', tricycle: 'Keke',
+  bicycle: 'Bicycle / On-foot', motorcycle: 'Okada', tricycle: 'Keke',
   car: 'Car', van: 'Danfo / Van', truck_small: 'Small Truck', truck_large: 'Large Truck',
 };
-const VEHICLE_ORDER = ['motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'];
+// Bicycle / On-foot: the inclusion tier (founder 2026-08-21). A person
+// with no vehicle carries small drops short distances and gets paid.
+const VEHICLE_ORDER = ['bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'];
 const DEFAULT_MAX_PACKAGES: Record<string, number> = {
   bicycle: 3, motorcycle: 5, tricycle: 15, car: 20,
   van: 40, truck_small: 80, truck_large: 150,
@@ -1397,7 +1399,7 @@ export default function SendPackageScreen() {
                       <Text style={[styles.vehSub, { color: colors.textSecond }]}>
                         {disabled
                           ? overCount ? `Max ${cap} packages` : `Max ${payload}kg`
-                          : `Up to ${cap} packages · ${payload > 0 ? `${payload}kg` : 'no'} payload`}
+                          : `Up to ${cap} packages${payload > 0 ? ` · ${payload}kg payload` : ''}`}
                       </Text>
                     </View>
                     {active && <Icon name="CheckCircle2" size={20} color={colors.primary} />}
