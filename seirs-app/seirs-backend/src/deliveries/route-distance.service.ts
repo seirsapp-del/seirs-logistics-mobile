@@ -41,7 +41,11 @@ interface RoadDistance {
   source: 'google' | 'calibrated' | 'haversine';
 }
 
-const CACHE_TTL_MS = 15 * 60 * 1000;
+// 24 hours, up from 15 minutes (founder 2026-08-21: "people are very
+// indecisive"). A road's length does not change within a day, and every
+// think-about-it-and-come-back quote was re-paying Google for the same
+// answer. Duration staleness does not matter: we never promise minutes.
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const API_TIMEOUT_MS = 2500;
 /** ~0.05 deg ≈ 5.5km cells: coarse enough to accumulate samples per area. */
 const ZONE_GRID = 0.05;

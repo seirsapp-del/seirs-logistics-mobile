@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, Pressable, StyleSheet, StatusBar, TextInput,
-  ActivityIndicator, Image, Alert, Keyboard, ScrollView,
+  ActivityIndicator, Image, Alert, Keyboard, ScrollView, Linking,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -509,6 +509,9 @@ export default function SendScreen() {
   // card, the per-category surcharges and the multi-stop discount.
   const [runQuote, setRunQuote] = useState<any>(null);
   const [runQuoteError, setRunQuoteError] = useState<string | null>(null);
+  // Review: which package's own summary is open, and the consent gate.
+  const [expandedPkg, setExpandedPkg] = useState<number | null>(null);
+  const [tcAgreed, setTcAgreed] = useState(false);
   useEffect(() => {
     // Every booking is priced by the engine that will charge it. The
     // first live booking proved why: the local formula showed 2,144 and
@@ -1644,88 +1647,132 @@ export default function SendScreen() {
           {/* STEP 3: Fare */}
           {step === 3 && (
             <View style={styles.stepGap}>
-              <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-                <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.fareBreakdown')}</Text>
-                {([
-                  [t('send.baseFare'),                                       fare.base             ],
-                  [t('send.distanceLabour'),                                 fare.dist             ],
-                  [t('send.distanceFuel'),                                   fare.distFuel         ],
-                  [t('send.weightSurcharge'),                                fare.weight           ],
-                  [t('send.handlingFee'),                                    fare.handling         ],
-                  [t('send.categorySurcharge'),                              fare.categorySurcharge],
-                  [t('send.timeSurcharge', { labels: fare.timeLabels.join(', ') || '-' }),
-                                                                              fare.timeSurcharge   ],
-                  [t('send.zoneSurcharge'),                                  fare.zoneSurcharge    ],
-                  [t('send.overnightFee'),                                   fare.zoneFlat         ],
-                  [t('send.codFee'),                                         fare.codFee           ],
-                  [t('send.insurancePremium'),                               fare.insurance        ],
-                  [t('send.serviceFee'),                                     fare.service          ],
-                  [t('send.discountBulk'),                                  -fare.discounts.bulk   ],
-                  [t('send.discountRecurring'),                             -fare.discounts.recurring],
-                  [t('send.discountWelcome'),                               -fare.discounts.welcome],
-                  [t('send.discountLoyalty'),                               -fare.discounts.loyalty],
-                  [t('send.vat'),                                            fare.vat              ],
-                ] as [string, number][]).map(([l, a]) => [l, Math.round(a)] as [string, number]).filter(([, amt]) => amt !== 0).map(([lbl, amt]) => (
-                  <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
-                    <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
-                    <Text style={[styles.fareAmt,   { color: theme.text }]}>₦{amt.toLocaleString()}</Text>
+              {/* Route map, business-style. Kilometres only on the chip:
+                  minutes are a promise this platform does not make. */}
+              {pickup && (dropoff || packages.some(pk => pk.dropoff)) && (
+                <View style={[styles.mapCard, { borderColor: theme.border }]}>
+                  <MapView
+                    provider={PROVIDER_GOOGLE}
+                    style={styles.mapInline}
+                    initialRegion={DEFAULT_MAP_REGION}
+                    customMapStyle={isDark ? DARK_MAP : []}
+                    pointerEvents="none"
+                    onLayout={() => {
+                      const pts = [
+                        { latitude: pickup.lat, longitude: pickup.lng },
+                        ...packages.filter(pk => pk.dropoff).map(pk => ({ latitude: pk.dropoff!.lat, longitude: pk.dropoff!.lng })),
+                      ];
+                      if (pts.length > 1) {
+                        mapRef.current?.fitToCoordinates(pts, { edgePadding: { top: 40, right: 40, bottom: 40, left: 40 }, animated: false });
+                      }
+                    }}
+                    ref={mapRef}
+                  >
+                    <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor="#22C55E" title="Pickup" />
+                    {packages.filter(pk => pk.dropoff).map((pk, i) => (
+                      <Marker key={i} coordinate={{ latitude: pk.dropoff!.lat, longitude: pk.dropoff!.lng }} pinColor="#EF4444" />
+                    ))}
+                    {routeCoords.length > 1 && (
+                      <Polyline coordinates={routeCoords} strokeColor={theme.primary} strokeWidth={4} />
+                    )}
+                  </MapView>
+                  <View style={styles.mapChip}>
+                    <Text style={styles.mapChipText}>{distKmRoute > 0 ? `${distKmRoute.toFixed(1)} km` : '...'}</Text>
                   </View>
-                ))}
-                <View style={styles.fareTotalRow}>
-                  <Text style={[styles.fareTotalLabel, { color: theme.text }]}>{t('send.total')}</Text>
-                  <Text style={[styles.fareTotalAmt,   { color: theme.accent }]}>₦{Math.round(fare.total).toLocaleString()}</Text>
                 </View>
+              )}
+
+              {/* Packages, business-style rows; each opens ITS OWN order
+                  summary, and a package the sender regrets can be removed
+                  right here instead of restarting the form. */}
+              <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+                <Text style={[styles.fareTitle, { color: theme.text }]}>
+                  {t('send.packagesTitle', { defaultValue: 'Packages' })}
+                </Text>
+                {packages.map((pk, i) => {
+                  const openNow = expandedPkg === i;
+                  const share = packages.length > 1
+                    ? Math.round(Number(runQuote?.customer?.total ?? 0) / packages.length)
+                    : Math.round(fare.total);
+                  return (
+                    <View key={i} style={[styles.pkgRevRow, { borderTopColor: theme.border, borderTopWidth: i === 0 ? 0 : 1 }]}>
+                      <Pressable style={styles.pkgRevHead} onPress={() => setExpandedPkg(openNow ? null : i)}>
+                        {pk.photos[0] ? (
+                          <Image source={{ uri: pk.photos[0] }} style={styles.pkgRevThumb} />
+                        ) : (
+                          <View style={[styles.pkgRevThumb, { backgroundColor: theme.surfaceSecond, alignItems: 'center', justifyContent: 'center' }]}>
+                            <Camera size={16} color={theme.textThird} />
+                          </View>
+                        )}
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.vehName, { color: theme.text }]} numberOfLines={1}>
+                            {pk.description || t('send.packageN', { n: i + 1, defaultValue: `Package ${i + 1}` })}
+                          </Text>
+                          <Text style={[styles.vehSub, { color: theme.textSecond }]} numberOfLines={1}>
+                            {(pk.receiverFirst || '-') + ' · ' + (pk.weightKg || '?') + 'kg'}
+                          </Text>
+                        </View>
+                        <Text style={[styles.fareAmt, { color: theme.text }]}>₦{share.toLocaleString()}</Text>
+                        <Ionicons name={openNow ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textThird} />
+                      </Pressable>
+
+                      {openNow && (
+                        <View style={styles.pkgRevBody}>
+                          {([
+                            [t('send.dropoff'),  pk.dropoff?.address ?? pk.dropoffQuery ?? '-'],
+                            [t('send.receiver', { defaultValue: 'Receiver' }), `${pk.receiverFirst || '-'} · ${pk.receiverPhone || '-'}`],
+                            [t('send.category'), t(`send.${PACKAGE_CATEGORIES.find(c => c.id === pk.category)?.labelKey ?? 'category'}`)],
+                            [t('send.weightLabel', { defaultValue: 'Weight' }), `${pk.weightKg || '-'}kg`],
+                          ] as [string, string][]).map(([lbl, val]) => (
+                            <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
+                              <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
+                              <Text style={[styles.fareAmt, { color: theme.text }]} numberOfLines={2}>{val}</Text>
+                            </View>
+                          ))}
+                          {packages.length > 1 && (
+                            <Pressable
+                              style={styles.pkgRevRemove}
+                              onPress={() => { setExpandedPkg(null); removePackage(i); }}
+                            >
+                              <X size={14} color={theme.error} strokeWidth={2.5} />
+                              <Text style={[styles.pkgRevRemoveText, { color: theme.error }]}>
+                                {t('send.removePackage', { defaultValue: 'Remove this package' })}
+                              </Text>
+                            </Pressable>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+                <View style={styles.fareTotalRow}>
+                  <Text style={[styles.fareTotalLabel, { color: theme.text }]}>
+                    {t('send.totalOnePayment', { defaultValue: 'Total · one payment' })}
+                  </Text>
+                  <Text style={[styles.fareTotalAmt, { color: theme.accent }]}>₦{Math.round(fare.total).toLocaleString()}</Text>
+                </View>
+                <Text style={[styles.capNote, { color: theme.textSecond }]}>
+                  {t('send.reviewFootnote', { defaultValue: 'Final fare uses the road distance at booking. Every package gets its own tracking code for its receiver.' })}
+                </Text>
               </View>
 
-              <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.paymentMethod')}</Text>
-              {PAYMENT_METHODS.map(pm => (
-                <Pressable
-                  key={pm.id}
-                  style={[styles.payOption, highlight(paymentId === pm.id)]}
-                  onPress={() => setPaymentId(pm.id)}
-                >
-                  <CreditCard size={18} color={paymentId === pm.id ? theme.accent : theme.textSecond} strokeWidth={1.75} />
-                  <Text style={[styles.payLabel, { color: theme.text }]}>{t(`send.${pm.labelKey}`)}</Text>
-                  {paymentId === pm.id && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
-                </Pressable>
-              ))}
-
-              {/* Cash on delivery removed (founder 2026-08-13): we are
-                  not running COD at launch. Handing drivers cash to
-                  reconcile is a theft and float problem we have no
-                  process for yet. The pricing engine still knows how to
-                  charge a COD fee, so this is a UI removal, not a
-                  teardown, if we ever turn it on deliberately. */}
-
+              {/* Run-level Order Summary, kept from the customer design at
+                  the founder's request, minus the payment row. */}
               <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                 <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.orderSummary')}</Text>
                 {([
                   [t('send.pickup'),         pickup?.address  ?? '-'],
                   [t('send.dropoff'), packages.length > 1
-                    ? t('send.summaryDestinations', {
-                        n: packages.length,
-                        defaultValue: `${packages.length} destinations`,
-                      })
+                    ? t('send.summaryDestinations', { n: packages.length, defaultValue: `${packages.length} destinations` })
                     : (dropoff?.address ?? '-')],
-                  // For a run this must be the whole route, pickup through
-                  // every package, not pickup to package 1.
-                  [t('send.summaryDistance'), packages.length > 1
-                    ? (multi.distanceText ?? `${distKmRoute.toFixed(1)} km`)
-                    : (distanceText ?? `${distKmRoute} km`)],
-                  [t('send.category'), packages.length > 1
-                    ? t('send.summaryMixed', {
-                        n: packages.length,
-                        defaultValue: `${packages.length} packages`,
-                      })
-                    : t(`send.${PACKAGE_CATEGORIES.find(c => c.id === category)?.labelKey ?? 'category'}`)],
-                  [t('send.vehicle2'),       (() => { const v = VEHICLES.find(v => v.id === vehicleId); return v ? t(`send.${v.labelKey}`) : '-'; })()],
+                  [t('send.summaryDistance'), distKmRoute > 0 ? `${distKmRoute.toFixed(1)} km` : '-'],
+                  [t('send.vehicle2'),       VEHICLE_LABEL[Object.keys(LOCAL_VEHICLE_ID).find(k => LOCAL_VEHICLE_ID[k] === vehicleId) ?? ''] ?? vehicleId],
                   [t('send.summaryWhen'),    scheduleNow
                                                ? t('send.summarySendNow')
                                                : (scheduledHour != null
                                                    ? buildScheduledFor(scheduledDate, scheduledHour).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
                                                    : '-')],
-                  [t('send.payment'),        (() => { const p = PAYMENT_METHODS.find(p => p.id === paymentId); return p ? t(`send.${p.labelKey}`) : '-'; })()],
-                  [t('send.total'),          `₦${fare.total.toLocaleString()}`],
+                  [t('send.total'),          `₦${Math.round(fare.total).toLocaleString()}`],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
                     <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
@@ -1733,6 +1780,25 @@ export default function SendScreen() {
                   </View>
                 ))}
               </View>
+
+              {/* Consent gates the money. The checkbox is the agreement;
+                  the link is the full text; the Pay button stays dead
+                  until the box is ticked (founder 2026-08-21). */}
+              <Pressable style={styles.tcRow} onPress={() => setTcAgreed(v => !v)}>
+                <View style={[styles.tcBox, { borderColor: tcAgreed ? theme.primary : theme.border, backgroundColor: tcAgreed ? theme.primary : 'transparent' }]}>
+                  {tcAgreed && <Ionicons name="checkmark" size={14} color="#fff" />}
+                </View>
+                <Text style={[styles.tcText, { color: theme.textSecond }]}>
+                  {t('send.tcAgree', { defaultValue: 'I agree to the SEIRS Terms of Service, including what happens if a delivery fails.' })}
+                  {' '}
+                  <Text
+                    style={{ color: theme.primary, fontWeight: '600' }}
+                    onPress={() => Linking.openURL('https://seirs.app/terms-of-service')}
+                  >
+                    {t('send.tcRead', { defaultValue: 'Read them' })}
+                  </Text>
+                </Text>
+              </Pressable>
             </View>
           )}
 
@@ -1761,15 +1827,20 @@ export default function SendScreen() {
             </View>
           )}
           <Pressable
-            style={[styles.cta, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+            style={[styles.cta, { backgroundColor: theme.primary },
+              (loading || (step === 3 && !tcAgreed)) && { opacity: 0.5 }]}
             onPress={step < 3 ? next : handleBook}
-            disabled={loading}
+            disabled={loading || (step === 3 && !tcAgreed)}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <View style={styles.ctaInner}>
-                <Text style={styles.ctaText}>{step === 3 ? t('send.bookDelivery') : t('common.continue')}</Text>
+                <Text style={styles.ctaText}>
+                  {step === 3
+                    ? `${t('send.payCta', { defaultValue: 'Pay' })} ₦${Math.round(fare.total).toLocaleString()}`
+                    : t('common.continue')}
+                </Text>
                 <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
               </View>
             )}
@@ -1902,6 +1973,21 @@ const styles = StyleSheet.create({
   payLabel:  { flex: 1, fontSize: FontSize.base },
 
   summaryCard: { borderRadius: Radius.xl, padding: Spacing.lg, borderWidth: 1 },
+  mapChip: {
+    position: 'absolute', left: 10, bottom: 10,
+    backgroundColor: 'rgba(10,15,25,0.85)', borderRadius: 999,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  mapChipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  pkgRevRow:  { paddingVertical: 4 },
+  pkgRevHead: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  pkgRevThumb: { width: 40, height: 40, borderRadius: 10 },
+  pkgRevBody: { paddingLeft: 50, paddingBottom: 8 },
+  pkgRevRemove: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
+  pkgRevRemoveText: { fontSize: 13, fontWeight: '600' },
+  tcRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 4 },
+  tcBox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  tcText: { flex: 1, fontSize: 12.5, lineHeight: 18 },
 
   cta:      { height: 46, borderRadius: Radius.lg, justifyContent: 'center', alignItems: 'center' },
   ctaInner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
