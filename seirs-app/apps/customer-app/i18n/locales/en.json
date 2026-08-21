@@ -185,7 +185,7 @@
     "stepVehicle": "Vehicle",
     "step1Caption": "What are you sending?",
     "step2Caption": "Where does the driver collect everything?",
-    "step3Caption": "Pick a vehicle",
+    "step3Caption": "Pick the ride that fits the load.",
     "step4Caption": "Check every line, then pay.",
     "payCard": "Debit Card (Flutterwave)",
     "payBankTransfer": "Bank Transfer",

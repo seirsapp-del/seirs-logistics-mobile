@@ -59,6 +59,16 @@ import { PACKAGE_VEHICLES, calcPackageFare } from '@/constants/mockData';
 import { getActiveRateCard } from '@/hooks/use-rate-card';
 
 const VEHICLES = PACKAGE_VEHICLES;
+// Business Vehicle step, ported verbatim (founder 2026-08-21: exactly).
+const VEHICLE_LABEL: Record<string, string> = {
+  bicycle: 'Bicycle', motorcycle: 'Okada', tricycle: 'Keke',
+  car: 'Car', van: 'Danfo / Van', truck_small: 'Small Truck', truck_large: 'Large Truck',
+};
+const VEHICLE_ORDER = ['motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'];
+const DEFAULT_MAX_PACKAGES: Record<string, number> = {
+  bicycle: 3, motorcycle: 5, tricycle: 15, car: 20,
+  van: 40, truck_small: 80, truck_large: 150,
+};
 type VehicleId = typeof PACKAGE_VEHICLES[number]['id'];
 
 /**
@@ -1534,68 +1544,55 @@ export default function SendScreen() {
 
           {/* STEP 2: Vehicle */}
           {step === 2 && (
-            <View style={styles.stepGap}>
-              <Text style={[styles.hintText, { color: theme.textSecond }]}>
-                {t('send.vehicleRecommended')}
-              </Text>
-              {VEHICLES.map(v => {
-                // Same options the Fare step uses. Quoting the bare
-                // base here meant the vehicle card advertised a price
-                // that omitted the category surcharge, the zone
-                // surcharge and any COD fee, so the number you chose a
-                // vehicle on was never the number you paid.
-                const f      = calcFare(v.id, distKmRoute, kg, {
-                  categoryId: category, codAmountNgn,
-                  pickupCoords, dropoffCoords,
+            <View style={{ gap: 10 }}>
+              {VEHICLE_ORDER.map((v) => {
+                const rates: any = (getActiveRateCard() as any)?.vehicleRates ?? {};
+                const cap = Number(rates?.[v]?.maxPackages) || DEFAULT_MAX_PACKAGES[v] || 5;
+                const payload = Number(rates?.[v]?.maxPayloadKg ?? 0);
+                const blocked = forbiddenForCategory.includes(v);
+                const overWeight = payload > 0 && kg > payload;
+                const overCount = packages.length > cap;
+                const disabled = blocked || overWeight || overCount;
+                const isRecommended = v === VEHICLE_ORDER.find((x) => {
+                  if (forbiddenForCategory.includes(x)) return false;
+                  const pl = Number(rates?.[x]?.maxPayloadKg ?? 0);
+                  const xc = Number(rates?.[x]?.maxPackages) || DEFAULT_MAX_PACKAGES[x] || 5;
+                  return xc >= packages.length && (pl === 0 || pl >= kg);
                 });
-                const active = vehicleId === v.id;
-                const rec    = v.id === (category ? autoRecommend(category, kg) : 'motorcycle');
-                // The rate card marks some vehicle/category pairs unsafe
-                // (frozen food on an okada has no cold chain). Nothing
-                // enforced it: the backend has no such rule at all and
-                // this list offered every vehicle, so the combination the
-                // card forbids was bookable in two taps.
-                const blocked = forbiddenForCategory.includes(v.id);
+                const active = vehicleId === v;
                 return (
                   <Pressable
-                    key={v.id}
-                    disabled={blocked}
-                    style={[styles.vehicleCard, highlight(active), Shadows.xs,
-                            blocked && { opacity: 0.45 }]}
-                    onPress={() => setVehicleId(v.id)}
+                    key={v}
+                    disabled={disabled}
+                    style={[styles.vehRow,
+                      { backgroundColor: theme.surface, borderColor: theme.border, opacity: disabled ? 0.45 : 1 },
+                      active && { borderColor: theme.primary, backgroundColor: theme.primaryLight }]}
+                    onPress={() => setVehicleId(v as VehicleId)}
                   >
-                    <Truck size={26} color={active ? theme.accent : theme.textSecond} strokeWidth={1.5} />
                     <View style={{ flex: 1 }}>
-                      <View style={styles.vehicleNameRow}>
-                        <Text style={[styles.vehicleName, { color: theme.text }]}>{t(`send.${v.labelKey}`)}</Text>
-                        {rec && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.vehName, { color: theme.text }]}>{VEHICLE_LABEL[v]}</Text>
+                        {isRecommended && !disabled && (
                           <View style={[styles.recBadge, { backgroundColor: theme.accent }]}>
                             <Text style={styles.recText}>{t('send.recommended')}</Text>
                           </View>
                         )}
                       </View>
-                      <Text style={[styles.vehicleNote, { color: theme.textSecond }]}>
-                        {t(`send.${v.noteKey}`)} · max {v.maxKg >= 9999 ? '3000+' : v.maxKg}kg
+                      <Text style={[styles.vehSub, { color: theme.textSecond }]}>
+                        {disabled
+                          ? blocked
+                            ? t('send.vehicleBlocked', { defaultValue: 'Not allowed for this package type' })
+                            : overCount ? `Max ${cap} packages` : `Max ${payload}kg`
+                          : `Up to ${cap} packages · ${payload > 0 ? `${payload}kg` : 'no'} payload`}
                       </Text>
-                      {blocked && (
-                        <Text style={[styles.vehicleNote, { color: theme.error }]}>
-                          {t('send.vehicleBlocked', {
-                            defaultValue: 'Not allowed for this package type',
-                          })}
-                        </Text>
-                      )}
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={[styles.vehicleFare, { color: theme.text }]}>₦{f.total.toLocaleString()}</Text>
-                      {/* No minutes on a vehicle card. Founder rule: never
-                          promise arrival times in Nigeria, and the fallback
-                          here literally invented '~20 min' with no route.
-                          Business shows no time either. (2026-08-21) */}
-                    </View>
-                    {active && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
+                    {active && <CheckCircle size={18} color={theme.primary} strokeWidth={2} />}
                   </Pressable>
                 );
               })}
+              <Text style={[styles.capNote, { color: theme.textSecond }]}>
+                This run: {packages.length} package{packages.length === 1 ? '' : 's'}, {kg}kg total.
+              </Text>
             </View>
           )}
 
@@ -1829,6 +1826,10 @@ const styles = StyleSheet.create({
   vehicleName:    { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   vehicleNote:    { fontSize: FontSize.xs },
   vehicleFare:    { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  vehRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 14, padding: 14 },
+  vehName: { fontSize: 15, fontWeight: '700' },
+  vehSub:  { fontSize: 12, marginTop: 2 },
+  capNote: { fontSize: 12, lineHeight: 17 },
   vehicleEta:     { fontSize: FontSize.xs, marginTop: 2 },
   recBadge:       { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.full },
   recText:        { color: '#fff', fontSize: 10, fontWeight: FontWeight.bold },
