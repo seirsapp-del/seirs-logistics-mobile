@@ -184,7 +184,7 @@
     "stepAddress": "Pickup",
     "stepVehicle": "Vehicle",
     "step1Caption": "What are you sending?",
-    "step2Caption": "Where does the driver collect it?",
+    "step2Caption": "Where does the driver collect everything?",
     "step3Caption": "Pick a vehicle",
     "step4Caption": "Check every line, then pay.",
     "payCard": "Debit Card (Flutterwave)",

@@ -908,10 +908,7 @@ export default function SendScreen() {
           {(() => {
             const SLOTS = [
               { name: 'send-package',  captionKey: 'step1Caption' },
-              // Pickup has no hero: the business app opens this step
-              // straight on the how-do-we-get-it cards, and business is
-              // the named design reference (founder 2026-08-21).
-              null,
+              { name: 'send-address',  captionKey: 'step2Caption' },
               { name: 'send-vehicle',  captionKey: 'step3Caption' },
               { name: 'send-fare',     captionKey: 'step4Caption' },
             ];
@@ -1287,7 +1284,13 @@ export default function SendScreen() {
                       }
                     }}
                   >
-                    <ModeIcon size={20} color={active ? theme.accent : theme.textSecond} strokeWidth={1.75} />
+                    <View style={{
+                      width: 38, height: 38, borderRadius: 12,
+                      alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: active ? theme.accent : theme.surfaceSecond,
+                    }}>
+                      <ModeIcon size={18} color={active ? '#fff' : theme.textSecond} strokeWidth={1.75} />
+                    </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.scheduleTitle, { color: theme.text }]}>{t(`send.${opt.titleKey}`)}</Text>
                       <Text style={[styles.scheduleDesc, { color: theme.textSecond }]}>{t(`send.${opt.subKey}`)}</Text>
