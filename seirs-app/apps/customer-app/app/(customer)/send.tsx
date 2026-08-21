@@ -788,6 +788,21 @@ export default function SendScreen() {
     setInvalidField(null);
     setError('');
     if (step === 1 && category) setVehicleId(autoRecommend(category, kg));
+    if (step === 2) {
+      // Same race the business app had: pick the ride before the route
+      // resolves and the muted card never fires. Re-check with the final
+      // distance HERE, where changing the ride is one tap away, never on
+      // a later step that cannot fix it (business deadlock, 2026-08-21).
+      const card: any = getActiveRateCard();
+      const rec = (card?.package?.vehicles ?? []).find((x: any) => x.id === vehicleId) ?? {};
+      const vMaxKm = Number(rec?.maxRouteKm ?? (vehicleId === 'bicycle' ? BICYCLE_MAX_KM_FALLBACK : 0));
+      if (vMaxKm > 0 && distKmRoute > vMaxKm) {
+        setError(t('send.errVehicleKm', {
+          defaultValue: `That ride only does trips under ${vMaxKm}km. This trip is ${Math.round(distKmRoute)}km: pick another.`,
+        }));
+        return;
+      }
+    }
     setStep(s => s + 1);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
     Keyboard.dismiss();

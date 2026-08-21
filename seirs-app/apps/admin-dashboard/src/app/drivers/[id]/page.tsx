@@ -325,8 +325,11 @@ export default function DriverDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
+                {/* Whole row navigates: the founder could not click a
+                    driver's delivery to reach its data (2026-08-21). */}
                 {deliveries.map((d: any) => (
-                  <tr key={d.id} className="hover:bg-gray-50">
+                  <tr key={d.id} className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => router.push(`/deliveries/${d.id}`)}>
                     <td className="px-4 py-3 font-mono text-xs text-gray-500">{d.trackingCode}</td>
                     <td className="px-4 py-3 max-w-xs">
                       <div className="text-xs text-gray-700 truncate">{d.pickupAddress}</div>

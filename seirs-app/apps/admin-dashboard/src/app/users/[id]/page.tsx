@@ -56,19 +56,6 @@ export default function UserDetailPage() {
     setSaving(false);
   };
 
-  const promoteToAdmin = async () => {
-    const ok = await confirm({
-      title:        `Promote ${data.user.name} to admin?`,
-      message:      'They will gain full platform access, including the ability to ban users, change pricing, and access financial reports. This action is irreversible without another admin demoting them.',
-      confirmLabel: 'Promote to Admin',
-      danger:       true,
-    });
-    if (!ok) return;
-    setSaving(true);
-    await adminApi.changeRole(id, 'admin');
-    setData(await adminApi.user(id));
-    setSaving(false);
-  };
 
   // Change role between customer and driver. Admin promotion still lives
   // in the dedicated promoteToAdmin flow above so the extra warning shows.
@@ -215,21 +202,10 @@ export default function UserDetailPage() {
                 {user.role === 'driver' ? 'Change to Customer' : 'Change to Driver'}
               </button>
             )}
-            {/* Super admins only. The API has always refused admin
-                promotion from anyone else, so for other staff this was a
-                button offering full platform access that failed on
-                click. Showing an action someone cannot take is both bad
-                UX and an invitation to go looking for a way around it
-                (founder 2026-08-13). */}
-            {user.role === 'customer' && superAdmin && (
-              <button
-                onClick={promoteToAdmin}
-                disabled={saving}
-                className="text-sm px-4 py-2 rounded-lg font-medium bg-[#0F2B4C]/10 text-[#0F2B4C] hover:bg-[#0F2B4C]/20"
-              >
-                Promote to Admin
-              </button>
-            )}
+            {/* Promote to Admin was removed outright (founder
+                2026-08-21): staff become admins through the Admins page
+                with a proper invitation, never by escalating a customer
+                row in two clicks. */}
             <button
               onClick={sendDocument}
               className="text-sm px-4 py-2 rounded-lg font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
