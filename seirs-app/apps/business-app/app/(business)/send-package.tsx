@@ -506,6 +506,10 @@ export default function SendPackageScreen() {
   // class of silent failure as a blank screen.
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteReloadKey, setQuoteReloadKey] = useState(0);
+  // Review: which package's summary is open, and the consent gate,
+  // matching the customer app's hybrid review (founder 2026-08-21).
+  const [expandedPkg, setExpandedPkg] = useState<number | null>(null);
+  const [tcAgreed, setTcAgreed] = useState(false);
   useEffect(() => {
     if (step !== 3) return;
     const packages = draft.stops.map(s => ({
@@ -1470,8 +1474,9 @@ export default function SendPackageScreen() {
                   </View>
                   <View style={[styles.mapBadge, { backgroundColor: colors.surface }]}>
                     <Text style={[styles.mapBadgeTxt, { color: colors.text }]}>
+                      {/* Kilometres only: minutes are a promise this
+                          platform does not make (founder rule). */}
                       {route.distanceText ?? `~${routeKm}km`}
-                      {route.durationText ? ` · ${route.durationText}` : ''}
                     </Text>
                   </View>
                 </View>
@@ -1493,19 +1498,46 @@ export default function SendPackageScreen() {
               <View style={[styles.sumCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.sumTitle, { color: colors.text }]}>Packages</Text>
                 {draft.stops.map((s, i) => (
-                  <View key={i} style={styles.lineRow}>
-                    {!!(s.photoUris ?? []).length && <Image source={{ uri: s.photoUris![0] }} style={styles.lineThumb} />}
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.lineName, { color: colors.text }]} numberOfLines={1}>
-                        {s.packageDescription?.trim() || `Package ${i + 1}`}
+                  <View key={i}>
+                    <Pressable style={styles.lineRow} onPress={() => setExpandedPkg(expandedPkg === i ? null : i)}>
+                      {!!(s.photoUris ?? []).length && <Image source={{ uri: s.photoUris![0] }} style={styles.lineThumb} />}
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.lineName, { color: colors.text }]} numberOfLines={1}>
+                          {s.packageDescription?.trim() || `Package ${i + 1}`}
+                        </Text>
+                        <Text style={[styles.lineSub, { color: colors.textThird }]} numberOfLines={1}>
+                          {[s.receiverFirstName, s.receiverLastName].filter(Boolean).join(' ') || s.recipientName} · {s.weightKg}kg · {catalog.find(c => c.code === (s.categoryCode ?? draft.categoryCode))?.name ?? ''}
+                        </Text>
+                      </View>
+                      <Text style={[styles.linePrice, { color: colors.text }]}>
+                        {packageLines ? `₦${Math.round(packageLines[i]).toLocaleString()}` : '…'}
                       </Text>
-                      <Text style={[styles.lineSub, { color: colors.textThird }]} numberOfLines={1}>
-                        {[s.receiverFirstName, s.receiverLastName].filter(Boolean).join(' ') || s.recipientName} · {s.weightKg}kg · {catalog.find(c => c.code === (s.categoryCode ?? draft.categoryCode))?.name ?? ''}
-                      </Text>
-                    </View>
-                    <Text style={[styles.linePrice, { color: colors.text }]}>
-                      {packageLines ? `₦${Math.round(packageLines[i]).toLocaleString()}` : '…'}
-                    </Text>
+                      <Icon name={expandedPkg === i ? 'ChevronUp' : 'ChevronDown'} size={15} color={colors.textThird} />
+                    </Pressable>
+                    {expandedPkg === i && (
+                      <View style={{ paddingLeft: 56, paddingBottom: 8, gap: 3 }}>
+                        {([
+                          ['Drop-off', s.address || '-'],
+                          ['Receiver', `${[s.receiverFirstName, s.receiverLastName].filter(Boolean).join(' ') || s.recipientName || '-'} · ${s.recipientPhone || '-'}`],
+                          ['Weight', `${s.weightKg || '-'}kg`],
+                          ['Category', catalog.find(c => c.code === (s.categoryCode ?? draft.categoryCode))?.name ?? '-'],
+                        ] as [string, string][]).map(([lbl, val]) => (
+                          <View key={lbl} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+                            <Text style={[styles.lineSub, { color: colors.textThird }]}>{lbl}</Text>
+                            <Text style={[styles.lineSub, { color: colors.textSecond, flex: 1, textAlign: 'right' }]} numberOfLines={2}>{val}</Text>
+                          </View>
+                        ))}
+                        {draft.stops.length > 1 && (
+                          <Pressable
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}
+                            onPress={() => { setExpandedPkg(null); removeStop(i); setPkgQueries(q => q.filter((_, j) => j !== i)); }}
+                          >
+                            <Icon name="X" size={13} color="#DC2626" />
+                            <Text style={[styles.lineSub, { color: '#DC2626', fontWeight: '600' }]}>Remove this package</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    )}
                   </View>
                 ))}
                 {!!quoteError && (
@@ -1540,6 +1572,50 @@ export default function SendPackageScreen() {
                   Final fare uses the road distance at booking. Every package gets its own tracking code for its receiver.
                 </Text>
               </View>
+
+              {/* Run-level Order Summary, ported from the customer's hybrid
+                  review at the founder's request, payment row omitted. */}
+              <View style={[styles.sumCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.sumTitle, { color: colors.text }]}>Order Summary</Text>
+                {([
+                  ['Pickup', draft.pickupMode === 'store' && draft.pickupStoreName
+                    ? `${draft.pickupStoreName} (counter)` : (draft.pickupAddress || '-')],
+                  ['Packages', `${draft.stops.length} package${draft.stops.length === 1 ? '' : 's'}`],
+                  ['Distance', route.distanceText ?? `~${routeKm}km`],
+                  ['Vehicle', VEHICLE_LABEL[draft.vehicleType] ?? draft.vehicleType],
+                  ['When', scheduleNow ? 'Send now' : (TIME_SLOTS.find(t => t.hour === scheduledHour)?.label ?? '-')],
+                  ['Total', quote?.customer?.total != null ? `₦${Math.round(Number(quote.customer.total)).toLocaleString()}` : '…'],
+                ] as [string, string][]).map(([lbl, val]) => (
+                  <View key={lbl} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingVertical: 5 }}>
+                    <Text style={[styles.lineSub, { color: colors.textThird }]}>{lbl}</Text>
+                    <Text style={[styles.lineSub, { color: colors.text, flex: 1, textAlign: 'right' }]} numberOfLines={2}>{val}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Consent gates the money, same as the customer review. */}
+              <Pressable
+                style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 4 }}
+                onPress={() => setTcAgreed(v => !v)}
+              >
+                <View style={{
+                  width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, marginTop: 1,
+                  alignItems: 'center', justifyContent: 'center',
+                  borderColor: tcAgreed ? colors.primary : colors.border,
+                  backgroundColor: tcAgreed ? colors.primary : 'transparent',
+                }}>
+                  {tcAgreed && <Icon name="Check" size={13} color="#fff" />}
+                </View>
+                <Text style={[styles.lineSub, { color: colors.textSecond, flex: 1, lineHeight: 18 }]}>
+                  I agree to the SEIRS Terms of Service, including what happens if a delivery fails.{' '}
+                  <Text
+                    style={{ color: colors.primary, fontWeight: '600' }}
+                    onPress={() => Linking.openURL('https://seirs.app/terms-of-service')}
+                  >
+                    Read them
+                  </Text>
+                </Text>
+              </Pressable>
             </View>
           )}
         </ScrollView>
@@ -1745,8 +1821,9 @@ export default function SendPackageScreen() {
             </View>
           )}
           <Pressable
-            style={[styles.cta, { backgroundColor: colors.primary }, loading && { opacity: 0.6 }]}
-            disabled={loading}
+            style={[styles.cta, { backgroundColor: colors.primary },
+              (loading || (step === 3 && !tcAgreed)) && { opacity: 0.6 }]}
+            disabled={loading || (step === 3 && !tcAgreed)}
             onPress={step === 3 ? handleSubmit : next}
           >
             {loading ? (
