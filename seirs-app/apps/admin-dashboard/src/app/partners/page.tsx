@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Store, Plus, Search, MapPin, Package, Store as StoreIcon, AlertTriangle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
@@ -32,6 +33,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function PartnersPage() {
+  const router                = useRouter();
   const [rows, setRows]       = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState<string>('');
@@ -205,7 +207,11 @@ export default function PartnersPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((s: any) => (
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={s.id}
+                    onClick={() => router.push(`/partners/${s.id}`)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
                     <td className="px-4 py-3 font-medium text-[#0F2B4C]">
                       {s.storeName}
                       {s.storeCode && (
@@ -242,7 +248,7 @@ export default function PartnersPage() {
                         <span className="text-xs text-gray-400">Paused</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {(s.status === 'approved' || s.status === 'active') ? (
                         <button
                           onClick={async () => {

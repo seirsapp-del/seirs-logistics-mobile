@@ -2,10 +2,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bike, Car, Truck, FileText, Star, MapPin, IdCard, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Bike, Car, Truck, FileText, Star, MapPin, IdCard, CheckCircle2, AlertTriangle, Copy, Download } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
+import { HardDeleteModal } from '@/components/HardDeleteModal';
+import { SendDocumentModal } from '@/components/SendDocumentModal';
 
 const VEHICLE_LUCIDE: Record<string, typeof Bike> = {
   bicycle:    Bike,
@@ -43,6 +45,44 @@ export default function DriverDetailPage() {
   const confirm               = useConfirm();
 
   const reload = () => adminApi.driver(id).then(setData).catch(() => {});
+
+  // Universal account actions. A driver profile wraps a user account,
+  // so documents and NDPR rights work exactly as they do on /users/[id].
+  const [sendDocOpen,   setSendDocOpen]   = useState(false);
+  const [hardDeleteOpen, setHardDeleteOpen] = useState(false);
+  const [coordsCopied,  setCoordsCopied]  = useState(false);
+  const accountUserId = data?.driver?.user?.id as string | undefined;
+
+  const exportData = async () => {
+    if (!accountUserId) return;
+    try {
+      const bundle = await adminApi.ndpr.exportUser(accountUserId);
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `seirs-export-${accountUserId}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) { alert(e?.message ?? 'Export failed'); }
+  };
+
+  const runHardDelete = async (reason: string) => {
+    if (!accountUserId) return;
+    try {
+      const r = await adminApi.ndpr.hardDeleteUser(accountUserId, reason.trim());
+      alert(`Account purged. Archived at ${r.archivedAt}.`);
+      router.push('/drivers');
+    } catch (e: any) { alert(e?.message ?? 'Hard-delete failed'); }
+  };
+
+  const copyCoords = () => {
+    const d = data?.driver;
+    if (!d?.lastLat || !d?.lastLng) return;
+    navigator.clipboard.writeText(`${Number(d.lastLat).toFixed(6)}, ${Number(d.lastLng).toFixed(6)}`)
+      .then(() => { setCoordsCopied(true); setTimeout(() => setCoordsCopied(false), 1500); })
+      .catch(() => alert('Copy failed'));
+  };
 
   useEffect(() => {
     reload().finally(() => setLoading(false));
@@ -149,6 +189,24 @@ export default function DriverDetailPage() {
                   className="text-sm bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 font-medium">
                   {saving ? '...' : 'Reinstate'}
                 </button>
+              )}
+              {driver.user?.id && (
+                <>
+                  <button onClick={() => setSendDocOpen(true)}
+                    className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-1.5 justify-center">
+                    <FileText size={14} /> Send document
+                  </button>
+                  <button onClick={exportData}
+                    title="NDPR data portability: download everything SEIRS holds on this account as JSON"
+                    className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-1.5 justify-center">
+                    <Download size={14} /> Export NDPR data
+                  </button>
+                  <button onClick={() => setHardDeleteOpen(true)}
+                    title="NDPR erasure: permanently purge this account and its personal data"
+                    className="text-sm bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 font-medium">
+                    NDPR hard-delete
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -299,12 +357,22 @@ export default function DriverDetailPage() {
 
         {/* Last known location */}
         {driver.lastLat && driver.lastLng && (
-          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6 flex items-center gap-3">
+          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6 flex items-center gap-3 flex-wrap">
             <MapPin size={20} className="text-gray-700" />
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-800">Last Known Location</p>
-              <p className="text-xs text-gray-500">{Number(driver.lastLat).toFixed(5)}, {Number(driver.lastLng).toFixed(5)}</p>
+              <p className="text-xs text-gray-500 font-mono">{Number(driver.lastLat).toFixed(5)}, {Number(driver.lastLng).toFixed(5)}</p>
             </div>
+            <button onClick={copyCoords}
+              title="Copy coordinates"
+              className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-1.5">
+              <Copy size={12} /> {coordsCopied ? 'Copied!' : 'Copy'}
+            </button>
+            <Link
+              href={`/ops-map?lat=${Number(driver.lastLat)}&lng=${Number(driver.lastLng)}&label=${encodeURIComponent((driver.user?.name ?? 'Driver') + ' · last known')}`}
+              className="text-xs bg-[#0F2B4C] text-white px-3 py-1.5 rounded-lg hover:bg-[#163B66] font-medium flex items-center gap-1.5">
+              <MapPin size={12} /> View on ops map
+            </Link>
           </div>
         )}
 
@@ -351,6 +419,24 @@ export default function DriverDetailPage() {
           )}
         </div>
       </main>
+
+      {sendDocOpen && driver.user?.id && (
+        <SendDocumentModal
+          userName={driver.user?.name ?? 'this driver'}
+          userId={driver.user.id}
+          onClose={() => setSendDocOpen(false)}
+        />
+      )}
+      {hardDeleteOpen && (
+        <HardDeleteModal
+          userName={driver.user?.name ?? 'this driver'}
+          onCancel={() => setHardDeleteOpen(false)}
+          onConfirm={async (reason) => {
+            setHardDeleteOpen(false);
+            await runHardDelete(reason);
+          }}
+        />
+      )}
     </div>
   );
 }

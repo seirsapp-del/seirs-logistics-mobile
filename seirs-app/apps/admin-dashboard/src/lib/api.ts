@@ -85,6 +85,7 @@ export const adminApi = {
     req<any>('/admin/dashboard/targets', { method: 'PATCH', body: JSON.stringify(body) }),
 
   partnerStores: {
+    get: (id: string) => req<any>(`/admin/partner-stores/${id}`),
     list: (status?: string) =>
       req<any[]>(`/admin/partner-stores${status ? `?status=${encodeURIComponent(status)}` : ''}`),
   },

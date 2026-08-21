@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Map as MapIcon, Radio, AlertTriangle, Truck, CircleDot, Store, Flame, Route,
+  Search, Ruler, X,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
@@ -15,7 +16,7 @@ function loadGoogleMaps(key: string): Promise<any> {
   if (_mapsPromise) return _mapsPromise;
   _mapsPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src    = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=visualization`;
+    script.src    = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=visualization,places,geometry`;
     script.async  = true;
     script.defer  = true;
     script.onload  = () => resolve((window as any).google);
@@ -47,6 +48,12 @@ export default function OpsMapPage() {
   const polylinesRef = useRef<any[]>([]);
   const heatmapRef   = useRef<any>(null);
   const infoRef      = useRef<any>(null); // singleton InfoWindow
+  const searchInputRef  = useRef<HTMLInputElement>(null);
+  const searchMarkerRef = useRef<any>(null);   // the temporary "found it" pin
+  const measureOnRef    = useRef(false);       // read inside the map click listener
+  const measureRef      = useRef<{ points: any[]; markers: any[]; line: any; route: any }>({
+    points: [], markers: [], line: null, route: null,
+  });
 
   const [drivers,    setDrivers]    = useState<DriverPin[]>([]);
   const [deliveries, setDeliveries] = useState<DeliveryPin[]>([]);
@@ -57,6 +64,10 @@ export default function OpsMapPage() {
   const [error,      setError]      = useState<string | null>(null);
   const [loaded,     setLoaded]     = useState(false);
   const [layers,     setLayers]     = useState<Record<LayerKey, boolean>>(DEFAULT_LAYERS);
+  const [measureOn,  setMeasureOn]  = useState(false);
+  const [measure,    setMeasure]    = useState<{
+    straightKm: number; roadKm: number | null; roadMin: number | null; pending: boolean;
+  } | null>(null);
 
   // Restore layer prefs
   useEffect(() => {
@@ -96,6 +107,28 @@ export default function OpsMapPage() {
         });
         new g.maps.TrafficLayer().setMap(mapRef.current);
         infoRef.current = new g.maps.InfoWindow();
+
+        // Deep link: /ops-map?lat=..&lng=..&label=.. centers the map and
+        // drops a labeled pin (driver pages link their last-known fix here).
+        try {
+          const q = new URLSearchParams(window.location.search);
+          const qlat = parseFloat(q.get('lat') ?? '');
+          const qlng = parseFloat(q.get('lng') ?? '');
+          if (Number.isFinite(qlat) && Number.isFinite(qlng)) {
+            const pos = { lat: qlat, lng: qlng };
+            mapRef.current.setCenter(pos);
+            mapRef.current.setZoom(15);
+            dropSearchPin(g, pos, q.get('label') ?? `${qlat.toFixed(5)}, ${qlng.toFixed(5)}`);
+          }
+        } catch { /* bad params just load the normal map */ }
+
+        // Measure tool: clicks land here; the ref dodges the stale-closure
+        // trap (this listener is registered once, state changes later).
+        mapRef.current.addListener('click', (e: any) => {
+          if (!measureOnRef.current || !e?.latLng) return;
+          addMeasurePoint(g, e.latLng);
+        });
+
         setLoaded(true);
       })
       .catch((e) => setError(e?.message ?? 'Failed to load Google Maps'));
@@ -256,6 +289,133 @@ export default function OpsMapPage() {
     });
   }, [layers.heat, heatPts]);
 
+  // ── Search: address autocomplete + raw "lat, lng" jump ──
+  function dropSearchPin(g: any, pos: { lat: number; lng: number }, label: string) {
+    searchMarkerRef.current?.setMap(null);
+    const m = new g.maps.Marker({
+      position: pos, map: mapRef.current, title: label, zIndex: 999,
+      icon: {
+        path: 'M 0 -22 C -7 -22 -11 -17 -11 -11 C -11 -4 0 6 0 6 C 0 6 11 -4 11 -11 C 11 -17 7 -22 0 -22 Z',
+        scale: 1, fillColor: '#7C3AED', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2,
+      },
+    });
+    m.addListener('click', () => {
+      infoRef.current?.setContent(
+        `<div style="font:13px system-ui"><b>${label}</b><br/><small>${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}</small></div>`,
+      );
+      infoRef.current?.open({ map: mapRef.current, anchor: m });
+    });
+    searchMarkerRef.current = m;
+  }
+
+  function clearSearchPin() {
+    searchMarkerRef.current?.setMap(null);
+    searchMarkerRef.current = null;
+    if (searchInputRef.current) searchInputRef.current.value = '';
+  }
+
+  // Bind Places autocomplete once the map is up. A pasted "6.45, 3.39"
+  // never reaches Places: the Enter handler catches coordinates first.
+  useEffect(() => {
+    const g = (window as any).google;
+    if (!loaded || !g?.maps?.places || !searchInputRef.current) return;
+    const ac = new g.maps.places.Autocomplete(searchInputRef.current, {
+      fields: ['geometry', 'name', 'formatted_address'],
+      componentRestrictions: { country: 'ng' },
+    });
+    ac.bindTo('bounds', mapRef.current);
+    ac.addListener('place_changed', () => {
+      const p = ac.getPlace();
+      const loc = p?.geometry?.location;
+      if (!loc) return;
+      const pos = { lat: loc.lat(), lng: loc.lng() };
+      mapRef.current.setCenter(pos);
+      mapRef.current.setZoom(15);
+      dropSearchPin(g, pos, p.name || p.formatted_address || 'Search result');
+    });
+    return () => g.maps.event.clearInstanceListeners(ac);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
+  const onSearchEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return;
+    const g = (window as any).google;
+    const raw = (searchInputRef.current?.value ?? '').trim();
+    const coord = raw.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+    if (coord && g && mapRef.current) {
+      e.preventDefault();
+      const pos = { lat: parseFloat(coord[1]), lng: parseFloat(coord[2]) };
+      if (Math.abs(pos.lat) <= 90 && Math.abs(pos.lng) <= 180) {
+        mapRef.current.setCenter(pos);
+        mapRef.current.setZoom(15);
+        dropSearchPin(g, pos, `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`);
+      }
+    }
+    // A non-coordinate Enter falls through to Places autocomplete.
+  };
+
+  // ── Measure: 2 clicks -> straight line + the actual road distance ──
+  function clearMeasure() {
+    const st = measureRef.current;
+    st.markers.forEach((m) => m.setMap(null));
+    st.line?.setMap(null);
+    st.route?.setMap(null);
+    measureRef.current = { points: [], markers: [], line: null, route: null };
+    setMeasure(null);
+  }
+
+  function addMeasurePoint(g: any, latLng: any) {
+    if (measureRef.current.points.length >= 2) clearMeasure();
+    const st = measureRef.current;
+    const label = st.points.length === 0 ? 'A' : 'B';
+    st.points.push(latLng);
+    st.markers.push(new g.maps.Marker({
+      position: latLng, map: mapRef.current, zIndex: 998,
+      label: { text: label, color: '#fff', fontSize: '11px', fontWeight: '700' },
+      icon: { path: g.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#0F2B4C', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+    }));
+    if (st.points.length < 2) return;
+
+    const [a, b] = st.points;
+    const straightKm = g.maps.geometry.spherical.computeDistanceBetween(a, b) / 1000;
+    st.line = new g.maps.Polyline({
+      path: [a, b], map: mapRef.current, strokeOpacity: 0,
+      icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.9, strokeColor: '#7C3AED', scale: 3 }, offset: '0', repeat: '14px' }],
+    });
+    setMeasure({ straightKm, roadKm: null, roadMin: null, pending: true });
+
+    // Road distance: same Directions engine the pricing quote uses, so
+    // what the admin measures matches what the customer was charged for.
+    new g.maps.DirectionsService().route(
+      { origin: a, destination: b, travelMode: g.maps.TravelMode.DRIVING },
+      (res: any, status: string) => {
+        if (status === 'OK' && res?.routes?.[0]?.legs?.[0]) {
+          const leg = res.routes[0].legs[0];
+          measureRef.current.route = new g.maps.Polyline({
+            path: res.routes[0].overview_path, map: mapRef.current,
+            strokeColor: '#0F2B4C', strokeOpacity: 0.85, strokeWeight: 4, zIndex: 5,
+          });
+          setMeasure({
+            straightKm,
+            roadKm:  (leg.distance?.value ?? 0) / 1000,
+            roadMin: Math.round((leg.duration?.value ?? 0) / 60),
+            pending: false,
+          });
+        } else {
+          setMeasure({ straightKm, roadKm: null, roadMin: null, pending: false });
+        }
+      },
+    );
+  }
+
+  const toggleMeasure = () => {
+    const next = !measureOn;
+    setMeasureOn(next);
+    measureOnRef.current = next;
+    if (!next) clearMeasure();
+    if (mapRef.current) mapRef.current.setOptions({ draggableCursor: next ? 'crosshair' : null });
+  };
+
   const onlineCount  = drivers.filter((d) => d.isOnline).length;
   const offlineCount = drivers.length - onlineCount;
 
@@ -294,8 +454,36 @@ export default function OpsMapPage() {
           </div>
         </div>
 
-        {/* Layer chips */}
+        {/* Search + measure + layer chips */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              onKeyDown={onSearchEnter}
+              placeholder='Search address, or paste "6.45231, 3.39187"'
+              className="w-72 rounded-full border border-gray-200 bg-white pl-8 pr-7 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]/30"
+              title="Type an address (autocomplete) or paste raw lat, lng coordinates and press Enter"
+            />
+            <button
+              onClick={clearSearchPin}
+              title="Clear search pin"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+            >
+              <X size={12} />
+            </button>
+          </div>
+          <button
+            onClick={toggleMeasure}
+            title="Measure a distance: click two points on the map to get the straight-line AND road distance"
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+              measureOn ? 'bg-[#7C3AED] text-white border-transparent' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <Ruler size={12} />
+            Measure
+          </button>
+          <span className="h-5 w-px bg-gray-200" />
           {CHIPS.map(({ key, label, count, color, Icon, title }) => {
             const active = layers[key];
             return (
@@ -339,7 +527,38 @@ export default function OpsMapPage() {
             </div>
           </div>
         ) : (
-          <div ref={mapEl} className="absolute inset-0" />
+          <>
+            <div ref={mapEl} className="absolute inset-0" />
+            {measureOn && (
+              <div className="absolute bottom-4 left-4 z-10 rounded-xl bg-white shadow-lg border border-gray-200 px-4 py-3 max-w-xs">
+                {!measure ? (
+                  <p className="text-xs text-gray-500">
+                    <b className="text-[#7C3AED]">Measure mode.</b> Click point A, then point B on the map.
+                  </p>
+                ) : (
+                  <div className="text-xs text-gray-700 space-y-1">
+                    <div className="flex justify-between gap-6">
+                      <span className="text-gray-500">Straight line</span>
+                      <b>{measure.straightKm.toFixed(2)} km</b>
+                    </div>
+                    <div className="flex justify-between gap-6">
+                      <span className="text-gray-500">By road</span>
+                      <b>
+                        {measure.pending
+                          ? 'calculating…'
+                          : measure.roadKm != null
+                            ? `${measure.roadKm.toFixed(2)} km · ~${measure.roadMin} min drive`
+                            : 'no road route found'}
+                      </b>
+                    </div>
+                    <button onClick={clearMeasure} className="mt-1 text-[11px] font-semibold text-[#3A7BD5] hover:underline">
+                      Measure another
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
