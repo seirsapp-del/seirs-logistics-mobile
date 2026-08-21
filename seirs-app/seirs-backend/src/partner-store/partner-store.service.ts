@@ -1454,9 +1454,32 @@ export class PartnerStoreService {
     return days;
   }
 
+  /**
+   * Accrued storage on a package sitting at a counter.
+   *
+   * Free for storage_free_hours, then storage_24_72hr for each started
+   * day beyond it. Derived from the arrival timestamp on every pass
+   * rather than incremented, so a cron that runs twice, or not at all
+   * for two days, still arrives at the same number.
+   */
+  private storageOwed(arrivedAt: Date, now: Date, freeHours: number, perDay: number): number {
+    const hours = (now.getTime() - new Date(arrivedAt).getTime()) / 3_600_000;
+    const chargeable = hours - freeHours;
+    if (chargeable <= 0) return 0;
+    return Math.ceil(chargeable / 24) * perDay;
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async enforceStoragePolicy() {
     const returnFee = await this.feesService.getValueOr('return_to_sender_fee', 1500);
+    // Every threshold below is a Fee Catalogue row. These used to be the
+    // literals 3 and 5, with storage explicitly not charged, while the
+    // catalogue advertised a different policy entirely.
+    const freeHours = Number(await this.feesService.getValueOr('storage_free_hours', 24));
+    const perDay    = Number(await this.feesService.getValueOr('storage_24_72hr', 200));
+    const maxDays   = Number(await this.feesService.getValueOr('storage_max_days', 7));
+    // Warn with two days left rather than at a second hardcoded number.
+    const warnDays  = Math.max(1, maxDays - 2);
 
     const inStore = await this.dropoffRepo.find({
       where: [
@@ -1468,6 +1491,7 @@ export class PartnerStoreService {
 
     let notified = 0;
     let returned = 0;
+    let accrued  = 0;
     const now = new Date();
 
     for (const d of inStore) {
@@ -1475,7 +1499,15 @@ export class PartnerStoreService {
       if (!arrivedAt) continue;
       const workingDays = this.workingDaysBetween(new Date(arrivedAt), now);
 
-      if (workingDays >= 5) {
+      // Storage accrues on calendar hours, not working days: a package
+      // occupies a shelf on Sunday too.
+      const owed = this.storageOwed(new Date(arrivedAt), now, freeHours, perDay);
+      if (owed !== Number(d.storageFeesAccruedNgn ?? 0)) {
+        await this.dropoffRepo.update(d.id, { storageFeesAccruedNgn: owed } as any);
+        accrued++;
+      }
+
+      if (workingDays >= maxDays) {
         // Hard max reached: flag for return + flat transport fee owed.
         await this.dropoffRepo.update(d.id, {
           status:           DropoffStatus.RETURN_TRIGGERED,
@@ -1497,9 +1529,11 @@ export class PartnerStoreService {
           d.senderUserId,
           'Your package is being returned',
           `Package ${d.dropCode} was not collected within 5 working days and is being returned to you. ` +
-          `A return-transport fee of NGN ${returnFee.toLocaleString()} applies. Open the SEIRS app to arrange the return.`,
+          `A return-transport fee of NGN ${returnFee.toLocaleString()} applies` +
+          (owed > 0 ? `, plus NGN ${owed.toLocaleString()} of accrued storage` : '') +
+          `. Open the SEIRS app to arrange the return.`,
         );
-      } else if (workingDays >= 3 && !d.senderOverstayNotifiedAt) {
+      } else if (workingDays >= warnDays && !d.senderOverstayNotifiedAt) {
         // First warning at 3 working days. Sent exactly once.
         await this.dropoffRepo.update(d.id, {
           senderOverstayNotifiedAt: now,
@@ -1511,13 +1545,17 @@ export class PartnerStoreService {
           'Your package is waiting for collection',
           `Package ${d.dropCode} has been waiting at the partner store for 3 working days. ` +
           `Please have it collected within 2 more working days or it will be returned to you (transport fee applies). ` +
-          `No storage fees have been charged.`,
+          (owed > 0
+            ? `Storage of NGN ${owed.toLocaleString()} has accrued so far.`
+            : `No storage fees have accrued yet.`),
         );
       }
     }
 
-    if (notified || returned) {
-      this.logger.log(`Storage policy: warned=${notified} return-triggered=${returned}`);
+    if (notified || returned || accrued) {
+      this.logger.log(
+        `Storage policy: warned=${notified} return-triggered=${returned} storage-updated=${accrued}`,
+      );
     }
   }
 

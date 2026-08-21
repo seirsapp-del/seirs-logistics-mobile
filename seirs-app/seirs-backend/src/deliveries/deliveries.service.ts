@@ -1243,6 +1243,27 @@ export class DeliveriesService {
           const threshold = await this.getHighValueThreshold();
           if (declared >= threshold) resolution = 'store';
         }
+        // Food cannot be stored. A perishable parcel at a counter is
+        // worthless within hours and a health liability after that, so it
+        // never enters the storage machine at all.
+        const category = String(d.categoryCode ?? '');
+        if (category === 'food_hot' || category === 'food_cold') {
+          const maxHours = this.feesServiceRef
+            ? Number(await this.feesServiceRef.getValueOr('perishable_max_hours', 3))
+            : 3;
+          await this.repo.update(d.id, { arrivalResolution: 'perishable' } as any);
+          this.logEvent(d.id, DeliveryEventType.ADMIN_NOTE, EventActorRole.SYSTEM, {
+            description: `Perishable parcel could not be delivered. It cannot be stored, so it must be resolved within ${maxHours} hours.`,
+            meta: { kind: 'perishable_unresolved', maxHours, categoryCode: category },
+          }).catch(() => {});
+          if (this.chatService) {
+            this.chatService
+              .insertSystemMessage(d.id, 'status', `No response from sender and this is a perishable order. It cannot be left at a counter: contact support now.`)
+              .catch(() => {});
+          }
+          continue;
+        }
+
         if (resolution === 'hand_only' || resolution === 'store') {
           await this.autoRedirectToNearestStore(d, 'auto_store').catch(async (e) => {
             this.logger.warn(`auto-redirect failed for ${d.id}: ${e?.message ?? e}; leaving window open`);
@@ -1277,6 +1298,33 @@ export class DeliveriesService {
    * price, which is the one thing a flat fee was good for: a very short
    * detour still has to be worth a rider stopping for.
    */
+  /**
+   * What a rider is owed for a trip that could not complete.
+   *
+   * Flat base plus fuel for the distance they actually rode, which
+   * driverAcceptedDistanceKm now proves rather than leaving to a claim.
+   * Without a floor like this, a rider who reports a misdescribed parcel
+   * earns nothing for the trip, and the rational rider learns to accept
+   * bad parcels quietly instead of reporting them.
+   */
+  private async computeFailedTripPay(delivery: Delivery): Promise<number> {
+    const base = this.feesServiceRef
+      ? Number(await this.feesServiceRef.getValueOr('driver_failed_trip_base_ngn', 200))
+      : 200;
+    const km = Number(delivery.driverAcceptedDistanceKm ?? 0);
+    if (!Number.isFinite(km) || km <= 0) return Math.round(base);
+    try {
+      const card = await this.rateCardPricing.getActiveRateCard();
+      const region = this.rateCardPricing.resolveRegion(card, null);
+      const fuelKm = Number(
+        this.rateCardPricing.fuelPerKm(card, String(delivery.vehicleType), region) ?? 0,
+      );
+      return Math.round(base + km * (Number.isFinite(fuelKm) ? fuelKm : 0));
+    } catch {
+      return Math.round(base);
+    }
+  }
+
   private async computeRedirectFee(delivery: Delivery, detourKm: number): Promise<number> {
     const floor = this.feesServiceRef
       ? Number(await this.feesServiceRef.getValueOr('failed_delivery_redirect_fee', 1000))
@@ -1314,6 +1362,62 @@ export class DeliveriesService {
     } catch (e: any) {
       this.logger.warn(`redirect fee: falling back to the flat floor: ${e?.message ?? e}`);
       return Math.round(floor);
+    }
+  }
+
+  /**
+   * A rider reported a problem and support never answered.
+   *
+   * reportIssue flags the delivery and opens a ticket, and until now
+   * nothing ever timed out. A rider standing at a pickup with a parcel
+   * that is not what was described could wait indefinitely on an agent,
+   * which is exactly the situation admin_redirect_timeout_minutes exists
+   * to bound. After the timeout the rider is released from the job and
+   * the delivery is escalated rather than left open.
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async escalateUnansweredDisputes() {
+    try {
+      const timeoutMin = this.feesServiceRef
+        ? Number(await this.feesServiceRef.getValueOr('admin_redirect_timeout_minutes', 30))
+        : 30;
+      const cutoff = new Date(Date.now() - Math.max(5, timeoutMin) * 60 * 1000);
+
+      const stale = await this.repo
+        .createQueryBuilder('d')
+        .leftJoinAndSelect('d.customer', 'customer')
+        .where('d.disputedAt IS NOT NULL')
+        .andWhere('d.disputedAt < :cutoff', { cutoff })
+        .andWhere('d.disputeEscalatedAt IS NULL')
+        .andWhere(`d.status NOT IN ('delivered', 'cancelled')`)
+        .take(20)
+        .getMany();
+
+      for (const d of stale) {
+        await this.repo.update(d.id, { disputeEscalatedAt: new Date() } as any);
+
+        this.logEvent(d.id, DeliveryEventType.ADMIN_NOTE, EventActorRole.SYSTEM, {
+          description: `Rider reported a problem ${timeoutMin} minutes ago with no support decision. Escalated.`,
+          meta: { kind: 'dispute_escalated', timeoutMin, reason: d.disputeReason },
+        }).catch(() => {});
+
+        if (this.notificationsService && d.customer?.id) {
+          this.notificationsService.create(
+            d.customer.id,
+            'We are still looking at your package',
+            `The rider raised a problem with ${d.trackingCode} and it is taking us longer than usual. Support will contact you.`,
+            'status_update',
+            d.id,
+            d.trackingCode,
+          ).catch(() => {});
+        }
+      }
+
+      if (stale.length) {
+        this.logger.warn(`Escalated ${stale.length} unanswered rider dispute(s)`);
+      }
+    } catch (e: any) {
+      this.logger.warn(`dispute escalation sweep failed: ${e?.message ?? e}`);
     }
   }
 
@@ -2491,6 +2595,10 @@ export class DeliveriesService {
     const label = REASONS[body?.reason];
     if (!label) throw new BadRequestException('Unknown reason.');
 
+    // The rider made this trip whoever was at fault, and reporting a bad
+    // parcel is the behaviour we want. Deciding the money here, at the
+    // moment they report, is what stops it becoming an argument later.
+    delivery.driverFailedTripNgn = await this.computeFailedTripPay(delivery);
     delivery.disputedAt      = new Date();
     delivery.disputeReason   = body.reason;
     delivery.disputePhotoUrl = body.photoUrl ?? null;

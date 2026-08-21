@@ -271,6 +271,18 @@ export class Delivery {
   @Column({ type: 'varchar', length: 10, nullable: true })
   redirectFeePayer: string | null;
 
+  // What the rider is owed for a trip that could not complete, on top of
+  // nothing else. Set when a rider reports a problem, so the money is
+  // decided at the moment they did the right thing rather than argued
+  // about later. The accept-location capture proves the distance.
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  driverFailedTripNgn: number | null;
+
+  // Set once a rider-reported dispute has been escalated for lack of a
+  // support decision, so the sweep never escalates the same one twice.
+  @Column({ type: 'timestamptz', nullable: true })
+  disputeEscalatedAt: Date | null;
+
   // ── Mid-delivery address change (founder 2026-08-21) ────────────────
   // A sender who gave the wrong address can ask for it to be corrected
   // while the rider is still carrying the package. Support decides;
