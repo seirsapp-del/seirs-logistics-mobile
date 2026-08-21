@@ -21,10 +21,15 @@ const SLIDES = [
     gradient: ['#0F2B4C', '#1a4070'] as [string, string],
   },
   {
+    // Was "Business Wallet: fund once, dispatch many". That is the
+    // pre-launch wallet model the founder killed (senders never hold
+    // NGN, per CBN posture): the first screen a new business saw was
+    // promising a product SEIRS does not offer. Receipts and points are
+    // the true part, so they stay.
     key:     'wallet',
-    icon:    'Wallet' as const,
-    title:   'Business Wallet',
-    body:    'Fund once, dispatch many. Track every naira spent with itemised receipts and loyalty points.',
+    icon:    'Receipt' as const,
+    title:   'Every Naira Accounted',
+    body:    'Pay per booking with your card. Itemised receipts on every delivery, and loyalty points on each one.',
     gradient: ['#1a3a5c', '#3A7BD5'] as [string, string],
   },
   {
