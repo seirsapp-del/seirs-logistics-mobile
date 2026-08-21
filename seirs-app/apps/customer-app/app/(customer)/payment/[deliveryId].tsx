@@ -3,13 +3,13 @@ import {
   ScrollView, ActivityIndicator, Linking, AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CreditCard, Wallet, Smartphone, Landmark, ShieldCheck } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { paymentsApi, type FlutterwavePaymentOption } from '@/services/api';
+import { paymentsApi, deliveriesApi, type FlutterwavePaymentOption } from '@/services/api';
 
 // Spec V8 §"Confirmed Decisions": COD removed. All non-wallet methods
 // route through Flutterwave; the paymentOption hint controls which tab
@@ -65,6 +65,20 @@ export default function PaymentScreen() {
   // One route to checkout: Flutterwave, card tab open by default. Its
   // own page carries bank transfer and USSD, so we no longer ask first.
   const selectedId: PickerId = 'card';
+  // The price arrives as a route param from Send, but the Bookings
+  // Pay-now button navigates with only the delivery id, and this
+  // screen showed 'Amount to pay: N0' on a real booking (caught live,
+  // 2026-08-21). The charge itself was always priced server-side, so
+  // the money was right and the screen was lying. When the param is
+  // missing, fetch the delivery and use its stored price.
+  const [fetchedPrice, setFetchedPrice] = useState<number | null>(null);
+  const displayPrice = Number(price ?? 0) > 0 ? Number(price) : (fetchedPrice ?? 0);
+  useEffect(() => {
+    if (Number(price ?? 0) > 0 || !deliveryId) return;
+    deliveriesApi.get(String(deliveryId))
+      .then((d: any) => { if (d?.price != null) setFetchedPrice(Number(d.price)); })
+      .catch(() => { /* the server still charges the right amount */ });
+  }, [deliveryId, price]);
   const [loading,    setLoading]    = useState(false);
   const [verifying,  setVerifying]  = useState(false);
   const [error,      setError]      = useState('');
@@ -146,8 +160,9 @@ export default function PaymentScreen() {
         {/* Amount card */}
         <View style={[styles.amountCard, { backgroundColor: theme.primary }]}>
           <Text style={styles.amountLabel}>Amount to pay</Text>
-          <Text style={styles.amount}>₦{Number(price ?? 0).toLocaleString()}</Text>
+          <Text style={styles.amount}>₦{displayPrice.toLocaleString()}</Text>
           <Text style={styles.amountNote}>Funds held in escrow: released after delivery</Text>
+          <Text style={styles.amountNote}>Card processing is added at checkout by Flutterwave.</Text>
         </View>
 
         {/* No method picker (founder 2026-08-13). We route everything to

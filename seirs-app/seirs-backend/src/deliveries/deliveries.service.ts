@@ -231,8 +231,9 @@ export class DeliveriesService {
           weightKg: weight,
           estimatedDwellMinutes: 0,
           scheduledAt: dto.scheduledFor ? new Date(dto.scheduledFor) : undefined,
-          pickupCoords:  { lat: dto.pickupLat,  lng: dto.pickupLng },
-          dropoffCoords: { lat: dto.dropoffLat, lng: dto.dropoffLng },
+          // Same latitude/longitude fix as create() below.
+          pickupCoords:  { latitude: dto.pickupLat,  longitude: dto.pickupLng },
+          dropoffCoords: { latitude: dto.dropoffLat, longitude: dto.dropoffLng },
         } as any);
         quotes[vehicleType] = {
           total:          Number(b.customer.total),
@@ -314,8 +315,14 @@ export class DeliveriesService {
       weightKg: weight,
       estimatedDwellMinutes: 0,
       scheduledAt: dto.scheduledFor ? new Date(dto.scheduledFor) : undefined,
-      pickupCoords:  { lat: dto.pickupLat,  lng: dto.pickupLng },
-      dropoffCoords: { lat: dto.dropoffLat, lng: dto.dropoffLng },
+      // latitude/longitude, NOT lat/lng: the engine reads
+      // pickupCoords.latitude, and the `as any` hid the mismatch, so
+      // coordinates never arrived, state detection got undefined, and
+      // every single-package customer booking priced at NATIONAL rates
+      // while the review screen showed Lagos rates. Caught live on the
+      // first real booking: screen 2,134, charge 1,668 (2026-08-21).
+      pickupCoords:  { latitude: dto.pickupLat,  longitude: dto.pickupLng },
+      dropoffCoords: { latitude: dto.dropoffLat, longitude: dto.dropoffLng },
     } as any);
     const pricing = {
       price:          Number(breakdown.customer.total),
