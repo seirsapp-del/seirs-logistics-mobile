@@ -357,6 +357,16 @@ export const deliveriesApi = {
     request<{ authorizationUrl: string; reference: string; amountNgn: number }>(
       'POST', `/deliveries/${id}/address-change/pay`,
     ),
+  // Return to sender. The destination is always the delivery's own
+  // pickup address; there is deliberately no parameter to change it.
+  getReturnQuote: (id: string) =>
+    request<any>('GET', `/deliveries/${id}/return-quote`),
+  requestReturn: (id: string) =>
+    request<any>('POST', `/deliveries/${id}/return`),
+  payReturn: (id: string) =>
+    request<{ authorizationUrl: string; reference: string; amountNgn: number }>(
+      'POST', `/deliveries/${id}/return/pay`,
+    ),
 };
 
 // ─── Payments ─────────────────────────────────────────────────────────────────

@@ -537,7 +537,18 @@ export class BusinessService {
     if (Array.isArray(delivery.stops)) {
       delivery.stops.sort((a, b) => a.sequenceOrder - b.sequenceOrder);
     }
-    return delivery;
+
+    // Same derived field the public tracking payload exposes. Without
+    // it the business app cannot tell that a package is sitting behind
+    // an unpaid collection fee: the entity carries the fee and the paid
+    // timestamp separately, and every client would have to re-derive
+    // the same rule and eventually disagree about it.
+    const feeNgn = Number(delivery.redirectFeeNgn ?? 0);
+    return {
+      ...delivery,
+      redirectFeeOwedNgn:
+        feeNgn > 0 && !delivery.redirectFeePaidAt ? feeNgn : null,
+    };
   }
 
   /**

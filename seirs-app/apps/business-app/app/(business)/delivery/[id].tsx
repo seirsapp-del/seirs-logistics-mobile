@@ -13,12 +13,14 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Share, Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Icon } from '@/components/Icon';
 import { businessApi } from '@/services/api';
+import { deliveriesApi } from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -92,6 +94,89 @@ export default function DeliveryDetailScreen() {
   const stops: any[] = Array.isArray(d.stops) ? d.stops : [];
   const runColor = STATUS_COLOR[d.status] ?? colors.textThird;
 
+  /**
+   * Settle what is owed on a package that ended up at a counter.
+   *
+   * Business runs hit this more than single deliveries do: five stops
+   * means five chances that nobody is in, and the run still reads as
+   * successful while one parcel sits on a shelf.
+   */
+  const payRedirectFee = async () => {
+    try {
+      const res = await deliveriesApi.payRedirectFee(String(id));
+      if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
+      else Alert.alert('Could not start payment', 'Please try again in a moment.');
+    } catch (e: any) {
+      Alert.alert('Could not start payment', e?.message ?? 'Please try again.');
+    }
+  };
+
+  /** Hand the bill to whoever is actually collecting it. */
+  const shareCollectLink = async () => {
+    const code = d?.trackingCode;
+    if (!code) return;
+    try {
+      await Share.share({
+        message:
+          `Package ${code} is waiting at a SEIRS partner store. ` +
+          `Settle the collection fee and get the pickup address here: ` +
+          `https://seirs.app/collect/${code}`,
+      });
+    } catch {
+      /* share sheet dismissed */
+    }
+  };
+
+  /** Ask for it back. Priced from wherever it is now, to the pickup. */
+  const requestReturn = async () => {
+    try {
+      const q = await deliveriesApi.getReturnQuote(String(id));
+      Alert.alert(
+        'Return this package?',
+        `${q.note}\n\nBack to: ${q.returnTo}\n` +
+        `${q.km} km by road\n` +
+        `Transport: \u20a6${Number(q.transportNgn).toLocaleString()}\n` +
+        (q.counterOwedNgn > 0
+          ? `Counter owed: \u20a6${Number(q.counterOwedNgn).toLocaleString()}\n`
+          : '') +
+        `Total: \u20a6${Number(q.totalNgn).toLocaleString()}` +
+        (q.needsSupport ? '\n\nSupport has to approve this before you can pay.' : ''),
+        [
+          { text: 'Not now', style: 'cancel' },
+          {
+            text: q.needsSupport ? 'Ask support' : 'Request return',
+            onPress: async () => {
+              try {
+                const r = await deliveriesApi.requestReturn(String(id));
+                Alert.alert(
+                  r.status === 'pending' ? 'Sent to support' : 'Return approved',
+                  r.status === 'pending'
+                    ? 'A rider is carrying this package, so support has to arrange it. We will let you know.'
+                    : 'Pay in the app and we will bring it back to your pickup address.',
+                );
+                setD(await businessApi.delivery(String(id)));
+              } catch (e: any) {
+                Alert.alert('Could not request that', e?.message ?? 'Please try again.');
+              }
+            },
+          },
+        ],
+      );
+    } catch (e: any) {
+      Alert.alert('Could not price a return', e?.message ?? 'Please try again.');
+    }
+  };
+
+  /** Pay for a return support has approved. */
+  const payReturn = async () => {
+    try {
+      const res = await deliveriesApi.payReturn(String(id));
+      if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
+    } catch (e: any) {
+      Alert.alert('Could not start payment', e?.message ?? 'Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -125,6 +210,86 @@ export default function DeliveryDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Rider is at the door with nobody to receive. The sender's
+            window is ticking, so this has to be the first thing seen. */}
+        {d.arrivalIssueAt && !d.arrivalResolution && (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#F59E0B', borderWidth: 1.5 }]}>
+            <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
+              Nobody available to receive
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textSecond, lineHeight: 19 }}>
+              The rider is at the drop-off and cannot hand the package over. If we do
+              not hear from you it will follow your booked fallback.
+            </Text>
+          </View>
+        )}
+
+        {/* Package is at a counter behind an unpaid fee. */}
+        {Number(d.redirectFeeOwedNgn ?? 0) > 0 && (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#F59E0B', borderWidth: 1.5 }]}>
+            <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
+              Waiting at a partner store
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textSecond, lineHeight: 19 }}>
+              Nobody was available, so this is being kept safe at a SEIRS partner
+              store. {fmt(d.redirectFeeOwedNgn)} settles it and reveals the pickup
+              location.
+            </Text>
+            <Pressable
+              onPress={payRedirectFee}
+              style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#F59E0B' }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
+                Pay {fmt(d.redirectFeeOwedNgn)}
+              </Text>
+            </Pressable>
+            <Pressable onPress={shareCollectLink} style={{ marginTop: 8, paddingVertical: 8, alignItems: 'center' }}>
+              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>
+                Send the collection link to the recipient
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Return in flight. */}
+        {d.returnStatus && d.returnStatus !== 'rejected' && (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#7C3AED', borderWidth: 1.5 }]}>
+            <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
+              Return to sender: {String(d.returnStatus)}
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textSecond, lineHeight: 19 }}>
+              Going back to {d.pickupAddress}.
+              {d.returnStatus === 'pending' ? ' Support is reviewing it.' : ''}
+              {d.returnStatus === 'applied' ? ' On its way back to you.' : ''}
+            </Text>
+            {d.returnStatus === 'approved' && !d.returnPaidAt && (
+              <Pressable
+                onPress={payReturn}
+                style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#7C3AED' }}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
+                  Pay {fmt(d.returnQuoteNgn)} to start the return
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
+        {/* Ask for it back, while it is still ours to move. */}
+        {['assigned', 'picked_up', 'in_transit'].includes(String(d.status)) && !d.returnStatus && (
+          <Pressable
+            onPress={requestReturn}
+            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}
+          >
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>
+              Need this package back?
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textThird, marginTop: 2 }}>
+              Priced from where it is now, back to your pickup address
+            </Text>
+          </Pressable>
+        )}
 
         <Text style={[styles.sectionTitle, { color: colors.textThird }]}>
           {stops.length > 1 ? `PACKAGES (${stops.length})` : 'PACKAGE'}
