@@ -13,6 +13,7 @@ import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { PricingService } from './pricing.service';
 import { RouteDistanceService } from './route-distance.service';
 import { PricingService as RateCardPricing } from '../pricing/pricing.service';
+import { detectStateFromCoords } from '../pricing/regions';
 import { User } from '../users/user.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
@@ -1264,6 +1265,58 @@ export class DeliveriesService {
     }
   }
 
+  /**
+   * What rerouting this package to a counter actually costs.
+   *
+   * A flat fee is wrong in both directions: it overcharges a 600 metre
+   * detour and badly undercharges an 8 km one. This prices the detour
+   * the rider really rides, on the same rate card the original fare came
+   * from, plus what the counter is paid to take the package in.
+   *
+   * failed_delivery_redirect_fee survives as a FLOOR rather than the
+   * price, which is the one thing a flat fee was good for: a very short
+   * detour still has to be worth a rider stopping for.
+   */
+  private async computeRedirectFee(delivery: Delivery, detourKm: number): Promise<number> {
+    const floor = this.feesServiceRef
+      ? Number(await this.feesServiceRef.getValueOr('failed_delivery_redirect_fee', 1000))
+      : 1000;
+    const intake = this.feesServiceRef
+      ? Number(await this.feesServiceRef.getValueOr('partner_store_handling_ngn', 500))
+      : 500;
+
+    const km = Number(detourKm);
+    if (!Number.isFinite(km) || km < 0) return Math.round(floor);
+
+    try {
+      const card = await this.rateCardPricing.getActiveRateCard();
+      const vehicle = String(delivery.vehicleType);
+      // Region matters: Lagos runs 110/km against a national 100, so
+      // pricing a Lagos detour at the national rate underpays the rider.
+      const state =
+        delivery.dropoffLat != null && delivery.dropoffLng != null
+          ? detectStateFromCoords(Number(delivery.dropoffLat), Number(delivery.dropoffLng))
+          : null;
+      const region = this.rateCardPricing.resolveRegion(card, state);
+
+      // labourPerKmCustomer is the stable, admin-tuned part of the
+      // per-km rate; fuel is computed separately and added below.
+      const perKm = Number(
+        (card as any)?.vehicleRates?.[vehicle]?.labourPerKmCustomer ?? 0,
+      ) * Number((region as any)?.rateMultiplier ?? 1);
+      const fuelPerKm = Number(this.rateCardPricing.fuelPerKm(card, vehicle, region) ?? 0);
+
+      const labour = km * (Number.isFinite(perKm) ? perKm : 0);
+      const fuel   = km * (Number.isFinite(fuelPerKm) ? fuelPerKm : 0);
+      const cost   = labour + fuel + intake;
+
+      return Math.round(Math.max(cost, floor));
+    } catch (e: any) {
+      this.logger.warn(`redirect fee: falling back to the flat floor: ${e?.message ?? e}`);
+      return Math.round(floor);
+    }
+  }
+
   // Nearest approved store to the delivery's dropoff becomes the new
   // destination; the redirect fee is recorded and the tracking payload
   // masks the store until it is settled (pay-to-release).
@@ -1283,15 +1336,43 @@ export class DeliveriesService {
         WHERE status IN ('approved', 'active') AND "acceptingNew" = true
           AND "storeLat" IS NOT NULL AND "storeLng" IS NOT NULL
         ORDER BY distance_km ASC
-        LIMIT 1`,
+        LIMIT 3`,
       [Number(delivery.dropoffLat), Number(delivery.dropoffLng)],
     );
-    const store = stores[0];
-    if (!store) throw new BadRequestException('No partner store available nearby.');
+    if (!stores.length) throw new BadRequestException('No partner store available nearby.');
 
-    const fee = this.feesServiceRef
-      ? await this.feesServiceRef.getValueOr('failed_delivery_redirect_fee', 1000)
-      : 1000;
+    // Straight line got us three candidates cheaply. Road distance
+    // decides between them, because in Lagos the nearest store as the
+    // crow flies can be across water with no crossing.
+    let store = stores[0];
+    let detourKm = Number(store.distance_km ?? 0);
+    try {
+      const measured = await Promise.all(
+        stores.map(async (c: any) => ({
+          store: c,
+          km: (
+            await this.routeDistance.getRoadDistance(
+              Number(delivery.dropoffLat),
+              Number(delivery.dropoffLng),
+              Number(c.storeLat),
+              Number(c.storeLng),
+            )
+          ).km,
+        })),
+      );
+      measured.sort((a, b) => a.km - b.km);
+      store = measured[0].store;
+      detourKm = measured[0].km;
+    } catch (e: any) {
+      // Falling back to the haversine winner is worse but still correct
+      // enough to put the package somewhere safe, which beats leaving a
+      // rider holding it because a maps call failed.
+      this.logger.warn(
+        `redirect: road-distance check failed, using straight-line nearest: ${e?.message ?? e}`,
+      );
+    }
+
+    const fee = await this.computeRedirectFee(delivery, detourKm);
     const prevAddress = delivery.dropoffAddress;
 
     await this.repo.update(delivery.id, {
@@ -1304,7 +1385,7 @@ export class DeliveriesService {
     } as any);
 
     this.logEvent(delivery.id, DeliveryEventType.ADMIN_NOTE, EventActorRole.SYSTEM, {
-      description: `Failed delivery rerouted to partner store ${store.storeName} (${Number(store.distance_km).toFixed(1)} km from drop-off). Redirect fee ₦${fee} owed.`,
+      description: `Failed delivery rerouted to partner store ${store.storeName} (${detourKm.toFixed(1)} km by road from drop-off). Redirect fee ₦${fee} owed.`,
       meta: { kind: 'auto_redirect_store', storeId: store.id, prevAddress, feeNgn: fee, resolution },
     }).catch(() => {});
 
