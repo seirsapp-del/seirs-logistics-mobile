@@ -69,6 +69,13 @@ const VEHICLE_LABEL: Record<string, string> = {
   car: 'Car', van: 'Danfo / Van', truck_small: 'Small Truck', truck_large: 'Large Truck',
 };
 const VEHICLE_ORDER = ['bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'];
+// The customer card and pricing use LOCAL vehicle ids (keke, truck_sm);
+// the canonical names above are display order only. Booking with a
+// canonical id would silently break calcFare and the payload.
+const LOCAL_VEHICLE_ID: Record<string, string> = {
+  bicycle: 'bicycle', motorcycle: 'motorcycle', tricycle: 'keke',
+  car: 'car', van: 'van', truck_small: 'truck_sm', truck_large: 'truck_lg',
+};
 // Short-hop ceiling for the human-powered tier. Read from the rate card
 // when the admin adds vehicleRates.bicycle.maxRouteKm; 3km until then.
 const BICYCLE_MAX_KM_FALLBACK = 3;
@@ -1553,27 +1560,35 @@ export default function SendScreen() {
           {step === 2 && (
             <View style={{ gap: 10 }}>
               {VEHICLE_ORDER.map((v) => {
-                const rates: any = (getActiveRateCard() as any)?.vehicleRates ?? {};
-                const cap = Number(rates?.[v]?.maxPackages) || DEFAULT_MAX_PACKAGES[v] || 5;
-                const payload = Number(rates?.[v]?.maxPayloadKg ?? 0);
-                const blocked = forbiddenForCategory.includes(v);
+                const localId = LOCAL_VEHICLE_ID[v];
+                // The customer card keeps vehicles under package.vehicles
+                // with maxKg, not backend-style vehicleRates: reading the
+                // wrong schema here rendered every card without a payload
+                // (founder caught it on the step-3 side-by-side).
+                const card: any = getActiveRateCard();
+                const rec = (card?.package?.vehicles ?? []).find((x: any) => x.id === localId) ?? {};
+                const cap = Number(rec?.maxPackages) || DEFAULT_MAX_PACKAGES[v] || 5;
+                const payload = Number(rec?.maxKg ?? 0);
+                const blocked = forbiddenForCategory.includes(localId) || forbiddenForCategory.includes(v);
                 const overWeight = payload > 0 && kg > payload;
                 const overCount = packages.length > cap;
                 // Any vehicle the admin gives a maxRouteKm honours it;
                 // bicycle simply has a sane fallback so the human-powered
                 // tier is short-hop even before the card row exists
                 // (founder 2026-08-21: the knob must be per-vehicle).
-                const maxKm = Number(rates?.[v]?.maxRouteKm
+                const maxKm = Number(rec?.maxRouteKm
                   ?? (v === 'bicycle' ? BICYCLE_MAX_KM_FALLBACK : 0));
                 const overKm = maxKm > 0 && distKmRoute > maxKm;
                 const disabled = blocked || overWeight || overCount || overKm;
                 const isRecommended = v === VEHICLE_ORDER.find((x) => {
-                  if (forbiddenForCategory.includes(x)) return false;
-                  const pl = Number(rates?.[x]?.maxPayloadKg ?? 0);
-                  const xc = Number(rates?.[x]?.maxPackages) || DEFAULT_MAX_PACKAGES[x] || 5;
+                  const xl = LOCAL_VEHICLE_ID[x];
+                  if (forbiddenForCategory.includes(xl) || forbiddenForCategory.includes(x)) return false;
+                  const xr = (card?.package?.vehicles ?? []).find((q: any) => q.id === xl) ?? {};
+                  const pl = Number(xr?.maxKg ?? 0);
+                  const xc = Number(xr?.maxPackages) || DEFAULT_MAX_PACKAGES[x] || 5;
                   return xc >= packages.length && (pl === 0 || pl >= kg);
                 });
-                const active = vehicleId === v;
+                const active = vehicleId === localId;
                 return (
                   <Pressable
                     key={v}
@@ -1581,7 +1596,7 @@ export default function SendScreen() {
                     style={[styles.vehRow,
                       { backgroundColor: theme.surface, borderColor: theme.border, opacity: disabled ? 0.45 : 1 },
                       active && { borderColor: theme.primary, backgroundColor: theme.primaryLight }]}
-                    onPress={() => setVehicleId(v as VehicleId)}
+                    onPress={() => setVehicleId(localId as VehicleId)}
                   >
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
