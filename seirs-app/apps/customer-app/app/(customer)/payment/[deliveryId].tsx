@@ -205,7 +205,7 @@ export default function PaymentScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.payBtnText}>
-                Continue to payment · ₦{Number(price ?? 0).toLocaleString()}
+                Continue to payment · ₦{displayPrice.toLocaleString()}
               </Text>
             )}
           </Pressable>
