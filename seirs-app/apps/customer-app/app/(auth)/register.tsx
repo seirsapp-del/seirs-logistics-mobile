@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { authApi } from '@/services/api';
+import { StatePicker } from '@/components/StatePicker';
+import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword } from '@seirs/shared';
 import {
@@ -64,6 +66,12 @@ export default function RegisterScreen() {
   const [lastName,       setLastName]        = useState('');
   const [email,          setEmail]           = useState('');
   const [phone,          setPhone]           = useState('');
+  // Optional home address. Collecting it pre-fills the first booking's
+  // pickup, but signup is where people drop out, so nothing here is
+  // required and none of it can block account creation.
+  const [addrState,      setAddrState]       = useState('');
+  const [addrCity,       setAddrCity]        = useState('');
+  const [addrStreet,     setAddrStreet]      = useState('');
   const [password,       setPassword]        = useState('');
   const [confirmPwd,     setConfirmPwd]      = useState('');
   const [ageConfirmed,   setAgeConfirmed]    = useState(false);
@@ -90,6 +98,15 @@ export default function RegisterScreen() {
         ageConfirmed:    true,
         termsAcceptedAt: new Date().toISOString(),
         ...(referralCode ? { referralCode } : {}),
+        // Only sent when the sender actually filled it in.
+        ...(addrState.trim() && addrCity.trim() && addrStreet.trim()
+          ? { homeAddress: {
+              label:  'Home',
+              street: addrStreet.trim(),
+              city:   addrCity.trim(),
+              state:  addrState.trim(),
+            } }
+          : {}),
       });
 
       // Navigate to OTP screen with email param
@@ -244,6 +261,45 @@ export default function RegisterScreen() {
             </View>
             <Text style={[styles.fieldHint, { color: theme.textThird }]}>
               {t('auth.phoneHint')}
+            </Text>
+          </View>
+
+          {/* Home address, optional. State is a searchable modal rather than
+              a native picker, which is wildly inconsistent across Android
+              versions, and the street field is Places autocomplete pinned to
+              Nigeria and scoped to the chosen state. Both ported from the
+              business register, which has had them since its rebuild. */}
+          <View style={styles.field}>
+            <StatePicker
+              label={t('auth.stateOptional', { defaultValue: 'State (optional)' })}
+              value={addrState}
+              onChange={setAddrState}
+            />
+          </View>
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecond }]}>
+              {t('auth.cityOptional', { defaultValue: 'City / LGA (optional)' })}
+            </Text>
+            <View style={[styles.inputWrap, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="e.g. Ikeja, Surulere, Lekki"
+                placeholderTextColor={theme.textThird}
+                value={addrCity}
+                onChangeText={setAddrCity}
+              />
+            </View>
+          </View>
+          <View style={styles.field}>
+            <StreetAutocomplete
+              label={t('auth.streetOptional', { defaultValue: 'Street address (optional)' })}
+              value={addrStreet}
+              onChangeText={setAddrStreet}
+              state={addrState}
+              placeholder="Start typing a street or landmark…"
+            />
+            <Text style={[styles.fieldHint, { color: theme.textThird }]}>
+              {t('auth.addressHint', { defaultValue: 'Saves you typing it on your first booking. You can add it later instead.' })}
             </Text>
           </View>
 

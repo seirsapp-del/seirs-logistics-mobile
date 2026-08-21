@@ -209,7 +209,11 @@
     "help": "Ìrànwọ́ & Ìbéèrè Tígbàgbọ́",
     "privacy": "Ìlànà Àṣírí",
     "contact": "Kánìyàn Àtìlẹ́yìn",
-    "signOut": "Jáde"
+    "signOut": "Jáde",
+    "editProfile": "Ṣàtúnṣe àlàyé iṣẹ́ rẹ",
+    "documents": "Àwọn ìwé",
+    "applyPartner": "Bẹ̀wẹ̀ láti di ilé-ìtajà alábàáṣiṣẹ́pọ̀",
+    "contactSupport": "Kàn sí ìrànlọ́wọ́"
   },
   "language": {
     "title": "Èdè",
@@ -367,5 +371,14 @@
       "> Àwọn àlejò díẹ̀ ní Yaba àti Surulere ti yí ìpè padà sí ìfaramọ́ owó tó ju ₦10,000+ lọ nípa pípe àwọn ẹgbẹ́ WhatsApp wọn nìkan. Ó tọ̀nà láti gbìyànjú.",
       "Tẹ Firanṣẹ idii kí o sì wo Ẹ̀bùn láti bẹ̀rẹ̀ pínpín kóòdù rẹ."
     ]
+  },
+  "profile": {
+    "title": "Ìwé ìdánimọ̀",
+    "account": "Àkàǹtì",
+    "partner": "Nẹ́tíwọ́kì alábàáṣiṣẹ́pọ̀",
+    "preferences": "Àwọn ìfẹ́",
+    "support": "Ìrànlọ́wọ́",
+    "seirsIdTap": "SEIRS ID · TẸ FÚN QR",
+    "qrHint": "Fi èyí hàn ní ilé-ìtajà alábàáṣiṣẹ́pọ̀ àti nígbà ìfilọ́wọ́."
   }
 }

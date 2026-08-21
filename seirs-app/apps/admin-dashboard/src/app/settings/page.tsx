@@ -179,11 +179,18 @@ export default function SettingsPage() {
 
 type PromoType = 'discount_500' | 'free_delivery' | 'priority' | 'insurance';
 
-const PROMO_TYPES: { value: PromoType; hint: string }[] = [
-  { value: 'discount_500',  hint: '₦500 off next delivery (500 pts)' },
-  { value: 'free_delivery', hint: 'One free standard delivery (1000 pts)' },
-  { value: 'priority',      hint: 'Priority dispatch on next order (300 pts)' },
-  { value: 'insurance',     hint: 'Package insurance on next order (200 pts)' },
+/* `live` mirrors REDEMPTIONS in the customer app's rewards.tsx.
+   loyalty.service.ts only mutates the delivery price for the two
+   naira-value rewards. Priority and insurance are recorded on the ledger
+   but need dispatcher and insurance-partner wiring before they deliver
+   anything, so the Rewards tab refuses to redeem them. Featuring one here
+   would promote a reward the app then blocks, which is why they are
+   labelled rather than silently offered. */
+const PROMO_TYPES: { value: PromoType; hint: string; live: boolean }[] = [
+  { value: 'discount_500',  live: true,  hint: '₦500 off next delivery (500 pts)' },
+  { value: 'free_delivery', live: true,  hint: 'One free standard delivery (1000 pts)' },
+  { value: 'priority',      live: false, hint: 'Priority dispatch on next order (300 pts)' },
+  { value: 'insurance',     live: false, hint: 'Package insurance on next order (200 pts)' },
 ];
 
 function FeaturedPromotionCard({ raw, onSaved }: { raw: string; onSaved: () => Promise<void> | void }) {
@@ -285,12 +292,21 @@ function FeaturedPromotionCard({ raw, onSaved }: { raw: string; onSaved: () => P
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
             >
               {PROMO_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.value}</option>
+                <option key={t.value} value={t.value}>
+                  {t.value}{t.live ? '' : ' (not wired yet)'}
+                </option>
               ))}
             </select>
             <div className="text-[10px] text-gray-500 mt-1">
               {PROMO_TYPES.find(t => t.value === type)?.hint}
             </div>
+            {PROMO_TYPES.find(t => t.value === type)?.live === false && (
+              <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1">
+                Customers cannot redeem this yet. The Rewards tab shows it but
+                blocks redemption until dispatcher and insurance wiring ships,
+                so featuring it advertises something that does not work.
+              </div>
+            )}
           </label>
 
           <label className="text-xs">

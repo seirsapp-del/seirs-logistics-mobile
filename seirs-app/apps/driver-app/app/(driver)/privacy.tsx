@@ -3,7 +3,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import * as Location from 'expo-location';
+import { useFocusEffect } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -15,8 +17,29 @@ export default function DriverPrivacyScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
-  const [locationAlways,    setLocationAlways]    = useState(true);
-  const [shareLocation,     setShareLocation]     = useState(true);
+  // These two switches used to write location_always / share_location to
+  // the backend and nothing anywhere read them back, so a driver turning
+  // background tracking off changed precisely nothing while the screen
+  // implied it had. Android owns this decision, so show the real grant
+  // state and send the driver to system settings to change it.
+  const [fgGranted, setFgGranted] = useState<boolean | null>(null);
+  const [bgGranted, setBgGranted] = useState<boolean | null>(null);
+
+  const readLocationPerms = useCallback(async () => {
+    try {
+      const fg = await Location.getForegroundPermissionsAsync();
+      setFgGranted(fg.status === 'granted');
+    } catch { setFgGranted(null); }
+    try {
+      const bg = await Location.getBackgroundPermissionsAsync();
+      setBgGranted(bg.status === 'granted');
+    } catch { setBgGranted(null); }
+  }, []);
+
+  useEffect(() => { readLocationPerms(); }, [readLocationPerms]);
+  // Re-read on focus: the driver may have just changed it in Settings.
+  useFocusEffect(useCallback(() => { readLocationPerms(); }, [readLocationPerms]));
+
   const [analyticsData,     setAnalyticsData]     = useState(true);
   const [personalisedOffers,setPersonalisedOffers]= useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -25,8 +48,6 @@ export default function DriverPrivacyScreen() {
     (async () => {
       try {
         const { prefs } = await usersApi.getNotificationPrefs();
-        if (prefs?.location_always   !== undefined) setLocationAlways(prefs.location_always);
-        if (prefs?.share_location    !== undefined) setShareLocation(prefs.share_location);
         if (prefs?.analytics_share   !== undefined) setAnalyticsData(prefs.analytics_share);
         if (prefs?.personalised_ads  !== undefined) setPersonalisedOffers(prefs.personalised_ads);
       } catch {}
@@ -40,8 +61,6 @@ export default function DriverPrivacyScreen() {
     }, 400);
   };
 
-  const onLocationAlways    = (v: boolean) => { setLocationAlways(v);    queueSave({ location_always:   v }); };
-  const onShareLocation     = (v: boolean) => { setShareLocation(v);     queueSave({ share_location:    v }); };
   const onAnalyticsData     = (v: boolean) => { setAnalyticsData(v);     queueSave({ analytics_share:   v }); };
   const onPersonalisedOffers= (v: boolean) => { setPersonalisedOffers(v); queueSave({ personalised_ads: v }); };
 
@@ -68,10 +87,6 @@ export default function DriverPrivacyScreen() {
     }
   };
 
-  const LOCATION_ITEMS = [
-    { label: 'Background Location Tracking', sub: 'Required for real-time delivery navigation and job matching', value: locationAlways, setter: onLocationAlways },
-    { label: 'Share Location with Customers',sub: 'Customers can see your live location during active trips', value: shareLocation, setter: onShareLocation },
-  ];
 
   const DATA_ITEMS = [
     { label: 'Analytics & Performance',  sub: 'Help improve the platform by sharing anonymised usage data', value: analyticsData,      setter: onAnalyticsData      },
@@ -83,6 +98,25 @@ export default function DriverPrivacyScreen() {
     { label: 'Terms of Service',   icon: 'reader-outline',                  url: 'https://seirs.app/terms-of-service'  },
     { label: 'Dispute Resolution', icon: 'information-circle-outline',      url: 'https://seirs.app/dispute-resolution' },
   ];
+
+  const renderPermRow = (label: string, sub: string, granted: boolean | null, isLast: boolean) => (
+    <View
+      key={label}
+      style={[styles.row, !isLast && { borderBottomColor: theme.border, borderBottomWidth: 0.5 }]}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
+        <Text style={[styles.rowSub, { color: theme.textSecond }]}>{sub}</Text>
+      </View>
+      <Text style={{
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.semibold,
+        color: granted === null ? theme.textThird : granted ? '#16A34A' : '#DC2626',
+      }}>
+        {granted === null ? 'Unknown' : granted ? 'Allowed' : 'Blocked'}
+      </Text>
+    </View>
+  );
 
   const renderToggleRow = (
     label: string, sub: string, value: boolean, setter: (v: boolean) => void, key: string, isLast: boolean,
@@ -121,9 +155,18 @@ export default function DriverPrivacyScreen() {
         {/* Location */}
         <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Location</Text>
-          {LOCATION_ITEMS.map((item, i) =>
-            renderToggleRow(item.label, item.sub, item.value, item.setter, item.label, i === LOCATION_ITEMS.length - 1)
-          )}
+          {renderPermRow('While using the app', 'Needed to show you nearby jobs and navigate.', fgGranted, false)}
+          {renderPermRow('Always (background)', 'Needed to keep tracking a delivery when the app is not open.', bgGranted, false)}
+          <Text style={[styles.rowSub, { color: theme.textThird, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm }]}>
+            While a delivery is active your live location is shared with that customer. That is how tracking works, so it is not a setting.
+          </Text>
+          <Pressable
+            onPress={() => Linking.openSettings()}
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Ionicons name="options-outline" size={18} color={theme.primary} />
+            <Text style={[styles.rowLabel, { color: theme.primary }]}>Change in system settings</Text>
+          </Pressable>
         </View>
 
         {/* Data & Analytics */}

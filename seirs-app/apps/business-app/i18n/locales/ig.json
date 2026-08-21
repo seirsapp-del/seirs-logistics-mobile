@@ -209,7 +209,11 @@
     "help": "Enyemaka & Ajụjụ",
     "privacy": "Iwu Nzuzo",
     "contact": "Kpọtụrụ Nkwado",
-    "signOut": "Pụọ"
+    "signOut": "Pụọ",
+    "editProfile": "Dezie nkọwa azụmahịa",
+    "documents": "Akwụkwọ",
+    "applyPartner": "Tinye akwụkwọ ịbụ ụlọ ahịa mmekọ",
+    "contactSupport": "Kpọtụrụ enyemaka"
   },
   "language": {
     "title": "Asụsụ",
@@ -367,5 +371,14 @@
       "> Ndị ahịa ole na ole na Yaba na Surulere atụgharịala nkpọ n'ime kredit karịrị ₦10,000+ site na ịkpọ otu WhatsApp ha. Ọ bara uru ịnwale.",
       "Pịa Ziga ngwugwu ma lelee Ụgwọ ọrụ iji bido kekọrịta koodu gị."
     ]
+  },
+  "profile": {
+    "title": "Profaịlụ",
+    "account": "Akaụntụ",
+    "partner": "Netwọk mmekọ",
+    "preferences": "Nhọrọ",
+    "support": "Enyemaka",
+    "seirsIdTap": "SEIRS ID · PII MAKA QR",
+    "qrHint": "Gosi nke a nʼụlọ ahịa mmekọ na mgbe nnyefe."
   }
 }

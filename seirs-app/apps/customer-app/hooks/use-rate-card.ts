@@ -31,7 +31,12 @@ const CACHE_KEY        = 'seirs.rateCard.active';
 // and the per-stop bonus now genuinely merge from the backend. A card
 // cached under v1 holds pre-merge numbers (a motorcycle base of 700
 // where the card says 300), so it must be discarded rather than shown.
-const CACHE_VERSION    = 'v2';
+// v3: category surcharges were cached as whole-number percents (30)
+// where every consumer expects a fraction (0.30), so a cached v2 card
+// prices a frozen-food parcel at 100x. Discard rather than show: an
+// install that already cached v2 would keep overcharging after the
+// code fix shipped.
+const CACHE_VERSION    = 'v3';
 const REFRESH_INTERVAL = 5 * 60 * 1000;   // 5 min — matches backend cache TTL
 
 // Module-level: every calc function in rateCard.ts reads from this. Starts
@@ -288,7 +293,17 @@ function mergeCategories(local: any, catalog: any[]): any {
   for (const key of Object.keys(local)) {
     const remote = byCode.get(CATEGORY_MAP[key] ?? key);
     if (!remote) continue;
-    const pct = Number(remote.surchargePercent);
+    /**
+     * The API sends a WHOLE-NUMBER percent (food_cold is 30.00 meaning
+     * 30%). The bundled card, and every consumer of `pct` in
+     * rateCard.ts, uses a FRACTION (0.30). Assigning the API value raw
+     * multiplied the running subtotal by 30 instead of by 0.30, so a
+     * frozen-food parcel quoted at NGN 3,921 on the vehicle step billed
+     * NGN 131,242 on the fare step. Categories at 0% were unaffected,
+     * which is why this survived: documents and standard parcels, the
+     * common cases, priced correctly.
+     */
+    const pct = Number(remote.surchargePercent) / 100;
     if (!Number.isFinite(pct)) continue;
     out[key] = { ...local[key], pct };
   }

@@ -34,8 +34,11 @@ export class DeliveriesController {
     @CurrentUser() user: User,
     @Query('page',  new DefaultValuePipe(1),  ParseIntPipe) page:  number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
   ) {
-    return this.deliveriesService.findByCustomer(user.id, Math.max(1, page), Math.min(100, Math.max(1, limit)));
+    return this.deliveriesService.findByCustomer(
+      user.id, Math.max(1, page), Math.min(100, Math.max(1, limit)), search,
+    );
   }
 
   // GET /api/v1/deliveries/frequent-addresses
@@ -196,6 +199,19 @@ export class DeliveriesController {
     @Body() body: { reason?: string },
   ) {
     return this.deliveriesService.cancelByCustomer(id, user.id, body?.reason);
+  }
+
+  // POST /api/v1/deliveries/:id/report-issue - the assigned rider raises a
+  // problem with this job (wrong parcel, overweight, sender absent, unsafe)
+  // and attaches a photo. Ownership is checked in the service: the token
+  // proves who the rider is, not that this delivery is theirs.
+  @Post(':id/report-issue')
+  reportIssue(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: { reason: string; note?: string; photoUrl?: string },
+  ) {
+    return this.deliveriesService.reportIssue(id, user.id, body);
   }
 
   // GET /api/v1/deliveries/:id/cancel-quote - what cancelling costs right now

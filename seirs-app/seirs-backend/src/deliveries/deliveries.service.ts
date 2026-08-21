@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { TicketTopic } from '../support/support-ticket.entity';
+import { SupportService } from '../support/support.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { LessThan, Repository, MoreThan } from 'typeorm';
@@ -184,6 +186,7 @@ export class DeliveriesService {
     private pricingService: PricingService,
     private routeDistance: RouteDistanceService,
     private rateCardPricing: RateCardPricing,
+    private supportService: SupportService,
   ) {}
 
   /**
@@ -420,6 +423,106 @@ export class DeliveriesService {
 
     const saved = await this.repo.save(delivery);
 
+    // Multi-package run. One driver, one pickup, one payment, and a
+    // DeliveryStop row per package so each receiver gets a public
+    // tracking code for THEIR parcel and cannot see the rest of the run.
+    // Same rows and the same code family the business path writes, so
+    // /track, the driver app and admin all read them without changes.
+    if (Array.isArray(dto.stops) && dto.stops.length > 0) {
+      const stopRepo = this.repo.manager.getRepository(DeliveryStop);
+
+      const used = new Set<string>();
+      const nextPackageCode = () => {
+        let c = generateTrackingCode();
+        while (used.has(c)) c = generateTrackingCode();
+        used.add(c);
+        return c;
+      };
+      // stopCode carries a partial unique index, so a collision fails the
+      // whole booking insert, not just one row. It needs the same
+      // treatment as the package code: dedup inside the batch here, and
+      // a check against history below.
+      const usedStops = new Set<string>();
+      const nextStopCode = () => {
+        let c = 'STP-' + secureCode(8);
+        while (usedStops.has(c)) c = 'STP-' + secureCode(8);
+        usedStops.add(c);
+        return c;
+      };
+
+      const rows = dto.stops.map((st, idx) => this.repo.manager.create(DeliveryStop, {
+        deliveryId:            saved.id,
+        sequenceOrder:         idx + 1,
+        stopCode:              nextStopCode(),
+        packageTrackingCode:   nextPackageCode(),
+        packagePhotoUrls:      st.packagePhotoUrls ?? null,
+        packageDescription:    st.packageDescription ?? null,
+        categoryCode:          st.categoryCode ?? dto.packageCategory ?? null,
+        weightKg:              st.weightKg ?? null,
+        receiverFirstName:     st.receiverFirstName ?? null,
+        receiverLastName:      st.receiverLastName ?? null,
+        declaredValueNgn:      st.declaredValueNgn ?? null,
+        fallbackPref:          st.fallbackPref ?? null,
+        fallbackNeighbourName: st.fallbackNeighbourName ?? null,
+        address:               st.address,
+        lat:                   st.lat,
+        lng:                   st.lng,
+        recipientName:         st.recipientName,
+        recipientPhone:        st.recipientPhone,
+        notes:                 st.notes ?? null,
+        status:                DeliveryStopStatus.PENDING,
+      } as any));
+
+      // Codes are random, so at volume a clash with HISTORY (not just
+      // within this batch) is a real event. One indexed query catches it
+      // and the row regenerates before insert, so a partial unique index
+      // never fails the whole booking.
+      // Check BOTH tables. A customer single delivery's own trackingCode is
+      // also SRS-, so the package namespace overlaps it, and /track looks up
+      // delivery_stops FIRST: a package code that collided with an existing
+      // delivery's code would shadow that delivery and make it untrackable.
+      const codes = rows.map((r: any) => r.packageTrackingCode).filter(Boolean);
+      if (codes.length > 0) {
+        const [stopClashes, deliveryClashes]: [Array<{ c: string }>, Array<{ c: string }>] =
+          await Promise.all([
+            this.repo.manager.query(
+              `SELECT "packageTrackingCode" AS c FROM delivery_stops WHERE "packageTrackingCode" = ANY($1)`,
+              [codes],
+            ),
+            this.repo.manager.query(
+              `SELECT "trackingCode" AS c FROM deliveries WHERE "trackingCode" = ANY($1)`,
+              [codes],
+            ),
+          ]);
+        const clashed = new Set([...stopClashes, ...deliveryClashes].map(x => x.c));
+        if (clashed.size > 0) {
+          for (const r of rows as any[]) {
+            while (clashed.has(r.packageTrackingCode)) {
+              r.packageTrackingCode = nextPackageCode();
+            }
+          }
+        }
+      }
+
+      const stopCodes = rows.map((r: any) => r.stopCode).filter(Boolean);
+      if (stopCodes.length > 0) {
+        const stopClash: Array<{ c: string }> = await this.repo.manager.query(
+          `SELECT "stopCode" AS c FROM delivery_stops WHERE "stopCode" = ANY($1)`,
+          [stopCodes],
+        );
+        if (stopClash.length > 0) {
+          const taken = new Set(stopClash.map(x => x.c));
+          for (const r of rows as any[]) {
+            while (taken.has(r.stopCode)) r.stopCode = nextStopCode();
+          }
+        }
+      }
+
+      await stopRepo.save(rows);
+      (saved as any).isMultiStop = true;
+      await this.repo.save(saved);
+    }
+
     // Dispatch waits for MONEY, not just creation (2026-08-16): the fare
     // escrows via /payments/initiate (card webhook, wallet, COD), and
     // whichever path secures it calls kickDispatch. Before this gate a
@@ -473,6 +576,13 @@ export class DeliveriesService {
       driver:     match.driver,
       status:     DeliveryStatus.ASSIGNED,
       assignedAt: new Date(),
+      // Where the rider was when we chose them, written before anyone has
+      // a reason to argue about it. Compensation for a wasted trip scales
+      // with distance ridden, so without this a claim of "I rode 15km"
+      // could not be checked against anything.
+      driverAcceptedLat:        (match.driver as any)?.lastLat ?? null,
+      driverAcceptedLng:        (match.driver as any)?.lastLng ?? null,
+      driverAcceptedDistanceKm: (match as any)?.distanceKm ?? null,
     });
 
     if (this.trackingGateway) {
@@ -502,13 +612,27 @@ export class DeliveriesService {
     );
   }
 
-  async findByCustomer(customerId: string, page = 1, limit = 20) {
-    const [items, total] = await this.repo.findAndCount({
-      where: { customer: { id: customerId } },
-      order: { createdAt: 'DESC' },
-      take: limit,
-      skip: (page - 1) * limit,
-    });
+  async findByCustomer(customerId: string, page = 1, limit = 20, search?: string) {
+    const qb = this.repo
+      .createQueryBuilder('d')
+      .where('d."customerId" = :customerId', { customerId })
+      .orderBy('d."createdAt"', 'DESC')
+      .take(limit)
+      .skip((page - 1) * limit);
+
+    // Search the three things a customer actually remembers about a
+    // booking: the tracking code they were given, and either address.
+    // Without this the Bookings tab could only filter the page already
+    // loaded, which is worse than no search at all.
+    const q = (search ?? '').trim();
+    if (q) {
+      qb.andWhere(
+        '(d."trackingCode" ILIKE :like OR d."pickupAddress" ILIKE :like OR d."dropoffAddress" ILIKE :like)',
+        { like: `%${q}%` },
+      );
+    }
+
+    const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
@@ -1831,6 +1955,81 @@ export class DeliveriesService {
    * it without a deploy. Falls back to the seeded defaults if the card is
    * missing or malformed, in the same shape as getHighValueThreshold.
    */
+  /**
+   * A rider reports a problem with the job in front of them.
+   *
+   * The case this exists for: the rider is at the pickup, the parcel is
+   * not what the sender described, and until now they had no way to say
+   * so. The only route was to back out of the active job, find Profile ->
+   * Support, open a ticket with no photo, then attach one inside the
+   * thread. Five screens at a roadside with a sender watching, so in
+   * practice the rider either accepted a parcel they should not have or
+   * rang someone personally, and no record existed either way.
+   *
+   * Flags the delivery and opens a support ticket carrying the rider's
+   * photo in one call, so a half-failure cannot leave a dispute with no
+   * ticket or a ticket with no dispute.
+   */
+  async reportIssue(
+    deliveryId: string,
+    driverUserId: string,
+    body: { reason: string; note?: string; photoUrl?: string },
+  ) {
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['driver', 'driver.user', 'customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    // Only the rider actually holding this job may dispute it. A valid
+    // token proves who they are, not that this delivery is theirs.
+    const assignedUserId = (delivery as any).driver?.user?.id ?? null;
+    if (!assignedUserId || assignedUserId !== driverUserId) {
+      throw new ForbiddenException('This delivery is not assigned to you.');
+    }
+
+    const REASONS: Record<string, string> = {
+      mismatch:   'Package does not match the description',
+      overweight: 'Heavier than declared',
+      absent:     'Sender not present or wrong address',
+      unsafe:     'Unsafe or refused item',
+    };
+    const label = REASONS[body?.reason];
+    if (!label) throw new BadRequestException('Unknown reason.');
+
+    delivery.disputedAt      = new Date();
+    delivery.disputeReason   = body.reason;
+    delivery.disputePhotoUrl = body.photoUrl ?? null;
+    await this.repo.save(delivery);
+
+    let ticketId: string | null = null;
+    const lines = [
+      'Rider reported: ' + label + '.',
+      'Tracking ' + delivery.trackingCode + '.',
+      body.note && body.note.trim() ? 'Rider note: ' + body.note.trim() : null,
+      // Same convention the ticket thread uses for images, so the photo
+      // renders inline for the agent instead of arriving as bare text.
+      body.photoUrl ? '📎 ' + body.photoUrl : null,
+    ].filter(Boolean) as string[];
+
+    try {
+      const ticket: any = await this.supportService.create(driverUserId, {
+        topic:            TicketTopic.DELIVERY,
+        subject:          label + ' - ' + delivery.trackingCode,
+        firstMessage:     lines.join('\n'),
+        linkedDeliveryId: delivery.id,
+      });
+      ticketId = ticket?.id ?? null;
+    } catch (e: any) {
+      // The dispute flag is the part that must not be lost. A ticket that
+      // failed to open is recoverable; a rider who reported a problem and
+      // had it silently dropped is not.
+      this.logger.error('reportIssue: ticket creation failed: ' + (e?.message ?? e));
+    }
+
+    return { ok: true, disputedAt: delivery.disputedAt, reason: body.reason, ticketId };
+  }
+
   private async getCancellationRules(): Promise<{
     preAssignNgn: number; postAssignNgn: number; driverShareNgn: number;
   }> {

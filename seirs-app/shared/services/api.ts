@@ -128,6 +128,11 @@ export const authApi = {
     role: 'customer' | 'driver'; vehicleType?: string;
     ageConfirmed?: boolean; termsAcceptedAt?: string;
     referralCode?: string;
+    /** Optional at signup. Pre-fills the first booking's pickup. */
+    homeAddress?: {
+      label: string; street: string; city: string; state: string;
+      coords?: { lat: number; lng: number } | null;
+    };
   }) => request<{ message: string; requiresOtp: boolean }>('POST', '/auth/register', {
     ...body,
     // Driver registers with okada/keke etc on the UI. normalize before
@@ -234,8 +239,12 @@ export const userVerificationApi = {
 export const deliveriesApi = {
   quote: (body: object) => request<any>('POST', '/deliveries/quote', normalizeBodyVehicle(body as any)),
   create: (body: object) => request<any>('POST', '/deliveries', normalizeBodyVehicle(body as any)),
-  myDeliveries: (page = 1, limit = 20) =>
-    request<{ items: any[]; total: number; pages: number }>('GET', `/deliveries?page=${page}&limit=${limit}`),
+  myDeliveries: (page = 1, limit = 20, search?: string) =>
+    request<{ items: any[]; total: number; pages: number }>(
+      'GET',
+      `/deliveries?page=${page}&limit=${limit}` +
+        (search && search.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''),
+    ),
   // Suggested addresses based on the current user's delivery history
   // (last 90 days). Ranked by frequency then recency.
   frequentAddresses: () =>
@@ -291,6 +300,19 @@ export const deliveriesApi = {
   // What cancelling costs right now. The fee is priced server-side off
   // the active rate card: never quote a cancellation fee from the
   // bundled client rate card, which can be months out of date.
+  /**
+   * The assigned rider raises a problem with the job in front of them and
+   * attaches a photo. Flags the delivery AND opens a support ticket in one
+   * call, so a half-failure cannot leave a dispute with no ticket.
+   */
+  reportIssue: (id: string, body: {
+    reason: 'mismatch' | 'overweight' | 'absent' | 'unsafe';
+    note?: string;
+    photoUrl?: string;
+  }) =>
+    request<{ ok: true; disputedAt: string; reason: string; ticketId: string | null }>(
+      'POST', `/deliveries/${id}/report-issue`, body,
+    ),
   cancelQuote: (id: string) =>
     request<{
       cancellable: boolean;
@@ -888,6 +910,7 @@ export const businessApi = {
       weightKg?:              number;
       receiverFirstName?:     string;
       receiverLastName?:      string;
+      receiverPhone?:         string;
       declaredValueNgn?:      number;
       fallbackPref?:          string;
       fallbackNeighbourName?: string;

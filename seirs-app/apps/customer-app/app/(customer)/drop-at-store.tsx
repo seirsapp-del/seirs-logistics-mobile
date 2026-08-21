@@ -14,7 +14,8 @@ import {
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { dropoffApi } from '@/services/api';
+import { dropoffApi, feesApi } from '@/services/api';
+import { Illustration } from '@/components/Illustration';
 
 // Spec V8 §3: async customer entry point. Customer schedules a drop-off,
 // gets a printable QR + 6-char backup code, walks into the picked store
@@ -23,6 +24,22 @@ import { dropoffApi } from '@/services/api';
 //
 // 4 steps + final receipt screen.
 type Step = 'pickup' | 'destination' | 'package' | 'review' | 'done';
+
+// Header chrome matches the business app's Send a Package flow exactly
+// (apps/business-app/app/(business)/send-package.tsx): left-aligned title
+// with the step caption under it, progress dots on the right. This screen
+// was the odd one out across both apps, using a centred title and no dots.
+const STEP_ORDER: Step[] = ['pickup', 'destination', 'package', 'review'];
+
+// Slots come from components/Illustration.tsx. 'send-vehicle' carries step 2
+// because that step decides how the parcel travels the last leg: to a door
+// or to a counter, not merely which address it lands on.
+const STEP_ART: Record<string, string> = {
+  pickup:      'send-address',
+  destination: 'send-vehicle',
+  package:     'send-package',
+  review:      'send-confirm',
+};
 
 interface NearbyStore {
   id:           string;
@@ -66,6 +83,12 @@ export default function DropAtStoreScreen() {
   const [weightKg,         setWeightKg]       = useState('');
   const [packageDescription, setPackageDescription] = useState('');
   const [declaredValue,    setDeclaredValue]  = useState('');
+  // The value above which the recipient must show physical ID at handoff.
+  // Read from the Fee Catalogue, never hardcoded: the backend gates the
+  // real requirement on high_value_threshold_ngn (deliveries.service +
+  // identity.service), so a constant here drifts the moment admin edits
+  // it and the screen starts promising a check nobody performs.
+  const [highValueNgn,     setHighValueNgn]   = useState(100000);
 
   // Final
   const [receipt,          setReceipt]        = useState<{ dropCode: string; backupCode: string; pickupStoreId: string } | null>(null);
@@ -93,6 +116,14 @@ export default function DropAtStoreScreen() {
         setLoading(false);
       }
     })();
+  }, []);
+
+  // Same fallback the backend uses, so a failed fetch degrades to the
+  // truth rather than to a different number.
+  useEffect(() => {
+    feesApi.get('high_value_threshold_ngn')
+      .then(r => { const v = Number(r?.value); if (v > 0) setHighValueNgn(v); })
+      .catch(() => { /* keep the 100000 fallback */ });
   }, []);
 
   const submitDropoff = async () => {
@@ -165,7 +196,7 @@ export default function DropAtStoreScreen() {
       >
         <ArrowLeft size={20} color={theme.text} />
       </Pressable>
-      <View style={{ flex: 1, alignItems: 'center' }}>
+      <View style={{ flex: 1 }}>
         <Text style={[styles.headerTitle, { color: theme.text }]}>{t('dropAtStore.title')}</Text>
         {step !== 'done' && (
           <Text style={[styles.headerSub, { color: theme.textSecond }]}>
@@ -176,7 +207,18 @@ export default function DropAtStoreScreen() {
           </Text>
         )}
       </View>
-      <View style={{ width: 36 }} />
+      {step !== 'done' && (
+        <View style={styles.dots}>
+          {STEP_ORDER.map((s, i) => (
+            <View
+              key={s}
+              style={[styles.dot, {
+                backgroundColor: i <= STEP_ORDER.indexOf(step) ? theme.primary : theme.border,
+              }]}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 
@@ -246,6 +288,13 @@ export default function DropAtStoreScreen() {
       {renderHeader()}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          {/* Per-step illustration hero, the same anchor the send flow and
+              the business app both use above the form. */}
+          {STEP_ART[step] && (
+            <View style={styles.stepHero}>
+              <Illustration name={STEP_ART[step]} size={130} />
+            </View>
+          )}
           {error !== '' && (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
@@ -437,7 +486,7 @@ export default function DropAtStoreScreen() {
                 value={declaredValue}
                 onChangeText={setDeclaredValue}
                 keyboardType="number-pad"
-                placeholder={t('dropAtStore.declaredValuePlaceholder')}
+                placeholder={t('dropAtStore.declaredValuePlaceholder', { amount: highValueNgn.toLocaleString() })}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
               />
@@ -524,7 +573,7 @@ export default function DropAtStoreScreen() {
                     {packageDescription ? (
                       <Text style={[styles.reviewSub, { color: theme.textSecond }]}>{packageDescription}</Text>
                     ) : null}
-                    {declaredValue && Number(declaredValue) >= 50000 && (
+                    {declaredValue && Number(declaredValue) >= highValueNgn && (
                       <Text style={[styles.reviewWarn, { color: '#D97706' }]}>
                         {t('dropAtStore.highValueWarning')}
                       </Text>
@@ -572,6 +621,9 @@ const styles = StyleSheet.create({
   backBtn:       { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   headerTitle:   { fontSize: FontSize.md, fontWeight: FontWeight.bold },
   headerSub:     { fontSize: FontSize.xs, marginTop: 2 },
+  dots:          { flexDirection: 'row', gap: 4 },
+  dot:           { width: 8, height: 8, borderRadius: 4 },
+  stepHero:      { alignItems: 'center', marginBottom: Spacing.md, gap: 8 },
 
   body:          { padding: Spacing.md, gap: Spacing.sm, paddingBottom: Spacing.xxl },
   errorBox:      { padding: Spacing.sm, backgroundColor: '#FEE2E2', borderRadius: Radius.md, borderWidth: 1, borderColor: '#FECACA' },

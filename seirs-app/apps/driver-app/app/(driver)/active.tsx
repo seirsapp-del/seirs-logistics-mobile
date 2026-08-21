@@ -1,7 +1,7 @@
 import {
   View, Text, Pressable, StyleSheet,
   ScrollView, ActivityIndicator, Alert, Image,
-  Platform, Modal, TextInput,
+  Platform, Modal, TextInput, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -81,6 +81,85 @@ export default function ActiveDeliveryScreen() {
     startBroadcast();
     return () => stopBroadcast();
   }, []);
+
+  /**
+   * Report a problem with this job.
+   *
+   * The rider is standing at the pickup and the parcel is not what the
+   * sender described. Before this the only route was to leave the job,
+   * find Profile -> Support, open a ticket with no photo, then attach one
+   * inside the thread: five screens at a roadside with a sender watching.
+   * In practice riders either accepted parcels they should not have, or
+   * rang somebody personally, and no record survived either way.
+   *
+   * Camera first, because the photo is the evidence. The backend flags the
+   * delivery and opens the ticket in one call.
+   */
+  const REPORT_REASONS = [
+    { key: 'mismatch',   label: "Package doesn't match the description" },
+    { key: 'overweight', label: 'Heavier than declared' },
+    { key: 'absent',     label: 'Sender not present / wrong address' },
+    { key: 'unsafe',     label: 'Unsafe or refused item' },
+  ] as const;
+
+  const [reporting, setReporting] = useState(false);
+
+  const reportProblem = () => {
+    Alert.alert(
+      'Report a problem',
+      'What is wrong with this job?',
+      [
+        ...REPORT_REASONS.map((r) => ({
+          text: r.label,
+          onPress: () => captureAndReport(r.key, r.label),
+        })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ],
+    );
+  };
+
+  const captureAndReport = async (reason: string, label: string) => {
+    try {
+      setReporting(true);
+      let photoUrl: string | undefined;
+
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (perm.status === 'granted') {
+        const shot = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+        if (!shot.canceled && shot.assets?.[0]?.uri) {
+          const { url } = await uploadApi.file(shot.assets[0].uri, 'image/jpeg', 'chat');
+          photoUrl = url;
+        }
+      }
+
+      const res = await deliveriesApi.reportIssue(delivery.id, {
+        reason: reason as any,
+        photoUrl,
+      });
+
+      Alert.alert(
+        'Reported',
+        photoUrl
+          ? `Support has your photo and the job is flagged. ${label}.`
+          : `Support has been notified and the job is flagged. ${label}.\n\nNo photo was attached, which makes it harder to settle.`,
+        [
+          res?.ticketId
+            ? {
+                text: 'Open the ticket',
+                onPress: () => router.push({
+                  pathname: '/(driver)/support/[ticketId]',
+                  params: { ticketId: res.ticketId },
+                } as any),
+              }
+            : { text: 'OK' },
+        ],
+      );
+    } catch (e: any) {
+      Alert.alert('Could not report', e?.message ?? 'Please try again.');
+    } finally {
+      setReporting(false);
+    }
+  };
 
   const startBroadcast = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -497,6 +576,47 @@ export default function ActiveDeliveryScreen() {
           </View>
         )}
 
+        {/* Receiver: who actually takes the package at the door. */}
+        {(delivery.receiverFirstName || delivery.receiverPhone) && (
+          <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Receiver</Text>
+            <View style={styles.customerRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.customerName, { color: theme.text }]}>
+                  {[delivery.receiverFirstName, delivery.receiverLastName].filter(Boolean).join(' ') || 'Not named'}
+                </Text>
+                {!!delivery.receiverPhone && (
+                  <Text style={[styles.customerPhone, { color: theme.textSecond }]}>{delivery.receiverPhone}</Text>
+                )}
+              </View>
+              {!!delivery.receiverPhone && (
+                <Pressable
+                  style={[styles.chatBtn, { backgroundColor: '#16A34A' }]}
+                  onPress={() => Linking.openURL(`tel:${delivery.receiverPhone}`)}
+                >
+                  <Ionicons name="call-outline" size={18} color="#fff" />
+                  <Text style={styles.chatBtnText}>Call</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Report a problem: available while the rider still has a choice,
+            i.e. before the package is marked delivered. */}
+        {delivery.status !== 'delivered' && (
+          <Pressable
+            onPress={reportProblem}
+            disabled={reporting}
+            style={[styles.reportBtn, { borderColor: '#DC2626' }]}
+          >
+            <Ionicons name="alert-circle-outline" size={18} color="#DC2626" />
+            <Text style={styles.reportBtnText}>
+              {reporting ? 'Reporting...' : 'Report a problem'}
+            </Text>
+          </Pressable>
+        )}
+
         {/* Proof of delivery */}
         {needsProof && (
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
@@ -701,6 +821,12 @@ const styles = StyleSheet.create({
   avatar:        { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   avatarText:    { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
   customerName:  { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  reportBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, borderWidth: 1, borderRadius: 999,
+    paddingVertical: 12, marginTop: 4, marginBottom: 4,
+  },
+  reportBtnText: { color: '#DC2626', fontSize: 14, fontWeight: '700' },
   customerPhone: { fontSize: FontSize.sm, marginTop: 2 },
 
   proofHint:    { fontSize: FontSize.sm, lineHeight: 20, marginBottom: Spacing.md },

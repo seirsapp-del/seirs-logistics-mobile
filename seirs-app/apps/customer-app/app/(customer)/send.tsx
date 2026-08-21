@@ -1,30 +1,30 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, Pressable, StyleSheet, StatusBar, TextInput,
-  ActivityIndicator, Image, Alert, Keyboard,
+  ActivityIndicator, Image, Alert, Keyboard, ScrollView,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import BottomSheet, {
-  BottomSheetTextInput,
-  BottomSheetScrollView,
-} from '@gorhom/bottom-sheet';
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { deliveriesApi, uploadApi, mapsApi } from '@/services/api';
+import { deliveriesApi, uploadApi, mapsApi, feesApi, configApi, pricingApi } from '@/services/api';
+import type { ServiceCategory } from '@/services/api';
+import { useSendDraftStore } from '@/store/useSendDraftStore';
 import { type PickedAddress } from '@/components/AddressPicker';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
+import { useMultiStopDirections } from '@/components/useMultiStopDirections';
+import { DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { Illustration } from '@/components/Illustration';
 import {
   ArrowLeft, ArrowRight, Truck, Calendar, CreditCard,
-  Camera, X, CheckCircle, Zap, Moon,
+  Camera, X, CheckCircle, Zap, Moon, MapPin, Store,
 } from 'lucide-react-native';
 
 // Places and geocoding go through our backend (security review
@@ -44,7 +44,7 @@ const PACKAGE_CATEGORIES = [
   { id: 'food_cold',         labelKey: 'categoryFoodCold'        },
   { id: 'medical',           labelKey: 'categoryMedical'         },
   { id: 'bulk_goods',        labelKey: 'categoryBulkGoods'       },
-  { id: 'agricultural',      labelKey: 'categoryAgricultural'    },
+  { id: 'farm_produce',      labelKey: 'categoryAgricultural'    },
   { id: 'building',          labelKey: 'categoryBuilding'        },
   { id: 'lumber',            labelKey: 'categoryLumber'          },
   { id: 'house_move_single', labelKey: 'categoryHouseMoveSingle' },
@@ -56,6 +56,7 @@ const PACKAGE_CATEGORIES = [
 type CategoryId = typeof PACKAGE_CATEGORIES[number]['id'];
 
 import { PACKAGE_VEHICLES, calcPackageFare } from '@/constants/mockData';
+import { getActiveRateCard } from '@/hooks/use-rate-card';
 
 const VEHICLES = PACKAGE_VEHICLES;
 type VehicleId = typeof PACKAGE_VEHICLES[number]['id'];
@@ -80,8 +81,44 @@ type PaymentId = typeof PAYMENT_METHODS[number]['id'];
 
 // 5 steps total: Address + Schedule are combined ("when & where" in one screen).
 // Labels resolved via t(`send.step${cap}`) at render.
-const STEPS = ['Package', 'Address', 'Vehicle', 'Fare', 'Confirm'] as const;
-const STEP_KEYS = ['stepPackage', 'stepAddress', 'stepVehicle', 'stepFare', 'stepConfirm'] as const;
+/**
+ * One package in the run. The business app has booked runs as a list of
+ * these since its rebuild; the customer app carried a single implicit
+ * package spread across a dozen useState calls, which is why it could
+ * never offer "add another".
+ */
+export interface PackageDraft {
+  photos:        string[];
+  description:   string;
+  category:      CategoryId | null;
+  weightKg:      string;
+  receiverFirst: string;
+  receiverLast:  string;
+  receiverPhone: string;
+  destMode:      'address' | 'store';
+  dropoff:       PickedAddress | null;
+  dropoffQuery:  string;
+  fallbackPref:  'hand_only' | 'neighbour' | 'gate' | 'store';
+  neighbourName: string;
+  declaredValue: string;
+  instructions:  string;
+}
+
+export const emptyPackage = (): PackageDraft => ({
+  photos: [], description: '', category: null, weightKg: '',
+  receiverFirst: '', receiverLast: '', receiverPhone: '',
+  destMode: 'address', dropoff: null, dropoffQuery: '',
+  fallbackPref: 'hand_only', neighbourName: '', declaredValue: '',
+  instructions: '',
+});
+
+// Hard ceiling on one run. Vehicle capacity is the real limit and is
+// enforced server-side from the Fee Catalogue; this just stops a runaway
+// form. Same number the backend DTO caps at.
+const MAX_PACKAGES = 20;
+
+const STEPS = ['Package', 'Pickup', 'Vehicle', 'Review'] as const;
+const STEP_KEYS = ['stepPackage', 'stepAddress', 'stepVehicle', 'stepReview'] as const;
 
 function autoRecommend(cat: CategoryId, kg: number): VehicleId {
   if (cat === 'documents') return 'bicycle';
@@ -90,7 +127,7 @@ function autoRecommend(cat: CategoryId, kg: number): VehicleId {
   if (cat === 'medical')                              return kg <= 200 ? 'car' : 'van';
   if (cat === 'fragile' && kg <= 100)                 return 'keke';
   if (cat === 'standard_parcel' && kg <= 100)         return 'keke';
-  if (cat === 'agricultural' || cat === 'building')   return 'truck_sm';
+  if (cat === 'farm_produce' || cat === 'building')   return 'truck_sm';
   if (cat === 'bulk_goods')                           return kg <= 800 ? 'van' : 'truck_sm';
   if (cat === 'industrial')                           return kg <= 800 ? 'van' : 'truck_sm';
   if (cat === 'lumber')                               return 'truck_lg';
@@ -151,7 +188,13 @@ function calcFare(
   return calcPackageFare(vid, distKm, kg, opts);
 }
 
-type Field = 'pickup' | 'dropoff';
+// 'pickup' is the run's single collection point. Each package has its
+// own destination, so a focused destination field is identified by index:
+// 'pkg:0', 'pkg:1'. Business encodes the same idea as { kind:'pkg', idx }.
+type Field = 'pickup' | `pkg:${number}`;
+
+const pkgIndexOf = (f: Field | null): number | null =>
+  typeof f === 'string' && f.startsWith('pkg:') ? Number(f.slice(4)) : null;
 interface Prediction { place_id: string; main_text: string; secondary_text: string }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -162,29 +205,46 @@ export default function SendScreen() {
   const isDark = cs === 'dark';
   const insets = useSafeAreaInsets();
   const { t }  = useTranslation();
-  // Hard ceiling: status bar (insets.top) + header height (~58) + visible
-  // gap so the sheet never even brushes the header pill.
-  const sheetTopInset = insets.top + 88;
-
   const [step,        setStep]        = useState(0);
-  const [photos,      setPhotos]      = useState<string[]>([]);
-  const [description, setDescription] = useState('');
-  const [category,    setCategory]    = useState<CategoryId | null>(null);
-  const [weightKg,    setWeightKg]    = useState('');
+  // The run is a list of packages. Index 0 is the first card; "add another
+  // package" appends. Read-only aliases for index 0 are declared just below
+  // so the validation, pricing and payload code keeps reading the same
+  // names it always did.
+  const [packages, setPackages] = useState<PackageDraft[]>([emptyPackage()]);
+  const updatePkg = useCallback((i: number, patch: Partial<PackageDraft>) => {
+    setPackages(ps => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  }, []);
+  const addPackage = useCallback(() => {
+    setPackages(ps => [...ps, emptyPackage()]);
+  }, []);
+  const removePackage = useCallback((i: number) => {
+    setPackages(ps => (ps.length <= 1 ? ps : ps.filter((_, j) => j !== i)));
+  }, []);
   // Free-text instructions for the driver ("call at gate", "security
   // code 4231"). Auto-posted into the chat as a system message when a
   // driver is assigned so it is impossible to miss.
-  const [instructions, setInstructions] = useState('');
   // Sender-declared package value (optional). At/above the catalogue
   // high-value threshold the driver must ID-verify the recipient.
-  const [declaredValue, setDeclaredValue] = useState('');
   // Receiver system (founder 2026-08-11): who collects + fallback plan.
-  const [receiverFirst,  setReceiverFirst]  = useState('');
-  const [receiverLast,   setReceiverLast]   = useState('');
-  const [fallbackPref,   setFallbackPref]   = useState<'hand_only' | 'neighbour' | 'gate' | 'store'>('hand_only');
-  const [neighbourName,  setNeighbourName]  = useState('');
+  // Above this declared value the recipient must show physical ID, and
+  // gate/neighbour drop-off is refused. The number is policy, so it
+  // comes from the Fee Catalogue (high_value_threshold_ngn) rather
+  // than a constant that silently drifts when admin edits it.
+  const [highValueNgn,   setHighValueNgn]   = useState(100000);
+  // Service catalogue drives the category chips. Business does the
+  // same (configApi.serviceCatalog), which is why its chips carry
+  // short admin-editable names instead of long baked-in labels.
+  const [catalog,        setCatalog]        = useState<ServiceCategory[]>([]);
+
+  // Draft persistence. Everything on this screen used to live in useState
+  // alone, so backing out (or tapping "To a partner store", or taking a
+  // call) threw the whole form away. The business app has persisted its
+  // draft since its rebuild; this is the customer equivalent.
+  const { draft, ready: draftReady, patchDraft, clearDraft, hasContent } = useSendDraftStore();
+  const hydrated = useRef(false);
+  // Where is it going? Business asks this per package on step 1
+  // (destinationMode) instead of hiding store drop behind a banner.
   const [pickup,      setPickup]      = useState<PickedAddress | null>(null);
-  const [dropoff,     setDropoff]     = useState<PickedAddress | null>(null);
   const [vehicleId,   setVehicleId]   = useState<VehicleId>('motorcycle');
   const [scheduleNow,   setScheduleNow]   = useState(true);
   // ISO date string ('YYYY-MM-DD'): driven by the inline calendar.
@@ -238,21 +298,97 @@ export default function SendScreen() {
   const codEnabled = false;
   const codAmount  = '';
 
-  // Inline autocomplete state for the address step (BottomSheetTextInput).
+  // Inline autocomplete state for the address step.
   const [pickupQuery,  setPickupQuery]  = useState('');
-  const [dropoffQuery, setDropoffQuery] = useState('');
+
+  // Index-0 aliases. Everything outside the package cards (validation,
+  // fare, review summary, booking payload) speaks about "the package",
+  // and for a single-package run that is packages[0].
+  const pkg0          = packages[0] ?? emptyPackage();
+  const photos        = pkg0.photos;
+  const description   = pkg0.description;
+  const category      = pkg0.category;
+  const weightKg      = pkg0.weightKg;
+  const instructions  = pkg0.instructions;
+  const declaredValue = pkg0.declaredValue;
+  const receiverFirst = pkg0.receiverFirst;
+  const receiverLast  = pkg0.receiverLast;
+  const receiverPhone = pkg0.receiverPhone;
+  const destMode      = pkg0.destMode;
+  const fallbackPref  = pkg0.fallbackPref;
+  const neighbourName = pkg0.neighbourName;
+  const dropoff       = pkg0.dropoff;
+  const dropoffQuery  = pkg0.dropoffQuery;
   const [activeField,  setActiveField]  = useState<Field | null>(null);
   const [predictions,  setPredictions]  = useState<Prediction[]>([]);
   const [searching,    setSearching]    = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    if (!draftReady || hydrated.current) return;
+    hydrated.current = true;
+    if (!hasContent()) return;
+    setStep(draft.step ?? 0);
+    // Drafts saved before multi-package shipped carry flat fields; fall
+    // back to composing a single package from them so an in-flight draft
+    // is not thrown away by the upgrade.
+    const saved = Array.isArray((draft as any).packages) && (draft as any).packages.length
+      ? ((draft as any).packages as PackageDraft[])
+      : [{
+          ...emptyPackage(),
+          photos:        draft.photos ?? [],
+          description:   draft.description ?? '',
+          category:      (draft.category as CategoryId | null) ?? null,
+          weightKg:      draft.weightKg ?? '',
+          instructions:  draft.instructions ?? '',
+          declaredValue: draft.declaredValue ?? '',
+          receiverFirst: draft.receiverFirst ?? '',
+          receiverLast:  draft.receiverLast ?? '',
+          receiverPhone: (draft as any).receiverPhone ?? '',
+          destMode:      draft.destMode ?? 'address',
+          fallbackPref:  draft.fallbackPref ?? 'hand_only',
+          neighbourName: draft.neighbourName ?? '',
+          dropoff:       draft.dropoff ?? null,
+          dropoffQuery:  draft.dropoffQuery ?? '',
+        }];
+    setPackages(saved);
+    if (draft.pickup) { setPickup(draft.pickup); setPickupQuery(draft.pickupQuery ?? ''); }
+    if (draft.vehicleId)     setVehicleId(draft.vehicleId as VehicleId);
+    if (draft.scheduledDate) setScheduledDate(draft.scheduledDate);
+    setScheduleNow(draft.scheduleNow ?? true);
+    setScheduledHour(draft.scheduledHour ?? null);
+    if (draft.paymentId) setPaymentId(draft.paymentId as PaymentId);
+  // Runs once, when the stored draft is ready. Re-running would fight the
+  // user's typing.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftReady]);
+
+  // Mirror the form into the persisted draft. Only after hydration, or the
+  // first render would immediately overwrite the saved draft with blanks.
+  useEffect(() => {
+    if (!hydrated.current) return;
+    patchDraft({
+      step, packages,
+      pickup, pickupQuery,
+      vehicleId, scheduleNow, scheduledDate, scheduledHour, paymentId,
+    } as any);
+  }, [
+    step, packages, pickup, pickupQuery,
+    vehicleId, scheduleNow, scheduledDate, scheduledHour, paymentId,
+    patchDraft,
+  ]);
+
+  // Catalogue and policy values, fetched once on mount.
+  useEffect(() => {
+    configApi.serviceCatalog()
+      .then(c => { if (Array.isArray(c) && c.length) setCatalog(c); })
+      .catch(() => { /* fall back to PACKAGE_CATEGORIES below */ });
+    feesApi.get('high_value_threshold_ngn')
+      .then(r => { const v = Number(r?.value); if (v > 0) setHighValueNgn(v); })
+      .catch(() => { /* keep the 100000 fallback, same as the backend's */ });
+  }, []);
+
   const mapRef   = useRef<MapView>(null);
-  const sheetRef = useRef<BottomSheet>(null);
-  // Two snap points: peek (enough to see the form exists) and comfy
-  // (sheet rises almost to the header: topInset stops it from covering
-  // the title). The sheet's BottomSheetScrollView handles overflow
-  // (long vehicle list, long suggestion lists) by scrolling internally.
-  const snapPoints = useMemo(() => [180, '92%'], []);
 
   // Real road-following polyline + km + ETA
   const { coords: routeCoords, distanceText, durationText, distanceMeters } = useDirectionsPolyline(
@@ -275,15 +411,109 @@ export default function SendScreen() {
    * quotes a price for a trip nobody described. 0 means the quote shows
    * the base fare until the route arrives.
    */
-  const distKmRoute = distanceMeters != null ? distanceMeters / 1000 : 0;
-  const kg   = parseFloat(weightKg) || 0;
+  // A run's distance is pickup -> package 1 -> package 2 -> ..., which the
+  // two-point hook above cannot express. Same hook the business app uses.
+  const multi = useMultiStopDirections(
+    packages.length > 1 && pickup ? { latitude: pickup.lat, longitude: pickup.lng } : null,
+    packages.length > 1
+      ? packages.filter(pk => pk.dropoff).map(pk => ({ latitude: pk.dropoff!.lat, longitude: pk.dropoff!.lng }))
+      : [],
+  );
+
+  const distKmRoute = packages.length > 1
+    ? (multi.distanceMeters != null ? multi.distanceMeters / 1000 : 0)
+    : (distanceMeters != null ? distanceMeters / 1000 : 0);
+  // Weight of the WHOLE run. This drives the vehicle recommendation, so
+  // using package 1's weight alone would have suggested an okada for five
+  // heavy parcels. For a single package the sum is that package, so this
+  // is correct in both cases.
+  const kg = packages.reduce((sum, pk) => sum + (parseFloat(pk.weightKg) || 0), 0);
   const codAmountNgn = codEnabled ? (Number(codAmount) || 0) : 0;
   const pickupCoords  = pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : null;
   const dropoffCoords = dropoff ? { latitude: dropoff.lat, longitude: dropoff.lng } : null;
-  const fare = calcFare(vehicleId, distKmRoute, kg, {
+  // Safety hard-stops stay bundled in the rate card on purpose, so read
+  // them from the active card rather than duplicating a list here.
+  const forbiddenForCategory: string[] = category
+    ? ((getActiveRateCard().categories as any)?.[category]?.forbiddenVehicles ?? [])
+    : [];
+
+  const localFare = calcFare(vehicleId, distKmRoute, kg, {
     categoryId: category, codAmountNgn,
     pickupCoords, dropoffCoords,
   });
+
+  // calcFare prices a single package from the bundled rate card. A run of
+  // several packages has to be priced by the server, which knows the live
+  // card, the per-category surcharges and the multi-stop discount.
+  const [runQuote, setRunQuote] = useState<any>(null);
+  const [runQuoteError, setRunQuoteError] = useState<string | null>(null);
+  useEffect(() => {
+    if (packages.length < 2) { setRunQuote(null); setRunQuoteError(null); return; }
+    const pkgs = packages.map(pk => ({
+      categoryCode: pk.category ?? 'standard_parcel',
+      weightKg:     parseFloat(pk.weightKg) || 0,
+    }));
+    let cancelled = false;
+    setRunQuote(null);
+    setRunQuoteError(null);
+    pricingApi.quote({
+      vehicleType:  vehicleId,
+      categoryCode: pkgs[0]?.categoryCode ?? 'standard_parcel',
+      km:           distKmRoute,
+      stopCount:    packages.length,
+      weightKg:     pkgs.reduce((a, b) => a + b.weightKg, 0),
+      estimatedDwellMinutes: packages.length * 4,
+      packages:     pkgs,
+      pickupCoords: pickup ? { latitude: pickup.lat, longitude: pickup.lng } : undefined,
+    } as any)
+      .then((q: any) => { if (!cancelled) setRunQuote(q); })
+      .catch((e: any) => { if (!cancelled) setRunQuoteError(e?.message ?? 'Could not price this run.'); });
+    return () => { cancelled = true; };
+  }, [packages, vehicleId, distKmRoute, pickup]);
+
+  // Never silently fall back to the single-package number for a run: a
+  // wrong total is worse than an honest "not priced yet".
+  const runTotal = Number(runQuote?.customer?.total ?? 0);
+
+  /**
+   * For a run, take the WHOLE breakdown from the server, not just the
+   * total.
+   *
+   * Spreading localFare and overriding only `total` looked harmless and
+   * was not: every itemised line (base, distance, weight, VAT) would
+   * still have been the single-package figure, so the breakdown on screen
+   * would not add up to the total charged. A fare whose lines contradict
+   * its total is exactly the kind of quiet untruth this whole sweep has
+   * been removing.
+   */
+  const fare = packages.length > 1 && runQuote?.customer
+    ? (() => {
+        const c = runQuote.customer;
+        const time = c.timeSurcharges ?? {};
+        const zone = c.zoneSurcharges ?? {};
+        const timeLabels = Object.entries(time)
+          .filter(([, v]) => Number(v) > 0)
+          .map(([k]) => k);
+        return {
+          ...localFare,
+          base:              Number(c.base ?? 0),
+          dist:              Number(c.distanceLabour ?? 0),
+          distFuel:          Number(c.distanceFuel ?? 0),
+          // The server prices weight inside the per-package figures rather
+          // than as its own line, so showing a separate weight surcharge
+          // here would double-count it.
+          weight:            0,
+          handling:          Number(c.stopBonuses ?? 0) + Number(c.dwellOver ?? 0),
+          categorySurcharge: Number(c.categorySurcharge ?? 0),
+          timeSurcharge:     Object.values(time).reduce((a: number, b: any) => a + Number(b || 0), 0),
+          timeLabels,
+          zoneSurcharge:     Number(zone.interState ?? 0) + Number(zone.longDistance ?? 0) + Number(zone.restricted ?? 0),
+          zoneFlat:          Number(zone.overnight ?? 0),
+          vat:               Number(c.vat ?? 0),
+          total:             runTotal,
+        };
+      })()
+    : localFare;
 
   // Center on user's GPS once on mount.
   useEffect(() => {
@@ -340,7 +570,8 @@ export default function SendScreen() {
   }, []);
 
   const onChangeQuery = (field: Field, text: string) => {
-    if (field === 'pickup') setPickupQuery(text); else setDropoffQuery(text);
+    const pi = pkgIndexOf(field);
+    if (pi === null) setPickupQuery(text); else updatePkg(pi, { dropoffQuery: text });
     setActiveField(field);
     if (debounce.current) clearTimeout(debounce.current);
     debounce.current = setTimeout(() => fetchPredictions(text), 300);
@@ -356,12 +587,12 @@ export default function SendScreen() {
         address: json.result.formatted_address ?? `${p.main_text}, ${p.secondary_text}`,
         lat: loc.lat, lng: loc.lng,
       };
-      if (activeField === 'pickup') { setPickup(picked); setPickupQuery(picked.address); }
-      else                          { setDropoff(picked); setDropoffQuery(picked.address); }
+      const pi = pkgIndexOf(activeField);
+      if (pi === null) { setPickup(picked); setPickupQuery(picked.address); }
+      else             { updatePkg(pi, { dropoff: picked, dropoffQuery: picked.address }); }
       setPredictions([]);
       setActiveField(null);
       Keyboard.dismiss();
-      sheetRef.current?.snapToIndex(1);
     } finally { setSearching(false); }
   };
 
@@ -378,24 +609,25 @@ export default function SendScreen() {
         address = j.results?.[0]?.formatted_address ?? address;
       } catch {}
       const picked: PickedAddress = { address, lat, lng };
-      if (field === 'pickup') { setPickup(picked); setPickupQuery(address); }
-      else                    { setDropoff(picked); setDropoffQuery(address); }
+      const pi = pkgIndexOf(field);
+      if (pi === null) { setPickup(picked); setPickupQuery(address); }
+      else             { updatePkg(pi, { dropoff: picked, dropoffQuery: address }); }
       setPredictions([]);
       setActiveField(null);
       Keyboard.dismiss();
-      sheetRef.current?.snapToIndex(1);
     } finally { setSearching(false); }
   };
 
   const clearField = (field: Field) => {
-    if (field === 'pickup') { setPickup(null);  setPickupQuery(''); }
-    else                    { setDropoff(null); setDropoffQuery(''); }
+    const pi = pkgIndexOf(field);
+    if (pi === null) { setPickup(null); setPickupQuery(''); }
+    else             { updatePkg(pi, { dropoff: null, dropoffQuery: '' }); }
     setPredictions([]);
   };
 
   // ── Photo picker ─────────────────────────────────────────────────────────
-  const addPhoto = async () => {
-    if (photos.length >= 5) return;
+  const addPhoto = async (pkgIndex = 0) => {
+    if ((packages[pkgIndex]?.photos.length ?? 0) >= 5) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== 'granted') {
       Alert.alert(t('send.alertPermissionTitle'), t('send.alertPermissionBody'));
@@ -403,12 +635,25 @@ export default function SendScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
     if (!result.canceled && result.assets[0]) {
-      setPhotos(p => [...p, result.assets[0].uri]);
+      updatePkg(pkgIndex, {
+        photos: [...(packages[pkgIndex]?.photos ?? []), result.assets[0].uri],
+      });
     }
   };
 
   // ── Step navigation ──────────────────────────────────────────────────────
   const next = () => {
+    if (step === 0) {
+      const bad = packages.findIndex(pk =>
+        pk.photos.length === 0 || !pk.category || !(parseFloat(pk.weightKg) > 0) ||
+        !pk.receiverFirst.trim() || (pk.destMode === 'address' && !pk.dropoff));
+      if (bad > 0) {
+        failField('photos', t('send.errPackageIncomplete', {
+          defaultValue: `Package ${bad + 1} is missing something: each package needs a photo, category, weight, receiver and destination.`,
+        }));
+        return;
+      }
+    }
     if (step === 0 && photos.length === 0) { failField('photos',   t('send.errPhotoMissing'));    return; }
     if (step === 0 && !category)           { failField('category', t('send.errCategoryMissing')); return; }
     // Weight is REQUIRED (founder 2026-08-12): the driver picks a
@@ -427,8 +672,9 @@ export default function SendScreen() {
       failField('receiver', t('send.errReceiverMissing', { defaultValue: "Enter the receiver's first name. The driver asks for this person by name at handoff." }));
       return;
     }
+    if (step === 0 && destMode === 'address' && !dropoff) { failField('dropoff', t('send.errDropoffMissing')); return; }
     if (step === 1 && !pickup)  { failField('pickup',  t('send.errPickupMissing'));  return; }
-    if (step === 1 && !dropoff) { failField('dropoff', t('send.errDropoffMissing')); return; }
+
     if (step === 1 && !scheduleNow && scheduledHour == null) {
       failField('schedule', t('send.errScheduleTime'));
       return;
@@ -437,7 +683,7 @@ export default function SendScreen() {
     setError('');
     if (step === 1 && category) setVehicleId(autoRecommend(category, kg));
     setStep(s => s + 1);
-    sheetRef.current?.snapToIndex(1);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
     Keyboard.dismiss();
   };
 
@@ -449,14 +695,29 @@ export default function SendScreen() {
   };
 
   const handleBook = async () => {
+    // A run is priced by the server. If that quote has not arrived, or it
+    // failed, refuse to book rather than send a booking whose total is 0.
+    if (packages.length > 1 && !(runTotal > 0)) {
+      setError(runQuoteError ?? t('send.errRunNotPriced', {
+        defaultValue: 'Still working out the price for this run. Give it a moment and try again.',
+      }));
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      const urls: string[] = [];
-      for (const uri of photos) {
-        const { url } = await uploadApi.file(uri);
-        urls.push(url);
+      // Upload per package, so each DeliveryStop carries its own photos
+      // rather than the whole run sharing package 1's.
+      const uploaded: string[][] = [];
+      for (const pk of packages) {
+        const forThis: string[] = [];
+        for (const uri of pk.photos) {
+          const { url } = await uploadApi.file(uri);
+          forThis.push(url);
+        }
+        uploaded.push(forThis);
       }
+      const urls = uploaded[0] ?? [];
       await deliveriesApi.create({
         pickupAddress:   pickup?.address ?? '',
         dropoffAddress:  dropoff?.address ?? '',
@@ -479,9 +740,36 @@ export default function SendScreen() {
         declaredValueNgn: Number(declaredValue) > 0 ? Number(declaredValue) : undefined,
         receiverFirstName: receiverFirst.trim() || undefined,
         receiverLastName:  receiverLast.trim() || undefined,
+        receiverPhone:     receiverPhone.trim() || undefined,
         fallbackPref,
         fallbackNeighbourName: fallbackPref === 'neighbour' ? (neighbourName.trim() || undefined) : undefined,
+        // One run, one driver, one payment, one DeliveryStop per package,
+        // each with its own public tracking code. Omitted entirely for a
+        // single package so that path is byte-identical to before.
+        ...(packages.length > 1
+          ? {
+              stops: packages.map((pk, i) => ({
+                address:        pk.dropoff?.address ?? pk.dropoffQuery,
+                lat:            pk.dropoff?.lat ?? 0,
+                lng:            pk.dropoff?.lng ?? 0,
+                recipientName:  [pk.receiverFirst, pk.receiverLast].filter(Boolean).join(' ').trim(),
+                recipientPhone: pk.receiverPhone.trim(),
+                receiverFirstName: pk.receiverFirst.trim() || undefined,
+                receiverLastName:  pk.receiverLast.trim()  || undefined,
+                packageDescription: pk.description.trim() || undefined,
+                categoryCode:   pk.category ?? undefined,
+                weightKg:       parseFloat(pk.weightKg) || undefined,
+                declaredValueNgn: Number(pk.declaredValue) > 0 ? Number(pk.declaredValue) : undefined,
+                fallbackPref:   pk.fallbackPref,
+                fallbackNeighbourName: pk.fallbackPref === 'neighbour'
+                  ? (pk.neighbourName.trim() || undefined) : undefined,
+                packagePhotoUrls: uploaded[i]?.length ? uploaded[i] : undefined,
+                notes:          pk.instructions.trim() || undefined,
+              })),
+            }
+          : {}),
       } as any);
+      clearDraft();
       router.replace('/(customer)/history' as any);
     } catch (e: any) {
       setError(e.message ?? t('send.errBookingFailed'));
@@ -495,64 +783,48 @@ export default function SendScreen() {
     backgroundColor: active ? (isDark ? '#1A2E44' : '#EBF5FF') : theme.surface,
   });
 
-  const showSuggestions = step === 1 && activeField !== null && predictions.length > 0;
+  const showSuggestions = activeField !== null && predictions.length > 0;
 
   // ── render ────────────────────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Full-screen map background */}
-      <MapView
-        ref={mapRef}
-        provider={PROVIDER_GOOGLE}
-        style={StyleSheet.absoluteFill}
-        initialRegion={DEFAULT_MAP_REGION}
-        customMapStyle={isDark ? DARK_MAP : []}
-        showsUserLocation
-        showsMyLocationButton={false}
-      >
-        {pickup  && <Marker coordinate={{ latitude: pickup.lat,  longitude: pickup.lng  }} pinColor="#22C55E" title="Pickup"  description={pickup.address}  />}
-        {dropoff && <Marker coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }} pinColor="#EF4444" title="Dropoff" description={dropoff.address} />}
-        {pickup && dropoff && routeCoords.length > 1 && (
-          <Polyline coordinates={routeCoords} strokeColor={theme.primary} strokeWidth={4} />
-        )}
-      </MapView>
-
-      {/* Floating header */}
-      <SafeAreaView edges={['top', 'bottom']} style={styles.topBar}>
-        <Pressable style={[styles.backBtn, { backgroundColor: theme.surface }, Shadows.sm]} onPress={back}>
+      {/* Header, matched to the business app's Send a Package flow
+          (apps/business-app/app/(business)/send-package.tsx): back button,
+          left-aligned title with the step caption beneath it, and progress
+          dots on the right. This screen used to float a centred pill over a
+          full-screen map, which made the two apps read as different products
+          at the same step of the same job. The map is not gone, it moved to
+          an inline card on the Address step, which is where the business
+          flow puts it too. */}
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <Pressable onPress={back} style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} hitSlop={8}>
           <ArrowLeft size={20} color={theme.text} strokeWidth={2} />
         </Pressable>
-        <View style={[styles.topTitle, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <Text style={[styles.topTitleText, { color: theme.text }]}>{t('send.sendPackage')}</Text>
-          <Text style={[styles.topStep, { color: theme.textSecond }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{t('send.sendPackage')}</Text>
+          <Text style={[styles.headerStep, { color: theme.textSecond }]}>
             {t('send.stepOf', { current: step + 1, total: STEPS.length })}: {t(`send.${STEP_KEYS[step]}`)}
           </Text>
         </View>
-      </SafeAreaView>
+        <View style={styles.stepDots}>
+          {STEPS.map((_, i) => (
+            <View
+              key={i}
+              style={[styles.stepDot, { backgroundColor: i <= step ? theme.primary : theme.border }]}
+            />
+          ))}
+        </View>
+      </View>
 
-      <BottomSheet
-        ref={sheetRef}
-        index={1}
-        snapPoints={snapPoints}
-        topInset={sheetTopInset}
-        backgroundStyle={{ backgroundColor: theme.surface }}
-        handleIndicatorStyle={{ backgroundColor: theme.border }}
-        keyboardBehavior="extend"
-        keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustResize"
-      >
-        {/* Scroll padding clears the phone's navigation bar (founder
-            2026-08-13: the Continue button sat right on top of it, so a
-            tap could hit Back instead of Continue). insets.bottom is 0
-            on gesture navigation and ~48dp on the 3-button layout, so
-            this adapts rather than hardcoding a gap. */}
-        <BottomSheetScrollView
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
           ref={scrollRef}
-          style={styles.sheetInner}
-          contentContainerStyle={{ paddingBottom: Spacing.xxl + insets.bottom + 16 }}
-          keyboardShouldPersistTaps="handled"
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: Spacing.lg, paddingBottom: Spacing.xl }}
+          keyboardShouldPersistTaps="always"
+          showsVerticalScrollIndicator={false}
         >
           {/* Banner only for errors with no single field to point at
               (booking failures, network). Missing-field messages now
@@ -574,7 +846,6 @@ export default function SendScreen() {
               { name: 'send-address',  captionKey: 'step2Caption' },
               { name: 'send-vehicle',  captionKey: 'step3Caption' },
               { name: 'send-fare',     captionKey: 'step4Caption' },
-              { name: 'send-confirm',  captionKey: 'step5Caption' },
             ];
             const slot = SLOTS[step];
             if (!slot) return null;
@@ -591,25 +862,37 @@ export default function SendScreen() {
           {/* STEP 0: Package */}
           {step === 0 && (
             <View style={styles.stepGap}>
-              <Pressable
-                onPress={() => router.push('/(customer)/drop-at-store' as any)}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-                  padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5,
-                  borderColor: theme.accent + '40', backgroundColor: theme.accent + '10',
-                }}
-              >
-                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: theme.surface, alignItems: 'center', justifyContent: 'center' }}>
-                  <Truck size={18} color={theme.accent} strokeWidth={2} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: theme.text }}>{t('send.dropAtStoreCardTitle')}</Text>
-                  <Text style={{ fontSize: FontSize.xs, color: theme.textSecond, marginTop: 2 }}>
-                    {t('send.dropAtStoreCardDesc')}
+              {/* The run-level "drop at a store instead" banner was removed
+                  here to match the business flow (founder 2026-08-16 in
+                  send-package.tsx): store drop is a DESTINATION choice, and
+                  it now lives in "Where is it going?" below. Keeping both
+                  meant two controls for one decision, and the banner threw
+                  away whatever the sender had already typed into this form. */}
+
+              {/* Everything about the package sits inside one bordered card,
+                  the same container the business app's Send a Package uses
+                  (styles.pkgCard there). Before this the fields floated
+                  loose on the page, which is the single biggest reason the
+                  two flows did not read as the same product. */}
+              {packages.map((pk, pkgIndex) => {
+              // Shadow the index-0 aliases with THIS package's values, so the
+              // card body below reads the same names whichever card it is.
+              const { photos, description, category, weightKg, receiverFirst,
+                      receiverLast, receiverPhone, destMode, dropoff,
+                      dropoffQuery, fallbackPref, neighbourName, declaredValue,
+                      instructions } = pk;
+              return (
+              <View key={pkgIndex} style={[styles.pkgCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <View style={styles.pkgHead}>
+                  <Text style={[styles.pkgTitle, { color: theme.text }]}>
+                    {t('send.packageN', { n: pkgIndex + 1, defaultValue: `Package ${pkgIndex + 1}` })}
                   </Text>
+                  {packages.length > 1 && (
+                    <Pressable onPress={() => removePackage(pkgIndex)} hitSlop={8}>
+                      <X size={16} color={theme.error} strokeWidth={2.5} />
+                    </Pressable>
+                  )}
                 </View>
-                <ArrowRight size={16} color={theme.accent} />
-              </Pressable>
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
                 {t('send.packagePhotos')} <Text style={{ color: theme.error }}>*</Text>
@@ -621,7 +904,7 @@ export default function SendScreen() {
                     <Image source={{ uri }} style={styles.photo} />
                     <Pressable
                       style={[styles.photoRemove, { backgroundColor: theme.error }]}
-                      onPress={() => setPhotos(p => p.filter((_, j) => j !== i))}
+                      onPress={() => updatePkg(pkgIndex, { photos: photos.filter((_, j) => j !== i) })}
                     >
                       <X size={12} color="#fff" strokeWidth={3} />
                     </Pressable>
@@ -630,45 +913,25 @@ export default function SendScreen() {
                 {photos.length < 5 && (
                   <Pressable
                     style={[styles.photoAdd, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}
-                    onPress={addPhoto}
+                    onPress={() => addPhoto(pkgIndex)}
                   >
                     <Camera size={24} color={theme.accent} strokeWidth={1.75} />
                     <Text style={[styles.photoAddText, { color: theme.textSecond }]}>{t('send.addPhoto')}</Text>
                   </Pressable>
                 )}
               </View>
+              {invalidField === 'photos' && (
+                <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
+              )}
 
               <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.description')}</Text>
               <TextInput
-                style={[styles.textarea, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
+                style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
                 placeholder={t('send.descPlaceholder')}
                 placeholderTextColor={theme.textThird}
-                multiline
-                numberOfLines={3}
                 value={description}
-                onChangeText={setDescription}
+                onChangeText={v => updatePkg(pkgIndex, { description: v })}
               />
-
-              <Text
-                onLayout={onFieldLayout('category')}
-                style={[styles.label, { color: theme.textSecond }]}
-              >
-                {t('send.category')} <Text style={{ color: theme.error }}>*</Text>
-              </Text>
-              {invalidField === 'category' && (
-                <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
-              )}
-              <View style={styles.categoryGrid}>
-                {PACKAGE_CATEGORIES.map(cat => (
-                  <Pressable
-                    key={cat.id}
-                    style={[styles.categoryChip, highlight(category === cat.id)]}
-                    onPress={() => setCategory(cat.id)}
-                  >
-                    <Text style={[styles.categoryText, { color: category === cat.id ? theme.accent : theme.text }]}>{t(`send.${cat.labelKey}`)}</Text>
-                  </Pressable>
-                ))}
-              </View>
 
               <View onLayout={onFieldLayout('weight')}>
                 <Text style={[styles.label, { color: theme.textSecond }]}>
@@ -680,11 +943,38 @@ export default function SendScreen() {
                   placeholderTextColor={theme.textThird}
                   keyboardType="decimal-pad"
                   value={weightKg}
-                  onChangeText={v => { setWeightKg(v); if (invalidField === 'weight') { setInvalidField(null); setError(''); } }}
+                  onChangeText={v => { updatePkg(pkgIndex, { weightKg: v }); if (invalidField === 'weight') { setInvalidField(null); setError(''); } }}
                 />
                 {invalidField === 'weight' && (
                   <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
                 )}
+              </View>
+
+              <Text
+                onLayout={onFieldLayout('category')}
+                style={[styles.label, { color: theme.textSecond }]}
+              >
+                {t('send.category')} <Text style={{ color: theme.error }}>*</Text>
+              </Text>
+              {invalidField === 'category' && (
+                <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
+              )}
+              <View style={styles.categoryGrid}>
+                {(catalog.length
+                  ? catalog.map(c => ({ id: c.code as CategoryId, label: c.name }))
+                  : PACKAGE_CATEGORIES.map(c => ({ id: c.id, label: t(`send.${c.labelKey}`) }))
+                ).map(cat => (
+                  <Pressable
+                    key={cat.id}
+                    style={[styles.categoryChip, highlight(category === cat.id)]}
+                    onPress={() => {
+                      updatePkg(pkgIndex, { category: cat.id });
+                      if (invalidField === 'category') { setInvalidField(null); setError(''); }
+                    }}
+                  >
+                    <Text style={[styles.categoryText, { color: category === cat.id ? theme.accent : theme.text }]}>{cat.label}</Text>
+                  </Pressable>
+                ))}
               </View>
 
               <View onLayout={onFieldLayout('receiver')}>
@@ -697,14 +987,14 @@ export default function SendScreen() {
                     placeholder={t('send.receiverFirst', { defaultValue: 'First name' })}
                     placeholderTextColor={theme.textThird}
                     value={receiverFirst}
-                    onChangeText={v => { setReceiverFirst(v); if (invalidField === 'receiver') { setInvalidField(null); setError(''); } }}
+                    onChangeText={v => { updatePkg(pkgIndex, { receiverFirst: v }); if (invalidField === 'receiver') { setInvalidField(null); setError(''); } }}
                   />
                   <TextInput
                     style={[styles.input, { flex: 1, backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
-                    placeholder={t('send.receiverLast', { defaultValue: 'Last name (optional)' })}
+                    placeholder={t('send.receiverLast', { defaultValue: 'Last name' })}
                     placeholderTextColor={theme.textThird}
                     value={receiverLast}
-                    onChangeText={setReceiverLast}
+                    onChangeText={v => updatePkg(pkgIndex, { receiverLast: v })}
                   />
                 </View>
                 {invalidField === 'receiver' && (
@@ -712,8 +1002,84 @@ export default function SendScreen() {
                 )}
               </View>
               <Text style={{ fontSize: FontSize.xs, color: theme.textThird, marginTop: -Spacing.xs, marginBottom: Spacing.sm }}>
-                {t('send.receiverHint', { defaultValue: 'The driver confirms this first name at handoff. Anyone you trust can collect: a neighbour, security, family.' })}
+                {t('send.receiverHint', { defaultValue: 'The driver confirms this first name at handoff. Anyone the receiver trusts can collect.' })}
               </Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
+                placeholder={t('send.receiverPhone', { defaultValue: '08012345678' })}
+                placeholderTextColor={theme.textThird}
+                keyboardType="phone-pad"
+                value={receiverPhone}
+                onChangeText={v => updatePkg(pkgIndex, { receiverPhone: v })}
+              />
+
+              <Text style={[styles.label, { color: theme.textSecond }]}>
+                {t('send.destinationLabel', { defaultValue: 'Where is it going?' })} <Text style={{ color: theme.error }}>*</Text>
+              </Text>
+              <View style={styles.destRow}>
+                {([
+                  { key: 'address', label: t('send.destAddress', { defaultValue: 'To an address' }) },
+                  { key: 'store',   label: t('send.destStore',   { defaultValue: 'To a partner store' }) },
+                ] as const).map(opt => {
+                  const active = destMode === opt.key;
+                  return (
+                    <Pressable
+                      key={opt.key}
+                      style={[styles.destBtn, {
+                        backgroundColor: active ? theme.primary : theme.surfaceSecond,
+                        borderColor:     active ? theme.primary : theme.border,
+                      }]}
+                      onPress={() => {
+                        updatePkg(pkgIndex, { destMode: opt.key });
+                        // Store drop is a different product (drop code + QR at
+                        // the counter), so it hands off to that flow rather
+                        // than pretending to handle it here.
+                        if (opt.key === 'store') router.push('/(customer)/drop-at-store' as any);
+                      }}
+                    >
+                      {opt.key === 'address'
+                        ? <MapPin size={14} color={active ? '#fff' : theme.textSecond} strokeWidth={2} />
+                        : <Store  size={14} color={active ? '#fff' : theme.textSecond} strokeWidth={2} />}
+                      <Text style={[styles.destTxt, { color: active ? '#fff' : theme.text }]}>{opt.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {destMode === 'address' && (
+                <>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: fieldBorder('dropoff'), borderWidth: invalidField === 'dropoff' ? 2 : 1, color: theme.text }]}
+                    value={dropoffQuery}
+                    onChangeText={(v) => { onChangeQuery(`pkg:${pkgIndex}`, v);
+                      if (invalidField === 'dropoff') { setInvalidField(null); setError(''); } }}
+                    onFocus={() => setActiveField(`pkg:${pkgIndex}`)}
+                    placeholder={t('send.destAddressPlaceholder', { defaultValue: 'Street, area, city' })}
+                    placeholderTextColor={theme.textThird}
+                  />
+                  {invalidField === 'dropoff' && (
+                    <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
+                  )}
+                  {activeField === `pkg:${pkgIndex}` && predictions.length > 0 && (
+                    <View style={styles.suggestList}>
+                      {predictions.map(pr => (
+                        <Pressable
+                          key={pr.place_id}
+                          style={[styles.suggRow, { borderTopColor: theme.border }]}
+                          onPress={() => selectPrediction(pr)}
+                        >
+                          <View style={[styles.suggIcon, { backgroundColor: theme.surfaceSecond }]}>
+                            <Ionicons name="location-outline" size={16} color={theme.textSecond} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.suggMain, { color: theme.text }]} numberOfLines={1}>{pr.main_text}</Text>
+                            {!!pr.secondary_text && <Text style={[styles.suggSub, { color: theme.textSecond }]} numberOfLines={1}>{pr.secondary_text}</Text>}
+                          </View>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
                 {t('send.fallbackLabel', { defaultValue: 'If nobody is available' })}
@@ -726,9 +1092,9 @@ export default function SendScreen() {
                   { key: 'store',     label: t('send.fbStore',     { defaultValue: 'Drop at partner store' }) },
                 ] as const).map(opt => {
                   const active = fallbackPref === opt.key;
-                  const hv = Number(declaredValue) > 0 && Number(declaredValue) >= 100000;
+                  const hv = Number(declaredValue) > 0 && Number(declaredValue) >= highValueNgn;
                   const blocked = hv && (opt.key === 'gate' || opt.key === 'neighbour');
-                  if (blocked && active) setTimeout(() => setFallbackPref('hand_only'), 0);
+                  if (blocked && active) setTimeout(() => updatePkg(pkgIndex, { fallbackPref: 'hand_only' }), 0);
                   return (
                     <Pressable
                       key={opt.key}
@@ -738,14 +1104,14 @@ export default function SendScreen() {
                         borderColor: active ? theme.accent : theme.border,
                         opacity: blocked ? 0.4 : 1,
                       }]}
-                      onPress={() => setFallbackPref(opt.key)}
+                      onPress={() => updatePkg(pkgIndex, { fallbackPref: opt.key })}
                     >
                       <Text style={[styles.timeChipText, { color: active ? '#fff' : theme.text }]}>{opt.label}</Text>
                     </Pressable>
                   );
                 })}
               </View>
-              {Number(declaredValue) >= 100000 && (
+              {Number(declaredValue) >= highValueNgn && (
                 <Text style={{ fontSize: FontSize.xs, color: theme.textThird, marginBottom: Spacing.sm }}>
                   {t('send.hvFallbackNote', { defaultValue: 'High-value packages cannot be left at the gate or with a neighbour.' })}
                 </Text>
@@ -756,21 +1122,24 @@ export default function SendScreen() {
                   placeholder={t('send.neighbourName', { defaultValue: "Neighbour or security's name" })}
                   placeholderTextColor={theme.textThird}
                   value={neighbourName}
-                  onChangeText={setNeighbourName}
+                  onChangeText={v => updatePkg(pkgIndex, { neighbourName: v })}
                 />
               )}
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
-                {t('send.declaredValue', { defaultValue: 'Package value in ₦ (optional)' })}
+                {t('send.declaredValue', { defaultValue: 'Package value in NGN (optional)' })}
               </Text>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
-                placeholder={t('send.declaredValuePlaceholder', { defaultValue: 'e.g. 150000. High-value packages get ID-verified handoff.' })}
+                placeholder={t('send.declaredValueHint', { defaultValue: 'e.g. 150000' })}
                 placeholderTextColor={theme.textThird}
                 keyboardType="number-pad"
                 value={declaredValue}
-                onChangeText={setDeclaredValue}
+                onChangeText={v => updatePkg(pkgIndex, { declaredValue: v })}
               />
+              <Text style={{ fontSize: FontSize.xs, color: theme.textThird, marginTop: -Spacing.xs, marginBottom: Spacing.sm }}>
+                {t('send.declaredValueNote', { defaultValue: 'High-value packages get ID-verified handoff.' })}
+              </Text>
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
                 {t('send.instructions', { defaultValue: 'Instructions for driver (optional)' })}
@@ -780,10 +1149,42 @@ export default function SendScreen() {
                 placeholder={t('send.instructionsPlaceholder', { defaultValue: 'e.g. Call when you reach the gate. Ask for security.' })}
                 placeholderTextColor={theme.textThird}
                 value={instructions}
-                onChangeText={setInstructions}
+                onChangeText={v => updatePkg(pkgIndex, { instructions: v })}
                 multiline
                 maxLength={500}
               />
+              </View>
+              );
+              })}
+
+              {/* One run, one driver, one payment, a tracking code per
+                  package. Business has booked this way since its rebuild;
+                  the customer app could only ever send one thing. */}
+              {packages.length < MAX_PACKAGES ? (
+                <>
+                  <Pressable
+                    style={[styles.addPkgBtn, { borderColor: theme.accent, backgroundColor: theme.accent + '10' }]}
+                    onPress={addPackage}
+                  >
+                    <Text style={[styles.addPkgText, { color: theme.accent }]}>
+                      {t('send.addAnotherPackage', { defaultValue: '+  Add another package' })}
+                    </Text>
+                  </Pressable>
+                  <Text style={{ fontSize: FontSize.xs, color: theme.textThird }}>
+                    {t('send.packagesSoFar', {
+                      count: packages.length,
+                      defaultValue: `${packages.length} package${packages.length === 1 ? '' : 's'} so far. Each one gets its own tracking code, and you pay once.`,
+                    })}
+                  </Text>
+                </>
+              ) : (
+                <Text style={{ fontSize: FontSize.xs, color: theme.textSecond }}>
+                  {t('send.packagesCapped', {
+                    n: MAX_PACKAGES,
+                    defaultValue: `${MAX_PACKAGES} packages is the most one run can carry. Book the rest as a second run.`,
+                  })}
+                </Text>
+              )}
             </View>
           )}
 
@@ -793,33 +1194,16 @@ export default function SendScreen() {
               <View style={[styles.inputBlock, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                 <View style={styles.inputRow}>
                   <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
-                  <BottomSheetTextInput
+                  <TextInput
                     value={pickupQuery}
                     onChangeText={(t) => onChangeQuery('pickup', t)}
-                    onFocus={() => { setActiveField('pickup'); sheetRef.current?.snapToIndex(1); }}
+                    onFocus={() => setActiveField('pickup')}
                     placeholder={t('send.pickupAddress')}
                     placeholderTextColor={theme.textThird}
                     style={[styles.inputField, { color: theme.text }]}
                   />
                   {pickupQuery.length > 0 && (
                     <Pressable onPress={() => clearField('pickup')} hitSlop={12}>
-                      <Ionicons name="close-circle" size={18} color={theme.textThird} />
-                    </Pressable>
-                  )}
-                </View>
-                <View style={[styles.divider, { backgroundColor: theme.border }]} />
-                <View style={styles.inputRow}>
-                  <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
-                  <BottomSheetTextInput
-                    value={dropoffQuery}
-                    onChangeText={(t) => onChangeQuery('dropoff', t)}
-                    onFocus={() => { setActiveField('dropoff'); sheetRef.current?.snapToIndex(1); }}
-                    placeholder={t('send.whereTo')}
-                    placeholderTextColor={theme.textThird}
-                    style={[styles.inputField, { color: theme.text }]}
-                  />
-                  {dropoffQuery.length > 0 && (
-                    <Pressable onPress={() => clearField('dropoff')} hitSlop={12}>
                       <Ionicons name="close-circle" size={18} color={theme.textThird} />
                     </Pressable>
                   )}
@@ -841,6 +1225,34 @@ export default function SendScreen() {
                       <Text style={[styles.routeStatValue, { color: theme.text }]}>{durationText}</Text>
                     </View>
                   )}
+                </View>
+              )}
+
+              {pickup && dropoff && (
+                <View style={[styles.mapCard, { borderColor: theme.border }]}>
+                  <MapView
+                    ref={mapRef}
+                    provider={PROVIDER_GOOGLE}
+                    style={styles.mapInline}
+                    initialRegion={DEFAULT_MAP_REGION}
+                    customMapStyle={isDark ? DARK_MAP : []}
+                    pointerEvents="none"
+                    onLayout={() => {
+                      mapRef.current?.fitToCoordinates(
+                        [
+                          { latitude: pickup.lat,  longitude: pickup.lng  },
+                          { latitude: dropoff.lat, longitude: dropoff.lng },
+                        ],
+                        { edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: false },
+                      );
+                    }}
+                  >
+                    <Marker coordinate={{ latitude: pickup.lat,  longitude: pickup.lng  }} pinColor="#22C55E" title="Pickup"  description={pickup.address}  />
+                    <Marker coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }} pinColor="#EF4444" title="Dropoff" description={dropoff.address} />
+                    {routeCoords.length > 1 && (
+                      <Polyline coordinates={routeCoords} strokeColor={theme.primary} strokeWidth={4} />
+                    )}
+                  </MapView>
                 </View>
               )}
 
@@ -986,13 +1398,29 @@ export default function SendScreen() {
                 {t('send.vehicleRecommended')}
               </Text>
               {VEHICLES.map(v => {
-                const f      = calcFare(v.id, distKmRoute, kg);
+                // Same options the Fare step uses. Quoting the bare
+                // base here meant the vehicle card advertised a price
+                // that omitted the category surcharge, the zone
+                // surcharge and any COD fee, so the number you chose a
+                // vehicle on was never the number you paid.
+                const f      = calcFare(v.id, distKmRoute, kg, {
+                  categoryId: category, codAmountNgn,
+                  pickupCoords, dropoffCoords,
+                });
                 const active = vehicleId === v.id;
                 const rec    = v.id === (category ? autoRecommend(category, kg) : 'motorcycle');
+                // The rate card marks some vehicle/category pairs unsafe
+                // (frozen food on an okada has no cold chain). Nothing
+                // enforced it: the backend has no such rule at all and
+                // this list offered every vehicle, so the combination the
+                // card forbids was bookable in two taps.
+                const blocked = forbiddenForCategory.includes(v.id);
                 return (
                   <Pressable
                     key={v.id}
-                    style={[styles.vehicleCard, highlight(active), Shadows.xs]}
+                    disabled={blocked}
+                    style={[styles.vehicleCard, highlight(active), Shadows.xs,
+                            blocked && { opacity: 0.45 }]}
                     onPress={() => setVehicleId(v.id)}
                   >
                     <Truck size={26} color={active ? theme.accent : theme.textSecond} strokeWidth={1.5} />
@@ -1008,6 +1436,13 @@ export default function SendScreen() {
                       <Text style={[styles.vehicleNote, { color: theme.textSecond }]}>
                         {t(`send.${v.noteKey}`)} · max {v.maxKg >= 9999 ? '3000+' : v.maxKg}kg
                       </Text>
+                      {blocked && (
+                        <Text style={[styles.vehicleNote, { color: theme.error }]}>
+                          {t('send.vehicleBlocked', {
+                            defaultValue: 'Not allowed for this package type',
+                          })}
+                        </Text>
+                      )}
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={[styles.vehicleFare, { color: theme.text }]}>₦{f.total.toLocaleString()}</Text>
@@ -1075,19 +1510,28 @@ export default function SendScreen() {
                   process for yet. The pricing engine still knows how to
                   charge a COD fee, so this is a UI removal, not a
                   teardown, if we ever turn it on deliberately. */}
-            </View>
-          )}
 
-          {/* STEP 4: Confirm */}
-          {step === 4 && (
-            <View style={styles.stepGap}>
               <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
                 <Text style={[styles.fareTitle, { color: theme.text }]}>{t('send.orderSummary')}</Text>
                 {([
                   [t('send.pickup'),         pickup?.address  ?? '-'],
-                  [t('send.dropoff'),        dropoff?.address ?? '-'],
-                  [t('send.summaryDistance'), distanceText ?? `${distKmRoute} km`],
-                  [t('send.category'),       t(`send.${PACKAGE_CATEGORIES.find(c => c.id === category)?.labelKey ?? 'category'}`)],
+                  [t('send.dropoff'), packages.length > 1
+                    ? t('send.summaryDestinations', {
+                        n: packages.length,
+                        defaultValue: `${packages.length} destinations`,
+                      })
+                    : (dropoff?.address ?? '-')],
+                  // For a run this must be the whole route, pickup through
+                  // every package, not pickup to package 1.
+                  [t('send.summaryDistance'), packages.length > 1
+                    ? (multi.distanceText ?? `${distKmRoute.toFixed(1)} km`)
+                    : (distanceText ?? `${distKmRoute} km`)],
+                  [t('send.category'), packages.length > 1
+                    ? t('send.summaryMixed', {
+                        n: packages.length,
+                        defaultValue: `${packages.length} packages`,
+                      })
+                    : t(`send.${PACKAGE_CATEGORIES.find(c => c.id === category)?.labelKey ?? 'category'}`)],
                   [t('send.vehicle2'),       (() => { const v = VEHICLES.find(v => v.id === vehicleId); return v ? t(`send.${v.labelKey}`) : '-'; })()],
                   [t('send.summaryWhen'),    scheduleNow
                                                ? t('send.summarySendNow')
@@ -1106,38 +1550,64 @@ export default function SendScreen() {
             </View>
           )}
 
-          {/* CTA: back inside the scroll, at the bottom of step content. */}
+        </ScrollView>
+
+        {/* CTA pinned to the bottom, as in the business flow, so Continue is
+            reachable without scrolling to the end of a long step. The inset
+            padding clears the phone's navigation bar: insets.bottom is 0 on
+            gesture navigation and ~48dp on the 3-button layout, so a tap
+            cannot land on Back instead of Continue. */}
+        <View style={[styles.ctaBar, {
+          backgroundColor: theme.background,
+          borderTopColor: theme.border,
+          paddingBottom: Spacing.md + insets.bottom,
+        }]}>
           <Pressable
-            style={[styles.cta, { backgroundColor: theme.primary, marginTop: Spacing.lg }, loading && { opacity: 0.7 }]}
-            onPress={step < 4 ? next : handleBook}
+            style={[styles.cta, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+            onPress={step < 3 ? next : handleBook}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <View style={styles.ctaInner}>
-                <Text style={styles.ctaText}>{step === 4 ? t('send.bookDelivery') : t('common.continue')}</Text>
+                <Text style={styles.ctaText}>{step === 3 ? t('send.bookDelivery') : t('common.continue')}</Text>
                 <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
               </View>
             )}
           </Pressable>
-        </BottomSheetScrollView>
-      </BottomSheet>
-    </View>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container:    { flex: 1 },
-  topBar:       { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, gap: Spacing.sm, zIndex: 10 },
-  backBtn:      { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  topTitle:     { flex: 1, paddingHorizontal: Spacing.md, paddingVertical: 8, borderRadius: 22, alignItems: 'center' },
-  topTitleText: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  topStep:      { fontSize: FontSize.xs, marginTop: 2 },
-
-  sheetInner:   { paddingHorizontal: Spacing.md },
+  // Header values are the business app's, so the two flows line up exactly.
+  header:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  backBtn:      { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  headerTitle:  { fontSize: 17, fontWeight: '700' },
+  headerStep:   { fontSize: 12, marginTop: 1 },
+  // Named stepDot, not dot: styles.dot is already the pickup/dropoff
+  // marker on the Address step and reusing the name would collide.
+  stepDots:     { flexDirection: 'row', gap: 4 },
+  stepDot:      { width: 8, height: 8, borderRadius: 4 },
+  ctaBar:       { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, borderTopWidth: 1 },
+  mapCard:      { height: 220, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  mapInline:    { ...StyleSheet.absoluteFillObject },
   stepGap:      { gap: Spacing.md },
+  // Business app's pkgCard / pkgHead / pkgTitle, verbatim.
+  pkgCard:      { borderRadius: 16, borderWidth: 1, padding: 14, gap: 4 },
+  pkgHead:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  pkgTitle:     { fontSize: 15, fontWeight: '700' as const },
+  destRow:      { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  destBtn:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
+  destTxt:      { fontSize: 12.5, fontWeight: '600' as const },
+  addPkgBtn:    { borderWidth: 1, borderStyle: 'dashed' as const, borderRadius: 14,
+                  paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
+  addPkgText:   { fontSize: 14, fontWeight: '700' as const },
   stepHero:        { alignItems: 'center', gap: 8, marginBottom: Spacing.md },
   stepHeroCaption: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, textAlign: 'center' },
 
@@ -1159,7 +1629,14 @@ const styles = StyleSheet.create({
 
   // Inputs
   textarea:     { borderRadius: Radius.lg, borderWidth: 1.5, padding: Spacing.md, fontSize: FontSize.base, minHeight: 80, textAlignVertical: 'top' },
-  input:        { height: 52, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md, fontSize: FontSize.base },
+  // Metrics match the business app's send-package input exactly.
+  // The old `height: 52` with fontSize 15 left vertical room for a
+  // second line, so long placeholders ("Last name (optional)" in a
+  // half-width field, and the declared-value hint) wrapped and then
+  // got clipped mid-word. Growing from padding instead keeps every
+  // placeholder on one line, which is why the business form never
+  // showed this.
+  input:        { minHeight: 48, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md, paddingVertical: 10, fontSize: 14 },
 
   // Address picker block (matches Request screen)
   inputBlock:   { borderWidth: 1.5, borderRadius: Radius.lg, paddingVertical: 4 },

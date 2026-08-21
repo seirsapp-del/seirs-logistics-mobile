@@ -1,6 +1,28 @@
-import { IsBoolean, IsEmail, IsEnum, IsISO8601, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsISO8601, IsObject, IsOptional, IsString, Length, Matches, MinLength, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { UserRole } from '../../users/user.entity';
 import { VehicleType } from '../../drivers/driver.entity';
+
+// Optional home address captured at signup. Same shape as the jsonb
+// column on User.homeAddress and as HomeAddressDto on update-profile, so
+// the value written here is the value the profile screen later edits.
+export class RegisterHomeAddressDto {
+  @IsString() @Length(1, 40)
+  label!: string;
+
+  @IsString() @Length(2, 200)
+  street!: string;
+
+  @IsString() @Length(2, 80)
+  city!: string;
+
+  @IsString() @Length(2, 80)
+  state!: string;
+
+  @IsOptional()
+  @IsObject()
+  coords?: { lat: number; lng: number } | null;
+}
 
 export class RegisterDto {
   @IsString()
@@ -44,4 +66,13 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   referralCode?: string;
+
+  // Optional on purpose. Collecting it speeds up the first booking by
+  // pre-filling pickup, but signup is where people drop out, so it must
+  // never block account creation.
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => RegisterHomeAddressDto)
+  homeAddress?: RegisterHomeAddressDto;
 }

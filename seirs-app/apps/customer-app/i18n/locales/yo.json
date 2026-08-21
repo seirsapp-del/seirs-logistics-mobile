@@ -73,12 +73,9 @@
     "pointsChip": "Ààmì {{n}}",
     "pointsChipEmpty": "Gba ààmì",
     "stories": "Àwọn Ìtàn",
-    "wallet": "Àpamọwọ",
     "alerts": "Ìkìlọ̀",
     "suggestions": "Àwọn Àbá",
-    "walletBalance": "Iye Àpamọwọ",
     "availableBalance": "Owó tí o wà",
-    "topUp": "Fikun",
     "send": "Firanṣẹ",
     "history": "Ìtàn",
     "recentTrips": "Àwọn Ìrìn Àjò Àìpẹ́",
@@ -173,18 +170,14 @@
     "categoryMarketGoods": "Ọjà",
     "categoryHeavy": "Ohun Wọ́nwọ́n",
     "stepPackage": "Idii",
-    "stepAddress": "Adirẹsì",
+    "stepAddress": "Ìkó",
     "stepVehicle": "Ọkọ",
-    "stepFare": "Owó",
-    "stepConfirm": "Jẹ́rìísí",
     "step1Caption": "Kíni o ń firanṣẹ?",
-    "step2Caption": "Ibo ni a ó ti gba ati firanṣẹ sí?",
+    "step2Caption": "Níbo ni awakọ̀ yóò ti kó o?",
     "step3Caption": "Yan ọkọ kan",
-    "step4Caption": "Wo owó náà",
-    "step5Caption": "Olùgbà àti ìsanwó",
+    "step4Caption": "Yẹ ìlà kọ̀ọ̀kan wò, kí o sì san.",
     "payCard": "Káàdì Owó (Flutterwave)",
     "payBankTransfer": "Ìfiránṣẹ́ Banki",
-    "payWallet": "Àpamọwọ Seirs",
     "weightHint": "Ò ràn wá lọwọ́ láti dabàá ọkọ tó tọ́",
     "selectCategory": "Yan ẹ̀ka",
     "addPhotos": "Fi fọ́tò kún",
@@ -226,7 +219,34 @@
     "errPickupMissing": "Jọ̀wọ́ tẹ adiresi gbigba.",
     "errDropoffMissing": "Jọ̀wọ́ tẹ adiresi ìfilọ́.",
     "errScheduleTime": "Jọ̀wọ́ yan àkókò fún ìfijiṣẹ́ rẹ tí a ti ṣètò.",
-    "errBookingFailed": "Tẹ kùnà. Jọ̀wọ́ gbìyànjú lẹ́ẹ̀kansí."
+    "errBookingFailed": "Tẹ kùnà. Jọ̀wọ́ gbìyànjú lẹ́ẹ̀kansí.",
+    "packageCardTitle": "Àpò 1",
+    "receiverName": "Ta ni yóò gbà á?",
+    "receiverFirst": "Orúkọ àkọ́kọ́",
+    "receiverLast": "Orúkọ ìdílé",
+    "receiverPhone": "08012345678",
+    "receiverHint": "Awakọ̀ yóò fọwọ́ sí orúkọ àkọ́kọ́ yìí nígbà ìfilọ́wọ́. Ẹnikẹ́ni tí olùgbà bá gbẹ́kẹ̀lé lè gbà á.",
+    "destinationLabel": "Níbo ni yóò lọ?",
+    "destAddress": "Sí àdírẹ́sì",
+    "destStore": "Sí ilé-ìtajà alábàáṣiṣẹ́pọ̀",
+    "destAddressPlaceholder": "Ìgboro, agbègbè, ìlú",
+    "fallbackLabel": "Tí kò bá sí ẹnikẹ́ni",
+    "fbHand": "Fún olùgbà nìkan",
+    "fbNeighbour": "Fi sílẹ̀ fún aládùúgbò",
+    "fbGate": "Fi sílẹ̀ ní ẹnu-ọ̀nà",
+    "fbStore": "Fi sílẹ̀ ní ilé-ìtajà alábàáṣiṣẹ́pọ̀",
+    "neighbourName": "Orúkọ aládùúgbò tàbí olùṣọ́",
+    "declaredValue": "Iye àpò ní NGN (àṣàyàn)",
+    "declaredValueHint": "àpẹẹrẹ 150000",
+    "declaredValueNote": "Àwọn àpò olówó ńlá nílò ìjẹ́rìísí ID nígbà ìfilọ́wọ́.",
+    "hvFallbackNote": "A kò lè fi àwọn àpò olówó ńlá sílẹ̀ ní ẹnu-ọ̀nà tàbí lọ́wọ́ aládùúgbò.",
+    "instructions": "Ìtọ́ni fún awakọ̀ (àṣàyàn)",
+    "instructionsPlaceholder": "àpẹẹrẹ Pè nígbà tí o bá dé ẹnu-ọ̀nà. Béèrè fún olùṣọ́.",
+    "errReceiverMissing": "Tẹ orúkọ àkọ́kọ́ olùgbà sí i. Awakọ̀ yóò béèrè fún ẹni yìí ní orúkọ nígbà ìfilọ́wọ́.",
+    "errWeightMissing": "Tẹ ìwúwo ní kg sí i. Ìdíye tó sún mọ́ ọn tó: awakọ̀ rẹ yóò fi yan ọkọ̀ tó yẹ.",
+    "nightFeeNote": "Ìkó ní alẹ́: owó alẹ́ ni a ó fi kún un, gbogbo rẹ̀ sì ń lọ sí ọwọ́ awakọ̀ rẹ.",
+    "vehicleBlocked": "Kò gbà fún irú àpò yìí",
+    "stepReview": "Àyẹ̀wò"
   },
   "rewardsTab": {
     "title": "Àwọn Ẹ̀bùn Mi",
@@ -237,29 +257,6 @@
     "accountCreditNote": "Owó ìpolówó àti owó tí a san padà. SEIRS kò ní owó alábàákẹ́gbẹ́, kì í ṣe àpamọwọ ìfipamọ́ owó.",
     "escrowChip": "₦{{amount}} wà nínú àtúnyẹ̀wò",
     "withdrawCredit": "Yọ owó tí ó wà"
-  },
-  "wallet": {
-    "myWallet": "Àpamọwọ Mi",
-    "walletBalance": "Iye Àpamọwọ",
-    "available": "Tí o wà",
-    "pendingEscrow": "Ndúró (àtọ́jọ)",
-    "topUp": "Fikun",
-    "withdraw": "Yọ Owó",
-    "cards": "Káàdì",
-    "totalSpent": "Lapapọ Tí A Ná",
-    "totalEarned": "Lapapọ Tí A Jèrè",
-    "transactions": "Àwọn Ìṣòwò",
-    "all": "Gbogbo",
-    "credit": "Ìfikún",
-    "debit": "Ìgbé Jáde",
-    "noTransactions": "Kò sí ìṣòwò",
-    "withdrawFunds": "Yọ Owó",
-    "withdrawPrompt": "Tẹ iye owó tí o fẹ yọ (₦). Owó yóò ránṣẹ sí àkọọlẹ ilé-ifowopamọ rẹ.",
-    "invalidAmount": "Iye owó kò tọ́",
-    "insufficientBalance": "Owó kò tó",
-    "withdrawalInitiated": "Yíyọ owó ti bẹ̀rẹ̀",
-    "withdrawalMsg": "₦{{amount}} yóò ránṣẹ sí àkọọlẹ ilé-ifowopamọ rẹ ní àárọ̀ 24.",
-    "withdrawalFailed": "Yíyọ owó kùnà"
   },
   "article": {
     "notFoundTitle": "Kò sí ìròyìn yìí",
@@ -354,7 +351,8 @@
     "daysAgo":   "Ọjọ́ {{n}} sẹ́yìn",
     "weeksAgo":  "Ọ̀sẹ̀ {{n}} sẹ́yìn",
     "monthsAgo": "Oṣù {{n}} sẹ́yìn",
-    "yearsAgo":  "Ọdún {{n}} sẹ́yìn"
+    "yearsAgo":  "Ọdún {{n}} sẹ́yìn",
+    "tryAgain": "Jọ̀wọ́ gbìyànjú lẹ́ẹ̀kan sí i."
   },
   "drawer": {
     "profile": "Profáìlì",
@@ -397,7 +395,10 @@
   "messages": {
     "title": "Àwọn Ìfiránṣẹ́",
     "empty": "Kò sí ìfiránṣẹ́ kankan",
-    "emptyDesc": "Àwọn ìfiránṣẹ́ láti ọ̀dọ̀ àwọn awakọ rẹ yóò farahàn níbí lákòókò àti lẹ́yìn àwọn ìrìn."
+    "emptyDesc": "Àwọn ìfiránṣẹ́ láti ọ̀dọ̀ àwọn awakọ rẹ yóò farahàn níbí lákòókò àti lẹ́yìn àwọn ìrìn.",
+    "emptyTitle": "Kò sí ìjíròrò kankan",
+    "emptyDesc2": "Ìjíròrò pẹ̀lú awakọ̀ yóò hàn níbí nígbà ìfijíṣẹ́. O tún lè bẹ̀rẹ̀ ìjíròrò pẹ̀lú ẹgbẹ́ ìrànlọ́wọ́ wa nígbàkúgbà.",
+    "startSupport": "Bẹ̀rẹ̀ ìjíròrò ìrànlọ́wọ́"
   },
   "tracking": {
     "title": "Tọpa Idii",
@@ -560,7 +561,6 @@
   "tabs": {
     "home": "Ilé",
     "bookings": "Àwọn Ìfiránṣẹ",
-    "wallet": "Àpamọwọ",
     "rewards": "Ẹ̀bùn",
     "messages": "Àwọn Ìfiránṣẹ́",
     "profile": "Profáìlì"
@@ -596,25 +596,6 @@
     "iAmSafeConfirm": "Jẹ́rìísí pé o wà láìléwu?",
     "sosSent": "A ti rán SOS",
     "sosSentMsg": "A rán ìkìlọ̀ pajawiri rẹ sí ìrànlọ́wọ́ SEIRS àti àwọn olùbárasọ̀rọ̀ pajawiri rẹ."
-  },
-  "sendMultiple": {
-    "title": "Firanṣẹ Pupọ̀",
-    "subtitle": "Firanṣẹ àwọn idii sí ọ̀pọ̀ adiresi ní ẹ̀ẹ̀kan",
-    "pickup": "Gbigba",
-    "pickupHint": "Níbo ni a fẹ́ gbà láti?",
-    "recipients": "Àwọn Olùgbà",
-    "addRecipient": "Fi olùgbà kún",
-    "recipientName": "Orúkọ olùgbà",
-    "recipientPhone": "Nọmba olùgbà",
-    "recipientAddress": "Adiresi olùgbà",
-    "packageDesc": "Àpèjúwe idii",
-    "remove": "Yọ kúrò",
-    "vehicle": "Ọkọ",
-    "estimatedTotal": "Iye àpapọ̀",
-    "bookAll": "Tẹ Gbogbo Ìfiránṣẹ",
-    "booking": "Ń tẹ̀…",
-    "success": "A ti dá gbogbo ìfiránṣẹ́",
-    "successMsg": "Ìfiránṣẹ́ {{count}} wà lọwọ́ báyìí. Tẹ̀lé wọn láti taàbù Ìfiránṣẹ."
   },
   "report": {
     "title": "Ròyìn Ìṣòro",
@@ -686,7 +667,6 @@
     "paymentSuccessSub": "Nígbà gbogbo tí ìsan owó bá lọ",
     "paymentFailed": "Ìsan Owó Kùnà",
     "paymentFailedSub": "Àwọn ìṣòwò tí ó kùnà tàbí tí wọ́n kọ̀",
-    "walletTopup": "Fífikún Àpamọwọ",
     "walletTopupSub": "Nígbà tí àpamọwọ rẹ bá ní owó",
     "promoAlerts": "Àwọn Ìkìlọ̀ Ìpolówó",
     "promoAlertsSub": "Àwọn kóòdù ẹ̀dínkún tuntun & àwọn ìfilọ́",
@@ -777,7 +757,8 @@
     "pickRating": "Yan ìdíyelé",
     "pickRatingMsg": "Tẹ àwọn ìràwọ̀ láti ṣe ìdíyelé ìrìn rẹ.",
     "couldNotSubmit": "Kò lè fi ránṣẹ́",
-    "tryAgain": "Jọwọ gbiyanju lẹẹkansii."
+    "tryAgain": "Jọwọ gbiyanju lẹẹkansii.",
+    "reportProblem": "Ròyìn ìṣòro nípa ìfijíṣẹ́ yìí"
   },
   "profile": {
     "title": "Profáìlì",
@@ -792,15 +773,14 @@
     "editProfile": "Ṣàtúnṣe Profáìlì",
     "editProfileSub": "Orúkọ, nọ́mbà fóònù, fọtò",
     "verifyIdentity": "Jẹ́rìísí Ìdánimọ̀",
-    "verifyIdentitySub": "Ìjẹ́rìísí NIN / BVN",
-    "verifyIdentityComingSoon": "Ìjẹ́rìísí NIN / BVN wà lórí ètò wa.",
+    "verifyIdentitySub": "NIN, ìwé àṣẹ awakọ̀, ìwé ìrìnnà tàbí PVC",
+    "verifyIdentityComingSoon": "Ìjẹ́rìísí ìdánimọ̀ wà nínú ìwé ìdánimọ̀ rẹ.",
     "paymentMethods": "Àwọn Ọ̀nà Ìsan Owó",
     "paymentMethodsSub": "Káàdì àti àkọọlẹ ilé-ifowopamọ",
     "savedAddresses": "Àwọn Adirẹsì Tí A Tọ́jú",
     "savedAddressesSub": "Ilé, ọ́fíìsì àti àwọn yòókù",
     "myTrips": "Àwọn Ìrìn Mi",
     "myTripsSub": "Ìrìn {{count}} ti parí",
-    "wallet": "Àpamọwọ",
     "walletSub": "₦{{balance}} owó",
     "rewards": "Ẹ̀bùn",
     "rewardsSub": "{{points}} pọ́ìńtì · {{tier}}",
@@ -824,10 +804,13 @@
     "termsComingSoon": "Ojú-ìwé Àwọn Ofin wa yóò gbé jáde pẹ̀lú ìfilọ́lẹ̀ ti gbangba.",
     "statTrips": "Ìrìn",
     "statPoints": "Pọ́ìńtì",
-    "statWallet": "Àpamọwọ",
     "statTier": "Ìpele",
     "statRating": "Ìdíyelé",
-    "version": "SEIRS Logistics v2.0.0 · Build 204"
+    "version": "SEIRS Logistics v2.0.0 · Build 204",
+    "addPhoto": "Fi àwòrán ìdánimọ̀ kún un",
+    "changePhoto": "Yí àwòrán ìdánimọ̀ padà",
+    "sos": "Ìpàjáwìrì SOS",
+    "sosSub": "Ìrànlọ́wọ́ lẹ́sẹ̀kẹsẹ̀ pẹ̀lú ibi tí o wà"
   },
   "schedule2": {
     "title": "Ètò Ìfiránṣẹ",
@@ -840,16 +823,6 @@
     "weightKg": "Ìwọn (kg)",
     "confirm": "Ṣètò",
     "scheduledFor": "A ṣètò fún {{when}}"
-  },
-  "multiStop2": {
-    "title": "Ìfiránṣẹ Ọ̀pọ̀-dúró",
-    "addStop": "Fi Ìdúró Kún",
-    "pickup": "Gbigba",
-    "stop": "Ìdúró {{n}}",
-    "dropoff": "Ìfilọ́",
-    "addressPlaceholder": "Wá adirẹsì…",
-    "removeStop": "Yọ Ìdúró Kúrò",
-    "max5": "Ìdúró 5 ní ó pọjù fún ìfiránṣẹ kọ̀ọ̀kan"
   },
   "dropAtStore": {
     "title": "Fi Sí Ilé-ìtajà",
@@ -881,7 +854,7 @@
     "descriptionLabel": "Àpèjúwe (kò pọndandan)",
     "descriptionPlaceholder": "f.a. aṣọ, ìwé, ohun ẹ̀rọ kéékèèkéé",
     "declaredValueLabel": "Iye tí a kéde ₦ (kò pọndandan)",
-    "declaredValuePlaceholder": "Tí ó bá ju ₦50,000 lọ, olùgba gbọdọ̀ fi ID hàn",
+    "declaredValuePlaceholder": "Tí ó bá ju ₦{{amount}} lọ, olùgba gbọdọ̀ fi ID hàn",
     "recipientHeading": "OLÙGBA",
     "fullName": "Orúkọ kíkún",
     "fullNamePlaceholder": "Bí olùgba yóò ṣe tẹ nígbà gbígba",
@@ -999,7 +972,15 @@
     "cancelLink": "Fagilé ìrìn yìí",
     "cancelTitle": "Fagilé ìrìn yìí?",
     "cancelConfirmFree": "Kò sí owó ìfagilé.",
-    "cancelConfirmWithFee": "Owó ìfagilé ₦{{fee}} yóò bá lò."
+    "cancelConfirmWithFee": "Owó ìfagilé ₦{{fee}} yóò bá lò.",
+    "qrTitle": "Fi èyí hàn awakọ̀ rẹ",
+    "packageQr": "QR Àpò",
+    "qrHint": "Awakọ̀ ń ṣàyẹ̀wò èyí láti fọwọ́ sí i pé àpò tó tọ́ ni òun ń fi lọ́wọ́.",
+    "cancelledTitle": "A ti fagilé ìrìnàjò",
+    "cancelledFree": "A ti fagilé ìrìnàjò rẹ, a sì ti dá gbogbo owó rẹ padà.",
+    "cancelledWithFee": "A ti fagilé ìrìnàjò rẹ. A dá owó ìfagilé ₦{{fee}} dúró nínú owó tí a dá padà.",
+    "cancelFailedTitle": "A kò lè fagilé",
+    "loadFailed": "A kò lè ṣí ìrìnàjò yìí. Yẹ ìsopọ̀ rẹ wò kí o sì gbìyànjú lẹ́ẹ̀kan sí i."
   },
   "chat": {
     "online": "Ori ayelujara",
@@ -1032,5 +1013,68 @@
       "permBody": "Jẹ́ àṣẹ fún kámẹ́rà tàbí fọtò nínú ètò fóònù rẹ.",
       "errorTitle": "A kò lè fi fọtò ránṣẹ́"
     }
+  },
+  "support": {
+    "newTitle": "Báwo ni a ṣe lè ràn ọ́ lọ́wọ́?",
+    "detailsTitle": "Sọ fún wa sí i",
+    "threadEmpty": "Kò sí ìfiránṣẹ́ níbí.",
+    "closedNote": "A ti pa ìwé ẹ̀bẹ̀ yìí. Ṣí tuntun bí o bá ṣì nílò ìrànlọ́wọ́.",
+    "error": {
+      "title": "A kò lè ṣí ìwé ẹ̀bẹ̀",
+      "sendTitle": "A kò lè fi ránṣẹ́",
+      "uploadTitle": "A kò lè gbé àwòrán sókè"
+    }
+  },
+  "deleteAccount": {
+    "title": "Pa Àkàǹtì Rẹ",
+    "confirmType": "Tẹ DELETE láti fọwọ́ sí i",
+    "couldNotDelete": "Kò ṣeé parẹ́",
+    "deleteForever": "Pa Láéláé",
+    "exportFailed": "Ìkó dátà jáde kùnà",
+    "exportFirst": "Kọ́kọ́ kó dátà mi jáde",
+    "exportingMsg": "À ń pèsè dátà rẹ sílẹ̀. Wàá gba ímeèlì pẹ̀lú ọ̀nà ìgbàsílẹ̀ láàárín wákàtí 24.",
+    "tryAgain": "Gbìyànjú lẹ́ẹ̀kan sí i",
+    "warning": "Èyí yóò pa àkàǹtì rẹ, ìtàn ìrìnàjò rẹ, àti àwọn àmì ẹ̀bùn rẹ láéláé. A kò lè yí i padà."
+  },
+  "notFound2": {
+    "title": "A kò rí ojú-ìwé náà",
+    "subtitle": "Ojú-ìwé tí o ń wá kò sí.",
+    "goHome": "Padà sí Ilé"
+  },
+  "notifications2": {
+    "title": "Ìfitónilétí",
+    "empty": "Kò sí ìfitónilétí",
+    "emptyDesc": "Ìkìlọ̀ àti ìmúdójúìwọ̀n yóò hàn níbí.",
+    "markAllRead": "Sàmì gbogbo bí a ti kà"
+  },
+  "poolPrefs2": {
+    "title": "Ìfẹ́ Ìrìnàjò Àpapọ̀",
+    "whatToAccept": "OHUN TÍ O FẸ́ GBÀ",
+    "acceptPool": "Gba ìrìnàjò àpapọ̀",
+    "ridesOnly": "Ìrìnàjò nìkan",
+    "packagesOnly": "Àpò nìkan",
+    "both": "Àwọn méjèèjì"
+  },
+  "promo2": {
+    "title": "Kóòdù Ẹ̀bùn",
+    "placeholder": "Tẹ kóòdù ẹ̀bùn sí i",
+    "apply": "Lò ó",
+    "applied": "A ti lo ẹ̀bùn náà! Ìdínkù yóò hàn nígbà ìsanwó.",
+    "invalidCode": "Kóòdù ẹ̀bùn kò tọ́"
+  },
+  "resetPassword2": {
+    "title": "Ìtúnṣe Ọ̀rọ̀ Aṣínà",
+    "subtitle": "A ti tún ọ̀rọ̀ aṣínà rẹ ṣe ní àṣeyọrí.",
+    "backToSignIn": "Padà sí Wíwọlé",
+    "invalidLink": "Ìjápọ̀ Tí Kò Tọ́",
+    "invalidLinkDesc": "Ìjápọ̀ ìtúnṣe yìí ti pé tàbí kò tọ́. Béèrè fún tuntun láti ojú-ìwé Mo Gbàgbé Ọ̀rọ̀ Aṣínà."
+  },
+  "seirsId2": {
+    "title": "SEIRS ID Mi",
+    "registeredName": "ORÚKỌ TÍ A FORÚKỌ SÍLẸ̀",
+    "howWorks": "Bí ìjẹ́rìísí ìfilọ́wọ́ ṣe ń ṣiṣẹ́",
+    "step1": "Fi QR rẹ hàn òṣìṣẹ́ ilé-ìtajà tàbí awakọ̀",
+    "step2": "Wọn yóò ṣàyẹ̀wò tàbí tẹ kóòdù náà",
+    "step3": "Sọ orúkọ rẹ ní kíkún láti parí ìfilọ́wọ́"
   }
 }

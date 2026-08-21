@@ -265,10 +265,10 @@
     "displayCurrency": "Nuna Kuɗi",
     "currencyNote": "Ana sarrafa duk ma'amaloli a cikin Naira ta Najeriya (NGN). Sauran kuɗaɗe suna don nunawa ne kawai.",
     "nigeria": "Najeriya",
-    "unitedKingdom": "United Kingdom",
+    "unitedKingdom": "Ƙasar Ingila",
     "france": "Faransa",
     "unitedStates": "Amurka",
-    "euro": "Euro",
+    "euro": "Yuro",
     "nigerianNaira": "Naira ta Najeriya",
     "usDollar": "Dollar na Amurka",
     "britishPound": "Fam na Birtaniya"
@@ -316,5 +316,15 @@
       "permBody": "Ba da izini ga kamara ko hotuna a saitin wayarka.",
       "errorTitle": "Ba a iya aika hoton ba"
     }
+  },
+  "support": {
+    "newTitle": "Sabuwar takardar tallafi",
+    "topicLabel": "Menene wannan ya shafa?",
+    "subjectLabel": "Batun",
+    "messageLabel": "Bayyana matsalar",
+    "submit": "Buɗe takarda",
+    "threadEmpty": "Babu saƙo a nan.",
+    "closedNote": "An rufe wannan takardar. Buɗe sabuwa idan har kana buƙatar taimako.",
+    "hoursHint": "Lokutan tallafi: 6na safe–10na dare WAT. Saƙonnin da aka aika a wajen waɗannan lokutan za su sami amsa da zarar mun buɗe da 6na safe."
   }
 }

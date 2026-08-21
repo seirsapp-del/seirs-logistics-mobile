@@ -316,5 +316,15 @@
       "permBody": "Jẹ́ àṣẹ fún kámẹ́rà tàbí fọtò nínú ètò fóònù rẹ.",
       "errorTitle": "A kò lè fi fọtò ránṣẹ́"
     }
+  },
+  "support": {
+    "newTitle": "Ìwé ẹ̀bẹ̀ ìrànlọ́wọ́ tuntun",
+    "topicLabel": "Kí ni èyí jẹ́ nípa rẹ̀?",
+    "subjectLabel": "Àkòrí",
+    "messageLabel": "Ṣàlàyé ìṣòro náà",
+    "submit": "Ṣí ìwé ẹ̀bẹ̀",
+    "threadEmpty": "Kò sí ìfiránṣẹ́ níbí.",
+    "closedNote": "A ti pa ìwé ẹ̀bẹ̀ yìí. Ṣí tuntun bí o bá ṣì nílò ìrànlọ́wọ́.",
+    "hoursHint": "Àkókò ìrànlọ́wọ́: 6 àárọ̀–10 alẹ́ WAT. Àwọn ìfiránṣẹ́ tí a rán níta àkókò yẹn yóò gba ìdáhùn ní kété tí a bá ṣí ní 6 àárọ̀."
   }
 }

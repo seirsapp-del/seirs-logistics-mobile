@@ -157,6 +157,54 @@ export class Delivery {
   @Column({ type: 'varchar', length: 60, nullable: true })
   receiverLastName: string | null;
 
+  // A number the driver can call at handoff. The customer app collected
+  // no phone at all, so a driver at the door with a wrong flat number had
+  // nothing to fall back on. The business flow already stores this per
+  // stop (DeliveryStop.recipientPhone); this is the single-delivery twin.
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  receiverPhone: string | null;
+
+  /**
+   * A rider raised a problem with this job, most often that the parcel in
+   * front of them is not the parcel that was described.
+   *
+   * Deliberately NOT a DeliveryStatus. Status drives dispatch, the driver
+   * app and every admin filter; adding a state to that enum would ripple
+   * through all of them. A flag records the dispute without changing what
+   * the delivery *is*, so support can act while the job keeps its place.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  disputedAt: Date | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  disputeReason: string | null;
+
+  /** The rider's photo of what they were actually handed. */
+  @Column({ type: 'text', nullable: true })
+  disputePhotoUrl: string | null;
+
+  /**
+   * Where the rider actually was when this job was assigned to them.
+   *
+   * Nothing recorded this, so a rider claiming "I rode 15km to reach the
+   * pickup" could not be checked against anything. Any compensation that
+   * scales with distance ridden, and every dispute about a wasted trip,
+   * needs a number that was written before the argument started.
+   *
+   * Captured from the match itself: the dispatcher already knows the
+   * rider's position and its distance to the pickup at the moment it
+   * chooses them.
+   */
+  @Column({ type: 'double precision', nullable: true })
+  driverAcceptedLat: number | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  driverAcceptedLng: number | null;
+
+  /** Straight-line km from the rider to the pickup at assignment. */
+  @Column({ type: 'double precision', nullable: true })
+  driverAcceptedDistanceKm: number | null;
+
   // How the sender wants the receiver verified: 'name' (driver asks the
   // first name and types it), 'code' (emailed to the SENDER to forward),
   // 'id' (physical ID check). High-value packages ignore 'name'.

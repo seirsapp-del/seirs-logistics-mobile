@@ -209,7 +209,11 @@
     "help": "Taimako & Tambayoyi",
     "privacy": "Manufar Sirri",
     "contact": "Tuntuɓi Tallafi",
-    "signOut": "Fita"
+    "signOut": "Fita",
+    "editProfile": "Gyara bayanan kasuwanci",
+    "documents": "Takardu",
+    "applyPartner": "Nemi zama kantin abokin haɗin gwiwa",
+    "contactSupport": "Tuntuɓi tallafi"
   },
   "language": {
     "title": "Harshe",
@@ -367,5 +371,14 @@
       "> Abokan ciniki kaɗan a Yaba da Surulere sun mayar da gayyatu zuwa lamuni sama da ₦10,000+ ta hanyar gayyatar ƙungiyoyin WhatsApp kawai. Yana da kyau a gwada.",
       "Danna Aika fakiti kuma duba Lada don fara raba lambar ka."
     ]
+  },
+  "profile": {
+    "title": "Bayanan martaba",
+    "account": "Asusu",
+    "partner": "Cibiyar abokan haɗin gwiwa",
+    "preferences": "Zaɓuɓɓuka",
+    "support": "Tallafi",
+    "seirsIdTap": "SEIRS ID · DANNA DON QR",
+    "qrHint": "Nuna wannan a kantunan abokan haɗin gwiwa da lokacin mikawa."
   }
 }

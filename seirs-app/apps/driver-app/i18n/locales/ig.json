@@ -264,11 +264,11 @@
     "appLanguage": "Asụsụ Ngwa",
     "displayCurrency": "Ego Ngosi",
     "currencyNote": "A na-arụ ọrụ azụmahịa niile na Naira Nigeria (NGN). Ego ndị ọzọ bụ naanị maka ngosi.",
-    "nigeria": "Nigeria",
-    "unitedKingdom": "United Kingdom",
-    "france": "France",
-    "unitedStates": "United States",
-    "euro": "Euro",
+    "nigeria": "Naịjirịa",
+    "unitedKingdom": "Obodo Njikọ",
+    "france": "Fụrans",
+    "unitedStates": "Obodo Amerịka",
+    "euro": "Yuro",
     "nigerianNaira": "Naira Nigeria",
     "usDollar": "Dollar America",
     "britishPound": "Pound Britain"
@@ -316,5 +316,15 @@
       "permBody": "Kwe ka kamera ma ọ bụ foto banye na ntọala ekwentị gị.",
       "errorTitle": "Enweghị ike izipụ foto"
     }
+  },
+  "support": {
+    "newTitle": "Tiketi enyemaka ọhụrụ",
+    "topicLabel": "Gbasara gịnị ka nke a bụ?",
+    "subjectLabel": "Isiokwu",
+    "messageLabel": "Kọwaa nsogbu ahụ",
+    "submit": "Meghee tiketi",
+    "threadEmpty": "Ozi adịghị ebe a.",
+    "closedNote": "Emechiela tiketi a. Meghee nke ọhụrụ ma ọ bụrụ na ị ka chọrọ enyemaka.",
+    "hoursHint": "Oge enyemaka: 6 nʼụtụtụ–10 nʼabalị WAT. Ozi ezigara nʼetiti oge ndị ọzọ ga-enweta nzaghachi ozugbo anyị meghere nʼelekere 6 nʼụtụtụ."
   }
 }

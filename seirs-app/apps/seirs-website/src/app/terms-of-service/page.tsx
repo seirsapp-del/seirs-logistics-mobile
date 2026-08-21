@@ -244,7 +244,92 @@ export default function TermsOfServicePage() {
               />
             </Section>
 
-            <Section id="section-8" title="8. Acceptable Use">
+            <Section id="section-8" title="8. Undeliverable Packages, Storage and Disposal">
+              <BodyText>
+                This section applies when a package cannot be handed to the recipient at
+                the delivery address. It sets out what we do, what it costs, and how long
+                we hold a package before it is treated as abandoned. Where an amount is
+                shown in the Seirs app at the time of booking, that amount applies.
+              </BodyText>
+
+              <SubSection title="8.1 Failed delivery attempts">
+                <BulletList
+                  items={[
+                    "Where a driver arrives and cannot complete the handover, the driver will attempt to contact the sender and, where a channel is available, the recipient",
+                    "If there is no response within the response window shown in the app, the matter is escalated to Seirs support",
+                    "Where support does not resolve the matter within the timeout shown in the app, the package may be moved to the nearest available Seirs partner counter for safekeeping",
+                    "The sender and, where a channel is available, the recipient will be notified before a package is moved, including the counter location, the amount payable and the collection deadline",
+                  ]}
+                />
+              </SubSection>
+
+              <SubSection title="8.2 Redirection and counter fees">
+                <BulletList
+                  items={[
+                    "Moving a package to a partner counter attracts a redirection fee reflecting the additional distance travelled and the counter's intake charge",
+                    "Where the failure arises from the recipient's unavailability or an incorrect address supplied by the sender, the redirection and counter fees are payable by the party responsible",
+                    "Where the failure arises from an error by Seirs, no redirection or counter fee is charged",
+                    "A collection code is issued only once any amount due has been settled in the app. Partner counter staff do not collect payment and are not authorised to release a package without a valid code",
+                  ]}
+                />
+              </SubSection>
+
+              <SubSection title="8.3 Storage">
+                <BulletList
+                  items={[
+                    "Packages held at a partner counter are stored free of charge for the free storage window shown in the app",
+                    "After that window, storage accrues daily at the rate shown in the app until the package is collected, returned or disposed of",
+                    "Storage charges are payable before the package is released",
+                    "Seirs holds packages as bailee only and does not insure stored packages beyond the liability limit in Section 7",
+                  ]}
+                />
+              </SubSection>
+
+              <SubSection title="8.4 Perishable and temperature-sensitive items">
+                <BodyText>
+                  Food and other perishable or temperature-sensitive items cannot be stored.
+                  Where such an item cannot be delivered, Seirs will attempt to contact the
+                  sender, and if the item cannot be delivered or returned within the
+                  perishable window shown in the app, it may be disposed of on the same day.
+                  Photographic evidence of disposal is retained. No refund of the delivery
+                  fee is due where the failure did not arise from an error by Seirs.
+                </BodyText>
+              </SubSection>
+
+              <SubSection title="8.5 Uncollected packages and abandonment">
+                <BulletList
+                  items={[
+                    "A package that remains uncollected beyond the abandonment threshold shown in the app may be treated as abandoned",
+                    "Before a package is treated as abandoned, Seirs will give notice to the sender and, where a channel is available, the recipient, stating the deadline and the amounts outstanding",
+                    "Seirs may dispose of an abandoned package. Disposal is recorded with photographic evidence and the record is retained",
+                    "Amounts outstanding at the point of disposal remain payable and disposal does not extinguish them",
+                    "Seirs does not sell abandoned packages",
+                  ]}
+                />
+              </SubSection>
+
+              <SubSection title="8.6 Return to sender">
+                <BulletList
+                  items={[
+                    "A sender may request that an undeliverable package be returned to the original pickup address. The pickup address for a return cannot be changed",
+                    "A return is charged as a delivery from the package's current location to the pickup address, together with any counter and storage fees already accrued",
+                    "Where a package is already with a driver, a return must be arranged through Seirs support before the driver is redirected",
+                  ]}
+                />
+              </SubSection>
+
+              <SubSection title="8.7 Recipient obligations">
+                <BulletList
+                  items={[
+                    "A sender is responsible for supplying a correct delivery address and correct recipient contact details",
+                    "Where a recipient is not a registered Seirs user, notifications depend on the contact details supplied by the sender and Seirs cannot guarantee that they are received",
+                    "Charges arising from an incorrect address or unreachable recipient are payable by the sender",
+                  ]}
+                />
+              </SubSection>
+            </Section>
+
+            <Section id="section-9" title="9. Acceptable Use">
               <BodyText>You agree not to:</BodyText>
               <BulletList
                 items={[
@@ -258,7 +343,7 @@ export default function TermsOfServicePage() {
               />
             </Section>
 
-            <Section id="section-9" title="9. Suspension and Termination">
+            <Section id="section-10" title="10. Suspension and Termination">
               <BodyText>
                 Seirs may suspend or permanently deactivate your account, with or without
                 notice, if:
@@ -279,7 +364,7 @@ export default function TermsOfServicePage() {
               </BodyText>
             </Section>
 
-            <Section id="section-10" title="10. Intellectual Property">
+            <Section id="section-11" title="11. Intellectual Property">
               <BodyText>
                 All content, software, trademarks, and designs on the Seirs platform are owned
                 by Seirs Logistics Ltd or licensed to us. You may not reproduce, distribute, or
@@ -287,7 +372,7 @@ export default function TermsOfServicePage() {
               </BodyText>
             </Section>
 
-            <Section id="section-11" title="11. Privacy">
+            <Section id="section-12" title="12. Privacy">
               <BodyText>
                 Our collection and use of personal data is governed by our{" "}
                 <Link href="/privacy-policy" className="text-sky hover:underline">
@@ -298,7 +383,7 @@ export default function TermsOfServicePage() {
               </BodyText>
             </Section>
 
-            <Section id="section-12" title="12. Disclaimer of Warranties">
+            <Section id="section-13" title="13. Disclaimer of Warranties">
               <BodyText>
                 The platform is provided &quot;as is&quot; and &quot;as available.&quot; Seirs does not warrant
                 uninterrupted or error-free operation. We are not liable for losses arising
@@ -307,7 +392,7 @@ export default function TermsOfServicePage() {
               </BodyText>
             </Section>
 
-            <Section id="section-13" title="13. Limitation of Liability">
+            <Section id="section-14" title="14. Limitation of Liability">
               <BodyText>
                 To the maximum extent permitted by Nigerian law, Seirs&apos; total liability to
                 you for any claim arising from use of our services is limited to the amount
@@ -316,7 +401,7 @@ export default function TermsOfServicePage() {
               </BodyText>
             </Section>
 
-            <Section id="section-14" title="14. Governing Law and Disputes">
+            <Section id="section-15" title="15. Governing Law and Disputes">
               <BodyText>
                 These Terms are governed by the laws of the Federal Republic of Nigeria. Any
                 dispute shall first be subject to good-faith negotiation. If unresolved,
@@ -325,7 +410,7 @@ export default function TermsOfServicePage() {
               </BodyText>
             </Section>
 
-            <Section id="section-15" title="15. Changes to Terms">
+            <Section id="section-16" title="16. Changes to Terms">
               <BodyText>
                 We may update these Terms. We will notify you via email or in-app notification
                 at least 14 days before material changes take effect. Continued use after the
@@ -333,7 +418,7 @@ export default function TermsOfServicePage() {
               </BodyText>
             </Section>
 
-            <Section id="section-16" title="16. Contact">
+            <Section id="section-17" title="17. Contact">
               <BodyText>
                 For any queries about these Terms:{" "}
                 <a href="mailto:legal@seirs.co" className="text-sky hover:underline">
