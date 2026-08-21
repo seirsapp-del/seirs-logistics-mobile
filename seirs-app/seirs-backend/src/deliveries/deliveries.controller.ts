@@ -147,6 +147,19 @@ export class DeliveriesController {
     return this.deliveriesService.decideAddressChange(id, admin.id, body);
   }
 
+  // POST /api/v1/deliveries/track/:code/collection-payment
+  // Public: whoever holds the tracking link can settle what is owed on a
+  // package sitting at a counter. This is what makes "pay to reveal"
+  // workable for a receiver who has no SEIRS account.
+  @Public()
+  @Post('track/:code/collection-payment')
+  payCollection(
+    @Param('code') code: string,
+    @Body() body: { email?: string; name?: string; phone?: string },
+  ) {
+    return this.deliveriesService.startCollectionPayment(code, body ?? {});
+  }
+
   // POST /api/v1/deliveries/:id/address-change  { address, lat?, lng? }
   // The sender gave the wrong address and the rider is already carrying
   // the package. This only opens a request and quotes it: support has to

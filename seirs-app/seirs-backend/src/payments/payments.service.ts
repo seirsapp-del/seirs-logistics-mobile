@@ -371,7 +371,11 @@ export class PaymentsService {
     return { authorizationUrl: paymentLink, reference: txRef, amountNgn: amount };
   }
 
-  async initiateRedirectFeePayment(delivery: Delivery, customer: User): Promise<{
+  async initiateRedirectFeePayment(
+    delivery: Delivery,
+    customer: User,
+    opts?: { web?: boolean },
+  ): Promise<{
     authorizationUrl: string;
     reference:        string;
     amountNgn:        number;
@@ -392,7 +396,11 @@ export class PaymentsService {
       email:       customer.email,
       phone:       customer.phone ?? '',
       name:        customer.name,
-      redirectUrl: 'seirsmobile://payment-callback',
+      // A receiver paying from the tracking page is in a browser,
+      // where a seirsmobile:// callback goes nowhere.
+      redirectUrl: opts?.web
+        ? `${process.env.PUBLIC_SITE_URL ?? 'https://seirs.app'}/collect/${delivery.trackingCode}?paid=1`
+        : 'seirsmobile://payment-callback',
       meta: {
         purpose:      'redirect_fee',
         deliveryId:   delivery.id,

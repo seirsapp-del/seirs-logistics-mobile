@@ -262,6 +262,15 @@ export class Delivery {
   @Column({ type: 'timestamptz', nullable: true })
   redirectFeePaidAt: Date | null;
 
+  // Who owes the redirect fee, which decides whether collection is
+  // locked. 'receiver' when the package went to a counter because nobody
+  // was home: they settle it and the store stays masked until they do.
+  // 'sender' when the sender chose to send it to a counter, which is the
+  // handling fee they were always meant to pay and never hides anything
+  // from them.
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  redirectFeePayer: string | null;
+
   // ── Mid-delivery address change (founder 2026-08-21) ────────────────
   // A sender who gave the wrong address can ask for it to be corrected
   // while the rider is still carrying the package. Support decides;

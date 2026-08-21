@@ -992,7 +992,13 @@ export class DeliveriesService {
     // a partner store keeps the store's identity + location hidden until
     // the redirect fee is settled. The public tracking payload is the
     // reveal surface, so the mask lives here.
-    const feeLocked = Number(delivery.redirectFeeNgn ?? 0) > 0 && !delivery.redirectFeePaidAt;
+    // Locked only when the RECEIVER owes it. A sender who chose to send
+    // their own package to a counter is not hidden from their own
+    // package; they are simply billed the handling fee.
+    const feeLocked =
+      Number(delivery.redirectFeeNgn ?? 0) > 0 &&
+      !delivery.redirectFeePaidAt &&
+      delivery.redirectFeePayer !== 'sender';
 
     return {
       id:             delivery.id,
@@ -1294,6 +1300,7 @@ export class DeliveriesService {
       dropoffLng:        store.storeLng != null ? Number(store.storeLng) : delivery.dropoffLng,
       arrivalResolution: resolution,
       redirectFeeNgn:    fee,
+      redirectFeePayer:  'receiver',
     } as any);
 
     this.logEvent(delivery.id, DeliveryEventType.ADMIN_NOTE, EventActorRole.SYSTEM, {
@@ -1325,6 +1332,61 @@ export class DeliveriesService {
    * the location"). Sender-only; the payment path itself validates the
    * amount and refuses double-payment.
    */
+  /**
+   * Settle a collection fee from the public tracking link.
+   *
+   * The receiver is the one person in this system with no account and no
+   * app, and they are exactly who owes this money. Before this the only
+   * way to pay was inside the customer app as the sender, so a receiver
+   * could read "settle the fee to reveal the pickup location" on the
+   * tracking page and have no way to do it.
+   *
+   * No auth on purpose: possession of the tracking code is the only
+   * claim anyone needs to PAY a fee, and paying it reveals nothing to
+   * the payer that the tracking page does not already show once settled.
+   * Contact details are optional and only ever used for the receipt.
+   */
+  async startCollectionPayment(
+    code: string,
+    contact?: { email?: string; name?: string; phone?: string },
+  ) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const delivery = await this.repo.findOne({
+      where: { trackingCode: code },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('No package found for that code.');
+
+    const owed = Number(delivery.redirectFeeNgn ?? 0);
+    if (!(owed > 0)) {
+      throw new BadRequestException('Nothing is owed on this package.');
+    }
+    if (delivery.redirectFeePaidAt) {
+      throw new BadRequestException('This has already been paid. Show your code at the counter.');
+    }
+    if (!this.paymentsService) {
+      throw new NotFoundException('Payments are unavailable right now.');
+    }
+
+    // Flutterwave needs a payer identity. Use whatever the receiver gave
+    // us and fall back to the sender's, so a receipt always reaches a
+    // real person.
+    const payer = {
+      email: (contact?.email ?? '').trim() || delivery.customer?.email,
+      name:  (contact?.name  ?? '').trim() || delivery.customer?.name,
+      phone: (contact?.phone ?? '').trim() || delivery.customer?.phone || '',
+    };
+    if (!payer.email) {
+      throw new BadRequestException('Enter an email so we can send your receipt.');
+    }
+
+    return this.paymentsService.initiateRedirectFeePayment(
+      delivery,
+      { ...delivery.customer, ...payer } as any,
+      { web: true },
+    );
+  }
+
   async startRedirectFeePayment(deliveryId: string, customerId: string) {
     const delivery = await this.repo.findOne({
       where: { id: deliveryId },
@@ -1706,8 +1768,18 @@ export class DeliveriesService {
       throw new NotFoundException('That partner store is not available.');
     }
 
+    // The counter takes the package in and releases it later, which is
+    // work somebody has to be paid for. This path used to charge
+    // nothing at all, so a sender could move a delivery to a partner
+    // store for free and the partner was never compensated.
+    const handlingFee = this.feesServiceRef
+      ? Number(await this.feesServiceRef.getValueOr('partner_store_handling_ngn', 500))
+      : 500;
+
     const prevAddress = delivery.dropoffAddress;
     await this.repo.update(deliveryId, {
+      redirectFeeNgn:   handlingFee,
+      redirectFeePayer: 'sender',
       dropoffAddress: `${store.storeName}, ${store.storeAddress}`,
       dropoffLat:     store.storeLat != null ? Number(store.storeLat) : delivery.dropoffLat,
       dropoffLng:     store.storeLng != null ? Number(store.storeLng) : delivery.dropoffLng,

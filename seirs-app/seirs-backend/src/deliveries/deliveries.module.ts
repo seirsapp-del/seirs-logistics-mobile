@@ -241,7 +241,8 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "senderResponseBy" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "arrivalResolution" varchar(12) NULL,
           ADD COLUMN IF NOT EXISTS "redirectFeeNgn" numeric(12,2) NULL,
-          ADD COLUMN IF NOT EXISTS "redirectFeePaidAt" timestamptz NULL
+          ADD COLUMN IF NOT EXISTS "redirectFeePaidAt" timestamptz NULL,
+          ADD COLUMN IF NOT EXISTS "redirectFeePayer" varchar(10) NULL
       `);
       // Mid-delivery address change (2026-08-21): support-decided, paid
       // before it applies.
