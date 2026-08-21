@@ -1587,7 +1587,10 @@ export default function SendScreen() {
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={[styles.vehicleFare, { color: theme.text }]}>₦{f.total.toLocaleString()}</Text>
-                      <Text style={[styles.vehicleEta, { color: theme.textSecond }]}>{durationText ?? '~20 min'}</Text>
+                      {/* No minutes on a vehicle card. Founder rule: never
+                          promise arrival times in Nigeria, and the fallback
+                          here literally invented '~20 min' with no route.
+                          Business shows no time either. (2026-08-21) */}
                     </View>
                     {active && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
                   </Pressable>
