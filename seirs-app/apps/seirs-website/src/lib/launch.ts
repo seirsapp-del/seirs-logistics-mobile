@@ -116,6 +116,27 @@ export const APPS_PUBLISHED = false;
  */
 export const LAUNCH_CHECKLIST = [
   {
+    key: 'WHATSAPP_PHONE_NUMBER_ID',
+    what: 'WhatsApp Business phone number id from Meta',
+    where: 'Railway env on the backend',
+    blocks: 'Receivers are never told their package is at a counter. They have no SEIRS account, so nothing else reaches them',
+    from: 'Meta Business account, after the number is registered to WhatsApp Business',
+  },
+  {
+    key: 'WHATSAPP_ACCESS_TOKEN',
+    what: 'Permanent access token for the WhatsApp Cloud API',
+    where: 'Railway env on the backend',
+    blocks: 'Same as above. WhatsAppService no-ops without it',
+    from: 'Meta Business account, System User token',
+  },
+  {
+    key: 'WHATSAPP_TEMPLATES',
+    what: 'Approved templates named package_at_counter and collection_deadline',
+    where: 'Meta Business Manager, then match the names in whatsapp.service.ts',
+    blocks: 'Sends fail: a template message to someone who never messaged us first must be pre-approved',
+    from: 'Meta review, usually a day or two',
+  },
+  {
     key: 'APPLE_APP_IDS',
     what: 'Numeric App Store ids for customer, driver and business',
     where: 'src/lib/launch.ts',

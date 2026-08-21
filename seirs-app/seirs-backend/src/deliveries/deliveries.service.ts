@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException,
 import { TicketTopic } from '../support/support-ticket.entity';
 import { SupportService } from '../support/support.service';
 import { RoutingService } from '../routing/routing.service';
+import { WhatsAppService } from '../notifications/whatsapp.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { LessThan, Repository, MoreThan } from 'typeorm';
@@ -190,6 +191,7 @@ export class DeliveriesService {
     private rateCardPricing: RateCardPricing,
     private supportService: SupportService,
     private routingService: RoutingService,
+    private whatsapp: WhatsAppService,
   ) {}
 
   /**
@@ -1508,6 +1510,24 @@ export class DeliveriesService {
         delivery.trackingCode,
       ).catch(() => {});
     }
+
+    // The receiver has to go and collect this and owes the fee on it, and
+    // they have no SEIRS account, so the push above never reaches them.
+    // No SMS at launch, so WhatsApp is the channel. No-ops silently when
+    // WhatsApp is not configured.
+    const receiverPhone = (delivery as any).receiverPhone;
+    if (receiverPhone) {
+      const site = process.env.PUBLIC_SITE_URL ?? 'https://seirs.app';
+      this.whatsapp
+        .notifyPackageAtCounter(
+          receiverPhone,
+          delivery.trackingCode,
+          fee,
+          `${site}/collect/${delivery.trackingCode}`,
+        )
+        .catch(() => { /* messaging must never break a transition */ });
+    }
+
     if (this.trackingGateway) this.trackingGateway.broadcastStatusChange(delivery.id, delivery.status);
   }
 
