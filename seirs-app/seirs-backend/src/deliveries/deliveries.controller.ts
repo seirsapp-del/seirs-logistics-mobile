@@ -160,6 +160,19 @@ export class DeliveriesController {
     return this.deliveriesService.startCollectionPayment(code, body ?? {});
   }
 
+  // POST /api/v1/deliveries/:id/dispose  { photoUrl, note? }
+  // Rider records that a perishable was disposed of. Photo required:
+  // Terms 8.4 promises evidence is retained, and without one this is
+  // just an assertion that food was destroyed.
+  @Post(':id/dispose')
+  recordDisposal(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: { photoUrl?: string; note?: string },
+  ) {
+    return this.deliveriesService.recordDisposal(id, user.id, body ?? {});
+  }
+
   // GET /api/v1/deliveries/:id/refund-preview?percent=50  (admin only)
   // Shows which pocket a refund comes out of before anyone commits to
   // it. Read-only: nothing moves until the POST below.

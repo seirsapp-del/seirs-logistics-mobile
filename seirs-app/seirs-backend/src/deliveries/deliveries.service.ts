@@ -1619,6 +1619,129 @@ export class DeliveriesService {
     return this.paymentsService.initiateAddressChangePayment(delivery, delivery.customer);
   }
 
+  // ── Disposal of a perishable that could not be delivered ─────────────
+
+  /**
+   * The rider records that a perishable was disposed of.
+   *
+   * Only the assigned rider, only for a food category, and only once the
+   * perishable window has actually run out. A photo is required: Terms
+   * 8.4 promises photographic evidence is retained, and without one this
+   * is just an assertion that food was destroyed.
+   */
+  async recordDisposal(
+    deliveryId: string,
+    driverUserId: string,
+    body: { photoUrl?: string; note?: string },
+  ) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['driver', 'driver.user', 'customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    const assignedUserId = (delivery as any).driver?.user?.id ?? null;
+    if (!assignedUserId || assignedUserId !== driverUserId) {
+      throw new ForbiddenException('This delivery is not assigned to you.');
+    }
+    if (delivery.disposedAt) {
+      throw new BadRequestException('This has already been recorded as disposed of.');
+    }
+
+    const category = String(delivery.categoryCode ?? '');
+    if (category !== 'food_hot' && category !== 'food_cold') {
+      throw new BadRequestException(
+        'Only perishable orders can be disposed of. Contact support for anything else.',
+      );
+    }
+    if (!body?.photoUrl) {
+      throw new BadRequestException('A photo is required before disposal can be recorded.');
+    }
+
+    // The window has to have actually elapsed. Otherwise this becomes a
+    // fast way for a rider to end an inconvenient job.
+    const maxHours = this.feesServiceRef
+      ? Number(await this.feesServiceRef.getValueOr('perishable_max_hours', 3))
+      : 3;
+    const startedAt = delivery.arrivalIssueAt ?? delivery.pickedUpAt;
+    if (!startedAt) {
+      throw new BadRequestException('This order has not reached a failed delivery.');
+    }
+    const hours = (Date.now() - new Date(startedAt).getTime()) / 3_600_000;
+    if (hours < maxHours) {
+      const left = Math.ceil(maxHours - hours);
+      throw new BadRequestException(
+        `Too early. There ${left === 1 ? 'is' : 'are'} still about ${left} hour${left === 1 ? '' : 's'} to deliver or return this order.`,
+      );
+    }
+
+    await this.repo.update(deliveryId, {
+      disposedAt:       new Date(),
+      disposalPhotoUrl: body.photoUrl,
+      disposalNote:     (body?.note ?? '').trim().slice(0, 500) || null,
+    } as any);
+
+    this.logEvent(deliveryId, DeliveryEventType.ADMIN_NOTE, EventActorRole.DRIVER, {
+      actorUserId: driverUserId,
+      description: `Perishable order disposed of after ${Math.floor(hours)} hours undelivered. Photo retained.`,
+      meta: { kind: 'perishable_disposed', photoUrl: body.photoUrl, hours: Math.floor(hours) },
+    }).catch(() => {});
+
+    if (this.notificationsService && delivery.customer?.id) {
+      this.notificationsService.create(
+        delivery.customer.id,
+        'Your order could not be delivered',
+        `${delivery.trackingCode} is a perishable order and could not be delivered or returned in time, so it has been disposed of. ` +
+        `We have kept a photo. Contact support if you believe this was our error.`,
+        'status_update',
+        delivery.id,
+        delivery.trackingCode,
+      ).catch(() => {});
+    }
+
+    return { ok: true, disposedAt: new Date() };
+  }
+
+  /**
+   * Perishables past their ceiling that nobody has resolved.
+   *
+   * This deliberately does NOT dispose of anything. It raises them so a
+   * human deals with them, because destroying property on a timer is a
+   * different thing from a rider standing there confirming they did it.
+   */
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async flagOverduePerishables() {
+    try {
+      const maxHours = this.feesServiceRef
+        ? Number(await this.feesServiceRef.getValueOr('perishable_max_hours', 3))
+        : 3;
+      const cutoff = new Date(Date.now() - Math.max(1, maxHours) * 3_600_000);
+
+      const overdue = await this.repo
+        .createQueryBuilder('d')
+        .where(`d.arrivalResolution = 'perishable'`)
+        .andWhere('d.disposedAt IS NULL')
+        .andWhere('d.arrivalIssueAt < :cutoff', { cutoff })
+        .andWhere(`d.status NOT IN ('delivered', 'cancelled')`)
+        .take(20)
+        .getMany();
+
+      for (const d of overdue) {
+        this.logEvent(d.id, DeliveryEventType.ADMIN_NOTE, EventActorRole.SYSTEM, {
+          description: `Perishable order is past its ${maxHours} hour ceiling and still unresolved. Needs a decision.`,
+          meta: { kind: 'perishable_overdue', maxHours },
+        }).catch(() => {});
+      }
+
+      if (overdue.length) {
+        this.logger.warn(`${overdue.length} perishable order(s) past the ceiling and unresolved`);
+      }
+    } catch (e: any) {
+      this.logger.warn(`perishable sweep failed: ${e?.message ?? e}`);
+    }
+  }
+
   // ── Refund calculator (founder 2026-08-21) ───────────────────────────
 
   /**

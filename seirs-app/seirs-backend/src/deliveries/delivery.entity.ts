@@ -312,6 +312,19 @@ export class Delivery {
   @Column({ type: 'timestamptz', nullable: true })
   returnPaidAt: Date | null;
 
+  // ── Disposal (Terms 8.4 / 8.5) ──────────────────────────────────────
+  // Recorded by the rider with a photo, never by a timer. The evidence is
+  // the whole point: disposing of someone else's property is the single
+  // riskiest thing in this flow and "the clock ran out" is not a record.
+  @Column({ type: 'timestamptz', nullable: true })
+  disposedAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  disposalPhotoUrl: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  disposalNote: string | null;
+
   // ── Mid-delivery address change (founder 2026-08-21) ────────────────
   // A sender who gave the wrong address can ask for it to be corrected
   // while the rider is still carrying the package. Support decides;
