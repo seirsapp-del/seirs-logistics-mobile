@@ -289,6 +289,14 @@ export class AdminController {
     return this.partnerStoreService.adminListPendingApplications();
   }
 
+  // GET /api/v1/admin/partner-stores/:id. One store, its owner account,
+  // and its activity: powers the /partners/[id] detail page. Registered
+  // after /applications so the literal route wins over the param.
+  @Get('partner-stores/:id')
+  getPartnerStore(@Param('id') id: string) {
+    return this.partnerStoreService.adminGetStore(id);
+  }
+
   // PATCH /api/v1/admin/partner-stores/:id/approve  { note?: string }
   // Flips PartnerStore.status → APPROVED and User.capabilities.canPartner → true.
   @Patch('partner-stores/:id/approve')

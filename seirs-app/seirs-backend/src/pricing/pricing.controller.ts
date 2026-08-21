@@ -81,7 +81,19 @@ export class PricingController {
     if (typeof body.stopCount !== 'number' || body.stopCount < 1) {
       throw new BadRequestException('stopCount must be at least 1');
     }
-    return this.pricing.computePrice(body);
+    // Pin the moment of pricing: send-now bookings re-evaluate time
+    // surcharges at this instant when they book with the pin, so the
+    // number shown IS the number charged (founder 2026-08-21: the
+    // review said 1,679 and the charge was 1,684).
+    const pricedAt = new Date();
+    const breakdown = await this.pricing.computePrice({
+      ...body,
+      scheduledAt: (body as any).scheduledAt ? new Date((body as any).scheduledAt) : pricedAt,
+    } as any);
+    return {
+      ...breakdown,
+      quotePin: this.pricing.signQuotePin(Number((breakdown as any).customer?.total ?? 0), pricedAt),
+    };
   }
 
   // ── Admin endpoints ──────────────────────────────────────────────────

@@ -214,6 +214,10 @@ export class CreateDeliveryDto {
   @Type(() => CreateDeliveryPackageDto)
   stops?: CreateDeliveryPackageDto[];
 
+  /** Signed quote pin from POST /pricing/quote: books at the shown price. */
+  @IsOptional()
+  quoteToken?: string;
+
   /** Sender ticked the Terms of Service box at review. */
   @IsOptional()
   termsAccepted?: boolean;

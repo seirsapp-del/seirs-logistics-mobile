@@ -1,5 +1,6 @@
 import {
   Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger,
+  ConflictException,
   Inject, forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -622,6 +623,17 @@ export class BusinessService {
     const totalEtaMin = (dto.estimatedDriveMinutes ?? 0) + totalDwellMin;
 
     // ── Pricing ────────────────────────────────────────────────────────
+    // Quote pin, same contract as the customer flow (founder
+    // 2026-08-21): a valid pin books at the shown number, an expired
+    // pin is refused so the review must re-show the price first.
+    const quotePin = this.pricing.verifyQuotePin((dto as any).quoteToken);
+    if ((dto as any).quoteToken && !quotePin) {
+      throw new ConflictException({
+        code:    'QUOTE_EXPIRED',
+        message: 'Your quoted price expired. The review screen now shows the current price; check it and book again.',
+      });
+    }
+
     const breakdown = await this.pricing.computePrice({
       vehicleType:    dto.vehicleType,
       categoryCode:   dto.categoryCode,
@@ -629,7 +641,7 @@ export class BusinessService {
       stopCount:      dto.stops.length,
       weightKg:       runWeightKg,
       estimatedDwellMinutes: totalDwellMin,
-      scheduledAt:    dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
+      scheduledAt:    dto.scheduledAt ? new Date(dto.scheduledAt) : (quotePin?.pricedAt ?? undefined),
       isInterState:   dto.isInterState,
       isLongDistance: dto.isLongDistance,
       isRecurring:    dto.isRecurring,
@@ -691,7 +703,8 @@ export class BusinessService {
     // Counter handling is already inside customer.total (added by the
     // pricing engine from partnerStoreTouches), so this stays the single
     // charged/escrowed/refunded figure.
-    const total = Number(breakdown.customer.total);
+    // The pinned number is what gets charged, escrowed and refunded.
+    const total = quotePin ? quotePin.total : Number(breakdown.customer.total);
 
     /**
      * Founder rule, restated 2026-08-16: SEIRS is not a bank and senders
@@ -753,7 +766,7 @@ export class BusinessService {
         categoryCode:   dto.categoryCode,
         weightKg:       dto.weightKg,
         vehicleType:    dto.vehicleType,
-        price:          breakdown.customer.total,
+        price:          quotePin ? quotePin.total : breakdown.customer.total,
         driverEarnings: breakdown.driver.total,
         distanceKm:     dto.km,
         rateCardSnapshotId:    breakdown.rateCardSnapshotId,

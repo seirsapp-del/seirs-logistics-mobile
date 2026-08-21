@@ -307,14 +307,42 @@ export class DeliveriesService {
       dto.vehicleType && card.vehicleRates[dto.vehicleType]
         ? dto.vehicleType
         : weight > 100 ? 'van' : weight > 20 ? 'tricycle' : 'motorcycle';
+    /**
+     * Quote pin (founder 2026-08-21). A valid pin from the review quote
+     * makes that number the price, exactly. An expired or tampered pin
+     * is refused with QUOTE_EXPIRED so the app must re-show the price:
+     * the customer is never charged a number they did not see. No pin
+     * at all keeps legacy behaviour for older clients.
+     */
+    const quotePin = this.rateCardPricing.verifyQuotePin((dto as any).quoteToken);
+    if ((dto as any).quoteToken && !quotePin) {
+      const { ConflictException } = await import('@nestjs/common');
+      throw new ConflictException({
+        code:    'QUOTE_EXPIRED',
+        message: 'Your quoted price expired. The review screen now shows the current price; check it and tap Pay again.',
+      });
+    }
+
+    // The real stop count: runs used to price here with stopCount 1
+    // while the review quoted stop fees + dwell, so multi-package
+    // bookings charged less than the screen and shorted the driver's
+    // stop share (found 2026-08-22).
+    const stopCount = Array.isArray(dto.stops) && dto.stops.length > 0 ? dto.stops.length : 1;
+
     const breakdown = await this.rateCardPricing.computePrice({
       vehicleType,
       categoryCode: toCategoryCode(dto.packageCategory),
       km: distanceKm,
-      stopCount: 1,
+      stopCount,
       weightKg: weight,
-      estimatedDwellMinutes: 0,
-      scheduledAt: dto.scheduledFor ? new Date(dto.scheduledFor) : undefined,
+      // Mirrors the app's quote inputs: ~4 minutes of dwell per stop on
+      // a run, zero for a single drop.
+      estimatedDwellMinutes: stopCount > 1 ? stopCount * 4 : 0,
+      // A pinned send-now booking re-evaluates time surcharges at the
+      // instant the quote was priced, which is what makes it match.
+      scheduledAt: dto.scheduledFor
+        ? new Date(dto.scheduledFor)
+        : (quotePin?.pricedAt ?? undefined),
       // latitude/longitude, NOT lat/lng: the engine reads
       // pickupCoords.latitude, and the `as any` hid the mismatch, so
       // coordinates never arrived, state detection got undefined, and
@@ -328,7 +356,10 @@ export class DeliveriesService {
     const termsAcceptedAt = (dto as any).termsAccepted ? new Date() : null;
 
     const pricing = {
-      price:          Number(breakdown.customer.total),
+      // The pinned total IS the price when a pin rode in with the
+      // booking: the customer pays the number the review showed. The
+      // driver's share still comes from the fresh breakdown.
+      price:          quotePin ? quotePin.total : Number(breakdown.customer.total),
       driverEarnings: Number(breakdown.driver.total),
     };
     void packageSize; void urgency; void isFragile;
@@ -1018,6 +1049,10 @@ export class DeliveriesService {
       id:             delivery.id,
       trackingCode:   delivery.trackingCode,
       status:         delivery.status,
+      // Unpaid bookings must not pretend anyone is looking for a rider:
+      // dispatch only sees paid work. The tracking page uses this to say
+      // "waiting for payment" instead of inventing progress.
+      awaitingPayment: !delivery.paymentHeldAt && delivery.status === 'pending',
       // Scoped package view when tracked by a per-package code: first name
       // only (public endpoint), the package's own photo/description and
       // ITS stop timeline rather than the whole manifest's.

@@ -1909,6 +1909,48 @@ export class PartnerStoreService {
    * state (approved, suspended, etc). Ordered by most-recently-updated so
    * active stores float to the top.
    */
+  // One store with its owner and activity numbers, for the admin detail
+  // page. Owner comes back trimmed: the page links to /users/[id] for
+  // the full account view.
+  async adminGetStore(id: string) {
+    const store = await this.storeRepo.findOne({ where: { id } });
+    if (!store) throw new NotFoundException('Partner store not found');
+
+    const owner = store.userId
+      ? await this.usersRepo.findOne({
+          where: { id: store.userId },
+          select: ['id', 'name', 'email', 'phone', 'accountId', 'emailVerified', 'identityVerifiedAt', 'createdAt'],
+        })
+      : null;
+
+    const [held, lifetimePickup, lifetimeDropoff, payouts] = await Promise.all([
+      this.dropoffRepo.count({ where: { pickupStoreId: id, status: DropoffStatus.RECEIVED_AT_STORE } }),
+      this.dropoffRepo.count({ where: { pickupStoreId: id } }),
+      this.dropoffRepo.count({ where: { dropoffStoreId: id } }),
+      this.payoutsRepo
+        .createQueryBuilder('p')
+        .select('p.status', 'status')
+        .addSelect('COALESCE(SUM(p.amountNgn), 0)', 'total')
+        .where('p.partnerStoreId = :id', { id })
+        .groupBy('p.status')
+        .getRawMany(),
+    ]);
+
+    const payoutTotals: Record<string, number> = {};
+    for (const row of payouts) payoutTotals[row.status] = Number(row.total);
+
+    return {
+      store,
+      owner,
+      activity: {
+        packagesHeldNow: held,
+        lifetimeHandled: lifetimePickup + lifetimeDropoff,
+        payoutsPendingNgn: (payoutTotals['pending'] ?? 0) + (payoutTotals['processing'] ?? 0),
+        payoutsPaidNgn: payoutTotals['paid'] ?? 0,
+      },
+    };
+  }
+
   async adminListAllStores(status?: string) {
     const qb = this.storeRepo
       .createQueryBuilder('s')

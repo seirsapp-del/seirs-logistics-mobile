@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import {
   Injectable, Logger, NotFoundException, BadRequestException, OnModuleInit,
 } from '@nestjs/common';
@@ -448,6 +449,48 @@ export class PricingService implements OnModuleInit {
     if (weightKg > 20) return this.fees.getValueOr('counter_fee_large_ngn',   900);
     if (weightKg > 5)  return this.fees.getValueOr('counter_fee_medium_ngn',  500);
     return this.fees.getValueOr('counter_fee_small_ngn', fallback);
+  }
+
+  /**
+   * Quote pinning. The number shown at review is signed with the moment
+   * it was priced; booking inside the window charges exactly that
+   * number. Stateless HMAC: no table, nothing to clean up, and the app
+   * cannot mint its own price because it does not hold the secret.
+   */
+  private static readonly QUOTE_PIN_TTL_MS = 10 * 60 * 1000;
+
+  private quotePinSecret(): string {
+    return process.env.QUOTE_PIN_SECRET || process.env.JWT_SECRET || 'seirs-quote-pin-dev';
+  }
+
+  signQuotePin(totalNgn: number, pricedAt: Date): { token: string; pricedAt: string; expiresAt: string } {
+    const exp = pricedAt.getTime() + PricingService.QUOTE_PIN_TTL_MS;
+    const payload = Buffer.from(JSON.stringify({
+      t:  Math.round(Number(totalNgn) * 100) / 100,
+      at: pricedAt.toISOString(),
+      exp,
+    })).toString('base64url');
+    const sig = createHmac('sha256', this.quotePinSecret()).update(payload).digest('base64url');
+    return {
+      token:     `${payload}.${sig}`,
+      pricedAt:  pricedAt.toISOString(),
+      expiresAt: new Date(exp).toISOString(),
+    };
+  }
+
+  verifyQuotePin(token?: string | null): { total: number; pricedAt: Date } | null {
+    if (!token || typeof token !== 'string' || !token.includes('.')) return null;
+    const [payload, sig] = token.split('.');
+    const expect = createHmac('sha256', this.quotePinSecret()).update(payload).digest('base64url');
+    if (sig !== expect) return null;
+    try {
+      const body = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+      if (!Number.isFinite(body.t) || !body.at || !Number.isFinite(body.exp)) return null;
+      if (Date.now() > Number(body.exp)) return null;
+      return { total: Number(body.t), pricedAt: new Date(body.at) };
+    } catch {
+      return null;
+    }
   }
 
   async computePrice(input: PricingInput): Promise<PriceBreakdown> {
