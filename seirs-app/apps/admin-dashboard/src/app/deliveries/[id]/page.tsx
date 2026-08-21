@@ -502,6 +502,15 @@ export default function DeliveryDetailPage() {
           {/* Who actually takes it at the door. The sender names a receiver
               at booking; support needs that number as much as the driver
               does when a handoff goes wrong. */}
+          {/* Consent is a record, not a button state: this timestamp is
+              what a dispute actually needs. Old bookings predate the
+              field and say so instead of pretending. */}
+          <div className="mt-2 text-xs text-[#0F2B4C]/50">
+            Terms accepted:{' '}
+            {d.termsAcceptedAt
+              ? new Date(d.termsAcceptedAt).toLocaleString()
+              : 'not recorded (booked before consent capture, 21 Aug 2026)'}
+          </div>
           {(d.receiverFirstName || d.receiverPhone) && (
             <div className="mt-3 border-t border-[#E5E7EB] pt-3">
               <div className="mb-1 text-xs font-bold uppercase tracking-wide text-[#0F2B4C]/40">

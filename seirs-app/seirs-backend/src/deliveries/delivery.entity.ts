@@ -323,7 +323,13 @@ export class Delivery {
   disposalPhotoUrl: string | null;
 
   @Column({ type: 'text', nullable: true })
-  disposalNote: string | null;
+  disposalNote: string | null;
+
+  // When the sender ticked the Terms of Service box at review. The
+  // checkbox used to gate the button and then vanish; a dispute needs
+  // the timestamp, not a memory of a UI state (founder 2026-08-21).
+  @Column({ type: 'timestamptz', nullable: true })
+  termsAcceptedAt: Date | null;
 
   // ── Mid-delivery address change (founder 2026-08-21) ────────────────
   // A sender who gave the wrong address can ask for it to be corrected

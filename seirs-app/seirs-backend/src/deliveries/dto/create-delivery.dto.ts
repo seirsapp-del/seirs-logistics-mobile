@@ -213,4 +213,8 @@ export class CreateDeliveryDto {
   @ValidateNested({ each: true })
   @Type(() => CreateDeliveryPackageDto)
   stops?: CreateDeliveryPackageDto[];
+
+  /** Sender ticked the Terms of Service box at review. */
+  @IsOptional()
+  termsAccepted?: boolean;
 }

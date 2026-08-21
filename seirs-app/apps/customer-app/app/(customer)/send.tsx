@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, Pressable, StyleSheet, StatusBar, TextInput,
-  ActivityIndicator, Image, Alert, Keyboard, ScrollView, Linking,
+  ActivityIndicator, Image, Alert, Keyboard, ScrollView, Linking, Modal,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -512,6 +512,7 @@ export default function SendScreen() {
   // Review: which package's own summary is open, and the consent gate.
   const [expandedPkg, setExpandedPkg] = useState<number | null>(null);
   const [tcAgreed, setTcAgreed] = useState(false);
+  const [mapExpanded, setMapExpanded] = useState(false);
   useEffect(() => {
     // Every booking is priced by the engine that will charge it. The
     // first live booking proved why: the local formula showed 2,144 and
@@ -826,6 +827,7 @@ export default function SendScreen() {
       }
       const urls = uploaded[0] ?? [];
       await deliveriesApi.create({
+        termsAccepted: tcAgreed,
         pickupAddress:   pickup?.address ?? '',
         dropoffAddress:  dropoff?.address ?? '',
         pickupLat:       pickup?.lat,
@@ -1650,7 +1652,7 @@ export default function SendScreen() {
               {/* Route map, business-style. Kilometres only on the chip:
                   minutes are a promise this platform does not make. */}
               {pickup && (dropoff || packages.some(pk => pk.dropoff)) && (
-                <View style={[styles.mapCard, { borderColor: theme.border }]}>
+                <Pressable style={[styles.mapCard, { borderColor: theme.border }]} onPress={() => setMapExpanded(true)}>
                   <MapView
                     provider={PROVIDER_GOOGLE}
                     style={styles.mapInline}
@@ -1697,8 +1699,45 @@ export default function SendScreen() {
                   <View style={styles.mapChip}>
                     <Text style={styles.mapChipText}>{distKmRoute > 0 ? `${distKmRoute.toFixed(1)} km` : '...'}</Text>
                   </View>
-                </View>
+                  {/* Same affordance as the business review map. */}
+                  <View style={[styles.mapChip, { left: undefined, right: 10, bottom: undefined, top: 10 }]}>
+                    <Text style={styles.mapChipText}>{t('send.tapToExpand', { defaultValue: 'Tap to expand' })}</Text>
+                  </View>
+                </Pressable>
               )}
+
+              {/* Full-screen route map, closed with the X. */}
+              <Modal visible={mapExpanded} animationType="fade" onRequestClose={() => setMapExpanded(false)}>
+                <View style={{ flex: 1, backgroundColor: theme.background }}>
+                  {pickup && (
+                    <MapView
+                      provider={PROVIDER_GOOGLE}
+                      style={{ flex: 1 }}
+                      customMapStyle={isDark ? DARK_MAP : []}
+                      initialRegion={{ latitude: pickup.lat, longitude: pickup.lng, latitudeDelta: 0.08, longitudeDelta: 0.08 }}
+                      onMapReady={() => { /* pins declare the route; pinch to explore */ }}
+                    >
+                      <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor="#22C55E" title="Pickup" />
+                      {packages.filter(pk => pk.dropoff).map((pk, i) => (
+                        <Marker key={i} coordinate={{ latitude: pk.dropoff!.lat, longitude: pk.dropoff!.lng }} pinColor="#EF4444" />
+                      ))}
+                      {routeCoords.length > 1 && (
+                        <Polyline coordinates={routeCoords} strokeColor={theme.primary} strokeWidth={4} />
+                      )}
+                    </MapView>
+                  )}
+                  <Pressable
+                    onPress={() => setMapExpanded(false)}
+                    style={{
+                      position: 'absolute', top: insets.top + 12, right: 16,
+                      width: 40, height: 40, borderRadius: 20,
+                      backgroundColor: 'rgba(10,15,25,0.85)', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <X size={20} color="#fff" strokeWidth={2.5} />
+                  </Pressable>
+                </View>
+              </Modal>
 
               {/* Packages, business-style rows; each opens ITS OWN order
                   summary, and a package the sender regrets can be removed

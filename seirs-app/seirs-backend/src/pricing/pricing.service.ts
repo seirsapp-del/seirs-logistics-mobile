@@ -454,6 +454,20 @@ export class PricingService implements OnModuleInit {
     const card = await this.getActiveRateCard();
     const category = await this.getCategoryByCode(input.categoryCode);
 
+    /**
+     * Charged leg allowance for runs (founder 2026-08-21: charged, not
+     * displayed - "in the real world it's very different"). Optimizers
+     * draw clean lines; riders meet gates, one-way streets and estate
+     * detours at every intermediate stop. Each drop beyond the first
+     * adds legAllowanceKmPerStop to the PRICED distance, here in the
+     * engine, so the quote and the charge move together and single
+     * deliveries stay pure door-to-door road km.
+     */
+    const legAllowanceKm = Number((card.stopAndDwell as any)?.legAllowanceKmPerStop ?? 0.5);
+    if (input.stopCount > 1 && Number.isFinite(legAllowanceKm) && legAllowanceKm > 0) {
+      input = { ...input, km: input.km + legAllowanceKm * (input.stopCount - 1) };
+    }
+
     const v = card.vehicleRates[input.vehicleType];
     if (!v) throw new BadRequestException(`Unknown vehicle type: ${input.vehicleType}`);
     if (input.weightKg > v.maxPayloadKg) {

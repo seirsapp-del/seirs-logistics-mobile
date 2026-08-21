@@ -324,6 +324,9 @@ export class DeliveriesService {
       pickupCoords:  { latitude: dto.pickupLat,  longitude: dto.pickupLng },
       dropoffCoords: { latitude: dto.dropoffLat, longitude: dto.dropoffLng },
     } as any);
+    // Consent lands as a timestamp on the row, provable later.
+    const termsAcceptedAt = (dto as any).termsAccepted ? new Date() : null;
+
     const pricing = {
       price:          Number(breakdown.customer.total),
       driverEarnings: Number(breakdown.driver.total),
@@ -402,6 +405,7 @@ export class DeliveriesService {
     }
 
     const delivery = this.repo.create({
+      termsAcceptedAt,
       ...dto,
       // Resolved values win over whatever the caller did or did not send.
       packageSize,
