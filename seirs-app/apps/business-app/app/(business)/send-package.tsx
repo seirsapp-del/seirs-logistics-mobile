@@ -1545,8 +1545,8 @@ export default function SendPackageScreen() {
                             {/* Labels one step down, VALUES full ink at 12px:
                                 the founder could not read the first cut,
                                 which set both to the faintest style. */}
-                            <Text style={[styles.lineSub, { color: colors.textSecond, fontSize: 12 }]}>{lbl}</Text>
-                            <Text style={[styles.lineSub, { color: colors.text, fontSize: 12, flex: 1, textAlign: 'right' }]} numberOfLines={2}>{val}</Text>
+                            <Text style={[styles.lineSub, { color: colors.textSecond, fontSize: 13 }]}>{lbl}</Text>
+                            <Text style={[styles.lineSub, { color: colors.text, fontSize: 13, flex: 1, textAlign: 'right' }]} numberOfLines={2}>{val}</Text>
                           </View>
                         ))}
                         {draft.stops.length > 1 && (
@@ -1609,8 +1609,8 @@ export default function SendPackageScreen() {
                   ['Total', quote?.customer?.total != null ? `₦${Math.round(Number(quote.customer.total)).toLocaleString()}` : '…'],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingVertical: 5 }}>
-                    <Text style={[styles.lineSub, { color: colors.textSecond, fontSize: 12 }]}>{lbl}</Text>
-                    <Text style={[styles.lineSub, { color: colors.text, fontSize: 12, fontWeight: '600', flex: 1, textAlign: 'right' }]} numberOfLines={2}>{val}</Text>
+                    <Text style={[styles.lineSub, { color: colors.textSecond, fontSize: 13 }]}>{lbl}</Text>
+                    <Text style={[styles.lineSub, { color: colors.text, fontSize: 13, fontWeight: '600', flex: 1, textAlign: 'right' }]} numberOfLines={2}>{val}</Text>
                   </View>
                 ))}
               </View>
@@ -1959,18 +1959,18 @@ const styles = StyleSheet.create({
   },
   pinTxt: { color: '#fff', fontSize: 13, fontWeight: '800' },
   sumCard:  { borderRadius: 16, borderWidth: 1, padding: 14 },
-  sumTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8 },
+  sumTitle: { fontSize: 17, fontWeight: '700', marginBottom: 10 },
   sumLine:  { fontSize: 13, marginBottom: 3 },
   lineRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
   lineThumb: { width: 34, height: 34, borderRadius: 8 },
-  lineName:  { fontSize: 13, fontWeight: '600' },
-  lineSub:   { fontSize: 11, marginTop: 1 },
+  lineName:  { fontSize: 15, fontWeight: '700' },
+  lineSub:   { fontSize: 12, marginTop: 1 },
   linePrice: { fontSize: 13, fontWeight: '700' },
   quoteErrBox: { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 10, marginTop: 8 },
   quoteErrTxt: { color: '#DC2626', fontSize: 12, fontWeight: '600' },
   totalRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 10, marginTop: 6 },
-  totalLabel: { fontSize: 14, fontWeight: '700' },
-  totalValue: { fontSize: 18, fontWeight: '900' },
+  totalLabel: { fontSize: 17, fontWeight: '700' },
+  totalValue: { fontSize: 24, fontWeight: '700' },
   expandChip: {
     position: 'absolute', top: 10, right: 10,
     flexDirection: 'row', alignItems: 'center', gap: 5,
