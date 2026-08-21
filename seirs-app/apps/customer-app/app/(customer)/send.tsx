@@ -576,7 +576,22 @@ export default function SendScreen() {
           // than as its own line, so showing a separate weight surcharge
           // here would double-count it.
           weight:            0,
-          handling:          Number(c.stopBonuses ?? 0) + Number(c.dwellOver ?? 0),
+          handling:          Number(c.stopBonuses ?? 0) + Number(c.dwellOver ?? 0) + Number(c.partnerHandling ?? 0),
+          // Lines the ENGINE does not price must not render: the screen
+          // showed "Service fee 304" while the total excluded it, a
+          // breakdown contradicting its own total (founder side-by-side,
+          // 2026-08-21). COD and insurance are the same class: local
+          // concepts the server never charges. Founder decision on all
+          // three is recorded; until then the screen tells the truth.
+          service:   0,
+          codFee:    0,
+          insurance: 0,
+          discounts: {
+            bulk:      Number(c.discounts?.bulk ?? 0),
+            recurring: Number(c.discounts?.recurring ?? 0),
+            welcome:   Number(c.discounts?.welcome ?? 0),
+            loyalty:   Number(c.discounts?.loyalty ?? 0),
+          },
           categorySurcharge: Number(c.categorySurcharge ?? 0),
           timeSurcharge:     Object.values(time).reduce((a: number, b: any) => a + Number(b || 0), 0),
           timeLabels,
@@ -1650,7 +1665,7 @@ export default function SendScreen() {
                   [t('send.discountWelcome'),                               -fare.discounts.welcome],
                   [t('send.discountLoyalty'),                               -fare.discounts.loyalty],
                   [t('send.vat'),                                            fare.vat              ],
-                ] as [string, number][]).filter(([, amt]) => amt !== 0).map(([lbl, amt]) => (
+                ] as [string, number][]).map(([l, a]) => [l, Math.round(a)] as [string, number]).filter(([, amt]) => amt !== 0).map(([lbl, amt]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
                     <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
                     <Text style={[styles.fareAmt,   { color: theme.text }]}>₦{amt.toLocaleString()}</Text>
@@ -1658,7 +1673,7 @@ export default function SendScreen() {
                 ))}
                 <View style={styles.fareTotalRow}>
                   <Text style={[styles.fareTotalLabel, { color: theme.text }]}>{t('send.total')}</Text>
-                  <Text style={[styles.fareTotalAmt,   { color: theme.accent }]}>₦{fare.total.toLocaleString()}</Text>
+                  <Text style={[styles.fareTotalAmt,   { color: theme.accent }]}>₦{Math.round(fare.total).toLocaleString()}</Text>
                 </View>
               </View>
 
