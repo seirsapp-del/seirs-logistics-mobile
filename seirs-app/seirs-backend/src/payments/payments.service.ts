@@ -8,6 +8,7 @@ import { Payment, PaymentMethod, PaymentStatus, EscrowStatus, PaymentPurpose } f
 import { Wallet } from './wallet.entity';
 import { SavedCard } from './saved-card.entity';
 import { FlutterwaveService } from './flutterwave.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Delivery } from '../deliveries/delivery.entity';
 import { User } from '../users/user.entity';
 import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
@@ -36,6 +37,7 @@ export class PaymentsService {
     private earningsService:    EarningsService,
     private loyaltyService:     LoyaltyService,
     private dataSource: DataSource,
+    private notificationsService: NotificationsService,
   ) {}
 
   // ── SavedCard CRUD (Flutterwave-tokenized cards for one-tap reuse) ───────
@@ -753,6 +755,49 @@ export class PaymentsService {
           );
         }
         this.logger.log(`Store drop-off ${payment.purpose} settled: ${txRef} (NGN ${result.amount})`);
+        return payment;
+      }
+
+      /**
+       * The booking can die between checkout opening and the card being
+       * charged: the pending-booking expiry sweep runs on a 60-minute
+       * window and a hosted payment page has no idea. Found live on
+       * 2026-08-21, when a real checkout sat open past the window and
+       * only luck kept the card from being charged into a cancelled
+       * delivery. Money for a dead booking goes straight back, never
+       * into escrow nobody is watching.
+       */
+      if (payment.delivery && String(payment.delivery.status) === 'cancelled') {
+        await this.paymentsRepo.update(payment.id, {
+          status:                   PaymentStatus.SUCCESS,
+          escrowStatus:             EscrowStatus.REFUNDED,
+          flutterwaveTransactionId: result.transactionId,
+        });
+        payment.status = PaymentStatus.SUCCESS;
+        try {
+          await this.flutterwaveService.refundTransaction(result.transactionId, result.amount);
+          this.logger.warn(
+            `Payment ${txRef} arrived for CANCELLED delivery ${payment.delivery.id}; refunded in full.`,
+          );
+        } catch (e: any) {
+          // The refund failing is the one state that genuinely needs a
+          // human, so say so loudly rather than pretending.
+          this.logger.error(
+            `Payment ${txRef} arrived for CANCELLED delivery ${payment.delivery.id} and the ` +
+            `auto-refund FAILED: ${e?.message ?? e}. Refund manually in Flutterwave.`,
+          );
+        }
+        if (this.notificationsService && payment.customer?.id) {
+          this.notificationsService.create(
+            payment.customer.id,
+            'That booking had already expired',
+            'Your payment went through after the booking timed out, so we have refunded it in full. ' +
+            'It can take a few working days to appear, depending on your bank. Book again when you are ready.',
+            'payment_received' as any,
+            payment.delivery.id,
+            (payment.delivery as any).trackingCode,
+          ).catch(() => {});
+        }
         return payment;
       }
 
