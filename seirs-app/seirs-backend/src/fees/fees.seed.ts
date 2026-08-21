@@ -175,7 +175,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
 
   { key: 'loyalty_referral_flag_count', name: 'Referral Fraud Flag Threshold',
     description: 'Referrals inside seven days that trigger an admin review.',
-    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 5 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.COUNT, value: 5 },
 
   { key: 'loyalty_streak_bonus',        name: 'Monthly Streak Bonus (points)',
     description: 'Points for hitting the monthly delivery streak target.',
@@ -204,11 +204,11 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // pay-in inside one sitting rather than waiting out a weekend.
   { key: 'driver_clearance_business_days', name: 'Driver Earnings Clearance (business days)',
     description: 'Business days a completed trip waits before the driver can withdraw it. 0 makes earnings withdrawable immediately.',
-    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.FLAT_NGN, value: 2 },
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.DAYS, value: 2 },
 
   { key: 'partner_payout_hold_hours',   name: 'Partner Payout Hold (hours)',
     description: 'Hours a counter handling fee waits before the partner can withdraw it. 168 is the weekly Monday payout; 0 makes it immediate.',
-    category: FeeCategory.PARTNER, unit: FeeUnit.FLAT_NGN, value: 168 },
+    category: FeeCategory.PARTNER, unit: FeeUnit.HOURS, value: 168 },
 
   // ── Night operations (founder 2026-08-11: 24/7 scheduling) ─────────────
   // Founder decision 2026-08-15: a PENDING booking that no driver takes
@@ -216,17 +216,17 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // was escrowed at booking; without this it sat locked forever).
   { key: 'pending_booking_expiry_minutes', name: 'Pending Booking Expiry (minutes)',
     description: 'Minutes a paid booking may wait for a driver before it auto-cancels with a full refund.',
-    category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 60 },
+    category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 60 },
 
   { key: 'night_fee_pct',               name: 'Night Delivery Fee',
     description: 'Surcharge on pickups requested inside the night window. Passed to the driver in FULL to encourage night coverage (Lagos and Kano never sleep; interstate runs overnight). Set 0 to disable.',
     category: FeeCategory.SURGE,        unit: FeeUnit.PERCENT,    value: 15 },
   { key: 'night_window_start_hour',     name: 'Night Window Start (hour 0-23)',
     description: 'Hour of day (Africa/Lagos) when the night window opens. Value is an HOUR, not naira.',
-    category: FeeCategory.SURGE,        unit: FeeUnit.FLAT_NGN,   value: 21 },
+    category: FeeCategory.SURGE,        unit: FeeUnit.HOUR_OF_DAY,   value: 21 },
   { key: 'night_window_end_hour',       name: 'Night Window End (hour 0-23)',
     description: 'Hour of day (Africa/Lagos) when the night window closes. Value is an HOUR, not naira.',
-    category: FeeCategory.SURGE,        unit: FeeUnit.FLAT_NGN,   value: 5 },
+    category: FeeCategory.SURGE,        unit: FeeUnit.HOUR_OF_DAY,   value: 5 },
   { key: 'failed_delivery_redirect_fee', name: 'Failed-Delivery Redirect Fee',
     description: 'Transport fee owed when a failed door delivery is rerouted to a partner store (nobody home, no sender response). Store identity + collection code stay hidden until settled.',
     category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.FLAT_NGN,   value: 1000 },
@@ -236,19 +236,19 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // and when it is treated as abandoned. Policy moves, so they live here.
   { key: 'sender_response_window_minutes', name: 'Sender Response Window (minutes)',
     description: 'How long a rider waits on the sender after a failed attempt before it escalates to support. Value is MINUTES, not naira.',
-    category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 15 },
+    category: FeeCategory.CONFIG,       unit: FeeUnit.MINUTES,   value: 15 },
   { key: 'admin_redirect_timeout_minutes', name: 'Admin Redirect Timeout (minutes)',
     description: 'If support does not answer an escalated failed delivery within this many minutes, the parcel auto-reroutes to the nearest partner counter. Value is MINUTES.',
-    category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 30 },
+    category: FeeCategory.CONFIG,       unit: FeeUnit.MINUTES,   value: 30 },
   { key: 'storage_free_hours',          name: 'Free Storage Window (hours)',
     description: 'Hours a parcel may sit at a counter before storage starts accruing. Value is HOURS, not naira.',
-    category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 24 },
+    category: FeeCategory.STORAGE,      unit: FeeUnit.HOURS,   value: 24 },
   { key: 'storage_max_days',            name: 'Abandonment Threshold (days)',
     description: 'Days after which an uncollected parcel is treated as abandoned and may be disposed of. Value is DAYS, not naira.',
-    category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 7 },
+    category: FeeCategory.STORAGE,      unit: FeeUnit.DAYS,   value: 7 },
   { key: 'perishable_max_hours',        name: 'Perishable Ceiling (hours)',
     description: 'Food and other perishables cannot be stored. Hours from a failed attempt to disposal for hot/cold food categories. Value is HOURS.',
-    category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 3 },
+    category: FeeCategory.STORAGE,      unit: FeeUnit.HOURS,   value: 3 },
   { key: 'driver_failed_trip_base_ngn', name: 'Failed-Trip Driver Compensation',
     description: 'Flat amount a rider is paid for a trip that could not complete, on top of fuel for the distance actually ridden. The rider made the trip whoever was at fault.',
     category: FeeCategory.DRIVER_FEE,   unit: FeeUnit.FLAT_NGN,   value: 200 },

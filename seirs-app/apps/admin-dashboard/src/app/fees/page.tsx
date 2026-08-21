@@ -65,6 +65,17 @@ function formatValue(value: number, unit: string): string {
     case 'per_day':   return `₦${n}/day`;
     case 'per_week':  return `₦${n.toLocaleString()}/wk`;
     case 'per_month': return `₦${n.toLocaleString()}/mo`;
+    // Not money. These used to fall through to the naira branch, so
+    // a 7 day abandonment threshold rendered as a naira amount.
+    case 'minutes':   return `${n} ${n === 1 ? 'minute' : 'minutes'}`;
+    case 'hours':     return `${n} ${n === 1 ? 'hour' : 'hours'}`;
+    case 'days':      return `${n} ${n === 1 ? 'day' : 'days'}`;
+    case 'count':     return String(n);
+    case 'hour_of_day': {
+      const h = ((Math.round(n) % 24) + 24) % 24;
+      const display = h % 12 === 0 ? 12 : h % 12;
+      return `${display}${h < 12 ? 'am' : 'pm'} (${String(h).padStart(2, '0')}:00 WAT)`;
+    }
     default:          return String(n);
   }
 }

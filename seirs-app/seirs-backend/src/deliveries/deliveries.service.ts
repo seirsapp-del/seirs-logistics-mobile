@@ -1088,11 +1088,29 @@ export class DeliveriesService {
    *   - Driver is notified through the chat system message + WS.
    */
   // ── Failed-delivery flow (founder matrix 2026-08-11) ─────────────────
-  // Driver reports nobody-home. Sender gets 5 minutes to respond with a
+  // Driver reports nobody-home. Sender gets the catalogue window to respond with a
   // choice; silence resolves to the booked fallback, with high-value
   // packages always redirecting to the nearest partner store.
 
-  private static readonly ARRIVAL_WINDOW_MIN = 5;
+  // Fallback only. The live value is sender_response_window_minutes in
+  // the Fee Catalogue. This used to be a hardcoded 5 while the catalogue
+  // row said 15, so the dashboard contradicted production instead of
+  // driving it (founder, 2026-08-21).
+  private static readonly ARRIVAL_WINDOW_MIN_FALLBACK = 15;
+
+  private async getArrivalWindowMin(): Promise<number> {
+    const raw = this.feesServiceRef
+      ? await this.feesServiceRef.getValueOr(
+          'sender_response_window_minutes',
+          DeliveriesService.ARRIVAL_WINDOW_MIN_FALLBACK,
+        )
+      : DeliveriesService.ARRIVAL_WINDOW_MIN_FALLBACK;
+    const n = Number(raw);
+    // A zero or negative window would resolve every delivery instantly.
+    return Number.isFinite(n) && n >= 1
+      ? n
+      : DeliveriesService.ARRIVAL_WINDOW_MIN_FALLBACK;
+  }
 
   async reportArrivalIssue(deliveryId: string, driverUserId: string) {
     const delivery = await this.repo.findOne({
@@ -1111,7 +1129,8 @@ export class DeliveriesService {
       return { senderResponseBy: delivery.senderResponseBy, alreadyOpen: true };
     }
 
-    const senderResponseBy = new Date(Date.now() + DeliveriesService.ARRIVAL_WINDOW_MIN * 60 * 1000);
+    const windowMin = await this.getArrivalWindowMin();
+    const senderResponseBy = new Date(Date.now() + windowMin * 60 * 1000);
     await this.repo.update(deliveryId, {
       arrivalIssueAt: new Date(),
       senderResponseBy,
@@ -1120,7 +1139,7 @@ export class DeliveriesService {
 
     this.logEvent(deliveryId, DeliveryEventType.STATUS_CHANGE, EventActorRole.DRIVER, {
       actorUserId: driverUserId,
-      description: 'Driver arrived: receiver not available. Sender has 5 minutes to respond.',
+      description: `Driver arrived: receiver not available. Sender has ${windowMin} minutes to respond.`,
       meta: { kind: 'arrival_no_receiver' },
     }).catch(() => {});
 
@@ -1128,7 +1147,7 @@ export class DeliveriesService {
       this.notificationsService.create(
         delivery.customer.id,
         'Driver is at the door: nobody to receive',
-        `Your driver arrived for ${delivery.trackingCode} but nobody is available. Open the app within ${DeliveriesService.ARRIVAL_WINDOW_MIN} minutes to choose: wait, neighbour, gate, or partner store. Silence = your booked fallback.`,
+        `Your driver arrived for ${delivery.trackingCode} but nobody is available. Open the app within ${windowMin} minutes to choose: wait, neighbour, gate, or partner store. Silence = your booked fallback.`,
         'status_update',
         delivery.id,
         delivery.trackingCode,
@@ -1136,12 +1155,12 @@ export class DeliveriesService {
     }
     if (this.chatService) {
       this.chatService
-        .insertSystemMessage(deliveryId, 'status', 'Driver reports nobody available to receive. Sender has 5 minutes to respond before the fallback applies.')
+        .insertSystemMessage(deliveryId, 'status', `Driver reports nobody available to receive. Sender has ${windowMin} minutes to respond before the fallback applies.`)
         .catch(() => {});
     }
     if (this.trackingGateway) this.trackingGateway.broadcastStatusChange(deliveryId, delivery.status);
 
-    return { senderResponseBy, windowMinutes: DeliveriesService.ARRIVAL_WINDOW_MIN };
+    return { senderResponseBy, windowMinutes: windowMin };
   }
 
   async respondToArrivalIssue(deliveryId: string, customerId: string, action: string) {
@@ -2030,6 +2049,27 @@ export class DeliveriesService {
     return { ok: true, disputedAt: delivery.disputedAt, reason: body.reason, ticketId };
   }
 
+  /**
+   * The card processing already spent on this booking, which a refund
+   * does not give back.
+   *
+   * Charged on top of the stage fee so a cancellation is neutral to
+   * SEIRS rather than a small loss. cancel_processing_pct is a Fee
+   * Catalogue row precisely so it can be set to 0 the day Flutterwave
+   * starts refunding their cut.
+   */
+  private async getCancelProcessingNgn(pricePaidNgn: number): Promise<number> {
+    const price = Number(pricePaidNgn ?? 0);
+    if (!(price > 0)) return 0;
+    const pct = this.feesServiceRef
+      ? Number(await this.feesServiceRef.getValueOr('cancel_processing_pct', 1.4))
+      : 1.4;
+    if (!Number.isFinite(pct) || pct <= 0) return 0;
+    // Never let a misconfigured row swallow the whole fare.
+    const capped = Math.min(pct, 100);
+    return Math.round((price * capped) / 100);
+  }
+
   private async getCancellationRules(): Promise<{
     preAssignNgn: number; postAssignNgn: number; driverShareNgn: number;
   }> {
@@ -2081,26 +2121,37 @@ export class DeliveriesService {
     const rules = await this.getCancellationRules();
     const status = delivery.status;
 
+    // Sunk card cost, withheld at every stage so a cancellation does not
+    // lose SEIRS money. Zero when the row is set to zero.
+    const processingNgn = await this.getCancelProcessingNgn(Number(delivery.price ?? 0));
+
     if (status === DeliveryStatus.PENDING) {
       return {
-        cancellable: true,
-        stage:       'pre_assign',
-        feeNgn:      rules.preAssignNgn,
-        reason:      'No driver has been dispatched yet.',
+        cancellable:  true,
+        stage:        'pre_assign',
+        feeNgn:       rules.preAssignNgn + processingNgn,
+        stageFeeNgn:  rules.preAssignNgn,
+        processingNgn,
+        reason:       'No driver has been dispatched yet.',
       };
     }
     if (status === DeliveryStatus.ASSIGNED) {
       return {
-        cancellable: true,
-        stage:       'post_assign',
-        feeNgn:      rules.postAssignNgn,
-        reason:      'A driver is already on the way to your pickup.',
+        cancellable:  true,
+        stage:        'post_assign',
+        feeNgn:       rules.postAssignNgn + processingNgn,
+        stageFeeNgn:  rules.postAssignNgn,
+        processingNgn,
+        driverShareNgn: rules.driverShareNgn,
+        reason:       'A driver is already on the way to your pickup.',
       };
     }
     return {
-      cancellable: false,
-      stage:       'too_late',
-      feeNgn:      0,
+      cancellable:   false,
+      stage:         'too_late',
+      feeNgn:        0,
+      stageFeeNgn:   0,
+      processingNgn: 0,
       reason:
         status === DeliveryStatus.PICKED_UP || status === DeliveryStatus.IN_TRANSIT
           ? 'The driver already has your package. Contact support to arrange a return.'

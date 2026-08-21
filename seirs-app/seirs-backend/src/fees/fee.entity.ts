@@ -9,6 +9,15 @@ export enum FeeUnit {
   PER_DAY  = 'per_day',
   PER_WEEK = 'per_week',
   PER_MONTH = 'per_month',
+  // Not every policy dial is money. Eleven rows used to store a
+  // duration or a count as FLAT_NGN, so the catalogue showed a 7 day
+  // abandonment threshold and a 168 hour payout hold as naira amounts.
+  MINUTES  = 'minutes',
+  HOURS    = 'hours',
+  DAYS     = 'days',
+  COUNT    = 'count',
+  // An hour on the 24h clock (Africa/Lagos), not a duration.
+  HOUR_OF_DAY = 'hour_of_day',
 }
 
 // Logical grouping for the admin Fee Catalogue UI tabs/filters.
