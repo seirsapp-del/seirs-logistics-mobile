@@ -62,12 +62,18 @@ export interface MultiStopDirectionsResult {
   waypointOrder:   number[] | null;
   /** True when Google's returned order differs from the input order. */
   wasReordered:    boolean;
+  /**
+   * Metres for each leg IN VISIT ORDER: pickup -> first stop, first ->
+   * second, and so on. The founder wants each package's own leg on the
+   * review, not just the run total (2026-08-21).
+   */
+  legMeters:       number[] | null;
 }
 
 const EMPTY: MultiStopDirectionsResult = {
   coords: [], distanceText: null, durationText: null,
   distanceMeters: null, durationSeconds: null,
-  waypointOrder: null, wasReordered: false,
+  waypointOrder: null, wasReordered: false, legMeters: null,
 };
 
 /**
@@ -120,6 +126,7 @@ export function useMultiStopDirections(
       distanceMeters:  Math.round(totalKm * 1000),
       durationSeconds: null,
       waypointOrder:   null,
+      legMeters:       null,
       wasReordered:    false,
     });
 
@@ -173,6 +180,7 @@ export function useMultiStopDirections(
           distanceMeters:  totalMeters > 0 ? totalMeters : Math.round(totalKm * 1000),
           durationSeconds: totalSeconds > 0 ? totalSeconds : null,
           waypointOrder,
+          legMeters: legs.length > 0 ? legs.map((l) => Number(l?.distance?.value ?? 0)) : null,
           wasReordered,
         });
       } catch { /* keep optimistic Haversine fallback */ }

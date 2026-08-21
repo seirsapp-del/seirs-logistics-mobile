@@ -1723,9 +1723,28 @@ export default function SendScreen() {
                           </View>
                         )}
                         <View style={{ flex: 1 }}>
-                          <Text style={[styles.vehName, { color: theme.text }]} numberOfLines={1}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            {packages.length > 1 && (() => {
+                              // Which position this package is visited in.
+                              // Google's optimized order when it reordered,
+                              // entry order otherwise; the booking itself
+                              // re-optimizes server-side, and the footnote
+                              // already says the final fare follows it.
+                              const visit = multi.waypointOrder
+                                ? multi.waypointOrder.indexOf(i) + 1
+                                : i + 1;
+                              return (
+                                <View style={[styles.recBadge, { backgroundColor: theme.surfaceSecond }]}>
+                                  <Text style={[styles.recText, { color: theme.textSecond }]}>
+                                    {visit === 1 ? '1st' : visit === 2 ? '2nd' : visit === 3 ? '3rd' : `${visit}th`}
+                                  </Text>
+                                </View>
+                              );
+                            })()}
+                          <Text style={[styles.vehName, { color: theme.text, flexShrink: 1 }]} numberOfLines={1}>
                             {pk.description || t('send.packageN', { n: i + 1, defaultValue: `Package ${i + 1}` })}
                           </Text>
+                          </View>
                           <Text style={[styles.vehSub, { color: theme.textSecond }]} numberOfLines={1}>
                             {(pk.receiverFirst || '-') + ' · ' + (pk.weightKg || '?') + 'kg'}
                           </Text>
@@ -1741,6 +1760,14 @@ export default function SendScreen() {
                             [t('send.receiver', { defaultValue: 'Receiver' }), `${pk.receiverFirst || '-'} · ${pk.receiverPhone || '-'}`],
                             [t('send.category'), t(`send.${PACKAGE_CATEGORIES.find(c => c.id === pk.category)?.labelKey ?? 'category'}`)],
                             [t('send.weightLabel', { defaultValue: 'Weight' }), `${pk.weightKg || '-'}kg`],
+                            ...(packages.length > 1 && multi.legMeters ? (() => {
+                              const visit = multi.waypointOrder ? multi.waypointOrder.indexOf(i) : i;
+                              const leg = multi.legMeters[visit];
+                              return leg != null ? [[
+                                t('send.legDistance', { defaultValue: 'Leg from previous stop' }),
+                                `${(leg / 1000).toFixed(1)} km`,
+                              ] as [string, string]] : [];
+                            })() : []),
                           ] as [string, string][]).map(([lbl, val]) => (
                             <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
                               <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
