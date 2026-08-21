@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { TicketTopic } from '../support/support-ticket.entity';
 import { SupportService } from '../support/support.service';
+import { RoutingService } from '../routing/routing.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { LessThan, Repository, MoreThan } from 'typeorm';
@@ -187,6 +188,7 @@ export class DeliveriesService {
     private routeDistance: RouteDistanceService,
     private rateCardPricing: RateCardPricing,
     private supportService: SupportService,
+    private routingService: RoutingService,
   ) {}
 
   /**
@@ -1336,6 +1338,326 @@ export class DeliveriesService {
       throw new NotFoundException('Payments are unavailable right now.');
     }
     return this.paymentsService.initiateRedirectFeePayment(delivery, delivery.customer);
+  }
+
+  /**
+   * Pay for an approved address change.
+   *
+   * Guarded on 'approved' rather than 'pending' so a sender cannot pay
+   * their way past support's decision.
+   */
+  async startAddressChangePayment(deliveryId: string, customerId: string) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.customer?.id !== customerId) {
+      throw new NotFoundException('Delivery not found.'); // no oracle
+    }
+    if (delivery.addressChangeStatus !== 'approved') {
+      throw new BadRequestException(
+        delivery.addressChangeStatus === 'pending'
+          ? 'Support has not approved this address change yet.'
+          : 'There is no approved address change to pay for.',
+      );
+    }
+    if (delivery.addressChangePaidAt) {
+      throw new BadRequestException('This address change has already been paid.');
+    }
+    if (!this.paymentsService) {
+      throw new NotFoundException('Payments are unavailable right now.');
+    }
+    return this.paymentsService.initiateAddressChangePayment(delivery, delivery.customer);
+  }
+
+  // ── Mid-delivery address change (founder 2026-08-21) ─────────────────
+  //
+  // "If a customer is genuinely wrong and would like to change an address
+  // mid delivery, they contact support immediately, get re-charged from
+  // the current location of the driver to the new address, pay in app,
+  // and it auto-updates. Only support should be able to do this, and
+  // support can reject it."
+  //
+  // The rider is already carrying the package, so this is not a booking
+  // change the sender can make alone. Three gates, in order: support
+  // approves, the sender pays, then the drop-off moves. Approval on its
+  // own moves nothing.
+
+  private static readonly ADDRESS_CHANGE_STATES = ['assigned', 'picked_up', 'in_transit'];
+
+  /**
+   * The sender asks for a different drop-off, and gets a price for it.
+   *
+   * Priced from where the rider actually is, which is the only honest
+   * basis: they have already ridden the original leg and the new one
+   * starts from wherever that left them. Nothing is charged here, and
+   * nothing moves until support approves and the sender pays.
+   */
+  async requestAddressChange(
+    deliveryId: string,
+    customerId: string,
+    body: { address: string; lat?: number; lng?: number },
+  ) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer', 'driver', 'driver.user'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.customer?.id !== customerId) {
+      throw new NotFoundException('Delivery not found.'); // no oracle
+    }
+    if (!DeliveriesService.ADDRESS_CHANGE_STATES.includes(String(delivery.status))) {
+      throw new BadRequestException(
+        'An address can only be changed while a rider is carrying the package.',
+      );
+    }
+    const address = (body?.address ?? '').trim();
+    if (address.length < 6) {
+      throw new BadRequestException('Enter the full new delivery address.');
+    }
+    // One open request at a time. Otherwise a sender could stack requests
+    // and support would not know which one they are deciding.
+    if (delivery.addressChangeStatus === 'pending') {
+      throw new BadRequestException(
+        'Support is already reviewing an address change for this delivery.',
+      );
+    }
+    if (delivery.addressChangeStatus === 'approved' && !delivery.addressChangePaidAt) {
+      throw new BadRequestException(
+        'An approved address change is waiting for payment on this delivery.',
+      );
+    }
+
+    // Resolve the new address to coordinates when the app did not.
+    let lat = Number(body?.lat);
+    let lng = Number(body?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      const geo = await this.routingService.geocodeAddress(address).catch(() => null);
+      if (!geo) {
+        throw new BadRequestException(
+          'We could not find that address. Pick it from the suggestions so the rider gets a real location.',
+        );
+      }
+      lat = geo.lat;
+      lng = geo.lng;
+    }
+
+    // Where the rider is now. Falls back to the pickup so a rider with a
+    // stale GPS fix cannot make the change free.
+    const fromLat = delivery.driver?.lastLat != null ? Number(delivery.driver.lastLat) : Number(delivery.pickupLat);
+    const fromLng = delivery.driver?.lastLng != null ? Number(delivery.driver.lastLng) : Number(delivery.pickupLng);
+
+    const road = await this.routeDistance.getRoadDistance(fromLat, fromLng, lat, lng);
+    const card = await this.rateCardPricing.getActiveRateCard();
+    const breakdown = await this.rateCardPricing.computePrice({
+      vehicleType:           String(delivery.vehicleType),
+      categoryCode:          delivery.categoryCode || toCategoryCode(delivery.packageSize as any),
+      km:                    road.km,
+      stopCount:             1,
+      weightKg:              Number(delivery.weightKg ?? 0),
+      // One stop, so the dwell is whatever this category and weight
+      // normally take at a door.
+      estimatedDwellMinutes: this.rateCardPricing.computeStopDwellMinutes(
+        card,
+        await this.rateCardPricing.getCategoryByCode(
+          delivery.categoryCode || toCategoryCode(delivery.packageSize as any),
+        ),
+        Number(delivery.weightKg ?? 0),
+      ),
+      pickupLat:  fromLat,
+      pickupLng:  fromLng,
+      dropoffLat: lat,
+      dropoffLng: lng,
+    } as any);
+
+    const quoteNgn = Math.round(Number((breakdown as any)?.total ?? 0));
+    if (!(quoteNgn > 0)) {
+      throw new BadRequestException('We could not price that change. Contact support.');
+    }
+
+    await this.repo.update(deliveryId, {
+      addressChangeRequestedAt:  new Date(),
+      addressChangeStatus:       'pending',
+      addressChangeNewAddress:   address,
+      addressChangeNewLat:       lat,
+      addressChangeNewLng:       lng,
+      addressChangeQuoteNgn:     quoteNgn,
+      addressChangeQuoteKm:      road.km,
+      addressChangeDecidedAt:    null,
+      addressChangeDecidedBy:    null,
+      addressChangeDecisionNote: null,
+      addressChangePaidAt:       null,
+    } as any);
+
+    this.logEvent(deliveryId, DeliveryEventType.ADMIN_NOTE, EventActorRole.CUSTOMER, {
+      actorUserId: customerId,
+      description: `Sender asked to change the drop-off to ${address}. Quoted ₦${quoteNgn.toLocaleString()} for ${road.km.toFixed(1)} km from the rider's position.`,
+      meta: { kind: 'address_change_requested', address, lat, lng, quoteNgn, km: road.km },
+    }).catch(() => {});
+
+    // Support is the decision-maker, so they get a ticket rather than a
+    // row they have to go looking for.
+    let ticketId: string | null = null;
+    try {
+      const ticket: any = await this.supportService?.create(customerId, {
+        topic:            TicketTopic.DELIVERY,
+        subject:          `Address change request - ${delivery.trackingCode}`,
+        firstMessage: [
+          `Sender wants the drop-off changed while the package is in transit.`,
+          `Tracking: ${delivery.trackingCode}`,
+          `Current drop-off: ${delivery.dropoffAddress}`,
+          `Requested drop-off: ${address}`,
+          `Re-quote from the rider's current position: ₦${quoteNgn.toLocaleString()} for ${road.km.toFixed(1)} km.`,
+          `Approve or reject on the delivery in admin. Approval does not move the package until the sender pays.`,
+        ].join('\n'),
+        linkedDeliveryId: delivery.id,
+      });
+      ticketId = ticket?.id ?? null;
+    } catch (e: any) {
+      this.logger.error(`address change: ticket creation failed: ${e?.message ?? e}`);
+    }
+
+    return {
+      status:    'pending',
+      address,
+      quoteNgn,
+      km:        Number(road.km.toFixed(2)),
+      fromGoogle: (road as any)?.fromGoogle ?? null,
+      ticketId,
+      message:   'Support is reviewing your request. You will be asked to pay if it is approved.',
+    };
+  }
+
+  /** What the sender and the admin screen both read. */
+  async getAddressChange(deliveryId: string, userId: string) {
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.customer?.id !== userId) {
+      throw new NotFoundException('Delivery not found.');
+    }
+    if (!delivery.addressChangeStatus) return { status: null };
+    return {
+      status:       delivery.addressChangeStatus,
+      address:      delivery.addressChangeNewAddress,
+      quoteNgn:     delivery.addressChangeQuoteNgn != null ? Number(delivery.addressChangeQuoteNgn) : null,
+      km:           delivery.addressChangeQuoteKm != null ? Number(delivery.addressChangeQuoteKm) : null,
+      requestedAt:  delivery.addressChangeRequestedAt,
+      decidedAt:    delivery.addressChangeDecidedAt,
+      decisionNote: delivery.addressChangeDecisionNote,
+      paidAt:       delivery.addressChangePaidAt,
+      payable:      delivery.addressChangeStatus === 'approved' && !delivery.addressChangePaidAt,
+    };
+  }
+
+  /**
+   * Support approves or rejects. Admin-only by route.
+   *
+   * Approving does not touch the delivery. It only unlocks payment,
+   * because a sender who has not paid must not be able to move a rider.
+   */
+  async decideAddressChange(
+    deliveryId: string,
+    adminUserId: string,
+    body: { approve: boolean; note?: string; overrideQuoteNgn?: number },
+  ) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.addressChangeStatus !== 'pending') {
+      throw new BadRequestException('There is no address change awaiting a decision.');
+    }
+
+    const approve = body?.approve === true;
+    const note = (body?.note ?? '').trim().slice(0, 500) || null;
+
+    // Support may correct the quote, e.g. when the rider has moved a long
+    // way since the request or the geocode landed badly.
+    let quoteNgn = delivery.addressChangeQuoteNgn != null ? Number(delivery.addressChangeQuoteNgn) : 0;
+    const override = Number(body?.overrideQuoteNgn);
+    if (approve && Number.isFinite(override) && override >= 0) {
+      quoteNgn = Math.round(override);
+    }
+
+    await this.repo.update(deliveryId, {
+      addressChangeStatus:       approve ? 'approved' : 'rejected',
+      addressChangeQuoteNgn:     quoteNgn,
+      addressChangeDecidedAt:    new Date(),
+      addressChangeDecidedBy:    adminUserId,
+      addressChangeDecisionNote: note,
+    } as any);
+
+    this.logEvent(deliveryId, DeliveryEventType.ADMIN_NOTE, EventActorRole.ADMIN, {
+      actorUserId: adminUserId,
+      description: approve
+        ? `Address change approved at ₦${quoteNgn.toLocaleString()}. Awaiting payment before it applies.`
+        : `Address change rejected.${note ? ' Reason: ' + note : ''}`,
+      meta: { kind: 'address_change_decided', approve, quoteNgn, note },
+    }).catch(() => {});
+
+    if (this.notificationsService && delivery.customer?.id) {
+      this.notificationsService.create(
+        delivery.customer.id,
+        approve ? 'Address change approved' : 'Address change rejected',
+        approve
+          ? `Support approved the new address for ${delivery.trackingCode}. Pay ₦${quoteNgn.toLocaleString()} in the app and the rider will be redirected.`
+          : `Support could not change the address for ${delivery.trackingCode}.${note ? ' ' + note : ''} The package is still going to the original address.`,
+        'status_update',
+        delivery.id,
+        delivery.trackingCode,
+      ).catch(() => {});
+    }
+
+    return { status: approve ? 'approved' : 'rejected', quoteNgn, note };
+  }
+
+  /**
+   * Payment cleared: move the drop-off for real.
+   *
+   * Called from the payments webhook, never from a client, so the rider
+   * is only ever redirected by money that actually arrived.
+   */
+  async applyAddressChange(deliveryId: string) {
+    const delivery = await this.repo.findOne({ where: { id: deliveryId } });
+    if (!delivery) return;
+    if (delivery.addressChangeStatus !== 'approved') return;
+    if (delivery.addressChangeNewLat == null || delivery.addressChangeNewLng == null) return;
+
+    const prevAddress = delivery.dropoffAddress;
+    await this.repo.update(deliveryId, {
+      dropoffAddress:      delivery.addressChangeNewAddress,
+      dropoffLat:          Number(delivery.addressChangeNewLat),
+      dropoffLng:          Number(delivery.addressChangeNewLng),
+      addressChangeStatus: 'applied',
+      addressChangePaidAt: new Date(),
+    } as any);
+
+    this.logEvent(deliveryId, DeliveryEventType.ADMIN_NOTE, EventActorRole.SYSTEM, {
+      description: `Address change paid and applied. Drop-off moved from ${prevAddress} to ${delivery.addressChangeNewAddress}.`,
+      meta: { kind: 'address_change_applied', prevAddress, newAddress: delivery.addressChangeNewAddress },
+    }).catch(() => {});
+
+    // The rider is mid-route, so this has to be impossible to miss.
+    if (this.chatService) {
+      this.chatService
+        .insertSystemMessage(
+          deliveryId,
+          'redirected',
+          `Drop-off changed by support: deliver to ${delivery.addressChangeNewAddress}.`,
+        )
+        .catch(() => {});
+    }
+    if (this.trackingGateway) {
+      this.trackingGateway.broadcastStatusChange(deliveryId, delivery.status);
+    }
   }
 
   async redirectToStore(deliveryId: string, customerId: string, storeId: string) {

@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Get, Param, Post, Patch, Query, 
 import { DeliveriesService } from './deliveries.service';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { MaintenanceGuard } from '../maintenance/maintenance.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -130,6 +131,49 @@ export class DeliveriesController {
   @Post(':id/redirect-fee/pay')
   payRedirectFee(@Param('id') id: string, @CurrentUser() user: User) {
     return this.deliveriesService.startRedirectFeePayment(id, user.id);
+  }
+
+  // POST /api/v1/deliveries/:id/address-change/decide  (admin only)
+  // Support approves or rejects. Guarded here rather than in
+  // AdminController because the logic lives on DeliveriesService and
+  // AdminController has no handle on it.
+  @UseGuards(AdminGuard)
+  @Post(':id/address-change/decide')
+  decideAddressChange(
+    @Param('id') id: string,
+    @CurrentUser() admin: User,
+    @Body() body: { approve: boolean; note?: string; overrideQuoteNgn?: number },
+  ) {
+    return this.deliveriesService.decideAddressChange(id, admin.id, body);
+  }
+
+  // POST /api/v1/deliveries/:id/address-change  { address, lat?, lng? }
+  // The sender gave the wrong address and the rider is already carrying
+  // the package. This only opens a request and quotes it: support has to
+  // approve, and the sender has to pay, before anything moves.
+  @Post(':id/address-change')
+  requestAddressChange(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: { address: string; lat?: number; lng?: number },
+  ) {
+    if (!body?.address) throw new BadRequestException('address is required.');
+    return this.deliveriesService.requestAddressChange(id, user.id, body);
+  }
+
+  // GET /api/v1/deliveries/:id/address-change
+  @Get(':id/address-change')
+  getAddressChange(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.getAddressChange(id, user.id);
+  }
+
+  // POST /api/v1/deliveries/:id/address-change/pay
+  // Only payable once support has approved. Applying the new address
+  // happens in the payments webhook, so the rider is redirected by money
+  // that actually arrived rather than by a client saying it did.
+  @Post(':id/address-change/pay')
+  payAddressChange(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.startAddressChangePayment(id, user.id);
   }
 
   // POST /api/v1/deliveries/:id/arrival-issue

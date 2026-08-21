@@ -26,6 +26,7 @@ import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { User } from '../users/user.entity';
 import { ChatModule } from '../chat/chat.module';
+import { RoutingModule } from '../routing/routing.module';
 import { ChatService } from '../chat/chat.service';
 import { StoreDropoff } from '../partner-store/store-dropoff.entity';
 import { FeesModule } from '../fees/fees.module';
@@ -49,6 +50,7 @@ import { FeesService } from '../fees/fees.service';
     MaintenanceModule,
     LoyaltyModule,
     ChatModule,
+    RoutingModule,
   ],
   controllers: [DeliveriesController],
   providers: [DeliveriesService, PricingService, RouteDistanceService],
@@ -238,8 +240,24 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "arrivalIssueAt" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "senderResponseBy" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "arrivalResolution" varchar(12) NULL,
-          ADD COLUMN IF NOT EXISTS "redirectFeeNgn" numeric(12,2) NULL,
-          ADD COLUMN IF NOT EXISTS "redirectFeePaidAt" timestamptz NULL
+          ADD COLUMN IF NOT EXISTS "redirectFeeNgn" numeric(12,2) NULL,
+          ADD COLUMN IF NOT EXISTS "redirectFeePaidAt" timestamptz NULL
+      `);
+      // Mid-delivery address change (2026-08-21): support-decided, paid
+      // before it applies.
+      await this.ds.query(`
+        ALTER TABLE "deliveries"
+          ADD COLUMN IF NOT EXISTS "addressChangeRequestedAt" timestamptz NULL,
+          ADD COLUMN IF NOT EXISTS "addressChangeStatus" varchar(12) NULL,
+          ADD COLUMN IF NOT EXISTS "addressChangeNewAddress" text NULL,
+          ADD COLUMN IF NOT EXISTS "addressChangeNewLat" double precision NULL,
+          ADD COLUMN IF NOT EXISTS "addressChangeNewLng" double precision NULL,
+          ADD COLUMN IF NOT EXISTS "addressChangeQuoteNgn" numeric(12,2) NULL,
+          ADD COLUMN IF NOT EXISTS "addressChangeQuoteKm" double precision NULL,
+          ADD COLUMN IF NOT EXISTS "addressChangeDecidedAt" timestamptz NULL,
+          ADD COLUMN IF NOT EXISTS "addressChangeDecidedBy" uuid NULL,
+          ADD COLUMN IF NOT EXISTS "addressChangeDecisionNote" text NULL,
+          ADD COLUMN IF NOT EXISTS "addressChangePaidAt" timestamptz NULL
       `);
       // Who actually accepted the package (2026-08-12). The proof photo
       // answers "was it delivered"; this answers "to whom", which is the

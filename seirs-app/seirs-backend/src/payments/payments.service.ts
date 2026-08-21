@@ -321,6 +321,56 @@ export class PaymentsService {
    * purpose=REDIRECT_FEE so escrow release/refund never touch it and no
    * loyalty points are awarded a second time.
    */
+  /**
+   * Charge the re-quoted leg for a support-approved address change.
+   *
+   * purpose=ADDRESS_CHANGE so escrow release and refund never touch it:
+   * this is a change fee owed to SEIRS and the rider for extra distance,
+   * not part of the original fare being held for the delivery.
+   */
+  async initiateAddressChangePayment(delivery: Delivery, customer: User): Promise<{
+    authorizationUrl: string;
+    reference:        string;
+    amountNgn:        number;
+  }> {
+    const amount = Number(delivery.addressChangeQuoteNgn ?? 0);
+    if (!(amount > 0)) {
+      throw new BadRequestException('No address change is awaiting payment on this delivery.');
+    }
+    if (delivery.addressChangePaidAt) {
+      throw new BadRequestException('This address change has already been paid.');
+    }
+
+    const txRef = `SRS-ADR-${uuidv4().slice(0, 8).toUpperCase()}`;
+    const { paymentLink } = await this.flutterwaveService.initializePayment({
+      txRef,
+      amount,
+      currency:    'NGN',
+      email:       customer.email,
+      phone:       customer.phone ?? '',
+      name:        customer.name,
+      redirectUrl: 'seirsmobile://payment-callback',
+      meta: {
+        purpose:      'address_change',
+        deliveryId:   delivery.id,
+        trackingCode: delivery.trackingCode,
+        customerId:   customer.id,
+      },
+    });
+
+    const payment = this.paymentsRepo.create({
+      delivery,
+      user:              customer,
+      amount,
+      purpose:           PaymentPurpose.ADDRESS_CHANGE,
+      status:            PaymentStatus.PENDING,
+      providerReference: txRef,
+    } as any);
+    await this.paymentsRepo.save(payment);
+
+    return { authorizationUrl: paymentLink, reference: txRef, amountNgn: amount };
+  }
+
   async initiateRedirectFeePayment(delivery: Delivery, customer: User): Promise<{
     authorizationUrl: string;
     reference:        string;
@@ -570,6 +620,26 @@ export class PaymentsService {
       // holding store, never escrowed for a driver, and they must not
       // award loyalty points or tokenize a card a second time. Paying
       // one unlocks the store identity on the tracking payload.
+      // An address change settles outright and then moves the drop-off.
+      // Applying it here, rather than when support approves, is what
+      // stops an unpaid approval from redirecting a rider.
+      if (payment.purpose === PaymentPurpose.ADDRESS_CHANGE) {
+        await this.paymentsRepo.update(payment.id, {
+          status:                   PaymentStatus.SUCCESS,
+          flutterwaveTransactionId: result.transactionId,
+        });
+        payment.status = PaymentStatus.SUCCESS;
+        if (payment.delivery?.id && (this as any).deliveriesServiceRef) {
+          await (this as any).deliveriesServiceRef
+            .applyAddressChange(payment.delivery.id)
+            .catch((e: any) =>
+              this.logger.error(`address change apply failed: ${e?.message ?? e}`),
+            );
+        }
+        this.logger.log(`Address change settled: ${txRef} (₦${result.amount})`);
+        return payment;
+      }
+
       if (payment.purpose === PaymentPurpose.REDIRECT_FEE) {
         await this.paymentsRepo.update(payment.id, {
           status:                   PaymentStatus.SUCCESS,

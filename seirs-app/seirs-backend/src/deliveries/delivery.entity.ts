@@ -260,7 +260,48 @@ export class Delivery {
   redirectFeeNgn: number | null;
 
   @Column({ type: 'timestamptz', nullable: true })
-  redirectFeePaidAt: Date | null;
+  redirectFeePaidAt: Date | null;
+
+  // ── Mid-delivery address change (founder 2026-08-21) ────────────────
+  // A sender who gave the wrong address can ask for it to be corrected
+  // while the rider is still carrying the package. Support decides;
+  // approval alone does not move the package, the sender has to pay the
+  // re-quoted leg first. One open request per delivery, which is why
+  // these live on the row rather than in a side table.
+  @Column({ type: 'timestamptz', nullable: true })
+  addressChangeRequestedAt: Date | null;
+
+  @Column({ type: 'varchar', length: 12, nullable: true })
+  addressChangeStatus: string | null;   // pending | approved | rejected | applied
+
+  @Column({ type: 'text', nullable: true })
+  addressChangeNewAddress: string | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  addressChangeNewLat: number | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  addressChangeNewLng: number | null;
+
+  // Priced from where the rider actually was when the request was made,
+  // not from the original pickup.
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  addressChangeQuoteNgn: number | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  addressChangeQuoteKm: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  addressChangeDecidedAt: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  addressChangeDecidedBy: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  addressChangeDecisionNote: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  addressChangePaidAt: Date | null;
 
   // Cancellation record (audit 2026-08-14). The apps quoted a fee off the
   // rate card and then only navigated away: nothing was stored and
