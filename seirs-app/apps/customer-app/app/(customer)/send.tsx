@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { deliveriesApi, uploadApi, mapsApi, feesApi, configApi, pricingApi } from '@/services/api';
+import { deliveriesApi, uploadApi, mapsApi, feesApi, configApi, pricingApi, dropoffApi } from '@/services/api';
 import type { ServiceCategory } from '@/services/api';
 import { useSendDraftStore } from '@/store/useSendDraftStore';
 import { type PickedAddress } from '@/components/AddressPicker';
@@ -24,7 +24,7 @@ import { DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { Illustration } from '@/components/Illustration';
 import {
   ArrowLeft, ArrowRight, Truck, Calendar, CreditCard,
-  Camera, X, CheckCircle, Zap, Moon, MapPin, Store,
+  Camera, X, CheckCircle, Zap, Moon, MapPin, Store, Bike,
 } from 'lucide-react-native';
 
 // Places and geocoding go through our backend (security review
@@ -300,6 +300,44 @@ export default function SendScreen() {
 
   // Inline autocomplete state for the address step.
   const [pickupQuery,  setPickupQuery]  = useState('');
+  /**
+   * How the package reaches SEIRS, ported from the business app's Pickup
+   * step (founder 2026-08-21: "exactly like the business app"). 'door' is
+   * a rider at the sender's address; 'store' means the sender walks it
+   * into a partner counter and the rider collects there, so the DELIVERY
+   * pickup becomes the counter itself.
+   */
+  const [pickupMode, setPickupMode] = useState<'door' | 'store'>('door');
+  const [nearStores, setNearStores] = useState<any[]>([]);
+  const [storePicked, setStorePicked] = useState<any>(null);
+  const [storesLoading, setStoresLoading] = useState(false);
+
+  /** Nearby accepting counters, sorted by the directory around a point. */
+  const findStoresNear = async (lat: number, lng: number) => {
+    setStoresLoading(true);
+    try {
+      const res = await dropoffApi.directory(lat, lng);
+      setNearStores((res?.items ?? []).slice(0, 6));
+    } catch {
+      setNearStores([]);
+    } finally {
+      setStoresLoading(false);
+    }
+  };
+
+  /** Picking a counter makes it the delivery's pickup, like business. */
+  const choosePickupStore = (st: any) => {
+    setStorePicked(st);
+    setNearStores([]);
+    if (st?.storeLat != null && st?.storeLng != null) {
+      setPickup({
+        address: `${st.storeName}, ${st.storeAddress}`,
+        lat: Number(st.storeLat),
+        lng: Number(st.storeLng),
+      } as any);
+      setPickupQuery(`${st.storeName}, ${st.storeAddress}`);
+    }
+  };
 
   // Index-0 aliases. Everything outside the package cards (validation,
   // fare, review summary, booking payload) speaks about "the package",
@@ -599,7 +637,17 @@ export default function SendScreen() {
         lat: loc.lat, lng: loc.lng,
       };
       const pi = pkgIndexOf(activeField);
-      if (pi === null) { setPickup(picked); setPickupQuery(picked.address); }
+      if (pi === null) {
+        if (pickupMode === 'store') {
+          // In counter mode the typed place is only the SEARCH
+          // CENTRE; the pickup becomes whichever counter they pick.
+          setPickupQuery(picked.address);
+          setStorePicked(null);
+          findStoresNear(picked.lat, picked.lng);
+        } else {
+          setPickup(picked); setPickupQuery(picked.address);
+        }
+      }
       else             { updatePkg(pi, { dropoff: picked, dropoffQuery: picked.address }); }
       setPredictions([]);
       setActiveField(null);
@@ -684,6 +732,10 @@ export default function SendScreen() {
       return;
     }
     if (step === 0 && destMode === 'address' && !dropoff) { failField('dropoff', t('send.errDropoffMissing')); return; }
+    if (step === 1 && pickupMode === 'store' && !storePicked) {
+      failField('pickup', t('send.errCounterMissing', { defaultValue: 'Pick the counter you will drop it at.' }));
+      return;
+    }
     if (step === 1 && !pickup)  { failField('pickup',  t('send.errPickupMissing'));  return; }
 
     if (step === 1 && !scheduleNow && scheduledHour == null) {
@@ -856,7 +908,10 @@ export default function SendScreen() {
           {(() => {
             const SLOTS = [
               { name: 'send-package',  captionKey: 'step1Caption' },
-              { name: 'send-address',  captionKey: 'step2Caption' },
+              // Pickup has no hero: the business app opens this step
+              // straight on the how-do-we-get-it cards, and business is
+              // the named design reference (founder 2026-08-21).
+              null,
               { name: 'send-vehicle',  captionKey: 'step3Caption' },
               { name: 'send-fare',     captionKey: 'step4Caption' },
             ];
@@ -1204,6 +1259,47 @@ export default function SendScreen() {
           {/* STEP 1: Address (inline autocomplete + map underneath) */}
           {step === 1 && (
             <View style={styles.stepGap}>
+              {/* Ported from the business app's Pickup step, card for
+                  card (founder 2026-08-21: exactly like the business
+                  app). Dropping at a counter removes the door-pickup
+                  leg: the sender walks the package in whenever the shop
+                  is open and a rider collects there. */}
+              <Text style={[styles.label, { color: theme.textSecond, marginTop: 0 }]}>
+                {t('send.howGetPackages')} <Text style={{ color: theme.error }}>*</Text>
+              </Text>
+              {([
+                { key: 'door',  icon: Bike,  titleKey: 'pickupModeDoor',  subKey: 'pickupModeDoorSub'  },
+                { key: 'store', icon: Store, titleKey: 'pickupModeStore', subKey: 'pickupModeStoreSub' },
+              ] as const).map(opt => {
+                const active = pickupMode === opt.key;
+                const ModeIcon = opt.icon;
+                return (
+                  <Pressable
+                    key={opt.key}
+                    style={[styles.scheduleOpt, highlight(active)]}
+                    onPress={() => {
+                      setPickupMode(opt.key);
+                      if (opt.key === 'door') {
+                        // Leaving store mode drops the counter as pickup.
+                        if (storePicked) { setStorePicked(null); setPickup(null as any); setPickupQuery(''); }
+                      } else if (pickup) {
+                        findStoresNear(pickup.lat, pickup.lng);
+                      }
+                    }}
+                  >
+                    <ModeIcon size={20} color={active ? theme.accent : theme.textSecond} strokeWidth={1.75} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.scheduleTitle, { color: theme.text }]}>{t(`send.${opt.titleKey}`)}</Text>
+                      <Text style={[styles.scheduleDesc, { color: theme.textSecond }]}>{t(`send.${opt.subKey}`)}</Text>
+                    </View>
+                    {active && <CheckCircle size={18} color={theme.accent} strokeWidth={2} />}
+                  </Pressable>
+                );
+              })}
+
+              <Text style={[styles.label, { color: theme.textSecond }]}>
+                {pickupMode === 'store' ? t('send.findCounterNear') : t('send.pickupAddressLabel')} <Text style={{ color: theme.error }}>*</Text>
+              </Text>
               <View style={[styles.inputBlock, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                 <View style={styles.inputRow}>
                   <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
@@ -1223,51 +1319,65 @@ export default function SendScreen() {
                 </View>
               </View>
 
-              {pickup && dropoff && (distanceText || durationText) && (
-                <View style={[styles.routeStat, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-                  {distanceText && (
-                    <View style={styles.routeStatItem}>
-                      <Ionicons name="navigate-outline" size={14} color={theme.textSecond} />
-                      <Text style={[styles.routeStatValue, { color: theme.text }]}>{distanceText}</Text>
+              {pickupMode === 'store' && storePicked && (
+                <Pressable
+                  style={[styles.scheduleOpt, highlight(true)]}
+                  onPress={() => {
+                    const st = storePicked;
+                    Alert.alert(
+                      st.storeName,
+                      `${st.storeAddress}` +
+                      (st.openingHours ? `\n\nHours: ${st.openingHours}` : '') +
+                      (st.phone ? `\nPhone: ${st.phone}` : ''),
+                    );
+                  }}
+                >
+                  <Store size={20} color={theme.accent} strokeWidth={1.75} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.scheduleTitle, { color: theme.text }]} numberOfLines={1}>{storePicked.storeName}</Text>
+                    <Text style={[styles.scheduleDesc, { color: theme.textSecond }]} numberOfLines={2}>{storePicked.storeAddress}</Text>
+                    <Text style={[styles.scheduleDesc, { color: theme.accent }]}>{t('send.storeDetailsLink')}</Text>
+                  </View>
+                  <Pressable hitSlop={10} onPress={() => { setStorePicked(null); setPickup(null as any); setPickupQuery(''); }}>
+                    <Ionicons name="close-circle" size={20} color={theme.textThird} />
+                  </Pressable>
+                </Pressable>
+              )}
+
+              {pickupMode === 'store' && !storePicked && (
+                <View>
+                  {storesLoading && (
+                    <View style={{ paddingVertical: Spacing.md, alignItems: 'center' }}>
+                      <ActivityIndicator color={theme.primary} />
                     </View>
                   )}
-                  {distanceText && durationText && <View style={[styles.routeStatDivider, { backgroundColor: theme.border }]} />}
-                  {durationText && (
-                    <View style={styles.routeStatItem}>
-                      <Ionicons name="time-outline" size={14} color={theme.textSecond} />
-                      <Text style={[styles.routeStatValue, { color: theme.text }]}>{durationText}</Text>
-                    </View>
+                  {!storesLoading && nearStores.map((st: any) => (
+                    <Pressable
+                      key={st.id}
+                      style={[styles.scheduleOpt, highlight(false), { marginBottom: Spacing.sm }]}
+                      onPress={() => choosePickupStore(st)}
+                    >
+                      <Store size={20} color={theme.textSecond} strokeWidth={1.75} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.scheduleTitle, { color: theme.text }]} numberOfLines={1}>{st.storeName}</Text>
+                        <Text style={[styles.scheduleDesc, { color: theme.textSecond }]} numberOfLines={1}>{st.storeAddress}</Text>
+                      </View>
+                      {st.distanceKm != null && (
+                        <Text style={[styles.scheduleDesc, { color: theme.textThird }]}>{Number(st.distanceKm).toFixed(1)} km</Text>
+                      )}
+                    </Pressable>
+                  ))}
+                  {!storesLoading && pickup && nearStores.length === 0 && (
+                    <Text style={[styles.scheduleDesc, { color: theme.textThird, paddingVertical: Spacing.sm }]}>
+                      {t('send.noCountersNearby')}
+                    </Text>
                   )}
                 </View>
               )}
 
-              {pickup && dropoff && (
-                <View style={[styles.mapCard, { borderColor: theme.border }]}>
-                  <MapView
-                    ref={mapRef}
-                    provider={PROVIDER_GOOGLE}
-                    style={styles.mapInline}
-                    initialRegion={DEFAULT_MAP_REGION}
-                    customMapStyle={isDark ? DARK_MAP : []}
-                    pointerEvents="none"
-                    onLayout={() => {
-                      mapRef.current?.fitToCoordinates(
-                        [
-                          { latitude: pickup.lat,  longitude: pickup.lng  },
-                          { latitude: dropoff.lat, longitude: dropoff.lng },
-                        ],
-                        { edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: false },
-                      );
-                    }}
-                  >
-                    <Marker coordinate={{ latitude: pickup.lat,  longitude: pickup.lng  }} pinColor="#22C55E" title="Pickup"  description={pickup.address}  />
-                    <Marker coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }} pinColor="#EF4444" title="Dropoff" description={dropoff.address} />
-                    {routeCoords.length > 1 && (
-                      <Polyline coordinates={routeCoords} strokeColor={theme.primary} strokeWidth={4} />
-                    )}
-                  </MapView>
-                </View>
-              )}
+              {/* No distance chip and no map on this step: the business
+                  app's Pickup step shows neither, and business is the
+                  design reference. The route still renders on Track. */}
 
               {showSuggestions && activeField !== null && (
                 <View style={styles.suggestList}>
