@@ -40,6 +40,8 @@ export enum PaymentPurpose {
   REDIRECT_FEE = 'redirect_fee',  // failed-delivery reroute to a partner store
   // Re-quoted leg when support approves a mid-delivery address change.
   ADDRESS_CHANGE = 'address_change',
+  // Transporting an undeliverable package back to its pickup address.
+  RETURN_TO_SENDER = 'return_to_sender',
   // The ₦100 charge that exists only to tokenize a card, refunded
   // immediately. Before 2026-08-14 these rows fell through to the
   // DELIVERY default, so the webhook put a verification charge into

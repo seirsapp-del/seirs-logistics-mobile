@@ -328,6 +328,56 @@ export class PaymentsService {
    * this is a change fee owed to SEIRS and the rider for extra distance,
    * not part of the original fare being held for the delivery.
    */
+  /**
+   * Charge the trip that brings an undeliverable package home.
+   *
+   * purpose=RETURN_TO_SENDER so escrow release and refund never touch
+   * it: the original fare is a separate matter from the cost of
+   * carrying the package back.
+   */
+  async initiateReturnPayment(delivery: Delivery, customer: User): Promise<{
+    authorizationUrl: string;
+    reference:        string;
+    amountNgn:        number;
+  }> {
+    const amount = Number(delivery.returnQuoteNgn ?? 0);
+    if (!(amount > 0)) {
+      throw new BadRequestException('No return is awaiting payment on this delivery.');
+    }
+    if (delivery.returnPaidAt) {
+      throw new BadRequestException('This return has already been paid.');
+    }
+
+    const txRef = `SRS-RTN-${uuidv4().slice(0, 8).toUpperCase()}`;
+    const { paymentLink } = await this.flutterwaveService.initializePayment({
+      txRef,
+      amount,
+      currency:    'NGN',
+      email:       customer.email,
+      phone:       customer.phone ?? '',
+      name:        customer.name,
+      redirectUrl: 'seirsmobile://payment-callback',
+      meta: {
+        purpose:      'return_to_sender',
+        deliveryId:   delivery.id,
+        trackingCode: delivery.trackingCode,
+        customerId:   customer.id,
+      },
+    });
+
+    const payment = this.paymentsRepo.create({
+      delivery,
+      user:              customer,
+      amount,
+      purpose:           PaymentPurpose.RETURN_TO_SENDER,
+      status:            PaymentStatus.PENDING,
+      providerReference: txRef,
+    } as any);
+    await this.paymentsRepo.save(payment);
+
+    return { authorizationUrl: paymentLink, reference: txRef, amountNgn: amount };
+  }
+
   async initiateAddressChangePayment(delivery: Delivery, customer: User): Promise<{
     authorizationUrl: string;
     reference:        string;
@@ -631,6 +681,24 @@ export class PaymentsService {
       // An address change settles outright and then moves the drop-off.
       // Applying it here, rather than when support approves, is what
       // stops an unpaid approval from redirecting a rider.
+      // A return settles outright and then turns the package around.
+      if (payment.purpose === PaymentPurpose.RETURN_TO_SENDER) {
+        await this.paymentsRepo.update(payment.id, {
+          status:                   PaymentStatus.SUCCESS,
+          flutterwaveTransactionId: result.transactionId,
+        });
+        payment.status = PaymentStatus.SUCCESS;
+        if (payment.delivery?.id && (this as any).deliveriesServiceRef) {
+          await (this as any).deliveriesServiceRef
+            .applyReturn(payment.delivery.id)
+            .catch((e: any) =>
+              this.logger.error(`return apply failed: ${e?.message ?? e}`),
+            );
+        }
+        this.logger.log(`Return to sender settled: ${txRef} (₦${result.amount})`);
+        return payment;
+      }
+
       if (payment.purpose === PaymentPurpose.ADDRESS_CHANGE) {
         await this.paymentsRepo.update(payment.id, {
           status:                   PaymentStatus.SUCCESS,

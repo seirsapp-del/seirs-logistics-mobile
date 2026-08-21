@@ -283,6 +283,35 @@ export class Delivery {
   @Column({ type: 'timestamptz', nullable: true })
   disputeEscalatedAt: Date | null;
 
+  // ── Return to sender (founder 2026-08-21) ───────────────────────────
+  // Priced from wherever the package currently is back to the ORIGINAL
+  // pickup. There is deliberately no "return address" column: the
+  // destination is pickupAddress and cannot be edited, which is what
+  // stops a return being used to buy a long delivery cheaply.
+  @Column({ type: 'timestamptz', nullable: true })
+  returnRequestedAt: Date | null;
+
+  @Column({ type: 'varchar', length: 12, nullable: true })
+  returnStatus: string | null;   // pending | approved | rejected | applied
+
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  returnQuoteNgn: number | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  returnQuoteKm: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  returnDecidedAt: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  returnDecidedBy: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  returnDecisionNote: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  returnPaidAt: Date | null;
+
   // ── Mid-delivery address change (founder 2026-08-21) ────────────────
   // A sender who gave the wrong address can ask for it to be corrected
   // while the rider is still carrying the package. Support decides;

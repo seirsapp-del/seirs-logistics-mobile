@@ -160,6 +160,40 @@ export class DeliveriesController {
     return this.deliveriesService.startCollectionPayment(code, body ?? {});
   }
 
+  // GET /api/v1/deliveries/:id/return-quote
+  // What it costs to bring this package home from wherever it is now.
+  // The destination is the delivery's own pickup address and there is
+  // deliberately no parameter to change it.
+  @Get(':id/return-quote')
+  getReturnQuote(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.getReturnQuote(id, user.id);
+  }
+
+  // POST /api/v1/deliveries/:id/return
+  // At a counter this is self-service. On a bike it opens a support
+  // ticket, because turning a rider around is not a sender's call.
+  @Post(':id/return')
+  requestReturn(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.requestReturn(id, user.id);
+  }
+
+  // POST /api/v1/deliveries/:id/return/pay
+  @Post(':id/return/pay')
+  payReturn(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.deliveriesService.startReturnPayment(id, user.id);
+  }
+
+  // POST /api/v1/deliveries/:id/return/decide  (admin only)
+  @UseGuards(AdminGuard)
+  @Post(':id/return/decide')
+  decideReturn(
+    @Param('id') id: string,
+    @CurrentUser() admin: User,
+    @Body() body: { approve: boolean; note?: string; overrideQuoteNgn?: number },
+  ) {
+    return this.deliveriesService.decideReturn(id, admin.id, body);
+  }
+
   // POST /api/v1/deliveries/:id/address-change  { address, lat?, lng? }
   // The sender gave the wrong address and the rider is already carrying
   // the package. This only opens a request and quotes it: support has to

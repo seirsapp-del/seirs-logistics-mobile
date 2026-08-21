@@ -1619,6 +1619,303 @@ export class DeliveriesService {
     return this.paymentsService.initiateAddressChangePayment(delivery, delivery.customer);
   }
 
+  // ── Return to sender (founder 2026-08-21) ────────────────────────────
+  //
+  // "A return is priced as a real trip from wherever the parcel currently
+  // is back to the original pickup address. The pickup address cannot be
+  // changed. A return while a rider is still holding the parcel goes
+  // through support."
+  //
+  // There is no return-address parameter anywhere in this flow, on
+  // purpose. The destination is the delivery's own pickupAddress. If it
+  // could be edited, "return it" becomes a cheap long delivery: book
+  // Yaba to Yaba, wait for the rider to reach the drop, then return it to
+  // Lekki. Fixing the destination removes the incentive completely, and
+  // costs an honest sender nothing.
+
+  /** Is this package sitting at a partner counter rather than on a bike? */
+  private isAtCounter(delivery: Delivery): boolean {
+    return ['store', 'auto_store'].includes(String(delivery.arrivalResolution ?? ''));
+  }
+
+  /**
+   * What it costs to bring this package home, from wherever it is now.
+   *
+   * At a counter: the counter's release plus any storage that has piled
+   * up, plus the trip from the counter back to the pickup.
+   * On a bike: just the trip, from the rider's live position.
+   */
+  async getReturnQuote(deliveryId: string, customerId: string) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer', 'driver', 'driver.user'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.customer?.id !== customerId) {
+      throw new NotFoundException('Delivery not found.'); // no oracle
+    }
+    if (['delivered', 'cancelled'].includes(String(delivery.status))) {
+      throw new BadRequestException('This delivery is already closed.');
+    }
+    if (delivery.pickupLat == null || delivery.pickupLng == null) {
+      throw new BadRequestException('This delivery has no pickup coordinates to return to.');
+    }
+
+    const atCounter = this.isAtCounter(delivery);
+
+    // Where the package physically is right now.
+    const fromLat = atCounter
+      ? Number(delivery.dropoffLat)
+      : (delivery.driver?.lastLat != null ? Number(delivery.driver.lastLat) : Number(delivery.dropoffLat));
+    const fromLng = atCounter
+      ? Number(delivery.dropoffLng)
+      : (delivery.driver?.lastLng != null ? Number(delivery.driver.lastLng) : Number(delivery.dropoffLng));
+
+    const road = await this.routeDistance.getRoadDistance(
+      fromLat, fromLng,
+      Number(delivery.pickupLat), Number(delivery.pickupLng),
+    );
+
+    const card = await this.rateCardPricing.getActiveRateCard();
+    const categoryCode = delivery.categoryCode || toCategoryCode(delivery.packageSize as any);
+    const breakdown = await this.rateCardPricing.computePrice({
+      vehicleType:           String(delivery.vehicleType),
+      categoryCode,
+      km:                    road.km,
+      stopCount:             1,
+      weightKg:              Number(delivery.weightKg ?? 0),
+      estimatedDwellMinutes: this.rateCardPricing.computeStopDwellMinutes(
+        card,
+        await this.rateCardPricing.getCategoryByCode(categoryCode),
+        Number(delivery.weightKg ?? 0),
+      ),
+      pickupLat:  fromLat,
+      pickupLng:  fromLng,
+      dropoffLat: Number(delivery.pickupLat),
+      dropoffLng: Number(delivery.pickupLng),
+    } as any);
+
+    const transport = Math.round(Number((breakdown as any)?.total ?? 0));
+
+    // Anything the counter is still holding against the package. Unpaid
+    // redirect fee first: the package cannot leave without it either way.
+    const counterOwed = atCounter && !delivery.redirectFeePaidAt
+      ? Math.round(Number(delivery.redirectFeeNgn ?? 0))
+      : 0;
+
+    const total = transport + counterOwed;
+
+    return {
+      atCounter,
+      // Named, not editable. The app shows it so the sender can see where
+      // it is going, and there is no field to change it.
+      returnTo:      delivery.pickupAddress,
+      km:            Number(road.km.toFixed(2)),
+      transportNgn:  transport,
+      counterOwedNgn: counterOwed,
+      totalNgn:      total,
+      needsSupport:  !atCounter,
+      note: atCounter
+        ? 'Your package is at a partner counter. This brings it back to your pickup address.'
+        : 'A rider is still carrying this package, so support has to arrange the return.',
+    };
+  }
+
+  /**
+   * Ask for the package back.
+   *
+   * A package on a bike needs a support decision, because redirecting a
+   * rider mid-route is not something a sender should be able to do alone.
+   * A package already sitting at a counter is nobody's emergency, so that
+   * one is approved as it is requested.
+   */
+  async requestReturn(deliveryId: string, customerId: string) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const quote = await this.getReturnQuote(deliveryId, customerId);
+    const delivery = await this.repo.findOne({ where: { id: deliveryId }, relations: ['customer'] });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    if (delivery.returnStatus === 'pending') {
+      throw new BadRequestException('Support is already reviewing a return for this delivery.');
+    }
+    if (delivery.returnStatus === 'approved' && !delivery.returnPaidAt) {
+      throw new BadRequestException('An approved return is waiting for payment.');
+    }
+    if (delivery.returnStatus === 'applied') {
+      throw new BadRequestException('This package is already on its way back.');
+    }
+
+    // On a bike: support decides. At a counter: nothing to decide.
+    const status = quote.needsSupport ? 'pending' : 'approved';
+
+    await this.repo.update(deliveryId, {
+      returnRequestedAt:  new Date(),
+      returnStatus:       status,
+      returnQuoteNgn:     quote.totalNgn,
+      returnQuoteKm:      quote.km,
+      returnDecidedAt:    quote.needsSupport ? null : new Date(),
+      returnDecidedBy:    null,
+      returnDecisionNote: null,
+      returnPaidAt:       null,
+    } as any);
+
+    this.logEvent(deliveryId, DeliveryEventType.ADMIN_NOTE, EventActorRole.CUSTOMER, {
+      actorUserId: customerId,
+      description: `Sender asked for the package back. Quoted ₦${quote.totalNgn.toLocaleString()} for ${quote.km.toFixed(1)} km to ${delivery.pickupAddress}.`,
+      meta: { kind: 'return_requested', ...quote },
+    }).catch(() => {});
+
+    let ticketId: string | null = null;
+    if (quote.needsSupport) {
+      try {
+        const ticket: any = await this.supportService?.create(customerId, {
+          topic:            TicketTopic.DELIVERY,
+          subject:          `Return to sender - ${delivery.trackingCode}`,
+          firstMessage: [
+            'Sender wants this package brought back while a rider is carrying it.',
+            `Tracking: ${delivery.trackingCode}`,
+            `Return to (fixed, cannot be changed): ${delivery.pickupAddress}`,
+            `Quote from the rider's current position: ₦${quote.totalNgn.toLocaleString()} for ${quote.km.toFixed(1)} km.`,
+            'Approve or reject on the delivery in admin. Approval does not turn the rider around until the sender pays.',
+          ].join('\n'),
+          linkedDeliveryId: delivery.id,
+        });
+        ticketId = ticket?.id ?? null;
+      } catch (e: any) {
+        this.logger.error(`return request: ticket creation failed: ${e?.message ?? e}`);
+      }
+    }
+
+    return { ...quote, status, ticketId };
+  }
+
+  /** Support approves or rejects a return that involves turning a rider around. */
+  async decideReturn(
+    deliveryId: string,
+    adminUserId: string,
+    body: { approve: boolean; note?: string; overrideQuoteNgn?: number },
+  ) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.returnStatus !== 'pending') {
+      throw new BadRequestException('There is no return awaiting a decision.');
+    }
+
+    const approve = body?.approve === true;
+    const note = (body?.note ?? '').trim().slice(0, 500) || null;
+
+    let quoteNgn = delivery.returnQuoteNgn != null ? Number(delivery.returnQuoteNgn) : 0;
+    const override = Number(body?.overrideQuoteNgn);
+    if (approve && Number.isFinite(override) && override >= 0) {
+      quoteNgn = Math.round(override);
+    }
+
+    await this.repo.update(deliveryId, {
+      returnStatus:       approve ? 'approved' : 'rejected',
+      returnQuoteNgn:     quoteNgn,
+      returnDecidedAt:    new Date(),
+      returnDecidedBy:    adminUserId,
+      returnDecisionNote: note,
+    } as any);
+
+    this.logEvent(deliveryId, DeliveryEventType.ADMIN_NOTE, EventActorRole.ADMIN, {
+      actorUserId: adminUserId,
+      description: approve
+        ? `Return approved at ₦${quoteNgn.toLocaleString()}. Awaiting payment before the rider turns around.`
+        : `Return rejected.${note ? ' Reason: ' + note : ''}`,
+      meta: { kind: 'return_decided', approve, quoteNgn, note },
+    }).catch(() => {});
+
+    if (this.notificationsService && delivery.customer?.id) {
+      this.notificationsService.create(
+        delivery.customer.id,
+        approve ? 'Return approved' : 'Return rejected',
+        approve
+          ? `Support approved bringing ${delivery.trackingCode} back to ${delivery.pickupAddress}. Pay ₦${quoteNgn.toLocaleString()} in the app to start it.`
+          : `Support could not arrange a return for ${delivery.trackingCode}.${note ? ' ' + note : ''}`,
+        'status_update',
+        delivery.id,
+        delivery.trackingCode,
+      ).catch(() => {});
+    }
+
+    return { status: approve ? 'approved' : 'rejected', quoteNgn, note };
+  }
+
+  /** Pay for an approved return. */
+  async startReturnPayment(deliveryId: string, customerId: string) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.customer?.id !== customerId) {
+      throw new NotFoundException('Delivery not found.');
+    }
+    if (delivery.returnStatus !== 'approved') {
+      throw new BadRequestException(
+        delivery.returnStatus === 'pending'
+          ? 'Support has not approved this return yet.'
+          : 'There is no approved return to pay for.',
+      );
+    }
+    if (delivery.returnPaidAt) {
+      throw new BadRequestException('This return has already been paid.');
+    }
+    if (!this.paymentsService) {
+      throw new NotFoundException('Payments are unavailable right now.');
+    }
+    return this.paymentsService.initiateReturnPayment(delivery, delivery.customer);
+  }
+
+  /**
+   * Payment cleared: send it home.
+   *
+   * The destination is the delivery's own pickup address, read here
+   * rather than taken from anything a client sent.
+   */
+  async applyReturn(deliveryId: string) {
+    const delivery = await this.repo.findOne({ where: { id: deliveryId } });
+    if (!delivery) return;
+    if (delivery.returnStatus !== 'approved') return;
+
+    const prevAddress = delivery.dropoffAddress;
+    await this.repo.update(deliveryId, {
+      dropoffAddress: delivery.pickupAddress,
+      dropoffLat:     delivery.pickupLat,
+      dropoffLng:     delivery.pickupLng,
+      returnStatus:   'applied',
+      returnPaidAt:   new Date(),
+      // The package is moving again, so the counter no longer holds it
+      // and the pay-to-reveal mask has nothing left to hide.
+      arrivalResolution: null,
+    } as any);
+
+    this.logEvent(deliveryId, DeliveryEventType.ADMIN_NOTE, EventActorRole.SYSTEM, {
+      description: `Return paid and applied. Package heading back from ${prevAddress} to ${delivery.pickupAddress}.`,
+      meta: { kind: 'return_applied', prevAddress, returnTo: delivery.pickupAddress },
+    }).catch(() => {});
+
+    if (this.chatService) {
+      this.chatService
+        .insertSystemMessage(
+          deliveryId,
+          'redirected',
+          `Return to sender: bring this package back to ${delivery.pickupAddress}.`,
+        )
+        .catch(() => {});
+    }
+    if (this.trackingGateway) {
+      this.trackingGateway.broadcastStatusChange(deliveryId, delivery.status);
+    }
+  }
+
   // ── Mid-delivery address change (founder 2026-08-21) ─────────────────
   //
   // "If a customer is genuinely wrong and would like to change an address
