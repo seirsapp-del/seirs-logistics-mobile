@@ -1703,7 +1703,13 @@ export default function SendScreen() {
           borderTopColor: theme.border,
           paddingBottom: Spacing.md + insets.bottom,
         }]}>
-          {!!error && !invalidField && (
+          {/* Every error surfaces here, business-style. Field-level
+              errors ALSO flag their field inline, but the footer is the
+              one place guaranteed on screen: a missing pickup used to
+              set state that nothing anywhere rendered (found live,
+              2026-08-21, when the founder asked to see the error).
+              */}
+          {!!error && (
             <View style={styles.footerError}>
               <AlertCircle size={15} color="#DC2626" />
               <Text style={styles.footerErrorText}>{error}</Text>
