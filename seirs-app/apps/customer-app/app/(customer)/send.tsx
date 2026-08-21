@@ -24,7 +24,7 @@ import { DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { Illustration } from '@/components/Illustration';
 import {
   ArrowLeft, ArrowRight, Truck, Calendar, CreditCard,
-  Camera, X, CheckCircle, Zap, Moon, MapPin, Store, Bike,
+  Camera, X, CheckCircle, Zap, Moon, MapPin, Store, Bike, Clock,
 } from 'lucide-react-native';
 
 // Places and geocoding go through our backend (security review
@@ -1421,8 +1421,8 @@ export default function SendScreen() {
               <>
                 <Text style={[styles.label, { color: theme.textSecond, marginTop: Spacing.md }]}>{t('send.whenLabel')}</Text>
                 {[
-                  { now: true,  icon: Zap,      titleKey: 'sendNow',       descKey: 'sendNowDesc'       },
-                  { now: false, icon: Calendar, titleKey: 'scheduleLater', descKey: 'scheduleLaterDesc' },
+                  { now: true,  icon: Zap,   titleKey: 'sendNow',       descKey: 'sendNowDesc'       },
+                  { now: false, icon: Clock, titleKey: 'scheduleLater', descKey: 'scheduleLaterDesc' },
                 ].map(opt => {
                     const OptIcon = opt.icon;
                     return (
@@ -1431,7 +1431,15 @@ export default function SendScreen() {
                         style={[styles.scheduleOpt, highlight(scheduleNow === opt.now)]}
                         onPress={() => setScheduleNow(opt.now)}
                       >
-                        <OptIcon size={20} color={scheduleNow === opt.now ? theme.accent : theme.textSecond} strokeWidth={1.75} />
+                        {/* Filled icon square, matching the business card
+                            anatomy exactly (full-page look, 2026-08-21). */}
+                        <View style={{
+                          width: 38, height: 38, borderRadius: 12,
+                          alignItems: 'center', justifyContent: 'center',
+                          backgroundColor: scheduleNow === opt.now ? theme.accent : theme.surfaceSecond,
+                        }}>
+                          <OptIcon size={18} color={scheduleNow === opt.now ? '#fff' : theme.textSecond} strokeWidth={1.75} />
+                        </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.scheduleTitle, { color: theme.text }]}>{t(`send.${opt.titleKey}`)}</Text>
                           <Text style={[styles.scheduleDesc, { color: theme.textSecond }]}>{t(`send.${opt.descKey}`)}</Text>
