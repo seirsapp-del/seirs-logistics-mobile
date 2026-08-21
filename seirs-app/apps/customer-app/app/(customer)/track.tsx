@@ -22,6 +22,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
 import { deliveriesApi, dropoffApi } from '@/services/api';
 import DeliveryTrackMap from '@/components/DeliveryTrackMap';
+import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 
 // Labels looked up via t(`tracking.step${cap}`) at render so language
 // switches reflect live.
@@ -142,6 +143,10 @@ export default function TrackScreen() {
   const [redirectOpen,  setRedirectOpen]  = useState(false);
   const [redirectStores, setRedirectStores] = useState<any[]>([]);
   const [payingFee, setPayingFee] = useState(false);
+  const [addrOpen,  setAddrOpen]  = useState(false);
+  const [addrText,  setAddrText]  = useState('');
+  const [addrCoords, setAddrCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [addrBusy,  setAddrBusy]  = useState(false);
   const [redirectBusy,  setRedirectBusy]  = useState(false);
 
   // Mid-flight rescue (founder 2026-08-10): when the RECIPIENT is not
@@ -190,6 +195,92 @@ export default function TrackScreen() {
       });
     } catch {
       /* the user dismissed the share sheet */
+    }
+  };
+
+  /**
+   * Ask for the package back.
+   *
+   * Quoted before anything is committed, because a return priced from
+   * where the rider got to can cost more than the original delivery, and
+   * a sender should never discover that after agreeing.
+   */
+  const requestReturn = async () => {
+    if (!deliveryId) return;
+    try {
+      const q = await deliveriesApi.getReturnQuote(deliveryId);
+      Alert.alert(
+        'Return this package?',
+        `${q.note}\n\nBack to: ${q.returnTo}\n` +
+        `${q.km} km by road\n` +
+        `Transport: \u20a6${Number(q.transportNgn).toLocaleString()}\n` +
+        (q.counterOwedNgn > 0
+          ? `Counter owed: \u20a6${Number(q.counterOwedNgn).toLocaleString()}\n`
+          : '') +
+        `Total: \u20a6${Number(q.totalNgn).toLocaleString()}` +
+        (q.needsSupport ? '\n\nSupport has to approve this before you can pay.' : ''),
+        [
+          { text: 'Not now', style: 'cancel' },
+          {
+            text: q.needsSupport ? 'Ask support' : 'Request return',
+            onPress: async () => {
+              try {
+                const r = await deliveriesApi.requestReturn(deliveryId);
+                Alert.alert(
+                  r.status === 'pending' ? 'Sent to support' : 'Return approved',
+                  r.status === 'pending'
+                    ? 'A rider is carrying this package, so support has to arrange it. We will let you know.'
+                    : 'Pay in the app and we will bring it back to your pickup address.',
+                );
+              } catch (e: any) {
+                Alert.alert('Could not request that', e?.message ?? 'Please try again.');
+              }
+            },
+          },
+        ],
+      );
+    } catch (e: any) {
+      Alert.alert('Could not price a return', e?.message ?? 'Please try again.');
+    }
+  };
+
+  const payReturn = async () => {
+    if (!deliveryId) return;
+    try {
+      const res = await deliveriesApi.payReturn(deliveryId);
+      if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
+    } catch (e: any) {
+      Alert.alert('Could not start payment', e?.message ?? 'Please try again.');
+    }
+  };
+
+  /**
+   * Ask support to correct a wrong address.
+   *
+   * Not applied here: this only asks. Support decides, and the drop-off
+   * moves once it is paid for.
+   */
+  const submitAddressChange = async () => {
+    if (!deliveryId || addrText.trim().length < 6) return;
+    setAddrBusy(true);
+    try {
+      const res = await deliveriesApi.requestAddressChange(deliveryId, {
+        address: addrText.trim(),
+        lat: addrCoords?.lat,
+        lng: addrCoords?.lng,
+      });
+      setAddrOpen(false);
+      setAddrText('');
+      setAddrCoords(null);
+      Alert.alert(
+        'Sent to support',
+        `We quoted \u20a6${Number(res.quoteNgn).toLocaleString()} for the ${Number(res.km).toFixed(1)} km ` +
+        `from where your rider is now. Support will approve or decline, and you only pay if they approve.`,
+      );
+    } catch (e: any) {
+      Alert.alert('Could not send that', e?.message ?? 'Please try again.');
+    } finally {
+      setAddrBusy(false);
     }
   };
 
@@ -586,6 +677,66 @@ export default function TrackScreen() {
               </View>
             )}
 
+            {/* Return in flight. */}
+            {deliveryData?.returnStatus && deliveryData.returnStatus !== 'rejected' && (
+              <View style={[styles.card, { backgroundColor: theme.surface, borderWidth: 1.5, borderColor: '#7C3AED' }, Shadows.sm]}>
+                <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold as any, color: theme.text, marginBottom: 4 }}>
+                  Return to sender: {String(deliveryData.returnStatus)}
+                </Text>
+                <Text style={{ fontSize: FontSize.sm, color: theme.textSecond, lineHeight: 19 }}>
+                  Going back to {deliveryData.pickupAddress}.
+                  {deliveryData.returnStatus === 'pending' ? ' Support is reviewing it.' : ''}
+                  {deliveryData.returnStatus === 'applied' ? ' On its way back to you.' : ''}
+                </Text>
+                {deliveryData.returnStatus === 'approved' && !deliveryData.returnPaidAt && (
+                  <Pressable
+                    onPress={payReturn}
+                    style={{ marginTop: 12, borderRadius: Radius.lg, paddingVertical: 12, alignItems: 'center', backgroundColor: '#7C3AED' }}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontWeight: FontWeight.bold as any, fontSize: FontSize.sm }}>
+                      Pay \u20a6{Number(deliveryData.returnQuoteNgn ?? 0).toLocaleString()} to start the return
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+
+            {/* Address correction + return, while the package is still ours
+                to move. Both quote before they commit the sender. */}
+            {['assigned', 'picked_up', 'in_transit'].includes(String(currentStatus)) && (
+              <>
+                {!deliveryData?.addressChangeStatus && (
+                  <Pressable
+                    onPress={() => setAddrOpen(true)}
+                    style={[styles.redirectBtn, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
+                  >
+                    <Ionicons name="location-outline" size={18} color={theme.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.redirectTitle, { color: theme.text }]}>Wrong address?</Text>
+                      <Text style={{ fontSize: FontSize.xs, color: theme.textThird }}>
+                        Support can move it, priced from where your rider is now
+                      </Text>
+                    </View>
+                  </Pressable>
+                )}
+
+                {!deliveryData?.returnStatus && (
+                  <Pressable
+                    onPress={requestReturn}
+                    style={[styles.redirectBtn, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}
+                  >
+                    <Ionicons name="arrow-undo-outline" size={18} color={theme.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.redirectTitle, { color: theme.text }]}>Need it back?</Text>
+                      <Text style={{ fontSize: FontSize.xs, color: theme.textThird }}>
+                        Priced from where it is now, back to your pickup address
+                      </Text>
+                    </View>
+                  </Pressable>
+                )}
+              </>
+            )}
+
             {/* Recipient-not-available rescue: redirect to a partner
                 store near the dropoff. Mid-flight statuses only. */}
             {['assigned', 'picked_up', 'in_transit'].includes(String(currentStatus)) && (
@@ -714,6 +865,51 @@ export default function TrackScreen() {
             </ScrollView>
             <Pressable style={[styles.redirectClose, { backgroundColor: theme.surfaceSecond }]} onPress={() => setRedirectOpen(false)}>
               <Text style={{ color: theme.text, fontWeight: FontWeight.semibold }}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Address correction. Deliberately a picker, not a free-text box:
+          a rider needs a real coordinate, not a description. */}
+      <Modal visible={addrOpen} transparent animationType="slide" onRequestClose={() => setAddrOpen(false)}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34 }}>
+            <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold as any, color: theme.text }}>
+              Correct the delivery address
+            </Text>
+            <Text style={{ fontSize: FontSize.sm, color: theme.textSecond, marginTop: 6, lineHeight: 19 }}>
+              Your rider is already carrying this package, so support has to approve
+              the change. You will be quoted for the distance from where they are now,
+              and you only pay if it is approved.
+            </Text>
+
+            <View style={{ marginTop: 16 }}>
+              <StreetAutocomplete
+                label="New delivery address"
+                value={addrText}
+                onChangeText={setAddrText}
+                placeholder="Start typing the address"
+                onCoordsResolved={(lat: number, lng: number) => setAddrCoords({ lat, lng })}
+              />
+            </View>
+
+            <Pressable
+              onPress={submitAddressChange}
+              disabled={addrBusy || addrText.trim().length < 6}
+              style={{
+                marginTop: 18, borderRadius: Radius.lg, paddingVertical: 14, alignItems: 'center',
+                backgroundColor: theme.primary,
+                opacity: addrBusy || addrText.trim().length < 6 ? 0.5 : 1,
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: FontWeight.bold as any, fontSize: FontSize.base }}>
+                {addrBusy ? 'Sending...' : 'Ask support to change it'}
+              </Text>
+            </Pressable>
+
+            <Pressable onPress={() => setAddrOpen(false)} style={{ marginTop: 10, paddingVertical: 10, alignItems: 'center' }}>
+              <Text style={{ color: theme.textSecond, fontSize: FontSize.sm }}>Cancel</Text>
             </Pressable>
           </View>
         </View>
