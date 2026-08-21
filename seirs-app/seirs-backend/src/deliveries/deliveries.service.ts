@@ -3321,6 +3321,20 @@ export class DeliveriesService {
     const processingNgn = await this.getCancelProcessingNgn(Number(delivery.price ?? 0));
 
     if (status === DeliveryStatus.PENDING) {
+      // An unpaid booking has no card cost to recover and nothing to
+      // withhold a fee from: the dialog was quoting "NGN 27 applies and
+      // the rest is refunded" on a booking where nothing had been paid
+      // (device QA 2026-08-22). Free, and the copy says why.
+      if (!delivery.paymentHeldAt) {
+        return {
+          cancellable:  true,
+          stage:        'pre_payment',
+          feeNgn:       0,
+          stageFeeNgn:  0,
+          processingNgn: 0,
+          reason:       'Nothing has been paid yet, so cancelling is free.',
+        };
+      }
       return {
         cancellable:  true,
         stage:        'pre_assign',
