@@ -174,6 +174,21 @@ export const adminApi = {
   /** Pickup, ordered stops, live driver position and GPS trail, for the map. */
   deliveryRoute:  (id: string) => req<any>(`/admin/deliveries/${id}/route`),
   cancelDelivery: (id: string) => req<any>(`/admin/deliveries/${id}/cancel`, { method: 'PATCH' }),
+  /**
+   * Approve or reject a mid-delivery address change.
+   *
+   * Not under /admin: the logic lives on DeliveriesService, so the route
+   * sits on the deliveries controller behind AdminGuard.
+   */
+  decideAddressChange: (
+    id: string,
+    body: { approve: boolean; note?: string; overrideQuoteNgn?: number },
+  ) =>
+    req<any>(`/deliveries/${id}/address-change/decide`, {
+      method: 'POST',
+      body:   JSON.stringify(body),
+    }),
+
   reassignDelivery: (id: string, driverId: string) =>
     req<any>(`/admin/deliveries/${id}/reassign`, { method: 'PATCH', body: JSON.stringify({ driverId }) }),
 

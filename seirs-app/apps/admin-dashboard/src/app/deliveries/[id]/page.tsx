@@ -51,7 +51,37 @@ export default function DeliveryDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [route, setRoute]           = useState<any>(null);
+  const [acBusy,  setAcBusy]  = useState(false);
+  const [acNote,  setAcNote]  = useState('');
+  const [acQuote, setAcQuote] = useState('');
+  const [acError, setAcError] = useState<string | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
+  /* Support decides. Approving only unlocks payment: the drop-off
+     moves when the sender pays, from the payments webhook. */
+  const decideAddressChange = async (approve: boolean) => {
+    setAcBusy(true);
+    setAcError(null);
+    try {
+      const override = Number(acQuote);
+      await adminApi.decideAddressChange(String(id), {
+        approve,
+        note: acNote.trim() || undefined,
+        overrideQuoteNgn:
+          approve && Number.isFinite(override) && acQuote.trim() !== ''
+            ? override
+            : undefined,
+      });
+      const fresh = await adminApi.delivery(String(id));
+      setD(fresh);
+      setAcNote('');
+      setAcQuote('');
+    } catch (e: unknown) {
+      setAcError(e instanceof Error ? e.message : 'Could not save that decision.');
+    } finally {
+      setAcBusy(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!id) return;
@@ -119,6 +149,112 @@ export default function DeliveryDetailPage() {
           {String(d.status ?? '').replace('_', ' ')}
         </span>
       </div>
+
+      {d.addressChangeStatus && (
+        <div className="mt-4 rounded-xl border border-[#3A7BD5]/30 bg-[#3A7BD5]/5 p-4">
+          <div className="flex items-center gap-2 text-[#3A7BD5]">
+            <MapPin size={16} />
+            <span className="text-sm font-bold uppercase tracking-wide">
+              Address change {d.addressChangeStatus}
+            </span>
+          </div>
+
+          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <div className="text-xs uppercase tracking-wider text-[#0F2B4C]/40">Requested address</div>
+              <div className="font-medium text-[#0F2B4C]">{d.addressChangeNewAddress ?? '-'}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wider text-[#0F2B4C]/40">
+                Re-quote from the rider&apos;s position
+              </div>
+              <div className="font-medium text-[#0F2B4C]">
+                {d.addressChangeQuoteNgn != null
+                  ? `\u20a6${Number(d.addressChangeQuoteNgn).toLocaleString()}`
+                  : '-'}
+                {d.addressChangeQuoteKm != null
+                  ? ` \u00b7 ${Number(d.addressChangeQuoteKm).toFixed(1)} km by road`
+                  : ''}
+              </div>
+            </div>
+          </div>
+
+          {d.addressChangeDecisionNote && (
+            <div className="mt-2 text-xs text-[#0F2B4C]/60">
+              Note: {d.addressChangeDecisionNote}
+            </div>
+          )}
+
+          {d.addressChangeStatus === 'approved' && !d.addressChangePaidAt && (
+            <div className="mt-3 rounded-lg border border-[#D97706]/30 bg-[#D97706]/5 px-3 py-2 text-xs text-[#92400E]">
+              Approved and waiting for the sender to pay. The drop-off does not
+              move until the money lands.
+            </div>
+          )}
+
+          {d.addressChangeStatus === 'applied' && (
+            <div className="mt-3 rounded-lg border border-[#16A34A]/30 bg-[#16A34A]/5 px-3 py-2 text-xs text-[#166534]">
+              Paid and applied. The rider has been told the new address.
+            </div>
+          )}
+
+          {d.addressChangeStatus === 'pending' && (
+            <div className="mt-3 border-t border-[#3A7BD5]/20 pt-3">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="text-xs">
+                  <div className="mb-1 font-semibold text-[#0F2B4C]/60">
+                    Correct the quote (optional)
+                  </div>
+                  <input
+                    value={acQuote}
+                    onChange={(e) => setAcQuote(e.target.value)}
+                    placeholder={
+                      d.addressChangeQuoteNgn != null
+                        ? String(Math.round(Number(d.addressChangeQuoteNgn)))
+                        : 'Naira'
+                    }
+                    className="w-full rounded-lg border border-[#0F2B4C]/15 px-3 py-2 text-sm outline-none focus:border-[#3A7BD5]"
+                  />
+                </label>
+                <label className="text-xs">
+                  <div className="mb-1 font-semibold text-[#0F2B4C]/60">
+                    Note to the sender
+                  </div>
+                  <input
+                    value={acNote}
+                    onChange={(e) => setAcNote(e.target.value)}
+                    placeholder="Shown to them if you reject"
+                    className="w-full rounded-lg border border-[#0F2B4C]/15 px-3 py-2 text-sm outline-none focus:border-[#3A7BD5]"
+                  />
+                </label>
+              </div>
+
+              {acError && (
+                <div className="mt-2 rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/5 px-3 py-2 text-xs text-[#DC2626]">
+                  {acError}
+                </div>
+              )}
+
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => void decideAddressChange(true)}
+                  disabled={acBusy}
+                  className="rounded-lg bg-[#16A34A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#15803D] disabled:opacity-50"
+                >
+                  {acBusy ? 'Saving...' : 'Approve'}
+                </button>
+                <button
+                  onClick={() => void decideAddressChange(false)}
+                  disabled={acBusy}
+                  className="rounded-lg border border-[#DC2626]/40 px-4 py-2 text-sm font-semibold text-[#DC2626] hover:bg-[#DC2626]/5 disabled:opacity-50"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {d.disputedAt && (
         <div className="mt-4 rounded-xl border border-[#DC2626]/30 bg-[#DC2626]/5 p-4">
