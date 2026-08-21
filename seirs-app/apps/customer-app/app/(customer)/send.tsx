@@ -24,7 +24,7 @@ import { DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { Illustration } from '@/components/Illustration';
 import {
   ArrowLeft, ArrowRight, Truck, Calendar, CreditCard,
-  Camera, X, CheckCircle, Zap, Moon, MapPin, Store, Bike, Clock,
+  Camera, X, CheckCircle, Zap, Moon, MapPin, Store, Bike, Clock, AlertCircle,
 } from 'lucide-react-native';
 
 // Places and geocoding go through our backend (security review
@@ -894,11 +894,8 @@ export default function SendScreen() {
           {/* Banner only for errors with no single field to point at
               (booking failures, network). Missing-field messages now
               render under the field itself. */}
-          {!!error && !invalidField && (
-            <View style={[styles.errorBox, { backgroundColor: '#EF444415' }]}>
-              <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
-            </View>
-          )}
+          {/* Errors render in the footer, business-style: on screen at
+              every scroll position, next to the button that caused them. */}
 
           {/* Per-step illustration + caption: the DHL pattern. Anchors
               each step with a visual cue so the user knows what they're
@@ -916,7 +913,7 @@ export default function SendScreen() {
             if (!slot) return null;
             return (
               <View style={styles.stepHero}>
-                <Illustration name={slot.name} size={140} />
+                <Illustration name={slot.name} size={130} />
                 <Text style={[styles.stepHeroCaption, { color: theme.textSecond }]}>
                   {t(`send.${slot.captionKey}`)}
                 </Text>
@@ -1305,7 +1302,6 @@ export default function SendScreen() {
               </Text>
               <View style={[styles.inputBlock, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
                 <View style={styles.inputRow}>
-                  <View style={[styles.dot, { backgroundColor: '#22C55E' }]} />
                   <TextInput
                     value={pickupQuery}
                     onChangeText={(t) => onChangeQuery('pickup', t)}
@@ -1321,6 +1317,15 @@ export default function SendScreen() {
                   )}
                 </View>
               </View>
+
+              {/* Always on screen, like business: finding yourself
+                  should not require discovering that focusing the field
+                  reveals the option. */}
+              <Pressable style={styles.useLocBtn} onPress={() => useMyLocation('pickup')}>
+                <Ionicons name="locate" size={16} color={theme.primary} />
+                <Text style={[styles.useLocText, { color: theme.primary }]}>{t('send.useMyLocation')}</Text>
+                {searching && <ActivityIndicator size="small" color={theme.primary} />}
+              </Pressable>
 
               {pickupMode === 'store' && storePicked && (
                 <Pressable
@@ -1384,11 +1389,13 @@ export default function SendScreen() {
 
               {showSuggestions && activeField !== null && (
                 <View style={styles.suggestList}>
+                  {pkgIndexOf(activeField) !== null && (
                   <Pressable style={styles.useLocBtn} onPress={() => useMyLocation(activeField)}>
                     <Ionicons name="locate" size={18} color={theme.primary} />
                     <Text style={[styles.useLocText, { color: theme.primary }]}>{t('send.useMyLocation')}</Text>
                     {searching && <ActivityIndicator size="small" color={theme.primary} />}
                   </Pressable>
+                  )}
                   {predictions.map(p => (
                     <Pressable
                       key={p.place_id}
@@ -1407,7 +1414,7 @@ export default function SendScreen() {
                 </View>
               )}
 
-              {activeField !== null && predictions.length === 0 && (
+              {activeField !== null && pkgIndexOf(activeField) !== null && predictions.length === 0 && (
                 <Pressable style={[styles.useLocBtn, { borderTopColor: theme.border, borderTopWidth: 1 }]} onPress={() => useMyLocation(activeField)}>
                   <Ionicons name="locate" size={18} color={theme.primary} />
                   <Text style={[styles.useLocText, { color: theme.primary }]}>{t('send.useMyLocation')}</Text>
@@ -1696,6 +1703,12 @@ export default function SendScreen() {
           borderTopColor: theme.border,
           paddingBottom: Spacing.md + insets.bottom,
         }]}>
+          {!!error && !invalidField && (
+            <View style={styles.footerError}>
+              <AlertCircle size={15} color="#DC2626" />
+              <Text style={styles.footerErrorText}>{error}</Text>
+            </View>
+          )}
           <Pressable
             style={[styles.cta, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
             onPress={step < 3 ? next : handleBook}
@@ -1729,6 +1742,12 @@ const styles = StyleSheet.create({
   stepDots:     { flexDirection: 'row', gap: 4 },
   stepDot:      { width: 8, height: 8, borderRadius: 4 },
   ctaBar:       { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, borderTopWidth: 1 },
+  footerError: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#EF444418', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10,
+  },
+  footerErrorText: { flex: 1, color: '#DC2626', fontSize: 13, fontWeight: '600' },
   mapCard:      { height: 220, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   mapInline:    { ...StyleSheet.absoluteFillObject },
   stepGap:      { gap: Spacing.md },
@@ -1743,14 +1762,14 @@ const styles = StyleSheet.create({
                   paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
   addPkgText:   { fontSize: 14, fontWeight: '700' as const },
   stepHero:        { alignItems: 'center', gap: 8, marginBottom: Spacing.md },
-  stepHeroCaption: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, textAlign: 'center' },
+  stepHeroCaption: { fontSize: 13, textAlign: 'center', maxWidth: 280, lineHeight: 18 },
 
   errorBox:     { padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.sm },
   errorText:    { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
   // Inline message under the offending field, so the instruction sits
   // where the fix happens rather than in a banner further up.
   fieldError:   { fontSize: FontSize.xs, lineHeight: 17, marginTop: -Spacing.xs, marginBottom: Spacing.sm },
-  label:        { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  label:        { fontSize: 12, fontWeight: '600', marginTop: 8, marginBottom: 6 },
   hintText:     { fontSize: FontSize.sm, lineHeight: 20 },
 
   // Photos
@@ -1773,10 +1792,10 @@ const styles = StyleSheet.create({
   input:        { minHeight: 48, borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md, paddingVertical: 10, fontSize: 14 },
 
   // Address picker block (matches Request screen)
-  inputBlock:   { borderWidth: 1.5, borderRadius: Radius.lg, paddingVertical: 4 },
+  inputBlock:   { borderWidth: 1, borderRadius: 10, paddingVertical: 2 },
   inputRow:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md, height: 48 },
   dot:          { width: 10, height: 10, borderRadius: 5 },
-  inputField:   { flex: 1, fontSize: FontSize.base, paddingVertical: 0 },
+  inputField:   { flex: 1, fontSize: 14, paddingVertical: 0 },
   divider:      { height: 1, marginLeft: Spacing.md + 18 },
 
   routeStat:        { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
@@ -1785,12 +1804,12 @@ const styles = StyleSheet.create({
   routeStatDivider: { width: 1, height: 22, marginHorizontal: Spacing.sm },
 
   suggestList:  { },
-  useLocBtn:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md, paddingHorizontal: 4 },
-  useLocText:   { fontSize: FontSize.base, fontWeight: FontWeight.semibold, flex: 1 },
+  useLocBtn:    { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 4 },
+  useLocText:   { fontSize: 13, fontWeight: '600', flex: 1 },
   suggRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md, paddingHorizontal: 4, borderTopWidth: 1 },
   suggIcon:     { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  suggMain:     { fontSize: FontSize.base, fontWeight: FontWeight.medium },
-  suggSub:      { fontSize: FontSize.xs, marginTop: 2 },
+  suggMain:     { fontSize: 13, fontWeight: '500' },
+  suggSub:      { fontSize: 11, marginTop: 1 },
 
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   categoryChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full, borderWidth: 1.5 },
@@ -1805,9 +1824,9 @@ const styles = StyleSheet.create({
   recBadge:       { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.full },
   recText:        { color: '#fff', fontSize: 10, fontWeight: FontWeight.bold },
 
-  scheduleOpt:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.lg, borderRadius: Radius.xl, borderWidth: 1.5 },
-  scheduleTitle: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  scheduleDesc:  { fontSize: FontSize.sm, marginTop: 2 },
+  scheduleOpt:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1.5, marginBottom: 10 },
+  scheduleTitle: { fontSize: 15, fontWeight: '700' },
+  scheduleDesc:  { fontSize: 12, marginTop: 2 },
   scheduleCard:  { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1 },
   chipRow:       { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   timeChip:      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.full, borderWidth: 1.5 },

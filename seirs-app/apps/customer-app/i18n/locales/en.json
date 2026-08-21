@@ -108,7 +108,7 @@
     "category": "Category",
     "weightKg": "Weight (kg)",
     "errReceiverMissing": "Enter the receiver's first name. The driver asks for this person by name at handoff.",
-    "pickupAddress": "Pickup address",
+    "pickupAddress": "Where the driver collects everything",
     "dropoffAddress": "Dropoff address",
     "mapPreview": "Map preview",
     "vehicleRecommended": "We highlighted the recommended vehicle for your package.",
