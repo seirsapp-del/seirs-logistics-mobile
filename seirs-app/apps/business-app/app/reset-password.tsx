@@ -158,13 +158,13 @@ const styles = StyleSheet.create({
   body:       { padding: 24, flexGrow: 1 },
   centerWrap: { alignItems: 'center', gap: 10, marginBottom: 24, marginTop: 24 },
   heading:    { fontSize: 24, fontWeight: '800', marginBottom: 4 },
-  desc:       { fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  desc:       { fontSize: 15, lineHeight: 21, textAlign: 'center' },
   errorBox:   {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 16,
   },
-  errorText:  { fontSize: 13, flex: 1 },
-  label:      { fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  errorText:  { fontSize: 14, flex: 1 },
+  label:      { fontSize: 14, fontWeight: '600', marginBottom: 6 },
   inputWrap:  {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,

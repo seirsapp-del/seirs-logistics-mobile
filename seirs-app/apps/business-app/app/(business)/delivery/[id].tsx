@@ -218,7 +218,7 @@ export default function DeliveryDetailScreen() {
             <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
               Nobody available to receive
             </Text>
-            <Text style={{ fontSize: 13, color: colors.textSecond, lineHeight: 19 }}>
+            <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
               The rider is at the drop-off and cannot hand the package over. If we do
               not hear from you it will follow your booked fallback.
             </Text>
@@ -231,7 +231,7 @@ export default function DeliveryDetailScreen() {
             <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
               Waiting at a partner store
             </Text>
-            <Text style={{ fontSize: 13, color: colors.textSecond, lineHeight: 19 }}>
+            <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
               Nobody was available, so this is being kept safe at a SEIRS partner
               store. {fmt(d.redirectFeeOwedNgn)} settles it and reveals the pickup
               location.
@@ -240,12 +240,12 @@ export default function DeliveryDetailScreen() {
               onPress={payRedirectFee}
               style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#F59E0B' }}
             >
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
                 Pay {fmt(d.redirectFeeOwedNgn)}
               </Text>
             </Pressable>
             <Pressable onPress={shareCollectLink} style={{ marginTop: 8, paddingVertical: 8, alignItems: 'center' }}>
-              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>
+              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>
                 Send the collection link to the recipient
               </Text>
             </Pressable>
@@ -258,7 +258,7 @@ export default function DeliveryDetailScreen() {
             <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
               Return to sender: {String(d.returnStatus)}
             </Text>
-            <Text style={{ fontSize: 13, color: colors.textSecond, lineHeight: 19 }}>
+            <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
               Going back to {d.pickupAddress}.
               {d.returnStatus === 'pending' ? ' Support is reviewing it.' : ''}
               {d.returnStatus === 'applied' ? ' On its way back to you.' : ''}
@@ -268,7 +268,7 @@ export default function DeliveryDetailScreen() {
                 onPress={payReturn}
                 style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#7C3AED' }}
               >
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
                   Pay {fmt(d.returnQuoteNgn)} to start the return
                 </Text>
               </Pressable>
@@ -282,10 +282,10 @@ export default function DeliveryDetailScreen() {
             onPress={requestReturn}
             style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}
           >
-            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>
               Need this package back?
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textThird, marginTop: 2 }}>
+            <Text style={{ fontSize: 13, color: colors.textThird, marginTop: 2 }}>
               Priced from where it is now, back to your pickup address
             </Text>
           </Pressable>
@@ -350,7 +350,7 @@ export default function DeliveryDetailScreen() {
 
         {stops.length === 0 && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={{ color: colors.textSecond, fontSize: 13 }}>
+            <Text style={{ color: colors.textSecond, fontSize: 14 }}>
               {d.dropoffAddress ?? 'No package details recorded for this delivery.'}
             </Text>
           </View>
@@ -368,20 +368,20 @@ const styles = StyleSheet.create({
   header:   { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, borderBottomWidth: 1 },
   backBtn:  { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   title:    { fontSize: 16, fontWeight: '800' },
-  sub:      { fontSize: 12, marginTop: 2 },
+  sub:      { fontSize: 13, marginTop: 2 },
   badge:    { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
-  badgeText:{ fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+  badgeText:{ fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
   card:     { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 12, gap: 6 },
-  cardLabel:{ fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-  cardValue:{ fontSize: 14, fontWeight: '600' },
+  cardLabel:{ fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  cardValue:{ fontSize: 15, fontWeight: '600' },
   divider:  { height: 1, marginVertical: 8 },
   rowBetween:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  sectionTitle:{ fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginBottom: 8, marginTop: 6 },
-  pkgTitle: { fontSize: 14, fontWeight: '700', flex: 1 },
-  pkgMeta:  { fontSize: 12 },
+  sectionTitle:{ fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 8, marginTop: 6 },
+  pkgTitle: { fontSize: 15, fontWeight: '700', flex: 1 },
+  pkgMeta:  { fontSize: 13 },
   pkgRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   codeRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, paddingTop: 10, marginTop: 4 },
-  code:     { flex: 1, fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  code:     { flex: 1, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
   codeBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  codeBtnText:{ fontSize: 12, fontWeight: '700' },
+  codeBtnText:{ fontSize: 13, fontWeight: '700' },
 });

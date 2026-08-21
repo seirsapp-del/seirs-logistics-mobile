@@ -52,6 +52,8 @@
     "goodAfternoon": "Good afternoon",
     "goodEvening": "Good evening",
     "whereToSend": "Where are you sending to?",
+    "deliveryAwaitingPayment": "Waiting for payment",
+    "deliveryFindingRider": "Finding you a rider",
     "deliveryInProgress": "Delivery in progress",
     "heroTagline": "Move anything, anywhere in Nigeria",
     "heroBadgeOutlet": "New outlet",

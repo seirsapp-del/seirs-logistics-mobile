@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import {
-  View, Text, Pressable, StyleSheet, FlatList, TextInput, ActivityIndicator, Alert, Linking,
+  View, Text, Pressable, StyleSheet, FlatList, TextInput, ActivityIndicator, Alert, Linking, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
@@ -241,19 +241,19 @@ export default function DeliveriesScreen() {
         )}
       </View>
 
-      <FlatList
+      <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        data={STATUSES}
-        keyExtractor={(s) => s}
         contentContainerStyle={styles.tabs}
         style={{ flexGrow: 0 }}
-        renderItem={({ item: s }) => {
+      >
+        {STATUSES.map((s) => {
           const active = status === s;
           // 'All' has no status color of its own: uses the brand primary.
           const accent = s === 'all' ? colors.primary : STATUS_COLOR[s];
           return (
             <Pressable
+              key={s}
               style={[
                 styles.tab,
                 { backgroundColor: colors.surface, borderColor: colors.border },
@@ -274,8 +274,8 @@ export default function DeliveriesScreen() {
               </Text>
             </Pressable>
           );
-        }}
-      />
+        })}
+      </ScrollView>
 
       {loading ? (
         <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
@@ -315,21 +315,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 11,
     borderWidth: 1,
   },
-  searchInput:  { flex: 1, fontSize: 14 },
+  searchInput:  { flex: 1, fontSize: 15 },
   tabs:         { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10, gap: 10, alignItems: 'center' },
   tab:          {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24,
+    paddingHorizontal: 16, height: 44, borderRadius: 22,
     borderWidth: 1,
   },
   tabDot:       { width: 8, height: 8, borderRadius: 4 },
-  tabText:      { fontSize: 14, fontWeight: '600' },
+  tabText:      { fontSize: 15, fontWeight: '600', lineHeight: 20 },
   card:         { borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1 },
   cardTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
-  trackNum:     { fontSize: 13, fontWeight: '700', fontFamily: 'monospace' },
-  address:      { fontSize: 12, marginTop: 3 },
+  trackNum:     { fontSize: 14, fontWeight: '700', fontFamily: 'monospace' },
+  address:      { fontSize: 13, marginTop: 3 },
   badge:        { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText:    { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+  badgeText:    { fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
   cardBottom:   { flexDirection: 'row', alignItems: 'center', gap: 14 },
   cardActions:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
                   gap: 10, marginTop: 12 },
@@ -338,14 +338,14 @@ const styles = StyleSheet.create({
   // (founder 2026-08-19).
   cancelBtn:     { borderWidth: 1, borderColor: '#DC2626', borderRadius: 999,
                    paddingHorizontal: 14, paddingVertical: 6 },
-  cancelBtnText: { fontSize: 12.5, fontWeight: '700', color: '#DC2626' },
+  cancelBtnText: { fontSize: 13.5, fontWeight: '700', color: '#DC2626' },
   meta:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText:     { fontSize: 11, textTransform: 'capitalize' },
-  price:        { marginLeft: 'auto', fontSize: 13, fontWeight: '700' },
+  metaText:     { fontSize: 12, textTransform: 'capitalize' },
+  price:        { marginLeft: 'auto', fontSize: 14, fontWeight: '700' },
   cancelLink:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 12 },
   payLink:      { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
-  payLinkText:  { fontSize: 12.5, fontWeight: '700' },
-  cancelLinkText: { color: '#DC2626', fontSize: 11, fontWeight: '700' },
+  payLinkText:  { fontSize: 13.5, fontWeight: '700' },
+  cancelLinkText: { color: '#DC2626', fontSize: 12, fontWeight: '700' },
   empty:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyText:    { fontSize: 14 },
+  emptyText:    { fontSize: 15 },
 });

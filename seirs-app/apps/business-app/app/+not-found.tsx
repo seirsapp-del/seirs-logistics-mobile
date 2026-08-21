@@ -9,7 +9,7 @@ export default function NotFound() {
         Page not found
       </Text>
       <Pressable onPress={() => router.replace('/(auth)/login' as any)}>
-        <Text style={{ color: '#3A7BD5', fontSize: 14 }}>Go to login</Text>
+        <Text style={{ color: '#3A7BD5', fontSize: 15 }}>Go to login</Text>
       </Pressable>
     </View>
   );

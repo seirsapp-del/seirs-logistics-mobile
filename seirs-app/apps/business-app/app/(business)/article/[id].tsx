@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
   },
   moreBadgeText: {
     color: '#0F2B4C',
-    fontSize: 9, fontWeight: FontWeight.bold,
+    fontSize: 10, fontWeight: FontWeight.bold,
     letterSpacing: 0.5, textTransform: 'uppercase',
   },
   moreTitle: {

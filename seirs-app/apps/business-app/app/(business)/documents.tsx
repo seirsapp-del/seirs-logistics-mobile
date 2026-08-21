@@ -234,22 +234,22 @@ const styles = StyleSheet.create({
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  sectionHead: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
+  sectionHead: { fontSize: 12, fontWeight: '700', letterSpacing: 0.8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
   row:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1 },
   rowIcon:  { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  rowTitle: { fontSize: 14, fontWeight: '600' },
-  rowMeta:  { fontSize: 12, marginTop: 2, textTransform: 'capitalize' },
+  rowTitle: { fontSize: 15, fontWeight: '600' },
+  rowMeta:  { fontSize: 13, marginTop: 2, textTransform: 'capitalize' },
 
   emptyWrap:  { alignItems: 'center', paddingHorizontal: 40, paddingTop: 90, gap: 8 },
   emptyTitle: { fontSize: 15, fontWeight: '700' },
-  emptyBody:  { fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  emptyBody:  { fontSize: 14, textAlign: 'center', lineHeight: 18 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalCard:    { borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 20, gap: 8 },
   modalHandle:  { width: 40, height: 4, borderRadius: 2, backgroundColor: '#D1D1D6', alignSelf: 'center', marginBottom: 6 },
   modalTitle:   { fontSize: 17, fontWeight: '700' },
-  modalMeta:    { fontSize: 11, textTransform: 'capitalize' },
-  modalBody:    { fontSize: 13, lineHeight: 20, paddingVertical: 10 },
+  modalMeta:    { fontSize: 12, textTransform: 'capitalize' },
+  modalBody:    { fontSize: 14, lineHeight: 20, paddingVertical: 10 },
   modalBtns:    { flexDirection: 'row', gap: 10, marginTop: 6 },
   modalBtn:     { flex: 1, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

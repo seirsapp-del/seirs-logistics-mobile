@@ -209,22 +209,22 @@ export default function BusinessNotificationsScreen() {
 const styles = StyleSheet.create({
   header:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '700' },
-  markAll:     { fontSize: 13, fontWeight: '600' },
+  markAll:     { fontSize: 14, fontWeight: '600' },
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   dismissAction: { backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center', width: 80, gap: 2 },
-  dismissText:   { color: '#fff', fontSize: 11, fontWeight: '700' },
+  dismissText:   { color: '#fff', fontSize: 12, fontWeight: '700' },
 
   row:       { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   rowIcon:   { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
   rowTop:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  rowTitle:  { flex: 1, fontSize: 14, fontWeight: '600' },
-  rowBody:   { fontSize: 13, lineHeight: 18, marginTop: 2 },
-  rowTime:   { fontSize: 11, marginTop: 4 },
+  rowTitle:  { flex: 1, fontSize: 15, fontWeight: '600' },
+  rowBody:   { fontSize: 14, lineHeight: 18, marginTop: 2 },
+  rowTime:   { fontSize: 12, marginTop: 4 },
   unreadDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
 
   emptyWrap:  { alignItems: 'center', paddingHorizontal: 40, paddingTop: 90, gap: 8 },
   emptyTitle: { fontSize: 15, fontWeight: '700' },
-  emptyBody:  { fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  emptyBody:  { fontSize: 14, textAlign: 'center', lineHeight: 18 },
 });

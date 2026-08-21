@@ -331,10 +331,10 @@ function CreateTemplateModal({ visible, onClose, onCreated }: {
                       borderColor: on ? colors.accent : colors.border,
                     }]}
                   >
-                    <Text style={{ color: colors.text, fontWeight: '600', fontSize: 13 }} numberOfLines={1}>
+                    <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }} numberOfLines={1}>
                       {d.dropoffAddress ?? d.trackingCode ?? 'Delivery'}
                     </Text>
-                    <Text style={{ color: colors.textSecond, fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+                    <Text style={{ color: colors.textSecond, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
                       {d.pickupAddress ?? ''} {d.distanceKm ? `· ${d.distanceKm} km` : ''}
                     </Text>
                   </Pressable>
@@ -365,7 +365,7 @@ function CreateTemplateModal({ visible, onClose, onCreated }: {
                     borderColor:     on ? colors.accent : colors.border,
                   }]}
                 >
-                  <Text style={{ color: on ? '#fff' : colors.text, fontWeight: '600', fontSize: 13 }}>
+                  <Text style={{ color: on ? '#fff' : colors.text, fontWeight: '600', fontSize: 14 }}>
                     {CADENCE_LABEL[c]}
                   </Text>
                 </Pressable>
@@ -388,7 +388,7 @@ function CreateTemplateModal({ visible, onClose, onCreated }: {
                         borderColor:     on ? colors.primary : colors.border,
                       }]}
                     >
-                      <Text style={{ color: on ? '#fff' : colors.text, fontWeight: '600', fontSize: 12 }}>{label}</Text>
+                      <Text style={{ color: on ? '#fff' : colors.text, fontWeight: '600', fontSize: 13 }}>{label}</Text>
                     </Pressable>
                   );
                 })}
@@ -425,7 +425,7 @@ function CreateTemplateModal({ visible, onClose, onCreated }: {
               maxLength={2}
               style={[styles.input, { width: 70, textAlign: 'center', color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
             />
-            <Text style={{ color: colors.textSecond, fontSize: 12 }}>24-hour</Text>
+            <Text style={{ color: colors.textSecond, fontSize: 13 }}>24-hour</Text>
           </View>
 
           <Pressable
@@ -456,35 +456,35 @@ const styles = StyleSheet.create({
   hero:      { backgroundColor: '#0F2B4C', borderRadius: 16, padding: 20, gap: 8, alignItems: 'flex-start' },
   heroIcon:  { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   heroTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  heroSub:   { color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 19 },
+  heroSub:   { color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 19 },
 
   empty:        { alignItems: 'center', gap: 10, paddingVertical: 32, textAlign: 'center' as any },
   emptyTitle:   { fontSize: 16, fontWeight: '700' },
-  emptySub:     { fontSize: 13, textAlign: 'center', paddingHorizontal: 32, lineHeight: 18 },
+  emptySub:     { fontSize: 14, textAlign: 'center', paddingHorizontal: 32, lineHeight: 18 },
 
   note:      { flexDirection: 'row', gap: 8, alignItems: 'flex-start', padding: 12, backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 10 },
-  noteText:  { flex: 1, fontSize: 12, lineHeight: 17 },
+  noteText:  { flex: 1, fontSize: 13, lineHeight: 17 },
 
   templateCard: { borderRadius: 12, padding: 14, borderWidth: 1, gap: 10 },
   templateRow:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
   templateIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  templateName: { fontSize: 14, fontWeight: '700' },
-  templateMeta: { fontSize: 11, marginTop: 2 },
-  errorLine:    { fontSize: 11, color: '#DC2626', marginTop: 2 },
+  templateName: { fontSize: 15, fontWeight: '700' },
+  templateMeta: { fontSize: 12, marginTop: 2 },
+  errorLine:    { fontSize: 12, color: '#DC2626', marginTop: 2 },
 
   deleteRow:    { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' },
-  deleteText:   { fontSize: 11, color: '#DC2626', fontWeight: '600' },
+  deleteText:   { fontSize: 12, color: '#DC2626', fontWeight: '600' },
 
   addBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed' },
-  addBtnText:{ fontSize: 14, fontWeight: '700' },
+  addBtnText:{ fontSize: 15, fontWeight: '700' },
 
-  fieldLabel:   { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 },
-  input:        { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
+  fieldLabel:   { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 },
+  input:        { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
 
   pickCard:     { borderRadius: 10, padding: 12, borderWidth: 1.5 },
   cadenceChip:  { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   dayChip:      { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1 },
 
   submitBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginTop: 24 },
-  submitText:   { color: '#fff', fontWeight: '700', fontSize: 14 },
+  submitText:   { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

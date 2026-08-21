@@ -110,6 +110,7 @@ export default function CustomerHomeScreen() {
         date:           d.deliveredAt ?? d.createdAt ?? new Date().toISOString(),
         dropoffAddress: d.dropoffAddress ?? '-',
         price:          Number(d.price ?? 0),
+        unpaid:         !d.paymentHeldAt && String(d.status ?? 'pending') === 'pending',
         distance:       d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '',
       }));
       setTrips(mapped);
@@ -187,9 +188,17 @@ export default function CustomerHomeScreen() {
             style={[styles.activeBanner, { backgroundColor: isDark ? '#1C2128' : '#EBF5FF', borderColor: theme.accent }]}
             onPress={() => router.push({ pathname: '/(customer)/trip/[id]', params: { id: activeTrip.id } } as any)}
           >
-            <View style={[styles.activeDot, { backgroundColor: theme.success }]} />
+            {/* Green pulses only for real movement. An unpaid booking is
+                amber and says so: "in progress" was a lie for it. */}
+            <View style={[styles.activeDot, { backgroundColor: activeTrip.unpaid ? '#D97706' : theme.success }]} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.activeBannerTitle, { color: theme.text }]}>{t('home.deliveryInProgress')}</Text>
+              <Text style={[styles.activeBannerTitle, { color: theme.text }]}>
+                {activeTrip.unpaid
+                  ? t('home.deliveryAwaitingPayment', { defaultValue: 'Waiting for payment' })
+                  : activeTrip.status === 'pending'
+                    ? t('home.deliveryFindingRider', { defaultValue: 'Finding you a rider' })
+                    : t('home.deliveryInProgress')}
+              </Text>
               <Text style={[styles.activeBannerSub, { color: theme.textSecond }]} numberOfLines={1}>
                 To {activeTrip.dropoffAddress}
               </Text>

@@ -52,7 +52,7 @@ export default function LanguageScreen() {
 const styles = StyleSheet.create({
   header:  { paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1 },
   heading: { fontSize: 20, fontWeight: '800' },
-  sub:     { fontSize: 13, marginTop: 4 },
+  sub:     { fontSize: 14, marginTop: 4 },
   list:    { padding: 16, gap: 10 },
   item:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 14, padding: 18, borderWidth: 1.5 },
   label:   { fontSize: 15, fontWeight: '600' },

@@ -110,20 +110,20 @@ const styles = StyleSheet.create({
 
   statsRow:  { flexDirection: 'row', gap: 10 },
   statCard:  { flex: 1, borderRadius: 12, padding: 16, borderWidth: 1, alignItems: 'flex-start' },
-  statLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  statLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
   statValue: { fontSize: 28, fontWeight: '800', marginTop: 4 },
 
   bigCard:   { backgroundColor: '#0F2B4C', borderRadius: 16, padding: 24 },
-  bigLabel:  { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  bigLabel:  { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
   bigValue:  { color: '#fff', fontSize: 40, fontWeight: '800', marginTop: 8 },
-  bigSub:    { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 },
+  bigSub:    { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 },
 
   note:      { flexDirection: 'row', gap: 8, padding: 12, backgroundColor: '#FEF9C3', borderColor: '#FDE68A', borderWidth: 1, borderRadius: 10, alignItems: 'flex-start' },
-  noteText:  { flex: 1, fontSize: 12, color: '#92400E', lineHeight: 17 },
+  noteText:  { flex: 1, fontSize: 13, color: '#92400E', lineHeight: 17 },
 
   benefitsCard: { borderRadius: 12, padding: 16, gap: 8, borderWidth: 1 },
-  benefitsTitle:{ fontSize: 13, fontWeight: '700' },
+  benefitsTitle:{ fontSize: 14, fontWeight: '700' },
   benefitRow:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
   benefitIcon:  { width: 24, height: 24, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  benefitText:  { flex: 1, fontSize: 12 },
+  benefitText:  { flex: 1, fontSize: 13 },
 });

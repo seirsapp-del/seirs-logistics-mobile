@@ -134,22 +134,22 @@ const styles = StyleSheet.create({
   content:   { padding: 16, gap: 10 },
 
   intro:     { flexDirection: 'row', gap: 8, padding: 12, borderRadius: 10, alignItems: 'center' },
-  introText: { flex: 1, fontSize: 12, lineHeight: 17 },
+  introText: { flex: 1, fontSize: 13, lineHeight: 17 },
 
   empty:     { alignItems: 'center', gap: 8, paddingVertical: 40 },
-  emptyText: { fontSize: 14, fontWeight: '700' },
-  emptySub:  { fontSize: 12, textAlign: 'center', paddingHorizontal: 32 },
+  emptyText: { fontSize: 15, fontWeight: '700' },
+  emptySub:  { fontSize: 13, textAlign: 'center', paddingHorizontal: 32 },
 
   card:      { borderRadius: 12, padding: 14, gap: 6, borderWidth: 1.5 },
   cardTop:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  eventName: { flex: 1, fontSize: 13, fontWeight: '700' },
-  timestamp: { fontSize: 11 },
+  eventName: { flex: 1, fontSize: 14, fontWeight: '700' },
+  timestamp: { fontSize: 12 },
   cardMeta:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  statusBadge:{ fontSize: 10, fontWeight: '700', borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  metaText:  { fontSize: 11 },
+  statusBadge:{ fontSize: 11, fontWeight: '700', borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  metaText:  { fontSize: 12 },
 
   payloadBox:  { padding: 10, borderRadius: 8, marginTop: 6 },
-  payloadLabel:{ fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 },
-  payloadText: { fontSize: 11, fontFamily: 'monospace' },
+  payloadLabel:{ fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 },
+  payloadText: { fontSize: 12, fontFamily: 'monospace' },
 });

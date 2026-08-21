@@ -148,14 +148,14 @@ const styles = StyleSheet.create({
   back:      { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginLeft: -8, marginBottom: 32 },
   iconWrap:  { width: 72, height: 72, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   heading:   { fontSize: 26, fontWeight: '800', marginBottom: 10 },
-  sub:       { fontSize: 14, lineHeight: 22, marginBottom: 28 },
+  sub:       { fontSize: 15, lineHeight: 22, marginBottom: 28 },
   emailText: { fontWeight: '600' },
   errorBox:  {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
     borderRadius: 10, padding: 12, marginBottom: 20,
   },
-  errorText: { color: '#DC2626', fontSize: 13, flex: 1 },
+  errorText: { color: '#DC2626', fontSize: 14, flex: 1 },
   boxes:     { flexDirection: 'row', gap: 10, marginBottom: 28, justifyContent: 'center' },
   box:       {
     width: 46, height: 54, borderRadius: 12, borderWidth: 1.5,
@@ -165,5 +165,5 @@ const styles = StyleSheet.create({
   btnDisabled:{ opacity: 0.4 },
   btnText:    { color: '#fff', fontWeight: '700', fontSize: 16 },
   resend:     { alignItems: 'center', marginTop: 20 },
-  resendText: { fontWeight: '600', fontSize: 14 },
+  resendText: { fontWeight: '600', fontSize: 15 },
 });

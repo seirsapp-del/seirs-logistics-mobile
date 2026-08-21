@@ -223,7 +223,7 @@ export default function PartnerSettingsScreen() {
               </Text>
               <Text style={[styles.accountEmail, { color: colors.textSecond }]}>{user?.email}</Text>
               {(user as any)?.accountId && (
-                <Text style={{ fontSize: 11, color: colors.textThird, marginTop: 2, letterSpacing: 0.5 }}>
+                <Text style={{ fontSize: 12, color: colors.textThird, marginTop: 2, letterSpacing: 0.5 }}>
                   SEIRS ID: {(user as any).accountId}
                 </Text>
               )}
@@ -279,9 +279,9 @@ const styles = StyleSheet.create({
   heading:       { fontSize: 20, fontWeight: '800' },
 
   section:       { borderRadius: 14, padding: 16, borderWidth: 1, marginBottom: 12 },
-  sectionTitle:  { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
+  sectionTitle:  { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
 
-  label:         { fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  label:         { fontSize: 14, fontWeight: '600', marginBottom: 6 },
   input:         {
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
     borderWidth: 1, fontSize: 15, marginBottom: 14,
@@ -290,25 +290,25 @@ const styles = StyleSheet.create({
 
   daysRow:       { flexDirection: 'row', gap: 6, marginBottom: 14, flexWrap: 'wrap' },
   dayBtn:        { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
-  dayBtnText:    { fontSize: 12, fontWeight: '600' },
+  dayBtnText:    { fontSize: 13, fontWeight: '600' },
 
   timeRow:       { flexDirection: 'row', gap: 12 },
 
   notifRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: 1 },
-  notifLabel:    { fontSize: 14, fontWeight: '600' },
-  notifSub:      { fontSize: 12, marginTop: 2 },
+  notifLabel:    { fontSize: 15, fontWeight: '600' },
+  notifSub:      { fontSize: 13, marginTop: 2 },
 
   accountRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  accountLabel:  { fontSize: 14, fontWeight: '700' },
-  accountEmail:  { fontSize: 12, marginTop: 1 },
+  accountLabel:  { fontSize: 15, fontWeight: '700' },
+  accountEmail:  { fontSize: 13, marginTop: 1 },
 
   linkRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 14, paddingHorizontal: 16, borderTopWidth: 1,
   },
-  linkRowText: { flex: 1, fontSize: 14, fontWeight: '600' },
+  linkRowText: { flex: 1, fontSize: 15, fontWeight: '600' },
   logoutBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, borderTopWidth: 1 },
-  logoutText:    { fontSize: 14, fontWeight: '600', color: '#DC2626' },
+  logoutText:    { fontSize: 15, fontWeight: '600', color: '#DC2626' },
 
   saveBtn:       { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
   saveBtnDisabled: { opacity: 0.5 },
@@ -316,16 +316,16 @@ const styles = StyleSheet.create({
 
   // Closing section. red semantic colors retained for destructive action
   closingSection: { backgroundColor: '#FFFBFB', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#FCA5A5', marginTop: 24 },
-  closingTitle:   { fontSize: 14, fontWeight: '800', color: '#991B1B', marginBottom: 4 },
-  closingSub:     { fontSize: 12, color: '#7F1D1D', lineHeight: 17, marginBottom: 12 },
+  closingTitle:   { fontSize: 15, fontWeight: '800', color: '#991B1B', marginBottom: 4 },
+  closingSub:     { fontSize: 13, color: '#7F1D1D', lineHeight: 17, marginBottom: 12 },
   blockerCard:    { flexDirection: 'row', gap: 10, padding: 10, borderRadius: 10, backgroundColor: '#FEF3C7', marginBottom: 8, alignItems: 'flex-start' },
-  blockerCount:   { fontSize: 11, fontWeight: '800', color: '#92400E', backgroundColor: '#FCD34D', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  blockerText:    { flex: 1, fontSize: 12, color: '#92400E', lineHeight: 17 },
+  blockerCount:   { fontSize: 12, fontWeight: '800', color: '#92400E', backgroundColor: '#FCD34D', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  blockerText:    { flex: 1, fontSize: 13, color: '#92400E', lineHeight: 17 },
   closeBtn:       { backgroundColor: '#DC2626', borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 12 },
   closeBtnDisabled: { backgroundColor: '#F3F4F6' },
-  closeBtnText:   { color: '#fff', fontWeight: '700', fontSize: 14 },
+  closeBtnText:   { color: '#fff', fontWeight: '700', fontSize: 15 },
   closeBtnTextDisabled: { color: '#9CA3AF' },
-  readyTip:       { fontSize: 12, color: '#16A34A', marginBottom: 8, fontWeight: '600' },
+  readyTip:       { fontSize: 13, color: '#16A34A', marginBottom: 8, fontWeight: '600' },
 });
 
 // ── Closing flow ──────────────────────────────────────────────────────────

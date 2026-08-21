@@ -132,16 +132,16 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   logoRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24 },
   logoText:   { fontSize: 20, fontWeight: '900', letterSpacing: 3 },
-  logoSub:    { fontSize: 11, marginTop: 1 },
+  logoSub:    { fontSize: 12, marginTop: 1 },
   body:       { padding: 24, flexGrow: 1 },
   heading:    { fontSize: 24, fontWeight: '800', marginBottom: 8, marginTop: 8 },
-  subheading: { fontSize: 14, lineHeight: 20, marginBottom: 20 },
+  subheading: { fontSize: 15, lineHeight: 20, marginBottom: 20 },
   errorBox:   {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 16,
   },
-  errorText:  { fontSize: 13, flex: 1 },
-  label:      { fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  errorText:  { fontSize: 14, flex: 1 },
+  label:      { fontSize: 14, fontWeight: '600', marginBottom: 6 },
   inputWrap:  {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
@@ -152,12 +152,12 @@ const styles = StyleSheet.create({
   btnDisabled:{ opacity: 0.5 },
   btnText:    { fontWeight: '700', fontSize: 16 },
   footer:     { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  footerText: { fontSize: 14 },
-  footerLink: { fontWeight: '600', fontSize: 14 },
+  footerText: { fontSize: 15 },
+  footerLink: { fontWeight: '600', fontSize: 15 },
   sentWrap:   { alignItems: 'center', gap: 8, marginTop: 24, marginBottom: 24 },
   sentIcon:   {
     width: 88, height: 88, borderRadius: 44,
     alignItems: 'center', justifyContent: 'center', marginBottom: 8,
   },
-  sentDesc:   { fontSize: 14, lineHeight: 21, textAlign: 'center', paddingHorizontal: 12 },
+  sentDesc:   { fontSize: 15, lineHeight: 21, textAlign: 'center', paddingHorizontal: 12 },
 });

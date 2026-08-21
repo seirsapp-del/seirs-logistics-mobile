@@ -349,28 +349,28 @@ const styles = StyleSheet.create({
   // register is a one-shot screen seen only during signup.
   backBtn:    { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginLeft: -8 },
   heading:    { fontSize: 24, fontWeight: '800', color: '#0F2B4C', marginBottom: 8 },
-  sub:        { fontSize: 14, color: '#6B7280', marginBottom: 24, lineHeight: 20 },
+  sub:        { fontSize: 15, color: '#6B7280', marginBottom: 24, lineHeight: 20 },
   errorBox:   {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
     borderRadius: 10, padding: 12, marginBottom: 16,
   },
-  errorText:  { color: '#DC2626', fontSize: 13, flex: 1 },
-  label:      { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
+  errorText:  { color: '#DC2626', fontSize: 14, flex: 1 },
+  label:      { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6 },
   inputWrap:  {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
     borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 14,
   },
   input:      { fontSize: 15, color: '#0F2B4C' },
-  fieldError: { color: '#EF4444', fontSize: 12, marginTop: -10, marginBottom: 12, marginLeft: 4 },
+  fieldError: { color: '#EF4444', fontSize: 13, marginTop: -10, marginBottom: 12, marginLeft: 4 },
   checkRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
   checkbox:   {
     width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: '#D1D5DB',
     alignItems: 'center', justifyContent: 'center', marginTop: 1,
   },
   checkboxActive: { backgroundColor: '#0F2B4C', borderColor: '#0F2B4C' },
-  checkLabel: { flex: 1, fontSize: 13, color: '#374151', lineHeight: 20 },
+  checkLabel: { flex: 1, fontSize: 14, color: '#374151', lineHeight: 20 },
   linkText:   { color: '#3A7BD5', fontWeight: '600', textDecorationLine: 'underline' },
   btn:        {
     backgroundColor: '#0F2B4C', borderRadius: 14, paddingVertical: 16,
@@ -379,6 +379,6 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.4 },
   btnText:    { color: '#fff', fontWeight: '700', fontSize: 16 },
   signinRow:  { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  signinText: { color: '#6B7280', fontSize: 14 },
-  signinLink: { color: '#3A7BD5', fontWeight: '600', fontSize: 14 },
+  signinText: { color: '#6B7280', fontSize: 15 },
+  signinLink: { color: '#3A7BD5', fontWeight: '600', fontSize: 15 },
 });

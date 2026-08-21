@@ -36,7 +36,7 @@ export default function PartnerLayout() {
         },
         tabBarActiveTintColor:   colors.accent,
         tabBarInactiveTintColor: colors.tabIconDefault,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
       }}
     >
       {/* FIVE tabs, no more (founder 2026-08-16: the footer was crammed).

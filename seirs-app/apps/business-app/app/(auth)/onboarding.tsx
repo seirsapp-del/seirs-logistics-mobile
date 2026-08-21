@@ -143,7 +143,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   brandRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingTop: 18 },
-  brandSub:  { color: '#FFBE0B', fontSize: 11, fontWeight: '800', letterSpacing: 2, marginLeft: 2 },
+  brandSub:  { color: '#FFBE0B', fontSize: 12, fontWeight: '800', letterSpacing: 2, marginLeft: 2 },
   slide:     { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingTop: 40 },
   iconWrap:  {
     width: 100, height: 100, borderRadius: 28,

@@ -221,7 +221,7 @@ export default function BusinessEditProfileScreen() {
               <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: 1, marginTop: 2 }}>
                 {(user as any).accountId}
               </Text>
-              <Text style={{ fontSize: 11, color: colors.textThird, marginTop: 4 }}>
+              <Text style={{ fontSize: 12, color: colors.textThird, marginTop: 4 }}>
                 Use this when contacting support. Identifies your account without needing to share your email.
               </Text>
             </View>
@@ -241,8 +241,8 @@ export default function BusinessEditProfileScreen() {
               value={firstName} onChangeText={setFirstName}
               style={[styles.input, { borderColor: errors.firstName ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="Adebayo" placeholderTextColor={colors.textThird} />
-            {errors.firstName && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.firstName}</Text>}
-            <Text style={{ fontSize: 11, color: colors.textThird }}>30-day change limit</Text>
+            {errors.firstName && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.firstName}</Text>}
+            <Text style={{ fontSize: 12, color: colors.textThird }}>30-day change limit</Text>
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -252,7 +252,7 @@ export default function BusinessEditProfileScreen() {
               value={middleName} onChangeText={setMiddleName}
               style={[styles.input, { borderColor: errors.middleName ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="" placeholderTextColor={colors.textThird} />
-            {errors.middleName && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.middleName}</Text>}
+            {errors.middleName && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.middleName}</Text>}
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -262,8 +262,8 @@ export default function BusinessEditProfileScreen() {
               value={lastName} onChangeText={setLastName}
               style={[styles.input, { borderColor: errors.lastName ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="Ogunlana" placeholderTextColor={colors.textThird} />
-            {errors.lastName && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.lastName}</Text>}
-            <Text style={{ fontSize: 11, color: colors.textThird }}>30-day change limit</Text>
+            {errors.lastName && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.lastName}</Text>}
+            <Text style={{ fontSize: 12, color: colors.textThird }}>30-day change limit</Text>
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -274,7 +274,7 @@ export default function BusinessEditProfileScreen() {
               keyboardType="numbers-and-punctuation"
               style={[styles.input, { borderColor: colors.border, color: colors.text, opacity: dobLocked ? 0.6 : 1 }]}
               placeholder="1985-04-22" placeholderTextColor={colors.textThird} />
-            <Text style={{ fontSize: 11, color: colors.textThird }}>
+            <Text style={{ fontSize: 12, color: colors.textThird }}>
               {dobLocked ? 'Contact support to correct a typo.' : 'Locked once you save. Format: YYYY-MM-DD'}
             </Text>
           </View>
@@ -286,15 +286,15 @@ export default function BusinessEditProfileScreen() {
               value={phone} onChangeText={setPhone} keyboardType="phone-pad"
               style={[styles.input, { borderColor: errors.phone ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="08012345678" placeholderTextColor={colors.textThird} />
-            {errors.phone && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.phone}</Text>}
-            <Text style={{ fontSize: 11, color: colors.textThird }}>90-day change limit</Text>
+            {errors.phone && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.phone}</Text>}
+            <Text style={{ fontSize: 12, color: colors.textThird }}>90-day change limit</Text>
           </View>
 
           {/* Emergency contact: escalation contact for the account. */}
           <View style={[styles.sectionHeader]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Emergency contact</Text>
           </View>
-          <Text style={{ fontSize: 11, color: colors.textThird, marginTop: -4 }}>
+          <Text style={{ fontSize: 12, color: colors.textThird, marginTop: -4 }}>
             Who should we call if there is a critical issue with your account (unauthorised access, urgent dispute)? Update any time.
           </Text>
 
@@ -305,7 +305,7 @@ export default function BusinessEditProfileScreen() {
               value={emergencyName} onChangeText={setEmergencyName}
               style={[styles.input, { borderColor: errors.emergencyName ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="e.g. Chinyere Okafor" placeholderTextColor={colors.textThird} />
-            {errors.emergencyName && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.emergencyName}</Text>}
+            {errors.emergencyName && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.emergencyName}</Text>}
           </View>
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -315,7 +315,7 @@ export default function BusinessEditProfileScreen() {
               value={emergencyPhone} onChangeText={setEmergencyPhone} keyboardType="phone-pad"
               style={[styles.input, { borderColor: errors.emergencyPhone ? '#DC2626' : colors.border, color: colors.text }]}
               placeholder="08012345678" placeholderTextColor={colors.textThird} />
-            {errors.emergencyPhone && <Text style={{ fontSize: 11, color: '#DC2626' }}>{errors.emergencyPhone}</Text>}
+            {errors.emergencyPhone && <Text style={{ fontSize: 12, color: '#DC2626' }}>{errors.emergencyPhone}</Text>}
           </View>
 
           {bizLoading ? (
@@ -446,18 +446,18 @@ const styles = StyleSheet.create({
   content:    { padding: 16, gap: 12 },
 
   card:       { borderRadius: 12, padding: 14, gap: 6, borderWidth: 1 },
-  label:      { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  label:      { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
   email:      { fontSize: 16 },
   input:      { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
 
   note:       { flexDirection: 'row', gap: 6, alignItems: 'flex-start', padding: 10 },
-  noteText:   { flex: 1, fontSize: 11, lineHeight: 16 },
+  noteText:   { flex: 1, fontSize: 12, lineHeight: 16 },
 
   primaryBtn:     { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
   sectionHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  sectionTitle:   { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  sectionTitle:   { fontSize: 14, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
   roleChip:       { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
-  roleChipText:   { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  roleChipText:   { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
 });

@@ -459,8 +459,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#EBF3FF', borderRadius: 12, padding: 14, marginBottom: 20,
     borderWidth: 1, borderColor: '#BFDBFE',
   },
-  infoTitle:    { fontSize: 13, fontWeight: '700', color: '#0F2B4C', marginBottom: 4 },
-  infoText:     { fontSize: 12, color: '#374151', lineHeight: 18 },
+  infoTitle:    { fontSize: 14, fontWeight: '700', color: '#0F2B4C', marginBottom: 4 },
+  infoText:     { fontSize: 13, color: '#374151', lineHeight: 18 },
   bold:         { fontWeight: '700' },
 
   dropzone:     {
@@ -472,56 +472,56 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   dropTitle:    { fontSize: 15, fontWeight: '700', marginBottom: 4 },
-  dropSub:      { fontSize: 13 },
+  dropSub:      { fontSize: 14 },
 
   errorBox:     {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
     borderRadius: 10, padding: 12, marginBottom: 16,
   },
-  errorText:    { color: '#DC2626', fontSize: 13, flex: 1 },
+  errorText:    { color: '#DC2626', fontSize: 14, flex: 1 },
 
   primaryBtn:   {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderRadius: 12, paddingVertical: 14, marginTop: 8,
   },
-  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
   spinnerCard:  { borderRadius: 12, padding: 24, marginTop: 16, borderWidth: 1, alignItems: 'center', gap: 12 },
-  spinnerText:  { fontSize: 13 },
+  spinnerText:  { fontSize: 14 },
 
   doneCard:     { borderRadius: 12, padding: 24, marginTop: 16, borderWidth: 1, alignItems: 'center', gap: 6 },
   doneTitle:    { fontSize: 18, fontWeight: '700' },
-  doneSub:      { fontSize: 13, marginBottom: 16 },
+  doneSub:      { fontSize: 14, marginBottom: 16 },
 
   summaryCard:  { borderRadius: 12, padding: 14, gap: 6, borderWidth: 1 },
   summaryRow:   { flexDirection: 'row', justifyContent: 'space-between' },
-  summaryLabel: { fontSize: 13 },
-  summaryValue: { fontSize: 13, fontVariant: ['tabular-nums'] },
+  summaryLabel: { fontSize: 14 },
+  summaryValue: { fontSize: 14, fontVariant: ['tabular-nums'] },
 
   bookingCard:  { borderRadius: 12, padding: 14, borderWidth: 1 },
   bookingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  bookingTitle: { fontSize: 14, fontWeight: '700' },
-  bookingSub:   { fontSize: 12, fontWeight: '400' },
+  bookingTitle: { fontSize: 15, fontWeight: '700' },
+  bookingSub:   { fontSize: 13, fontWeight: '400' },
   validPill:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   errorPill:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
-  pillText:     { fontSize: 11, fontWeight: '700' },
+  pillText:     { fontSize: 12, fontWeight: '700' },
 
   bookingErrors: { backgroundColor: '#FEF2F2', borderRadius: 8, padding: 8, marginBottom: 8 },
-  bookingErrorText: { fontSize: 11, color: '#DC2626', lineHeight: 16 },
+  bookingErrorText: { fontSize: 12, color: '#DC2626', lineHeight: 16 },
 
   rowMeta: { paddingVertical: 6, borderTopWidth: 1 },
-  rowLabel: { fontSize: 11, fontWeight: '700' },
-  rowLine:  { fontSize: 12 },
-  rowDetails: { fontSize: 11, marginTop: 2 },
-  rowError: { fontSize: 11, color: '#DC2626', marginTop: 2 },
+  rowLabel: { fontSize: 12, fontWeight: '700' },
+  rowLine:  { fontSize: 13 },
+  rowDetails: { fontSize: 12, marginTop: 2 },
+  rowError: { fontSize: 12, color: '#DC2626', marginTop: 2 },
 
   bookingFooter: {
     flexDirection: 'row', justifyContent: 'space-between',
     paddingTop: 8, marginTop: 6, borderTopWidth: 1,
   },
-  bookingFooterLabel: { fontSize: 12 },
-  bookingFooterValue: { fontSize: 14, fontWeight: '700' },
+  bookingFooterLabel: { fontSize: 13 },
+  bookingFooterValue: { fontSize: 15, fontWeight: '700' },
 
   cta:          {
     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -532,6 +532,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   ctaBtnDisabled: { opacity: 0.4 },
-  ctaBtnText:   { color: '#fff', fontWeight: '700', fontSize: 14 },
-  affordWarn:   { fontSize: 11, color: '#DC2626', textAlign: 'center', marginTop: 6 },
+  ctaBtnText:   { color: '#fff', fontWeight: '700', fontSize: 15 },
+  affordWarn:   { fontSize: 12, color: '#DC2626', textAlign: 'center', marginTop: 6 },
 });

@@ -479,8 +479,8 @@ const CORNER_THICK = 3;
 const styles = StyleSheet.create({
   centered:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 },
   permTitle:   { fontSize: 18, fontWeight: '700', textAlign: 'center' },
-  permSub:     { fontSize: 14, textAlign: 'center' },
-  linkText:    { fontSize: 14, fontWeight: '600' },
+  permSub:     { fontSize: 15, textAlign: 'center' },
+  linkText:    { fontSize: 15, fontWeight: '600' },
 
   overlay:     { position: 'absolute', top: 0, left: 0, right: 0, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 12, zIndex: 10 },
   closeBtn:    { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
@@ -493,11 +493,11 @@ const styles = StyleSheet.create({
   cornerTR:    { top: 0, right: 0, borderTopWidth: CORNER_THICK, borderRightWidth: CORNER_THICK },
   cornerBL:    { bottom: 0, left: 0, borderBottomWidth: CORNER_THICK, borderLeftWidth: CORNER_THICK },
   cornerBR:    { bottom: 0, right: 0, borderBottomWidth: CORNER_THICK, borderRightWidth: CORNER_THICK },
-  finderHint:  { color: '#fff', fontSize: 14, opacity: 0.85, textAlign: 'center', paddingHorizontal: 24 },
+  finderHint:  { color: '#fff', fontSize: 15, opacity: 0.85, textAlign: 'center', paddingHorizontal: 24 },
 
   manualSheet:    { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
   sheetTitle:     { fontSize: 18, fontWeight: '700' },
-  sheetSub:       { fontSize: 13 },
+  sheetSub:       { fontSize: 14 },
 
   formContent: { padding: 16, gap: 16 },
   formHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
@@ -505,30 +505,30 @@ const styles = StyleSheet.create({
   formTitle:   { fontSize: 18, fontWeight: '700' },
 
   card:        { borderRadius: 16, padding: 16, gap: 8, borderWidth: 1 },
-  cardLabel:   { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
+  cardLabel:   { fontSize: 12, fontWeight: '700', letterSpacing: 0.8 },
   cardValue:   { fontSize: 18, fontWeight: '700' },
-  cardSub:     { fontSize: 14 },
-  cardSubtle:  { fontSize: 14, lineHeight: 20 },
+  cardSub:     { fontSize: 15 },
+  cardSubtle:  { fontSize: 15, lineHeight: 20 },
   codeChip:    { fontSize: 16, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', letterSpacing: 1 },
   divider:     { height: 1, marginVertical: 8 },
 
-  fieldLabel:  { fontSize: 13, fontWeight: '700' },
-  helperText:  { fontSize: 12, lineHeight: 17 },
+  fieldLabel:  { fontSize: 14, fontWeight: '700' },
+  helperText:  { fontSize: 13, lineHeight: 17 },
 
   input:       { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
 
   photoBox:    { borderWidth: 2, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 32, alignItems: 'center', gap: 8 },
-  photoHint:   { fontSize: 13, textAlign: 'center', paddingHorizontal: 24 },
+  photoHint:   { fontSize: 14, textAlign: 'center', paddingHorizontal: 24 },
   preview:     { width: '100%', height: 200, borderRadius: 12 },
 
   primaryBtn:      { borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
   primaryBtnLarge: { borderRadius: 12, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
   primaryBtnText:  { color: '#fff', fontWeight: '700', fontSize: 15 },
   secondaryBtn:    { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center' },
-  secondaryBtnText:{ fontWeight: '600', fontSize: 14 },
+  secondaryBtnText:{ fontWeight: '600', fontSize: 15 },
   cancelBtn:       { flex: 1, borderRadius: 12, borderWidth: 1, paddingVertical: 12, alignItems: 'center' },
-  cancelBtnText:   { fontWeight: '600', fontSize: 14 },
+  cancelBtnText:   { fontWeight: '600', fontSize: 15 },
   row:             { flexDirection: 'row', gap: 12 },
 
-  errorText:   { color: '#DC2626', fontSize: 13, textAlign: 'center' },
+  errorText:   { color: '#DC2626', fontSize: 14, textAlign: 'center' },
 });

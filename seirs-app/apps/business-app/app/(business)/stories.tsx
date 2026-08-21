@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   cover:    { width: '100%', height: 140 },
   cardBody: { padding: Spacing.md, gap: 6 },
   metaRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  category: { fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1 },
+  category: { fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1 },
   date:     { fontSize: FontSize.xs },
   cardTitle:{ fontSize: FontSize.base, fontWeight: FontWeight.bold, lineHeight: 21 },
   excerpt:  { fontSize: FontSize.sm, lineHeight: 19 },

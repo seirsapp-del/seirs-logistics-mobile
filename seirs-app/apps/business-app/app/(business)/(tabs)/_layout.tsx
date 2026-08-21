@@ -59,7 +59,7 @@ export default function BusinessTabsLayout() {
         },
         tabBarActiveTintColor:   theme.accent,
         tabBarInactiveTintColor: theme.textSecond ?? theme.tabIconDefault,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 13, fontWeight: '600', marginTop: 2 },
       }}
     >
       <Tabs.Screen
