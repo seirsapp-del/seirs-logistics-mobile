@@ -588,6 +588,15 @@ export default function SendPackageScreen() {
       if (draft.pickupMode === 'store' && !draft.pickupStoreId)
         return { message: 'Choose the counter you will drop the packages at.' };
       if (draft.pickupLat == null || draft.pickupLng == null) return { message: 'Pick the pickup address from the suggestions.' };
+      {
+        // The UI gate can be raced by picking the vehicle before the route
+        // resolves, so the booking checks again with the final distance.
+        const vMaxKm = Number((rateCard as any)?.vehicleRates?.[draft.vehicleType]?.maxRouteKm
+          ?? (draft.vehicleType === 'bicycle' ? 3 : 0));
+        if (vMaxKm > 0 && routeKm > vMaxKm) {
+          return { message: `${VEHICLE_LABEL[draft.vehicleType]} only does trips under ${vMaxKm}km. This run is ${Math.round(routeKm)}km: pick another ride.` };
+        }
+      }
       if (!scheduleNow && scheduledHour == null) return { message: 'Pick a pickup hour, or switch to Send now.' };
       // You cannot walk packages into a counter that is shut. Sending a
       // driver there now would strand the run (found on device
@@ -1380,7 +1389,14 @@ export default function SendPackageScreen() {
                 });
                 const overCount = draft.stops.length > cap;
                 const overWeight = payload > 0 && totalWeight > payload;
-                const disabled = overCount || overWeight;
+                // Same short-hop gate the customer app enforces. The route
+                // is known by this step (addresses come first), and without
+                // this a 30km bicycle run booked for 1,838 naira on the
+                // founder's own screen (2026-08-21).
+                const maxKm = Number((rateCard as any)?.vehicleRates?.[v]?.maxRouteKm
+                  ?? (v === 'bicycle' ? 3 : 0));
+                const overKm = maxKm > 0 && routeKm > maxKm;
+                const disabled = overCount || overWeight || overKm;
                 const active = draft.vehicleType === v;
                 return (
                   <Pressable
@@ -1402,7 +1418,8 @@ export default function SendPackageScreen() {
                       </View>
                       <Text style={[styles.vehSub, { color: colors.textSecond }]}>
                         {disabled
-                          ? overCount ? `Max ${cap} packages` : `Max ${payload}kg`
+                          ? overKm ? `Under ${maxKm}km trips only`
+                          : overCount ? `Max ${cap} packages` : `Max ${payload}kg`
                           : `Up to ${cap} packages${payload > 0 ? ` · ${payload}kg payload` : ''}`}
                       </Text>
                     </View>
