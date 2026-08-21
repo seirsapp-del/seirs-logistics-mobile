@@ -55,7 +55,67 @@ export default function DeliveryDetailPage() {
   const [acNote,  setAcNote]  = useState('');
   const [acQuote, setAcQuote] = useState('');
   const [acError, setAcError] = useState<string | null>(null);
+  const [rtBusy,  setRtBusy]  = useState(false);
+  const [rtNote,  setRtNote]  = useState('');
+  const [rfPct,   setRfPct]   = useState('');
+  const [rfPrev,  setRfPrev]  = useState<any>(null);
+  const [rfBusy,  setRfBusy]  = useState(false);
+  const [rfNote,  setRfNote]  = useState('');
+  const [rfError, setRfError] = useState<string | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
+  /* Preview is deliberately separate from issuing: an agent should see
+     the split before any money moves. */
+  const previewRefund = async (pct: string) => {
+    setRfPct(pct);
+    setRfError(null);
+    const n = Number(pct);
+    if (!pct.trim() || !Number.isFinite(n) || n < 0 || n > 100) {
+      setRfPrev(null);
+      return;
+    }
+    try {
+      setRfPrev(await adminApi.refundPreview(String(id), n));
+    } catch {
+      setRfPrev(null);
+    }
+  };
+
+  const issueRefund = async () => {
+    if (!rfPrev) return;
+    setRfBusy(true);
+    setRfError(null);
+    try {
+      await adminApi.issueRefund(String(id), {
+        percent: Number(rfPct),
+        note:    rfNote.trim() || undefined,
+      });
+      setD(await adminApi.delivery(String(id)));
+      setRfPct('');
+      setRfPrev(null);
+      setRfNote('');
+    } catch (e: unknown) {
+      setRfError(e instanceof Error ? e.message : 'Could not issue that refund.');
+    } finally {
+      setRfBusy(false);
+    }
+  };
+
+  const decideReturn = async (approve: boolean) => {
+    setRtBusy(true);
+    try {
+      await adminApi.decideReturn(String(id), {
+        approve,
+        note: rtNote.trim() || undefined,
+      });
+      setD(await adminApi.delivery(String(id)));
+      setRtNote('');
+    } catch (e: unknown) {
+      setRfError(e instanceof Error ? e.message : 'Could not save that decision.');
+    } finally {
+      setRtBusy(false);
+    }
+  };
+
   /* Support decides. Approving only unlocks payment: the drop-off
      moves when the sender pays, from the payments webhook. */
   const decideAddressChange = async (approve: boolean) => {
@@ -148,6 +208,137 @@ export default function DeliveryDetailPage() {
         <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${STATUS_COLORS[d.status] ?? 'bg-[#0F2B4C]/5'}`}>
           {String(d.status ?? '').replace('_', ' ')}
         </span>
+      </div>
+
+      {d.returnStatus && (
+        <div className="mt-4 rounded-xl border border-[#7C3AED]/30 bg-[#7C3AED]/5 p-4">
+          <div className="flex items-center gap-2 text-[#7C3AED]">
+            <Package size={16} />
+            <span className="text-sm font-bold uppercase tracking-wide">
+              Return to sender {d.returnStatus}
+            </span>
+          </div>
+
+          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <div className="text-xs uppercase tracking-wider text-[#0F2B4C]/40">
+                Going back to (fixed)
+              </div>
+              <div className="font-medium text-[#0F2B4C]">{d.pickupAddress ?? '-'}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wider text-[#0F2B4C]/40">Quote</div>
+              <div className="font-medium text-[#0F2B4C]">
+                {d.returnQuoteNgn != null
+                  ? `\u20a6${Number(d.returnQuoteNgn).toLocaleString()}`
+                  : '-'}
+                {d.returnQuoteKm != null
+                  ? ` \u00b7 ${Number(d.returnQuoteKm).toFixed(1)} km by road`
+                  : ''}
+              </div>
+            </div>
+          </div>
+
+          {d.returnStatus === 'approved' && !d.returnPaidAt && (
+            <div className="mt-3 rounded-lg border border-[#D97706]/30 bg-[#D97706]/5 px-3 py-2 text-xs text-[#92400E]">
+              Approved and waiting for payment. The rider does not turn around
+              until the money lands.
+            </div>
+          )}
+
+          {d.returnStatus === 'pending' && (
+            <div className="mt-3 border-t border-[#7C3AED]/20 pt-3">
+              <input
+                value={rtNote}
+                onChange={(e) => setRtNote(e.target.value)}
+                placeholder="Note to the sender, shown if you reject"
+                className="w-full rounded-lg border border-[#0F2B4C]/15 px-3 py-2 text-sm outline-none focus:border-[#7C3AED]"
+              />
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => void decideReturn(true)}
+                  disabled={rtBusy}
+                  className="rounded-lg bg-[#16A34A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#15803D] disabled:opacity-50"
+                >
+                  {rtBusy ? 'Saving...' : 'Approve return'}
+                </button>
+                <button
+                  onClick={() => void decideReturn(false)}
+                  disabled={rtBusy}
+                  className="rounded-lg border border-[#DC2626]/40 px-4 py-2 text-sm font-semibold text-[#DC2626] hover:bg-[#DC2626]/5 disabled:opacity-50"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Refund calculator. Lives on every delivery, not just disputed
+          ones, because support settles things for all sorts of reasons. */}
+      <div className="mt-4 rounded-xl border border-[#0F2B4C]/10 bg-white p-4">
+        <div className="flex items-center gap-2 text-[#0F2B4C]">
+          <Receipt size={16} />
+          <span className="text-sm font-bold uppercase tracking-wide">Refund calculator</span>
+        </div>
+        <p className="mt-1 text-xs text-[#0F2B4C]/50">
+          A refund comes out of two pockets. SEIRS margin absorbs it first, then
+          the rider&apos;s payout, and the rider floor stops an honest report
+          costing them the trip.
+        </p>
+
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <label className="text-xs">
+            <div className="mb-1 font-semibold text-[#0F2B4C]/60">Refund percentage</div>
+            <input
+              value={rfPct}
+              onChange={(e) => void previewRefund(e.target.value)}
+              placeholder="0 to 100"
+              className="w-full rounded-lg border border-[#0F2B4C]/15 px-3 py-2 text-sm outline-none focus:border-[#3A7BD5]"
+            />
+          </label>
+          <label className="text-xs">
+            <div className="mb-1 font-semibold text-[#0F2B4C]/60">Reason</div>
+            <input
+              value={rfNote}
+              onChange={(e) => setRfNote(e.target.value)}
+              placeholder="Kept on the delivery record"
+              className="w-full rounded-lg border border-[#0F2B4C]/15 px-3 py-2 text-sm outline-none focus:border-[#3A7BD5]"
+            />
+          </label>
+        </div>
+
+        {rfPrev && (
+          <div className="mt-3 rounded-lg bg-[#0F2B4C]/[0.03] p-3 font-mono text-xs text-[#0F2B4C]">
+            <Row label="Fare paid" value={`\u20a6${Number(rfPrev.farePaid).toLocaleString()}`} />
+            <Row label={`Refund at ${rfPrev.percent}%`} value={`\u20a6${Number(rfPrev.refundNgn).toLocaleString()}`} />
+            <Row label="From SEIRS margin" value={`\u20a6${Number(rfPrev.fromMargin).toLocaleString()}`} />
+            <Row label="From rider payout" value={`\u20a6${Number(rfPrev.fromDriver).toLocaleString()}`} />
+            <Row label="Rider floor" value={`\u20a6${Number(rfPrev.driverFloorNgn).toLocaleString()}`} />
+            <Row label="Rider is paid" value={`\u20a6${Number(rfPrev.driverPayAfter).toLocaleString()}`} />
+            {rfPrev.floorApplied && (
+              <div className="mt-2 rounded border border-[#D97706]/30 bg-[#D97706]/5 px-2 py-1 text-[11px] text-[#92400E]">
+                The floor rescued {`\u20a6${Number(rfPrev.absorbedByFloor).toLocaleString()}`} of the
+                rider&apos;s pay. SEIRS covers that, not them.
+              </div>
+            )}
+          </div>
+        )}
+
+        {rfError && (
+          <div className="mt-2 rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/5 px-3 py-2 text-xs text-[#DC2626]">
+            {rfError}
+          </div>
+        )}
+
+        <button
+          onClick={() => void issueRefund()}
+          disabled={rfBusy || !rfPrev}
+          className="mt-3 rounded-lg bg-[#0F2B4C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0F2B4C]/90 disabled:opacity-40"
+        >
+          {rfBusy ? 'Issuing...' : 'Issue this refund'}
+        </button>
       </div>
 
       {d.addressChangeStatus && (

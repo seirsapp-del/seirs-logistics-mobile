@@ -160,6 +160,26 @@ export class DeliveriesController {
     return this.deliveriesService.startCollectionPayment(code, body ?? {});
   }
 
+  // GET /api/v1/deliveries/:id/refund-preview?percent=50  (admin only)
+  // Shows which pocket a refund comes out of before anyone commits to
+  // it. Read-only: nothing moves until the POST below.
+  @UseGuards(AdminGuard)
+  @Get(':id/refund-preview')
+  refundPreview(@Param('id') id: string, @Query('percent') percent: string) {
+    return this.deliveriesService.previewRefund(id, Number(percent));
+  }
+
+  // POST /api/v1/deliveries/:id/refund  { percent, note? }  (admin only)
+  @UseGuards(AdminGuard)
+  @Post(':id/refund')
+  issueRefund(
+    @Param('id') id: string,
+    @CurrentUser() admin: User,
+    @Body() body: { percent: number; note?: string },
+  ) {
+    return this.deliveriesService.issueRefund(id, admin.id, body);
+  }
+
   // GET /api/v1/deliveries/:id/return-quote
   // What it costs to bring this package home from wherever it is now.
   // The destination is the delivery's own pickup address and there is

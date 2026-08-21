@@ -1619,6 +1619,132 @@ export class DeliveriesService {
     return this.paymentsService.initiateAddressChangePayment(delivery, delivery.customer);
   }
 
+  // ── Refund calculator (founder 2026-08-21) ───────────────────────────
+
+  /**
+   * What a given refund percentage actually does to the money.
+   *
+   * A refund comes out of two pockets and the split is the whole point:
+   * SEIRS margin absorbs it first, and only once that is exhausted does
+   * it start eating the rider's payout.
+   *
+   * The rider floor is the part that matters most. A rider who rode to a
+   * pickup, found a parcel that was not what was described and reported
+   * it honestly did their job correctly. If refunds cut into their pay
+   * without a floor, the rational rider learns to accept bad parcels
+   * quietly instead of reporting them, and we lose the reporting the
+   * whole dispute mechanism depends on.
+   */
+  async previewRefund(deliveryId: string, pct: number) {
+    const { BadRequestException } = await import('@nestjs/common');
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer', 'driver'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    const percent = Number(pct);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      throw new BadRequestException('Refund percentage must be between 0 and 100.');
+    }
+
+    const farePaid  = Math.round(Number(delivery.price ?? 0));
+    const driverPay = Math.round(Number(delivery.driverEarnings ?? 0));
+    const seirsMargin = Math.max(0, farePaid - driverPay);
+
+    const refundNgn = Math.round((farePaid * percent) / 100);
+
+    // Margin first, then the rider.
+    const fromMargin = Math.min(refundNgn, seirsMargin);
+    const fromDriverRaw = refundNgn - fromMargin;
+
+    const floor = await this.computeFailedTripPay(delivery);
+    const driverAfterRaw = driverPay - fromDriverRaw;
+    const driverFinal = Math.max(driverAfterRaw, floor);
+
+    // Whatever the floor rescues, SEIRS covers rather than the rider.
+    const absorbedByFloor = Math.max(0, driverFinal - driverAfterRaw);
+    const fromDriver = driverPay - driverFinal;
+
+    return {
+      farePaid,
+      percent,
+      refundNgn,
+      driverPayBefore: driverPay,
+      seirsMarginBefore: seirsMargin,
+      fromMargin,
+      fromDriver,
+      driverFloorNgn: floor,
+      driverPayAfter: driverFinal,
+      absorbedByFloor,
+      seirsNetAfter: farePaid - refundNgn - driverFinal,
+      floorApplied: absorbedByFloor > 0,
+    };
+  }
+
+  /**
+   * Issue the refund support settled on.
+   *
+   * Routed through refundEscrow so the money genuinely leaves via
+   * Flutterwave rather than a number changing on a screen, and the
+   * rider's payout is written down at the same time so the two can never
+   * disagree afterwards.
+   */
+  async issueRefund(
+    deliveryId: string,
+    adminUserId: string,
+    body: { percent: number; note?: string },
+  ) {
+    const preview = await this.previewRefund(deliveryId, body?.percent);
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    const note = (body?.note ?? '').trim().slice(0, 500) || null;
+
+    if (preview.refundNgn > 0 && this.paymentsService?.refundEscrow) {
+      await this.paymentsService.refundEscrow(
+        deliveryId,
+        delivery.customer?.id,
+        // refundEscrow takes what to WITHHOLD, not what to refund.
+        Math.max(0, preview.farePaid - preview.refundNgn),
+      );
+    }
+
+    await this.repo.update(deliveryId, {
+      driverEarnings: preview.driverPayAfter,
+    } as any);
+
+    this.logEvent(deliveryId, DeliveryEventType.ADMIN_NOTE, EventActorRole.ADMIN, {
+      actorUserId: adminUserId,
+      description:
+        `Support refunded ${preview.percent}% (₦${preview.refundNgn.toLocaleString()}): ` +
+        `₦${preview.fromMargin.toLocaleString()} from SEIRS margin, ` +
+        `₦${preview.fromDriver.toLocaleString()} from the rider` +
+        (preview.floorApplied
+          ? `, with ₦${preview.absorbedByFloor.toLocaleString()} absorbed by the rider floor`
+          : '') +
+        `.${note ? ' Note: ' + note : ''}`,
+      meta: { kind: 'refund_issued', ...preview, note },
+    }).catch(() => {});
+
+    if (this.notificationsService && delivery.customer?.id && preview.refundNgn > 0) {
+      this.notificationsService.create(
+        delivery.customer.id,
+        'Refund issued',
+        `We have refunded ₦${preview.refundNgn.toLocaleString()} on ${delivery.trackingCode}. ` +
+        `It can take a few working days to appear, depending on your bank.`,
+        'status_update',
+        delivery.id,
+        delivery.trackingCode,
+      ).catch(() => {});
+    }
+
+    return { ...preview, note, issued: true };
+  }
+
   // ── Return to sender (founder 2026-08-21) ────────────────────────────
   //
   // "A return is priced as a real trip from wherever the parcel currently

@@ -180,6 +180,27 @@ export const adminApi = {
    * Not under /admin: the logic lives on DeliveriesService, so the route
    * sits on the deliveries controller behind AdminGuard.
    */
+  /** Approve or reject a return to sender. Same guard as the address change. */
+  decideReturn: (
+    id: string,
+    body: { approve: boolean; note?: string; overrideQuoteNgn?: number },
+  ) =>
+    req<any>(`/deliveries/${id}/return/decide`, {
+      method: 'POST',
+      body:   JSON.stringify(body),
+    }),
+
+  /** Which pocket a refund comes out of. Read-only. */
+  refundPreview: (id: string, percent: number) =>
+    req<any>(`/deliveries/${id}/refund-preview?percent=${percent}`),
+
+  /** Issue the refund support settled on. Money actually moves. */
+  issueRefund: (id: string, body: { percent: number; note?: string }) =>
+    req<any>(`/deliveries/${id}/refund`, {
+      method: 'POST',
+      body:   JSON.stringify(body),
+    }),
+
   decideAddressChange: (
     id: string,
     body: { approve: boolean; note?: string; overrideQuoteNgn?: number },
