@@ -1523,8 +1523,11 @@ export default function SendPackageScreen() {
                           ['Category', catalog.find(c => c.code === (s.categoryCode ?? draft.categoryCode))?.name ?? '-'],
                         ] as [string, string][]).map(([lbl, val]) => (
                           <View key={lbl} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-                            <Text style={[styles.lineSub, { color: colors.textThird }]}>{lbl}</Text>
-                            <Text style={[styles.lineSub, { color: colors.textSecond, flex: 1, textAlign: 'right' }]} numberOfLines={2}>{val}</Text>
+                            {/* Labels one step down, VALUES full ink at 12px:
+                                the founder could not read the first cut,
+                                which set both to the faintest style. */}
+                            <Text style={[styles.lineSub, { color: colors.textSecond, fontSize: 12 }]}>{lbl}</Text>
+                            <Text style={[styles.lineSub, { color: colors.text, fontSize: 12, flex: 1, textAlign: 'right' }]} numberOfLines={2}>{val}</Text>
                           </View>
                         ))}
                         {draft.stops.length > 1 && (
@@ -1587,8 +1590,8 @@ export default function SendPackageScreen() {
                   ['Total', quote?.customer?.total != null ? `₦${Math.round(Number(quote.customer.total)).toLocaleString()}` : '…'],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingVertical: 5 }}>
-                    <Text style={[styles.lineSub, { color: colors.textThird }]}>{lbl}</Text>
-                    <Text style={[styles.lineSub, { color: colors.text, flex: 1, textAlign: 'right' }]} numberOfLines={2}>{val}</Text>
+                    <Text style={[styles.lineSub, { color: colors.textSecond, fontSize: 12 }]}>{lbl}</Text>
+                    <Text style={[styles.lineSub, { color: colors.text, fontSize: 12, fontWeight: '600', flex: 1, textAlign: 'right' }]} numberOfLines={2}>{val}</Text>
                   </View>
                 ))}
               </View>
@@ -1601,7 +1604,7 @@ export default function SendPackageScreen() {
                 <View style={{
                   width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, marginTop: 1,
                   alignItems: 'center', justifyContent: 'center',
-                  borderColor: tcAgreed ? colors.primary : colors.border,
+                  borderColor: tcAgreed ? colors.primary : colors.textThird,
                   backgroundColor: tcAgreed ? colors.primary : 'transparent',
                 }}>
                   {tcAgreed && <Icon name="Check" size={13} color="#fff" />}

@@ -1871,7 +1871,7 @@ export default function SendScreen() {
                   the link is the full text; the Pay button stays dead
                   until the box is ticked (founder 2026-08-21). */}
               <Pressable style={styles.tcRow} onPress={() => setTcAgreed(v => !v)}>
-                <View style={[styles.tcBox, { borderColor: tcAgreed ? theme.primary : theme.border, backgroundColor: tcAgreed ? theme.primary : 'transparent' }]}>
+                <View style={[styles.tcBox, { borderColor: tcAgreed ? theme.primary : theme.textThird, backgroundColor: tcAgreed ? theme.primary : 'transparent' }]}>
                   {tcAgreed && <Ionicons name="checkmark" size={14} color="#fff" />}
                 </View>
                 <Text style={[styles.tcText, { color: theme.textSecond }]}>
