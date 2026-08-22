@@ -1,37 +1,60 @@
 import {
-  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator, Alert, TextInput,
+  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl,
+  ActivityIndicator, Alert, TextInput, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { Badge } from '@/components/ui/Badge';
-import { Avatar } from '@/components/ui/Avatar';
+import { Colors } from '@/constants/theme';
+import { Icon } from '@/components/Icon';
 import { HamburgerButton } from '@/components/HamburgerButton';
-import { Illustration } from '@/components/Illustration';
 import { deliveriesApi } from '@/services/api';
 
-// Display config minus the label (label is looked up via t('status.<key>')).
-const STATUS_CONFIG: Record<string, { color: string; icon: string }> = {
-  pending:     { color: '#3A7BD5', icon: 'time-outline' },
-  assigned:    { color: '#3A7BD5', icon: 'navigate-outline' },
-  picked_up:   { color: '#FF6B00', icon: 'cube-outline' },
-  in_transit:  { color: '#0F2B4C', icon: 'navigate' },
-  in_progress: { color: '#FF6B00', icon: 'car-outline' },
-  completed:   { color: '#16A34A', icon: 'checkmark-circle' },
-  cancelled:   { color: '#6B7280', icon: 'close-circle-outline' },
-  failed:      { color: '#EF4444', icon: 'alert-circle-outline' },
+// My Trips rebuilt as the business Deliveries screen, exactly (founder
+// 2026-08-22: "the exact same as deliveries on the business app, that's
+// what I wanted"). Layout, rail, card and style values are copied from
+// business deliveries.tsx verbatim; only the data plumbing, the theme
+// tokens and the customer-only actions (Track live, Rate) are local.
+
+const STATUSES = ['all', 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled'];
+
+const STATUS_LABEL: Record<string, string> = {
+  all:        'All',
+  pending:    'Pending',
+  assigned:   'Assigned',
+  in_transit: 'In Transit',
+  delivered:  'Delivered',
+  cancelled:  'Cancelled',
 };
 
-const FILTER_TABS = ['All', 'Active', 'Completed', 'Cancelled'] as const;
-type FilterTab = typeof FILTER_TABS[number];
+const STATUS_COLOR: Record<string, string> = {
+  pending:    '#D97706',
+  assigned:   '#3A7BD5',
+  in_transit: '#0F2B4C',
+  delivered:  '#16A34A',
+  cancelled:  '#DC2626',
+};
 
-const ACTIVE_STATUSES   = new Set(['pending', 'assigned', 'picked_up', 'in_transit', 'in_progress']);
-const COMPLETED_STATUSES = new Set(['completed', 'delivered']);
-const CANCELLED_STATUSES = new Set(['cancelled', 'failed']);
+// Customer statuses fold into the six business buckets so the rail and
+// the badges read identically across the two apps.
+const BUCKET: Record<string, string> = {
+  pending:     'pending',
+  assigned:    'assigned',
+  picked_up:   'in_transit',
+  in_transit:  'in_transit',
+  in_progress: 'in_transit',
+  completed:   'delivered',
+  delivered:   'delivered',
+  cancelled:   'cancelled',
+  failed:      'cancelled',
+};
+
+const ACTIVE_STATUSES = new Set(['pending', 'assigned', 'picked_up', 'in_transit', 'in_progress']);
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 type Trip = {
   id: string;
@@ -41,6 +64,7 @@ type Trip = {
   dropoffAddress: string;
   distance: string;
   price: number;
+  vehicleType: string;
   driver: { id: string; name: string; profilePhoto?: string } | null;
   rating: number | null;
   trackingCode: string;
@@ -67,12 +91,15 @@ function toTrip(d: any): Trip {
     // and "N1,473.15" reads like an error to a customer (founder catch,
     // 2026-08-15). The receipt keeps the exact figure.
     price:          Math.round(Number(d.price ?? 0)),
+    vehicleType:    d.vehicleType ?? '',
     driver:         drv,
     rating:         d.customerRating ?? null,
     trackingCode:   d.trackingCode ?? d.id,
     paymentHeldAt:  d.paymentHeldAt ?? null,
   };
 }
+
+const PAGE_SIZE = 20;
 
 export default function HistoryScreen() {
   const router  = useRouter();
@@ -81,7 +108,7 @@ export default function HistoryScreen() {
   const isDark  = cs === 'dark';
   const { t }   = useTranslation();
 
-  const [activeTab, setActiveTab] = useState<FilterTab>('All');
+  const [status, setStatus]       = useState<string>('all');
   const [trips, setTrips]         = useState<Trip[]>([]);
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,12 +117,6 @@ export default function HistoryScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [search,      setSearch]      = useState('');
 
-  const PAGE_SIZE = 20;
-
-  // The screen used to ask for one page of 50 and ignore the `pages` the API
-  // already returns, so a customer with more than 50 bookings could not reach
-  // the older ones at all. The business Deliveries tab has paged since its
-  // rebuild; this is the same behaviour on this side.
   const load = useCallback(async (p = 1, append = false) => {
     try {
       const res = await deliveriesApi.myDeliveries(p, PAGE_SIZE, search);
@@ -123,8 +144,8 @@ export default function HistoryScreen() {
   }, [load]);
 
   useEffect(() => {
-    const t = setTimeout(() => { load(1, false); }, 350);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => { load(1, false); }, 350);
+    return () => clearTimeout(timer);
   }, [search, load]);
 
   const onRefresh = useCallback(async () => {
@@ -182,265 +203,244 @@ export default function HistoryScreen() {
     );
   };
 
-  const filtered = trips.filter(t => {
-    if (activeTab === 'All')       return true;
-    if (activeTab === 'Active')    return ACTIVE_STATUSES.has(t.status);
-    if (activeTab === 'Completed') return COMPLETED_STATUSES.has(t.status);
-    if (activeTab === 'Cancelled') return CANCELLED_STATUSES.has(t.status);
-    return true;
-  });
+  const filtered = trips.filter(trip =>
+    status === 'all' ? true : (BUCKET[trip.status] ?? trip.status) === status,
+  );
 
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
+  const renderItem = ({ item }: { item: Trip }) => {
+    const bucket = BUCKET[item.status] ?? item.status;
+    const c = STATUS_COLOR[bucket] ?? theme.textThird;
+    const isCancellable = item.status === 'pending' || item.status === 'assigned';
+    // Pending AND never collected: the sender still owes for this one.
+    const isUnpaid  = item.status === 'pending' && !item.paymentHeldAt;
+    const isActive  = ACTIVE_STATUSES.has(item.status);
+    const canRate   = bucket === 'delivered' && !item.rating && !!item.driver?.id;
+    return (
+      <Pressable
+        onPress={() => router.push({ pathname: '/(customer)/trip/[id]', params: { id: item.id } } as any)}
+        style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      >
+        <View style={styles.cardTop}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.trackNum, { color: theme.text }]}>
+              {item.trackingCode}
+            </Text>
+            <Text style={[styles.address, { color: theme.textSecond }]} numberOfLines={1}>
+              {item.dropoffAddress}
+            </Text>
+          </View>
+          <View style={[styles.badge, { backgroundColor: c + '20' }]}>
+            <Text style={[styles.badgeText, { color: c }]}>{bucket.replace('_', ' ')}</Text>
+          </View>
+        </View>
+        <View style={styles.cardBottom}>
+          {!!item.vehicleType && (
+            <View style={styles.meta}>
+              <Icon name="Truck" size={12} color={theme.textThird} />
+              <Text style={[styles.metaText, { color: theme.textThird }]}>{item.vehicleType.replace('_', ' ')}</Text>
+            </View>
+          )}
+          <View style={styles.meta}>
+            <Icon name="Calendar" size={12} color={theme.textThird} />
+            <Text style={[styles.metaText, { color: theme.textThird }]}>
+              {new Date(item.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+            </Text>
+          </View>
+          <Text style={[styles.price, { color: theme.text }]}>{fmt(item.price)}</Text>
+        </View>
+
+        {/* Actions get their own row, same as business: everything on one
+            line ran the buttons into the screen edge. */}
+        {(isUnpaid || isCancellable || isActive || canRate) && (
+          <View style={styles.cardActions}>
+            {isUnpaid && (
+              <Pressable
+                onPress={() => handlePay(item)}
+                disabled={paying === item.id}
+                hitSlop={8}
+                style={[styles.payLink, { borderColor: theme.primary }]}
+              >
+                <Text style={[styles.payLinkText, { color: theme.primary }]}>
+                  {paying === item.id ? 'Opening…' : 'Pay now'}
+                </Text>
+              </Pressable>
+            )}
+            {isActive && (
+              <Pressable
+                onPress={() => router.push({ pathname: '/(customer)/track', params: { code: item.trackingCode } } as any)}
+                hitSlop={8}
+                style={[styles.payLink, { borderColor: theme.primary }]}
+              >
+                <Text style={[styles.payLinkText, { color: theme.primary }]}>Track live</Text>
+              </Pressable>
+            )}
+            {canRate && (
+              <Pressable
+                onPress={() => router.push({ pathname: '/(customer)/rate/[driverId]', params: { driverId: item.driver!.id, tripId: item.id } } as any)}
+                hitSlop={8}
+                style={[styles.payLink, { borderColor: '#FFBE0B' }]}
+              >
+                <Text style={[styles.payLinkText, { color: '#FFBE0B' }]}>Rate this trip</Text>
+              </Pressable>
+            )}
+            {isCancellable && (
+              <Pressable
+                onPress={() => handleCancel(item)}
+                disabled={cancelling === item.id}
+                style={styles.cancelBtn}
+                hitSlop={8}
+              >
+                <Text style={styles.cancelBtnText}>
+                  {cancelling === item.id ? 'Checking…' : 'Cancel'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+      </Pressable>
+    );
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+      {/* Header: business Deliveries header, customer title. */}
+      <View style={[styles.header, {
+        backgroundColor: theme.surface,
+        borderBottomColor: theme.border,
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+      }]}>
         <HamburgerButton />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: theme.text }]}>{t('history.title')}</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecond }]}>
-            {filtered.length} trip{filtered.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
+        <Text style={[styles.heading, { color: theme.text }]}>
+          {t('history.title', { defaultValue: 'My Trips' })}
+        </Text>
       </View>
 
       <View style={[styles.searchWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <Ionicons name="search" size={16} color={theme.textThird} />
+        <Icon name="Search" size={16} color={theme.textThird} />
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
           value={search}
           onChangeText={setSearch}
-          placeholder={t('history.searchPlaceholder', { defaultValue: 'Search tracking code or address…' })}
+          placeholder="Search by tracking number…"
           placeholderTextColor={theme.textThird}
           returnKeyType="search"
         />
         {search.length > 0 && (
-          <Pressable onPress={() => setSearch('')} hitSlop={8}>
-            <Ionicons name="close-circle" size={16} color={theme.textThird} />
+          <Pressable onPress={() => setSearch('')}>
+            <Icon name="X" size={16} color={theme.textThird} />
           </Pressable>
         )}
       </View>
 
-      {/* Filter tabs */}
-      <View style={[styles.tabRow, { borderBottomColor: theme.border }]}>
-        {FILTER_TABS.map(tab => (
-          <Pressable
-            key={tab}
-            style={[styles.tab, activeTab === tab && { borderBottomColor: theme.primary, borderBottomWidth: 2 }]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text style={[styles.tabText, { color: activeTab === tab ? theme.primary : theme.textSecond }]}>
-              {tab}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.3}
-        ListFooterComponent={loadingMore ? (
-          <View style={styles.empty}><ActivityIndicator color={theme.primary} /></View>
-        ) : null}
-        ListEmptyComponent={
-          loading ? (
-            <View style={styles.empty}><ActivityIndicator color={theme.primary} /></View>
-          ) : (
-            <View style={styles.empty}>
-              <Illustration name="empty-no-deliveries" size={140} />
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('history.empty')}</Text>
-              <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
-                {activeTab === 'All' ? 'Request your first ride to see it here.' : `No ${activeTab.toLowerCase()} trips.`}
-              </Text>
-              {activeTab === 'All' && (
-                <Pressable style={[styles.ctaBtn, { backgroundColor: theme.primary }]} onPress={() => router.push('/(customer)/request')}>
-                  <Ionicons name="car" size={16} color="#fff" />
-                  <Text style={styles.ctaBtnText}>Request a Ride</Text>
-                </Pressable>
-              )}
-            </View>
-          )
-        }
-        renderItem={({ item: trip }) => {
-          const status = STATUS_CONFIG[trip.status] ?? { color: '#A1A1AA', icon: 'ellipse-outline' };
-          const statusLabel = t(`status.${trip.status}`, { defaultValue: trip.status });
-          const isActive = ACTIVE_STATUSES.has(trip.status);
-          // Same test the business Deliveries card uses: pending AND the
-          // fare was never held means the sender still owes for this one.
-          const isUnpaid      = trip.status === 'pending' && !trip.paymentHeldAt;
-          const isCancellable = trip.status === 'pending' || trip.status === 'assigned';
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabs}
+        style={{ flexGrow: 0 }}
+      >
+        {STATUSES.map((s) => {
+          const active = status === s;
+          const accent = s === 'all' ? theme.primary : STATUS_COLOR[s];
           return (
             <Pressable
-              style={({ pressed }) => [styles.card, { backgroundColor: theme.surface }, Shadows.sm, pressed && { opacity: 0.85 }]}
-              onPress={() => router.push({ pathname: '/(customer)/trip/[id]', params: { id: trip.id } })}
+              key={s}
+              style={[
+                styles.tab,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+                active && { backgroundColor: accent, borderColor: accent },
+              ]}
+              onPress={() => setStatus(s)}
             >
-              {/* Top row */}
-              <View style={styles.cardTop}>
-                <View style={[styles.statusBadge, { backgroundColor: status.color + '18' }]}>
-                  <Ionicons name={status.icon as any} size={12} color={status.color} />
-                  <Text style={[styles.statusText, { color: status.color }]}>{statusLabel}</Text>
-                </View>
-                <Text style={[styles.dateText, { color: theme.textThird }]}>{formatDate(trip.date)}</Text>
-              </View>
-
-              {/* Route */}
-              <View style={styles.routeBlock}>
-                <View style={styles.routeRow}>
-                  <View style={[styles.routeDot, { backgroundColor: '#22C55E' }]} />
-                  <Text style={[styles.routeAddr, { color: theme.text }]} numberOfLines={1}>{trip.pickupAddress}</Text>
-                </View>
-                <View style={[styles.connector, { backgroundColor: theme.border }]} />
-                <View style={styles.routeRow}>
-                  <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
-                  <Text style={[styles.routeAddr, { color: theme.text }]} numberOfLines={1}>{trip.dropoffAddress}</Text>
-                </View>
-              </View>
-
-              {/* Divider */}
-              <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-              {/* Footer */}
-              <View style={styles.cardFooter}>
-                {trip.driver ? (
-                  <View style={styles.driverMini}>
-                    <Avatar name={trip.driver.name} uri={trip.driver.profilePhoto} size={24} />
-                    <Text style={[styles.driverName, { color: theme.textSecond }]}>{trip.driver.name}</Text>
-                  </View>
-                ) : (
-                  <Text style={[styles.driverName, { color: theme.textThird }]}>No driver</Text>
-                )}
-                <View style={styles.footerRight}>
-                  {trip.distance !== '-' && (
-                    <Text style={[styles.distText, { color: theme.textThird }]}>{trip.distance} · </Text>
-                  )}
-                  <Text style={[styles.priceText, { color: theme.primary }]}>₦{trip.price.toLocaleString()}</Text>
-                </View>
-              </View>
-
-              {/* Rate prompt */}
-              {trip.status === 'completed' && !trip.rating && trip.driver?.id && (
-                <Pressable
-                  style={[styles.rateBtn, { borderColor: '#FFBE0B', backgroundColor: isDark ? '#1A1400' : '#FFFBEB' }]}
-                  onPress={() => router.push({ pathname: '/(customer)/rate/[driverId]', params: { driverId: trip.driver.id, tripId: trip.id } })}
-                >
-                  <Ionicons name="star-outline" size={14} color="#FFBE0B" />
-                  <Text style={[styles.rateBtnText, { color: '#FFBE0B' }]}>Rate this trip</Text>
-                </Pressable>
-              )}
-
-              {/* Unpaid or still cancellable: same actions row the business
-                  Deliveries card uses. Until now the customer app offered
-                  neither, so a booking whose payment never completed could
-                  not be paid for OR cancelled from the app at all. */}
-              {(isUnpaid || isCancellable) && (
-                <View style={styles.cardActions}>
-                  {isUnpaid && (
-                    <Pressable
-                      onPress={() => handlePay(trip)}
-                      disabled={paying === trip.id}
-                      hitSlop={8}
-                      style={[styles.payLink, { borderColor: theme.primary }]}
-                    >
-                      <Text style={[styles.payLinkText, { color: theme.primary }]}>
-                        {paying === trip.id ? 'Opening…' : 'Pay now'}
-                      </Text>
-                    </Pressable>
-                  )}
-                  {isCancellable && (
-                    <Pressable
-                      onPress={() => handleCancel(trip)}
-                      disabled={cancelling === trip.id}
-                      hitSlop={8}
-                      style={styles.cancelBtn}
-                    >
-                      <Text style={styles.cancelBtnText}>
-                        {cancelling === trip.id ? 'Checking…' : 'Cancel'}
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
-              )}
-
-              {/* Active trip → live tracking */}
-              {isActive && (
-                <Pressable
-                  style={[styles.rateBtn, { borderColor: theme.primary, backgroundColor: isDark ? '#001020' : '#EFF6FF' }]}
-                  onPress={() => router.push({ pathname: '/(customer)/track', params: { code: trip.trackingCode } } as any)}
-                >
-                  <Ionicons name="navigate-outline" size={14} color={theme.primary} />
-                  <Text style={[styles.rateBtnText, { color: theme.primary }]}>Track live</Text>
-                </Pressable>
-              )}
+              <View style={[
+                styles.tabDot,
+                { backgroundColor: active ? '#fff' : accent },
+              ]} />
+              <Text style={[
+                styles.tabText,
+                { color: theme.text },
+                active && { color: '#fff' },
+              ]}>
+                {STATUS_LABEL[s]}
+              </Text>
             </Pressable>
           );
-        }}
-      />
+        })}
+      </ScrollView>
+
+      {loading ? (
+        <ActivityIndicator color={theme.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(d) => d.id}
+          renderItem={renderItem}
+          contentContainerStyle={
+            filtered.length === 0
+              ? { flexGrow: 1, padding: 16 }
+              : { padding: 16, paddingBottom: 24 }
+          }
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator color={theme.primary} style={{ marginVertical: 16 }} /> : null
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Icon name="Package" size={40} color={theme.textThird} />
+              <Text style={[styles.emptyText, { color: theme.textThird }]}>
+                {t('history.emptyTitle', { defaultValue: 'No trips found' })}
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
 
+// Style values copied verbatim from business deliveries.tsx (founder:
+// exact). The chip rail keeps the explicit pill height + lineHeight that
+// fixed the Yoga 1px-label clip there.
 const styles = StyleSheet.create({
-  // Search box values taken from the business Deliveries tab.
-  searchWrap:    { flexDirection: 'row', alignItems: 'center', gap: 10,
-                   marginHorizontal: 16, marginTop: 16, borderRadius: 12,
-                   paddingHorizontal: 14, paddingVertical: 11, borderWidth: 1 },
-  searchInput:   { flex: 1, fontSize: 14 },
-  // Values taken from the business Deliveries card so the two read alike.
-  cardActions:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
-                   gap: 10, marginTop: 12 },
-  payLink:       { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
-  payLinkText:   { fontSize: 12.5, fontWeight: '700' },
+  header:       { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, borderBottomWidth: 1 },
+  heading:      { fontSize: 20, fontWeight: '800' },
+  searchWrap:   {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginHorizontal: 16, marginTop: 16, marginBottom: 0,
+    borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 11,
+    borderWidth: 1,
+  },
+  searchInput:  { flex: 1, fontSize: 15 },
+  tabs:         { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10, gap: 10, alignItems: 'center' },
+  tab:          {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, height: 44, borderRadius: 22,
+    borderWidth: 1,
+  },
+  tabDot:       { width: 8, height: 8, borderRadius: 4 },
+  tabText:      { fontSize: 15, fontWeight: '600', lineHeight: 20 },
+  card:         { borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1 },
+  cardTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
+  trackNum:     { fontSize: 14, fontWeight: '700', fontFamily: 'monospace' },
+  address:      { fontSize: 13, marginTop: 3 },
+  badge:        { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText:    { fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
+  cardBottom:   { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  cardActions:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
+                  gap: 10, marginTop: 12, flexWrap: 'wrap' },
   cancelBtn:     { borderWidth: 1, borderColor: '#DC2626', borderRadius: 999,
                    paddingHorizontal: 14, paddingVertical: 6 },
-  cancelBtnText: { fontSize: 12.5, fontWeight: '700', color: '#DC2626' },
-  header:    { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.xs },
-  title:     { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
-  subtitle:  { fontSize: FontSize.sm, marginTop: 2 },
-
-  tabRow:  { flexDirection: 'row', borderBottomWidth: 1, paddingHorizontal: Spacing.sm },
-  tab:     { flex: 1, alignItems: 'center', paddingVertical: Spacing.sm },
-  tabText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-
-  list: { padding: Spacing.md, gap: Spacing.sm, paddingBottom: Spacing.xl },
-
-  card:     { borderRadius: Radius.xl, padding: Spacing.md },
-  cardTop:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
-
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
-  statusText:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  dateText:    { fontSize: FontSize.xs },
-
-  routeBlock: { gap: 3, marginBottom: Spacing.sm },
-  routeRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  routeDot:   { width: 9, height: 9, borderRadius: 5 },
-  routeAddr:  { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  connector:  { width: 1.5, height: 10, marginLeft: 4 },
-
-  divider: { height: 1, marginBottom: Spacing.sm },
-
-  cardFooter:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  driverMini:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  driverName:  { fontSize: FontSize.sm },
-  footerRight: { flexDirection: 'row', alignItems: 'center' },
-  distText:    { fontSize: FontSize.sm },
-  priceText:   { fontSize: FontSize.base, fontWeight: FontWeight.bold },
-
-  rateBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: Spacing.sm, borderWidth: 1.5, borderRadius: Radius.lg, height: 40 },
-  rateBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-
-  empty:     { paddingTop: Spacing.xl * 2, alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.xl },
-  emptyIcon: { width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.xs },
-  emptyTitle:{ fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  emptyDesc: { fontSize: FontSize.base, textAlign: 'center', lineHeight: 22 },
-  ctaBtn:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingVertical: 14, borderRadius: Radius.full, marginTop: Spacing.xs },
-  ctaBtnText:{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  cancelBtnText: { fontSize: 13.5, fontWeight: '700', color: '#DC2626' },
+  meta:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText:     { fontSize: 12, textTransform: 'capitalize' },
+  price:        { marginLeft: 'auto', fontSize: 14, fontWeight: '700' },
+  payLink:      { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  payLinkText:  { fontSize: 13.5, fontWeight: '700' },
+  empty:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  emptyText:    { fontSize: 15 },
 });

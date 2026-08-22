@@ -1930,7 +1930,7 @@ export class PartnerStoreService {
       this.payoutsRepo
         .createQueryBuilder('p')
         .select('p.status', 'status')
-        .addSelect('COALESCE(SUM(p.amountNgn), 0)', 'total')
+        .addSelect('COALESCE(SUM(p.amount), 0)', 'total')
         .where('p.partnerStoreId = :id', { id })
         .groupBy('p.status')
         .getRawMany(),

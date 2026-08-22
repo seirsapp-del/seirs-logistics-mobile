@@ -16,7 +16,7 @@ function loadGoogleMaps(key: string): Promise<any> {
   if (_mapsPromise) return _mapsPromise;
   _mapsPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src    = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=visualization,places,geometry`;
+    script.src    = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=visualization,places,geometry&v=quarterly`;
     script.async  = true;
     script.defer  = true;
     script.onload  = () => resolve((window as any).google);
@@ -161,6 +161,7 @@ export default function OpsMapPage() {
 
   // ── Unified marker render (drivers + requests + stores) ──
   useEffect(() => {
+    try {
     const g = (window as any).google;
     if (!g || !mapRef.current) return;
     const seen = new Set<string>();
@@ -260,10 +261,12 @@ export default function OpsMapPage() {
     Array.from(markersRef.current.entries()).forEach(([id, m]) => {
       if (!seen.has(id)) { m.setMap(null); markersRef.current.delete(id); }
     });
+    } catch { /* a bad pin must not kill the page */ }
   }, [drivers, pending, stores, layers]);
 
   // ── Delivery route polylines ──
   useEffect(() => {
+    try {
     const g = (window as any).google;
     if (!g || !mapRef.current) return;
     polylinesRef.current.forEach((p) => p.setMap(null));
@@ -274,19 +277,43 @@ export default function OpsMapPage() {
       strokeWeight:  3,
       map:           mapRef.current,
     }));
+    } catch { /* routes are decoration too */ }
   }, [deliveries, layers.routes]);
 
   // ── DEMAND heat (24h pickup density - real demand, not driver blur) ──
+  // HeatmapLayer was deprecated and then removed from newer Maps JS
+  // channels; when it is absent the demand layer degrades to translucent
+  // circles instead of killing the page (this exact throw is what sent
+  // the whole ops map to the error boundary, 2026-08-22).
   useEffect(() => {
-    const g = (window as any).google;
-    if (!g || !mapRef.current) return;
-    heatmapRef.current?.setMap(null);
-    if (!layers.heat || heatPts.length === 0) { heatmapRef.current = null; return; }
-    heatmapRef.current = new g.maps.visualization.HeatmapLayer({
-      data:   heatPts.map((p) => new g.maps.LatLng(p.lat, p.lng)),
-      radius: 34,
-      map:    mapRef.current,
-    });
+    try {
+      const g = (window as any).google;
+      if (!g || !mapRef.current) return;
+      if (Array.isArray(heatmapRef.current)) {
+        heatmapRef.current.forEach((c: any) => c.setMap(null));
+      } else {
+        heatmapRef.current?.setMap(null);
+      }
+      heatmapRef.current = null;
+      if (!layers.heat || heatPts.length === 0) return;
+      const Heat = g.maps.visualization?.HeatmapLayer;
+      if (Heat) {
+        heatmapRef.current = new Heat({
+          data:   heatPts.map((p) => new g.maps.LatLng(p.lat, p.lng)),
+          radius: 34,
+          map:    mapRef.current,
+        });
+      } else {
+        heatmapRef.current = heatPts.map((p) => new g.maps.Circle({
+          center: { lat: p.lat, lng: p.lng },
+          radius: 450,
+          map: mapRef.current,
+          fillColor: '#DC2626', fillOpacity: 0.12,
+          strokeColor: '#DC2626', strokeOpacity: 0.25, strokeWeight: 1,
+          clickable: false,
+        }));
+      }
+    } catch { /* demand layer is decoration; the map must survive it */ }
   }, [layers.heat, heatPts]);
 
   // ── Search: address autocomplete + raw "lat, lng" jump ──

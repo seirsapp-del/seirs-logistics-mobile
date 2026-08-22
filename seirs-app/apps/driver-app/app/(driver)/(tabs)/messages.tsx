@@ -163,7 +163,12 @@ export default function DriverMessagesScreen() {
                 </View>
                 <View style={styles.chatBody}>
                   <View style={styles.chatTopRow}>
-                    <Text style={[styles.chatName, { color: theme.text }]} numberOfLines={1}>{item.data.otherParty.name}</Text>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={[styles.chatName, { color: theme.text, flexShrink: 1 }]} numberOfLines={1}>{item.data.otherParty.name}</Text>
+                      <View style={[styles.typeChip, { backgroundColor: '#22C55E20', borderColor: '#22C55E60' }]}>
+                        <Text style={[styles.typeChipText, { color: '#16A34A' }]}>Customer</Text>
+                      </View>
+                    </View>
                     <Text style={[styles.chatTime, { color: theme.textThird }]}>{formatRelativeTime(item.data.lastMessageAt)}</Text>
                   </View>
                   <View style={styles.chatBottomRow}>
@@ -197,7 +202,12 @@ export default function DriverMessagesScreen() {
                 </View>
                 <View style={styles.chatBody}>
                   <View style={styles.chatTopRow}>
-                    <Text style={[styles.chatName, { color: theme.text }]} numberOfLines={1}>SEIRS Support</Text>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={[styles.chatName, { color: theme.text, flexShrink: 1 }]} numberOfLines={1}>SEIRS Support</Text>
+                      <View style={[styles.typeChip, { backgroundColor: '#3A7BD520', borderColor: '#3A7BD560' }]}>
+                        <Text style={[styles.typeChipText, { color: '#3A7BD5' }]}>Support</Text>
+                      </View>
+                    </View>
                     <Text style={[styles.chatTime, { color: theme.textThird }]}>{formatRelativeTime(item.data.lastMessageAt)}</Text>
                   </View>
                   <View style={styles.chatBottomRow}>
@@ -257,12 +267,14 @@ const styles = StyleSheet.create({
   badge:         { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
   badgeText:     { color: '#fff', fontSize: 10, fontWeight: FontWeight.bold },
   chatBody:      { flex: 1, gap: 2 },
-  chatTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  chatTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   chatName:      { fontSize: FontSize.base, fontWeight: FontWeight.bold, flex: 1, marginRight: Spacing.sm },
   chatTime:      { fontSize: FontSize.xs },
   chatBottomRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   chatPreview:   { fontSize: FontSize.sm, flex: 1 },
   tripTag:       { fontSize: 10, marginTop: 2 },
+  typeChip:      { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
+  typeChipText:  { fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.4, textTransform: 'uppercase' },
   replyPill:     { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   replyPillText: { color: '#fff', fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5 },
 

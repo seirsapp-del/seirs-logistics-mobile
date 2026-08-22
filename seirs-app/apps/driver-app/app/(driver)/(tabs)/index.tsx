@@ -6,20 +6,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Bell, MapPin, Star, TrendingUp, Truck, Zap,
-  ChevronRight, Target, Wifi, WifiOff, Package,
+  ChevronRight, Wifi, WifiOff, Package,
   Navigation, Clock, AlignLeft,
 } from 'lucide-react-native';
 import MapView, { PROVIDER_GOOGLE, Circle, Marker } from 'react-native-maps';
 import { Drawer } from '@/components/Drawer';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter, useFocusEffect } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { io, Socket } from 'socket.io-client';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { driversApi } from '@/services/api';
+import { driversApi, earningsApi } from '@/services/api';
 import { NotificationBell } from '@/components/NotificationBell';
 import { SOCKET_URL } from '@/constants/config';
 
@@ -42,18 +41,23 @@ export default function DriverHomeScreen() {
   const [toggling,   setToggling]   = useState(false);
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [activeDeliveries, setActiveDeliveries] = useState<any[]>([]);
-  const [weeklyGoal, setWeeklyGoal] = useState(50000);
   const [loading,    setLoading]    = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [driverData, setDriverData] = useState<any>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [demandZones, setDemandZones] = useState<Array<{ latitude: number; longitude: number; radiusM: number; intensity: number; orderCount: number }>>([]);
+  // The ledger's withdrawable figure, same source as the Earnings tab:
+  // the hub used to show drivers.me().balance, a different number.
+  const [withdrawable, setWithdrawable] = useState<number | null>(null);
 
   const locationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketRef        = useRef<Socket | null>(null);
   const firstName        = user?.name?.split(' ')[0] ?? 'Driver';
 
   useEffect(() => {
+    earningsApi.dashboard()
+      .then((d: any) => setWithdrawable(Number(d?.available ?? 0)))
+      .catch(() => setWithdrawable(null));
     driversApi.me().then((d) => {
       setDriverData(d);
       // Hydrate the online switch from the server. Without this the toggle
@@ -178,21 +182,31 @@ export default function DriverHomeScreen() {
   // No fake defaults: a new driver has no rating, not a pretend 4.8.
   const rating        = Number(driverData?.rating        ?? 0);
   const tripCount     = Number(driverData?.totalTrips    ?? 0);
-  const goalPct       = Math.min((weekEarnings / weeklyGoal) * 100, 100);
-  const walletBal     = Number(driverData?.balance       ?? 0);
 
   const activeJobs = activeDeliveries.filter(d => d.status === 'assigned' || d.status === 'picked_up' || d.status === 'in_transit');
   const activeJob  = activeJobs[0];
   const isPooled   = activeJobs.length > 1;
   const pendingJobs = deliveries.filter(d => d.status === 'pending').slice(0, 3);
 
-  // Same device-stored goal the Earnings tab edits: home used to
-  // hardcode ₦50k regardless of the driver's own target.
-  useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem('seirs_weekly_goal_ngn')
-      .then(v => { const n = Number(v); if (Number.isFinite(n) && n >= 1000) setWeeklyGoal(n); })
-      .catch(() => {});
-  }, []));
+
+  // Demand map center: the demand itself when zones exist, else the
+  // driver's fix if it is inside Nigeria, else Lagos. Raw GPS put the
+  // founder's demand map in Berlin (device QA 2026-08-22).
+  const inNigeria = (lat: number, lng: number) =>
+    lat >= 4 && lat <= 14 && lng >= 2.5 && lng <= 15;
+  const demandCenter = (() => {
+    if (demandZones.length > 0) {
+      const lat = demandZones.reduce((a, z) => a + z.latitude, 0) / demandZones.length;
+      const lng = demandZones.reduce((a, z) => a + z.longitude, 0) / demandZones.length;
+      return { latitude: lat, longitude: lng, latitudeDelta: 0.12, longitudeDelta: 0.12 };
+    }
+    const lat = Number(driverData?.lastLat);
+    const lng = Number(driverData?.lastLng);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && inNigeria(lat, lng)) {
+      return { latitude: lat, longitude: lng, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+    }
+    return { latitude: 6.5244, longitude: 3.3792, latitudeDelta: 0.12, longitudeDelta: 0.12 };
+  })();
 
   const navGrad: [string, string] = isDark
     ? ['#0D1117', '#161B22']
@@ -329,23 +343,22 @@ export default function DriverHomeScreen() {
             <Text style={[styles.bigMapCta, { color: theme.primary }]}>Open map</Text>
           </View>
           <View style={[styles.bigMapBox, { backgroundColor: theme.surfaceSecond }]}>
-            {driverData?.lastLat && driverData?.lastLng ? (
+            {driverData ? (
               <MapView
                 provider={PROVIDER_GOOGLE}
                 style={{ width: '100%', height: '100%' }}
                 pointerEvents="none"
                 liteMode={true}
-                initialRegion={{
-                  latitude:  Number(driverData.lastLat),
-                  longitude: Number(driverData.lastLng),
-                  latitudeDelta:  0.05,
-                  longitudeDelta: 0.05,
-                }}
+                key={`${demandCenter.latitude.toFixed(3)},${demandCenter.longitude.toFixed(3)}`}
+                initialRegion={demandCenter}
               >
-                <Marker
-                  coordinate={{ latitude: Number(driverData.lastLat), longitude: Number(driverData.lastLng) }}
-                  pinColor="#3A7BD5"
-                />
+                {driverData?.lastLat && driverData?.lastLng &&
+                  inNigeria(Number(driverData.lastLat), Number(driverData.lastLng)) && (
+                  <Marker
+                    coordinate={{ latitude: Number(driverData.lastLat), longitude: Number(driverData.lastLng) }}
+                    pinColor="#3A7BD5"
+                  />
+                )}
                 {demandZones.map((z, i) => {
                   const fill = z.intensity > 0.66
                     ? 'rgba(239,68,68,0.35)'
@@ -379,23 +392,16 @@ export default function DriverHomeScreen() {
             <View style={styles.widgetIcon}>
               <TrendingUp size={18} color={theme.primary} strokeWidth={1.75} />
             </View>
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Wallet</Text>
-            <Text style={[styles.widgetValue, { color: theme.text }]}>₦{walletBal.toLocaleString()}</Text>
+            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Withdrawable</Text>
+            <Text style={[styles.widgetValue, { color: theme.text }]}>
+              {withdrawable == null ? '—' : `₦${withdrawable.toLocaleString()}`}
+            </Text>
             <Text style={[styles.widgetSub, { color: theme.textThird }]}>Today ₦{todayEarnings.toLocaleString()}</Text>
           </Pressable>
 
-          {/* Goal tracker */}
-          <View style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <View style={styles.widgetIcon}>
-              <Target size={18} color="#D97706" strokeWidth={1.75} />
-            </View>
-            <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Weekly Goal</Text>
-            <Text style={[styles.widgetValue, { color: theme.text }]}>₦{(weekEarnings / 1000).toFixed(1)}k</Text>
-            <View style={[styles.goalTrack, { backgroundColor: theme.surfaceSecond }]}>
-              <View style={[styles.goalFill, { width: `${goalPct}%`, backgroundColor: goalPct >= 100 ? '#16A34A' : '#D97706' }]} />
-            </View>
-            <Text style={[styles.widgetSub, { color: theme.textThird }]}>{Math.round(goalPct)}% of ₦{(weeklyGoal / 1000).toFixed(0)}k</Text>
-          </View>
+          {/* Weekly Goal widget PARKED (founder deferred the weekly-goal
+              program, 2026-08-22). The self-set target on the Earnings
+              tab remains; re-add here only after the founder rules. */}
 
           {/* Rating */}
           <Pressable style={[styles.widgetCard, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => router.push('/(driver)/ratings' as any)}>
@@ -405,10 +411,12 @@ export default function DriverHomeScreen() {
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Rating</Text>
             {/* Dash for unrated drivers: "0.0 Below threshold" scared
                 every new driver for no reason. */}
-            <Text style={[styles.widgetValue, { color: rating > 0 && rating < 3.5 ? '#EF4444' : theme.text }]}>
-              {rating > 0 ? rating.toFixed(1) : '-'}
+            {/* A stored rating with zero trips is a fiction: the seed gave
+                Emeka 4.9 before he ever carried a parcel. */}
+            <Text style={[styles.widgetValue, { color: tripCount > 0 && rating > 0 && rating < 3.5 ? '#EF4444' : theme.text }]}>
+              {tripCount > 0 && rating > 0 ? rating.toFixed(1) : 'New'}
             </Text>
-            {rating > 0 && rating < 3.5 && <Text style={[styles.ratingWarn, { color: '#EF4444' }]}>Below threshold</Text>}
+            {tripCount > 0 && rating > 0 && rating < 3.5 && <Text style={[styles.ratingWarn, { color: '#EF4444' }]}>Below threshold</Text>}
             <Text style={[styles.widgetSub, { color: theme.textThird }]}>{tripCount} trips</Text>
           </Pressable>
 

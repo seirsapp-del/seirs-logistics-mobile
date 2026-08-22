@@ -53,13 +53,13 @@ export default function BusinessTabsLayout() {
         tabBarStyle: {
           backgroundColor: theme.navBackground,
           borderTopColor:  theme.border,
-          height: 62 + Math.max(insets.bottom, 8),
+          height: 64 + Math.max(insets.bottom, 8),
           paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 6,
+          paddingTop: 8,
         },
         tabBarActiveTintColor:   theme.accent,
         tabBarInactiveTintColor: theme.textSecond ?? theme.tabIconDefault,
-        tabBarLabelStyle: { fontSize: 13, fontWeight: '600', marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
       }}
     >
       <Tabs.Screen
