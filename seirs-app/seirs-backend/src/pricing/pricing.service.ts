@@ -38,6 +38,8 @@ export interface PriceBreakdown {
     discounts:      { bulk: number; recurring: number; loyalty: number; welcome: number };
     vatBase:        number;     // pre-VAT subtotal
     vat:            number;
+    /** Flat platform fee, post-discount + pre-VAT. 0 until the admin sets it. */
+    serviceFee:     number;
     /** Paid straight through to partner counters, not SEIRS revenue. */
     partnerHandling: number;
     /** % of declared value above the card threshold; deters false declarations. */
@@ -203,6 +205,14 @@ export class PricingService implements OnModuleInit {
    */
   private async selfHealSchema() {
     const statements = [
+      ['rate_cards.serviceFees', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "serviceFees" jsonb NULL`],
+      // Old cards carry NULL; zeroed = charged nothing until the admin
+      // sets a value and publishes.
+      ['rate_cards.serviceFees backfill', `
+        UPDATE "rate_cards"
+           SET "serviceFees" = '{"packageNgn":0,"rideNgn":0}'::jsonb
+         WHERE "serviceFees" IS NULL
+      `],
       ['rate_cards.insurance', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "insurance" jsonb NULL`],
       // Cards published before the column existed carry NULL, which
       // would leave the admin editor with nothing to write into.
@@ -696,10 +706,20 @@ export class PricingService implements OnModuleInit {
     const welcomeDisc   = Math.min(welcomeDiscRaw, d.welcomeMaxNgn);
     const loyaltyDisc   = (input.loyaltyPointsToRedeem ?? 0) * d.loyaltyPointValueNgn;
 
+    /**
+     * Platform service fee (founder 2026-08-22): flat, per booking,
+     * added AFTER discounts so no promotion can erode it, BEFORE VAT so
+     * tax applies. Region overrides beat the card baseline. 100% SEIRS:
+     * it flows into seirsNet through the VAT base, never to the driver.
+     */
+    const serviceFee = Math.max(0, Number(
+      region.serviceFeePackageOverride ?? (card as any).serviceFees?.packageNgn ?? 0,
+    ));
+
     const subtotalVatBase = Math.max(
       0,
       subtotalPreDiscount - bulkDisc - recurringDisc - welcomeDisc - loyaltyDisc,
-    );
+    ) + serviceFee;
 
     const vat   = subtotalVatBase * Number(card.vatRate);
     const total0 = subtotalVatBase + vat;
@@ -813,7 +833,7 @@ export class PricingService implements OnModuleInit {
         timeSurcharges: { night: nightSur, peak: peakSur, weekend: weekendSur },
         zoneSurcharges: { interState: interStateSur, longDistance: longDistanceSur, overnight: overnightSur, restricted: restrictedSur },
         discounts:      { bulk: bulkDisc, recurring: recurringDisc, loyalty: loyaltyDisc, welcome: welcomeDisc },
-        vatBase: subtotalVatBase, vat, partnerHandling, highValuePremium, total,
+        vatBase: subtotalVatBase, vat, serviceFee, partnerHandling, highValuePremium, total,
       },
       driver: {
         base: dBase, distanceLabour: dDistanceLabour, distanceFuel: dDistanceFuel,

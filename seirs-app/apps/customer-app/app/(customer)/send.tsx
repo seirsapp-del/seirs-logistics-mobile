@@ -585,13 +585,11 @@ export default function SendScreen() {
           // here would double-count it.
           weight:            0,
           handling:          Number(c.stopBonuses ?? 0) + Number(c.dwellOver ?? 0) + Number(c.partnerHandling ?? 0),
-          // Lines the ENGINE does not price must not render: the screen
-          // showed "Service fee 304" while the total excluded it, a
-          // breakdown contradicting its own total (founder side-by-side,
-          // 2026-08-21). COD and insurance are the same class: local
-          // concepts the server never charges. Founder decision on all
-          // three is recorded; until then the screen tells the truth.
-          service:   0,
+          // Service fee is now a REAL engine line (founder ruling
+          // 2026-08-22): render exactly what the server charged, which
+          // is 0 until the admin publishes a value. COD and insurance
+          // remain engine-absent and stay zeroed.
+          service:   Math.round(Number(c.serviceFee ?? 0)),
           codFee:    0,
           insurance: 0,
           discounts: {
@@ -1911,6 +1909,12 @@ export default function SendScreen() {
                                                : (scheduledHour != null
                                                    ? buildScheduledFor(scheduledDate, scheduledHour).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
                                                    : '-')],
+                  // Only when the engine actually charges one: a 0-naira
+                  // row is noise, a hidden non-zero fee is a lie.
+                  ...(fare.service > 0
+                    ? [[t('send.serviceFee', { defaultValue: 'Service fee' }),
+                        `₦${Math.round(fare.service).toLocaleString()}`] as [string, string]]
+                    : []),
                   [t('send.total'),          `₦${Math.round(fare.total).toLocaleString()}`],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>

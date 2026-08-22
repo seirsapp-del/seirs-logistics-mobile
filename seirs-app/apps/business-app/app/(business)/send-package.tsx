@@ -1626,6 +1626,9 @@ export default function SendPackageScreen() {
                   ['Distance', route.distanceText ?? `~${routeKm}km`],
                   ['Vehicle', VEHICLE_LABEL[draft.vehicleType] ?? draft.vehicleType],
                   ['When', scheduleNow ? 'Send now' : (TIME_SLOTS.find(t => t.hour === scheduledHour)?.label ?? '-')],
+                  ...(Number(quote?.customer?.serviceFee ?? 0) > 0
+                    ? [['Service fee', `₦${Math.round(Number(quote!.customer.serviceFee)).toLocaleString()}`] as [string, string]]
+                    : []),
                   ['Total', quote?.customer?.total != null ? `₦${Math.round(Number(quote.customer.total)).toLocaleString()}` : '…'],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingVertical: 5 }}>

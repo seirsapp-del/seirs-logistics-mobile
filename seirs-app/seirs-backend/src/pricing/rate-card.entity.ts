@@ -238,6 +238,18 @@ export class RateCard {
    * promise the company cannot keep.
    */
   @Column({ type: 'jsonb', nullable: true })
+  /**
+   * Flat platform service fee per booking (founder 2026-08-22). Charged
+   * AFTER discounts (promotions never erode it) and BEFORE VAT. Region
+   * serviceFee*Override fields beat these baselines. rideNgn is
+   * reserved for the ride engine.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  serviceFees: {
+    packageNgn?: number;
+    rideNgn?:    number;
+  } | null;
+
   insurance: {
     enabled:                   boolean;
     premiumPct:                number;

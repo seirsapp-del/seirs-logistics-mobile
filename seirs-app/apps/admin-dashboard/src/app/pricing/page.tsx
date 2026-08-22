@@ -353,6 +353,20 @@ export default function PricingPage() {
         </table>
       </Card>
 
+      {/* ── Service fee ───────────────────────────────────────────── */}
+      <Card title="Service fee">
+        <Row>
+          <FieldNumber label="Package service fee ₦"
+            value={card.serviceFees?.packageNgn ?? 0}
+            onChange={(v) => patchPath('serviceFees.packageNgn', v)}
+            hint="Flat platform fee on every package booking. Charged after discounts (promotions cannot erode it) and before VAT. 0 = no fee. State/zone serviceFee overrides beat this baseline." />
+          <FieldNumber label="Ride service fee ₦"
+            value={card.serviceFees?.rideNgn ?? 0}
+            onChange={(v) => patchPath('serviceFees.rideNgn', v)}
+            hint="Reserved for ride pricing; stored on the card now so both fees live in one place." />
+        </Row>
+      </Card>
+
       {/* ── High-value premium ────────────────────────────────────── */}
       <Card title="High-value premium">
         <Row>
