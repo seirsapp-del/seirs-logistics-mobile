@@ -355,6 +355,17 @@ export default function DeliveryDetailScreen() {
             </Text>
           </View>
         )}
+
+        {/* Same entry the customer Trip Details has (founder 2026-08-22:
+            business gets Report an issue too). Prefilled with this order;
+            the report screen still lets them switch to All orders. */}
+        <Pressable
+          onPress={() => router.push({ pathname: '/(business)/report', params: { deliveryId: d.id } } as any)}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 18 }}
+        >
+          <Icon name="Flag" size={16} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600' }}>Report an issue</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );

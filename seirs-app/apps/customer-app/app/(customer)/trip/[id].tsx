@@ -100,7 +100,7 @@ export default function TripDetailsScreen() {
     dropoffAddress: raw.dropoffAddress ?? '-',
     distance:       raw.distanceKm ? `${Number(raw.distanceKm).toFixed(1)} km` : '-',
     duration:       raw.estimatedTotalMinutes ? `${raw.estimatedTotalMinutes} min` : '-',
-    price:          Number(raw.price ?? 0),
+    price:          Math.round(Number(raw.price ?? 0)),
     paymentMethod:  raw.paymentMethod ?? '',
     paymentHeldAt:  raw.paymentHeldAt ?? null,
     vehicleType:    raw.vehicleType ?? '',
@@ -134,6 +134,9 @@ export default function TripDetailsScreen() {
   const isCancelled = trip.status === 'cancelled';
   // Pending AND the fare was never held: the sender still owes for this.
   const isUnpaid    = trip.status === 'pending' && !trip.paymentHeldAt;
+  // Never paid at all: the payment card must not claim a charge that
+  // did not happen, whatever the status is now.
+  const neverPaid   = !trip.paymentHeldAt;
 
   // Stage timestamps and who actually took the package. All optional:
   // an in-flight trip has no delivery time, and most deliveries go to
@@ -310,7 +313,7 @@ export default function TripDetailsScreen() {
               We now show only what the API actually returns. Lines the
               backend does not send are simply absent. */}
           <Card>
-            <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>What you paid</Text>
+            <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{neverPaid ? 'Price' : 'What you paid'}</Text>
 
             {fareLines.map(row => (
               <View key={row.label} style={styles.fareRow}>
@@ -330,20 +333,22 @@ export default function TripDetailsScreen() {
 
             {fareLines.length === 0 && (
               <Text style={[styles.fareNote, { color: theme.textThird }]}>
-                Charged as a single fare for this trip.
+                {neverPaid ? 'Quoted as a single fare for this trip.' : 'Charged as a single fare for this trip.'}
               </Text>
             )}
 
             <View style={[styles.payMethod, { backgroundColor: theme.surfaceSecond }]}>
               <Ionicons
-                name={isUnpaid ? 'alert-circle-outline' : (PAYMENT_ICONS[trip.paymentMethod] as any ?? 'card-outline')}
+                name={neverPaid ? 'alert-circle-outline' : (PAYMENT_ICONS[trip.paymentMethod] as any ?? 'card-outline')}
                 size={16}
                 color={isUnpaid ? '#DC2626' : theme.textSecond}
               />
               <Text style={[styles.payMethodText, { color: isUnpaid ? '#DC2626' : theme.textSecond }]}>
                 {isUnpaid
                   ? 'Not paid yet'
-                  : (PAYMENT_LABELS[trip.paymentMethod] ?? 'Paid on this account')}
+                  : neverPaid
+                    ? 'Nothing was charged for this trip'
+                    : (PAYMENT_LABELS[trip.paymentMethod] ?? 'Paid on this account')}
               </Text>
             </View>
           </Card>

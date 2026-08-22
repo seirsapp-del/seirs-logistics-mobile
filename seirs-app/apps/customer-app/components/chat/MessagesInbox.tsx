@@ -1,15 +1,12 @@
 /**
- * Shared business/partner messages inbox.
- *
- * List of conversations (one per delivery the account has chatted in).
- * Same underlying endpoint as customer/driver: GET /chats. The only
- * difference from the customer/driver inboxes is a slightly more
- * restrained visual style consistent with the business-app "gold visual
- * restraint" reference: no big colored badges, no card shadows.
- *
- * The `threadRoutePrefix` prop lets each caller (business tab vs
- * partner tab) route to the correct per-mode thread screen without
- * this component having to know about route groups.
+ * Customer messages inbox, ported from the business app's MessagesInbox
+ * verbatim (founder 2026-08-22: "design both like the business app
+ * because that looks better"). Same divider-list restraint: no colored
+ * type chips, no card shadows, monospace tracking line under each row.
+ * Adapted only where the apps differ: theme hook, empty-state copy, and
+ * a header support button so a new ticket is reachable once threads
+ * exist (the business original only offered support from the empty
+ * state).
  */
 import {
   View, Text, Pressable, StyleSheet, FlatList, StatusBar,
@@ -20,8 +17,8 @@ import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/Icon';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
-import { useTheme } from '@/context/ThemeContext';
 import {
   chatApi, supportApi,
   type ChatConversationDTO, type SupportTicketDTO,
@@ -46,21 +43,22 @@ function formatRelativeTime(iso: string): string {
 }
 
 interface MessagesInboxProps {
-  /** Route prefix for a tapped thread, e.g. `/(business)/messages` or `/(partner)/messages`. */
+  /** Route prefix for a tapped thread, e.g. `/(customer)/messages`. */
   threadRoutePrefix: string;
-  /** Route prefix for support tickets. Defaults to /(business)/support since
-   *  business + partner modes share the same account (and tickets). */
-  supportRoutePrefix?: string;
-  /** When provided, renders a hamburger button in the header (opens the
-   *  caller's Drawer). Kept optional so embedded usages stay chrome-free. */
+  /** Route prefix for support tickets, e.g. `/(customer)/support`. */
+  supportRoutePrefix: string;
+  /** Empty-state body copy: which chats appear here and when. */
+  emptyBody: string;
+  /** When provided, renders a hamburger button (opens the caller's Drawer). */
   onMenuPress?: () => void;
 }
 
-export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(business)/support', onMenuPress }: MessagesInboxProps) {
-  const router     = useRouter();
-  const { isDark } = useTheme();
-  const theme      = Colors[isDark ? 'dark' : 'light'];
-  const { t }      = useTranslation();
+export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix, emptyBody, onMenuPress }: MessagesInboxProps) {
+  const router  = useRouter();
+  const cs      = useColorScheme();
+  const isDark  = cs === 'dark';
+  const theme   = Colors[cs ?? 'light'];
+  const { t }   = useTranslation();
 
   const [conversations, setConversations] = useState<ChatConversationDTO[]>([]);
   const [tickets,       setTickets]       = useState<SupportTicketDTO[]>([]);
@@ -113,9 +111,6 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(busin
             <Text style={styles.unreadPillText}>{totalUnread}</Text>
           </View>
         )}
-        {/* Support stays reachable once threads exist; the empty-state CTA
-            was the only entry before (parity with the customer/driver
-            ports, 2026-08-22). */}
         <Pressable
           onPress={() => router.push(`${supportRoutePrefix}/new` as any)}
           hitSlop={8}
@@ -149,7 +144,7 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(busin
                 {t('chat.emptyInboxTitle', { defaultValue: 'No conversations yet' })}
               </Text>
               <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
-                {t('chat.emptyInboxBody2', { defaultValue: 'Driver chats appear once a delivery is assigned. You can also start a support conversation any time.' })}
+                {emptyBody}
               </Text>
               <Pressable
                 onPress={() => router.push(`${supportRoutePrefix}/new` as any)}
@@ -255,6 +250,7 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix = '/(busin
   );
 }
 
+// Style values verbatim from the business MessagesInbox.
 const styles = StyleSheet.create({
   header:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
   menuBtn:     { justifyContent: 'center', alignItems: 'center' },
@@ -264,8 +260,6 @@ const styles = StyleSheet.create({
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 40 },
 
-  // Centred 2026-08-15 (founder: the support CTA sat at the top of a
-  // dead page). flexGrow on the list content lets the wrap fill and centre.
   emptyWrap:  { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 10 },
   emptyTitle: { fontSize: 15, fontWeight: '700' },
   emptyBody:  { fontSize: 13, textAlign: 'center', lineHeight: 18 },
@@ -283,4 +277,3 @@ const styles = StyleSheet.create({
   badge:    { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, justifyContent: 'center', alignItems: 'center' },
   badgeText:{ color: '#fff', fontSize: 10, fontWeight: '700' },
 });
-
