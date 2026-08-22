@@ -229,6 +229,7 @@ export class DeliveriesService {
           km: road.km,
           stopCount: 1,
           weightKg: weight,
+          declaredValueNgn: Number(dto.declaredValueNgn ?? 0) || undefined,
           estimatedDwellMinutes: 0,
           scheduledAt: dto.scheduledFor ? new Date(dto.scheduledFor) : undefined,
           // Same latitude/longitude fix as create() below.
@@ -255,14 +256,40 @@ export class DeliveriesService {
   }
 
   async create(dto: CreateDeliveryDto, customer: User): Promise<Delivery> {
-    // Same resolver as getQuote, and the 15-minute cache means the booking
+    // Same resolver as getQuote, and the shared cache means the booking
     // reuses the exact distance the customer was shown on the quote screen:
     // the two cannot disagree inside one booking session.
-    const road = await this.routeDistance.getRoadDistance(
-      dto.pickupLat, dto.pickupLng,
-      dto.dropoffLat, dto.dropoffLng,
-    );
-    const distanceKm = road.km;
+    //
+    // A run measures the whole chain pickup -> stop1 -> ... -> stopN;
+    // pricing the straight pickup -> last-drop leg underpaid the driver
+    // on every zigzag route (2026-08-22). Falls back to the single leg
+    // when any stop arrives without usable coordinates.
+    const coordOk = (v: any) => Number.isFinite(Number(v)) && Number(v) !== 0;
+    const runStops = Array.isArray(dto.stops)
+      ? dto.stops.filter(st => coordOk(st?.lat) && coordOk(st?.lng))
+      : [];
+    let distanceKm: number;
+    let roadDurationMin: number | null;
+    let legsKm: number[] | null = null;
+    let roadSource: string;
+    if (runStops.length > 1 && runStops.length === (dto.stops?.length ?? 0)) {
+      const chain = await this.routeDistance.getRouteLegs([
+        { lat: dto.pickupLat, lng: dto.pickupLng },
+        ...runStops.map(st => ({ lat: Number(st.lat), lng: Number(st.lng) })),
+      ]);
+      distanceKm = chain.totalKm;
+      roadDurationMin = chain.durationMin;
+      legsKm = chain.legsKm;
+      roadSource = chain.source;
+    } else {
+      const road = await this.routeDistance.getRoadDistance(
+        dto.pickupLat, dto.pickupLng,
+        dto.dropoffLat, dto.dropoffLng,
+      );
+      distanceKm = road.km;
+      roadDurationMin = road.durationMin;
+      roadSource = road.source;
+    }
 
     /**
      * The customer app describes a package by weight, category and
@@ -328,6 +355,9 @@ export class DeliveriesService {
     // bookings charged less than the screen and shorted the driver's
     // stop share (found 2026-08-22).
     const stopCount = Array.isArray(dto.stops) && dto.stops.length > 0 ? dto.stops.length : 1;
+    const declaredTotalNgn = Array.isArray(dto.stops) && dto.stops.length > 0
+      ? dto.stops.reduce((sum, st) => sum + (Number(st?.declaredValueNgn ?? 0) || 0), 0)
+      : Number(dto.declaredValueNgn ?? 0) || 0;
 
     const breakdown = await this.rateCardPricing.computePrice({
       vehicleType,
@@ -335,6 +365,7 @@ export class DeliveriesService {
       km: distanceKm,
       stopCount,
       weightKg: weight,
+      declaredValueNgn: declaredTotalNgn > 0 ? declaredTotalNgn : undefined,
       // Mirrors the app's quote inputs: ~4 minutes of dwell per stop on
       // a run, zero for a single drop.
       estimatedDwellMinutes: stopCount > 1 ? stopCount * 4 : 0,
@@ -451,12 +482,15 @@ export class DeliveriesService {
                         : null,
       paymentMethod:  dto.paymentMethod ?? null,
       codAmountNgn:   dto.codAmountNgn ?? null,
+      // A run's declared value is the SUM on board: the matching gate
+      // and the insurance path both reason about the total carried.
+      declaredValueNgn: declaredTotalNgn > 0 ? declaredTotalNgn : (dto.declaredValueNgn ?? null),
       scheduledFor,
       trackingCode,
       customer,
       distanceKm,
-      quotedDistanceSource: road.source,
-      quotedDurationMin:    road.durationMin,
+      quotedDistanceSource: roadSource,
+      quotedDurationMin:    roadDurationMin,
       price:          +pricing.price.toFixed(2),
       driverEarnings: +pricing.driverEarnings.toFixed(2),
       nightFeeNgn:    Number((breakdown as any).customer?.nightSurcharge ?? 0) > 0
@@ -514,6 +548,7 @@ export class DeliveriesService {
         address:               st.address,
         lat:                   st.lat,
         lng:                   st.lng,
+        legKm:                 legsKm?.[idx] ?? null,
         recipientName:         st.recipientName,
         recipientPhone:        st.recipientPhone,
         notes:                 st.notes ?? null,

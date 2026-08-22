@@ -58,6 +58,17 @@ export default function DeliveriesScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const router = useRouter();
   const [search,     setSearch]     = useState('');
+  // One-tap: the default saved card (tokenized on an earlier payment).
+  const [savedCard, setSavedCard] = useState<any | null>(null);
+  useEffect(() => {
+    paymentsApi.listSavedCards()
+      .then((cards: any[]) => {
+        if (Array.isArray(cards) && cards.length > 0) {
+          setSavedCard(cards.find((c) => c.isDefault) ?? cards[0]);
+        }
+      })
+      .catch(() => { /* hosted checkout only */ });
+  }, []);
   const [page,       setPage]       = useState(1);
   const [hasMore,    setHasMore]    = useState(false);
 
@@ -106,7 +117,8 @@ export default function DeliveriesScreen() {
    * (founder, on device 2026-08-19). A dead-end order is a lost sale and
    * a support ticket.
    */
-  const handlePay = async (item: Delivery) => {
+  /** The hosted Flutterwave page: full checkout, any card or method. */
+  const openCheckout = async (item: Delivery) => {
     try {
       setPaying(item.id);
       const res = await paymentsApi.initiate(item.id, 'card', 'card');
@@ -126,6 +138,45 @@ export default function DeliveriesScreen() {
     } finally {
       setPaying(null);
     }
+  };
+
+  /**
+   * Pay now: one tap on the saved card when there is one (founder
+   * 2026-08-22: nobody re-types 16 digits to finish an order), with the
+   * full checkout one button away. No saved card = straight to checkout.
+   */
+  const handlePay = (item: Delivery) => {
+    if (!savedCard) { openCheckout(item); return; }
+    Alert.alert(
+      `Pay ${fmt(item.price)}`,
+      `Charge ${String(savedCard.brand ?? 'card').toUpperCase()} •••• ${savedCard.last4}, or open the full checkout for another method?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Full checkout', onPress: () => openCheckout(item) },
+        {
+          text: `Pay with •••• ${savedCard.last4}`,
+          onPress: async () => {
+            try {
+              setPaying(item.id);
+              const res = await paymentsApi.payWithSavedCard(item.id, savedCard.id);
+              if (res.success) {
+                Alert.alert('Paid', `${fmt(item.price)} charged to •••• ${res.last4 ?? savedCard.last4}. A driver is being matched.`);
+                load(1, true);
+              } else {
+                Alert.alert('Card declined', res.error ?? 'Try the full checkout instead.', [
+                  { text: 'Not now', style: 'cancel' },
+                  { text: 'Open checkout', onPress: () => openCheckout(item) },
+                ]);
+              }
+            } catch (e: any) {
+              Alert.alert('Could not charge the card', e?.message ?? 'Try the full checkout instead.');
+            } finally {
+              setPaying(null);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const renderItem = ({ item }: { item: Delivery }) => {

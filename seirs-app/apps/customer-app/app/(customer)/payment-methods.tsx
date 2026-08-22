@@ -116,15 +116,10 @@ export default function PaymentMethodsScreen() {
           <Text style={[styles.emptyBody, { color: theme.textSecond }]}>
             {t('paymentMethods.emptyDesc')}
           </Text>
-          <Pressable
-            style={[styles.addCta, { backgroundColor: theme.primary }]}
-            onPress={() => router.push('/(customer)/add-payment' as any)}
-          >
-            <Ionicons name="add" size={18} color="#fff" />
-            <Text style={styles.addCtaText}>Add payment method</Text>
-          </Pressable>
           <Text style={[styles.emptyFootnote, { color: theme.textThird }]}>
-            We never store your card number. Flutterwave handles tokenization securely.
+            Your card is saved automatically the first time you pay for a
+            delivery, so the next order is one tap. We never store your card
+            number: Flutterwave handles tokenization securely.
           </Text>
         </ScrollView>
       ) : (
@@ -169,18 +164,12 @@ export default function PaymentMethodsScreen() {
             </View>
           ))}
 
-          <Pressable
-            style={[styles.addCtaSecondary, { borderColor: theme.primary }]}
-            onPress={() => router.push('/(customer)/add-payment' as any)}
-          >
-            <Ionicons name="add" size={18} color={theme.primary} />
-            <Text style={[styles.addCtaSecondaryText, { color: theme.primary }]}>Add another payment method</Text>
-          </Pressable>
-
           <View style={[styles.infoBox, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <Ionicons name="lock-closed" size={14} color={theme.textSecond} />
             <Text style={[styles.infoText, { color: theme.textSecond }]}>
-              Cards are securely tokenized by Flutterwave. SEIRS never sees your full card number.
+              New cards are saved automatically when you pay for a delivery
+              with them. Flutterwave tokenizes them securely: SEIRS never sees
+              your full card number.
             </Text>
           </View>
         </ScrollView>

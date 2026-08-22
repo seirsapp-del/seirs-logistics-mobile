@@ -40,6 +40,8 @@ export interface PriceBreakdown {
     vat:            number;
     /** Paid straight through to partner counters, not SEIRS revenue. */
     partnerHandling: number;
+    /** % of declared value above the card threshold; deters false declarations. */
+    highValuePremium: number;
     total:          number;     // final customer pays
   };
 
@@ -97,6 +99,13 @@ export interface PricingInput {
   km:            number;          // total route km (after optimization)
   stopCount:     number;          // 1 for single-leg, N for multi-stop
   weightKg:      number;
+  /**
+   * Declared package value (NGN). Above the card's high-value threshold
+   * a premium applies: two-sided honesty, since over-declaring costs
+   * the premium and under-declaring caps the payout via the liability
+   * matrix (founder 2026-08-21).
+   */
+  declaredValueNgn?: number;
   /** Estimated minutes the driver will spend not driving across all stops. */
   estimatedDwellMinutes: number;
   /**
@@ -681,7 +690,16 @@ export class PricingService implements OnModuleInit {
     const partnerHandling = counterTouches > 0
       ? Math.round(await this.counterFeeForWeight(input.weightKg) * counterTouches * 100) / 100
       : 0;
-    const total = Math.round((total0 + partnerHandling) * 100) / 100;
+    // High-value premium: charged in the engine so the pinned quote and
+    // the booking carry it identically. Card fields with code fallback.
+    const hv = (card as any).highValue ?? {};
+    const hvThresholdNgn = Number(hv.thresholdNgn ?? 50_000);
+    const hvPremiumPct   = Number(hv.premiumPct   ?? 0.5);
+    const declaredNgn    = Number(input.declaredValueNgn ?? 0);
+    const highValuePremium = declaredNgn > hvThresholdNgn && hvPremiumPct > 0
+      ? Math.round(((declaredNgn - hvThresholdNgn) * hvPremiumPct) / 100 * 100) / 100
+      : 0;
+    const total = Math.round((total0 + partnerHandling + highValuePremium) * 100) / 100;
 
     // ── Driver side ── (same regional multiplier, full fuel pass-through)
     const dBase           = (vehicleOv.base  ?? v.baseFareDriver)    * mult;
@@ -701,7 +719,9 @@ export class PricingService implements OnModuleInit {
 
     // SEIRS net = customer subtotal (excl. VAT) minus driver pay minus VAT remitted
     // (partner store cuts handled separately in partner-store flows)
-    const seirsNet = subtotalVatBase - driverTotal;
+    // The premium is SEIRS revenue for now: it prices risk, not labour.
+    // Splitting a share to high-level drivers is a founder decision.
+    const seirsNet = subtotalVatBase - driverTotal + highValuePremium;
 
     /**
      * What the gross margin above actually costs us to collect.
@@ -761,7 +781,7 @@ export class PricingService implements OnModuleInit {
         timeSurcharges: { night: nightSur, peak: peakSur, weekend: weekendSur },
         zoneSurcharges: { interState: interStateSur, longDistance: longDistanceSur, overnight: overnightSur, restricted: restrictedSur },
         discounts:      { bulk: bulkDisc, recurring: recurringDisc, loyalty: loyaltyDisc, welcome: welcomeDisc },
-        vatBase: subtotalVatBase, vat, partnerHandling, total,
+        vatBase: subtotalVatBase, vat, partnerHandling, highValuePremium, total,
       },
       driver: {
         base: dBase, distanceLabour: dDistanceLabour, distanceFuel: dDistanceFuel,

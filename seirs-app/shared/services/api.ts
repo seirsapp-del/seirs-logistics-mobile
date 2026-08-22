@@ -398,6 +398,11 @@ export const paymentsApi = {
 
   // ── Saved cards (Flutterwave-tokenized, one-tap reuse) ──
   listSavedCards: () => request<SavedCard[]>('GET', '/payments/saved-cards'),
+  /** One-tap fare payment with a saved card; falls back to initiate() when success is false. */
+  payWithSavedCard: (deliveryId: string, cardId: string) =>
+    request<{ success: boolean; alreadyPaid?: boolean; paymentId?: string; last4?: string; error?: string }>(
+      'POST', '/payments/pay-with-saved-card', { deliveryId, cardId },
+    ),
   setDefaultCard: (id: string) => request<{ ok: boolean }>('PATCH', `/payments/saved-cards/${id}/default`),
   deleteSavedCard: (id: string) => request<{ ok: boolean }>('DELETE', `/payments/saved-cards/${id}`),
 
@@ -523,6 +528,10 @@ export interface SavedCard {
 export const driversApi = {
   me:             () => request<any>('GET', '/drivers/me'),
   toggleOnline:   (isOnline: boolean) => request<any>('PATCH', '/drivers/online', { isOnline }),
+  // Corridor ("I'm heading somewhere"): jobs along the way find this courier.
+  setCorridor: (destLat: number, destLng: number, label?: string, hours?: number) =>
+    request<any>('POST', '/drivers/me/corridor', { destLat, destLng, label, hours }),
+  clearCorridor: () => request<any>('DELETE', '/drivers/me/corridor'),
   updateLocation: (lat: number, lng: number) => request<any>('PATCH', '/drivers/location', { lat, lng }),
   myDeliveries:   () => request<any[]>('GET', '/deliveries/driver'),
   // Fetch a single delivery WITH stops eager-loaded. Returns the full

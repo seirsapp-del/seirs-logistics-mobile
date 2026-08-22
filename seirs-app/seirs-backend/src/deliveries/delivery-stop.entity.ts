@@ -67,6 +67,12 @@ export class DeliveryStop {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   lng: number;
 
+  // Road km of the leg ARRIVING at this stop (from the pickup for stop 1,
+  // from the previous stop otherwise). Measured at booking by the same
+  // resolver that priced the run; feeds the admin per-leg display.
+  @Column({ type: 'numeric', precision: 8, scale: 2, nullable: true })
+  legKm: number | null;
+
   /**
    * Per-package fields (multi-package rebuild, founder spec 2026-08-15:
    * packages are FIRST-CLASS: each stop carries one package with its own

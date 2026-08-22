@@ -3,6 +3,7 @@ import {
   View, Text, Pressable, StyleSheet, StatusBar, TextInput,
   ActivityIndicator, Image, Alert, Keyboard, ScrollView, Linking, Modal,
   KeyboardAvoidingView, Platform,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -538,6 +539,7 @@ export default function SendScreen() {
       // Mirror create(): a single package books with zero dwell, so the
       // quote must price with zero dwell or the two drift again.
       estimatedDwellMinutes: packages.length > 1 ? packages.length * 4 : 0,
+      declaredValueNgn: packages.reduce((sum, pk) => sum + (Number(pk.declaredValue) || 0), 0) || undefined,
       // The blended per-package path is for real runs only.
       packages:     packages.length > 1 ? pkgs : undefined,
       pickupCoords:  pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : undefined,
@@ -816,6 +818,19 @@ export default function SendScreen() {
     setError('');
     setStep(s => s - 1);
   };
+
+  // Hardware back mirrors the header arrow: one step back, never a
+  // silent pop to Home from the middle of a booking (overnight finding
+  // 2026-08-22). The draft already survives; this keeps the CONTEXT.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (step === 0) return false; // step 0: let the system pop normally
+      back();
+      return true;
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   const handleBook = async () => {
     // Every booking is priced by the server. If that quote has not

@@ -316,6 +316,79 @@ export class PaymentsService {
   }
 
   /**
+   * One-tap fare payment with a saved (tokenized) card. No hosted page,
+   * no 16 digits: the charge fires server-side against the Flutterwave
+   * token, then flows through confirmFlutterwavePayment so the amount
+   * verification, escrow and loyalty behave exactly as a hosted-page
+   * payment would (founder 2026-08-22: nobody should hunt for their
+   * card to finish an order).
+   *
+   * Failure is a clean fallback, not an error state: the app offers the
+   * hosted checkout when { success: false } comes back.
+   */
+  async payWithSavedCard(delivery: Delivery, cardId: string, user: User): Promise<{
+    success: boolean;
+    alreadyPaid?: boolean;
+    paymentId?: string;
+    last4?: string;
+    error?: string;
+  }> {
+    // The actor must own the booking: a token charge moves money with
+    // no checkout page in between, so this check is not optional.
+    if (delivery.customer?.id !== user.id) {
+      throw new ForbiddenException('This booking belongs to another account.');
+    }
+    if (delivery.paymentHeldAt) {
+      return { success: true, alreadyPaid: true };
+    }
+    if (delivery.status !== 'pending') {
+      return { success: false, error: 'This booking can no longer be paid.' };
+    }
+
+    const card = await this.savedCardsRepo.findOneBy({ id: cardId, userId: user.id });
+    if (!card) throw new NotFoundException('That saved card was not found on this account.');
+
+    const txRef = `SRS-PAY-${uuidv4().slice(0, 8).toUpperCase()}`;
+    const payment = this.paymentsRepo.create({
+      customer:          user,
+      delivery,
+      amountKobo:        toKobo(delivery.price),
+      method:            PaymentMethod.CARD,
+      status:            PaymentStatus.PENDING,
+      provider:          'flutterwave',
+      providerReference: txRef,
+    });
+    await this.paymentsRepo.save(payment);
+
+    const res = await this.flutterwaveService.chargeWithToken({
+      token:     card.flutterwaveToken,
+      txRef,
+      amount:    Number(delivery.price),
+      currency:  'NGN',
+      email:     user.email,
+      narration: `SEIRS delivery ${delivery.trackingCode ?? ''}`.trim(),
+    });
+
+    if (!res.success) {
+      await this.paymentsRepo.update(payment.id, { status: PaymentStatus.FAILED });
+      return {
+        success: false,
+        error: 'Your bank declined the saved card. Try the full checkout instead.',
+      };
+    }
+
+    // Same verification + escrow + loyalty path as the hosted page.
+    const confirmed = await this.confirmFlutterwavePayment(txRef, user.id);
+    if (confirmed?.status !== PaymentStatus.SUCCESS) {
+      return {
+        success: false,
+        error: 'The charge could not be verified. If you were debited it will be reconciled.',
+      };
+    }
+    return { success: true, paymentId: payment.id, last4: card.last4 };
+  }
+
+  /**
    * Failed-delivery redirect fee (founder matrix 2026-08-11). When a
    * package is rerouted to a partner store because nobody could receive
    * it, the sender owes a transport fee before the store's identity and

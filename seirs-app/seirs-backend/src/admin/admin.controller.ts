@@ -262,6 +262,50 @@ export class AdminController {
     return this.adminService.getDriverDetail(id);
   }
 
+  // ── Driver value levels (two-person rule, founder 2026-08-21) ────────
+
+  // GET /api/v1/admin/driver-levels/config → the ten caps + knobs
+  @Get('driver-levels/config')
+  async driverLevelConfig() {
+    const caps = await this.driversService.getLevelCaps();
+    return { caps };
+  }
+
+  // POST /api/v1/admin/drivers/:id/level-change { toLevel, reason }
+  // Any admin may request; nothing moves until a DIFFERENT super-admin
+  // approves. Reason is required and audited.
+  @Post('drivers/:id/level-change')
+  requestDriverLevelChange(
+    @Param('id') id: string,
+    @CurrentUser() admin: any,
+    @Body() body: { toLevel: number; reason: string },
+  ) {
+    return this.driversService.requestLevelChange(id, Number(body?.toLevel), String(body?.reason ?? ''), admin.id);
+  }
+
+  // GET /api/v1/admin/driver-level-changes?status=pending&driverId=
+  @Get('driver-level-changes')
+  listDriverLevelChanges(
+    @Query('status') status?: string,
+    @Query('driverId') driverId?: string,
+  ) {
+    return this.driversService.listLevelChanges(status, driverId);
+  }
+
+  // POST /api/v1/admin/driver-level-changes/:id/approve | /reject
+  // Managers only, and never the requester (enforced in the service).
+  @UseGuards(SuperAdminGuard)
+  @Post('driver-level-changes/:id/approve')
+  approveDriverLevelChange(@Param('id') id: string, @CurrentUser() admin: any, @Body() body: { note?: string }) {
+    return this.driversService.decideLevelChange(id, true, admin.id, body?.note);
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @Post('driver-level-changes/:id/reject')
+  rejectDriverLevelChange(@Param('id') id: string, @CurrentUser() admin: any, @Body() body: { note?: string }) {
+    return this.driversService.decideLevelChange(id, false, admin.id, body?.note);
+  }
+
   // PATCH /api/v1/admin/drivers/:id/approve
   @Patch('drivers/:id/approve')
   approveDriver(@Param('id') id: string) {

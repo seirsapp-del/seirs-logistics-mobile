@@ -11,6 +11,7 @@ import {
 } from 'lucide-react-native';
 import MapView, { PROVIDER_GOOGLE, Circle, Marker } from 'react-native-maps';
 import { Drawer } from '@/components/Drawer';
+import { CorridorCard } from '@/components/CorridorCard';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -326,6 +327,15 @@ export default function DriverHomeScreen() {
               </Text>
             </View>
           </Pressable>
+        )}
+
+        {/* Corridor: bicycle/on-foot couriers carry what was going their
+            way anyway (founder 2026-08-21, the inclusion tier). */}
+        {driverData?.vehicleType === 'bicycle' && (
+          <CorridorCard
+            driver={driverData}
+            onChanged={() => driversApi.me().then(setDriverData).catch(() => {})}
+          />
         )}
 
         {/* ── Demand map: full-width, top of the fold (founder

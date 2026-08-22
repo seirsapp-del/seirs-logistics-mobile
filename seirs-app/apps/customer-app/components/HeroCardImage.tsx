@@ -1,5 +1,6 @@
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -61,12 +62,24 @@ export function HeroCardImage({
           resizeMode="cover"
         />
       ) : (
-        <LinearGradient
-          colors={isDark ? ['#1C2128', '#0D1117'] : ['#0F2B4C', '#1A3A63']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+        <>
+          <LinearGradient
+            colors={isDark ? ['#1C2128', '#0D1117'] : ['#0F2B4C', '#1A3A63']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            pointerEvents="none"
+            style={{
+              ...StyleSheet.absoluteFillObject,
+              alignItems: 'center', justifyContent: 'center',
+              opacity: 0.14, transform: [{ translateY: -14 }],
+            }}
+          >
+            <SeirsMarkBold size={190} color="#FFFFFF" hubColor="#0F2B4C" />
+          </View>
+        </>
       )}
 
       {/* Dark gradient over the bottom 60% so the title + desc read on

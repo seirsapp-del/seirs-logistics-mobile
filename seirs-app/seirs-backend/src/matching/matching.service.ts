@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { FeesService } from '../fees/fees.service';
 import { ConfigService } from '@nestjs/config';
 import { Driver, VehicleType } from '../drivers/driver.entity';
 import { Delivery, PackageSize, UrgencyLevel } from '../deliveries/delivery.entity';
@@ -73,6 +74,7 @@ export class MatchingService {
 
   constructor(
     private driversService: DriversService,
+    private feesService:    FeesService,
     cfg: ConfigService,
   ) {
     const raw = Number(cfg.get<string>('MATCHING_RADIUS_KM'));
@@ -91,16 +93,27 @@ export class MatchingService {
       return null;
     }
 
+    // Value-level gate (founder 2026-08-21): a driver never sees a job
+    // whose declared value exceeds their level's cap.
+    const candidates = await this.filterByValueLevel(nearbyDrivers, delivery);
+    if (!candidates.length) {
+      this.logger.warn(
+        `No drivers near delivery ${delivery.id} are levelled for its declared value (₦${Number((delivery as any).declaredValueNgn ?? 0)}).`,
+      );
+      return null;
+    }
+
     // Premium subscription priority boost (Spec V8 §2.13). Resolved in
     // parallel for the candidate set - cheap on a per-candidate basis
     // since most pools are <30 drivers.
     const premiumIds = await Promise.all(
-      nearbyDrivers.map(async (d) => [d.id, await this.driversService.isPremiumActive(d.id)] as const),
+      candidates.map(async (d) => [d.id, await this.driversService.isPremiumActive(d.id)] as const),
     );
     const premiumSet = new Set(premiumIds.filter(([, on]) => on).map(([id]) => id));
+    const corridorCfg = await this.corridorConfig();
 
-    const scored = nearbyDrivers
-      .map((driver) => this.scoreDriver(driver, delivery, premiumSet.has(driver.id)))
+    const scored = candidates
+      .map((driver) => this.scoreDriver(driver, delivery, premiumSet.has(driver.id), corridorCfg))
       .filter((s) => s.score > 0.1) // discard clearly unsuitable drivers
       .sort((a, b) => b.score - a.score);
 
@@ -112,7 +125,54 @@ export class MatchingService {
     return scored[0] ?? null;
   }
 
-  private scoreDriver(driver: Driver, delivery: Delivery, isPremium = false): ScoredDriver {
+  /**
+   * Drop drivers whose value level cannot cover the booking's declared
+   * value (caps are admin-editable fee rows; see DriversService).
+   * No declared value = no gate: ordinary parcels match as before.
+   */
+  private async filterByValueLevel(drivers: Driver[], delivery: Delivery): Promise<Driver[]> {
+    const declaredNgn = Number((delivery as any).declaredValueNgn ?? 0);
+    if (!(declaredNgn > 0)) return drivers;
+    const caps = await this.driversService.getLevelCaps();
+    return drivers.filter((d) => {
+      const lvl = Math.min(Math.max(Math.round((d as any).valueLevel ?? 1), 1), 10);
+      return caps[lvl - 1] >= declaredNgn;
+    });
+  }
+
+  /** Corridor knobs, resolved once per matching pass (fee rows, cached). */
+  private async corridorConfig(): Promise<{ radiusM: number; bonus: number }> {
+    try {
+      const [radiusM, bonus] = await Promise.all([
+        this.feesService.getValueOr('corridor_match_radius_m', 600),
+        this.feesService.getValueOr('corridor_score_bonus', 0.2),
+      ]);
+      return { radiusM, bonus };
+    } catch {
+      return { radiusM: 600, bonus: 0.2 };
+    }
+  }
+
+  /**
+   * Metres from a point to the segment A->B, on an equirectangular
+   * approximation. Fine at corridor scale (a few km, radius ~600m).
+   */
+  private static pointToSegmentM(
+    pLat: number, pLng: number,
+    aLat: number, aLng: number,
+    bLat: number, bLng: number,
+  ): number {
+    const mPerDegLat = 111_320;
+    const mPerDegLng = 111_320 * Math.cos((aLat * Math.PI) / 180);
+    const px = (pLng - aLng) * mPerDegLng, py = (pLat - aLat) * mPerDegLat;
+    const bx = (bLng - aLng) * mPerDegLng, by = (bLat - aLat) * mPerDegLat;
+    const len2 = bx * bx + by * by;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, (px * bx + py * by) / len2)) : 0;
+    const dx = px - t * bx, dy = py - t * by;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  private scoreDriver(driver: Driver, delivery: Delivery, isPremium = false, corridorCfg?: { radiusM: number; bonus: number }): ScoredDriver {
     const distanceKm = PricingService.haversineKm(
       delivery.pickupLat, delivery.pickupLng,
       driver.lastLat ?? 0, driver.lastLng ?? 0,
@@ -159,6 +219,33 @@ export class MatchingService {
       score = Math.min(1, score + 0.15);
     }
 
+    // Corridor bonus ("on their way", founder 2026-08-21): the job rides
+    // a trip the courier declared they were already making. Pickup AND
+    // drop must both hug the line from the courier's position to their
+    // destination; either one off the line means a real detour, so no
+    // bonus.
+    const cLat = Number((driver as any).corridorDestLat);
+    const cLng = Number((driver as any).corridorDestLng);
+    const cExp = (driver as any).corridorExpiresAt ? new Date((driver as any).corridorExpiresAt) : null;
+    if (
+      corridorCfg && cExp && cExp > new Date() &&
+      Number.isFinite(cLat) && Number.isFinite(cLng) &&
+      driver.lastLat != null && driver.lastLng != null &&
+      delivery.dropoffLat != null && delivery.dropoffLng != null
+    ) {
+      const pickM = MatchingService.pointToSegmentM(
+        delivery.pickupLat, delivery.pickupLng,
+        driver.lastLat, driver.lastLng, cLat, cLng,
+      );
+      const dropM = MatchingService.pointToSegmentM(
+        delivery.dropoffLat, delivery.dropoffLng,
+        driver.lastLat, driver.lastLng, cLat, cLng,
+      );
+      if (pickM <= corridorCfg.radiusM && dropM <= corridorCfg.radiusM) {
+        score = Math.min(1, score + corridorCfg.bonus);
+      }
+    }
+
     return {
       driver,
       score: Math.round(score * 1000) / 1000,
@@ -169,11 +256,15 @@ export class MatchingService {
 
   // Returns top 3 options for manual selection (customer picks)
   async getDeliveryOptions(delivery: Delivery): Promise<ScoredDriver[]> {
-    const nearbyDrivers = await this.driversService.findNearby(
+    const nearby = await this.driversService.findNearby(
       delivery.pickupLat,
       delivery.pickupLng,
       this.radiusKm,
     );
+    // Same value-level gate as auto-matching: a customer picking by hand
+    // must not be offered a driver the platform would not trust with
+    // this declared value.
+    const nearbyDrivers = await this.filterByValueLevel(nearby, delivery);
     const premiumIds = await Promise.all(
       nearbyDrivers.map(async (d) => [d.id, await this.driversService.isPremiumActive(d.id)] as const),
     );

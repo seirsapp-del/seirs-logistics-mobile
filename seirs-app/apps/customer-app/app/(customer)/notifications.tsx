@@ -1,5 +1,7 @@
 /**
- * Business/partner notification centre.
+ * Customer notification centre, ported from the business app verbatim
+ * (founder 2026-08-22: same principle both sides). The home Alerts chip
+ * pushed this route while no screen existed; now it lands here.
  *
  * Same data source as customer + driver apps (GET /notifications): admin
  * broadcasts and automatic delivery/payment events land here as rows, so
@@ -17,7 +19,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
-import { useTheme } from '@/context/ThemeContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { notificationsApi } from '@/services/api';
 
 interface Notif {
@@ -49,10 +51,11 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
 }
 
-export default function BusinessNotificationsScreen() {
-  const router     = useRouter();
-  const { isDark } = useTheme();
-  const theme      = Colors[isDark ? 'dark' : 'light'];
+export default function CustomerNotificationsScreen() {
+  const router  = useRouter();
+  const cs      = useColorScheme();
+  const isDark  = cs === 'dark';
+  const theme   = Colors[cs ?? 'light'];
 
   const [notifs,     setNotifs]     = useState<Notif[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -142,6 +145,13 @@ export default function BusinessNotificationsScreen() {
               <Icon name="Trash2" size={18} color={theme.textSecond} />
             </Pressable>
           )}
+          <Pressable
+            onPress={() => router.push('/(customer)/notification-settings' as any)}
+            hitSlop={8}
+            accessibilityLabel="Notification settings"
+          >
+            <Icon name="Settings" size={18} color={theme.textSecond} />
+          </Pressable>
         </View>
       </View>
 

@@ -64,6 +64,38 @@ export default function PaymentScreen() {
   const [error,      setError]      = useState('');
   const pendingTxRef = useRef<string | null>(null);
 
+  // One-tap: the default saved card, tokenized on some earlier payment.
+  // Nobody re-types 16 digits to finish an order (founder 2026-08-22).
+  const [savedCard, setSavedCard] = useState<any | null>(null);
+  useEffect(() => {
+    paymentsApi.listSavedCards()
+      .then((cards: any[]) => {
+        if (!Array.isArray(cards) || cards.length === 0) return;
+        setSavedCard(cards.find(c => c.isDefault) ?? cards[0]);
+      })
+      .catch(() => { /* no cards, hosted checkout only */ });
+  }, []);
+
+  const handlePayWithSavedCard = async () => {
+    if (!savedCard) return;
+    setError('');
+    setLoading(true);
+    try {
+      const res = await paymentsApi.payWithSavedCard(String(deliveryId), savedCard.id);
+      if (res.success) {
+        navigateToTracking();
+        return;
+      }
+      // A declined token is a fallback, not a dead end: surface the
+      // reason and leave the hosted checkout button right below.
+      setError(res.error ?? 'Your saved card was declined. Try the full checkout below.');
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not charge the saved card. Try the full checkout below.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePay = async () => {
     setError('');
     setLoading(true);
@@ -208,6 +240,27 @@ export default function PaymentScreen() {
             >
               <Text style={styles.payBtnText}>Track this delivery</Text>
             </Pressable>
+          ) : savedCard ? (
+            <>
+              <Pressable
+                style={[styles.payBtn, { backgroundColor: theme.primary }, (loading || verifying) && { opacity: 0.7 }]}
+                onPress={handlePayWithSavedCard}
+                disabled={loading || verifying}
+              >
+                {loading || verifying ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.payBtnText}>
+                    Pay ₦{displayPrice.toLocaleString()} with {String(savedCard.brand ?? 'card').toUpperCase()} •••• {savedCard.last4}
+                  </Text>
+                )}
+              </Pressable>
+              <Pressable onPress={handlePay} disabled={loading || verifying} style={{ paddingVertical: 12, alignItems: 'center' }}>
+                <Text style={{ color: theme.primary, fontSize: 14, fontWeight: '600' }}>
+                  Use a different payment method
+                </Text>
+              </Pressable>
+            </>
           ) : (
             <Pressable
               style={[styles.payBtn, { backgroundColor: theme.primary }, (loading || verifying) && { opacity: 0.7 }]}

@@ -25,6 +25,7 @@ import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
   ActivityIndicator, Alert, Image, Linking, KeyboardAvoidingView, Platform,
   Keyboard, Dimensions, Modal, Share, StatusBar as RNStatusBar,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -527,6 +528,7 @@ export default function SendPackageScreen() {
       weightKg: totalWeight,
       estimatedDwellMinutes: draft.stops.length * 4,
       packages,
+      declaredValueNgn: draft.stops.reduce((sum, s) => sum + (Number(s.declaredValueNgn) || 0), 0) || undefined,
       // Counters are paid per parcel they touch, so the quote has to know
       // about them or the review total would not match the charge.
       partnerStoreTouches:
@@ -670,6 +672,19 @@ export default function SendPackageScreen() {
     if (step === 0) { router.back(); return; }
     setStep((s) => (s - 1) as any);
   };
+
+  // Hardware back mirrors the header arrow: one step back, never a
+  // silent pop out of a half-built run (same guard as the customer
+  // Send, 2026-08-22).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (step === 0) return false;
+      back();
+      return true;
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   // ── Submit: upload photos → book → pay ──────────────────────────────
   const handleSubmit = async () => {

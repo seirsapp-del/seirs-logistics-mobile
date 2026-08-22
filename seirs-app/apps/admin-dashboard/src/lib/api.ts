@@ -84,6 +84,23 @@ export const adminApi = {
   setDashboardTargets: (body: { revenueNgn?: number; deliveries?: number }) =>
     req<any>('/admin/dashboard/targets', { method: 'PATCH', body: JSON.stringify(body) }),
 
+  // Driver value levels 1-10 (two-person rule). Caps are Fee Catalogue
+  // rows; these endpoints drive the driver-page level widget.
+  driverLevels: {
+    config: () => req<{ caps: number[] }>('/admin/driver-levels/config'),
+    request: (driverId: string, toLevel: number, reason: string) =>
+      req<any>(`/admin/drivers/${driverId}/level-change`, { method: 'POST', body: JSON.stringify({ toLevel, reason }) }),
+    list: (status?: string, driverId?: string) => {
+      const qs = new URLSearchParams();
+      if (status) qs.set('status', status);
+      if (driverId) qs.set('driverId', driverId);
+      return req<any[]>(`/admin/driver-level-changes?${qs.toString()}`);
+    },
+    approve: (id: string, note?: string) =>
+      req<any>(`/admin/driver-level-changes/${id}/approve`, { method: 'POST', body: JSON.stringify({ note }) }),
+    reject: (id: string, note?: string) =>
+      req<any>(`/admin/driver-level-changes/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) }),
+  },
   partnerStores: {
     get: (id: string) => req<any>(`/admin/partner-stores/${id}`),
     list: (status?: string) =>

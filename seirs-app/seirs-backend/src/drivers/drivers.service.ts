@@ -6,6 +6,7 @@ import { Driver, DriverStatus } from './driver.entity';
 import { DriverTrip, DriverTripStatus } from './driver-trip.entity';
 import { DriverStatusBroadcast, DriverStatusBroadcastType } from './driver-status-broadcast.entity';
 import { DriverSubscription, DriverSubscriptionStatus } from './driver-subscription.entity';
+import { DriverLevelChange, LevelChangeStatus } from './driver-level-change.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { Wallet } from '../payments/wallet.entity';
 import { FraudService } from '../fraud/fraud.service';
@@ -41,6 +42,7 @@ export class DriversService {
     @InjectRepository(DriverTrip)             private tripsRepo:      Repository<DriverTrip>,
     @InjectRepository(DriverStatusBroadcast)  private broadcastsRepo: Repository<DriverStatusBroadcast>,
     @InjectRepository(DriverSubscription)     private subsRepo:       Repository<DriverSubscription>,
+    @InjectRepository(DriverLevelChange)      private levelChangesRepo: Repository<DriverLevelChange>,
     private fraudService:    FraudService,
     private trackingGateway: TrackingGateway,
     private feesService:     FeesService,
@@ -48,6 +50,157 @@ export class DriversService {
 
   findByUserId(userId: string) {
     return this.repo.findOne({ where: { user: { id: userId } }, relations: ['user'] });
+  }
+
+  // ── Corridor: "I'm heading somewhere" (founder 2026-08-21) ───────────
+
+  /**
+   * Declare a corridor. Hours are clamped by the corridor_max_hours fee
+   * row (default 2): a corridor is a trip, not a shift.
+   */
+  async setCorridor(userId: string, params: { destLat: number; destLng: number; label?: string; hours?: number }) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found');
+    const { destLat, destLng } = params;
+    if (!Number.isFinite(destLat) || !Number.isFinite(destLng) || Math.abs(destLat) > 90 || Math.abs(destLng) > 180) {
+      throw new BadRequestException('A real destination is required.');
+    }
+    const maxHours = await this.feesService.getValueOr('corridor_max_hours', 2);
+    const hours = Math.min(Math.max(Number(params.hours ?? maxHours), 0.5), maxHours);
+    await this.repo.update(driver.id, {
+      corridorDestLat:   destLat,
+      corridorDestLng:   destLng,
+      corridorLabel:     (params.label ?? '').trim().slice(0, 120) || null,
+      corridorExpiresAt: new Date(Date.now() + hours * 60 * 60 * 1000),
+    });
+    return this.repo.findOneBy({ id: driver.id });
+  }
+
+  async clearCorridor(userId: string) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found');
+    await this.repo.update(driver.id, {
+      corridorDestLat: null, corridorDestLng: null,
+      corridorLabel: null, corridorExpiresAt: null,
+    });
+    return { ok: true };
+  }
+
+  // ── Driver value levels 1-10 (founder 2026-08-21) ────────────────────
+
+  private static readonly LEVEL_CAP_DEFAULTS = [
+    5_000, 10_000, 25_000, 50_000, 100_000,
+    200_000, 500_000, 1_000_000, 5_000_000, 10_000_000,
+  ];
+
+  /** The ten caps, admin-editable fee rows with code fallbacks. Index 0 = level 1. */
+  async getLevelCaps(): Promise<number[]> {
+    return Promise.all(
+      DriversService.LEVEL_CAP_DEFAULTS.map((dflt, i) =>
+        this.feesService.getValueOr(`driver_level_${i + 1}_max_value_ngn`, dflt)),
+    );
+  }
+
+  /** Max declared value this level may carry. Levels clamp to 1-10. */
+  async levelCapNgn(level: number): Promise<number> {
+    const caps = await this.getLevelCaps();
+    const idx = Math.min(Math.max(Math.round(level || 1), 1), 10) - 1;
+    return caps[idx];
+  }
+
+  /**
+   * Any admin may request a move with a REQUIRED reason; it waits for a
+   * super-admin who is NOT the requester. Two people or no move.
+   */
+  async requestLevelChange(driverId: string, toLevel: number, reason: string, adminId: string) {
+    if (!Number.isInteger(toLevel) || toLevel < 1 || toLevel > 10) {
+      throw new BadRequestException('toLevel must be an integer from 1 to 10.');
+    }
+    if (!reason?.trim() || reason.trim().length < 10) {
+      throw new BadRequestException('A real reason is required (at least 10 characters).');
+    }
+    const driver = await this.repo.findOneBy({ id: driverId });
+    if (!driver) throw new NotFoundException('Driver not found');
+    if ((driver.valueLevel ?? 1) === toLevel) {
+      throw new BadRequestException(`Driver is already level ${toLevel}.`);
+    }
+    const open = await this.levelChangesRepo.findOneBy({ driverId, status: LevelChangeStatus.PENDING });
+    if (open) throw new BadRequestException('A level change is already pending for this driver.');
+    return this.levelChangesRepo.save(this.levelChangesRepo.create({
+      driverId,
+      fromLevel: driver.valueLevel ?? 1,
+      toLevel,
+      reason: reason.trim(),
+      requestedByAdminId: adminId,
+    }));
+  }
+
+  async listLevelChanges(status?: string, driverId?: string) {
+    const where: any = {};
+    if (status) where.status = status;
+    if (driverId) where.driverId = driverId;
+    return this.levelChangesRepo.find({ where, order: { createdAt: 'DESC' }, take: 100 });
+  }
+
+  async decideLevelChange(changeId: string, approve: boolean, adminId: string, note?: string) {
+    const change = await this.levelChangesRepo.findOneBy({ id: changeId });
+    if (!change) throw new NotFoundException('Level change not found');
+    if (change.status !== LevelChangeStatus.PENDING) {
+      throw new BadRequestException('This change was already decided.');
+    }
+    // The two-person rule IS the feature: the requester never approves
+    // their own move, super-admin or not.
+    if (change.requestedByAdminId === adminId) {
+      throw new ForbiddenException('You requested this change; a different manager must decide it.');
+    }
+    change.status = approve ? LevelChangeStatus.APPROVED : LevelChangeStatus.REJECTED;
+    change.decidedByAdminId = adminId;
+    change.decidedAt = new Date();
+    change.decisionNote = note?.trim() || null;
+    await this.levelChangesRepo.save(change);
+    if (approve) {
+      await this.repo.update(change.driverId, { valueLevel: change.toLevel });
+      this.logger.log(`Driver ${change.driverId} level ${change.fromLevel} -> ${change.toLevel} (two-person: ${change.requestedByAdminId} + ${adminId})`);
+    }
+    return change;
+  }
+
+  /**
+   * Nightly auto-raise: clean completed work climbs the ladder, one
+   * level at a time; nothing here ever lowers a level (that is a human
+   * decision under the two-person rule). ID verification gates the
+   * upper levels per the identity policy.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async autoRaiseLevels() {
+    try {
+      const perLevel  = await this.feesService.getValueOr('driver_level_auto_deliveries_per_level', 25);
+      const minRating = await this.feesService.getValueOr('driver_level_auto_min_rating', 4.5);
+      const idGate    = await this.feesService.getValueOr('driver_level_id_gate', 6);
+      const drivers = await this.repo.find({
+        where: { status: DriverStatus.APPROVED },
+        relations: ['user'],
+      });
+      let raised = 0;
+      for (const d of drivers) {
+        const current = d.valueLevel ?? 1;
+        if (current >= 10) continue;
+        if ((d.rating ?? 0) < minRating && (d.totalDeliveries ?? 0) > 0) continue;
+        const delivered = await this.deliveriesRepo.count({
+          where: { driver: { id: d.id }, status: DeliveryStatus.DELIVERED } as any,
+        });
+        let eligible = Math.min(1 + Math.floor(delivered / Math.max(perLevel, 1)), 10);
+        if (!d.user?.identityVerifiedAt) eligible = Math.min(eligible, Math.max(Math.round(idGate) - 1, 1));
+        if (eligible > current) {
+          // One level per night: trust climbs, it does not teleport.
+          await this.repo.update(d.id, { valueLevel: current + 1 });
+          raised++;
+        }
+      }
+      if (raised) this.logger.log(`Auto-raised ${raised} driver level(s)`);
+    } catch (e: any) {
+      this.logger.error(`autoRaiseLevels failed: ${e?.message ?? e}`);
+    }
   }
 
   /**

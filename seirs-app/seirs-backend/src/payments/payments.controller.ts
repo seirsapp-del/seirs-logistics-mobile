@@ -105,6 +105,19 @@ export class PaymentsController {
     }
   }
 
+  // POST /api/v1/payments/pay-with-saved-card { deliveryId, cardId }
+  // One tap: charges the saved Flutterwave token for the fare. The app
+  // falls back to the hosted checkout when success is false.
+  @UseGuards(JwtAuthGuard, MaintenanceGuard)
+  @Post('pay-with-saved-card')
+  async payWithSavedCard(
+    @CurrentUser() user: User,
+    @Body() body: { deliveryId: string; cardId: string },
+  ) {
+    const delivery = await this.deliveriesService.findById(body.deliveryId);
+    return this.paymentsService.payWithSavedCard(delivery, body.cardId, user);
+  }
+
   // POST /api/v1/payments/verify/:txRef
   // The reference is caller-chosen, so the service checks it belongs to
   // this account before confirming anything.

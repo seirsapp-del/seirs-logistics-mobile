@@ -135,6 +135,12 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "delivery_stops"
           ADD COLUMN IF NOT EXISTS "stopCode" varchar(12) NULL
       `);
+      // Per-leg road km on runs (2026-08-22): measured at booking, shown
+      // on the admin delivery page.
+      await this.ds.query(`
+        ALTER TABLE "delivery_stops"
+          ADD COLUMN IF NOT EXISTS "legKm" numeric(8,2) NULL
+      `);
       // Paid-dispatch gate (2026-08-16): dispatch waits for money.
       await this.ds.query(`
         ALTER TABLE "deliveries"

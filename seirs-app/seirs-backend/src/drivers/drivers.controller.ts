@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { DriversService } from './drivers.service';
 import { DriverStatusBroadcastType } from './driver-status-broadcast.entity';
 import { RedisService } from '../tracking/redis.service';
@@ -20,6 +20,24 @@ export class DriversController {
   @Get('me')
   getProfile(@CurrentUser() user: User) {
     return this.driversService.findByUserIdWithEarnings(user.id);
+  }
+
+  // POST /api/v1/drivers/me/corridor { destLat, destLng, label?, hours? }
+  // "I'm heading somewhere": jobs along the way find this courier.
+  @Post('me/corridor')
+  setCorridor(
+    @CurrentUser() user: User,
+    @Body() body: { destLat: number; destLng: number; label?: string; hours?: number },
+  ) {
+    return this.driversService.setCorridor(user.id, {
+      destLat: Number(body?.destLat), destLng: Number(body?.destLng),
+      label: body?.label, hours: body?.hours,
+    });
+  }
+
+  @Delete('me/corridor')
+  clearCorridor(@CurrentUser() user: User) {
+    return this.driversService.clearCorridor(user.id);
   }
 
   // PATCH /api/v1/drivers/online  { isOnline: true/false }

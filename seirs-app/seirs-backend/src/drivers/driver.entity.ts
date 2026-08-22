@@ -39,6 +39,34 @@ export enum DriverStatus {
 
 @Entity('drivers')
 export class Driver {
+  /**
+   * Value level 1-10: the trust ladder that decides how valuable a
+   * package this driver may carry (caps are driver_level_N_max_value_ngn
+   * fee rows). Raised nightly by clean work, or manually under the
+   * two-person rule in driver_level_changes.
+   */
+  @Column({ type: 'int', default: 1 })
+  valueLevel: number;
+
+  /**
+   * Declared corridor ("on their way", founder 2026-08-21): where this
+   * courier is heading anyway, and until when. Matching scores up jobs
+   * whose pickup AND drop both hug the line from the courier's current
+   * position to this destination. Cleared on expiry.
+   */
+  @Column({ type: 'numeric', precision: 10, scale: 7, nullable: true })
+  corridorDestLat: number | null;
+
+  @Column({ type: 'numeric', precision: 10, scale: 7, nullable: true })
+  corridorDestLng: number | null;
+
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  corridorLabel: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  corridorExpiresAt: Date | null;
+
+
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

@@ -328,6 +328,7 @@ export default function PricingPage() {
               <th className="px-2">km/L</th>
               <th className="px-2">Fuel</th>
               <th className="px-2">Max kg</th>
+              <th className="px-2" title="Longest trip this vehicle class is offered for. Blank or 0 = no cap. The Send screens read this live (bicycle ships with 3).">Max km</th>
             </tr>
           </thead>
           <tbody>
@@ -344,11 +345,26 @@ export default function PricingPage() {
                   <td className="px-1"><InlineNum value={r.kmPerLitre}          onChange={(n) => patchPath(`vehicleRates.${v}.kmPerLitre`, n)} /></td>
                   <td className="px-1 text-xs text-gray-500">{r.fuelType}</td>
                   <td className="px-1"><InlineNum value={r.maxPayloadKg}        onChange={(n) => patchPath(`vehicleRates.${v}.maxPayloadKg`, n)} /></td>
+                  <td className="px-1"><InlineNum value={r.maxRouteKm ?? 0}     onChange={(n) => patchPath(`vehicleRates.${v}.maxRouteKm`, n)} /></td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+      </Card>
+
+      {/* ── High-value premium ────────────────────────────────────── */}
+      <Card title="High-value premium">
+        <Row>
+          <FieldNumber label="Threshold ₦ (declared value)"
+            value={card.highValue?.thresholdNgn ?? 50000}
+            onChange={(v) => patchPath('highValue.thresholdNgn', v)}
+            hint="Premium applies to the declared value ABOVE this. Two-sided honesty: over-declaring costs the premium, under-declaring caps the payout via the liability matrix." />
+          <FieldNumber label="Premium % of excess value"
+            value={card.highValue?.premiumPct ?? 0.5}
+            onChange={(v) => patchPath('highValue.premiumPct', v)}
+            hint="Charged in the engine, so quote and booking always match. 0 disables. Matching only offers such jobs to drivers whose level covers the value." />
+        </Row>
       </Card>
 
       {/* ── Stop & dwell ──────────────────────────────────────────── */}
@@ -362,6 +378,10 @@ export default function PricingPage() {
             value={card.stopAndDwell.perStopBonusDriver}
             onChange={(v) => patchPath('stopAndDwell.perStopBonusDriver', v)}
             hint="What the driver earns per extra stop." />
+          <FieldNumber label="Leg allowance km/stop"
+            value={card.stopAndDwell.legAllowanceKmPerStop ?? 0.5}
+            onChange={(v) => patchPath('stopAndDwell.legAllowanceKmPerStop', v)}
+            hint="Charged, never displayed (founder): extra km added to the priced distance per stop beyond the first, covering gates, one-way streets and estate detours." />
         </Row>
         <Row>
           <FieldNumber label="Wait fee ₦/min (customer)"

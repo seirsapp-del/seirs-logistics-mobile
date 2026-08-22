@@ -686,6 +686,12 @@ export default function DeliveryDetailPage() {
                         <Store size={11} className="text-[#3A7BD5]" /> {st.destinationStoreName}
                       </span>
                     ) : st.address}
+                    {st.legKm != null && (
+                      <div className="text-[10px] text-[#0F2B4C]/40 mt-0.5"
+                        title="Road distance of the leg arriving at this stop, measured at booking">
+                        +{Number(st.legKm).toFixed(1)} km leg
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${STATUS_COLORS[st.status] ?? 'bg-[#0F2B4C]/5'}`}>

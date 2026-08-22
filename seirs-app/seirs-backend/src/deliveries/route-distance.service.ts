@@ -79,6 +79,40 @@ export class RouteDistanceService implements OnModuleInit {
     this.recalibrate().catch(() => undefined);
   }
 
+  /**
+   * Road distance along an ordered chain of points (a multi-stop run):
+   * pickup -> stop1 -> ... -> stopN, one getRoadDistance per leg so
+   * every leg shares the cache, the monthly cap and the calibrated
+   * fallback with single trips. Runs cap at 5 stops, so this is at most
+   * 5 short lookups, most of them cache hits within a booking session.
+   */
+  async getRouteLegs(points: Array<{ lat: number; lng: number }>): Promise<{
+    totalKm: number;
+    durationMin: number | null;
+    source: RoadDistance['source'];
+    legsKm: number[];
+  }> {
+    const legs: RoadDistance[] = [];
+    for (let i = 0; i + 1 < points.length; i++) {
+      legs.push(await this.getRoadDistance(
+        points[i].lat, points[i].lng,
+        points[i + 1].lat, points[i + 1].lng,
+      ));
+    }
+    const totalKm = Math.round(legs.reduce((sum, l) => sum + l.km, 0) * 100) / 100;
+    const durations = legs.map(l => l.durationMin);
+    return {
+      totalKm,
+      durationMin: durations.every(d => d != null)
+        ? Math.round(durations.reduce((a, b) => (a as number) + (b as number), 0) as number)
+        : null,
+      // The weakest leg names the whole measurement, worst first.
+      source: (['haversine', 'calibrated', 'google'] as const)
+        .find(src => legs.some(l => l.source === src)) ?? 'google',
+      legsKm: legs.map(l => Math.round(l.km * 100) / 100),
+    };
+  }
+
   async getRoadDistance(
     pickupLat: number, pickupLng: number,
     dropLat: number, dropLng: number,

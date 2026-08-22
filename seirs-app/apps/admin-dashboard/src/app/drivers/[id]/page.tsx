@@ -53,6 +53,41 @@ export default function DriverDetailPage() {
   const [coordsCopied,  setCoordsCopied]  = useState(false);
   const accountUserId = data?.driver?.user?.id as string | undefined;
 
+  // Value level 1-10 (two-person rule). Caps come from the Fee
+  // Catalogue; the pending change renders with decide buttons and the
+  // server enforces that the requester never decides their own move.
+  const [levelCaps,     setLevelCaps]     = useState<number[]>([]);
+  const [levelChanges,  setLevelChanges]  = useState<any[]>([]);
+  const reloadLevels = () => {
+    adminApi.driverLevels.config().then((r) => setLevelCaps(r.caps ?? [])).catch(() => {});
+    adminApi.driverLevels.list(undefined, id).then(setLevelChanges).catch(() => {});
+  };
+  useEffect(() => { reloadLevels(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
+
+  const requestLevel = async () => {
+    const toRaw = prompt('Move this driver to which level? (1-10)\n\nLevel caps:\n' +
+      levelCaps.map((c, i) => `L${i + 1}: ₦${Number(c).toLocaleString()}`).join('\n'));
+    if (!toRaw) return;
+    const toLevel = Number(toRaw);
+    if (!Number.isInteger(toLevel) || toLevel < 1 || toLevel > 10) { alert('Level must be 1-10.'); return; }
+    const reason = prompt('Reason (required, audited). Why does this driver belong at that level?');
+    if (!reason || reason.trim().length < 10) { alert('A real reason is required (at least 10 characters).'); return; }
+    try {
+      await adminApi.driverLevels.request(id, toLevel, reason.trim());
+      alert('Requested. A different manager has to approve it before it takes effect.');
+      reloadLevels();
+    } catch (e: any) { alert(e?.message ?? 'Request failed'); }
+  };
+
+  const decideLevel = async (changeId: string, approve: boolean) => {
+    const note = prompt(approve ? 'Approval note (optional):' : 'Rejection note (optional):') ?? undefined;
+    try {
+      await adminApi.driverLevels[approve ? 'approve' : 'reject'](changeId, note);
+      reloadLevels();
+      reload();
+    } catch (e: any) { alert(e?.message ?? 'Decision failed'); }
+  };
+
   const exportData = async () => {
     if (!accountUserId) return;
     try {
@@ -375,6 +410,40 @@ export default function DriverDetailPage() {
             </Link>
           </div>
         )}
+
+        {/* Value level: how valuable a package this driver may carry. */}
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="w-10 h-10 rounded-full bg-[#0F2B4C] flex items-center justify-center text-white font-bold">
+              L{driver.valueLevel ?? 1}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-800">Value Level {driver.valueLevel ?? 1} of 10</p>
+              <p className="text-xs text-gray-500">
+                May carry declared values up to{' '}
+                <b>₦{Number(levelCaps[(Math.min(Math.max(driver.valueLevel ?? 1, 1), 10)) - 1] ?? 0).toLocaleString()}</b>
+                {' '}· climbs with clean deliveries, or by a manager-approved move
+              </p>
+            </div>
+            <button onClick={requestLevel}
+              className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 font-medium">
+              Change level…
+            </button>
+          </div>
+          {levelChanges.filter((c) => c.status === 'pending').map((c) => (
+            <div key={c.id} className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              <p className="font-semibold">Pending: level {c.fromLevel} → {c.toLevel}</p>
+              <p className="mt-0.5">{c.reason}</p>
+              <p className="mt-0.5 text-amber-700/70">Two-person rule: a manager other than the requester must decide.</p>
+              <div className="mt-2 flex gap-2">
+                <button onClick={() => decideLevel(c.id, true)}
+                  className="bg-emerald-600 text-white px-3 py-1 rounded font-semibold hover:bg-emerald-700">Approve</button>
+                <button onClick={() => decideLevel(c.id, false)}
+                  className="bg-white border border-amber-300 text-amber-800 px-3 py-1 rounded font-semibold hover:bg-amber-100">Reject</button>
+              </div>
+            </div>
+          ))}
+        </div>
 
         {/* Recent deliveries */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
