@@ -249,9 +249,9 @@ export default function DriverProfileScreen() {
         >
           <View>
             <Text style={[styles.balLabel, { color: theme.textSecond }]}>Withdrawable Balance</Text>
-            <Text style={[styles.balAmount, { color: '#16A34A' }]}>₦{available.toLocaleString()}</Text>
+            <Text style={[styles.balAmount, { color: theme.text }]}>₦{available.toLocaleString()}</Text>
           </View>
-          <View style={[styles.withdrawQuick, { backgroundColor: '#22C55E' }]}>
+          <View style={[styles.withdrawQuick, { backgroundColor: theme.primary }]}>
             <Ionicons name="arrow-up-circle-outline" size={16} color="#fff" />
             <Text style={styles.withdrawQuickText}>Withdraw</Text>
           </View>

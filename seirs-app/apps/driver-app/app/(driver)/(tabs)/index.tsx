@@ -12,6 +12,7 @@ import {
 import MapView, { PROVIDER_GOOGLE, Circle, Marker } from 'react-native-maps';
 import { Drawer } from '@/components/Drawer';
 import { CorridorCard } from '@/components/CorridorCard';
+import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -227,7 +228,13 @@ export default function DriverHomeScreen() {
               <AlignLeft size={22} color="#fff" strokeWidth={2} />
             </Pressable>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.headerGreet}>Driver Hub</Text>
+              {/* Brand eyebrow: when drivers screenshot their hub, the
+                  okada travels with it (founder 2026-08-22). */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <SeirsMarkBold size={26} color="#FFFFFF" hubColor="#0F2B4C" />
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 2 }}>SEIRS</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: '700', letterSpacing: 1 }}>· DRIVER HUB</Text>
+              </View>
               <Text style={styles.headerName}>Hi, {firstName}</Text>
             </View>
             <View style={styles.headerActions}>

@@ -587,6 +587,15 @@ export default function PricingPage() {
         />
       </Card>
 
+      {/* ── Hotspot circles. founder 2026-08-22: not just Lagos - any
+          busy place gets its own circle and its own multiplier. ──── */}
+      <Card
+        title="Hotspot pricing circles"
+        hint="Centre + radius km + multiplier. A pickup inside a circle uses that multiplier instead of the state/zone one; when circles overlap, the smallest wins. Get coordinates from the ops map (search a place, click the pin) and paste them here."
+      >
+        <HotspotsEditor card={card} patchPath={patchPath} />
+      </Card>
+
       {/* ── Restricted Sub-Zones. admin-addable ─────────────────── */}
       <Card
         title="Restricted sub-zones"
@@ -891,6 +900,96 @@ function StateOverridesTable({
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// Hotspot circles: radius-based pricing for busy places (founder
+// 2026-08-22). Same editing pattern as the sub-zones table.
+interface Hotspot { name: string; lat: number; lng: number; radiusKm: number; rateMultiplier: number }
+
+function HotspotsEditor({ card, patchPath }: {
+  card: any;
+  patchPath: (path: string, value: any) => void;
+}) {
+  const confirm = useConfirm();
+  const spots: Hotspot[] = card.regions?.hotspots ?? [];
+  const setSpots = (next: Hotspot[]) => patchPath('regions.hotspots', next);
+
+  const addSpot = () =>
+    setSpots([...spots, { name: '', lat: 0, lng: 0, radiusKm: 10, rateMultiplier: 1.1 }]);
+
+  const patchSpot = <K extends keyof Hotspot>(idx: number, key: K, value: Hotspot[K]) => {
+    const next = spots.slice();
+    next[idx] = { ...next[idx], [key]: value };
+    setSpots(next);
+  };
+
+  const removeSpot = async (idx: number) => {
+    const row = spots[idx];
+    const ok = await confirm({
+      title:        `Delete hotspot circle "${row.name || '(unnamed)'}"?`,
+      message:      'Removed from the draft immediately. Publish and pickups inside it fall back to the state/zone multiplier.',
+      confirmLabel: 'Delete',
+      danger:       true,
+    });
+    if (!ok) return;
+    setSpots(spots.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div>
+      {spots.length === 0 && (
+        <div className="text-sm text-gray-500 italic mb-4 p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
+          No circles yet. Example: Lagos Island, 6.4541 / 3.4276, 12 km, ×1.10.
+        </div>
+      )}
+
+      {spots.length > 0 && (
+        <table className="w-full text-sm mb-4">
+          <thead>
+            <tr className="text-gray-500 text-left border-b border-gray-200">
+              <th className="py-2 pr-2">Name</th>
+              <th className="px-2">Lat</th>
+              <th className="px-2">Lng</th>
+              <th className="px-2">Radius km</th>
+              <th className="px-2">Multiplier</th>
+              <th className="px-2 w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {spots.map((sp, idx) => (
+              <tr key={idx} className="border-b border-gray-100">
+                <td className="py-2 pr-1">
+                  <input
+                    type="text"
+                    value={sp.name}
+                    placeholder="e.g. Lagos Island"
+                    onChange={(e) => patchSpot(idx, 'name', e.target.value)}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                  />
+                </td>
+                <td className="px-1"><InlineNum value={sp.lat}            step={0.0001} onChange={(v) => patchSpot(idx, 'lat', v ?? 0)} /></td>
+                <td className="px-1"><InlineNum value={sp.lng}            step={0.0001} onChange={(v) => patchSpot(idx, 'lng', v ?? 0)} /></td>
+                <td className="px-1"><InlineNum value={sp.radiusKm}       step={1}      onChange={(v) => patchSpot(idx, 'radiusKm', v ?? 0)} /></td>
+                <td className="px-1"><InlineNum value={sp.rateMultiplier} step={0.05}   onChange={(v) => patchSpot(idx, 'rateMultiplier', v ?? 1)} /></td>
+                <td className="px-1">
+                  <button onClick={() => removeSpot(idx)} className="text-red-500 hover:text-red-700 text-xs font-semibold">
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <button
+        onClick={addSpot}
+        className="text-sm px-4 py-2 rounded-lg font-medium bg-[#0F2B4C] text-white hover:bg-[#163B66]"
+      >
+        + Add circle
+      </button>
+    </div>
+  );
+}
+
 // Restricted sub-zones. admin can add/remove/disable rows manually
 
 function SubZonesEditor({

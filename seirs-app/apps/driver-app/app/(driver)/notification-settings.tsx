@@ -1,154 +1,118 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Switch, StatusBar,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { usersApi } from '@/services/api';
 
-type ToggleKey =
-  | 'newJobs' | 'jobAssigned' | 'jobCancelled'
-  | 'earningsCredited' | 'withdrawalStatus' | 'weeklyEarnings'
-  | 'customerMessages' | 'tripUpdates'
-  | 'promos' | 'appUpdates';
+/**
+ * Driver notification settings, rewritten honest (founder 2026-08-22:
+ * "they could just toggle the off button on important notification...
+ * it should just be automatic").
+ *
+ * A driver who switches off job offers or payout notices has broken
+ * their own livelihood with one tap, and the backend never honoured
+ * those switches anyway (only marketing is gated on the send path).
+ * Operational categories now show as always-on rows with no toggle;
+ * the one real choice is real.
+ */
 
-const SECTIONS: { title: string; items: { key: ToggleKey; label: string; sub: string; icon: string }[] }[] = [
-  {
-    title: 'Job Alerts',
-    items: [
-      { key: 'newJobs',      label: 'New Job Requests',  sub: 'Get notified when new jobs are available near you', icon: 'briefcase-outline' },
-      { key: 'jobAssigned',  label: 'Job Assigned',      sub: 'Confirm when a job has been assigned to you',        icon: 'checkmark-circle-outline' },
-      { key: 'jobCancelled', label: 'Job Cancelled',     sub: 'Alert when a customer cancels an order',             icon: 'close-circle-outline' },
-    ],
-  },
-  {
-    title: 'Earnings & Payments',
-    items: [
-      { key: 'earningsCredited', label: 'Earnings Credited',    sub: 'Notification when trip payout is added to your wallet', icon: 'cash-outline' },
-      { key: 'withdrawalStatus', label: 'Withdrawal Updates',   sub: 'Track the status of your bank withdrawals',              icon: 'arrow-up-circle-outline' },
-      { key: 'weeklyEarnings',   label: 'Weekly Summary',       sub: 'Receive a weekly earnings summary every Monday',         icon: 'bar-chart-outline' },
-    ],
-  },
-  {
-    title: 'Trips & Messages',
-    items: [
-      { key: 'customerMessages', label: 'Customer Messages',  sub: 'In-app chats from customers during active trips', icon: 'chatbubbles-outline' },
-      { key: 'tripUpdates',      label: 'Trip Status Updates', sub: 'Route changes, delays, or customer arrivals',    icon: 'navigate-outline' },
-    ],
-  },
-  {
-    title: 'General',
-    items: [
-      { key: 'promos',      label: 'Promotions & Bonuses', sub: 'Weekend bonuses and surge pricing alerts',      icon: 'star-outline' },
-      { key: 'appUpdates',  label: 'App Updates',          sub: 'New features and important platform changes',   icon: 'download-outline' },
-    ],
-  },
-];
+const ALWAYS_ON = [
+  { icon: 'briefcase-outline',  label: 'Job offers',          sub: 'New jobs near you, assignments and cancellations' },
+  { icon: 'cash-outline',       label: 'Earnings & payouts',  sub: 'Money landing in your ledger and withdrawal status' },
+  { icon: 'chatbubble-outline', label: 'Customer messages',   sub: 'Chat from the sender during a trip' },
+  { icon: 'navigate-outline',   label: 'Trip updates',        sub: 'Changes to a delivery you are carrying' },
+  { icon: 'refresh-outline',    label: 'Service notices',     sub: 'App updates and changes that affect how SEIRS works' },
+] as const;
 
 export default function DriverNotificationSettingsScreen() {
-  const router  = useRouter();
-  const cs      = useColorScheme();
-  const theme   = Colors[cs ?? 'light'];
-  const isDark  = cs === 'dark';
+  const router = useRouter();
+  const cs     = useColorScheme();
+  const theme  = Colors[cs ?? 'light'];
+  const isDark = cs === 'dark';
 
-  const DEFAULTS: Record<ToggleKey, boolean> = {
-    newJobs: true, jobAssigned: true, jobCancelled: true,
-    earningsCredited: true, withdrawalStatus: true, weeklyEarnings: false,
-    customerMessages: true, tripUpdates: true,
-    promos: false, appUpdates: true,
-  };
-
-  const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>(DEFAULTS);
+  // The one genuine choice. Key 'marketing' is what the send path reads;
+  // the old screen's 'promos' key was never consulted by the backend.
+  const [promos, setPromos] = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const { prefs } = await usersApi.getNotificationPrefs();
-        if (prefs && Object.keys(prefs).length > 0) {
-          setToggles({ ...DEFAULTS, ...prefs } as Record<ToggleKey, boolean>);
-        }
+        if (prefs && typeof prefs.marketing === 'boolean') setPromos(prefs.marketing);
       } catch {}
     })();
   }, []);
 
-  const queueSave = (next: Record<ToggleKey, boolean>) => {
+  const togglePromos = (next: boolean) => {
+    setPromos(next);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      usersApi.updateNotificationPrefs(next).catch(() => {});
+      usersApi.updateNotificationPrefs({ marketing: next }).catch(() => {});
     }, 400);
   };
 
-  const allOn  = Object.values(toggles).every(Boolean);
-
-  const setAll = (val: boolean) => {
-    const next = Object.fromEntries(Object.keys(toggles).map(k => [k, val])) as Record<ToggleKey, boolean>;
-    setToggles(next);
-    queueSave(next);
-  };
-
-  const toggle = (key: ToggleKey) =>
-    setToggles(prev => {
-      const next = { ...prev, [key]: !prev[key] };
-      queueSave(next);
-      return next;
-    });
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <Text style={[styles.title, { color: theme.text }]}>Notifications</Text>
-        <Pressable onPress={() => setAll(!allOn)}>
-          <Text style={[styles.allBtn, { color: theme.primary }]}>{allOn ? 'Turn off all' : 'Turn on all'}</Text>
-        </Pressable>
+        <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-
-        {/* Push permission banner */}
-        <View style={[styles.pushBanner, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
-          <Ionicons name="notifications-outline" size={18} color={theme.primary} />
-          <Text style={[styles.pushText, { color: theme.textSecond }]}>Push notifications are <Text style={{ color: theme.primary, fontWeight: FontWeight.semibold }}>enabled</Text> on this device.</Text>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>YOUR CHOICE</Text>
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={styles.row}>
+            <View style={[styles.iconWrap, { backgroundColor: theme.surfaceSecond }]}>
+              <Ionicons name="megaphone-outline" size={18} color={theme.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>Promos &amp; news</Text>
+              <Text style={[styles.rowSub, { color: theme.textSecond }]}>
+                Bonuses, campaigns and SEIRS announcements
+              </Text>
+            </View>
+            <Switch
+              value={promos}
+              onValueChange={togglePromos}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor="#fff"
+            />
+          </View>
         </View>
 
-        {SECTIONS.map(section => (
-          <View key={section.title} style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>{section.title}</Text>
-            {section.items.map((item, i) => (
-              <View
-                key={item.key}
-                style={[
-                  styles.row,
-                  i < section.items.length - 1 && { borderBottomColor: theme.border, borderBottomWidth: 0.5 },
-                ]}
-              >
-                <View style={[styles.rowIcon, { backgroundColor: theme.surfaceSecond }]}>
-                  <Ionicons name={item.icon as any} size={18} color={theme.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.rowLabel, { color: theme.text }]}>{item.label}</Text>
-                  <Text style={[styles.rowSub, { color: theme.textSecond }]}>{item.sub}</Text>
-                </View>
-                <Switch
-                  value={toggles[item.key]}
-                  onValueChange={() => toggle(item.key)}
-                  trackColor={{ false: theme.border, true: theme.primary + '80' }}
-                  thumbColor={toggles[item.key] ? theme.primary : theme.textThird}
-                />
+        <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>ALWAYS ON</Text>
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          {ALWAYS_ON.map((item, i) => (
+            <View
+              key={item.label}
+              style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: theme.border }]}
+            >
+              <View style={[styles.iconWrap, { backgroundColor: theme.surfaceSecond }]}>
+                <Ionicons name={item.icon as any} size={18} color={theme.textSecond} />
               </View>
-            ))}
-          </View>
-        ))}
-
-        <View style={{ height: 24 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>{item.label}</Text>
+                <Text style={[styles.rowSub, { color: theme.textSecond }]}>{item.sub}</Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+            </View>
+          ))}
+        </View>
+        <Text style={[styles.footnote, { color: theme.textThird }]}>
+          These keep your jobs and your money working, so they can&apos;t be
+          switched off. You can still swipe any notification away or clear
+          them all from the notification centre.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -158,17 +122,13 @@ const styles = StyleSheet.create({
   header:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
   backBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   title:   { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-  allBtn:  { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
 
-  content: { padding: Spacing.md, gap: Spacing.md, paddingBottom: Spacing.xl },
-
-  pushBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
-  pushText:   { flex: 1, fontSize: FontSize.sm, lineHeight: 20 },
-
-  section:      { borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden' },
-  sectionTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, padding: Spacing.md, paddingBottom: Spacing.sm },
+  content:      { padding: Spacing.md, paddingBottom: Spacing.xl },
+  sectionLabel: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, letterSpacing: 0.6, marginTop: Spacing.md, marginBottom: Spacing.sm },
+  card:         { borderRadius: Radius.lg, borderWidth: 1, overflow: 'hidden' },
   row:          { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md },
-  rowIcon:      { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  rowLabel:     { fontSize: FontSize.base, fontWeight: FontWeight.medium, marginBottom: 2 },
-  rowSub:       { fontSize: FontSize.xs, lineHeight: 18 },
+  iconWrap:     { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  rowLabel:     { fontSize: FontSize.base, fontWeight: FontWeight.medium },
+  rowSub:       { fontSize: FontSize.xs, marginTop: 2, lineHeight: 16 },
+  footnote:     { fontSize: FontSize.xs, lineHeight: 17, marginTop: Spacing.sm, paddingHorizontal: Spacing.xs },
 });

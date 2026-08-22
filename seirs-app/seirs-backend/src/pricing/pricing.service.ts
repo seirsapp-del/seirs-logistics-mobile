@@ -349,8 +349,40 @@ export class PricingService implements OnModuleInit {
    * Merge baseline ↘ zone override ↘ state override (state wins on conflict).
    * Returns a flat, fully-resolved view ready to apply to a quote.
    */
-  resolveRegion(card: RateCard, stateCode: StateCode | null): ResolvedRegion {
-    if (!stateCode || !card.regions) return { rateMultiplier: 1 };
+  resolveRegion(
+    card: RateCard,
+    stateCode: StateCode | null,
+    pickupCoords?: { latitude: number; longitude: number } | null,
+  ): ResolvedRegion {
+    if (!card.regions) return { rateMultiplier: 1 };
+
+    /**
+     * Hotspot circles (founder 2026-08-22: "we also have other busy
+     * places in Nigeria, why not set radius km... individually for
+     * different places and different values"). Admin draws a circle
+     * (centre + radius km + multiplier); a pickup inside it takes that
+     * multiplier over anything the state or zone says. Overlapping
+     * circles: the SMALLEST containing circle wins, since the tighter
+     * circle is the more deliberate call.
+     */
+    const circles = Array.isArray((card.regions as any).hotspots)
+      ? ((card.regions as any).hotspots as Array<{
+          name?: string; lat: number; lng: number; radiusKm: number; rateMultiplier: number;
+        }>)
+      : [];
+    if (pickupCoords && circles.length > 0) {
+      const inside = circles
+        .filter(c =>
+          Number.isFinite(c.lat) && Number.isFinite(c.lng) &&
+          Number(c.radiusKm) > 0 && Number(c.rateMultiplier) > 0 &&
+          haversineKmLocal(pickupCoords.latitude, pickupCoords.longitude, c.lat, c.lng) <= Number(c.radiusKm))
+        .sort((a, b) => Number(a.radiusKm) - Number(b.radiusKm));
+      if (inside.length > 0) {
+        return { rateMultiplier: Number(inside[0].rateMultiplier) };
+      }
+    }
+
+    if (!stateCode) return { rateMultiplier: 1 };
     const zone = getStateZone(stateCode);
     const fromZ = (zone && card.regions.zoneOverrides?.[zone]) ?? {};
     const fromS = card.regions.stateOverrides?.[stateCode] ?? {};
@@ -573,7 +605,7 @@ export class PricingService implements OnModuleInit {
       input.dropoffStateCode ??
       (input.dropoffCoords ? detectStateFromCoords(input.dropoffCoords.latitude, input.dropoffCoords.longitude) : null);
 
-    const region = this.resolveRegion(card, pickupState);
+    const region = this.resolveRegion(card, pickupState, input.pickupCoords ?? null);
     const mult   = region.rateMultiplier;
     const fuelKm = this.fuelPerKm(card, input.vehicleType, region);
 
@@ -807,6 +839,16 @@ export class PricingService implements OnModuleInit {
 }
 
 // ── helpers ─────────────────────────────────────────────────────────────
+
+/** Straight-line km between two points; circle membership needs no more. */
+function haversineKmLocal(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 /** Returns true if `now`'s HH:MM is inside [start, end). Handles wrap-around (e.g. 22:00-05:00). */
 function inWindow(now: Date, start: string, end: string): boolean {

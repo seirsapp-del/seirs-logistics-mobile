@@ -12,6 +12,7 @@ import {
 } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
+import { NotificationBell } from '@/components/NotificationBell';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/Drawer';
 import { Illustration } from '@/components/Illustration';
@@ -165,9 +166,12 @@ export default function CustomerHomeScreen() {
             <Text style={[styles.brandWord, { color: theme.text }]}>SEIRS</Text>
           </View>
 
-          <Pressable onPress={() => router.push('/(customer)/profile' as any)}>
-            <Avatar name={user?.name ?? firstName} uri={user?.profilePhoto} size={40} />
-          </Pressable>
+          {/* Bell with unread count, same as the driver hub (founder
+              2026-08-22): Profile already lives on the tab bar, and a
+              customer should SEE they have unread notifications. */}
+          <View style={[styles.menuBtn, { backgroundColor: theme.surface }, Shadows.xs]}>
+            <NotificationBell size={20} />
+          </View>
         </View>
 
         {/* ── Search bar ──────────────────────────────────────────────────── */}

@@ -165,6 +165,19 @@ export class RateCard {
       restrictedSubZones?:       Array<{ name: string; surchargePct: number; reason: string }>;
       reason?:                   string;
     }>>;
+    /**
+     * Hotspot circles (founder 2026-08-22): centre + radius km +
+     * multiplier for busy places anywhere in Nigeria (Lagos Island,
+     * Wuse, PH GRA...). A pickup inside a circle takes its multiplier
+     * over state/zone; smallest containing circle wins.
+     */
+    hotspots?: Array<{
+      name:           string;
+      lat:            number;
+      lng:            number;
+      radiusKm:       number;
+      rateMultiplier: number;
+    }>;
     /** Manually-added restricted areas (curfew, flood, conflict, etc.) - admin-editable. */
     restrictedSubZones?: Array<{
       id:           string;

@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { HeroCarousel } from '@/components/HeroCarousel';
 import { Drawer } from '@/components/Drawer';
+import { SeirsMarkBold } from '@/components/SeirsLogoV2';
+import { NotificationBell } from '@/components/NotificationBell';
 import { businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
@@ -49,12 +51,17 @@ export default function BusinessDashboard() {
           <Icon name="AlignLeft" size={20} color="#fff" strokeWidth={1.75} />
         </Pressable>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.greeting}>Good {getTimeOfDay()},</Text>
-          <Text style={styles.companyName}>{user?.name?.split(' ')[0] ?? user?.companyName}</Text>
+          {/* Brand eyebrow: screenshots carry the okada (founder
+              2026-08-22), and the greeting stays as this app's voice. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <SeirsMarkBold size={26} color="#FFFFFF" hubColor="#0F2B4C" />
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 2 }}>SEIRS</Text>
+          </View>
+          <Text style={styles.companyName}>Good {getTimeOfDay()}, {user?.name?.split(' ')[0] ?? user?.companyName}</Text>
         </View>
-        <Pressable style={styles.avatarBtn} onPress={() => router.push('/(business)/notifications' as any)}>
-          <Icon name="Bell" size={20} color="#fff" strokeWidth={1.5} />
-        </Pressable>
+        <View style={styles.avatarBtn}>
+          <NotificationBell size={20} color="#fff" />
+        </View>
       </View>
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} showsVerticalScrollIndicator={false}>
         {/* Header: keeps the brand navy gradient in both modes since it

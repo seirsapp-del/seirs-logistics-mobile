@@ -107,6 +107,7 @@ export default function ProfileScreen() {
       title: t('profile.sectionPreferences'),
       items: [
         { icon: 'notifications-outline', label: t('profile.notifications'), sub: t('profile.notificationsSub'), onPress: () => router.push('/(customer)/notifications' as any) },
+        { icon: 'document-text-outline', label: 'Documents', sub: 'Letters and documents from SEIRS', onPress: () => router.push('/(customer)/documents' as any) },
         { icon: 'language-outline',      label: t('profile.language'),      sub: t('profile.languageSub'),      onPress: () => router.push('/(customer)/language') },
         { icon: 'lock-closed-outline',   label: t('profile.privacy'),       sub: t('profile.privacySub'),       onPress: () => router.push('/(customer)/privacy') },
       ],
