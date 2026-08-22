@@ -239,6 +239,23 @@ export class RateCard {
    */
   @Column({ type: 'jsonb', nullable: true })
   /**
+   * Ride pricing per ride-capable vehicle (founder 2026-08-22, the
+   * Book-a-Ride rebuild). Same shape philosophy as vehicleRates:
+   * customer and driver sides separate, fuel passes through at pump
+   * price / kmPerLitre. Seeded from the numbers the customer app has
+   * always displayed so publishing does not jump prices.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  rideRates: Record<string, {
+    baseFareCustomer:    number;
+    labourPerKmCustomer: number;
+    baseFareDriver:      number;
+    labourPerKmDriver:   number;
+    fuelType:            'petrol' | 'diesel' | 'none';
+    kmPerLitre:          number;
+  }> | null;
+
+  /**
    * Flat platform service fee per booking (founder 2026-08-22). Charged
    * AFTER discounts (promotions never erode it) and BEFORE VAT. Region
    * serviceFee*Override fields beat these baselines. rideNgn is

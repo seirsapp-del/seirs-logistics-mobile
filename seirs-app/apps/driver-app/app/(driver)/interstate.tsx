@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
   KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -37,6 +37,32 @@ export default function InterstateScreen() {
   const [vehicleSpace,setVehicleSpace]= useState('1');
   const [submitting,  setSubmitting]  = useState(false);
 
+  // The declared list + cancel existed as endpoints since spec 2.18;
+  // the screen never showed them, so a driver could declare a trip and
+  // then neither see nor undo it (founder audit 2026-08-22).
+  const [myTrips, setMyTrips] = useState<any[]>([]);
+  const loadTrips = () => {
+    driversApi.myInterstateTrips()
+      .then((rows: any[]) => setMyTrips((rows ?? []).filter(r => r.status === 'active')))
+      .catch(() => {});
+  };
+  useEffect(() => { loadTrips(); }, []);
+
+  const cancelTrip = (trip: any) => {
+    Alert.alert(
+      'Cancel this trip?',
+      `${trip.fromCity} → ${trip.toCity}. You will stop receiving packages matched to this route.`,
+      [
+        { text: 'Keep', style: 'cancel' },
+        { text: 'Cancel trip', style: 'destructive',
+          onPress: async () => {
+            try { await driversApi.cancelInterstateTrip(trip.id); loadTrips(); }
+            catch (e: any) { Alert.alert('Could not cancel', e?.message ?? 'Try again.'); }
+          } },
+      ],
+    );
+  };
+
   const submit = async () => {
     if (!from.trim() || !to.trim()) { Alert.alert('Both cities required'); return; }
     if (!departAt) { Alert.alert('Departure time required'); return; }
@@ -57,7 +83,7 @@ export default function InterstateScreen() {
       Alert.alert(
         'Trip declared',
         `You're listed for ${from} → ${to} on ${new Date(depart).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Matching packages will appear in your available jobs.`,
-        [{ text: 'OK', onPress: () => router.back() }],
+        [{ text: 'OK', onPress: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); } }],
       );
     } catch (e: any) {
       Alert.alert('Could not declare trip', e?.message ?? 'Try again.');
@@ -78,6 +104,31 @@ export default function InterstateScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+
+          {myTrips.length > 0 && (
+            <View style={{ gap: 8, marginBottom: 4 }}>
+              <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, letterSpacing: 0.6, color: theme.textSecond }}>
+                MY DECLARED TRIPS
+              </Text>
+              {myTrips.map((tr) => (
+                <View key={tr.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderRadius: Radius.lg, padding: 12 }}>
+                  <MapPin size={16} color={theme.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>
+                      {tr.fromCity} → {tr.toCity}
+                    </Text>
+                    <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginTop: 1 }}>
+                      Departs {new Date(tr.departAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {Number(tr.spareCapacityKg) > 0 ? ` · ${Number(tr.spareCapacityKg)}kg spare` : ''}
+                    </Text>
+                  </View>
+                  <Pressable onPress={() => cancelTrip(tr)} hitSlop={8}>
+                    <Text style={{ color: '#DC2626', fontSize: FontSize.sm, fontWeight: '700' }}>Cancel</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
 
           <View style={[styles.intro, { backgroundColor: theme.primary + '12' }]}>
             <Truck size={20} color={theme.primary} />

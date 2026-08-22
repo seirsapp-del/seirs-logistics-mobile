@@ -482,8 +482,10 @@ export default function DriverHomeScreen() {
                       customer's name (privacy: identity reveals on
                       acceptance), and the DROPOFF is finally shown so
                       drivers can judge where the trip ends. */}
-                  <Text style={[styles.jobCustomer, { color: theme.text }]}>
-                    {[job.packageSize, job.vehicleType].filter(Boolean).join(' · ') || 'Package delivery'}
+                  <Text style={[styles.jobCustomer, { color: job.kind === 'ride' ? '#6366F1' : theme.text }]}>
+                    {job.kind === 'ride'
+                      ? `RIDE · passenger (${job.vehicleType})`
+                      : [job.packageSize, job.vehicleType].filter(Boolean).join(' · ') || 'Package delivery'}
                   </Text>
                   <View style={styles.addrRow}>
                     <MapPin size={12} color="#16A34A" strokeWidth={1.75} />

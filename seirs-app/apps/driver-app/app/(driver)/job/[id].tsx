@@ -53,6 +53,7 @@ export default function JobDetailScreen() {
           price:             Number(d.price ?? 0),
           driverEarnings:    Number(d.driverEarnings ?? 0),
           packageDescription: d.packageDescription,
+          kind: d.kind ?? 'package',
           customer: {
             name: d.customer?.name ?? 'Customer',
           },
@@ -254,6 +255,16 @@ export default function JobDetailScreen() {
             </Text>
           </View>
         </View>
+
+        {/* A ride is a person: say so before the driver accepts. */}
+        {(job as any).kind === 'ride' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#6366F118', borderRadius: 10, padding: 12, marginBottom: 10 }}>
+            <Zap size={16} color="#6366F1" strokeWidth={1.75} />
+            <Text style={{ color: '#6366F1', fontWeight: '700', fontSize: 13, flex: 1 }}>
+              This is a RIDE: you are picking up a passenger, not a package.
+            </Text>
+          </View>
+        )}
 
         {/* Package info */}
         {job.packageDescription && (

@@ -147,6 +147,15 @@ export class Delivery {
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   declaredValueNgn: number | null;
 
+  /**
+   * What is being moved: a package, or a PERSON (founder 2026-08-22,
+   * the Book-a-Ride rebuild). Rides reuse this whole pipeline: pricing
+   * snapshot, matching, tracking, escrow, chat; the kind gates the
+   * package-only surfaces (photos, per-package codes, category rules).
+   */
+  @Column({ type: 'varchar', length: 10, default: 'package' })
+  kind: 'package' | 'ride';
+
   // Receiver system (founder 2026-08-11): Nigerians routinely have
   // neighbours/security collect packages. The sender names the receiver
   // at booking; the typed-name handoff check matches THIS first name

@@ -95,7 +95,8 @@ export class MatchingService {
 
     // Value-level gate (founder 2026-08-21): a driver never sees a job
     // whose declared value exceeds their level's cap.
-    const candidates = await this.filterByValueLevel(nearbyDrivers, delivery);
+    const candidates = this.filterForRide(
+      await this.filterByValueLevel(nearbyDrivers, delivery), delivery);
     if (!candidates.length) {
       this.logger.warn(
         `No drivers near delivery ${delivery.id} are levelled for its declared value (₦${Number((delivery as any).declaredValueNgn ?? 0)}).`,
@@ -111,9 +112,29 @@ export class MatchingService {
     );
     const premiumSet = new Set(premiumIds.filter(([, on]) => on).map(([id]) => id));
     const corridorCfg = await this.corridorConfig();
+    // Interstate declared trips (Spec V8 2.18): the driver app has
+    // promised "matching packages will be auto-offered" since day one;
+    // this is the first code that makes it true. Route match = the
+    // declared cities appear in the booking's addresses.
+    const interTrips = await this.driversService
+      .activeInterstateTripsFor(candidates.map((d) => d.id))
+      .catch(() => [] as any[]);
+    const interBonus = await this.feesService.getValueOr('interstate_match_bonus', 0.25).catch(() => 0.25);
 
     const scored = candidates
-      .map((driver) => this.scoreDriver(driver, delivery, premiumSet.has(driver.id), corridorCfg))
+      .map((driver) => {
+        const scored = this.scoreDriver(driver, delivery, premiumSet.has(driver.id), corridorCfg);
+        // Declared-trip route match: both cities named in the booking.
+        const trip = interTrips.find((tr: any) => String(tr.driverId ?? tr.driver?.id) === driver.id);
+        if (trip) {
+          const up = String(delivery.pickupAddress ?? '').toLowerCase();
+          const dn = String(delivery.dropoffAddress ?? '').toLowerCase();
+          if (up.includes(String(trip.fromCity).toLowerCase()) && dn.includes(String(trip.toCity).toLowerCase())) {
+            scored.score = Math.min(1, scored.score + interBonus);
+          }
+        }
+        return scored;
+      })
       .filter((s) => s.score > 0.1) // discard clearly unsuitable drivers
       .sort((a, b) => b.score - a.score);
 
@@ -130,6 +151,16 @@ export class MatchingService {
    * value (caps are admin-editable fee rows; see DriversService).
    * No declared value = no gate: ordinary parcels match as before.
    */
+  /**
+   * A ride goes ONLY to the exact vehicle class the passenger chose
+   * (founder 2026-08-22): someone who booked a car must not get an
+   * okada, and a person never rides a bicycle or a truck.
+   */
+  private filterForRide(drivers: Driver[], delivery: Delivery): Driver[] {
+    if ((delivery as any).kind !== 'ride') return drivers;
+    return drivers.filter((d) => d.vehicleType === delivery.vehicleType);
+  }
+
   private async filterByValueLevel(drivers: Driver[], delivery: Delivery): Promise<Driver[]> {
     const declaredNgn = Number((delivery as any).declaredValueNgn ?? 0);
     if (!(declaredNgn > 0)) return drivers;
@@ -264,7 +295,8 @@ export class MatchingService {
     // Same value-level gate as auto-matching: a customer picking by hand
     // must not be offered a driver the platform would not trust with
     // this declared value.
-    const nearbyDrivers = await this.filterByValueLevel(nearby, delivery);
+    const nearbyDrivers = this.filterForRide(
+      await this.filterByValueLevel(nearby, delivery), delivery);
     const premiumIds = await Promise.all(
       nearbyDrivers.map(async (d) => [d.id, await this.driversService.isPremiumActive(d.id)] as const),
     );

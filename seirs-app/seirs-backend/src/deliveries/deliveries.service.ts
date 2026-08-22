@@ -359,7 +359,19 @@ export class DeliveriesService {
       ? dto.stops.reduce((sum, st) => sum + (Number(st?.declaredValueNgn ?? 0) || 0), 0)
       : Number(dto.declaredValueNgn ?? 0) || 0;
 
-    const breakdown = await this.rateCardPricing.computePrice({
+    // A ride prices through the ride engine: no categories, no weight,
+    // no stops, the passenger is the payload (founder 2026-08-22).
+    const isRideBooking = (dto as any).mode === 'ride';
+
+    const breakdown = isRideBooking
+      ? await this.rateCardPricing.computeRidePrice({
+          vehicleType,
+          km: distanceKm,
+          scheduledAt: quotePin?.pricedAt ?? undefined,
+          pickupCoords:  { latitude: dto.pickupLat,  longitude: dto.pickupLng },
+          dropoffCoords: { latitude: dto.dropoffLat, longitude: dto.dropoffLng },
+        }) as any
+      : await this.rateCardPricing.computePrice({
       vehicleType,
       categoryCode: toCategoryCode(dto.packageCategory),
       km: distanceKm,
@@ -485,6 +497,16 @@ export class DeliveriesService {
       // A run's declared value is the SUM on board: the matching gate
       // and the insurance path both reason about the total carried.
       declaredValueNgn: declaredTotalNgn > 0 ? declaredTotalNgn : (dto.declaredValueNgn ?? null),
+      // A ride's "recipient" is the passenger: the driver greets a
+      // person by name, and the tracking page shows who is riding.
+      kind: isRideBooking ? 'ride' : 'package',
+      ...(isRideBooking ? {
+        recipientName:  customer.name,
+        receiverPhone:  customer.phone ?? null,
+        packageDescription: null,
+        categoryCode:   null,
+        weightKg:       null,
+      } : {}),
       scheduledFor,
       trackingCode,
       customer,

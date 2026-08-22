@@ -205,6 +205,15 @@ export class PricingService implements OnModuleInit {
    */
   private async selfHealSchema() {
     const statements = [
+      ['rate_cards.rideRates', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "rideRates" jsonb NULL`],
+      // Seed existing cards with the numbers the customer app has
+      // always shown (its bundled defaults), so the first publish after
+      // this deploy does not move a single fare.
+      ['rate_cards.rideRates backfill', `
+        UPDATE "rate_cards"
+           SET "rideRates" = '${JSON.stringify(PricingService.DEFAULT_RIDE_RATES)}'::jsonb
+         WHERE "rideRates" IS NULL
+      `],
       ['rate_cards.serviceFees', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "serviceFees" jsonb NULL`],
       // Old cards carry NULL; zeroed = charged nothing until the admin
       // sets a value and publishes.
@@ -512,6 +521,123 @@ export class PricingService implements OnModuleInit {
 
   private quotePinSecret(): string {
     return process.env.QUOTE_PIN_SECRET || process.env.JWT_SECRET || 'seirs-quote-pin-dev';
+  }
+
+  /**
+   * The ride vehicles and their default rates, matching the customer
+   * app's bundled card (base + labour per km, driver side ~75% of the
+   * customer side, fuel passed through at pump / kmPerLitre). Canonical
+   * vehicle ids; the app maps okada/keke/danfo labels onto them.
+   */
+  static readonly DEFAULT_RIDE_RATES: Record<string, {
+    baseFareCustomer: number; labourPerKmCustomer: number;
+    baseFareDriver: number;   labourPerKmDriver: number;
+    fuelType: 'petrol' | 'diesel' | 'none'; kmPerLitre: number;
+  }> = {
+    motorcycle: { baseFareCustomer: 450,  labourPerKmCustomer: 40,  baseFareDriver: 340,  labourPerKmDriver: 30,  fuelType: 'petrol', kmPerLitre: 45 },
+    tricycle:   { baseFareCustomer: 650,  labourPerKmCustomer: 55,  baseFareDriver: 490,  labourPerKmDriver: 41,  fuelType: 'petrol', kmPerLitre: 25 },
+    car:        { baseFareCustomer: 1100, labourPerKmCustomer: 100, baseFareDriver: 825,  labourPerKmDriver: 75,  fuelType: 'petrol', kmPerLitre: 12 },
+    van:        { baseFareCustomer: 2800, labourPerKmCustomer: 180, baseFareDriver: 2100, labourPerKmDriver: 135, fuelType: 'petrol', kmPerLitre: 8 },
+  };
+
+  /** Ride-capable vehicle classes: a person never rides a truck or a bicycle. */
+  static readonly RIDE_VEHICLES = ['motorcycle', 'tricycle', 'car', 'van'] as const;
+
+  /**
+   * Price one ride (founder 2026-08-22, Book-a-Ride rebuild). Same
+   * disciplines as computePrice: region multiplier and fuel overrides
+   * from the pickup, fuel pass-through, time surcharges, the state-
+   * aware zone tier for long/interstate trips, the flat ride service
+   * fee, VAT. Driver side has its own base + labour, full fuel, and
+   * the driverPercent share of time surcharges: the cargo pattern.
+   */
+  async computeRidePrice(input: {
+    vehicleType: string;
+    km: number;
+    scheduledAt?: Date;
+    pickupCoords?:  { latitude: number; longitude: number } | null;
+    dropoffCoords?: { latitude: number; longitude: number } | null;
+  }) {
+    const card = await this.getActiveRateCard();
+    if (!(PricingService.RIDE_VEHICLES as readonly string[]).includes(input.vehicleType)) {
+      throw new BadRequestException(`'${input.vehicleType}' is not a ride vehicle.`);
+    }
+    const r = (card as any).rideRates?.[input.vehicleType]
+      ?? PricingService.DEFAULT_RIDE_RATES[input.vehicleType];
+
+    const km = Math.max(0, Number(input.km) || 0);
+    const pickupState  = input.pickupCoords  ? detectStateFromCoords(input.pickupCoords.latitude,  input.pickupCoords.longitude)  : null;
+    const dropoffState = input.dropoffCoords ? detectStateFromCoords(input.dropoffCoords.latitude, input.dropoffCoords.longitude) : null;
+    const region = this.resolveRegion(card, pickupState, input.pickupCoords ?? null);
+    const mult = region.rateMultiplier;
+
+    const fuelPrice = r.fuelType === 'petrol'
+      ? (region.fuelPrices?.petrolNgn ?? card.fuelPrices.petrolPerLitreNgn)
+      : r.fuelType === 'diesel'
+        ? (region.fuelPrices?.dieselNgn ?? card.fuelPrices.dieselPerLitreNgn)
+        : 0;
+    const fuelKmRate = r.kmPerLitre > 0 && r.fuelType !== 'none' ? fuelPrice / r.kmPerLitre : 0;
+
+    const base           = r.baseFareCustomer * mult;
+    const distanceLabour = r.labourPerKmCustomer * mult * km;
+    const distanceFuel   = fuelKmRate * km;
+    const subtotalPreTime = base + distanceLabour + distanceFuel;
+
+    const tNow = input.scheduledAt ?? new Date();
+    const t = card.timeSurcharges;
+    const isNight   = inWindow(tNow, t.night.windowStart, t.night.windowEnd);
+    const isPeak    = !isNight && isWeekday(tNow) && inWindow(tNow, t.peak.windowStart, t.peak.windowEnd);
+    const isWeekend = !isNight && !isWeekday(tNow);
+    const nightSur   = isNight   ? subtotalPreTime * (t.night.customerPercent   / 100) : 0;
+    const peakSur    = isPeak    ? subtotalPreTime * (t.peak.customerPercent    / 100) : 0;
+    const weekendSur = isWeekend ? subtotalPreTime * (t.weekend.customerPercent / 100) : 0;
+    const subtotalPreZone = subtotalPreTime + nightSur + peakSur + weekendSur;
+
+    // Long-haul / interstate rides pay the same zone tier a parcel
+    // would: the driver crosses the same distance and checkpoints.
+    const zr = this.zoneSurchargeForBooking(card, { km } as any, pickupState, dropoffState);
+    const tierSur       = subtotalPreZone * zr.pct;
+    const restrictedSur = subtotalPreZone * (zr.restrictedPct / 100);
+    const overnightSur  = zr.flat;
+
+    // Flat ride service fee (founder 2026-08-22): post-surcharge,
+    // pre-VAT, never eroded, 100% SEIRS. Region override wins.
+    const serviceFee = Math.max(0, Number(
+      region.serviceFeeRideOverride ?? (card as any).serviceFees?.rideNgn ?? 0,
+    ));
+
+    const vatBase = subtotalPreZone + tierSur + restrictedSur + overnightSur + serviceFee;
+    const vat     = vatBase * Number(card.vatRate);
+    const total   = Math.round((vatBase + vat) * 100) / 100;
+
+    // Driver side: own base + labour, full fuel, driverPercent of time
+    // surcharges. The zone tier's driver share rides through
+    // driverPercent of the same windows for v1.
+    const dBase   = r.baseFareDriver * mult;
+    const dLabour = r.labourPerKmDriver * mult * km;
+    // driverSharePercent is the driver's share OF the charged surcharge,
+    // same convention as the cargo engine.
+    const dTime   =
+      nightSur   * ((t.night.driverSharePercent   ?? 0) / 100) +
+      peakSur    * ((t.peak.driverSharePercent    ?? 0) / 100) +
+      weekendSur * ((t.weekend.driverSharePercent ?? 0) / 100);
+    const driverTotal = Math.round((dBase + dLabour + distanceFuel + dTime) * 100) / 100;
+
+    return {
+      kind: 'ride' as const,
+      vehicleType: input.vehicleType,
+      km,
+      customer: {
+        base: Math.round(base), distanceLabour: Math.round(distanceLabour), distanceFuel: Math.round(distanceFuel),
+        timeSurcharges: { night: Math.round(nightSur), peak: Math.round(peakSur), weekend: Math.round(weekendSur) },
+        nightSurcharge: Math.round(nightSur),
+        zoneSurcharges: { tier: Math.round(tierSur), restricted: Math.round(restrictedSur), overnight: Math.round(overnightSur) },
+        serviceFee, vatBase: Math.round(vatBase), vat: Math.round(vat), total,
+      },
+      driver: { total: driverTotal },
+      seirsNet: Math.round((vatBase - driverTotal + serviceFee) * 100) / 100,
+      rateCardSnapshotId: card.id,
+    };
   }
 
   signQuotePin(totalNgn: number, pricedAt: Date): { token: string; pricedAt: string; expiresAt: string } {

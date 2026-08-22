@@ -68,6 +68,8 @@ type Trip = {
   driver: { id: string; name: string; profilePhoto?: string } | null;
   rating: number | null;
   trackingCode: string;
+  /** 'ride' when a passenger trip, 'package' otherwise. */
+  kind: string;
   /** Set once the fare is held. Absent on a booking never paid for. */
   paymentHeldAt: string | null;
 };
@@ -96,6 +98,7 @@ function toTrip(d: any): Trip {
     rating:         d.customerRating ?? null,
     trackingCode:   d.trackingCode ?? d.id,
     paymentHeldAt:  d.paymentHeldAt ?? null,
+    kind:           String(d.kind ?? 'package'),
   };
 }
 
@@ -222,6 +225,11 @@ export default function HistoryScreen() {
       >
         <View style={styles.cardTop}>
           <View style={{ flex: 1 }}>
+            {item.kind === 'ride' && (
+              <View style={{ alignSelf: 'flex-start', backgroundColor: '#6366F120', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginBottom: 3 }}>
+                <Text style={{ color: '#6366F1', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>RIDE</Text>
+              </View>
+            )}
             <Text style={[styles.trackNum, { color: theme.text }]}>
               {item.trackingCode}
             </Text>

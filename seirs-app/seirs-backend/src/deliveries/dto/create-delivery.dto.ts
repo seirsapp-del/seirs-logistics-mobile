@@ -218,6 +218,10 @@ export class CreateDeliveryDto {
   @IsOptional()
   quoteToken?: string;
 
+  /** 'ride' books a passenger trip through the ride engine. */
+  @IsOptional()
+  mode?: 'ride' | 'cargo';
+
   /** Sender ticked the Terms of Service box at review. */
   @IsOptional()
   termsAccepted?: boolean;

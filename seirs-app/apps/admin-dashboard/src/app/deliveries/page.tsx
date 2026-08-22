@@ -146,7 +146,7 @@ function DeliveriesContent() {
                                 : 'text-[#0F2B4C]'
                             }`}
                           >
-                            {d.trackingCode}
+                            {d.trackingCode} {d.kind === 'ride' && <span className="ml-1 rounded bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">RIDE</span>}
                           </Link>
                         </div>
                         {/* A flagged job was indistinguishable from a healthy

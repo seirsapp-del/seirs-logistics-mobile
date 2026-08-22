@@ -348,6 +348,26 @@ export class DriversService {
     return this.tripsRepo.save(trip);
   }
 
+  /**
+   * Active declared intercity trips for a candidate set, departure
+   * within +/-24h of now: the matching window where "I'm driving to
+   * Ibadan anyway" is actually true.
+   */
+  async activeInterstateTripsFor(driverIds: string[]) {
+    if (!driverIds.length) return [];
+    const now = Date.now();
+    return this.tripsRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.driver', 'd')
+      .where('d.id IN (:...driverIds)', { driverIds })
+      .andWhere('t.status = :status', { status: DriverTripStatus.ACTIVE })
+      .andWhere('t.departAt BETWEEN :from AND :to', {
+        from: new Date(now - 24 * 60 * 60 * 1000),
+        to:   new Date(now + 24 * 60 * 60 * 1000),
+      })
+      .getMany();
+  }
+
   listMyInterstateTrips(userId: string) {
     return this.tripsRepo
       .createQueryBuilder('t')

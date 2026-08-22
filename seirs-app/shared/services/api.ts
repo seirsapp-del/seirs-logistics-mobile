@@ -1495,6 +1495,22 @@ export interface QuoteInput {
 }
 
 export const pricingApi = {
+  /**
+   * Price every ride vehicle for a route in one call; each carries its
+   * own quote pin so confirm books exactly the number shown.
+   */
+  rideQuote: (body: {
+    km: number;
+    pickupCoords?:  { latitude: number; longitude: number };
+    dropoffCoords?: { latitude: number; longitude: number };
+  }) =>
+    request<{
+      pricedAt: string;
+      vehicles: Record<string, {
+        total: number; driverEarnings: number; serviceFee: number;
+        quotePin: { token: string; pricedAt: string; expiresAt: string };
+      }>;
+    }>('POST', '/pricing/ride-quote', body),
   /** Live price quote. call when key inputs change in the booking form. */
   quote: (body: QuoteInput) => request<PriceBreakdown>('POST', '/pricing/quote', body),
 };

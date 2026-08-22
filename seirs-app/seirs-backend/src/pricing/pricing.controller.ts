@@ -66,6 +66,43 @@ export class PricingController {
 
   // ── Quote endpoint (auth required) ───────────────────────────────────
 
+  /**
+   * One call prices every ride vehicle for the route, each with its
+   * own pin, so vehicle-select shows four honest numbers and confirm
+   * books the exact one shown (founder 2026-08-22, Book-a-Ride rebuild).
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('pricing/ride-quote')
+  async rideQuote(@Body() body: {
+    km: number;
+    pickupCoords?:  { latitude: number; longitude: number };
+    dropoffCoords?: { latitude: number; longitude: number };
+  }) {
+    if (typeof body.km !== 'number' || body.km < 0) {
+      throw new BadRequestException('km must be a non-negative number');
+    }
+    const pricedAt = new Date();
+    const vehicles: Record<string, any> = {};
+    for (const v of PricingService.RIDE_VEHICLES) {
+      try {
+        const b = await this.pricing.computeRidePrice({
+          vehicleType: v,
+          km: body.km,
+          scheduledAt: pricedAt,
+          pickupCoords: body.pickupCoords ?? null,
+          dropoffCoords: body.dropoffCoords ?? null,
+        });
+        vehicles[v] = {
+          total:          Number(b.customer.total),
+          driverEarnings: Number(b.driver.total),
+          serviceFee:     Number(b.customer.serviceFee ?? 0),
+          quotePin:       this.pricing.signQuotePin(Number(b.customer.total), pricedAt),
+        };
+      } catch { /* vehicle missing from the card: omit */ }
+    }
+    return { pricedAt: pricedAt.toISOString(), vehicles };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('pricing/quote')
   async quote(@Body() body: PricingInput) {

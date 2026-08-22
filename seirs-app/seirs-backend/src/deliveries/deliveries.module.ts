@@ -262,7 +262,8 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "disposedAt" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "disposalPhotoUrl" text NULL,
           ADD COLUMN IF NOT EXISTS "disposalNote" text NULL,
-          ADD COLUMN IF NOT EXISTS "termsAcceptedAt" timestamptz NULL
+          ADD COLUMN IF NOT EXISTS "termsAcceptedAt" timestamptz NULL,
+          ADD COLUMN IF NOT EXISTS "kind" varchar(10) NOT NULL DEFAULT 'package'
       `);
       // Mid-delivery address change (2026-08-21): support-decided, paid
       // before it applies.

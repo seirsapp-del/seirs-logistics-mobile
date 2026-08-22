@@ -237,7 +237,9 @@ export default function TripDetailsScreen() {
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.text }]}>{d.trackingCode ?? 'Trip'}</Text>
           <Text style={[styles.sub, { color: colors.textThird }]}>
-            {stops.length > 1 ? `${stops.length} packages · one payment` : 'Single package'}
+            {d.kind === 'ride'
+              ? 'Ride'
+              : stops.length > 1 ? `${stops.length} packages · one payment` : 'Single package'}
           </Text>
         </View>
         <View style={[styles.badge, { backgroundColor: runColor + '20' }]}>
@@ -418,7 +420,7 @@ export default function TripDetailsScreen() {
         )}
 
         <Text style={[styles.sectionTitle, { color: colors.textThird }]}>
-          {stops.length > 1 ? `PACKAGES (${stops.length})` : 'PACKAGE'}
+          {d.kind === 'ride' ? 'PASSENGER' : stops.length > 1 ? `PACKAGES (${stops.length})` : 'PACKAGE'}
         </Text>
 
         {stops.map((st, i) => {
@@ -429,14 +431,16 @@ export default function TripDetailsScreen() {
             <View key={st.id ?? i} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.rowBetween}>
                 <Text style={[styles.pkgTitle, { color: colors.text }]} numberOfLines={1}>
-                  {st.packageDescription?.trim() || `Package ${st.sequenceOrder ?? i + 1}`}
+                  {d.kind === 'ride'
+                    ? (receiver || 'You')
+                    : (st.packageDescription?.trim() || `Package ${st.sequenceOrder ?? i + 1}`)}
                 </Text>
                 <View style={[styles.badge, { backgroundColor: c + '20' }]}>
                   <Text style={[styles.badgeText, { color: c }]}>{String(st.status ?? 'pending').replace('_', ' ')}</Text>
                 </View>
               </View>
 
-              {!!receiver && (
+              {!!receiver && d.kind !== 'ride' && (
                 <Text style={[styles.pkgMeta, { color: colors.textSecond }]}>
                   For {receiver}{st.weightKg ? ` · ${Number(st.weightKg)}kg` : ''}
                 </Text>

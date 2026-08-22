@@ -13,7 +13,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcRideFare, calcPackageFare, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
-import { deliveriesApi } from '@/services/api';
+import { deliveriesApi , pricingApi } from '@/services/api';
 
 // UI presentation for the rate-card package vehicles: keyed by the
 // canonical id calcPackageFare looks up. Keeping this here (not on the
@@ -67,7 +67,29 @@ export default function VehicleSelectScreen() {
     truck_sm: 'truck_small', truck_lg: 'truck_large',
   };
   const [liveQuotes, setLiveQuotes] = useState<Record<string, { total: number }> | null>(null);
+  // Ride engine quote: totals + a pin per vehicle. null while loading,
+  // 'failed' shows the retry row: the screen never falls back to a
+  // local number the server would not honour.
+  const [rideQuotes, setRideQuotes] = useState<Record<string, any> | null>(null);
+  const [rideQuoteFailed, setRideQuoteFailed] = useState(false);
+  const [rideQuoteNonce, setRideQuoteNonce] = useState(0);
   useEffect(() => {
+    if (!isRide || !(distKm > 0)) return;
+    let cancelled = false;
+    setRideQuoteFailed(false);
+    pricingApi.rideQuote({
+      km: distKm,
+      pickupCoords:  pickupCoords ?? undefined,
+      dropoffCoords: dropoffCoords ?? undefined,
+    })
+      .then((r) => { if (!cancelled) setRideQuotes(r?.vehicles ?? {}); })
+      .catch(() => { if (!cancelled) setRideQuoteFailed(true); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRide, distKm, rideQuoteNonce]);
+
+  useEffect(() => {
+    if (isRide) return; // rides price through the ride engine above
     if (!pickupCoords || !dropoffCoords) return;
     deliveriesApi.quote({
       pickupLat:  pickupCoords.latitude,  pickupLng:  pickupCoords.longitude,
@@ -104,14 +126,14 @@ export default function VehicleSelectScreen() {
         eta:         v.eta,
         features:    [...v.features],
         priceLabel:  (() => {
-          const local = calcRideFare(v.id, distKm, shared, { pickupCoords, dropoffCoords }).total;
-          const sharedFactor = shared && v.shareable
-            ? calcRideFare(v.id, distKm, true,  { pickupCoords, dropoffCoords }).total /
-              Math.max(1, calcRideFare(v.id, distKm, false, { pickupCoords, dropoffCoords }).total)
-            : 1;
-          return `₦${liveTotal(v.id, local, sharedFactor).toLocaleString()}`;
+          // Server-priced or nothing: a placeholder is honest, a local
+          // guess the engine will not charge is not.
+          const q = rideQuotes?.[ID_TO_ENUM[v.id] ?? v.id];
+          return q ? `₦${Math.round(Number(q.total)).toLocaleString()}` : '…';
         })(),
-        shareable:   v.shareable,
+        // Capacity, not minutes: SEIRS makes no time promises.
+        metaText:    `${v.capacityCount} rider${v.capacityCount === 1 ? '' : 's'}`,
+        shareable:   false,
       }))
     : PACKAGE_VEHICLES.map(v => {
         const ui = PACKAGE_UI[v.id] ?? { icon: 'cube-outline', eta: '-', descKey: v.noteKey, features: [] };
@@ -286,8 +308,8 @@ export default function VehicleSelectScreen() {
                 <View style={styles.cardRight}>
                   <Text style={[styles.price, { color: isSelected ? theme.primary : theme.text }]}>{v.priceLabel}</Text>
                   <View style={styles.etaRow}>
-                    <Ionicons name="time-outline" size={12} color={theme.textSecond} />
-                    <Text style={[styles.eta, { color: theme.textSecond }]}>{v.eta}</Text>
+                    <Ionicons name={isRide ? 'person-outline' : 'time-outline'} size={12} color={theme.textSecond} />
+                    <Text style={[styles.eta, { color: theme.textSecond }]}>{(v as any).metaText ?? v.eta}</Text>
                   </View>
                   {isSelected && (
                     <View style={[styles.checkWrap, { backgroundColor: theme.primary }]}>
@@ -307,25 +329,19 @@ export default function VehicleSelectScreen() {
             </View>
           )}
 
-          {/* Share-ride toggle: only shown for shareable vehicles (car/danfo). */}
-          {isRide && selectedShareable && (
+          {/* Share-ride removed 2026-08-22: the toggle promised a
+              discount no engine or matcher supported. Pooling returns
+              as a real feature or not at all. */}
+
+          {isRide && rideQuoteFailed && (
             <Pressable
-              onPress={() => setShared(s => !s)}
-              style={[
-                styles.shareRow,
-                { backgroundColor: shared ? theme.primary + '15' : theme.surfaceSecond, borderColor: shared ? theme.primary : theme.border },
-              ]}
+              onPress={() => setRideQuoteNonce(n => n + 1)}
+              style={[styles.warnRow, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
             >
-              <View style={[styles.shareIcon, { backgroundColor: shared ? theme.primary : theme.surface }]}>
-                <Ionicons name="people-outline" size={18} color={shared ? '#fff' : theme.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.shareTitle, { color: theme.text }]}>{t('request2.shareTitle')}</Text>
-                <Text style={[styles.shareSub, { color: theme.textSecond }]}>{t('request2.shareDescAvailable')}</Text>
-              </View>
-              <View style={[styles.shareCheck, { borderColor: shared ? theme.primary : theme.border, backgroundColor: shared ? theme.primary : 'transparent' }]}>
-                {shared ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
-              </View>
+              <Ionicons name="cloud-offline-outline" size={18} color="#B91C1C" />
+              <Text style={[styles.warnText, { color: '#991B1B' }]}>
+                We couldn't price this trip. Tap to try again.
+              </Text>
             </Pressable>
           )}
 
@@ -335,8 +351,32 @@ export default function VehicleSelectScreen() {
               <Text style={[styles.ctaValue, { color: theme.text }]}>{selectedVehicle.label} · {selectedVehicle.priceLabel}</Text>
             </View>
             <Button
-              label={t('fareBreakdown2.title')}
-              onPress={() => router.push({
+              label={isRide ? t('vehicleSelect2.reviewRide', { defaultValue: 'Review ride' }) : t('fareBreakdown2.title')}
+              disabled={isRide && !rideQuotes?.[ID_TO_ENUM[selected] ?? selected]}
+              onPress={() => {
+                if (isRide) {
+                  const q = rideQuotes?.[ID_TO_ENUM[selected] ?? selected];
+                  if (!q) return; // no pinned price, no forward
+                  router.push({
+                    pathname: '/(customer)/confirm-ride',
+                    params: {
+                      mode:        'ride',
+                      pickup:      params.pickup,
+                      dropoff:     params.dropoff,
+                      pickupLat:   params.pickupLat ?? '',
+                      pickupLng:   params.pickupLng ?? '',
+                      dropoffLat:  params.dropoffLat ?? '',
+                      dropoffLng:  params.dropoffLng ?? '',
+                      vehicleId:   selected,
+                      distanceKm:  params.distanceKm ?? '0',
+                      fareTotal:   String(Math.round(Number(q.total))),
+                      serviceFee:  String(Math.round(Number(q.serviceFee ?? 0))),
+                      quoteToken:  q.quotePin?.token ?? '',
+                    },
+                  } as any);
+                  return;
+                }
+                router.push({
                 pathname: '/(customer)/fare-breakdown',
                 params: {
                   mode:         params.mode ?? 'cargo',
@@ -351,7 +391,8 @@ export default function VehicleSelectScreen() {
                   distanceKm:   params.distanceKm ?? '0',
                   durationText: params.durationText ?? '',
                 },
-              })}
+                });
+              }}
               size="lg"
               rightIcon={<Ionicons name="arrow-forward" size={18} color="#fff" />}
               style={{ flex: 1 }}
