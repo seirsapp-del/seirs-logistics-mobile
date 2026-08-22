@@ -624,6 +624,7 @@ export const driversApi = {
   taxSummary: (year?: number) =>
     request<{
       driverId: string; generatedAt: string;
+      months?: Array<{ year: number; month: number; tripCount: number; grossNgn: number; commissionNgn: number; netNgn: number }>;
       years: Array<{ year: number; tripCount: number; grossNgn: number; commissionNgn: number; netNgn: number }>;
       note: string;
     }>('GET', `/drivers/me/tax-summary${year ? `?year=${year}` : ''}`),

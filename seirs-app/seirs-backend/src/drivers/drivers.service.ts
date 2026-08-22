@@ -489,9 +489,35 @@ export class DriversService {
       .orderBy(`EXTRACT(YEAR FROM d.deliveredAt)`, 'DESC')
       .getRawMany();
 
+    // Monthly rows, last 12 months: drivers reconcile month by month
+    // even though FIRS filing is yearly (founder 2026-08-22).
+    const monthRows = await this.deliveriesRepo
+      .createQueryBuilder('d')
+      .select(`EXTRACT(YEAR FROM d.deliveredAt)::int`,  'year')
+      .addSelect(`EXTRACT(MONTH FROM d.deliveredAt)::int`, 'month')
+      .addSelect('COUNT(d.id)::int',                    'tripCount')
+      .addSelect('COALESCE(SUM(d.price), 0)::float',    'grossNgn')
+      .addSelect('COALESCE(SUM(d.driverEarnings), 0)::float', 'netNgn')
+      .where('d.driverId = :driverId', { driverId: driver.id })
+      .andWhere('d.status = :status',  { status: DeliveryStatus.DELIVERED })
+      .andWhere('d.deliveredAt IS NOT NULL')
+      .andWhere(`d.deliveredAt >= NOW() - INTERVAL '12 months'`)
+      .groupBy(`EXTRACT(YEAR FROM d.deliveredAt), EXTRACT(MONTH FROM d.deliveredAt)`)
+      .orderBy(`EXTRACT(YEAR FROM d.deliveredAt)`, 'DESC')
+      .addOrderBy(`EXTRACT(MONTH FROM d.deliveredAt)`, 'DESC')
+      .getRawMany();
+
     return {
       driverId:   driver.id,
       generatedAt: new Date().toISOString(),
+      months:     monthRows.map((r: any) => ({
+        year:          Number(r.year),
+        month:         Number(r.month),
+        tripCount:     Number(r.tripCount),
+        grossNgn:      Math.round(Number(r.grossNgn)),
+        commissionNgn: Math.round(Number(r.grossNgn) - Number(r.netNgn)),
+        netNgn:        Math.round(Number(r.netNgn)),
+      })),
       years:      rows.map((r: any) => ({
         year:        Number(r.year),
         tripCount:   Number(r.tripCount),

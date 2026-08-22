@@ -102,6 +102,25 @@ export default function SeirsIdScreen() {
               <View style={[styles.howStep, { backgroundColor: theme.primary }]}>
                 <Text style={styles.howStepText}>{s.step}</Text>
               </View>
+
+        {/* Where a driver actually uses it (founder 2026-08-22: each
+            app explains ITS OWN uses, like the customer screen). */}
+        <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.howTitle, { color: theme.text }]}>Where you'll use it</Text>
+          {[
+            'Collecting from a partner counter: staff scan this before releasing packages to you.',
+            'At a pickup, the sender can scan it to confirm you are the driver SEIRS assigned.',
+            'Read the code to SEIRS support and they find your account instantly.',
+            'It is also your SEIRS Verified ID fallback when you have no physical ID on you.',
+          ].map((text, i) => (
+            <View key={i} style={styles.howRow}>
+              <View style={[styles.howStep, { backgroundColor: theme.primary }]}>
+                <Text style={styles.howStepText}>{i + 1}</Text>
+              </View>
+              <Text style={[styles.howText, { color: theme.textSecond }]}>{text}</Text>
+            </View>
+          ))}
+        </View>
               <Text style={[styles.howText, { color: theme.textSecond }]}>{s.text}</Text>
             </View>
           ))}
@@ -154,4 +173,11 @@ const styles = StyleSheet.create({
   alert:    { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, alignItems: 'center' },
   alertRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs },
   alertText:{ color: '#92400E', fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+
+  howCard:  { padding: 14, borderRadius: 14, borderWidth: 1, gap: 10 },
+  howTitle: { fontSize: 15, fontWeight: '700' },
+  howRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  howStep:  { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  howStepText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  howText:  { flex: 1, fontSize: 13, lineHeight: 19 },
 });

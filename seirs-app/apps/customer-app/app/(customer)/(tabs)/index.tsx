@@ -162,7 +162,7 @@ export default function CustomerHomeScreen() {
           </Pressable>
 
           <View style={styles.brandSlot}>
-            <SeirsMarkBold size={38} color={theme.text} hubColor={theme.background} />
+            <SeirsMarkBold size={46} color={theme.text} hubColor={theme.background} />
             <Text style={[styles.brandWord, { color: theme.text }]}>SEIRS</Text>
           </View>
 
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brandWord: {
-    fontSize: 18, fontWeight: '900', letterSpacing: 2.5,
+    fontSize: 15, fontWeight: '900', letterSpacing: 2.2,
   },
 
   searchBar: {

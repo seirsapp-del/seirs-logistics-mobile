@@ -231,8 +231,8 @@ export default function DriverHomeScreen() {
               {/* Brand eyebrow: when drivers screenshot their hub, the
                   okada travels with it (founder 2026-08-22). */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <SeirsMarkBold size={26} color="#FFFFFF" hubColor="#0F2B4C" />
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 2 }}>SEIRS</Text>
+                <SeirsMarkBold size={34} color="#FFFFFF" hubColor="#0F2B4C" />
+                <Text style={{ color: '#fff', fontSize: 10.5, fontWeight: '800', letterSpacing: 1.8 }}>SEIRS</Text>
                 <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: '700', letterSpacing: 1 }}>· DRIVER HUB</Text>
               </View>
               <Text style={styles.headerName}>Hi, {firstName}</Text>

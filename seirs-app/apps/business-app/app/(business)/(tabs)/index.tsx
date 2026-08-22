@@ -54,10 +54,10 @@ export default function BusinessDashboard() {
           {/* Brand eyebrow: screenshots carry the okada (founder
               2026-08-22), and the greeting stays as this app's voice. */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <SeirsMarkBold size={26} color="#FFFFFF" hubColor="#0F2B4C" />
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 2 }}>SEIRS</Text>
+            <SeirsMarkBold size={34} color="#FFFFFF" hubColor="#0F2B4C" />
+            <Text style={{ color: '#fff', fontSize: 10.5, fontWeight: '800', letterSpacing: 1.8 }}>SEIRS</Text>
           </View>
-          <Text style={styles.companyName}>Good {getTimeOfDay()}, {user?.name?.split(' ')[0] ?? user?.companyName}</Text>
+          <Text style={styles.companyName}>Hi, {user?.name?.split(' ')[0] ?? user?.companyName?.split(' ')[0]}</Text>
         </View>
         <View style={styles.avatarBtn}>
           <NotificationBell size={20} color="#fff" />

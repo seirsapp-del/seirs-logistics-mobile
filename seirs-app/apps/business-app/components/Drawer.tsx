@@ -50,6 +50,7 @@ export function Drawer({ visible, onClose }: Props) {
     // navigated to it: business users had no way to fix their company
     // name, RC number, or contact details.
     { icon: 'Pencil',          label: t('drawer.editProfile',     { defaultValue: 'Edit Business Details' }), onPress: () => navigate('/(business)/edit-profile') },
+    { icon: 'QrCode',          label: t('drawer.seirsId',         { defaultValue: 'My SEIRS ID' }),      onPress: () => navigate('/(business)/seirs-id') },
     { icon: 'Users',           label: t('drawer.teamMembers',     { defaultValue: 'Team Members' }),     onPress: () => navigate('/(business)/team') },
     { icon: 'Banknote',        label: t('drawer.billing',         { defaultValue: 'Billing & Invoices' }), onPress: () => navigate('/(business)/wallet') },
     // Gap 6 (2026-08-09): bulk drop at a partner counter instead of
@@ -78,6 +79,7 @@ export function Drawer({ visible, onClose }: Props) {
 
   const partnerItems: DrawerItem[] = [
     { icon: 'Store',      label: t('drawer.partnerProfile', { defaultValue: 'Partner Profile' }), onPress: () => navigate('/(partner)') },
+    { icon: 'QrCode',     label: t('drawer.seirsId',        { defaultValue: 'My SEIRS ID' }),      onPress: () => navigate('/(business)/seirs-id') },
     { icon: 'Pencil',     label: t('drawer.editProfile',    { defaultValue: 'Edit Business Details' }), onPress: () => navigate('/(business)/edit-profile') },
     { icon: 'Bell',       label: t('drawer.notifications',  { defaultValue: 'Notifications' }),   onPress: () => navigate('/(business)/notifications') },
     { icon: 'FileText',   label: t('drawer.documents',      { defaultValue: 'Documents' }),       onPress: () => navigate('/(business)/documents') },

@@ -160,10 +160,10 @@ export default function BusinessProfileTab() {
       {!!user?.accountId && (
         <Pressable
           style={[styles.idRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => setQrVisible(true)}
+          onPress={() => router.push('/(business)/seirs-id' as any)}
         >
           <Text style={[styles.idLabel, { color: colors.textSecond }]}>
-            {t('profile.seirsIdTap', { defaultValue: 'SEIRS ID · TAP FOR QR' })}
+            {t('profile.seirsIdTap2', { defaultValue: 'SEIRS ID · WHAT IT DOES + QR' })}
           </Text>
           <Text style={[styles.idValue, { color: colors.text }]}>{user.accountId}</Text>
         </Pressable>

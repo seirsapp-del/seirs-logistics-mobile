@@ -60,6 +60,7 @@ export default function TaxDocsScreen() {
   const insets = useSafeAreaInsets();
 
   const [summaries, setSummaries] = useState<YearSummary[]>([]);
+  const [months,    setMonths]    = useState<any[]>([]);
   const [received,  setReceived]  = useState<UserDocumentDTO[]>([]);
   const [viewing,   setViewing]   = useState<UserDocumentDTO | null>(null);
   const [loading,   setLoading]   = useState(true);
@@ -79,6 +80,7 @@ export default function TaxDocsScreen() {
           netNgn:        y.netNgn,
           trips:         y.tripCount,
         })));
+        setMonths(res?.months ?? []);
         setReceived(docs ?? []);
       } catch { setSummaries([]); }
       finally { setLoading(false); }
@@ -93,6 +95,30 @@ export default function TaxDocsScreen() {
   // Share a statement: real PDF when the print module is native-present
   // (rebuild #2 APK onward), formatted text otherwise. Both routes open
   // the system share sheet (email, WhatsApp, save to Drive).
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  // A month shares exactly like a year: same three lines, same math.
+  const handleDownloadMonth = async (m: any) => {
+    const label = `${MONTH_NAMES[m.month - 1]} ${m.year}`;
+    const generated = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+    const lines = [
+      `SEIRS Logistics - Driver Earnings Statement ${label}`,
+      `Generated: ${generated}`,
+      '',
+      `Trips completed:      ${Number(m.tripCount).toLocaleString()}`,
+      `Gross earnings:       ${fmtNgn(m.grossNgn)}`,
+      `SEIRS commission:     ${fmtNgn(m.commissionNgn)}`,
+      `Net earnings (yours): ${fmtNgn(m.netNgn)}`,
+      '',
+      'Figures are the canonical aggregates from the SEIRS earnings ledger.',
+      'Monthly statements are for your own records; FIRS filing uses the',
+      'yearly statement.',
+    ];
+    try {
+      await Share.share({ title: `SEIRS earnings statement ${label}`, message: lines.join('\n') });
+    } catch { /* dismissed */ }
+  };
+
   const handleDownload = async (year: number) => {
     const y = summaries.find(s => s.year === year);
     if (!y) return;
@@ -197,7 +223,36 @@ export default function TaxDocsScreen() {
           </View>
         )}
 
-        <Text style={[styles.sectionHead, { color: theme.textSecond }]}>EARNINGS STATEMENTS</Text>
+        {months.length > 0 && (
+          <>
+            <Text style={[styles.sectionHead, { color: theme.textSecond }]}>LAST 12 MONTHS</Text>
+            {months.map((m: any) => (
+              <Pressable
+                key={`${m.year}-${m.month}`}
+                onPress={() => handleDownloadMonth(m)}
+                style={[styles.docRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+              >
+                <View style={[styles.yearIcon, { backgroundColor: theme.primary + '15' }]}>
+                  <Receipt size={18} color={theme.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.yearLabel, { color: theme.text }]}>
+                    {MONTH_NAMES[m.month - 1]} {m.year}
+                  </Text>
+                  <Text style={[styles.yearSub, { color: theme.textSecond }]}>
+                    {m.tripCount} trip{m.tripCount === 1 ? '' : 's'} · net {fmtNgn(m.netNgn)}
+                  </Text>
+                </View>
+                <View style={[styles.shareBtn, { backgroundColor: theme.primary }]}>
+                  <Download size={14} color="#fff" />
+                  <Text style={styles.shareBtnText}>Share</Text>
+                </View>
+              </Pressable>
+            ))}
+          </>
+        )}
+
+        <Text style={[styles.sectionHead, { color: theme.textSecond }]}>YEARLY (FOR FIRS)</Text>
 
         {loading ? (
           <ActivityIndicator color={theme.primary} style={{ marginTop: 32 }} />
