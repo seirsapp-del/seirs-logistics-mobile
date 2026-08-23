@@ -503,7 +503,7 @@ export class DeliveriesService {
       ...(isRideBooking ? {
         recipientName:  customer.name,
         receiverPhone:  customer.phone ?? null,
-        packageDescription: null,
+        packageDescription: 'Ride',
         categoryCode:   null,
         weightKg:       null,
       } : {}),
