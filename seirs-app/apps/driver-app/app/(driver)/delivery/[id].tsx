@@ -243,7 +243,7 @@ export default function DeliveryDetailScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[styles.trackingCode, { color: theme.text }]}>{delivery.trackingCode}</Text>
             <Text style={[styles.trackingSub, { color: theme.textSecond }]}>
-              {(delivery as any).kind === 'ride' ? `RIDE · ${delivery.recipientName ?? 'passenger'}` : (delivery.packageDescription ?? delivery.categoryCode ?? 'Delivery')}
+              {(delivery as any).kind === 'ride' ? `RIDE · ${[(delivery as any).receiverFirstName, (delivery as any).receiverLastName].filter(Boolean).join(' ') || 'passenger'}` : (delivery.packageDescription ?? delivery.categoryCode ?? 'Delivery')}
             </Text>
           </View>
           {delivery.routeWasAutoOptimized && (

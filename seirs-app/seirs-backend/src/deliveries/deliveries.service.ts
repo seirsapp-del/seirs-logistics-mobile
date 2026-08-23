@@ -406,10 +406,15 @@ export class DeliveriesService {
     if (isRideBooking) {
       const u = await this.repo.manager.getRepository(User).findOne({
         where: { id: (customer as any).id },
-        select: ['id', 'name', 'phone'],
+        select: ['id', 'name', 'firstName', 'lastName', 'phone'],
       });
+      // recipientName is a STOP column, not a delivery column; the
+      // delivery row carries receiverFirstName/LastName (first live
+      // ride saved a passenger with no name, 2026-08-23).
+      const [gFirst, ...gRest] = String(u?.name ?? '').trim().split(/\s+/);
       ridePassenger = {
-        recipientName:      u?.name ?? null,
+        receiverFirstName:  u?.firstName ?? gFirst ?? null,
+        receiverLastName:   u?.lastName ?? (gRest.length ? gRest.join(' ') : null),
         receiverPhone:      u?.phone ?? null,
         packageDescription: 'Ride',
         categoryCode:       null,

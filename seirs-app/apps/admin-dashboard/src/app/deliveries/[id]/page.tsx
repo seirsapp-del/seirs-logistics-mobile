@@ -200,7 +200,7 @@ export default function DeliveryDetailPage() {
         <div>
           <h1 className="font-mono text-xl font-bold text-[#0F2B4C]">{d.trackingCode}</h1>
           <p className="mt-1 text-sm text-[#0F2B4C]/50">
-            {d.kind === 'ride' ? `Ride · passenger ${d.recipientName ?? ''}` : stops.length > 1 ? `${stops.length} packages in one run` : 'Single package'}
+            {d.kind === 'ride' ? `Ride · passenger ${[d.receiverFirstName, d.receiverLastName].filter(Boolean).join(' ')}` : stops.length > 1 ? `${stops.length} packages in one run` : 'Single package'}
             {d.vehicleType ? ` · ${d.vehicleType}` : ''}
             {d.createdAt ? ` · booked ${new Date(d.createdAt).toLocaleString()}` : ''}
           </p>
