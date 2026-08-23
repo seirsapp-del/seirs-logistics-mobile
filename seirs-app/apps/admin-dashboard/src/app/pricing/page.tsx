@@ -353,6 +353,40 @@ export default function PricingPage() {
         </table>
       </Card>
 
+      {/* ── Ride rates (Book a Ride rebuild 2026-08-23) ──────────── */}
+      <Card
+        title="Ride rates"
+        hint="Passenger trips: base + labour per km, customer and driver sides, fuel passed through at pump price / km-per-litre. Okada = motorcycle, Keke = tricycle, Danfo = van. Time surcharges, hotspot circles and the ride service fee apply on top."
+      >
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-gray-500 text-left border-b border-gray-200">
+              <th className="py-2 pr-3">Vehicle</th>
+              <th className="px-2">Base ₦ (cust)</th>
+              <th className="px-2">₦/km (cust)</th>
+              <th className="px-2">Base ₦ (driver)</th>
+              <th className="px-2">₦/km (driver)</th>
+              <th className="px-2">km/L</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[['motorcycle','Okada'],['tricycle','Keke'],['car','Car'],['van','Danfo / Bus']].map(([v, label]) => {
+              const r = card.rideRates?.[v] ?? {};
+              return (
+                <tr key={v} className="border-b border-gray-100">
+                  <td className="py-2 pr-3 font-medium text-gray-900">{label}</td>
+                  <td className="px-1"><InlineNum value={r.baseFareCustomer ?? 0}    onChange={(n) => patchPath(`rideRates.${v}.baseFareCustomer`, n)} /></td>
+                  <td className="px-1"><InlineNum value={r.labourPerKmCustomer ?? 0} onChange={(n) => patchPath(`rideRates.${v}.labourPerKmCustomer`, n)} /></td>
+                  <td className="px-1"><InlineNum value={r.baseFareDriver ?? 0}      onChange={(n) => patchPath(`rideRates.${v}.baseFareDriver`, n)} /></td>
+                  <td className="px-1"><InlineNum value={r.labourPerKmDriver ?? 0}   onChange={(n) => patchPath(`rideRates.${v}.labourPerKmDriver`, n)} /></td>
+                  <td className="px-1"><InlineNum value={r.kmPerLitre ?? 0}          onChange={(n) => patchPath(`rideRates.${v}.kmPerLitre`, n)} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
+
       {/* ── Service fee ───────────────────────────────────────────── */}
       <Card title="Service fee">
         <Row>

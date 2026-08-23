@@ -5,8 +5,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -73,6 +73,13 @@ export default function VehicleSelectScreen() {
   const [rideQuotes, setRideQuotes] = useState<Record<string, any> | null>(null);
   const [rideQuoteFailed, setRideQuoteFailed] = useState(false);
   const [rideQuoteNonce, setRideQuoteNonce] = useState(0);
+
+  // Coming BACK to this screen re-quotes: pins live ~10 minutes, and a
+  // user who bounced off the review with 'Price refreshed' must land
+  // on fresh numbers, not the stale ones that sent them back.
+  useFocusEffect(useCallback(() => {
+    setRideQuoteNonce(n => n + 1);
+  }, []));
   useEffect(() => {
     if (!isRide || !(distKm > 0)) return;
     let cancelled = false;
@@ -194,7 +201,7 @@ export default function VehicleSelectScreen() {
   // ── Bottom sheet ─────────────────────────────────────────────────────────
   const sheetRef = useRef<BottomSheet>(null);
   const sheetTopInset = insets.top + 88;
-  const snapPoints = useMemo<(string | number)[]>(() => [220, '88%'], []);
+  const snapPoints = useMemo<(string | number)[]>(() => [220, '92%'], []);
 
   return (
     <View style={styles.container}>
@@ -242,7 +249,9 @@ export default function VehicleSelectScreen() {
         handleIndicatorStyle={{ backgroundColor: theme.border }}
       >
         <BottomSheetScrollView
-          contentContainerStyle={styles.sheetContent}
+          // Bottom inset: the Review CTA rendered half under the system
+          // navigation bar on the A30 (live walk 2026-08-23).
+          contentContainerStyle={[styles.sheetContent, { paddingBottom: Spacing.xxl + Math.max(insets.bottom, 48) + 8 }]}
           showsVerticalScrollIndicator={false}
         >
           <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>{t('vehicleSelect2.availableVehicles')}</Text>

@@ -204,7 +204,7 @@ export default function InterstateScreen() {
           </Pressable>
 
           <Text style={[styles.footnote, { color: theme.textThird }]}>
-            You can decline any individual offer. Backend matching engine + admin board ship next.
+            Matching packages along your declared route are boosted to you automatically. You can decline any individual offer.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

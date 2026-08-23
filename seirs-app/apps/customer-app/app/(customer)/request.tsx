@@ -378,13 +378,8 @@ export default function RequestDriverScreen() {
                   <Text style={[styles.routeStatValue, { color: theme.text }]}>{distanceText}</Text>
                 </View>
               )}
-              {distanceText && durationText && <View style={[styles.routeStatDivider, { backgroundColor: theme.border }]} />}
-              {durationText && (
-                <View style={styles.routeStatItem}>
-                  <Ionicons name="time-outline" size={14} color={theme.textSecond} />
-                  <Text style={[styles.routeStatValue, { color: theme.text }]}>{durationText}</Text>
-                </View>
-              )}
+              {/* Minutes removed 2026-08-23: SEIRS makes no time
+                  promises. The route distance is the honest fact. */}
             </View>
           )}
 

@@ -118,7 +118,9 @@ export default function ConfirmRideScreen() {
   );
 
   const sheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo<(string | number)[]>(() => [340, '80%'], []);
+  // First snap fits the WHOLE review (summary + terms + CTA): the
+  // 340px snap hid the consent below the fold (live walk 2026-08-23).
+  const snapPoints = useMemo<(string | number)[]>(() => [560, '85%'], []);
 
   const summaryRows: Array<[string, string]> = [
     ['Pickup',      params.pickup ?? '-'],
@@ -138,6 +140,7 @@ export default function ConfirmRideScreen() {
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
+        customMapStyle={isDark ? DARK_MAP : []}
         initialRegion={pickupLat
           ? { latitude: pickupLat, longitude: pickupLng!, latitudeDelta: 0.05, longitudeDelta: 0.05 }
           : DEFAULT_MAP_REGION}
@@ -274,3 +277,12 @@ const styles = StyleSheet.create({
   ctaText: { color: '#fff', fontSize: FontSize.base, fontWeight: '700' },
   footNote:{ fontSize: FontSize.xs, textAlign: 'center' },
 });
+
+const DARK_MAP = [
+  { elementType: 'geometry',           stylers: [{ color: '#0a0a0a' }] },
+  { elementType: 'labels.text.fill',   stylers: [{ color: '#444444' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#000000' }] },
+  { featureType: 'road',               elementType: 'geometry', stylers: [{ color: '#1a1a1a' }] },
+  { featureType: 'water',              elementType: 'geometry', stylers: [{ color: '#000000' }] },
+  { featureType: 'poi',                stylers: [{ visibility: 'off' }] },
+];
