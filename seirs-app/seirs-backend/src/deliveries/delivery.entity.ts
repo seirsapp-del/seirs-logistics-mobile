@@ -156,6 +156,13 @@ export class Delivery {
   @Column({ type: 'varchar', length: 10, default: 'package' })
   kind: 'package' | 'ride';
 
+  /**
+   * Travel Buddy: when set, this booking belongs to a declared
+   * intercity trip and dispatch assigns THAT driver, not the radius.
+   */
+  @Column({ type: 'uuid', nullable: true })
+  tripId: string | null;
+
   // Receiver system (founder 2026-08-11): Nigerians routinely have
   // neighbours/security collect packages. The sender names the receiver
   // at booking; the typed-name handoff check matches THIS first name

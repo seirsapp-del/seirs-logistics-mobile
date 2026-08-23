@@ -86,6 +86,12 @@ export const adminApi = {
 
   // Driver value levels 1-10 (two-person rule). Caps are Fee Catalogue
   // rows; these endpoints drive the driver-page level widget.
+  // SOS desk (founder 2026-08-23): alerts used to land in a table
+  // nobody saw. Banner + queue + ops flare all read from here.
+  sos: {
+    active:  ()          => req<any[]>('/sos/active'),
+    resolve: (id: string) => req<any>(`/sos/${id}/resolve`, { method: 'PATCH' }),
+  },
   driverLevels: {
     config: () => req<{ caps: number[] }>('/admin/driver-levels/config'),
     request: (driverId: string, toLevel: number, reason: string) =>
@@ -186,8 +192,8 @@ export const adminApi = {
       body: JSON.stringify({ note }),
     }),
 
-  deliveries:     (page = 1, status?: string, search?: string) =>
-    req<any>(`/admin/deliveries?page=${page}${status ? `&status=${status}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+  deliveries:     (page = 1, status?: string, search?: string, kind?: string) =>
+    req<any>(`/admin/deliveries?page=${page}${status ? `&status=${status}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}${kind ? `&kind=${kind}` : ''}`),
   delivery:       (id: string) => req<any>(`/admin/deliveries/${id}`),
   /** Pickup, ordered stops, live driver position and GPS trail, for the map. */
   deliveryRoute:  (id: string) => req<any>(`/admin/deliveries/${id}/route`),

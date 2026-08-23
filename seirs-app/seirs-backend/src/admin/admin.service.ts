@@ -1515,7 +1515,7 @@ export class AdminService {
    * Without this a package code found nothing at all, which is the one
    * thing a receiver actually has.
    */
-  async getDeliveries(page: number, limit: number, status?: string, search?: string) {
+  async getDeliveries(page: number, limit: number, status?: string, search?: string, kind?: string) {
     const qb = this.deliveriesRepo
       .createQueryBuilder('d')
       .leftJoinAndSelect('d.customer', 'customer')
@@ -1527,6 +1527,8 @@ export class AdminService {
       .take(limit);
 
     if (status) qb.andWhere('d.status = :status', { status });
+    // Rides vs packages: two product lines, one table (founder 2026-08-23).
+    if (kind === 'ride' || kind === 'package') qb.andWhere('d.kind = :kind', { kind });
 
     const q = (search ?? '').trim();
     if (q) {
@@ -1744,6 +1746,24 @@ export class AdminService {
       count:   Number(r.count),
     }));
     return { data };
+  }
+
+  async getRevenueSplit() {
+    const rows = await this.deliveriesRepo.manager.query(`
+      SELECT COALESCE("kind", 'package') AS kind,
+             COUNT(*)::int               AS bookings,
+             COALESCE(SUM("price"), 0)::float AS "grossNgn"
+        FROM "deliveries"
+       WHERE "paymentHeldAt" IS NOT NULL
+         AND "createdAt" > NOW() - interval '7 days'
+       GROUP BY COALESCE("kind", 'package')
+    `);
+    const get = (k: string) => rows.find((r: any) => r.kind === k) ?? { bookings: 0, grossNgn: 0 };
+    return {
+      windowDays: 7,
+      rides:    { bookings: Number(get('ride').bookings),    grossNgn: Math.round(Number(get('ride').grossNgn)) },
+      packages: { bookings: Number(get('package').bookings), grossNgn: Math.round(Number(get('package').grossNgn)) },
+    };
   }
 
   async getDeliveriesByStatus() {
@@ -2183,6 +2203,7 @@ export class AdminService {
     });
     return active.map(dv => ({
       id:           dv.id,
+      kind:         (dv as any).kind ?? 'package',
       trackingCode: dv.trackingCode,
       pickupLat:    Number(dv.pickupLat),
       pickupLng:    Number(dv.pickupLng),

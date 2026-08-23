@@ -148,6 +148,10 @@ export class DriversController {
   @Post('interstate-trips')
   declareInterstateTrip(@CurrentUser() user: User, @Body() body: {
     fromCity: string; toCity: string; departAt: string; spareCapacityKg: number;
+  
+    acceptsPassengers?: boolean; seatsTotal?: number; acceptsPackages?: boolean;
+    pickupMode?: 'fixed' | 'along_route'; pickupAddress?: string;
+    pickupLat?: number; pickupLng?: number; routeKm?: number;
   }) {
     return this.driversService.declareInterstateTrip(user.id, body);
   }

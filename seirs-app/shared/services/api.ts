@@ -326,6 +326,12 @@ export const deliveriesApi = {
     request<{ ok: true; status: string; feeNgn: number; driverShareNgn: number }>(
       'POST', `/deliveries/${id}/cancel`, { reason },
     ),
+  // ── Travel Buddy: browse declared intercity trips, book seats ─────────
+  travelBuddyTrips: (from: string, to: string) =>
+    request<any[]>('GET', `/deliveries/travel-buddy/trips?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  bookTripSeats: (tripId: string, seats: number, luggage?: string) =>
+    request<any>('POST', `/deliveries/travel-buddy/trips/${tripId}/book`, { seats, luggage }),
+
   /** Driver backs out of an accepted job. Customer never pays; booking re-dispatches. */
   driverCancel: (id: string, reason: string, note?: string) =>
     request<{ ok: boolean; redispatched: boolean }>('POST', `/deliveries/${id}/driver-cancel`, { reason, note }),
@@ -596,6 +602,10 @@ export const driversApi = {
   // Spec V8 §2.18. Interstate trip declarations.
   declareInterstateTrip: (body: {
     fromCity: string; toCity: string; departAt: string; spareCapacityKg: number;
+  
+    acceptsPassengers?: boolean; seatsTotal?: number; acceptsPackages?: boolean;
+    pickupMode?: 'fixed' | 'along_route'; pickupAddress?: string;
+    pickupLat?: number; pickupLng?: number; routeKm?: number;
   }) => request<any>('POST', '/drivers/interstate-trips', body),
   myInterstateTrips: () => request<any[]>('GET', '/drivers/interstate-trips/me'),
   cancelInterstateTrip: (id: string) =>

@@ -43,6 +43,7 @@ export function Drawer({ visible, onClose }: Props) {
   // driver app (never more than one tap away).
   const items: DrawerItem[] = [
     { icon: 'QrCode',     label: t('drawer.seirsId',       { defaultValue: 'My SEIRS ID' }),     onPress: () => navigate('/(customer)/seirs-id') },
+    { icon: 'Map',        label: t('drawer.travelBuddy',   { defaultValue: 'Travel Buddy (intercity)' }), onPress: () => navigate('/(customer)/travel-buddy') },
     { icon: 'Users',      label: t('drawer.poolPrefs',     { defaultValue: 'Ride Pool Preferences' }), onPress: () => navigate('/(customer)/pool-preferences') },
     { icon: 'Send',       label: t('drawer.sendMultiple',  { defaultValue: 'Send Multiple' }),   onPress: () => navigate('/(customer)/business') },
     // Straight to a NEW ticket (founder 2026-08-10: the old path bounced

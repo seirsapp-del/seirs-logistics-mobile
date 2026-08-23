@@ -205,6 +205,13 @@ export class PricingService implements OnModuleInit {
    */
   private async selfHealSchema() {
     const statements = [
+      ['rate_cards.seatRates', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "seatRates" jsonb NULL`],
+      // Tuned to beat park fares (Ibadan->Lagos car seat ~= N3,500).
+      ['rate_cards.seatRates backfill', `
+        UPDATE "rate_cards"
+           SET "seatRates" = '{"motorcycle":30,"tricycle":22,"car":24,"van":16}'::jsonb
+         WHERE "seatRates" IS NULL
+      `],
       ['rate_cards.luggageFees', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "luggageFees" jsonb NULL`],
       ['rate_cards.luggageFees backfill', `
         UPDATE "rate_cards"
@@ -660,6 +667,48 @@ export class PricingService implements OnModuleInit {
       },
       driver: { total: driverTotal },
       seirsNet: Math.round((vatBase - driverTotal + serviceFee) * 100) / 100,
+      rateCardSnapshotId: card.id,
+    };
+  }
+
+  /** HARD seat caps by vehicle class: capacity is law, not advice. */
+  static readonly SEAT_CAPS: Record<string, number> = {
+    motorcycle: 1, tricycle: 3, car: 4, van: 14,
+  };
+
+  /**
+   * Price seats on a declared intercity trip (Travel Buddy). Same
+   * conventions as rides: flat ride service fee, luggage fee, VAT: and
+   * the same pin contract so the booking charges the browsed number.
+   */
+  async computeSeatPrice(input: {
+    vehicleType: string; routeKm: number; seats: number; luggage?: string;
+  }) {
+    const card = await this.getActiveRateCard();
+    const rate = Number((card as any).seatRates?.[input.vehicleType] ?? 0);
+    if (!(rate > 0)) throw new BadRequestException(`${input.vehicleType} has no seat rate on the card.`);
+    const seats = Math.max(1, Math.round(Number(input.seats) || 1));
+    const km = Math.max(0, Number(input.routeKm) || 0);
+
+    const seatSubtotal = seats * rate * km;
+    let luggageFee = 0;
+    if (input.luggage === 'large') {
+      const lf = (card as any).luggageFees?.[input.vehicleType];
+      if (lf == null) throw new BadRequestException(`${input.vehicleType} cannot take large luggage.`);
+      luggageFee = Math.max(0, Number(lf));
+    }
+    const serviceFee = Math.max(0, Number((card as any).serviceFees?.rideNgn ?? 0));
+    const vatBase = seatSubtotal + luggageFee + serviceFee;
+    const vat = vatBase * Number(card.vatRate);
+    const total = Math.round((vatBase + vat) * 100) / 100;
+    // Driver share: seat revenue minus the ride commission row is
+    // settled by the earnings pipeline; for the quote we expose the
+    // customer side and a driver estimate at 75% of the seat subtotal.
+    const driverEstimate = Math.round(seatSubtotal * 0.75 * 100) / 100;
+    return {
+      kind: 'seat' as const, seats, km, ratePerSeatKm: rate,
+      customer: { seatSubtotal: Math.round(seatSubtotal), luggageFee, serviceFee, vatBase: Math.round(vatBase), vat: Math.round(vat), total },
+      driver: { total: driverEstimate },
       rateCardSnapshotId: card.id,
     };
   }

@@ -690,6 +690,131 @@ export class DeliveriesService {
     }
   }
 
+  /**
+   * Fire dispatch for a delivery whose money just landed.
+   *
+   * PaymentsService has called deliveriesServiceRef.kickDispatch()
+   * since the paid-dispatch gate (2026-08-16): THE METHOD NEVER
+   * EXISTED. The TypeError died inside the webhook's try/catch and
+   * every paid send-now booking sat undispatched until a human noticed
+   * (found 2026-08-23 while wiring Travel Buddy).
+   *
+   * Travel Buddy bookings (tripId set) assign their declared driver
+   * directly: the passenger chose that trip, not a radius.
+   */
+  async kickDispatch(deliveryId: string) {
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer', 'driver'],
+    });
+    if (!delivery) return;
+    if (delivery.driver || delivery.status !== DeliveryStatus.PENDING) return;
+    if (!delivery.paymentHeldAt) return;               // money first, always
+    if (delivery.scheduledFor && new Date(delivery.scheduledFor).getTime() > Date.now() + 15 * 60_000) {
+      return;                                          // the scheduled sweep owns it
+    }
+
+    const tripId = (delivery as any).tripId;
+    if (tripId && this.driversService) {
+      try {
+        const trip: any = await (this.driversService as any).getBookableTrip(tripId, 0);
+        if (trip?.driver) {
+          await this.repo.update(delivery.id, {
+            driver:     trip.driver,
+            status:     DeliveryStatus.ASSIGNED,
+            assignedAt: new Date(),
+          });
+          this.trackingGateway?.broadcastDriverAssigned(delivery.id, trip.driver);
+          this.trackingGateway?.notifyDriver(trip.driver.id, delivery);
+          this.notificationsService?.notifyDeliveryAssigned?.(
+            delivery.customer.id,
+            trip.driver.user?.name ?? 'Your driver',
+            delivery.id,
+            delivery.trackingCode,
+          );
+          return;
+        }
+      } catch (e: any) {
+        this.logger.warn(`trip assign failed for ${deliveryId}: ${e?.message ?? e}; falling back to matching`);
+      }
+    }
+
+    await this.runAutoMatch(delivery);
+  }
+
+  /**
+   * Book seats on a declared intercity trip (Travel Buddy). The seat
+   * ledger reserves BEFORE the delivery row exists, with a guarded SQL
+   * increment that makes overselling impossible; an unpaid or
+   * cancelled booking releases the seats.
+   */
+  async bookTripSeats(tripId: string, customer: User, body: { seats?: number; luggage?: string }) {
+    if (!this.driversService) {
+      const { ServiceUnavailableException } = await import('@nestjs/common');
+      throw new ServiceUnavailableException('Marketplace not wired.');
+    }
+    const seats = Math.max(1, Math.min(Math.round(Number(body.seats ?? 1)), 14));
+    const trip: any = await (this.driversService as any).getBookableTrip(tripId, seats);
+
+    const routeKm = Number(trip.routeKm ?? 0);
+    if (!(routeKm > 0)) {
+      throw new BadRequestException('That trip has no measured route yet. Try again shortly.');
+    }
+    const price = await this.rateCardPricing.computeSeatPrice({
+      vehicleType: trip.driver.vehicleType,
+      routeKm,
+      seats,
+      luggage: body.luggage,
+    });
+
+    await (this.driversService as any).reserveSeats(tripId, seats);
+    try {
+      const dto: any = {
+        mode: 'ride',
+        pickupAddress: trip.pickupMode === 'fixed' && trip.pickupAddress
+          ? trip.pickupAddress
+          : `${trip.fromCity} (pickup along the route: agree in chat)`,
+        dropoffAddress: trip.toCity,
+        pickupLat:  Number(trip.pickupLat)  || undefined,
+        pickupLng:  Number(trip.pickupLng)  || undefined,
+        dropoffLat: undefined,
+        dropoffLng: undefined,
+        vehicleType: trip.driver.vehicleType,
+        paymentMethod: 'card',
+        luggage: body.luggage,
+        termsAccepted: true,
+      };
+      // Seat bookings price from the SEAT engine, not the ride engine:
+      // build the row directly rather than through create()'s pricing.
+      let trackingCode = generateTrackingCode();
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const exists = await this.repo.exist({ where: { trackingCode } });
+        if (!exists) break;
+        trackingCode = generateTrackingCode();
+      }
+      const row = this.repo.create({
+        ...dto,
+        kind: 'ride',
+        tripId,
+        customer,
+        trackingCode,
+        packageDescription: `Seat x${seats} · ${trip.fromCity} → ${trip.toCity}${body.luggage === 'large' ? ' · large luggage' : body.luggage === 'small' ? ' · small bag' : ''}`,
+        categoryCode: null,
+        weightKg: null,
+        distanceKm: routeKm,
+        price:          Number(price.customer.total),
+        driverEarnings: Number(price.driver.total),
+        status: DeliveryStatus.PENDING,
+      } as any);
+      const saved: any = await this.repo.save(row);
+      this.logger.log(`Travel Buddy: ${seats} seat(s) on trip ${tripId} booked as ${saved.trackingCode}; dispatch awaits payment`);
+      return saved;
+    } catch (e) {
+      await (this.driversService as any).releaseSeats(tripId, seats);
+      throw e;
+    }
+  }
+
   private async runAutoMatch(delivery: Delivery) {
     if (!this.matchingService) return;
 
@@ -3422,8 +3547,50 @@ export class DeliveriesService {
       }
     }
 
-    // The booking goes back to the pool: customer keeps their escrow,
-    // matching finds the next driver.
+    // Wrong booking type (founder 2026-08-23): a person where a parcel
+    // should be, or the reverse. The booking is bogus, so it DIES
+    // instead of re-dispatching, the customer pays the wasted-trip fee
+    // (recorded like every cancellation fee), and repeat offenders are
+    // flagged. The driver keeps a clean allowance for reporting it.
+    if (reason === 'wrong_booking_type') {
+      const rules = await this.getCancellationRules();
+      await this.repo.update(deliveryId, {
+        cancellationFeeNgn: rules.postAssignNgn,
+        cancelledAt:        new Date(),
+        cancellationReason: `Driver reported wrong booking type (${kind === 'ride' ? 'booked a ride, found a package' : 'booked a package, found a person'})`,
+      } as any);
+      await this.updateStatus(deliveryId, DeliveryStatus.CANCELLED);
+
+      try {
+        const repeats = await this.repo.manager.query(
+          `SELECT COUNT(*)::int AS c FROM "driver_cancellations" dc
+            JOIN "deliveries" d ON d."id" = dc."deliveryId"
+           WHERE dc."reason" = 'wrong_booking_type'
+             AND d."customerId" = $1
+             AND dc."createdAt" > NOW() - interval '30 days'`,
+          [delivery.customer.id],
+        );
+        const n = Number(repeats?.[0]?.c ?? 0);
+        if (n >= 2) {
+          this.logger.warn(`Customer ${delivery.customer.id} has ${n} wrong-type bookings in 30d: review candidate`);
+        }
+        this.notificationsService?.create?.(
+          delivery.customer.id,
+          'Booking cancelled: wrong booking type',
+          kind === 'ride'
+            ? 'The driver found a package where a passenger was booked. A cancellation fee applies. Book Send a Package for parcels: it takes the same 4 steps.'
+            : 'The driver found a passenger where a package was booked. A cancellation fee applies. Book a Ride for people: it takes 3 steps.',
+          'general' as any,
+          deliveryId,
+          delivery.trackingCode,
+        );
+      } catch { /* best effort */ }
+
+      return { ok: true, redispatched: false, cancelled: true };
+    }
+
+    // Every other reason: the booking goes back to the pool: customer
+    // keeps their escrow, matching finds the next driver.
     await this.repo.update(deliveryId, {
       driver:     null as any,
       status:     DeliveryStatus.PENDING,
@@ -3571,6 +3738,15 @@ export class DeliveriesService {
    * chat system message, the event log and partner webhooks all hang off
    * the transition.
    */
+  /** Release Travel Buddy seats when a trip booking dies. */
+  private async releaseTripSeatsFor(delivery: any) {
+    const tripId = delivery?.tripId;
+    if (!tripId || !this.driversService) return;
+    const m = /Seat x(\d+)/.exec(String(delivery.packageDescription ?? ''));
+    const seats = Math.max(1, Number(m?.[1] ?? 1));
+    await (this.driversService as any).releaseSeats(tripId, seats).catch(() => {});
+  }
+
   async cancelByCustomer(deliveryId: string, userId: string, reason?: string) {
     const quote = await this.getCancellationQuote(deliveryId, userId);
     if (!quote.cancellable) {
@@ -3592,6 +3768,7 @@ export class DeliveriesService {
     );
 
     await this.updateStatus(deliveryId, DeliveryStatus.CANCELLED);
+    await this.releaseTripSeatsFor(await this.repo.findOne({ where: { id: deliveryId } }));
 
     return {
       ok:             true as const,

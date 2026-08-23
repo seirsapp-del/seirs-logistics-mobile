@@ -30,6 +30,7 @@ const fmtShort = (n: number) => {
 
 export default function DashboardPage() {
   const [stats,   setStats]   = useState<Stats | null>(null);
+  const [split,   setSplit]   = useState<any>(null);
   const [revenue, setRevenue] = useState<any[]>([]);
   const [live,    setLive]    = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +61,7 @@ export default function DashboardPage() {
     setError(null);
     Promise.all([
       adminApi.stats(),
+      adminApi.revenueSplit().then(setSplit).catch(() => {}),
       adminApi.analytics.revenue(30),
     ]).then(([s, r]) => {
       setStats(s);
@@ -149,6 +151,28 @@ export default function DashboardPage() {
         {/* Fuel is the largest variable cost in the business and the one
             most likely to drift unnoticed. It belongs above the fold. */}
         <FuelDriftBanner />
+
+      {/* Two product lines, measured apart (founder 2026-08-23). */}
+      {split && (
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-500">PACKAGES · last {split.windowDays} days</p>
+              <span className="rounded bg-[#3A7BD5]/10 px-2 py-0.5 text-[10px] font-bold text-[#3A7BD5]">SEND</span>
+            </div>
+            <p className="mt-1 text-2xl font-bold text-gray-900">₦{Number(split.packages.grossNgn).toLocaleString()}</p>
+            <p className="text-xs text-gray-500">{split.packages.bookings} paid bookings</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-500">RIDES · last {split.windowDays} days</p>
+              <span className="rounded bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700">RIDE</span>
+            </div>
+            <p className="mt-1 text-2xl font-bold text-gray-900">₦{Number(split.rides.grossNgn).toLocaleString()}</p>
+            <p className="text-xs text-gray-500">{split.rides.bookings} paid bookings</p>
+          </div>
+        </div>
+      )}
 
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">

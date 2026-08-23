@@ -42,6 +42,38 @@ export class DriverTrip {
   @Column({ type: 'decimal', precision: 7, scale: 2, default: 0 })
   spareCapacityKg: number;
 
+  // ── Travel Buddy (founder 2026-08-23) ────────────────────────────────
+  /** Whether this trip sells seats to passengers. */
+  @Column({ type: 'boolean', default: false })
+  acceptsPassengers: boolean;
+
+  /** Seats offered: HARD-capped by the vehicle class at declaration. */
+  @Column({ type: 'int', default: 0 })
+  seatsTotal: number;
+
+  @Column({ type: 'int', default: 0 })
+  seatsBooked: number;
+
+  @Column({ type: 'boolean', default: true })
+  acceptsPackages: boolean;
+
+  /** 'fixed' = one pickup point; 'along_route' = flexible on the way. */
+  @Column({ type: 'varchar', length: 12, default: 'along_route' })
+  pickupMode: 'fixed' | 'along_route';
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  pickupAddress: string | null;
+
+  @Column({ type: 'numeric', precision: 10, scale: 7, nullable: true })
+  pickupLat: number | null;
+
+  @Column({ type: 'numeric', precision: 10, scale: 7, nullable: true })
+  pickupLng: number | null;
+
+  /** Road km between the two cities, measured once at declaration. */
+  @Column({ type: 'numeric', precision: 8, scale: 1, nullable: true })
+  routeKm: number | null;
+
   @Column({ type: 'enum', enum: DriverTripStatus, default: DriverTripStatus.ACTIVE })
   status: DriverTripStatus;
 

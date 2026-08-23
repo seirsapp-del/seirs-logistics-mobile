@@ -411,6 +411,54 @@ export default function DriverDetailPage() {
           </div>
         )}
 
+        {/* Vehicle: what passengers and senders are shown (founder
+            2026-08-23: condition must be reviewable with pictures). */}
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-800">Vehicle</p>
+            <button
+              onClick={async () => {
+                try {
+                  await adminApi.documents.send(driver.user?.id, {
+                    title: 'Please update your vehicle photo',
+                    category: 'letter',
+                    body: 'Hello ' + (driver.user?.name ?? '') + ',
+
+Please upload a current, clear photo of your ' + (driver.vehicleType ?? 'vehicle') + ' (plate visible) from the driver app: Profile, KYC Verification, Vehicle photo. Passengers and senders see this photo before you arrive, so it needs to match your vehicle today.
+
+Thank you,
+SEIRS Operations',
+                  });
+                  alert('Request sent: the driver sees it in Documents with a notification.');
+                } catch (e: any) { alert(e?.message ?? 'Send failed'); }
+              }}
+              className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 font-medium"
+            >
+              Request new photo
+            </button>
+          </div>
+          <div className="flex gap-4 flex-wrap items-start">
+            {driver.vehiclePhotoUrl ? (
+              <a href={driver.vehiclePhotoUrl} target="_blank" rel="noreferrer">
+                <img src={driver.vehiclePhotoUrl} alt="Registered vehicle"
+                     className="h-32 w-48 rounded-lg object-cover border border-gray-200" />
+              </a>
+            ) : (
+              <div className="h-32 w-48 rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400">
+                No vehicle photo on file
+              </div>
+            )}
+            <div className="text-sm text-gray-700 space-y-1">
+              <p><span className="text-gray-400">Class:</span> {driver.vehicleType ?? '-'}</p>
+              <p><span className="text-gray-400">Plate:</span> <span className="font-mono">{driver.vehiclePlate ?? '-'}</span></p>
+              <p className="text-xs text-gray-400 max-w-xs">
+                This exact photo + plate show on the passenger's trust card and
+                the sender's tracking page.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Value level: how valuable a package this driver may carry. */}
         <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6">
           <div className="flex items-center gap-3 flex-wrap">

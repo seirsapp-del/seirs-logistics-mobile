@@ -27,7 +27,7 @@ function loadGoogleMaps(key: string): Promise<any> {
 }
 
 interface DriverPin   { id: string; name: string; lat: number; lng: number; isOnline: boolean; lastSeen?: string; }
-interface DeliveryPin { id: string; trackingCode: string; pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number; status: string; }
+interface DeliveryPin { id: string; trackingCode: string; pickupLat: number; pickupLng: number; dropoffLat: number; dropoffLng: number; status: string; kind?: string; }
 interface StorePin    { id: string; storeName: string; storeAddress: string; lat: number; lng: number; acceptingNew: boolean; }
 interface PendingPin  { id: string; trackingCode: string; lat: number; lng: number; ageMinutes: number; }
 
@@ -60,6 +60,7 @@ export default function OpsMapPage() {
   const [stores,     setStores]     = useState<StorePin[]>([]);
   const [pending,    setPending]    = useState<PendingPin[]>([]);
   const [heatPts,    setHeatPts]    = useState<Array<{ lat: number; lng: number }>>([]);
+  const [sosAlerts,  setSosAlerts]  = useState<any[]>([]);
   const [missingCoords, setMissingCoords] = useState(0);
   const [error,      setError]      = useState<string | null>(null);
   const [loaded,     setLoaded]     = useState(false);
@@ -142,16 +143,18 @@ export default function OpsMapPage() {
 
     async function refresh() {
       try {
-        const [d, ds, st, dm] = await Promise.all([
+        const [d, ds, st, dm, sos] = await Promise.all([
           adminApi.opsMap.onlineDrivers().catch(() => []),
           adminApi.opsMap.activeDeliveries().catch(() => []),
           adminApi.opsMap.stores().catch(() => null),
           adminApi.opsMap.demand().catch(() => null),
+          adminApi.sos.active().catch(() => [] as any[]),
         ]);
         if (Array.isArray(d))  setDrivers(d as DriverPin[]);
         if (Array.isArray(ds)) setDeliveries(ds as DeliveryPin[]);
         if (st) { setStores(st.stores ?? []); setMissingCoords(st.missingCoords ?? 0); }
         if (dm) { setPending(dm.pending ?? []); setHeatPts(dm.heat ?? []); }
+        if (Array.isArray(sos)) setSosAlerts(sos.filter((a: any) => a.lat != null));
       } catch { /* stale data beats a blank map */ }
     }
     refresh();
@@ -257,12 +260,33 @@ export default function OpsMapPage() {
       });
     }
 
+    // SOS flares (founder 2026-08-23): an open alert burns red on the
+    // live map, always on: no layer chip can hide an emergency.
+    sosAlerts.forEach((a) => {
+      upsert(
+        `sos:${a.id}`,
+        { lat: Number(a.lat), lng: Number(a.lng) },
+        {
+          path: g.maps.SymbolPath.CIRCLE,
+          scale: 13,
+          fillColor: '#DC2626',
+          fillOpacity: 0.95,
+          strokeColor: '#fff',
+          strokeWeight: 3,
+        },
+        'SOS',
+        `<div style="font:13px system-ui"><b style="color:#DC2626">🚨 SOS · ${a.user?.name ?? 'Unknown'}</b><br/>` +
+        `<small>${a.user?.phone ?? ''} · raised ${new Date(a.createdAt).toLocaleTimeString()}</small><br/>` +
+        `<a href="/sos">Open the SOS desk</a></div>`,
+      );
+    });
+
     // Remove markers whose layer is now off or whose entity vanished
     Array.from(markersRef.current.entries()).forEach(([id, m]) => {
       if (!seen.has(id)) { m.setMap(null); markersRef.current.delete(id); }
     });
     } catch { /* a bad pin must not kill the page */ }
-  }, [drivers, pending, stores, layers]);
+  }, [drivers, pending, stores, layers, sosAlerts]);
 
   // ── Delivery route polylines ──
   useEffect(() => {
@@ -272,7 +296,7 @@ export default function OpsMapPage() {
     polylinesRef.current.forEach((p) => p.setMap(null));
     polylinesRef.current = !layers.routes ? [] : deliveries.map((dv) => new g.maps.Polyline({
       path: [{ lat: dv.pickupLat, lng: dv.pickupLng }, { lat: dv.dropoffLat, lng: dv.dropoffLng }],
-      strokeColor:   dv.status === 'in_transit' ? '#3A7BD5' : '#D97706',
+      strokeColor:   dv.kind === 'ride' ? '#6366F1' : dv.status === 'in_transit' ? '#3A7BD5' : '#D97706',
       strokeOpacity: 0.7,
       strokeWeight:  3,
       map:           mapRef.current,
@@ -451,7 +475,7 @@ export default function OpsMapPage() {
     { key: 'offline',  label: 'Offline',  count: offlineCount,  color: '#9CA3AF', Icon: CircleDot, title: 'Last-known positions of offline drivers' },
     { key: 'requests', label: 'Requests', count: pending.length, color: '#F59E0B', Icon: AlertTriangle, title: 'Unassigned pickups waiting for a driver (red = waiting 15+ min)' },
     { key: 'stores',   label: 'Stores',   count: stores.length,  color: '#0F2B4C', Icon: Store,     title: 'Partner store locations' },
-    { key: 'routes',   label: 'Routes',   count: deliveries.length, color: '#3A7BD5', Icon: Route,  title: 'Active delivery routes' },
+    { key: 'routes',   label: 'Routes',   count: deliveries.length, color: '#3A7BD5', Icon: Route,  title: 'Active routes: blue/amber = packages, indigo = rides' },
     { key: 'heat',     label: 'Demand',                          color: '#DC2626', Icon: Flame,     title: 'Pickup density over the last 24h - where the volume is' },
   ];
 

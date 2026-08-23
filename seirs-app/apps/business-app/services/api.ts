@@ -28,6 +28,7 @@ export {
   usersApi,
   chatApi,
   supportApi,
+  sosApi,
   dropoffApi,
   deliveriesApi,
   documentsApi,

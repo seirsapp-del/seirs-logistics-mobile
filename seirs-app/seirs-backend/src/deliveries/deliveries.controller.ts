@@ -315,6 +315,23 @@ export class DeliveriesController {
     }, user.id);
   }
 
+  // ── Travel Buddy (founder 2026-08-23) ────────────────────────────────
+  // GET /api/v1/deliveries/travel-buddy/trips?from=&to=
+  @Get('travel-buddy/trips')
+  browseTrips(@Query('from') from: string, @Query('to') to: string) {
+    return (this.deliveriesService as any).driversService.browseTrips(from ?? '', to ?? '');
+  }
+
+  // POST /api/v1/deliveries/travel-buddy/trips/:tripId/book { seats, luggage }
+  @Post('travel-buddy/trips/:tripId/book')
+  bookTripSeats(
+    @Param('tripId') tripId: string,
+    @CurrentUser() user: any,
+    @Body() body: { seats?: number; luggage?: string },
+  ) {
+    return this.deliveriesService.bookTripSeats(tripId, user, body ?? {});
+  }
+
   // POST /api/v1/deliveries/:id/driver-cancel { reason, note? }
   // Driver backs out of an accepted job. The customer never pays:
   // escrow stays and the booking re-dispatches (founder 2026-08-23).

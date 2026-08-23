@@ -435,8 +435,8 @@ export class AdminController {
 
   // GET /api/v1/admin/deliveries?status=pending&page=1
   @Get('deliveries')
-  getDeliveries(@Query() q: { page?: number; limit?: number; status?: string; search?: string }) {
-    return this.adminService.getDeliveries(q.page ?? 1, q.limit ?? 20, q.status, q.search);
+  getDeliveries(@Query() q: { page?: number; limit?: number; status?: string; search?: string; kind?: string }) {
+    return this.adminService.getDeliveries(q.page ?? 1, q.limit ?? 20, q.status, q.search, q.kind);
   }
 
   // GET /api/v1/admin/deliveries/:id
@@ -490,6 +490,14 @@ export class AdminController {
   @Get('analytics/revenue')
   getRevenue(@Query('days') days?: number) {
     return this.adminService.getRevenueByDay(days ? Number(days) : 30);
+  }
+
+  // GET /api/v1/admin/analytics/revenue-split: rides vs packages, paid
+  // bookings, last 7 days (founder 2026-08-23: two product lines,
+  // finally measured apart).
+  @Get('analytics/revenue-split')
+  getRevenueSplit() {
+    return this.adminService.getRevenueSplit();
   }
 
   // GET /api/v1/admin/analytics/deliveries-by-status

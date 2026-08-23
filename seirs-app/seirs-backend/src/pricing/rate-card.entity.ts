@@ -264,6 +264,14 @@ export class RateCard {
   luggageFees: Record<string, number> | null;
 
   /**
+   * Travel Buddy seat pricing: N per seat-km by vehicle class.
+   * SEIRS prices, never the driver: quality competes, not a race to
+   * the bottom (founder 2026-08-23).
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  seatRates: Record<string, number> | null;
+
+  /**
    * Flat platform service fee per booking (founder 2026-08-22). Charged
    * AFTER discounts (promotions never erode it) and BEFORE VAT. Region
    * serviceFee*Override fields beat these baselines. rideNgn is

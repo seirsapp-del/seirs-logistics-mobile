@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import AdminNav from './AdminNav';
 import TopBar from './TopBar';
 import { ConfirmProvider } from './ConfirmDialog';
+import SosBanner from './SosBanner';
 import { clearSession, isSessionExpired, touchActivity } from '@/lib/auth';
 import { refreshAdminTokenIfPresent } from '@/lib/api';
 
@@ -101,6 +102,7 @@ export default function NavWrapper({ children }: { children: React.ReactNode }) 
       <div className="flex h-screen overflow-hidden">
         <AdminNav />
         <div className="flex-1 flex flex-col overflow-hidden">
+          <SosBanner />
           <TopBar />
           <main ref={mainRef} className="flex-1 overflow-y-auto bg-[#F5F5F0]">
             {children}

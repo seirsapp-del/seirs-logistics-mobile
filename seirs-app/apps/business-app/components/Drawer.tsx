@@ -74,6 +74,7 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'Lock',            label: t('drawer.privacy',         { defaultValue: 'Privacy Policy' }),  onPress: () => { onClose(); Linking.openURL('https://seirs-website.vercel.app/privacy-policy'); } },
     // Straight to a NEW ticket (founder 2026-08-10: the old path
     // bounced through the Messages tab first).
+    { icon: 'AlertTriangle',   label: t('drawer.sos',             { defaultValue: 'SOS Emergency' }),   onPress: () => navigate('/(business)/sos') },
     { icon: 'MessageCircle',   label: t('drawer.contactSupport',  { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support/new') },
   ];
 

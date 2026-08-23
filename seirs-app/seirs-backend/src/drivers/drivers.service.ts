@@ -313,6 +313,9 @@ export class DriversService {
   // ── Spec V8 §2.18 - Interstate trip declarations ──────────────────────────
   async declareInterstateTrip(userId: string, body: {
     fromCity: string; toCity: string; departAt: string; spareCapacityKg: number;
+    acceptsPassengers?: boolean; seatsTotal?: number; acceptsPackages?: boolean;
+    pickupMode?: 'fixed' | 'along_route'; pickupAddress?: string;
+    pickupLat?: number; pickupLng?: number; routeKm?: number;
   }) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
@@ -337,6 +340,27 @@ export class DriversService {
       throw new BadRequestException('Spare capacity must be a non-negative number.');
     }
 
+    // Travel Buddy (founder 2026-08-23). Seats are HARD-capped by the
+    // vehicle class: the marketplace refuses the overloaded declaration
+    // a park tout would happily make.
+    const { PricingService: RateEngine } = await import('../pricing/pricing.service');
+    const seatCap = RateEngine.SEAT_CAPS[driver.vehicleType] ?? 0;
+    const wantsSeats = !!body.acceptsPassengers;
+    let seatsTotal = Math.max(0, Math.round(Number(body.seatsTotal ?? 0)));
+    if (wantsSeats) {
+      if (seatCap <= 0) {
+        throw new BadRequestException(`${driver.vehicleType} cannot carry marketplace passengers.`);
+      }
+      if (seatsTotal < 1) seatsTotal = 1;
+      if (seatsTotal > seatCap) {
+        throw new BadRequestException(
+          `A ${driver.vehicleType} sells at most ${seatCap} seat${seatCap === 1 ? '' : 's'}. No squeezing: that is the rule.`,
+        );
+      }
+    } else {
+      seatsTotal = 0;
+    }
+
     const trip = this.tripsRepo.create({
       driver,
       fromCity:        from,
@@ -344,7 +368,16 @@ export class DriversService {
       departAt:        depart,
       spareCapacityKg: capacity,
       status:          DriverTripStatus.ACTIVE,
-    });
+      acceptsPassengers: wantsSeats,
+      seatsTotal,
+      seatsBooked:     0,
+      acceptsPackages: body.acceptsPackages !== false,
+      pickupMode:      body.pickupMode === 'fixed' ? 'fixed' : 'along_route',
+      pickupAddress:   body.pickupAddress?.trim() || null,
+      pickupLat:       Number.isFinite(Number(body.pickupLat)) ? Number(body.pickupLat) : null,
+      pickupLng:       Number.isFinite(Number(body.pickupLng)) ? Number(body.pickupLng) : null,
+      routeKm:         Number.isFinite(Number(body.routeKm)) && Number(body.routeKm) > 0 ? Number(body.routeKm) : null,
+    } as any);
     return this.tripsRepo.save(trip);
   }
 
@@ -366,6 +399,86 @@ export class DriversService {
         to:   new Date(now + 24 * 60 * 60 * 1000),
       })
       .getMany();
+  }
+
+  /**
+   * Travel Buddy browse: active future trips on a route, seats left,
+   * driver FULLY identified (drivers never get anonymity: that is the
+   * deal of the job).
+   */
+  async browseTrips(fromCity: string, toCity: string) {
+    const from = `%${(fromCity ?? '').trim()}%`;
+    const to   = `%${(toCity ?? '').trim()}%`;
+    const trips = await this.tripsRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.driver', 'd')
+      .leftJoinAndSelect('d.user', 'u')
+      .where('t.status = :status', { status: DriverTripStatus.ACTIVE })
+      .andWhere('t.departAt > NOW()')
+      .andWhere('t.fromCity ILIKE :from', { from })
+      .andWhere('t.toCity ILIKE :to', { to })
+      .orderBy('t.departAt', 'ASC')
+      .take(30)
+      .getMany();
+    return trips.map((t: any) => ({
+      id: t.id,
+      fromCity: t.fromCity, toCity: t.toCity, departAt: t.departAt,
+      pickupMode: t.pickupMode, pickupAddress: t.pickupAddress,
+      routeKm: t.routeKm != null ? Number(t.routeKm) : null,
+      acceptsPassengers: !!t.acceptsPassengers,
+      acceptsPackages: !!t.acceptsPackages,
+      seatsLeft: Math.max(0, Number(t.seatsTotal) - Number(t.seatsBooked)),
+      spareCapacityKg: Number(t.spareCapacityKg ?? 0),
+      driver: {
+        name: t.driver?.user?.name ?? 'Driver',
+        rating: t.driver?.rating ?? null,
+        vehicleType: t.driver?.vehicleType ?? null,
+        vehiclePlate: t.driver?.vehiclePlate ?? null,
+        vehiclePhotoUrl: t.driver?.vehiclePhotoUrl ?? null,
+      },
+    }));
+  }
+
+  /** Load a bookable trip or explain why not. */
+  async getBookableTrip(tripId: string, seats: number) {
+    const t: any = await this.tripsRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.driver', 'd')
+      .leftJoinAndSelect('d.user', 'u')
+      .where('t.id = :tripId', { tripId })
+      .getOne();
+    if (!t) throw new NotFoundException('That trip is no longer listed.');
+    if (t.status !== DriverTripStatus.ACTIVE || new Date(t.departAt) < new Date()) {
+      throw new BadRequestException('That trip has departed or was cancelled.');
+    }
+    if (!t.acceptsPassengers) throw new BadRequestException('That trip does not take passengers.');
+    const left = Math.max(0, Number(t.seatsTotal) - Number(t.seatsBooked));
+    if (seats > left) {
+      throw new BadRequestException(left === 0
+        ? 'That trip is full.'
+        : `Only ${left} seat${left === 1 ? '' : 's'} left on that trip.`);
+    }
+    return t;
+  }
+
+  async reserveSeats(tripId: string, seats: number) {
+    // Guarded increment: the WHERE clause makes overselling impossible
+    // even under two simultaneous bookings.
+    const res = await this.tripsRepo.manager.query(
+      `UPDATE "driver_trips"
+          SET "seatsBooked" = "seatsBooked" + $1
+        WHERE "id" = $2 AND "seatsBooked" + $1 <= "seatsTotal"
+        RETURNING "id"`,
+      [seats, tripId],
+    );
+    if (!res?.length) throw new BadRequestException('Those seats were just taken.');
+  }
+
+  async releaseSeats(tripId: string, seats: number) {
+    await this.tripsRepo.manager.query(
+      `UPDATE "driver_trips" SET "seatsBooked" = GREATEST(0, "seatsBooked" - $1) WHERE "id" = $2`,
+      [seats, tripId],
+    ).catch(() => {});
   }
 
   listMyInterstateTrips(userId: string) {

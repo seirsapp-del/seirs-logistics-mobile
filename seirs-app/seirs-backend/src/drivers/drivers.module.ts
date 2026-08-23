@@ -51,6 +51,18 @@ export class DriversModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "corridorExpiresAt" timestamptz NULL
       `);
       await this.ds.query(`
+        ALTER TABLE "driver_trips"
+          ADD COLUMN IF NOT EXISTS "acceptsPassengers" boolean NOT NULL DEFAULT false,
+          ADD COLUMN IF NOT EXISTS "seatsTotal" integer NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS "seatsBooked" integer NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS "acceptsPackages" boolean NOT NULL DEFAULT true,
+          ADD COLUMN IF NOT EXISTS "pickupMode" varchar(12) NOT NULL DEFAULT 'along_route',
+          ADD COLUMN IF NOT EXISTS "pickupAddress" varchar(255) NULL,
+          ADD COLUMN IF NOT EXISTS "pickupLat" numeric(10,7) NULL,
+          ADD COLUMN IF NOT EXISTS "pickupLng" numeric(10,7) NULL,
+          ADD COLUMN IF NOT EXISTS "routeKm" numeric(8,1) NULL
+      `);
+      await this.ds.query(`
         CREATE TABLE IF NOT EXISTS "driver_level_changes" (
           "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
           "driverId" uuid NOT NULL,

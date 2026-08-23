@@ -35,6 +35,14 @@ export default function InterstateScreen() {
   const [to,          setTo]          = useState('');
   const [departAt,    setDepartAt]    = useState('');
   const [vehicleSpace,setVehicleSpace]= useState('1');
+
+  // Travel Buddy (founder 23 Aug): sell what the vehicle truly has.
+  const [takePassengers, setTakePassengers] = useState(false);
+  const [seats,          setSeats]          = useState('1');
+  const [takePackages,   setTakePackages]   = useState(true);
+  const [pickupMode,     setPickupMode]     = useState<'along_route' | 'fixed'>('along_route');
+  const [pickupAddress,  setPickupAddress]  = useState('');
+  const [routeKm,        setRouteKm]        = useState('');
   const [submitting,  setSubmitting]  = useState(false);
 
   // The declared list + cancel existed as endpoints since spec 2.18;
@@ -79,6 +87,12 @@ export default function InterstateScreen() {
         toCity:          to.trim(),
         departAt:        new Date(depart).toISOString(),
         spareCapacityKg: Number(vehicleSpace) || 0,
+        acceptsPassengers: takePassengers,
+        seatsTotal:        takePassengers ? (Number(seats) || 1) : 0,
+        acceptsPackages:   takePackages,
+        pickupMode,
+        pickupAddress:     pickupMode === 'fixed' ? pickupAddress.trim() || undefined : undefined,
+        routeKm:           Number(routeKm) > 0 ? Number(routeKm) : undefined,
       });
       Alert.alert(
         'Trip declared',
@@ -146,7 +160,7 @@ export default function InterstateScreen() {
             {POPULAR_ROUTES.map(r => (
               <Pressable
                 key={`${r.from}-${r.to}`}
-                onPress={() => { setFrom(r.from); setTo(r.to); }}
+                onPress={() => { setFrom(r.from); setTo(r.to); setRouteKm(String(r.km)); }}
                 style={[styles.routeChip, { borderColor: theme.border, backgroundColor: theme.surface }]}
               >
                 <Text style={{ color: theme.text, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>{r.from} → {r.to}</Text>
@@ -195,6 +209,88 @@ export default function InterstateScreen() {
             <Text style={[styles.helper, { color: theme.textThird }]}>How much weight can you take above your existing load.</Text>
           </View>
 
+          {/* ── Travel Buddy: what this trip sells ─────────────────── */}
+          <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, letterSpacing: 0.6, color: theme.textSecond, marginTop: 4 }}>
+            WHAT ARE YOU OFFERING?
+          </Text>
+
+          <Pressable
+            onPress={() => setTakePackages(v => !v)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.surface, borderColor: takePackages ? theme.primary : theme.border, borderWidth: 1.5, borderRadius: Radius.lg, padding: 12 }}
+          >
+            <Truck size={18} color={takePackages ? theme.primary : theme.textSecond} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>Carry packages</Text>
+              <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>Uses your spare kg above</Text>
+            </View>
+            <Text style={{ color: takePassengers || takePackages ? theme.primary : theme.textThird, fontWeight: '700' }}>{takePackages ? 'ON' : 'OFF'}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setTakePassengers(v => !v)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.surface, borderColor: takePassengers ? theme.primary : theme.border, borderWidth: 1.5, borderRadius: Radius.lg, padding: 12 }}
+          >
+            <MapPin size={18} color={takePassengers ? theme.primary : theme.textSecond} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>Carry passengers</Text>
+              <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
+                Real seats only: SEIRS blocks overloading. No doubling the front seat, ever.
+              </Text>
+            </View>
+            <Text style={{ color: takePassengers ? theme.primary : theme.textThird, fontWeight: '700' }}>{takePassengers ? 'ON' : 'OFF'}</Text>
+          </Pressable>
+
+          {takePassengers && (
+            <View style={{ gap: 10 }}>
+              <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginBottom: 4 }}>Seats you're selling (your vehicle class caps this)</Text>
+                <TextInput
+                  value={seats}
+                  onChangeText={setSeats}
+                  keyboardType="number-pad"
+                  placeholder="e.g. 3"
+                  placeholderTextColor={theme.textThird}
+                  style={{ color: theme.text, fontSize: FontSize.base, padding: 0 }}
+                />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {([['along_route', 'Pick up along my route'], ['fixed', 'One fixed pickup point']] as const).map(([k, label]) => (
+                  <Pressable
+                    key={k}
+                    onPress={() => setPickupMode(k)}
+                    style={{ flex: 1, padding: 10, borderRadius: Radius.md, borderWidth: 1.5, borderColor: pickupMode === k ? theme.primary : theme.border, backgroundColor: pickupMode === k ? theme.primary + '12' : 'transparent' }}
+                  >
+                    <Text style={{ color: pickupMode === k ? theme.primary : theme.textSecond, fontSize: FontSize.xs, fontWeight: '600', textAlign: 'center' }}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              {pickupMode === 'fixed' && (
+                <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                  <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginBottom: 4 }}>Pickup point (e.g. Iwo Road roundabout)</Text>
+                  <TextInput
+                    value={pickupAddress}
+                    onChangeText={setPickupAddress}
+                    placeholder="Where passengers meet you"
+                    placeholderTextColor={theme.textThird}
+                    style={{ color: theme.text, fontSize: FontSize.base, padding: 0 }}
+                  />
+                </View>
+              )}
+              <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginBottom: 4 }}>Route distance in km (popular routes fill this automatically)</Text>
+                <TextInput
+                  value={routeKm}
+                  onChangeText={setRouteKm}
+                  keyboardType="number-pad"
+                  placeholder="e.g. 145"
+                  placeholderTextColor={theme.textThird}
+                  style={{ color: theme.text, fontSize: FontSize.base, padding: 0 }}
+                />
+              </View>
+            </View>
+          )}
+
+
           <Pressable
             disabled={submitting}
             onPress={submit}
@@ -233,4 +329,5 @@ const styles = StyleSheet.create({
   primaryBtnText:{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },
 
   footnote:  { fontSize: FontSize.xs, textAlign: 'center', marginTop: Spacing.md, paddingHorizontal: Spacing.md, lineHeight: 17 },
+  inputWrap: { borderWidth: 1, borderRadius: Radius.md, padding: 12 },
 });

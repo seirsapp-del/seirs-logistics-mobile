@@ -42,17 +42,19 @@ function DeliveriesContent() {
    * contains a matched package opens itself.
    */
   const [search, setSearch]     = useState('');
+  // Rides vs packages: two product lines, one table (founder 23 Aug).
+  const [kindFilter, setKindFilter] = useState<'' | 'ride' | 'package'>('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const q = search.trim().toLowerCase();
 
   const load = (p = 1, term = search) => {
     setLoading(true);
-    adminApi.deliveries(p, statusFilter || undefined, term.trim() || undefined)
+    adminApi.deliveries(p, statusFilter || undefined, term.trim() || undefined, kindFilter || undefined)
       .then(setData).catch(() => {}).finally(() => setLoading(false));
     setPage(p);
   };
 
-  useEffect(() => { load(1); }, [statusFilter]);
+  useEffect(() => { load(1); }, [statusFilter, kindFilter]);
 
   // Debounced so a support agent typing a code does not fire a request
   // per keystroke.
@@ -79,7 +81,22 @@ function DeliveriesContent() {
       <main className="p-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-[#0F2B4C]">Deliveries</h1>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
+            {/* Product line first, then status. */}
+            {([['', 'All'], ['package', 'Packages'], ['ride', 'Rides']] as const).map(([k, label]) => (
+              <button
+                key={k || 'all'}
+                onClick={() => setKindFilter(k as any)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                  kindFilter === k
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-[#0F2B4C]/50 border-[#E5E7EB] hover:border-indigo-300'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            <span className="h-5 w-px bg-gray-200" />
             {['', 'pending', 'assigned', 'in_transit', 'delivered', 'failed'].map((s) => (
               <a
                 key={s}
