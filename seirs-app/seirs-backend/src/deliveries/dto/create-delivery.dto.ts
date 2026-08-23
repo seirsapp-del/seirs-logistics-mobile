@@ -218,6 +218,14 @@ export class CreateDeliveryDto {
   @IsOptional()
   quoteToken?: string;
 
+  /** Ride luggage: none | small | large (large pays the class fee). */
+  @IsOptional()
+  luggage?: string;
+
+  /** First name of the rider when booking a ride for someone else. */
+  @IsOptional()
+  riderFirstName?: string;
+
   /** 'ride' books a passenger trip through the ride engine. */
   @IsOptional()
   mode?: 'ride' | 'cargo';

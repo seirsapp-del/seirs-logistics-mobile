@@ -370,6 +370,7 @@ export class DeliveriesService {
           scheduledAt: quotePin?.pricedAt ?? undefined,
           pickupCoords:  { latitude: dto.pickupLat,  longitude: dto.pickupLng },
           dropoffCoords: { latitude: dto.dropoffLat, longitude: dto.dropoffLng },
+          luggage: (dto as any).luggage,
         }) as any
       : await this.rateCardPricing.computePrice({
       vehicleType,
@@ -412,11 +413,18 @@ export class DeliveriesService {
       // delivery row carries receiverFirstName/LastName (first live
       // ride saved a passenger with no name, 2026-08-23).
       const [gFirst, ...gRest] = String(u?.name ?? '').trim().split(/\s+/);
+      // A ride booked FOR someone else carries only that rider's first
+      // name: nothing for a stranger to look up (founder 2026-08-23).
+      // The booker's phone stays on the row for ADMIN emergencies; the
+      // driver app talks through chat, never the number.
+      const riderFirst = String((dto as any).riderFirstName ?? '').trim();
+      const luggage = String((dto as any).luggage ?? 'none');
       ridePassenger = {
-        receiverFirstName:  u?.firstName ?? gFirst ?? null,
-        receiverLastName:   u?.lastName ?? (gRest.length ? gRest.join(' ') : null),
+        receiverFirstName:  riderFirst || (u?.firstName ?? gFirst ?? null),
+        receiverLastName:   riderFirst ? null : (u?.lastName ?? (gRest.length ? gRest.join(' ') : null)),
         receiverPhone:      u?.phone ?? null,
-        packageDescription: 'Ride',
+        packageDescription: luggage === 'large' ? 'Ride · large luggage'
+                          : luggage === 'small' ? 'Ride · small bag' : 'Ride',
         categoryCode:       null,
         weightKg:           null,
       };
@@ -1096,6 +1104,11 @@ export class DeliveriesService {
           vehicleType: delivery.driver.vehicleType ?? null,
           rating:      delivery.driver.rating ?? null,
           verifiedPro: driverIsPro,
+          // Ride trust card (founder 2026-08-23): the passenger sees the
+          // plate and the very vehicle photo the driver registered with.
+          // Drivers are always fully identified: that is the deal.
+          vehiclePlate:    delivery.driver.vehiclePlate ?? null,
+          vehiclePhotoUrl: delivery.driver.vehiclePhotoUrl ?? null,
         }
       : null;
 
@@ -1124,6 +1137,8 @@ export class DeliveriesService {
       id:             delivery.id,
       trackingCode:   delivery.trackingCode,
       status:         delivery.status,
+      // Rides read a different status ladder on the tracking screen.
+      kind:           (delivery as any).kind ?? 'package',
       // Unpaid bookings must not pretend anyone is looking for a rider:
       // dispatch only sees paid work. The tracking page uses this to say
       // "waiting for payment" instead of inventing progress.
@@ -3338,6 +3353,105 @@ export class DeliveriesService {
     // Never let a misconfigured row swallow the whole fare.
     const capped = Math.min(pct, 100);
     return Math.round((price * capped) / 100);
+  }
+
+  /**
+   * Driver cancels an accepted job (founder 2026-08-23). Rule one: the
+   * customer never pays for a service not received: escrow stays put
+   * and the booking re-dispatches. Reason required; 'unsafe' is always
+   * free (safety must never be rationed); the rest draw from a daily
+   * allowance, after which offers pause via priorityPenaltyUntil.
+   */
+  static readonly DRIVER_CANCEL_REASONS = [
+    'emergency', 'vehicle_problem', 'unsafe', 'wrong_booking_type',
+    'customer_unreachable', 'other',
+  ] as const;
+
+  async driverCancel(deliveryId: string, driverUserId: string, reason: string, note?: string) {
+    if (!DeliveriesService.DRIVER_CANCEL_REASONS.includes(reason as any)) {
+      const { BadRequestException } = await import('@nestjs/common');
+      throw new BadRequestException('A real reason is required.');
+    }
+    const delivery = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['driver', 'driver.user', 'customer'],
+    });
+    if (!delivery) throw new NotFoundException('Delivery not found.');
+    if (delivery.driver?.user?.id !== driverUserId) {
+      throw new ForbiddenException('This job is not assigned to you.');
+    }
+    if (!['assigned', 'picked_up'].includes(String(delivery.status))) {
+      const { BadRequestException } = await import('@nestjs/common');
+      throw new BadRequestException(
+        delivery.status === 'in_transit'
+          ? 'The trip has started: end it instead of cancelling.'
+          : 'This job can no longer be cancelled.',
+      );
+    }
+
+    const driverId = delivery.driver!.id;
+    const stage = String(delivery.status);
+    const kind  = String((delivery as any).kind ?? 'package');
+
+    // The audit row FIRST: nothing about this path is silent.
+    await this.repo.manager.query(
+      `INSERT INTO "driver_cancellations" ("deliveryId","driverId","reason","note","stage","kind")
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [deliveryId, driverId, reason, note?.trim() || null, stage, kind],
+    );
+
+    // Allowance: safety is exempt, everything else counts.
+    if (reason !== 'unsafe' && this.feesServiceRef) {
+      try {
+        const freePerDay = await this.feesServiceRef.getValueOr('driver_cancel_free_per_day', 2);
+        const rows = await this.repo.manager.query(
+          `SELECT COUNT(*)::int AS c FROM "driver_cancellations"
+            WHERE "driverId" = $1 AND "reason" != 'unsafe' AND "createdAt" > NOW() - interval '24 hours'`,
+          [driverId],
+        );
+        if (Number(rows?.[0]?.c ?? 0) > Number(freePerDay)) {
+          const pauseHours = await this.feesServiceRef.getValueOr('driver_cancel_pause_hours', 2);
+          await this.repo.manager.query(
+            `UPDATE "drivers" SET "priorityPenaltyUntil" = NOW() + ($1 || ' hours')::interval WHERE "id" = $2`,
+            [String(pauseHours), driverId],
+          );
+          this.logger.warn(`Driver ${driverId} exceeded the daily cancel allowance: offers paused ${pauseHours}h`);
+        }
+      } catch (e: any) {
+        this.logger.warn(`cancel allowance check failed: ${e?.message ?? e}`);
+      }
+    }
+
+    // The booking goes back to the pool: customer keeps their escrow,
+    // matching finds the next driver.
+    await this.repo.update(deliveryId, {
+      driver:     null as any,
+      status:     DeliveryStatus.PENDING,
+      assignedAt: null as any,
+    });
+
+    if (this.notificationsService) {
+      try {
+        this.notificationsService.create?.(
+          delivery.customer.id,
+          kind === 'ride' ? 'Finding you a new rider' : 'Finding you a new driver',
+          kind === 'ride'
+            ? 'Your rider had to cancel. You have not been charged anything extra: we are matching the next rider now.'
+            : 'Your driver had to cancel. Your payment is safe: we are matching the next driver now.',
+          'delivery_assigned' as any,
+          deliveryId,
+          delivery.trackingCode,
+        );
+      } catch { /* best effort */ }
+    }
+
+    // Re-dispatch immediately when the fare is already held.
+    if (delivery.paymentHeldAt) {
+      const fresh = await this.repo.findOne({ where: { id: deliveryId }, relations: ['customer'] });
+      if (fresh) this.runAutoMatch(fresh).catch(() => {});
+    }
+
+    return { ok: true, redispatched: !!delivery.paymentHeldAt };
   }
 
   private async getCancellationRules(): Promise<{

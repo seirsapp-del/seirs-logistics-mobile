@@ -30,6 +30,18 @@ const STATUS_STEPS: {
   { key: 'delivered',  label: 'Delivered!',          icon: 'checkmark-circle-outline', action: null,             next: null,         gradient: ['#16A34A', '#15803D'] },
 ];
 
+/**
+ * A ride is the same state machine wearing human words (founder
+ * 2026-08-23): no photos, no codes, no handoff ceremony. "I've arrived"
+ * fires the picked_up transition, which is what pings the passenger.
+ */
+const RIDE_STEPS: typeof STATUS_STEPS = [
+  { key: 'assigned',   label: 'Head to pickup',        icon: 'map-outline',              action: "I've arrived",  next: 'picked_up',  gradient: ['#3A7BD5', '#2A5FA8'] },
+  { key: 'picked_up',  label: 'Waiting for passenger', icon: 'person-outline',           action: 'Start ride',    next: 'in_transit', gradient: ['#FFBE0B', '#D99E00'] },
+  { key: 'in_transit', label: 'On the trip',           icon: 'navigate-outline',         action: 'End ride',      next: 'delivered',  gradient: ['#0F2B4C', '#1A3A63'] },
+  { key: 'delivered',  label: 'Ride completed!',       icon: 'checkmark-circle-outline', action: null,            next: null,         gradient: ['#16A34A', '#15803D'] },
+];
+
 export default function ActiveDeliveryScreen() {
   const { id }      = useLocalSearchParams<{ id: string }>();
   const router      = useRouter();
@@ -202,14 +214,47 @@ export default function ActiveDeliveryScreen() {
     }
   };
 
+  const cancelJob = () => {
+    if (!delivery || !['assigned', 'picked_up'].includes(String(delivery.status))) return;
+    const isRideJob = (delivery as any).kind === 'ride';
+    const reasons: Array<[string, string]> = [
+      ['emergency',            'Emergency'],
+      ['vehicle_problem',      'Vehicle problem'],
+      ['unsafe',               'I feel unsafe'],
+      ['wrong_booking_type',   isRideJob ? 'This is actually a package' : 'This is actually a person'],
+      ['customer_unreachable', 'Customer unreachable'],
+    ];
+    Alert.alert(
+      'Cancel this job?',
+      'The customer is refunded in full and the job goes to another driver. Pick the reason: it is recorded. "I feel unsafe" never counts against your daily allowance.',
+      [
+        { text: 'Keep the job', style: 'cancel' },
+        ...reasons.map(([key, label]) => ({
+          text: label,
+          onPress: async () => {
+            try {
+              await deliveriesApi.driverCancel(delivery.id, key);
+              Alert.alert('Cancelled', 'The job has been released. Thanks for telling us why.');
+              router.back();
+            } catch (e: any) {
+              Alert.alert('Could not cancel', e?.message ?? 'Try again.');
+            }
+          },
+        })),
+      ],
+    );
+  };
+
   const advanceStatus = async () => {
     if (!delivery) return;
-    const step = STATUS_STEPS.find(s => s.key === delivery.status);
+    const step = ((delivery as any).kind === 'ride' ? RIDE_STEPS : STATUS_STEPS).find(s => s.key === delivery.status);
     if (!step?.next) return;
 
     const nextStatus = step.next;
 
-    if (nextStatus === 'delivered') {
+    const isRideJob = (delivery as any).kind === 'ride';
+
+    if (nextStatus === 'delivered' && !isRideJob) {
       if (!proofReady) {
         Alert.alert('Proof Required', 'Please take a photo before confirming delivery.', [
           { text: 'Take Photo', onPress: takeProofPhoto },
@@ -304,7 +349,7 @@ export default function ActiveDeliveryScreen() {
     setUpdating(true);
     try {
       let photoUrl: string | undefined;
-      if (nextStatus === 'delivered' && proofUri) {
+      if (nextStatus === 'delivered' && proofUri && (delivery as any).kind !== 'ride') {
         const uploaded = await uploadApi.file(proofUri);
         photoUrl = uploaded.url;
       }
@@ -378,9 +423,9 @@ export default function ActiveDeliveryScreen() {
     );
   }
 
-  const stepConfig  = STATUS_STEPS.find(s => s.key === delivery.status) ?? STATUS_STEPS[0];
+  const stepConfig  = ((delivery as any).kind === 'ride' ? RIDE_STEPS : STATUS_STEPS).find(s => s.key === delivery.status) ?? STATUS_STEPS[0];
   const isDone      = delivery.status === 'delivered';
-  const needsProof  = delivery.status === 'in_transit';
+  const needsProof  = delivery.status === 'in_transit' && (delivery as any).kind !== 'ride';
   const statusIndex = STATUS_STEPS.findIndex(s => s.key === delivery.status);
 
   return (
@@ -577,7 +622,36 @@ export default function ActiveDeliveryScreen() {
         )}
 
         {/* Receiver: who actually takes the package at the door. */}
-        {(delivery.receiverFirstName || delivery.receiverPhone) && (
+        {(delivery as any).kind === 'ride' ? (
+          /* Passenger card (founder 2026-08-23): first name only, no
+             phone on the driver's screen: the chat button is the line.
+             Admin keeps the full identity for emergencies. */
+          <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Passenger</Text>
+            <View style={styles.customerRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.customerName, { color: theme.text }]}>
+                  {delivery.receiverFirstName || 'Passenger'}
+                </Text>
+                <Text style={[styles.customerPhone, { color: theme.textSecond }]}>
+                  {delivery.packageDescription === 'Ride · large luggage' ? 'Travelling with large luggage'
+                    : delivery.packageDescription === 'Ride · small bag' ? 'Travelling with a small bag'
+                    : 'No luggage'}
+                </Text>
+              </View>
+              <Pressable
+                style={[styles.chatBtn, { backgroundColor: theme.primary }]}
+                onPress={() => router.push({
+                  pathname: '/(driver)/messages/[chatId]',
+                  params: { chatId: delivery.id, other: delivery.receiverFirstName ?? 'Passenger' },
+                } as any)}
+              >
+                <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                <Text style={styles.chatBtnText}>Chat</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (delivery.receiverFirstName || delivery.receiverPhone) && (
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Receiver</Text>
             <View style={styles.customerRow}>
@@ -600,6 +674,14 @@ export default function ActiveDeliveryScreen() {
               )}
             </View>
           </View>
+        )}
+
+        {['assigned', 'picked_up'].includes(String(delivery.status)) && (
+          <Pressable onPress={cancelJob} style={{ alignSelf: 'center', paddingVertical: 10 }}>
+            <Text style={{ color: '#DC2626', fontSize: FontSize.sm, fontWeight: '600' }}>
+              Can't do this job? Cancel with a reason
+            </Text>
+          </Pressable>
         )}
 
         {/* Report a problem: available while the rider still has a choice,

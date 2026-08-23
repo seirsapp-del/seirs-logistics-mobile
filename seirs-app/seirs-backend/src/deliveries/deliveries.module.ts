@@ -130,6 +130,23 @@ export class DeliveriesModule implements OnModuleInit {
         ALTER TABLE "deliveries"
           ADD COLUMN IF NOT EXISTS "chatReopenedUntil" timestamptz NULL
       `);
+      // Driver-initiated cancellations (founder 2026-08-23): the audit
+      // trail behind the daily allowance and the fraud view.
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "driver_cancellations" (
+          "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "deliveryId" uuid NOT NULL,
+          "driverId" uuid NOT NULL,
+          "reason" varchar(30) NOT NULL,
+          "note" text NULL,
+          "stage" varchar(20) NOT NULL,
+          "kind" varchar(10) NOT NULL DEFAULT 'package',
+          "createdAt" timestamptz NOT NULL DEFAULT now()
+        )
+      `);
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "idx_dc_driver_day" ON "driver_cancellations" ("driverId", "createdAt")
+      `);
       // Per-stop verification codes for multi-drop runs (2026-08-09).
       await this.ds.query(`
         ALTER TABLE "delivery_stops"

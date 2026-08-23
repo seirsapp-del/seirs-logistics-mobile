@@ -1,4 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
+import { chatApi } from '@/services/api';
+import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +22,26 @@ function TabIcon({ name, color, focused }: { name: IoniconsName; color: string; 
  * This is the standard Expo Router "Tabs inside Stack" pattern used by
  * Uber, Bolt, DoorDash, etc.
  */
+
+// Unread chat badge (founder 2026-08-23): chat replaces phone numbers
+// for rides, so a missed chat is a missed driver. 60s poll of the
+// same endpoint the inbox uses.
+function useChatBadge(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const tick = () => chatApi.unreadCount()
+      .then((r: any) => { if (alive) setN(Number(r?.count ?? 0)); })
+      .catch(() => {});
+    tick();
+    const t = setInterval(tick, 60_000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+  return n;
+}
+
 export default function CustomerTabsLayout() {
+  const chatBadge = useChatBadge();
   const { t }  = useTranslation();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
@@ -62,7 +83,7 @@ export default function CustomerTabsLayout() {
       />
       <Tabs.Screen
         name="messages"
-        options={{ title: t('tabs.messages'), tabBarIcon: (p) => <TabIcon name="chatbubbles" color={p.color} focused={p.focused} /> }}
+        options={{ tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined, title: t('tabs.messages'), tabBarIcon: (p) => <TabIcon name="chatbubbles" color={p.color} focused={p.focused} /> }}
       />
       <Tabs.Screen
         name="profile"

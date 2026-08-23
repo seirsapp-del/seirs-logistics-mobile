@@ -19,7 +19,7 @@ import { type PickedAddress } from '@/components/AddressPicker';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 
-import { mapsApi } from '@/services/api';
+import { mapsApi, deliveriesApi } from '@/services/api';
 
 // Places and geocoding go through our backend (security review
 // 2026-08-12): the Google key is no longer shipped inside the app.
@@ -47,6 +47,44 @@ export default function RequestDriverScreen() {
 
   const [pickup,     setPickup]     = useState<PickedAddress | null>(null);
   const [dropoff,    setDropoff]    = useState<PickedAddress | null>(null);
+
+  // Recent destinations (founder 23 Aug): riders repeat routes daily.
+  // Last 3 distinct drop-offs from trip history; one tap refills.
+  const [recents, setRecents] = useState<Array<{ address: string; lat: number; lng: number }>>([]);
+  useEffect(() => {
+    deliveriesApi.myDeliveries(1, 15)
+      .then((r: any) => {
+        const seen = new Set<string>();
+        const out: Array<{ address: string; lat: number; lng: number }> = [];
+        for (const d of r?.items ?? []) {
+          const a = String(d.dropoffAddress ?? '').trim();
+          if (!a || seen.has(a) || !Number(d.dropoffLat)) continue;
+          seen.add(a);
+          out.push({ address: a, lat: Number(d.dropoffLat), lng: Number(d.dropoffLng) });
+          if (out.length >= 3) break;
+        }
+        setRecents(out);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Who is this ride for? First name only travels to the driver
+  // (privacy: no surname to look up, no phone: chat instead).
+  const [riderIsMe,  setRiderIsMe]  = useState(true);
+  const [riderName,  setRiderName]  = useState('');
+
+  const useRecent = (r: { address: string; lat: number; lng: number }) => {
+    setDropoff({ address: r.address, lat: r.lat, lng: r.lng });
+    setDropoffQuery(r.address);
+    setPredictions([]);
+    Keyboard.dismiss();
+  };
+
+  const swapEnds = () => {
+    const p = pickup, pq = pickupQuery;
+    setPickup(dropoff); setPickupQuery(dropoffQuery);
+    setDropoff(p);      setDropoffQuery(pq);
+  };
 
   // QA 2026-08-15: hardware back silently discarded a typed pickup and
   // destination with no warning (it ate a whole entered route during the
@@ -277,6 +315,7 @@ export default function RequestDriverScreen() {
         dropoffLat: String(dropoff.lat),
         dropoffLng: String(dropoff.lng),
         distanceKm: String(distKmParsed),
+        riderName:  riderIsMe ? '' : riderName.trim(),
         durationText: durationText ?? '',
       },
     });
@@ -311,7 +350,10 @@ export default function RequestDriverScreen() {
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <View style={[styles.topTitle, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <Text style={[styles.topTitleText, { color: theme.text }]}>{t('request2.title')}</Text>
+          <Text style={[styles.topTitleText, { color: theme.text }]}>
+            <Text style={{ color: theme.primary, fontWeight: '800' }}>1/3</Text>
+            {'  '}{t('request2.step1Title', { defaultValue: 'Where to?' })}
+          </Text>
         </View>
       </SafeAreaView>
 
@@ -329,7 +371,9 @@ export default function RequestDriverScreen() {
       >
         <BottomSheetScrollView
           style={styles.sheetInner}
-          contentContainerStyle={{ paddingBottom: Spacing.xl }}
+          // The CTA sat under the A30's translucent 3-button nav bar
+          // (insets.bottom lies as 0 there): hard floor, founder 23 Aug.
+          contentContainerStyle={{ paddingBottom: Spacing.xl + Math.max(insets.bottom, 48) + 8 }}
           keyboardShouldPersistTaps="handled"
         >
           {/* Address inputs: inline, no modal pop-up */}
@@ -368,6 +412,72 @@ export default function RequestDriverScreen() {
               )}
             </View>
           </View>
+
+          {/* Swap: going home is the same trip reversed. */}
+          {(pickup || dropoff) && (
+            <Pressable onPress={swapEnds} style={{ alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 4 }}>
+              <Ionicons name="swap-vertical" size={15} color={theme.primary} />
+              <Text style={{ color: theme.primary, fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>
+                {t('request2.swap', { defaultValue: 'Swap' })}
+              </Text>
+            </Pressable>
+          )}
+
+          {/* Recent destinations: one tap rebooks the daily route. */}
+          {!dropoff && recents.length > 0 && (
+            <View style={{ marginTop: 6 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.6, color: theme.textThird, marginBottom: 6 }}>
+                {t('request2.recent', { defaultValue: 'RECENT' })}
+              </Text>
+              {recents.map((r) => (
+                <Pressable
+                  key={r.address}
+                  onPress={() => useRecent(r)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 }}
+                >
+                  <Ionicons name="time-outline" size={16} color={theme.textSecond} />
+                  <Text style={{ flex: 1, color: theme.text, fontSize: FontSize.sm }} numberOfLines={1}>
+                    {r.address}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          {/* Who rides? Booking for someone else is a first-class flow:
+              put your mother in a keke home (founder 23 Aug). */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
+            {[{ me: true, label: t('request2.forMe', { defaultValue: 'For me' }) },
+              { me: false, label: t('request2.forSomeone', { defaultValue: 'Someone else' }) }].map(o => (
+              <Pressable
+                key={String(o.me)}
+                onPress={() => setRiderIsMe(o.me)}
+                style={{
+                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5,
+                  borderColor: riderIsMe === o.me ? theme.primary : theme.border,
+                  backgroundColor: riderIsMe === o.me ? theme.primary + '15' : 'transparent',
+                }}
+              >
+                <Text style={{ color: riderIsMe === o.me ? theme.primary : theme.textSecond, fontSize: FontSize.sm, fontWeight: '600' }}>
+                  {o.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {!riderIsMe && (
+            <View style={[styles.inputBlock, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, marginTop: 8 }]}>
+              <View style={styles.inputRow}>
+                <Ionicons name="person-outline" size={16} color={theme.textSecond} />
+                <BottomSheetTextInput
+                  value={riderName}
+                  onChangeText={setRiderName}
+                  placeholder={t('request2.riderFirstName', { defaultValue: "Rider's first name (what the driver calls them)" })}
+                  placeholderTextColor={theme.textThird}
+                  style={[styles.input, { color: theme.text }]}
+                />
+              </View>
+            </View>
+          )}
 
           {/* Distance + ETA chip */}
           {pickup && dropoff && (distanceText || durationText) && (

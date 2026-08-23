@@ -205,6 +205,12 @@ export class PricingService implements OnModuleInit {
    */
   private async selfHealSchema() {
     const statements = [
+      ['rate_cards.luggageFees', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "luggageFees" jsonb NULL`],
+      ['rate_cards.luggageFees backfill', `
+        UPDATE "rate_cards"
+           SET "luggageFees" = '{"tricycle":200,"car":300,"van":500}'::jsonb
+         WHERE "luggageFees" IS NULL
+      `],
       ['rate_cards.rideRates', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "rideRates" jsonb NULL`],
       // Seed existing cards with the numbers the customer app has
       // always shown (its bundled defaults), so the first publish after
@@ -557,6 +563,8 @@ export class PricingService implements OnModuleInit {
     scheduledAt?: Date;
     pickupCoords?:  { latitude: number; longitude: number } | null;
     dropoffCoords?: { latitude: number; longitude: number } | null;
+    /** 'none' | 'small' | 'large'. Small rides free; large pays the class fee. */
+    luggage?: string;
   }) {
     const card = await this.getActiveRateCard();
     if (!(PricingService.RIDE_VEHICLES as readonly string[]).includes(input.vehicleType)) {
@@ -600,13 +608,29 @@ export class PricingService implements OnModuleInit {
     const restrictedSur = subtotalPreZone * (zr.restrictedPct / 100);
     const overnightSur  = zr.flat;
 
+    /**
+     * Luggage (founder 2026-08-23). Small = free everywhere. Large =
+     * flat per-class fee from the card; a class with no fee row cannot
+     * take large luggage at all (an okada has no boot).
+     */
+    let luggageFee = 0;
+    if (input.luggage === 'large') {
+      const lf = (card as any).luggageFees?.[input.vehicleType];
+      if (lf == null) {
+        throw new BadRequestException(
+          `${input.vehicleType} cannot take large luggage. Choose a bigger vehicle.`,
+        );
+      }
+      luggageFee = Math.max(0, Number(lf));
+    }
+
     // Flat ride service fee (founder 2026-08-22): post-surcharge,
     // pre-VAT, never eroded, 100% SEIRS. Region override wins.
     const serviceFee = Math.max(0, Number(
       region.serviceFeeRideOverride ?? (card as any).serviceFees?.rideNgn ?? 0,
     ));
 
-    const vatBase = subtotalPreZone + tierSur + restrictedSur + overnightSur + serviceFee;
+    const vatBase = subtotalPreZone + tierSur + restrictedSur + overnightSur + serviceFee + luggageFee;
     const vat     = vatBase * Number(card.vatRate);
     const total   = Math.round((vatBase + vat) * 100) / 100;
 
@@ -632,7 +656,7 @@ export class PricingService implements OnModuleInit {
         timeSurcharges: { night: Math.round(nightSur), peak: Math.round(peakSur), weekend: Math.round(weekendSur) },
         nightSurcharge: Math.round(nightSur),
         zoneSurcharges: { tier: Math.round(tierSur), restricted: Math.round(restrictedSur), overnight: Math.round(overnightSur) },
-        serviceFee, vatBase: Math.round(vatBase), vat: Math.round(vat), total,
+        serviceFee, luggageFee, vatBase: Math.round(vatBase), vat: Math.round(vat), total,
       },
       driver: { total: driverTotal },
       seirsNet: Math.round((vatBase - driverTotal + serviceFee) * 100) / 100,

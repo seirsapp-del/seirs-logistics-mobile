@@ -256,6 +256,14 @@ export class RateCard {
   }> | null;
 
   /**
+   * Ride luggage (founder 2026-08-23): a small bag rides free on any
+   * vehicle; a LARGE bag pays a flat per-class fee. A vehicle class
+   * absent from this map cannot take large luggage at all (okada).
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  luggageFees: Record<string, number> | null;
+
+  /**
    * Flat platform service fee per booking (founder 2026-08-22). Charged
    * AFTER discounts (promotions never erode it) and BEFORE VAT. Region
    * serviceFee*Override fields beat these baselines. rideNgn is

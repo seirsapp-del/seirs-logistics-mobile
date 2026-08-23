@@ -38,7 +38,7 @@ export default function VehicleSelectScreen() {
   const params  = useLocalSearchParams<{
     mode?: string; pickup: string; dropoff: string; preselect?: string;
     pickupLat?: string; pickupLng?: string; dropoffLat?: string; dropoffLng?: string;
-    distanceKm?: string; durationText?: string;
+    distanceKm?: string; durationText?: string; riderName?: string;
   }>();
 
   // 'ride' mode comes from /request (Okada/Keke/Car/Danfo, fare scales with km).
@@ -74,6 +74,10 @@ export default function VehicleSelectScreen() {
   const [rideQuoteFailed, setRideQuoteFailed] = useState(false);
   const [rideQuoteNonce, setRideQuoteNonce] = useState(0);
 
+  // Luggage (founder 23 Aug): small rides free, large pays the class
+  // fee INSIDE the pinned quote; an okada can't take large at all.
+  const [luggage, setLuggage] = useState<'none' | 'small' | 'large'>('none');
+
   // Coming BACK to this screen re-quotes: pins live ~10 minutes, and a
   // user who bounced off the review with 'Price refreshed' must land
   // on fresh numbers, not the stale ones that sent them back.
@@ -86,6 +90,7 @@ export default function VehicleSelectScreen() {
     setRideQuoteFailed(false);
     pricingApi.rideQuote({
       km: distKm,
+      luggage,
       pickupCoords:  pickupCoords ?? undefined,
       dropoffCoords: dropoffCoords ?? undefined,
     })
@@ -93,7 +98,7 @@ export default function VehicleSelectScreen() {
       .catch(() => { if (!cancelled) setRideQuoteFailed(true); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRide, distKm, rideQuoteNonce]);
+  }, [isRide, distKm, rideQuoteNonce, luggage]);
 
   useEffect(() => {
     if (isRide) return; // rides price through the ride engine above
@@ -162,6 +167,8 @@ export default function VehicleSelectScreen() {
           shareable:   false,
         };
       });
+
+  const largeBlocked = (id: string) => luggage === 'large' && id === 'okada';
 
   const initial = list.find(v => v.id === params.preselect)?.id ?? list[0].id;
   const [selected, setSelected] = useState(initial);
@@ -236,7 +243,9 @@ export default function VehicleSelectScreen() {
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <View style={[styles.topTitle, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <Text style={[styles.topTitleText, { color: theme.text }]}>{t('vehicleSelect2.title')}</Text>
+          <Text style={[styles.topTitleText, { color: theme.text }]}>
+            {isRide ? <><Text style={{ color: theme.primary, fontWeight: '800' }}>2/3</Text>{'  '}Choose your ride</> : t('vehicleSelect2.title')}
+          </Text>
         </View>
       </SafeAreaView>
 
@@ -267,6 +276,7 @@ export default function VehicleSelectScreen() {
                   isSelected && { backgroundColor: isDark ? '#0A0A0A' : '#F0F7FF' },
                   Shadows.sm,
                 ]}
+                disabled={isRide && largeBlocked(v.id)}
                 onPress={() => selectVehicle(v.id)}
               >
                 {/* Uber-style: vehicle-coloured tinted square, bigger filled
@@ -342,6 +352,41 @@ export default function VehicleSelectScreen() {
               discount no engine or matcher supported. Pooling returns
               as a real feature or not at all. */}
 
+          {isRide && (
+            <View style={{ marginTop: 10 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.6, color: theme.textThird, marginBottom: 6 }}>
+                TRAVELLING WITH LUGGAGE?
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {([['none', 'None'], ['small', 'Small bag'], ['large', 'Large']] as const).map(([k, label]) => (
+                  <Pressable
+                    key={k}
+                    onPress={() => {
+                      setLuggage(k);
+                      // Large luggage cannot ride an okada: hop the
+                      // selection to keke instead of dead-ending.
+                      if (k === 'large' && selected === 'okada') setSelected('keke');
+                    }}
+                    style={{
+                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5,
+                      borderColor: luggage === k ? theme.primary : theme.border,
+                      backgroundColor: luggage === k ? theme.primary + '15' : 'transparent',
+                    }}
+                  >
+                    <Text style={{ color: luggage === k ? theme.primary : theme.textSecond, fontSize: FontSize.sm, fontWeight: '600' }}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              {luggage === 'large' && (
+                <Text style={{ color: theme.textThird, fontSize: FontSize.xs, marginTop: 6 }}>
+                  Large luggage adds a small fee (already in the prices below) and can't go on an okada.
+                </Text>
+              )}
+            </View>
+          )}
+
           {isRide && rideQuoteFailed && (
             <Pressable
               onPress={() => setRideQuoteNonce(n => n + 1)}
@@ -380,6 +425,9 @@ export default function VehicleSelectScreen() {
                       distanceKm:  params.distanceKm ?? '0',
                       fareTotal:   String(Math.round(Number(q.total))),
                       serviceFee:  String(Math.round(Number(q.serviceFee ?? 0))),
+                      luggageFee:  String(Math.round(Number((q as any).luggageFee ?? 0))),
+                      luggage,
+                      riderName:   params.riderName ?? '',
                       quoteToken:  q.quotePin?.token ?? '',
                     },
                   } as any);

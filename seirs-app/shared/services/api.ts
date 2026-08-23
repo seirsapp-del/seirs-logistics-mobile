@@ -326,6 +326,9 @@ export const deliveriesApi = {
     request<{ ok: true; status: string; feeNgn: number; driverShareNgn: number }>(
       'POST', `/deliveries/${id}/cancel`, { reason },
     ),
+  /** Driver backs out of an accepted job. Customer never pays; booking re-dispatches. */
+  driverCancel: (id: string, reason: string, note?: string) =>
+    request<{ ok: boolean; redispatched: boolean }>('POST', `/deliveries/${id}/driver-cancel`, { reason, note }),
   // Driver-initiated claim of an unassigned pending job.
   claim: (id: string) =>
     request<any>('POST', `/deliveries/${id}/claim`),
@@ -1502,7 +1505,8 @@ export const pricingApi = {
   rideQuote: (body: {
     km: number;
     pickupCoords?:  { latitude: number; longitude: number };
-    dropoffCoords?: { latitude: number; longitude: number };
+    dropoffCoords?: { latitude: number; longitude: number };
+    luggage?: string;
   }) =>
     request<{
       pricedAt: string;

@@ -77,6 +77,7 @@ export class PricingController {
     km: number;
     pickupCoords?:  { latitude: number; longitude: number };
     dropoffCoords?: { latitude: number; longitude: number };
+    luggage?: string;
   }) {
     if (typeof body.km !== 'number' || body.km < 0) {
       throw new BadRequestException('km must be a non-negative number');
@@ -90,12 +91,14 @@ export class PricingController {
           km: body.km,
           scheduledAt: pricedAt,
           pickupCoords: body.pickupCoords ?? null,
+          luggage: body.luggage,
           dropoffCoords: body.dropoffCoords ?? null,
         });
         vehicles[v] = {
           total:          Number(b.customer.total),
           driverEarnings: Number(b.driver.total),
           serviceFee:     Number(b.customer.serviceFee ?? 0),
+          luggageFee:     Number((b.customer as any).luggageFee ?? 0),
           quotePin:       this.pricing.signQuotePin(Number(b.customer.total), pricedAt),
         };
       } catch { /* vehicle missing from the card: omit */ }

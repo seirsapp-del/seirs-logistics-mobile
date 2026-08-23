@@ -48,11 +48,14 @@ export default function ConfirmRideScreen() {
     pickup: string; dropoff: string; vehicleId: string;
     pickupLat?: string; pickupLng?: string; dropoffLat?: string; dropoffLng?: string;
     distanceKm?: string; fareTotal?: string; serviceFee?: string; quoteToken?: string;
+    luggage?: string; luggageFee?: string; riderName?: string;
   }>();
 
   const distKm     = Number(params.distanceKm ?? '0') || 0;
   const total      = Math.round(Number(params.fareTotal ?? '0') || 0);
   const serviceFee = Math.round(Number(params.serviceFee ?? '0') || 0);
+  const luggageFee = Math.round(Number(params.luggageFee ?? '0') || 0);
+  const riderName  = (params.riderName ?? '').trim();
 
   const [tcAgreed,   setTcAgreed]   = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -72,6 +75,8 @@ export default function ConfirmRideScreen() {
         vehicleType:    ID_TO_ENUM[params.vehicleId] ?? params.vehicleId,
         quoteToken:     params.quoteToken || undefined,
         termsAccepted:  tcAgreed,
+        luggage:        params.luggage || undefined,
+        riderFirstName: riderName ? riderName.split(/\s+/)[0] : undefined,
         paymentMethod:  'card',
       } as any);
 
@@ -127,7 +132,11 @@ export default function ConfirmRideScreen() {
     ['Destination', params.dropoff ?? '-'],
     ['Distance',    distKm > 0 ? `${distKm.toFixed(1)} km` : '-'],
     ['Vehicle',     VEHICLE_LABEL[params.vehicleId] ?? params.vehicleId],
-    ['Passenger',   user?.name ?? 'You'],
+    ['Passenger',   riderName || (user?.name ?? 'You')],
+    ...(riderName ? [['Booked by', user?.name ?? 'You'] as [string, string]] : []),
+    ...(params.luggage && params.luggage !== 'none'
+      ? [['Luggage', params.luggage === 'large' ? `Large${luggageFee > 0 ? ` · ₦${luggageFee.toLocaleString()}` : ''}` : 'Small bag'] as [string, string]]
+      : []),
     ...(serviceFee > 0 ? [['Service fee', `₦${serviceFee.toLocaleString()}`] as [string, string]] : []),
     ['Total',       `₦${total.toLocaleString()}`],
   ];
@@ -165,7 +174,8 @@ export default function ConfirmRideScreen() {
         </Pressable>
         <View style={[styles.topTitle, { backgroundColor: theme.surface }, Shadows.sm]}>
           <Text style={[styles.topTitleText, { color: theme.text }]}>
-            {t('confirmRide.title', { defaultValue: 'Review your ride' })}
+            <Text style={{ color: theme.primary, fontWeight: '800' }}>3/3</Text>
+            {'  '}{t('confirmRide.title', { defaultValue: 'Review & book' })}
           </Text>
         </View>
       </SafeAreaView>

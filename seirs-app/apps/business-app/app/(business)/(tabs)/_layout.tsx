@@ -1,4 +1,6 @@
 import { Tabs } from 'expo-router';
+import { chatApi } from '@/services/api';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
@@ -27,7 +29,26 @@ function TabIcon({ name, focused }: { name: any; focused: boolean }) {
  * (business) parent level inside a Stack so the Android back button pops
  * to the previous screen instead of resetting to Dashboard.
  */
+
+// Unread chat badge (founder 2026-08-23): chat replaces phone numbers
+// for rides, so a missed chat is a missed driver. 60s poll of the
+// same endpoint the inbox uses.
+function useChatBadge(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const tick = () => chatApi.unreadCount()
+      .then((r: any) => { if (alive) setN(Number(r?.count ?? 0)); })
+      .catch(() => {});
+    tick();
+    const t = setInterval(tick, 60_000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+  return n;
+}
+
 export default function BusinessTabsLayout() {
+  const chatBadge = useChatBadge();
   const insets = useSafeAreaInsets();
   /**
    * Senders have REWARDS, not a wallet: SEIRS holds no money for them
@@ -84,7 +105,7 @@ export default function BusinessTabsLayout() {
       />
       <Tabs.Screen
         name="messages"
-        options={{ title: 'Messages', tabBarIcon: ({ focused }) => <TabIcon name="MessageSquare" focused={focused} /> }}
+        options={{ tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined, title: 'Messages', tabBarIcon: ({ focused }) => <TabIcon name="MessageSquare" focused={focused} /> }}
       />
       <Tabs.Screen
         name="profile"

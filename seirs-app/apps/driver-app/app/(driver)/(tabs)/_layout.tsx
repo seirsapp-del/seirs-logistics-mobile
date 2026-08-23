@@ -1,4 +1,6 @@
 import { Tabs } from 'expo-router';
+import { chatApi } from '@/services/api';
+import { useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Briefcase, Receipt, Wallet, MessageCircle, User } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -10,7 +12,26 @@ import { Colors, FontSize } from '@/constants/theme';
  * (driver) parent level inside a Stack so the Android back button works
  * naturally. Standard Expo Router "Tabs inside Stack" pattern.
  */
+
+// Unread chat badge (founder 2026-08-23): chat replaces phone numbers
+// for rides, so a missed chat is a missed driver. 60s poll of the
+// same endpoint the inbox uses.
+function useChatBadge(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const tick = () => chatApi.unreadCount()
+      .then((r: any) => { if (alive) setN(Number(r?.count ?? 0)); })
+      .catch(() => {});
+    tick();
+    const t = setInterval(tick, 60_000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+  return n;
+}
+
 export default function DriverTabsLayout() {
+  const chatBadge = useChatBadge();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
   const insets = useSafeAreaInsets();
@@ -47,7 +68,7 @@ export default function DriverTabsLayout() {
       />
       <Tabs.Screen
         name="messages"
-        options={{ title: 'Messages', tabBarIcon: ({ color }) => <MessageCircle size={22} color={color} strokeWidth={1.75} /> }}
+        options={{ tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined, title: 'Messages', tabBarIcon: ({ color }) => <MessageCircle size={22} color={color} strokeWidth={1.75} /> }}
       />
       <Tabs.Screen
         name="profile"

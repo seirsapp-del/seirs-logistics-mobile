@@ -1,4 +1,4 @@
-import {
+import { Image,
   View,
   Text,
   TextInput,
@@ -42,6 +42,17 @@ const STATUS_CONFIG: Record<string, {
   delivered:  { labelKey: 'tracking.stepDelivered', step: 5, gradient: ['#16A34A', '#15803D'], icon: 'checkmark-circle' },
   failed:     { labelKey: 'tracking.stepFailed',    step: 0, gradient: ['#EF4444', '#B91C1C'], icon: 'alert-circle' },
   cancelled:  { labelKey: 'tracking.stepCancelled', step: 0, gradient: ['#6B7280', '#4B5563'], icon: 'close-circle' },
+};
+
+const RIDE_LABELS: Record<string, string> = {
+  awaiting_payment: 'Waiting for payment',
+  pending:          'Finding your rider',
+  assigned:         'Rider on the way',
+  picked_up:        'Arrived — meet them outside',
+  in_transit:       'On the trip',
+  delivered:        'Ride completed',
+  failed:           'Ride failed',
+  cancelled:        'Ride cancelled',
 };
 
 /** The states where a package is actually in motion. */
@@ -478,7 +489,9 @@ export default function TrackScreen() {
               <Ionicons name={statusInfo?.icon as any ?? 'cube'} size={20} color={statusAccent} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.statusBarLabel, { color: theme.text }]}>
-                  {statusInfo ? t(statusInfo.labelKey) : t('common.loading')}
+                  {(deliveryData as any)?.kind === 'ride'
+                    ? (RIDE_LABELS[String(currentStatus)] ?? (statusInfo ? t(statusInfo.labelKey) : t('common.loading')))
+                    : (statusInfo ? t(statusInfo.labelKey) : t('common.loading'))}
                 </Text>
                 <Text style={[styles.statusBarCode, { color: theme.textSecond }]}>
                   {deliveryData.trackingCode}
@@ -612,6 +625,50 @@ export default function TrackScreen() {
                     </View>
                   </View>
                 </View>
+                {/* Ride trust block (founder 2026-08-23): the plate and
+                    the registered vehicle photo: "this is the okada
+                    coming for you". Drivers are always fully identified. */}
+                {(deliveryData as any)?.kind === 'ride' && (
+                  <View style={{ marginTop: 10, gap: 8 }}>
+                    {!!(assignedDriver as any)?.vehiclePlate || !!deliveryData.driver?.vehiclePlate ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={{ borderWidth: 1.5, borderColor: theme.border, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}>
+                          <Text style={{ fontFamily: 'monospace', fontWeight: '700', color: theme.text, letterSpacing: 1 }}>
+                            {(assignedDriver as any)?.vehiclePlate ?? deliveryData.driver?.vehiclePlate}
+                          </Text>
+                        </View>
+                        <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
+                          Check the plate before you get in
+                        </Text>
+                      </View>
+                    ) : null}
+                    {!!((assignedDriver as any)?.vehiclePhotoUrl ?? deliveryData.driver?.vehiclePhotoUrl) && (
+                      <Image
+                        source={{ uri: (assignedDriver as any)?.vehiclePhotoUrl ?? deliveryData.driver?.vehiclePhotoUrl }}
+                        style={{ width: '100%', height: 120, borderRadius: 10 }}
+                        resizeMode="cover"
+                      />
+                    )}
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Pressable
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#DC2626', borderRadius: 10, paddingVertical: 11 }}
+                        onPress={() => router.push({ pathname: '/(customer)/sos', params: { deliveryId: deliveryData.id } } as any)}
+                      >
+                        <Ionicons name="alert-circle" size={16} color="#fff" />
+                        <Text style={{ color: '#fff', fontWeight: '700', fontSize: FontSize.sm }}>SOS</Text>
+                      </Pressable>
+                      <Pressable
+                        style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.surfaceSecond, borderRadius: 10, paddingVertical: 11 }}
+                        onPress={() => Share.share({
+                          message: `I'm on a SEIRS ride (${deliveryData.trackingCode}). Follow my trip live: https://seirs.app/track/${deliveryData.trackingCode}`,
+                        }).catch(() => {})}
+                      >
+                        <Ionicons name="share-social-outline" size={16} color={theme.text} />
+                        <Text style={{ color: theme.text, fontWeight: '600', fontSize: FontSize.sm }}>Share this trip</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
                 {driverLocation && (
                   <View style={[styles.liveLocationRow, { backgroundColor: theme.surfaceSecond }]}>
                     <Ionicons name="location" size={14} color={theme.primary} />

@@ -315,6 +315,18 @@ export class DeliveriesController {
     }, user.id);
   }
 
+  // POST /api/v1/deliveries/:id/driver-cancel { reason, note? }
+  // Driver backs out of an accepted job. The customer never pays:
+  // escrow stays and the booking re-dispatches (founder 2026-08-23).
+  @Post(':id/driver-cancel')
+  driverCancel(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: { reason: string; note?: string },
+  ) {
+    return this.deliveriesService.driverCancel(id, user.id, String(body?.reason ?? ''), body?.note);
+  }
+
   // POST /api/v1/deliveries/:id/cancel - customer cancels their own booking
   @Post(':id/cancel')
   cancel(
