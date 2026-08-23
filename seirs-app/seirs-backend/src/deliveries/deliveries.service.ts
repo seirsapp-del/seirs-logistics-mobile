@@ -398,6 +398,25 @@ export class DeliveriesService {
     // Consent lands as a timestamp on the row, provable later.
     const termsAcceptedAt = (dto as any).termsAccepted ? new Date() : null;
 
+    // The passenger IS the recipient on a ride, and the driver greets
+    // them by name. The auth snapshot only carries id/email, so the
+    // name and phone come from the user row (first live ride saved
+    // recipientName null, 2026-08-23).
+    let ridePassenger: Record<string, any> = {};
+    if (isRideBooking) {
+      const u = await this.repo.manager.getRepository(User).findOne({
+        where: { id: (customer as any).id },
+        select: ['id', 'name', 'phone'],
+      });
+      ridePassenger = {
+        recipientName:      u?.name ?? null,
+        receiverPhone:      u?.phone ?? null,
+        packageDescription: 'Ride',
+        categoryCode:       null,
+        weightKg:           null,
+      };
+    }
+
     const pricing = {
       // The pinned total IS the price when a pin rode in with the
       // booking: the customer pays the number the review showed. The
@@ -500,13 +519,7 @@ export class DeliveriesService {
       // A ride's "recipient" is the passenger: the driver greets a
       // person by name, and the tracking page shows who is riding.
       kind: isRideBooking ? 'ride' : 'package',
-      ...(isRideBooking ? {
-        recipientName:  customer.name,
-        receiverPhone:  customer.phone ?? null,
-        packageDescription: 'Ride',
-        categoryCode:   null,
-        weightKg:       null,
-      } : {}),
+      ...ridePassenger,
       scheduledFor,
       trackingCode,
       customer,
