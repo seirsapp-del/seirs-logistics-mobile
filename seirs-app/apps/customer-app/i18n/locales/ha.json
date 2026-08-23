@@ -254,7 +254,8 @@
     "errWeightMissing": "Shigar da nauyi a kg. Kimanin ya isa: direbanka zai zaɓi motar da ta dace da shi.",
     "nightFeeNote": "Ɗaukar dare: ana ƙara kuɗin dare kuma duka yana zuwa ga direbanka.",
     "vehicleBlocked": "Ba a yarda da wannan nauʼi na kaya ba",
-    "stepReview": "Duba"
+    "stepReview": "Duba",
+    "highValueFee": "Rufin kaya mai tsada"
   },
   "rewardsTab": {
     "title": "Lambobina",

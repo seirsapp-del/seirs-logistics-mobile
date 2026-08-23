@@ -10,7 +10,15 @@ const BRAND_NAVY = '#0F2B4C';
 // Hosted on the marketing site (apps/seirs-website/public/). Email
 // clients need an https-hosted image; inline SVG and data URIs are
 // stripped by Gmail.
-const LOGO_WHITE_URL = 'https://seirs-website.vercel.app/seirs-logo-white.png';
+/**
+ * Email chrome follows the configured host (2026-08-23). The logo and
+ * the three footer links were pinned to the vercel deployment while the
+ * reset link below already honoured WEBSITE_URL, so a domain switch
+ * would have broken the logo and four links in every email, including
+ * ones already delivered.
+ */
+const WEB = process.env.WEBSITE_URL ?? 'https://seirs-website.vercel.app';
+const LOGO_WHITE_URL = `${WEB}/seirs-logo-white.png`;
 
 /**
  * `footerNote` overrides the default "you have a SEIRS account" line.
@@ -55,11 +63,11 @@ function baseTemplate(content: string, footerNote?: string): string {
                   ${footerNote ?? "You're receiving this because you have a SEIRS account."}
                 </p>
                 <p style="margin:0;font-size:12px">
-                  <a href="https://seirs-website.vercel.app/faq" style="color:${BRAND_BLUE};text-decoration:none">Help centre</a>
+                  <a href="${WEB}/faq" style="color:${BRAND_BLUE};text-decoration:none">Help centre</a>
                   &nbsp;·&nbsp;
-                  <a href="https://seirs-website.vercel.app/contact" style="color:${BRAND_BLUE};text-decoration:none">Contact support</a>
+                  <a href="${WEB}/contact" style="color:${BRAND_BLUE};text-decoration:none">Contact support</a>
                   &nbsp;·&nbsp;
-                  <a href="https://seirs-website.vercel.app/privacy-policy" style="color:${BRAND_BLUE};text-decoration:none">Privacy</a>
+                  <a href="${WEB}/privacy-policy" style="color:${BRAND_BLUE};text-decoration:none">Privacy</a>
                 </p>
               </td>
             </tr>
@@ -349,7 +357,7 @@ export class MailService {
       <p>Hi ${name},</p>
       <p>Unfortunately, your delivery <strong>${trackingCode}</strong> could not be completed.</p>
       <p>Our team is looking into this. If you paid by card or wallet, a refund will be processed within 3-5 business days.</p>
-      <p>Please <a href="https://seirs-website.vercel.app/contact" style="color:${BRAND_BLUE}">contact support</a> if you need help.</p>
+      <p>Please <a href="${WEB}/contact" style="color:${BRAND_BLUE}">contact support</a> if you need help.</p>
     `);
 
     await this.send(to, `Delivery failed - ${trackingCode}`, html);
@@ -383,7 +391,7 @@ export class MailService {
       <p>We reviewed your driver application and unfortunately we couldn't approve it at this time.</p>
       ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
       <p>You can re-apply with updated documents by opening the Seirs app and going to <strong>Profile → KYC Verification</strong>.</p>
-      <p>If you think this is a mistake, <a href="https://seirs-website.vercel.app/contact" style="color:${BRAND_BLUE}">contact support</a>.</p>
+      <p>If you think this is a mistake, <a href="${WEB}/contact" style="color:${BRAND_BLUE}">contact support</a>.</p>
     `);
 
     await this.send(to, 'Update on your Seirs driver application', html);

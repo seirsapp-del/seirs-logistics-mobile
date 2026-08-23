@@ -67,6 +67,16 @@ export interface V1OrderResponse {
   createdAt:      string;
 }
 
+/**
+ * The public site, for links we hand to third parties.
+ *
+ * These returned `https://seirs.app/t/<code>` until the 2026-08-23
+ * sweep: a hardcoded host plus a path the website has never served.
+ * Partners embed this URL in their own customers' emails, so it was the
+ * one broken link that left the platform entirely.
+ */
+const PUBLIC_SITE = process.env.PUBLIC_SITE_URL ?? 'https://seirs.app';
+
 @Injectable()
 export class V1Service {
   private readonly logger = new Logger(V1Service.name);
@@ -171,7 +181,7 @@ export class V1Service {
         externalRef:       input.externalReference ?? null,
         status:            'pending',
         trackingCode,
-        trackingUrl:       `https://seirs.app/t/${trackingCode}`,
+        trackingUrl:       `${PUBLIC_SITE}/track/${trackingCode}`,
         price: {
           customer:  round(breakdown.customer.total, 2),
           driver:    round(breakdown.driver.total,   2),
@@ -266,7 +276,7 @@ export class V1Service {
       externalRef,
       status:          String(d.status),
       trackingCode:    d.trackingCode,
-      trackingUrl:     `https://seirs.app/t/${d.trackingCode}`,
+      trackingUrl:     `${PUBLIC_SITE}/track/${d.trackingCode}`,
       price: {
         customer:  round(Number(d.price ?? 0), 2),
         driver:    round(Number(d.driverEarnings ?? 0), 2),
@@ -295,7 +305,7 @@ export class V1Service {
       externalRef:       null,
       status:            'pending',
       trackingCode:      `SRS-TEST-${id.slice(-8).toUpperCase()}`,
-      trackingUrl:       `https://seirs.app/t/SRS-TEST-${id.slice(-8).toUpperCase()}`,
+      trackingUrl:       `${PUBLIC_SITE}/track/SRS-TEST-${id.slice(-8).toUpperCase()}`,
       price:             { customer: 1217, driver: 887, seirsNet: 245 },
       estimatedKm:       5,
       estimatedMinutes:  15,

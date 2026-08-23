@@ -254,7 +254,8 @@
     "errWeightMissing": "Tinye ibu na kg. Atụmatụ ezuru: ọkwọ ụgbọ gị ga-eji ya họrọ ụgbọ kwesịrị ekwesị.",
     "nightFeeNote": "Nnakọta abalị: a na-atụkwasị ụgwọ abalị, ọ na-agakwara ọkwọ ụgbọ gị niile.",
     "vehicleBlocked": "Anabataghị maka ụdị ngwugwu a",
-    "stepReview": "Nyocha"
+    "stepReview": "Nyocha",
+    "highValueFee": "Mkpuchi ihe dị oke ọnụ"
   },
   "rewardsTab": {
     "title": "Ụgwọ Ọrụ M",

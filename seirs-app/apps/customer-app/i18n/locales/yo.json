@@ -254,7 +254,8 @@
     "errWeightMissing": "Tẹ ìwúwo ní kg sí i. Ìdíye tó sún mọ́ ọn tó: awakọ̀ rẹ yóò fi yan ọkọ̀ tó yẹ.",
     "nightFeeNote": "Ìkó ní alẹ́: owó alẹ́ ni a ó fi kún un, gbogbo rẹ̀ sì ń lọ sí ọwọ́ awakọ̀ rẹ.",
     "vehicleBlocked": "Kò gbà fún irú àpò yìí",
-    "stepReview": "Àyẹ̀wò"
+    "stepReview": "Àyẹ̀wò",
+    "highValueFee": "Ídáàbòbò ọjà olówó"
   },
   "rewardsTab": {
     "title": "Àwọn Ẹ̀bùn Mi",

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, Pressable, StyleSheet, StatusBar, TextInput,
-  ActivityIndicator, Image, Alert, Keyboard, ScrollView, Linking, Modal,
+  ActivityIndicator, Image, Alert, Keyboard, ScrollView, Linking, Modal, Dimensions,
   KeyboardAvoidingView, Platform,
   BackHandler,
 } from 'react-native';
@@ -297,6 +297,57 @@ export default function SendScreen() {
   const [invalidField, setInvalidField] = useState<string | null>(null);
   const scrollRef = useRef<any>(null);
   const fieldY    = useRef<Record<string, number>>({});
+
+  /**
+   * Keep the focused field above the keyboard (device sweep 2026-08-23).
+   *
+   * On the A30 the keyboard opened straight over "What is it?" and the
+   * list never moved, so the sender could not see their own typing. The
+   * business Send solved this on 2026-08-16; this is that solution.
+   *
+   * measureInWindow returns SCREEN coordinates and needs no ancestor
+   * ref, so it answers the only question that matters directly: is this
+   * field under the keyboard, and by how much?
+   */
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollY     = useRef(0);
+  const focusedRef  = useRef<{ node: any; extra: number } | null>(null);
+
+  const ensureVisible = (node: any, kbH: number, extra = 0) => {
+    if (!node || typeof node.measureInWindow !== 'function' || !kbH) return;
+    node.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+      const kbTop   = Dimensions.get('window').height - kbH;
+      const overlap = (y + h + 24 + extra) - kbTop;
+      if (overlap > 0) {
+        scrollRef.current?.scrollTo({ y: Math.max(0, scrollY.current + overlap), animated: true });
+      }
+    });
+  };
+
+  /**
+   * `extra` reserves room BELOW the field: the address inputs drop a
+   * suggestion list, and lifting only the input leaves the suggestions
+   * under the keyboard.
+   */
+  const handleFieldFocus = (e: any, extra = 0) => {
+    const node = e?.target;
+    focusedRef.current = { node, extra };
+    // On a first focus the keyboard is still opening and its height is
+    // unknown, so measuring now reports no overlap. keyboardDidShow
+    // below does it once the real height exists.
+    if (keyboardHeight > 0) setTimeout(() => ensureVisible(node, keyboardHeight, extra), 80);
+  };
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      const h = e.endCoordinates.height;
+      setKeyboardHeight(h);
+      const f = focusedRef.current;
+      if (f) setTimeout(() => ensureVisible(f.node, h, f.extra), 60);
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const onFieldLayout = (key: string) => (e: any) => {
     fieldY.current[key] = e.nativeEvent.layout.y;
@@ -617,6 +668,12 @@ export default function SendScreen() {
           // is 0 until the admin publishes a value. COD and insurance
           // remain engine-absent and stay zeroed.
           service:   Math.round(Number(c.serviceFee ?? 0)),
+          // Declaring a value above the card's threshold adds a real
+          // premium to what you pay (pricing.service computes it and
+          // folds it into total). It was charged and never shown, which
+          // is the "hidden non-zero fee" the summary below calls a lie
+          // (found on device 2026-08-23 declaring N150,000).
+          highValue: Math.round(Number(c.highValuePremium ?? 0)),
           codFee:    0,
           insurance: 0,
           discounts: {
@@ -1009,9 +1066,11 @@ export default function SendScreen() {
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: Spacing.lg, paddingBottom: Spacing.xl }}
+          contentContainerStyle={{ padding: Spacing.lg, paddingBottom: Spacing.xl + keyboardHeight }}
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
+          onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={16}
         >
           {/* Banner only for errors with no single field to point at
               (booking failures, network). Missing-field messages now
@@ -1110,6 +1169,7 @@ export default function SendScreen() {
 
               <Text style={[styles.label, { color: theme.textSecond }]}>{t('send.description')}</Text>
               <TextInput
+                onFocus={handleFieldFocus}
                 style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
                 placeholder={t('send.descPlaceholder')}
                 placeholderTextColor={theme.textThird}
@@ -1122,6 +1182,7 @@ export default function SendScreen() {
                   {t('send.weightKg')} <Text style={{ color: theme.error }}>*</Text>
                 </Text>
                 <TextInput
+                  onFocus={handleFieldFocus}
                   style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: fieldBorder('weight'), borderWidth: invalidField === 'weight' ? 2 : 1, color: theme.text }]}
                   placeholder={t('send.weightPlaceholder')}
                   placeholderTextColor={theme.textThird}
@@ -1167,6 +1228,7 @@ export default function SendScreen() {
                 </Text>
                 <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
                   <TextInput
+                    onFocus={handleFieldFocus}
                     style={[styles.input, { flex: 1, backgroundColor: theme.surfaceSecond, borderColor: fieldBorder('receiver'), borderWidth: invalidField === 'receiver' ? 2 : 1, color: theme.text }]}
                     placeholder={t('send.receiverFirst', { defaultValue: 'First name' })}
                     placeholderTextColor={theme.textThird}
@@ -1174,6 +1236,7 @@ export default function SendScreen() {
                     onChangeText={v => { updatePkg(pkgIndex, { receiverFirst: v }); if (invalidField === 'receiver') { setInvalidField(null); setError(''); } }}
                   />
                   <TextInput
+                    onFocus={handleFieldFocus}
                     style={[styles.input, { flex: 1, backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
                     placeholder={t('send.receiverLast', { defaultValue: 'Last name' })}
                     placeholderTextColor={theme.textThird}
@@ -1189,6 +1252,7 @@ export default function SendScreen() {
                 {t('send.receiverHint', { defaultValue: 'The driver confirms this first name at handoff. Anyone the receiver trusts can collect.' })}
               </Text>
               <TextInput
+                onFocus={handleFieldFocus}
                 style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
                 placeholder={t('send.receiverPhone', { defaultValue: '08012345678' })}
                 placeholderTextColor={theme.textThird}
@@ -1236,7 +1300,7 @@ export default function SendScreen() {
                     value={dropoffQuery}
                     onChangeText={(v) => { onChangeQuery(`pkg:${pkgIndex}`, v);
                       if (invalidField === 'dropoff') { setInvalidField(null); setError(''); } }}
-                    onFocus={() => setActiveField(`pkg:${pkgIndex}`)}
+                    onFocus={(e) => { setActiveField(`pkg:${pkgIndex}`); handleFieldFocus(e, 220); }}
                     placeholder={t('send.destAddressPlaceholder', { defaultValue: 'Street, area, city' })}
                     placeholderTextColor={theme.textThird}
                   />
@@ -1320,6 +1384,7 @@ export default function SendScreen() {
               )}
               {fallbackPref === 'neighbour' && (
                 <TextInput
+                  onFocus={handleFieldFocus}
                   style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
                   placeholder={t('send.neighbourName', { defaultValue: "Neighbour or security's name" })}
                   placeholderTextColor={theme.textThird}
@@ -1332,6 +1397,7 @@ export default function SendScreen() {
                 {t('send.declaredValue', { defaultValue: 'Package value in NGN (optional)' })}
               </Text>
               <TextInput
+                onFocus={handleFieldFocus}
                 style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text }]}
                 placeholder={t('send.declaredValueHint', { defaultValue: 'e.g. 150000' })}
                 placeholderTextColor={theme.textThird}
@@ -1347,6 +1413,7 @@ export default function SendScreen() {
                 {t('send.instructions', { defaultValue: 'Instructions for driver (optional)' })}
               </Text>
               <TextInput
+                onFocus={handleFieldFocus}
                 style={[styles.input, { backgroundColor: theme.surfaceSecond, borderColor: theme.border, color: theme.text, minHeight: 70, textAlignVertical: 'top' }]}
                 placeholder={t('send.instructionsPlaceholder', { defaultValue: 'e.g. Call when you reach the gate. Ask for security.' })}
                 placeholderTextColor={theme.textThird}
@@ -1445,7 +1512,7 @@ export default function SendScreen() {
                   <TextInput
                     value={pickupQuery}
                     onChangeText={(t) => onChangeQuery('pickup', t)}
-                    onFocus={() => setActiveField('pickup')}
+                    onFocus={(e) => { setActiveField('pickup'); handleFieldFocus(e, 220); }}
                     placeholder={t('send.pickupAddress')}
                     placeholderTextColor={theme.textThird}
                     style={[styles.inputField, { color: theme.text }]}
@@ -1978,6 +2045,10 @@ export default function SendScreen() {
                     ? [[t('send.serviceFee', { defaultValue: 'Service fee' }),
                         `₦${Math.round(fare.service).toLocaleString()}`] as [string, string]]
                     : []),
+                  ...(Number((fare as any).highValue) > 0
+                    ? [[t('send.highValueFee', { defaultValue: 'High-value cover' }),
+                        `₦${Math.round(Number((fare as any).highValue)).toLocaleString()}`] as [string, string]]
+                    : []),
                   [t('send.total'),          `₦${Math.round(fare.total).toLocaleString()}`],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
@@ -2011,14 +2082,15 @@ export default function SendScreen() {
         </ScrollView>
 
         {/* CTA pinned to the bottom, as in the business flow, so Continue is
-            reachable without scrolling to the end of a long step. The inset
-            padding clears the phone's navigation bar: insets.bottom is 0 on
-            gesture navigation and ~48dp on the 3-button layout, so a tap
-            cannot land on Back instead of Continue. */}
+            reachable without scrolling to the end of a long step.
+            insets.bottom REPORTS 0 on this A30's 3-button nav bar (measured
+            on device, see request.tsx): the old comment here claimed ~48dp
+            and the raw value left the button under the nav bar. Hard floor,
+            same as request.tsx and vehicle-select.tsx (2026-08-23). */}
         <View style={[styles.ctaBar, {
           backgroundColor: theme.background,
           borderTopColor: theme.border,
-          paddingBottom: Spacing.md + insets.bottom,
+          paddingBottom: Spacing.md + Math.max(insets.bottom, 24),
         }]}>
           {/* Every error surfaces here, business-style. Field-level
               errors ALSO flag their field inline, but the footer is the
@@ -2031,6 +2103,22 @@ export default function SendScreen() {
               <AlertCircle size={15} color="#DC2626" />
               <Text style={styles.footerErrorText}>{error}</Text>
             </View>
+          )}
+          {/* Say WHY the button is dead. The consent box is the last thing
+              on a long review, so someone landing at the top of step 4 saw
+              a greyed-out "Pay N2,650" and no reason at all: they have to
+              scroll to discover an unticked box (found on device
+              2026-08-23). Tapping this jumps them to it. */}
+          {step === 3 && !tcAgreed && !loading && (
+            <Pressable
+              style={styles.ctaHint}
+              onPress={() => scrollRef.current?.scrollToEnd({ animated: true })}
+            >
+              <AlertCircle size={15} color={theme.textSecond} />
+              <Text style={[styles.ctaHintText, { color: theme.textSecond }]}>
+                {t('send.tcBlocked', { defaultValue: 'Agree to the terms below to pay' })}
+              </Text>
+            </Pressable>
           )}
           <Pressable
             style={[styles.cta, { backgroundColor: theme.primary },
@@ -2080,6 +2168,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10,
   },
   footerErrorText: { flex: 1, color: '#DC2626', fontSize: 13, fontWeight: '600' },
+  ctaHint:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, paddingBottom: 8 },
+  ctaHintText: { flex: 1, fontSize: 13, fontWeight: '600' },
   mapCard:      { height: 220, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   mapInline:    { ...StyleSheet.absoluteFillObject },
   stepGap:      { gap: Spacing.md },

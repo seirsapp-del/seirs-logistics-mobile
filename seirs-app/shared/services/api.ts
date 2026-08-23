@@ -982,6 +982,10 @@ export const businessApi = {
     isInterState?:    boolean;
     isLongDistance?:  boolean;
     isRecurring?:     boolean;
+    /** Consent to the failed-delivery terms, stamped as termsAcceptedAt. */
+    termsAccepted?:   boolean;
+    /** Signed quote pin, so the reviewed number is the charged number. */
+    quoteToken?:      string;
   }) => request<any>('POST', '/business/deliveries', data),
 
   // Stop-level transitions (called by driver app when working a multi-
@@ -1518,7 +1522,7 @@ export const pricingApi = {
   rideQuote: (body: {
     km: number;
     pickupCoords?:  { latitude: number; longitude: number };
-    dropoffCoords?: { latitude: number; longitude: number };
+    dropoffCoords?: { latitude: number; longitude: number };
     luggage?: string;
   }) =>
     request<{
@@ -1528,6 +1532,22 @@ export const pricingApi = {
         quotePin: { token: string; pricedAt: string; expiresAt: string };
       }>;
     }>('POST', '/pricing/ride-quote', body),
-  /** Live price quote. call when key inputs change in the booking form. */
-  quote: (body: QuoteInput) => request<PriceBreakdown>('POST', '/pricing/quote', body),
+  /**
+   * Live price quote. call when key inputs change in the booking form.
+   *
+   * normalizeBodyVehicle is NOT optional here (found on device
+   * 2026-08-23). The customer Send screen holds the UI alias as its
+   * vehicle id (keke, truck_sm, truck_lg), and this call passed it
+   * straight through, so the engine answered "Unknown vehicle type:
+   * keke" for three of the seven classes. The screen caught that
+   * silently and fell back to the bundled client formula, which prices
+   * the service fee as 18% while the live card charges a flat 0: the
+   * review showed N2,650 where the server would charge N2,588.96. Worse,
+   * booking refuses outright without a server quote, so Keke, Small
+   * Truck and Large Truck package bookings could not be completed at
+   * all. deliveriesApi.quote/create normalised all along; this one did
+   * not, which is exactly why the mismatch stayed invisible.
+   */
+  quote: (body: QuoteInput) =>
+    request<PriceBreakdown>('POST', '/pricing/quote', normalizeBodyVehicle(body as any)),
 };

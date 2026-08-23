@@ -264,7 +264,8 @@
     "receiverName": "Who is receiving?",
     "receiverPhone": "08012345678",
     "vehicleBlocked": "Not allowed for this package type",
-    "stepReview": "Review"
+    "stepReview": "Review",
+    "highValueFee": "High-value cover"
   },
   "rewardsTab": {
     "title": "My Rewards",
