@@ -594,8 +594,12 @@ export default function ActiveDeliveryScreen() {
           ))}
         </View>
 
-        {/* Customer info */}
-        {delivery.customer && (
+        {/* Customer info. NOT for rides: the passenger card below is the
+            ride surface (first name + chat, no phone). This card renders
+            the full name and phone number, so on a ride it was handing
+            the driver exactly what the privacy rule forbids, directly
+            above the card that honours it (sweep 2026-08-23). */}
+        {delivery.customer && (delivery as any).kind !== 'ride' && (
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Customer</Text>
             <View style={styles.customerRow}>

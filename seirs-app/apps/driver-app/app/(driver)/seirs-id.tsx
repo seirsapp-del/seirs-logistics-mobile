@@ -163,13 +163,6 @@ const styles = StyleSheet.create({
   copyBtn:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.md, paddingVertical: 12 },
   copyBtnText:{ color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 
-  howCard:  { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.md },
-  howTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
-  howRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  howStep:  { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
-  howStepText:{ color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
-  howText:  { flex: 1, fontSize: FontSize.sm, lineHeight: 19 },
-
   alert:    { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, alignItems: 'center' },
   alertRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs },
   alertText:{ color: '#92400E', fontSize: FontSize.sm, fontWeight: FontWeight.semibold },

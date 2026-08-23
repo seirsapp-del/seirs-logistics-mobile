@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar, Alert,
+  View, Text, Pressable, StyleSheet, StatusBar, Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -118,7 +118,7 @@ export default function SOSScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#0A0000' : '#FFF1F1' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#0A0000' : '#7F1D1D' }}>
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 
@@ -177,7 +177,13 @@ export default function SOSScreen() {
                 <Pressable
                   key={ec.labelKey}
                   style={styles.emergencyCard}
-                  onPress={() => Alert.alert(t('sos.callDialog'), t('sos.callingMsg', { label: ec.label, number: ec.number }))}
+                  onPress={() => {
+                    // Was an Alert reading "Calling Police (199)..." that
+                    // placed no call. In an emergency that is the worst
+                    // possible lie (sweep 2026-08-23).
+                    Linking.openURL(`tel:${ec.number}`).catch(() =>
+                      Alert.alert(t('sos.callDialog'), ec.number));
+                  }}
                 >
                   <View style={styles.emergencyIcon}>
                     <Ionicons name={ec.icon as any} size={22} color="#EF4444" />
@@ -235,7 +241,9 @@ const styles = StyleSheet.create({
   emergencyCard:        { flex: 1, alignItems: 'center', gap: 6, padding: Spacing.md, borderRadius: Radius.xl, backgroundColor: 'rgba(255,255,255,0.08)' },
   emergencyIcon:        { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(239,68,68,0.15)', justifyContent: 'center', alignItems: 'center' },
   emergencyLabel:       { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  emergencyNum:         { color: '#EF4444', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+  // #EF4444 was near-invisible once the ground became deep red in both
+  // themes. The number is the thing you need to read here (2026-08-23).
+  emergencyNum:         { color: '#FFE4E4', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 
   shareBtn:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: 14, borderRadius: Radius.full, backgroundColor: 'rgba(255,255,255,0.15)' },
   shareBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },

@@ -120,7 +120,7 @@ export default function ProfileScreen() {
         { icon: 'help-circle-outline',   label: t('profile.helpCenter'), sub: t('profile.helpCenterSub'), onPress: () => router.push('/(customer)/help') },
         { icon: 'chatbubble-outline',    label: t('profile.liveChat'),   sub: t('profile.liveChatSub'),   onPress: () => router.push('/(customer)/support/new' as any) },
         { icon: 'alert-circle-outline',  label: t('profile.sos', { defaultValue: 'SOS Emergency' }), sub: t('profile.sosSub', { defaultValue: 'Immediate help with live location' }), onPress: () => router.push('/(customer)/sos' as any), danger: true },
-        { icon: 'document-text-outline', label: t('profile.terms'),      sub: t('profile.termsSub'),      onPress: () => Linking.openURL('https://seirs-website.vercel.app/terms').catch(() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))) },
+        { icon: 'document-text-outline', label: t('profile.terms'),      sub: t('profile.termsSub'),      onPress: () => Linking.openURL('https://seirs-website.vercel.app/terms-of-service').catch(() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))) },
       ],
     },
   ];

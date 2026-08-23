@@ -45,7 +45,12 @@ export default function DriverHistoryScreen() {
         distance:        d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '',
         price:           Number(d.price ?? 0),
         driverEarnings:  Number(d.driverEarnings ?? 0),
-        customer:        d.customer ? { name: d.customer.name } : { name: 'Customer' },
+        // Rides keep a first name only, packages keep the sender's name.
+        customer:        d.customer
+          ? { name: String(d.kind) === 'ride'
+                ? (String(d.customer.name ?? 'Passenger').trim().split(/\s+/)[0] || 'Passenger')
+                : d.customer.name }
+          : { name: 'Customer' },
       })));
     } catch {
       setItems([]);

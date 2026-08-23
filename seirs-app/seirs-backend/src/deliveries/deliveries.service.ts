@@ -1014,8 +1014,41 @@ export class DeliveriesService {
     });
   }
 
-  findActiveByDriverUserId(userId: string) {
-    return this.repo
+  /**
+   * Reduce the customer on a driver-facing row to what that driver is
+   * allowed to know (founder rule, sweep 2026-08-23).
+   *
+   *   ride    -> first name only. No surname (Facebook lookup is the
+   *              exact harassment vector this rule exists to close),
+   *              no phone (the chat box is the channel), no email.
+   *   package -> name + phone stay: a courier has to reach the sender
+   *              at the door. Email still never travels.
+   *
+   * Admin payloads are untouched: ops need full identity for
+   * emergencies, and they get it through the admin module.
+   */
+  private redactCustomerForDriver(d: any) {
+    const c = d?.customer;
+    if (!c) return d;
+    const isRide = String(d.kind ?? 'package') === 'ride';
+    if (isRide) {
+      // The anonymity switch already wrote the SEIRS ID into
+      // receiverFirstName at booking time; prefer it when present so an
+      // anonymous passenger stays anonymous here too.
+      const shown = String(d.receiverFirstName ?? c.firstName ?? c.name ?? 'Passenger')
+        .trim().split(/\s+/)[0] || 'Passenger';
+      d.customer = { id: c.id, firstName: shown, name: shown };
+    } else {
+      d.customer = {
+        id: c.id, name: c.name, firstName: c.firstName, lastName: c.lastName,
+        phone: c.phone, profilePhoto: c.profilePhoto,
+      };
+    }
+    return d;
+  }
+
+  async findActiveByDriverUserId(userId: string) {
+    const rows = await this.repo
       .createQueryBuilder('d')
       .leftJoinAndSelect('d.customer', 'customer')
       .innerJoin('d.driver', 'driver')
@@ -1026,6 +1059,7 @@ export class DeliveriesService {
       })
       .orderBy('d.assignedAt', 'DESC')
       .getMany();
+    return rows.map(r => this.redactCustomerForDriver(r as any));
   }
 
   /**

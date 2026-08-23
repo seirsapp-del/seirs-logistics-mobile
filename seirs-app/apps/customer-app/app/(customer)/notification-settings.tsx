@@ -54,7 +54,7 @@ export default function NotificationSettingsScreen() {
     setOffers(next);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      usersApi.saveNotificationPrefs({ marketing: next }).catch(() => {});
+      usersApi.updateNotificationPrefs({ marketing: next }).catch(() => {});
     }, 400);
   };
 
@@ -108,7 +108,7 @@ export default function NotificationSettingsScreen() {
               value={anonRides}
               onValueChange={(next) => {
                 setAnonRides(next);
-                usersApi.saveNotificationPrefs({ anonymousToDrivers: next } as any).catch(() => {});
+                usersApi.updateNotificationPrefs({ anonymousToDrivers: next } as any).catch(() => {});
               }}
               trackColor={{ false: theme.border, true: theme.primary }}
               thumbColor="#fff"

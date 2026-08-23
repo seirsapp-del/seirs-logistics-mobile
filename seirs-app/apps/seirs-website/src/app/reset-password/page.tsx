@@ -199,7 +199,7 @@ function ResetForm() {
       <div className="mt-5 flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-500">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#3A7BD5]" />
         <span>
-          This link works once and expires 30 minutes after it was requested. If you didn&apos;t ask to
+          This link works once and expires 15 minutes after it was requested. If you didn&apos;t ask to
           reset your password, you can safely ignore the email; your account stays untouched.
         </span>
       </div>

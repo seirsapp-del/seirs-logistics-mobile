@@ -163,7 +163,10 @@ export default async function ForDriversPage() {
                 // fee was allocated to the driver in full. The release now
                 // honours the booked driverEarnings, so the original promise
                 // is true in code and can be true on the page.
-                'Night pickups carry a night fee that goes to you in full',
+                // The seeded card pays the rider 80% of the night surcharge
+                // (timeSurcharges.night.driverSharePercent), not 100%. "In
+                // full" was a recruitment promise the engine contradicts.
+                'Night pickups carry a night fee, and most of it is yours',
                 'Instant withdrawal available once earnings are a day old',
               ]}
             />

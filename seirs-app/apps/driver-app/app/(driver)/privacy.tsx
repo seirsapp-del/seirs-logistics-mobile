@@ -96,7 +96,8 @@ export default function DriverPrivacyScreen() {
   const LEGAL_ITEMS = [
     { label: 'Privacy Policy',     icon: 'document-text-outline',          url: 'https://seirs.app/privacy-policy'    },
     { label: 'Terms of Service',   icon: 'reader-outline',                  url: 'https://seirs.app/terms-of-service'  },
-    { label: 'Dispute Resolution', icon: 'information-circle-outline',      url: 'https://seirs.app/dispute-resolution' },
+    // /dispute-resolution has never existed: this row 404'd (2026-08-23).
+    { label: 'Dispute Resolution', icon: 'information-circle-outline',      url: 'https://seirs.app/terms-of-service' },
   ];
 
   const renderPermRow = (label: string, sub: string, granted: boolean | null, isLast: boolean) => (

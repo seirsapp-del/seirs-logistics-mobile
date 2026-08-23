@@ -54,6 +54,10 @@ export default function TermsOfServicePage() {
     "Pricing and Fees",
     "Payments and Refunds",
     "Delivery Terms",
+    // Section 8 was added on 2026-08-15 and never added here, so every
+    // entry from 8 down jumped to the wrong section and 17 had no entry
+    // at all (2026-08-23 sweep).
+    "Undeliverable Packages, Storage and Disposal",
     "Acceptable Use",
     "Suspension and Termination",
     "Intellectual Property",

@@ -243,7 +243,9 @@ export default function PrivacyScreen() {
           {[
             { label: 'Privacy Policy',    url: 'https://seirs.app/privacy-policy'    },
             { label: 'Terms of Service',  url: 'https://seirs.app/terms-of-service'  },
-            { label: 'Dispute Resolution', url: 'https://seirs.app/dispute-resolution' },
+            // /dispute-resolution has never existed on the site: this row
+            // 404'd. Disputes are covered in the Terms (2026-08-23).
+            { label: 'Dispute Resolution', url: 'https://seirs.app/terms-of-service' },
           ].map((item, i, arr) => (
             <Pressable
               key={item.label}

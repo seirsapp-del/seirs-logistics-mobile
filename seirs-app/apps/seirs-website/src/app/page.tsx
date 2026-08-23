@@ -838,11 +838,13 @@ export default async function HomePage() {
           next to genuine ones. That is the kind of unearned compliance claim
           a regulator acts on. Add it back the day the registration lands.
 
-          The four below are each true today and each verifiable:
-          Flutterwave is the processor and is CBN-licensed; escrow holds
-          funds until delivery is confirmed; drivers pass KYC review before
-          going online; and the proof photo is enforced at handoff, not
-          optional. Nothing here is aspirational. ── */}
+          The removal was written here on 2026-08-14 and never actually
+          applied: the badge kept rendering under the comment saying it was
+          gone, until the 2026-08-23 sweep caught it on the live page.
+
+          The two below are each true today and each verifiable:
+          Flutterwave is the processor and is CBN-licensed, and drivers pass
+          KYC review before going online. Nothing here is aspirational. ── */}
       <section className="py-8 sm:py-10 bg-off-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6 sm:gap-x-16">
@@ -851,11 +853,6 @@ export default async function HomePage() {
                 logo: img.img_badge_flutterwave,
                 icon: CheckCircle,
                 label: "Payments by Flutterwave",
-              },
-              {
-                logo: img.img_badge_compliance,
-                icon: Shield,
-                label: "NDPR compliant",
               },
               {
                 logo: null,

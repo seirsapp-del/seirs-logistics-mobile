@@ -111,7 +111,7 @@ export default function DriverSosScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#0A0000' : '#FFF1F1' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#0A0000' : '#7F1D1D' }}>
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 

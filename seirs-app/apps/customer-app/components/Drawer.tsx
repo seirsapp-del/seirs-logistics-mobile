@@ -44,8 +44,14 @@ export function Drawer({ visible, onClose }: Props) {
   const items: DrawerItem[] = [
     { icon: 'QrCode',     label: t('drawer.seirsId',       { defaultValue: 'My SEIRS ID' }),     onPress: () => navigate('/(customer)/seirs-id') },
     { icon: 'Map',        label: t('drawer.travelBuddy',   { defaultValue: 'Travel Buddy (intercity)' }), onPress: () => navigate('/(customer)/travel-buddy') },
-    { icon: 'Users',      label: t('drawer.poolPrefs',     { defaultValue: 'Ride Pool Preferences' }), onPress: () => navigate('/(customer)/pool-preferences') },
-    { icon: 'Send',       label: t('drawer.sendMultiple',  { defaultValue: 'Send Multiple' }),   onPress: () => navigate('/(customer)/business') },
+    // Ride Pool Preferences pulled from the drawer on the 2026-08-23
+    // sweep: the screen saved to AsyncStorage that no backend reads, and
+    // promised "a pool discount applied automatically" that no pricing
+    // path can produce. The screen file stays for when pooling ships.
+    // Send Multiple pointed at /(customer)/business, which has never
+    // existed: one of six drawer items was a 404. send.tsx IS the
+    // multi-package flow (add-another-package), so it goes there.
+    { icon: 'Send',       label: t('drawer.sendMultiple',  { defaultValue: 'Send Multiple' }),   onPress: () => navigate('/(customer)/send') },
     // Straight to a NEW ticket (founder 2026-08-10: the old path bounced
     // through the Messages tab first).
     { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }),

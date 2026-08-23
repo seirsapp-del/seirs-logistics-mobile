@@ -47,8 +47,10 @@ export interface DrawerProps {
   themeToggle?: {
     isDark:    boolean;
     onToggle:  () => void;
-    darkLabel: string;   // "Dark Mode"
-    lightLabel: string;  // "Light Mode"
+    darkLabel: string;   // "Dark Mode": names what the switch controls
+    /** @deprecated Unused. The row is always labelled darkLabel so the
+     *  label and the switch state can never contradict each other. */
+    lightLabel?: string;
   };
 
   /** Footer sign-out action. */
@@ -181,8 +183,13 @@ export function Drawer({
                 color={theme.textSecond}
                 strokeWidth={1.8}
               />
+              {/* The label names what the SWITCH controls, never where a
+                  tap would take you. Showing "Light Mode" with the switch
+                  ON while the app is plainly dark read as a straight
+                  contradiction on the A30 (sweep 2026-08-23). "Dark Mode"
+                  on = dark, off = light, true in both states. */}
               <Text style={[styles.itemLabel, { color: theme.text }]}>
-                {themeToggle.isDark ? themeToggle.lightLabel : themeToggle.darkLabel}
+                {themeToggle.darkLabel}
               </Text>
               <Switch
                 value={themeToggle.isDark}

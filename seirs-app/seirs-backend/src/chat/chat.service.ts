@@ -298,7 +298,15 @@ export class ChatService {
             }
           : {
               id:    d.customer?.id ?? null,
-              name:  d.customer?.name ?? 'Customer',
+              // First name only to the driver (founder rule): the inbox
+              // fed the full legal name into the thread header and every
+              // message avatar. A surname here defeats the whole policy.
+              name:  String(
+                       (d as any).receiverFirstName
+                       ?? d.customer?.firstName
+                       ?? d.customer?.name
+                       ?? 'Customer',
+                     ).trim().split(/\s+/)[0] || 'Customer',
               role:  'customer' as const,
             };
         return {

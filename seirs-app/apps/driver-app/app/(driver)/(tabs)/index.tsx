@@ -326,7 +326,13 @@ export default function DriverHomeScreen() {
               <Text style={[styles.activeLabel, { color: '#16A34A' }]}>ACTIVE JOB</Text>
               <ChevronRight size={16} color="#16A34A" strokeWidth={1.75} style={{ marginLeft: 'auto' }} />
             </View>
-            <Text style={[styles.activeCustomer, { color: theme.text }]}>{activeJob.customer?.name ?? 'Customer'}</Text>
+            {/* The job list below masks rides correctly; this card was
+                missed and showed the passenger's full name (2026-08-23). */}
+            <Text style={[styles.activeCustomer, { color: theme.text }]}>
+              {(activeJob as any).kind === 'ride'
+                ? String(activeJob.customer?.name ?? 'Passenger').trim().split(/\s+/)[0]
+                : (activeJob.customer?.name ?? 'Customer')}
+            </Text>
             <View style={styles.activeRow}>
               <Navigation size={14} color={theme.textThird} strokeWidth={1.75} />
               <Text style={[styles.activeAddr, { color: theme.textSecond }]} numberOfLines={1}>

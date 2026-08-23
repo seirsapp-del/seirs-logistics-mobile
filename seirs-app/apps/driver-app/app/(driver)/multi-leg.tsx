@@ -5,7 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft, MapPin, Package, Users, Check, Clock, ChevronRight,
+  ArrowLeft, MapPin, Package, Users, Check, Navigation, ChevronRight,
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
@@ -22,7 +22,7 @@ interface Leg {
   pickup:       string;
   dropoff:      string;
   status:       'pending_pickup' | 'in_transit' | 'completed';
-  etaMinutes:   number;
+  distanceKm:   number;
   recipientName?: string;
 }
 
@@ -39,7 +39,7 @@ export default function MultiLegScreen() {
 
   const [legs,    setLegs]    = useState<Leg[]>([]);
   const [loading, setLoading] = useState(true);
-  const [poolEtaMin, setPoolEtaMin] = useState(0);
+  const [poolKm, setPoolKm] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -49,15 +49,20 @@ export default function MultiLegScreen() {
         const arr = Array.isArray(my) ? my : [];
         const mapped: Leg[] = arr.slice(0, 4).map((d: any) => ({
           id:           d.id,
-          type:         (d.packageDescription ? 'package' : 'package') as 'package',
+          // Was `d.packageDescription ? 'package' : 'package'`: a
+          // tautology that labelled a human passenger "Package" and made
+          // the Passenger icon + label below dead code (2026-08-23).
+          type:         (d.kind === 'ride' ? 'passenger' : 'package') as 'package' | 'passenger',
           pickup:       d.pickupAddress ?? 'Pickup',
           dropoff:      d.dropoffAddress ?? 'Dropoff',
           status:       d.status === 'delivered' ? 'completed' : d.status === 'in_transit' ? 'in_transit' : 'pending_pickup',
-          etaMinutes:   8,
-          recipientName: d.customer?.name ?? d.recipientName,
+          distanceKm:   Number(d.distanceKm ?? 0),
+          recipientName: d.kind === 'ride'
+            ? (String(d.customer?.name ?? 'Passenger').trim().split(/\s+/)[0] || 'Passenger')
+            : (d.customer?.name ?? d.recipientName),
         }));
         setLegs(mapped);
-        setPoolEtaMin(mapped.reduce((s, l) => s + l.etaMinutes, 0));
+        setPoolKm(mapped.reduce((s, l) => s + l.distanceKm, 0));
       } catch { setLegs([]); }
       finally { setLoading(false); }
     })();
@@ -90,10 +95,16 @@ export default function MultiLegScreen() {
                 : 'At cap: no new insertions until a leg completes'}
             </Text>
           </View>
-          <View style={styles.etaBadge}>
-            <Clock size={14} color="#fff" />
-            <Text style={styles.etaText}>{poolEtaMin}m</Text>
-          </View>
+          {/* Was a "{poolEtaMin}m" badge built from a hardcoded 8 minutes
+              per leg, so a 3-leg pool always read "24m". Invented minutes
+              are exactly what this platform does not promise. Total
+              distance is a real number the driver can plan against. */}
+          {poolKm > 0 && (
+            <View style={styles.etaBadge}>
+              <Navigation size={14} color="#fff" />
+              <Text style={styles.etaText}>{poolKm.toFixed(1)}km</Text>
+            </View>
+          )}
         </View>
 
         {loading ? (

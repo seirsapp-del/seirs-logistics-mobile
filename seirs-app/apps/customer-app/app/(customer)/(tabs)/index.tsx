@@ -34,7 +34,7 @@ function getGreetingKey() {
   return 'home.goodEvening';
 }
 
-type TripTab = 'in_progress' | 'delivered' | 'featured';
+type TripTab = 'in_progress' | 'delivered' | 'cancelled';
 
 function statusVariant(s: string): any {
   return s === 'completed' ? 'success' : s === 'in_progress' ? 'info' : s === 'cancelled' ? 'error' : 'default';
@@ -94,7 +94,7 @@ export default function CustomerHomeScreen() {
     setTimeout(() => router.push((which === 'send' ? '/(customer)/send' : '/(customer)/request') as any), 220);
   };
   const [trips,         setTrips]         = useState<Array<{
-    id: string; status: string; date: string; dropoffAddress: string; price: number; distance: string;
+    id: string; status: string; date: string; dropoffAddress: string; price: number; distance: string; kind?: string; unpaid?: boolean;
   }>>([]);
   const [refreshing,    setRefreshing]    = useState(false);
 
@@ -110,6 +110,7 @@ export default function CustomerHomeScreen() {
         status:         String(d.status ?? 'pending').replace('picked_up', 'in_progress').replace('in_transit', 'in_progress'),
         date:           d.deliveredAt ?? d.createdAt ?? new Date().toISOString(),
         dropoffAddress: d.dropoffAddress ?? '-',
+        kind:           String(d.kind ?? 'package'),
         price:          Number(d.price ?? 0),
         unpaid:         !d.paymentHeldAt && String(d.status ?? 'pending') === 'pending',
         distance:       d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '',
@@ -133,7 +134,7 @@ export default function CustomerHomeScreen() {
     ? TRIPS.filter(t => t.status === 'in_progress' || t.status === 'pending' || t.status === 'assigned')
     : activeTab === 'delivered'
     ? TRIPS.filter(t => t.status === 'completed' || t.status === 'delivered')
-    : TRIPS.slice(0, 2);
+    : TRIPS.filter(t => t.status === 'cancelled');
 
   const activeTrip = TRIPS.find(t => ['in_progress', 'pending', 'assigned'].includes(t.status));
 
@@ -311,7 +312,7 @@ export default function CustomerHomeScreen() {
             {([
               { key: 'in_progress', label: t('home.inProgress') },
               { key: 'delivered',   label: t('home.delivered')  },
-              { key: 'featured',    label: t('home.features')   },
+              { key: 'cancelled',   label: t('status.cancelled') },
             ] as { key: TripTab; label: string }[]).map(tab => (
               <Pressable
                 key={tab.key}
@@ -340,10 +341,14 @@ export default function CustomerHomeScreen() {
                 size={120}
               />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                {activeTab === 'in_progress' ? 'No active deliveries' : 'No deliveries yet'}
+                {activeTab === 'in_progress' ? t('home.emptyActiveTitle')
+                  : activeTab === 'cancelled' ? t('home.emptyCancelledTitle')
+                  : t('home.emptyHistoryTitle')}
               </Text>
               <Text style={[styles.emptyDesc, { color: theme.textSecond }]}>
-                {activeTab === 'in_progress' ? 'Book a delivery to get started' : 'Your delivery history appears here'}
+                {activeTab === 'in_progress' ? t('home.emptyActiveDesc')
+                  : activeTab === 'cancelled' ? t('home.emptyCancelledDesc')
+                  : t('home.emptyHistoryDesc')}
               </Text>
               <Pressable
                 style={[styles.emptyBtn, { backgroundColor: theme.primary }]}
@@ -360,7 +365,9 @@ export default function CustomerHomeScreen() {
                 onPress={() => router.push({ pathname: '/(customer)/trip/[id]', params: { id: t.id } } as any)}
               >
                 <View style={[styles.tripIconWrap, { backgroundColor: theme.surfaceSecond }]}>
-                  <Truck size={20} color={theme.accent} strokeWidth={1.75} />
+                  {(t as any).kind === 'ride'
+                    ? <Car   size={20} color={theme.accent} strokeWidth={1.75} />
+                    : <Truck size={20} color={theme.accent} strokeWidth={1.75} />}
                 </View>
                 <View style={styles.tripInfo}>
                   <Text style={[styles.tripDest, { color: theme.text }]} numberOfLines={1}>
@@ -373,7 +380,7 @@ export default function CustomerHomeScreen() {
                 </View>
                 <View style={styles.tripRight}>
                   <Text style={[styles.tripPrice, { color: theme.text }]}>
-                    ₦{t.price.toLocaleString()}
+                    ₦{Math.round(t.price).toLocaleString()}
                   </Text>
                   <Badge label={t.status.replace('_', ' ')} variant={statusVariant(t.status)} isDark={isDark} />
                 </View>

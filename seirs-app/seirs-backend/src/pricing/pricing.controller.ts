@@ -151,9 +151,6 @@ export class PricingController {
   // JwtAuthGuard here ensures only authenticated users can hit these.
   // Production should add an explicit role check via RolesGuard.
 
-  // Super admin only (2026-08-13 RBAC audit). Publishing a rate card
-  // changes what every future delivery costs, platform-wide.
-  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   /**
    * Copy today's pump prices into a new rate card version, in one action.
    *
@@ -205,6 +202,22 @@ export class PricingController {
     };
   }
 
+  /**
+   * Super admin only (2026-08-13 RBAC audit): publishing a rate card
+   * changes what every future delivery and ride costs, platform-wide.
+   *
+   * THIS RAN UNAUTHENTICATED IN PRODUCTION until the 2026-08-23 sweep.
+   * The guard above was written for this method, but a JSDoc block was
+   * later inserted between the decorator and the handler, so TypeScript
+   * bound it to the NEXT decorated method instead: sync-fuel carried the
+   * guard twice and this one carried none. Verified live with an
+   * unauthenticated PUT that reached the handler body (400 changeReason
+   * required) rather than 401. There is no global JWT guard to fall back
+   * on: the only APP_GUARD is the throttler.
+   *
+   * Never separate a @UseGuards from its handler with a comment block.
+   */
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Put('admin/rate-card')
   async publishRateCard(@Body() body: Partial<RateCard> & { changeReason: string; activatedBy: string }) {
     if (!body.changeReason) {
