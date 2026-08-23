@@ -748,6 +748,29 @@ export class DeliveriesService {
    * increment that makes overselling impossible; an unpaid or
    * cancelled booking releases the seats.
    */
+  /** Centres of the common intercity cities: seat bookings need real
+   *  coordinates (the columns are NOT NULL and the map draws them).
+   *  A city outside the table books from the trip's own pickup point
+   *  or, failing that, is refused with a clear message. */
+  private static readonly CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+    lagos:          { lat: 6.5244, lng: 3.3792 },
+    ibadan:         { lat: 7.3776, lng: 3.9470 },
+    abuja:          { lat: 9.0765, lng: 7.3986 },
+    kano:           { lat: 12.0022, lng: 8.5920 },
+    'port harcourt': { lat: 4.8156, lng: 7.0498 },
+    benin:          { lat: 6.3350, lng: 5.6037 },
+    'benin city':   { lat: 6.3350, lng: 5.6037 },
+    enugu:          { lat: 6.4584, lng: 7.5464 },
+    kaduna:         { lat: 10.5105, lng: 7.4165 },
+    ilorin:         { lat: 8.4966, lng: 4.5426 },
+    abeokuta:       { lat: 7.1475, lng: 3.3619 },
+    onitsha:        { lat: 6.1329, lng: 6.8036 },
+  };
+
+  private cityCoords(city: string) {
+    return DeliveriesService.CITY_COORDS[String(city ?? '').trim().toLowerCase()] ?? null;
+  }
+
   async bookTripSeats(tripId: string, customer: User, body: { seats?: number; luggage?: string }) {
     if (!this.driversService) {
       const { ServiceUnavailableException } = await import('@nestjs/common');
@@ -769,16 +792,25 @@ export class DeliveriesService {
 
     await (this.driversService as any).reserveSeats(tripId, seats);
     try {
+      const fromC = this.cityCoords(trip.fromCity);
+      const toC   = this.cityCoords(trip.toCity);
+      const pLat = Number(trip.pickupLat) || fromC?.lat;
+      const pLng = Number(trip.pickupLng) || fromC?.lng;
+      if (pLat == null || pLng == null || !toC) {
+        throw new BadRequestException(
+          'This route needs a mapped pickup point. Ask the driver to re-declare with a pickup location.',
+        );
+      }
       const dto: any = {
         mode: 'ride',
         pickupAddress: trip.pickupMode === 'fixed' && trip.pickupAddress
           ? trip.pickupAddress
           : `${trip.fromCity} (pickup along the route: agree in chat)`,
         dropoffAddress: trip.toCity,
-        pickupLat:  Number(trip.pickupLat)  || undefined,
-        pickupLng:  Number(trip.pickupLng)  || undefined,
-        dropoffLat: undefined,
-        dropoffLng: undefined,
+        pickupLat:  pLat,
+        pickupLng:  pLng,
+        dropoffLat: toC.lat,
+        dropoffLng: toC.lng,
         vehicleType: trip.driver.vehicleType,
         paymentMethod: 'card',
         luggage: body.luggage,
