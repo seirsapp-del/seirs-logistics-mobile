@@ -407,7 +407,7 @@ export class DeliveriesService {
     if (isRideBooking) {
       const u = await this.repo.manager.getRepository(User).findOne({
         where: { id: (customer as any).id },
-        select: ['id', 'name', 'firstName', 'lastName', 'phone'],
+        select: ['id', 'name', 'firstName', 'lastName', 'phone', 'accountId', 'notificationPrefs'],
       });
       // recipientName is a STOP column, not a delivery column; the
       // delivery row carries receiverFirstName/LastName (first live
@@ -417,11 +417,15 @@ export class DeliveriesService {
       // name: nothing for a stranger to look up (founder 2026-08-23).
       // The booker's phone stays on the row for ADMIN emergencies; the
       // driver app talks through chat, never the number.
+      // Anonymity (founder 2026-08-23): a profile switch replaces the
+      // passenger's first name with their SEIRS ID on everything the
+      // driver sees. Admin identity is untouched.
+      const anonPref = !!(u as any)?.notificationPrefs?.anonymousToDrivers;
       const riderFirst = String((dto as any).riderFirstName ?? '').trim();
       const luggage = String((dto as any).luggage ?? 'none');
       ridePassenger = {
-        receiverFirstName:  riderFirst || (u?.firstName ?? gFirst ?? null),
-        receiverLastName:   riderFirst ? null : (u?.lastName ?? (gRest.length ? gRest.join(' ') : null)),
+        receiverFirstName:  riderFirst || (anonPref ? (u?.accountId ?? 'SEIRS rider') : (u?.firstName ?? gFirst ?? null)),
+        receiverLastName:   (riderFirst || anonPref) ? null : (u?.lastName ?? (gRest.length ? gRest.join(' ') : null)),
         receiverPhone:      u?.phone ?? null,
         packageDescription: luggage === 'large' ? 'Ride · large luggage'
                           : luggage === 'small' ? 'Ride · small bag' : 'Ride',
@@ -716,26 +720,28 @@ export class DeliveriesService {
 
     const tripId = (delivery as any).tripId;
     if (tripId && this.driversService) {
+      // The TRUE offer step (founder 2026-08-23): the declared driver
+      // is asked, not conscripted. tripOfferedAt starts the expiry
+      // clock; accept is the guarded claim, decline refunds in full.
       try {
         const trip: any = await (this.driversService as any).getBookableTrip(tripId, 0);
         if (trip?.driver) {
-          await this.repo.update(delivery.id, {
-            driver:     trip.driver,
-            status:     DeliveryStatus.ASSIGNED,
-            assignedAt: new Date(),
-          });
-          this.trackingGateway?.broadcastDriverAssigned(delivery.id, trip.driver);
+          await this.repo.update(delivery.id, { tripOfferedAt: new Date() } as any);
           this.trackingGateway?.notifyDriver(trip.driver.id, delivery);
-          this.notificationsService?.notifyDeliveryAssigned?.(
-            delivery.customer.id,
-            trip.driver.user?.name ?? 'Your driver',
-            delivery.id,
-            delivery.trackingCode,
-          );
+          if (trip.driver.user?.id) {
+            this.notificationsService?.create?.(
+              trip.driver.user.id,
+              'Seat booking on your trip',
+              `${delivery.packageDescription ?? 'A seat booking'} is paid and waiting. Accept or decline it in Jobs: it expires if you do nothing.`,
+              'job_request' as any,
+              delivery.id,
+              delivery.trackingCode,
+            );
+          }
           return;
         }
       } catch (e: any) {
-        this.logger.warn(`trip assign failed for ${deliveryId}: ${e?.message ?? e}; falling back to matching`);
+        this.logger.warn(`trip offer failed for ${deliveryId}: ${e?.message ?? e}; falling back to matching`);
       }
     }
 
@@ -844,6 +850,84 @@ export class DeliveriesService {
     } catch (e) {
       await (this.driversService as any).releaseSeats(tripId, seats);
       throw e;
+    }
+  }
+
+  /** Close a trip offer with a FULL refund: decline and expiry share it. */
+  private async closeTripOffer(delivery: any, why: string) {
+    await this.repo.update(delivery.id, {
+      cancellationFeeNgn: 0,
+      cancelledAt:        new Date(),
+      cancellationReason: why,
+    } as any);
+    await this.updateStatus(delivery.id, DeliveryStatus.CANCELLED);
+    await this.releaseTripSeatsFor(delivery);
+    try {
+      await (this as any).paymentsServiceRef?.refundEscrow?.(delivery.id, delivery.customer?.id, 0);
+    } catch (e: any) {
+      this.logger.error(`trip-offer refund failed for ${delivery.id}: ${e?.message ?? e}`);
+    }
+    this.notificationsService?.create?.(
+      delivery.customer.id,
+      'Seat booking refunded in full',
+      `${why} Your ₦${Math.round(Number(delivery.price ?? 0)).toLocaleString()} is on its way back to your card. The Travel Buddy list has other trips.`,
+      'general' as any,
+      delivery.id,
+      delivery.trackingCode,
+    );
+  }
+
+  /** The declared driver turns a seat booking down. Customer pays nothing. */
+  async declineTripOffer(deliveryId: string, driverUserId: string) {
+    const delivery: any = await this.repo.findOne({
+      where: { id: deliveryId },
+      relations: ['customer', 'driver'],
+    });
+    if (!delivery) throw new NotFoundException('Booking not found.');
+    if (!delivery.tripId) throw new BadRequestException('This is not a trip booking.');
+    if (delivery.driver || delivery.status !== DeliveryStatus.PENDING) {
+      throw new BadRequestException('This booking is no longer waiting on you.');
+    }
+    const owns = await this.repo.manager.query(
+      `SELECT t."id" FROM "driver_trips" t
+        JOIN "drivers" d ON d."id" = t."driverId"
+        JOIN "users" u ON u."id" = d."userId"
+       WHERE t."id" = $1 AND u."id" = $2`,
+      [delivery.tripId, driverUserId],
+    );
+    if (!owns?.length) throw new ForbiddenException('This booking belongs to another driver\'s trip.');
+
+    await this.closeTripOffer(delivery, 'The driver declined this seat booking.');
+    return { ok: true };
+  }
+
+  /** Unanswered offers expire: nobody's money waits on a silent phone. */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async expireTripOffers() {
+    try {
+      const timeoutMin = this.feesServiceRef
+        ? await this.feesServiceRef.getValueOr('travel_buddy_offer_timeout_min', 30)
+        : 30;
+      const stale = await this.repo
+        .createQueryBuilder('d')
+        .leftJoinAndSelect('d.customer', 'c')
+        .where('d.status = :status', { status: DeliveryStatus.PENDING })
+        .andWhere('d.driver IS NULL')
+        .andWhere('d."tripId" IS NOT NULL')
+        .andWhere('d."tripOfferedAt" IS NOT NULL')
+        .andWhere(`d."tripOfferedAt" < NOW() - interval '5 minutes'`)
+        .take(50)
+        .getMany()
+        .catch(() => [] as any[]);
+      // TypeORM param binding with intervals is finicky: filter in JS too.
+      const cutoff = Date.now() - Number(timeoutMin) * 60_000;
+      for (const d of stale as any[]) {
+        if (new Date(d.tripOfferedAt).getTime() > cutoff) continue;
+        await this.closeTripOffer(d, 'The driver did not answer in time.');
+        this.logger.warn(`Trip offer expired for ${d.trackingCode}`);
+      }
+    } catch (e: any) {
+      this.logger.warn(`expireTripOffers sweep failed: ${e?.message ?? e}`);
     }
   }
 
@@ -965,11 +1049,21 @@ export class DeliveriesService {
    *      commission-based fallback), so the card never shows the gross
    *      fare as if it were the driver's pay.
    */
-  async findAvailable(lat?: number, lng?: number, radiusKm: number = 25, limit: number = 30) {
+  async findAvailable(lat?: number, lng?: number, radiusKm: number = 25, limit: number = 30, userId?: string) {
     const q = this.repo
       .createQueryBuilder('d')
       .where('d.status = :status', { status: DeliveryStatus.PENDING })
       .andWhere('d.driver IS NULL')
+      // Travel Buddy offers are private to their declared driver: the
+      // general pool never sees them (founder 2026-08-23).
+      .andWhere(
+        `(d."tripId" IS NULL OR d."tripId" IN (
+           SELECT t."id" FROM "driver_trips" t
+             JOIN "drivers" dr ON dr."id" = t."driverId"
+             JOIN "users" u ON u."id" = dr."userId"
+            WHERE u."id" = :availUserId))`,
+        { availUserId: userId ?? '00000000-0000-0000-0000-000000000000' },
+      )
       // Only funded bookings reach drivers (paid-dispatch gate 2026-08-16).
       .andWhere('d."paymentHeldAt" IS NOT NULL')
       // Scheduled pickups surface 15 minutes before their slot, not
@@ -3847,6 +3941,22 @@ export class DeliveriesService {
       relations: ['customer', 'driver'],
     });
     if (!delivery) throw new NotFoundException('Delivery not found.');
+
+    // Trip bookings are offers to ONE driver: nobody else may claim
+    // them, even if they appear through some other path.
+    if ((delivery as any).tripId) {
+      const owns = await this.repo.manager.query(
+        `SELECT t."id" FROM "driver_trips" t
+          JOIN "drivers" dr ON dr."id" = t."driverId"
+          JOIN "users" u ON u."id" = dr."userId"
+         WHERE t."id" = $1 AND u."id" = $2`,
+        [(delivery as any).tripId, userId],
+      );
+      if (!owns?.length) {
+        const { ForbiddenException } = await import('@nestjs/common');
+        throw new ForbiddenException('This seat booking is reserved for its trip driver.');
+      }
+    }
 
     const { BadRequestException, ConflictException } = await import('@nestjs/common');
     if (delivery.status !== DeliveryStatus.PENDING) {

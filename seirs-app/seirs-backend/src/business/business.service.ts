@@ -749,6 +749,10 @@ export class BusinessService {
 
       const delivery = mgr.create(Delivery, {
         trackingCode,
+        // Consent as a timestamp, same contract as the customer path:
+        // the business review's checkbox was collected but never sent
+        // or stored until 2026-08-23.
+        termsAcceptedAt: (dto as any).termsAccepted ? new Date() : null,
         customer:       { id: userId } as any,
         pickupAddress:  dto.pickupAddress,
         pickupLat:      dto.pickupLat,

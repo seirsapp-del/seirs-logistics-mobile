@@ -525,6 +525,9 @@ export const adminApi = {
     referralFunnel:       ()          => req<any>('/admin/analytics/referral-funnel'),
   },
 
+  /** Rides vs packages revenue tiles on the dashboard home. */
+  revenueSplit: () => req<any>('/admin/analytics/revenue-split'),
+
   fraud: {
     list:    (page = 1, status?: string) =>
       req<any>(`/admin/fraud?page=${page}${status ? `&status=${status}` : ''}`),

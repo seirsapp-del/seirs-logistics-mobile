@@ -387,6 +387,33 @@ export default function SendScreen() {
   const [searching,    setSearching]    = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // RECENT chips (founder 2026-08-23): senders repeat routes too. Last
+  // 3 distinct pickups + dropoffs from package history, one tap refills.
+  const [recentPickups, setRecentPickups] = useState<Array<{ address: string; lat: number; lng: number }>>([]);
+  const [recentDrops,   setRecentDrops]   = useState<Array<{ address: string; lat: number; lng: number }>>([]);
+  useEffect(() => {
+    deliveriesApi.myDeliveries(1, 15)
+      .then((r: any) => {
+        const pick = (get: (d: any) => [string, number, number]) => {
+          const seen = new Set<string>();
+          const out: Array<{ address: string; lat: number; lng: number }> = [];
+          for (const d of r?.items ?? []) {
+            if ((d.kind ?? 'package') === 'ride') continue;
+            const [a, lat, lng] = get(d);
+            const addr = String(a ?? '').trim();
+            if (!addr || seen.has(addr) || !Number(lat)) continue;
+            seen.add(addr);
+            out.push({ address: addr, lat: Number(lat), lng: Number(lng) });
+            if (out.length >= 3) break;
+          }
+          return out;
+        };
+        setRecentPickups(pick((d) => [d.pickupAddress,  d.pickupLat,  d.pickupLng]));
+        setRecentDrops(  pick((d) => [d.dropoffAddress, d.dropoffLat, d.dropoffLng]));
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!draftReady || hydrated.current) return;
     hydrated.current = true;
@@ -1216,6 +1243,24 @@ export default function SendScreen() {
                   {invalidField === 'dropoff' && (
                     <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
                   )}
+
+                  {!dropoff && !dropoffQuery && recentDrops.length > 0 && (
+                    <View style={styles.recentRow}>
+                      <Text style={[styles.recentLabel, { color: theme.textThird }]}>
+                        {t('send.recent', { defaultValue: 'RECENT' })}
+                      </Text>
+                      {recentDrops.map((r) => (
+                        <Pressable
+                          key={r.address}
+                          style={[styles.recentChip, { borderColor: theme.border, backgroundColor: theme.surfaceSecond }]}
+                          onPress={() => { updatePkg(pkgIndex, { dropoff: { address: r.address, lat: r.lat, lng: r.lng }, dropoffQuery: r.address }); setPredictions([]); }}
+                        >
+                          <Ionicons name="time-outline" size={13} color={theme.textSecond} />
+                          <Text style={[styles.recentTxt, { color: theme.text }]} numberOfLines={1}>{r.address}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
                   {activeField === `pkg:${pkgIndex}` && predictions.length > 0 && (
                     <View style={styles.suggestList}>
                       {predictions.map(pr => (
@@ -1421,6 +1466,24 @@ export default function SendScreen() {
                 <Text style={[styles.useLocText, { color: theme.primary }]}>{t('send.useMyLocation')}</Text>
                 {searching && <ActivityIndicator size="small" color={theme.primary} />}
               </Pressable>
+
+              {pickupMode === 'door' && !pickup && !pickupQuery && recentPickups.length > 0 && (
+                <View style={styles.recentRow}>
+                  <Text style={[styles.recentLabel, { color: theme.textThird }]}>
+                    {t('send.recent', { defaultValue: 'RECENT' })}
+                  </Text>
+                  {recentPickups.map((r) => (
+                    <Pressable
+                      key={r.address}
+                      style={[styles.recentChip, { borderColor: theme.border, backgroundColor: theme.surfaceSecond }]}
+                      onPress={() => { setPickup({ address: r.address, lat: r.lat, lng: r.lng }); setPickupQuery(r.address); setPredictions([]); }}
+                    >
+                      <Ionicons name="time-outline" size={13} color={theme.textSecond} />
+                      <Text style={[styles.recentTxt, { color: theme.text }]} numberOfLines={1}>{r.address}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
 
               {pickupMode === 'store' && storePicked && (
                 <Pressable
@@ -1996,6 +2059,10 @@ export default function SendScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  recentRow:   { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 8 },
+  recentLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+  recentChip:  { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, maxWidth: 220 },
+  recentTxt:   { fontSize: 12 },
   container:    { flex: 1 },
   // Header values are the business app's, so the two flows line up exactly.
   header:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },

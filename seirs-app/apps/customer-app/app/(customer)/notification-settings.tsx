@@ -37,6 +37,7 @@ export default function NotificationSettingsScreen() {
   // The one genuine choice. Key 'marketing' is the key the send path
   // actually reads (NotificationsService.PREF_KEY_BY_TYPE).
   const [offers, setOffers] = useState(true);
+  const [anonRides, setAnonRides] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -44,6 +45,7 @@ export default function NotificationSettingsScreen() {
       try {
         const { prefs } = await usersApi.getNotificationPrefs();
         if (prefs && typeof prefs.marketing === 'boolean') setOffers(prefs.marketing);
+        if (prefs && typeof (prefs as any).anonymousToDrivers === 'boolean') setAnonRides((prefs as any).anonymousToDrivers);
       } catch {}
     })();
   }, []);
@@ -83,6 +85,31 @@ export default function NotificationSettingsScreen() {
             <Switch
               value={offers}
               onValueChange={toggleOffers}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: theme.textSecond }]}>RIDE PRIVACY</Text>
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={styles.row}>
+            <View style={[styles.iconWrap, { backgroundColor: theme.surfaceSecond }]}>
+              <Ionicons name="eye-off-outline" size={18} color={theme.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>Hide my name from drivers</Text>
+              <Text style={[styles.rowSub, { color: theme.textSecond }]}>
+                Drivers see your SEIRS ID instead of your first name on rides.
+                SEIRS support always knows who you are.
+              </Text>
+            </View>
+            <Switch
+              value={anonRides}
+              onValueChange={(next) => {
+                setAnonRides(next);
+                usersApi.saveNotificationPrefs({ anonymousToDrivers: next } as any).catch(() => {});
+              }}
               trackColor={{ false: theme.border, true: theme.primary }}
               thumbColor="#fff"
             />

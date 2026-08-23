@@ -332,6 +332,9 @@ export const deliveriesApi = {
   bookTripSeats: (tripId: string, seats: number, luggage?: string) =>
     request<any>('POST', `/deliveries/travel-buddy/trips/${tripId}/book`, { seats, luggage }),
 
+  /** Declared driver declines a seat booking: customer refunded 100%. */
+  declineTripOffer: (id: string) =>
+    request<{ ok: boolean }>('POST', `/deliveries/${id}/decline-trip-offer`),
   /** Driver backs out of an accepted job. Customer never pays; booking re-dispatches. */
   driverCancel: (id: string, reason: string, note?: string) =>
     request<{ ok: boolean; redispatched: boolean }>('POST', `/deliveries/${id}/driver-cancel`, { reason, note }),

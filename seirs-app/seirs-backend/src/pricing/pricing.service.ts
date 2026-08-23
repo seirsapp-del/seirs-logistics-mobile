@@ -55,6 +55,7 @@ export interface PriceBreakdown {
     stopBonuses:      number;
     dwellOver:        number;
     surchargeShare:   number;
+    highValueShare?:  number;   // card-set slice of the high-value premium
     total:            number;
   };
 
@@ -970,9 +971,14 @@ export class PricingService implements OnModuleInit {
 
     // SEIRS net = customer subtotal (excl. VAT) minus driver pay minus VAT remitted
     // (partner store cuts handled separately in partner-store flows)
-    // The premium is SEIRS revenue for now: it prices risk, not labour.
-    // Splitting a share to high-level drivers is a founder decision.
-    const seirsNet = subtotalVatBase - driverTotal + highValuePremium;
+    /**
+     * Premium split (founder 2026-08-23): a card-set share of the
+     * high-value premium goes to the driver who carries the risk.
+     * Default 0 keeps it pure SEIRS revenue until the founder sets it.
+     */
+    const hvDriverPct   = Math.min(100, Math.max(0, Number(hv.driverSharePct ?? 0)));
+    const hvDriverShare = Math.round(highValuePremium * hvDriverPct) / 100;
+    const seirsNet = subtotalVatBase - driverTotal + highValuePremium - hvDriverShare;
 
     /**
      * What the gross margin above actually costs us to collect.
@@ -1037,7 +1043,8 @@ export class PricingService implements OnModuleInit {
       driver: {
         base: dBase, distanceLabour: dDistanceLabour, distanceFuel: dDistanceFuel,
         stopBonuses: dStopBonuses, dwellOver: dDwellOver, surchargeShare,
-        total: driverTotal,
+        highValueShare: hvDriverShare,
+        total: driverTotal + hvDriverShare,
       },
       seirsNet,
       /**

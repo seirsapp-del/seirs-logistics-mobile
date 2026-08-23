@@ -79,6 +79,7 @@ export class DeliveriesController {
   // jobs the driver could claim. Sorted by distance when lat/lng given.
   @Get('available')
   availableJobs(
+    @CurrentUser() user: any,
     @Query('lat')      lat?:      string,
     @Query('lng')      lng?:      string,
     @Query('radiusKm', new DefaultValuePipe(25),  ParseIntPipe) radiusKm: number = 25,
@@ -86,7 +87,7 @@ export class DeliveriesController {
   ) {
     const numLat = lat != null ? Number(lat) : undefined;
     const numLng = lng != null ? Number(lng) : undefined;
-    return this.deliveriesService.findAvailable(numLat, numLng, radiusKm, limit);
+    return this.deliveriesService.findAvailable(numLat, numLng, radiusKm, limit, user?.id);
   }
 
   // GET /api/v1/deliveries/track/:code - public tracking by code (no login required)
@@ -330,6 +331,13 @@ export class DeliveriesController {
     @Body() body: { seats?: number; luggage?: string },
   ) {
     return this.deliveriesService.bookTripSeats(tripId, user, body ?? {});
+  }
+
+  // POST /api/v1/deliveries/:id/decline-trip-offer: the declared driver
+  // turns a seat booking down; the customer is refunded in full.
+  @Post(':id/decline-trip-offer')
+  declineTripOffer(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.deliveriesService.declineTripOffer(id, user.id);
   }
 
   // POST /api/v1/deliveries/:id/driver-cancel { reason, note? }

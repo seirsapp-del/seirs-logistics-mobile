@@ -95,6 +95,16 @@ export class PricingController {
           dropoffCoords: body.dropoffCoords ?? null,
         });
         vehicles[v] = {
+          // The honest mini-breakdown for the price tap (founder
+          // 2026-08-23): the exact engine lines, no re-derivation.
+          breakdown: {
+            base:       Math.round(Number(b.customer.base ?? 0)),
+            distance:   Math.round(Number(b.customer.distanceLabour ?? 0) + Number(b.customer.distanceFuel ?? 0)),
+            night:      Math.round(Number(b.customer.timeSurcharges?.night ?? 0)),
+            peak:       Math.round(Number(b.customer.timeSurcharges?.peak ?? 0)),
+            weekend:    Math.round(Number(b.customer.timeSurcharges?.weekend ?? 0)),
+            vat:        Math.round(Number(b.customer.vat ?? 0)),
+          },
           total:          Number(b.customer.total),
           driverEarnings: Number(b.driver.total),
           serviceFee:     Number(b.customer.serviceFee ?? 0),

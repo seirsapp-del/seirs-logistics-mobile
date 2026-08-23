@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar, Image,
+  View, Text, Pressable, StyleSheet, StatusBar, Image, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -134,7 +134,9 @@ export default function VehicleSelectScreen() {
         icon:        v.icon,
         accentColor: v.accentColor,
         photoUrl:    v.photoUrl,
-        description: v.description,
+        description: v.id === 'danfo'
+          ? 'CHARTER: the whole bus, not one seat'
+          : v.description,
         eta:         v.eta,
         features:    [...v.features],
         priceLabel:  (() => {
@@ -325,7 +327,29 @@ export default function VehicleSelectScreen() {
                 </View>
 
                 <View style={styles.cardRight}>
-                  <Text style={[styles.price, { color: isSelected ? theme.primary : theme.text }]}>{v.priceLabel}</Text>
+                  <Pressable
+                    disabled={!isRide}
+                    hitSlop={8}
+                    onPress={() => {
+                      const q = rideQuotes?.[ID_TO_ENUM[v.id] ?? v.id];
+                      const bd = (q as any)?.breakdown;
+                      if (!bd) return;
+                      const lines = [
+                        ['Base fare', bd.base], ['Distance + fuel', bd.distance],
+                        ['Night', bd.night], ['Peak', bd.peak], ['Weekend', bd.weekend],
+                        ['Luggage', Math.round(Number((q as any).luggageFee ?? 0))],
+                        ['Service fee', Math.round(Number((q as any).serviceFee ?? 0))],
+                        ['VAT', bd.vat],
+                      ].filter(([, n]) => Number(n) > 0)
+                        .map(([l, n]) => `${l}: ₦${Number(n).toLocaleString()}`);
+                      Alert.alert(
+                        `${v.label} · ₦${Math.round(Number((q as any).total)).toLocaleString()}`,
+                        lines.join('\n') + '\n\nThis exact number is what you pay: it is pinned.',
+                      );
+                    }}
+                  >
+                    <Text style={[styles.price, { color: isSelected ? theme.primary : theme.text }]}>{v.priceLabel}</Text>
+                  </Pressable>
                   <View style={styles.etaRow}>
                     <Ionicons name={isRide ? 'person-outline' : 'time-outline'} size={12} color={theme.textSecond} />
                     <Text style={[styles.eta, { color: theme.textSecond }]}>{(v as any).metaText ?? v.eta}</Text>

@@ -63,7 +63,7 @@ export default function DashboardPage() {
       adminApi.stats(),
       adminApi.revenueSplit().then(setSplit).catch(() => {}),
       adminApi.analytics.revenue(30),
-    ]).then(([s, r]) => {
+    ]).then(([s, , r]) => {
       setStats(s);
       setRevenue(Array.isArray(r?.data) ? r.data : []);
     }).catch((e: any) => {

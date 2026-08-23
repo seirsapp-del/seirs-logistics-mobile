@@ -412,6 +412,10 @@ export default function PricingPage() {
             value={card.highValue?.premiumPct ?? 0.5}
             onChange={(v) => patchPath('highValue.premiumPct', v)}
             hint="Charged in the engine, so quote and booking always match. 0 disables. Matching only offers such jobs to drivers whose level covers the value." />
+          <FieldNumber label="Driver share of premium %"
+            value={card.highValue?.driverSharePct ?? 0}
+            onChange={(v) => patchPath('highValue.driverSharePct', v)}
+            hint="Slice of the collected premium paid to the driver who carries the risk. 0 = all premium stays with SEIRS." />
         </Row>
       </Card>
 

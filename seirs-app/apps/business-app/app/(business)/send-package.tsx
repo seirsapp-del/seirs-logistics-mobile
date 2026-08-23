@@ -711,6 +711,7 @@ export default function SendPackageScreen() {
         : undefined;
 
       const res = await businessApi.createDelivery({
+        termsAccepted: tcAgreed,
         // Signed quote pin: the review's number is the charged number.
         quoteToken: (quote as any)?.quotePin?.token,
         pickupAddress: draft.pickupAddress,

@@ -19,14 +19,14 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { DEFAULT_MAP_REGION } from '@/constants/mockData';
-import { deliveriesApi } from '@/services/api';
+import { deliveriesApi, paymentsApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 
 const VEHICLE_LABEL: Record<string, string> = {
@@ -56,6 +56,15 @@ export default function ConfirmRideScreen() {
   const serviceFee = Math.round(Number(params.serviceFee ?? '0') || 0);
   const luggageFee = Math.round(Number(params.luggageFee ?? '0') || 0);
   const riderName  = (params.riderName ?? '').trim();
+
+  // How they'll pay, previewed before the payment screen: a saved
+  // card means the next screen is one tap (founder 2026-08-23).
+  const [savedCard, setSavedCard] = useState<any | null>(null);
+  useEffect(() => {
+    paymentsApi.listSavedCards()
+      .then((cards: any[]) => setSavedCard(cards?.find((c) => c.isDefault) ?? cards?.[0] ?? null))
+      .catch(() => {});
+  }, []);
 
   const [tcAgreed,   setTcAgreed]   = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -138,6 +147,9 @@ export default function ConfirmRideScreen() {
       ? [['Luggage', params.luggage === 'large' ? `Large${luggageFee > 0 ? ` · ₦${luggageFee.toLocaleString()}` : ''}` : 'Small bag'] as [string, string]]
       : []),
     ...(serviceFee > 0 ? [['Service fee', `₦${serviceFee.toLocaleString()}`] as [string, string]] : []),
+    ['Payment', savedCard
+      ? `${String(savedCard.brand ?? 'Card').toUpperCase()} ···· ${savedCard.last4} · one tap`
+      : 'Card or transfer at checkout'],
     ['Total',       `₦${total.toLocaleString()}`],
   ];
 

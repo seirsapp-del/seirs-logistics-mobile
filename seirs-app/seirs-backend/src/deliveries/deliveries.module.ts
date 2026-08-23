@@ -94,6 +94,7 @@ export class DeliveriesModule implements OnModuleInit {
     // Post-payment dispatch: the webhook confirms escrow inside
     // PaymentsService, which then needs to kick matching over here.
     (this.paymentsService as any).deliveriesServiceRef = this.deliveriesService;
+    (this.deliveriesService as any).paymentsServiceRef = this.paymentsService;
 
     // Give NotificationsService a reference to the gateway for WS delivery
     this.notificationsService.trackingGateway = this.trackingGateway;
@@ -281,7 +282,8 @@ export class DeliveriesModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "disposalNote" text NULL,
           ADD COLUMN IF NOT EXISTS "termsAcceptedAt" timestamptz NULL,
           ADD COLUMN IF NOT EXISTS "kind" varchar(10) NOT NULL DEFAULT 'package',
-          ADD COLUMN IF NOT EXISTS "tripId" uuid NULL
+          ADD COLUMN IF NOT EXISTS "tripId" uuid NULL,
+          ADD COLUMN IF NOT EXISTS "tripOfferedAt" timestamptz NULL
       `);
       // Mid-delivery address change (2026-08-21): support-decided, paid
       // before it applies.

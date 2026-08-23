@@ -422,12 +422,7 @@ export default function DriverDetailPage() {
                   await adminApi.documents.send(driver.user?.id, {
                     title: 'Please update your vehicle photo',
                     category: 'letter',
-                    body: 'Hello ' + (driver.user?.name ?? '') + ',
-
-Please upload a current, clear photo of your ' + (driver.vehicleType ?? 'vehicle') + ' (plate visible) from the driver app: Profile, KYC Verification, Vehicle photo. Passengers and senders see this photo before you arrive, so it needs to match your vehicle today.
-
-Thank you,
-SEIRS Operations',
+                    body: `Hello ${driver.user?.name ?? ''},\n\nPlease upload a current, clear photo of your ${driver.vehicleType ?? 'vehicle'} (plate visible) from the driver app: Profile, KYC Verification, Vehicle photo. Passengers and senders see this photo before you arrive, so it needs to match your vehicle today.\n\nThank you,\nSEIRS Operations`,
                   });
                   alert('Request sent: the driver sees it in Documents with a notification.');
                 } catch (e: any) { alert(e?.message ?? 'Send failed'); }

@@ -54,6 +54,7 @@ export default function JobDetailScreen() {
           driverEarnings:    Number(d.driverEarnings ?? 0),
           packageDescription: d.packageDescription,
           kind: d.kind ?? 'package',
+          tripId: (d as any).tripId ?? null,
           customer: {
             name: d.customer?.name ?? 'Customer',
           },
@@ -155,12 +156,24 @@ export default function JobDetailScreen() {
 
   const handleDecline = () => {
     if (timerRef.current) clearInterval(timerRef.current);
+    // A Travel Buddy seat booking is a personal offer: declining it
+    // refunds the passenger in full and must be told to the server
+    // (founder 2026-08-23). Ordinary pool jobs just fall back.
+    const isTripOffer = !!(job as any)?.tripId;
     Alert.alert(
-      'Decline Job?',
-      'This job will be offered to another driver.',
+      isTripOffer ? 'Decline this seat booking?' : 'Decline Job?',
+      isTripOffer
+        ? 'The passenger is refunded in full immediately and the seat reopens on your trip.'
+        : 'This job will be offered to another driver.',
       [
         { text: 'Keep Job', style: 'cancel', onPress: restartCountdown },
-        { text: 'Decline', style: 'destructive', onPress: () => router.back() },
+        { text: 'Decline', style: 'destructive', onPress: async () => {
+          if (isTripOffer) {
+            try { await deliveriesApi.declineTripOffer((job as any).id); }
+            catch (e: any) { Alert.alert('Could not decline', e?.message ?? 'Try again.'); return; }
+          }
+          router.back();
+        } },
       ],
     );
   };

@@ -163,6 +163,10 @@ export class Delivery {
   @Column({ type: 'uuid', nullable: true })
   tripId: string | null;
 
+  /** When the seat booking was offered to the declared driver. */
+  @Column({ type: 'timestamptz', nullable: true })
+  tripOfferedAt: Date | null;
+
   // Receiver system (founder 2026-08-11): Nigerians routinely have
   // neighbours/security collect packages. The sender names the receiver
   // at booking; the typed-name handoff check matches THIS first name
