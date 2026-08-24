@@ -81,15 +81,8 @@ export class BusinessController {
     );
   }
 
-  @UseGuards(BusinessAccountGuard)
-  @Post('business/deliveries/csv')
-  @UseInterceptors(FileInterceptor('file'))
-  uploadCsv(@CurrentUser() user: User, @UploadedFile() file: Express.Multer.File) {
-    if (!file) throw new Error('No file uploaded.');
-    const text = file.buffer.toString('utf8');
-    const rows = parseCsv(text);
-    return this.svc.uploadCsvDeliveries(user.id, rows);
-  }
+  // Bulk CSV upload removed 2026-08-24 (founder decision). The
+  // multi-package Send flow covers the same need and works.
 
   @UseGuards(BusinessAccountGuard)
   @Get('business/wallet')
@@ -251,20 +244,6 @@ export class BusinessController {
   }
 }
 
-// Simple CSV parser: supports quoted fields
-function parseCsv(text: string): Array<{ recipientName: string; recipientPhone: string; address?: string }> {
-  const lines = text.trim().split('\n').slice(1); // skip header
-  return lines
-    .map((line) => {
-      const cols = splitCsvLine(line);
-      return {
-        recipientName:  (cols[0] ?? '').trim(),
-        recipientPhone: (cols[1] ?? '').trim(),
-        address:        (cols[2] ?? '').trim(),
-      };
-    })
-    .filter((r) => r.recipientName);
-}
 
 function splitCsvLine(line: string): string[] {
   const result: string[] = [];

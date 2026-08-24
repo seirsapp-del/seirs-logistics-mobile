@@ -10,7 +10,6 @@ import { useTheme } from '@/context/ThemeContext';
  *     (tabs)/
  *       _layout.tsx      <- Tabs (Dashboard, Deliveries, Send, Wallet, Team)
  *     edit-profile.tsx   <- pushed onto the Stack
- *     csv-upload.tsx     <- pushed onto the Stack
  *     api-keys.tsx       <- pushed onto the Stack
  *     ...all detail screens
  *

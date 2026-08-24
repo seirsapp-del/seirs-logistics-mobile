@@ -996,19 +996,11 @@ export const businessApi = {
     proofPhotoUrls?: string[]; recipientSignatureUrl?: string;
   }) => request<any>('POST', `/business/deliveries/${deliveryId}/stops/${stopId}/delivered`, body ?? {}),
 
-  uploadCsv: async (uri: string, fileName: string): Promise<any> => {
-    const token = await getToken();
-    const formData = new FormData();
-    formData.append('file', { uri, name: fileName, type: 'text/csv' } as any);
-    const res = await fetch(`${_apiBase}/business/deliveries/csv`, {
-      method:  'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body:    formData,
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message ?? 'Upload failed');
-    return data;
-  },
+  // Bulk CSV upload removed 2026-08-24 (founder decision): the
+  // multi-package Send flow covers the same need and works. The CSV
+  // path never did: its parser read columns by position while the
+  // service read them by name, so the app's own template failed
+  // every row.
 
   wallet:        () => request<any>('GET', '/business/wallet'),
   transactions:  (page = 1) => request<any>('GET', `/business/wallet/transactions?page=${page}`),

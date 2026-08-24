@@ -120,9 +120,16 @@ export class AuthService {
     const existing = await this.usersRepo.findOne({ where: { email } });
     if (existing) {
       if (!existing.emailVerified) {
-        // Re-send OTP for unverified accounts rather than blocking
-        await this.issueOtp(existing);
-        return { message: 'Verification email re-sent. Please check your inbox.', requiresOtp: true };
+        // Re-send for unverified accounts rather than blocking. This is
+        // also the recovery path for an account whose first email failed.
+        const { sent } = await this.issueOtp(existing);
+        return {
+          message: sent
+            ? 'Verification email re-sent. Please check your inbox.'
+            : 'Your code is ready but we could not send the email just now. Tap resend in a moment, or contact support.',
+          requiresOtp: true,
+          emailSent:   sent,
+        };
       }
       throw new ConflictException('Email already registered.');
     }
@@ -169,9 +176,15 @@ export class AuthService {
       await this.driversRepo.save(driver);
     }
 
-    await this.issueOtp(user);
+    const { sent } = await this.issueOtp(user);
 
-    return { message: 'Account created. Please verify your email.', requiresOtp: true };
+    return {
+      message: sent
+        ? 'Account created. Please verify your email.'
+        : 'Account created, but we could not send the verification email just now. Tap resend in a moment, or contact support.',
+      requiresOtp: true,
+      emailSent:   sent,
+    };
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
@@ -501,7 +514,21 @@ export class AuthService {
     return { message: 'Password reset successful. You can now log in.' };
   }
 
-  private async issueOtp(user: User) {
+  /**
+   * Store a fresh OTP and try to email it. Returns whether the email
+   * actually went out.
+   *
+   * This used to let a mail failure propagate. Because register() saves
+   * the user BEFORE calling this, the throw surfaced as a 500 while the
+   * account existed, and the re-register path called straight back into
+   * here and threw again: a permanent lockout for anyone whose address
+   * the provider refused (found live 2026-08-24, twice).
+   *
+   * The OTP hash is written before the send, so a failed email loses
+   * nothing. The code is valid and Resend will deliver it once the mail
+   * path is healthy. Report, do not throw.
+   */
+  private async issueOtp(user: User): Promise<{ sent: boolean }> {
     const otp    = generateOtp();
     const expiry = new Date(Date.now() + 15 * 60 * 1000);
     const hashed = await bcrypt.hash(otp, 8);
@@ -511,7 +538,16 @@ export class AuthService {
       emailVerificationExpiry: expiry,
     });
 
-    await this.mailService.sendEmailVerification(user.email, user.name, otp);
+    try {
+      await this.mailService.sendEmailVerification(user.email, user.name, otp);
+      return { sent: true };
+    } catch (e: any) {
+      this.logger?.error?.(
+        `Verification email failed for ${user.email}: ${e?.message ?? e}. ` +
+        'The account and its OTP are stored; the user can request a resend.',
+      );
+      return { sent: false };
+    }
   }
 
   // ── Business / Partner Auth ────────────────────────────────────────────────

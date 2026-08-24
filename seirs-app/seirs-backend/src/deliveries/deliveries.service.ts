@@ -2354,13 +2354,42 @@ export class DeliveriesService {
 
     const atCounter = this.isAtCounter(delivery);
 
-    // Where the package physically is right now.
+    /**
+     * Where the package physically is right now.
+     *
+     * This fell through to delivery.dropoffLat/Lng, which are NULL on
+     * every multi-stop run, and Number(null) is 0. So the return leg was
+     * measured from (0, 0) in the Gulf of Guinea and a Lagos parcel came
+     * back as 1,173.6 km. Resolve through the real candidates in order
+     * and refuse to guess if none of them has coordinates.
+     */
+    const firstNum = (...vals: any[]): number | null => {
+      for (const v of vals) {
+        if (v == null) continue;
+        const n = Number(v);
+        if (Number.isFinite(n) && n !== 0) return n;
+      }
+      return null;
+    };
+    // A stop that has been reached is a better "current position" than
+    // the run's own dropoff, which multi-stop bookings do not have.
+    const lastStop = (delivery as any).stops?.filter((st: any) => st?.arrivedAt || st?.deliveredAt)
+      ?.sort((a: any, b: any) =>
+        new Date(b.arrivedAt ?? b.deliveredAt).getTime() -
+        new Date(a.arrivedAt ?? a.deliveredAt).getTime())?.[0] ?? null;
+
     const fromLat = atCounter
-      ? Number(delivery.dropoffLat)
-      : (delivery.driver?.lastLat != null ? Number(delivery.driver.lastLat) : Number(delivery.dropoffLat));
+      ? firstNum(delivery.dropoffLat, lastStop?.lat, delivery.driver?.lastLat)
+      : firstNum(delivery.driver?.lastLat, lastStop?.lat, delivery.dropoffLat, delivery.pickupLat);
     const fromLng = atCounter
-      ? Number(delivery.dropoffLng)
-      : (delivery.driver?.lastLng != null ? Number(delivery.driver.lastLng) : Number(delivery.dropoffLng));
+      ? firstNum(delivery.dropoffLng, lastStop?.lng, delivery.driver?.lastLng)
+      : firstNum(delivery.driver?.lastLng, lastStop?.lng, delivery.dropoffLng, delivery.pickupLng);
+
+    if (fromLat == null || fromLng == null) {
+      throw new BadRequestException(
+        'We cannot tell where this package is right now, so we will not guess at a return price. Contact support and we will arrange it.',
+      );
+    }
 
     const road = await this.routeDistance.getRoadDistance(
       fromLat, fromLng,
@@ -2386,7 +2415,18 @@ export class DeliveriesService {
       dropoffLng: Number(delivery.pickupLng),
     } as any);
 
-    const transport = Math.round(Number((breakdown as any)?.total ?? 0));
+    /**
+     * computePrice returns { customer, driver }. There is no top-level
+     * `total`, so this read undefined and every return in the platform's
+     * history was quoted at NGN 0. The sender is charged the customer
+     * side, exactly as they would be for any other trip.
+     */
+    const transport = Math.round(Number(breakdown?.customer?.total ?? 0));
+
+    // The founder-approved flat row is a FLOOR, not the price: a short
+    // return still costs a rider a trip. Spec 2026-08-21.
+    const returnFloor = await this.feesServiceRef?.getValueOr?.('return_to_sender_fee', 0) ?? 0;
+    const transportCharged = Math.max(transport, Math.round(Number(returnFloor)));
 
     // Anything the counter is still holding against the package. Unpaid
     // redirect fee first: the package cannot leave without it either way.
@@ -2394,7 +2434,7 @@ export class DeliveriesService {
       ? Math.round(Number(delivery.redirectFeeNgn ?? 0))
       : 0;
 
-    const total = transport + counterOwed;
+    const total = transportCharged + counterOwed;
 
     return {
       atCounter,
@@ -2402,10 +2442,13 @@ export class DeliveriesService {
       // it is going, and there is no field to change it.
       returnTo:      delivery.pickupAddress,
       km:            Number(road.km.toFixed(2)),
-      transportNgn:  transport,
+      transportNgn:  transportCharged,
       counterOwedNgn: counterOwed,
       totalNgn:      total,
-      needsSupport:  !atCounter,
+      // Support is only needed when a rider actually HAS the package.
+      // This said "a rider is still carrying this package" on pending,
+      // unpaid, driverless bookings because it keyed off atCounter alone.
+      needsSupport:  !atCounter && !!delivery.driver && !!delivery.pickedUpAt,
       note: atCounter
         ? 'Your package is at a partner counter. This brings it back to your pickup address.'
         : 'A rider is still carrying this package, so support has to arrange the return.',

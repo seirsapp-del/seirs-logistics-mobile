@@ -111,8 +111,6 @@ export default function BusinessDashboard() {
               <View style={styles.actions}>
                 <ActionCard icon="Package"         label="Send a Package" sub="One or many packages, one payment"
                   onPress={() => router.push('/(business)/send-package' as any)} primary />
-                <ActionCard icon="FileSpreadsheet" label="CSV Upload"   sub="Bulk import from file"
-                  onPress={() => router.push('/(business)/csv-upload' as any)} />
                 {/* Both cards pushed the same route with no distinguishing
                     param and send-package read none, so "Special Cargo"
                     promised trucks and cold chain and preselected nothing

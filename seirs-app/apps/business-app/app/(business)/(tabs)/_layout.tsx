@@ -25,7 +25,7 @@ function TabIcon({ name, focused }: { name: any; focused: boolean }) {
 
 /**
  * Inner Tabs navigator: only the 5 bottom-bar screens.
- * Detail screens (edit-profile, csv-upload, api-keys, etc.) live at the
+ * Detail screens (edit-profile, api-keys, etc.) live at the
  * (business) parent level inside a Stack so the Android back button pops
  * to the previous screen instead of resetting to Dashboard.
  */
