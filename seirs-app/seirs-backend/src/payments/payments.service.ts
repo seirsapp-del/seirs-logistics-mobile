@@ -720,7 +720,29 @@ export class PaymentsService {
       throw new ForbiddenException('That payment reference belongs to another account.');
     }
 
-    if (payment.status === PaymentStatus.SUCCESS) return payment;
+    /**
+     * Already successful: nothing to charge again, but DO make sure the
+     * delivery knows.
+     *
+     * This was a bare `return payment`, which meant a payment that
+     * succeeded while its delivery was never stamped could never heal:
+     * the money sat in escrow, the booking sat pending, and every retry
+     * returned here and did nothing. Because paymentHeldAt was never
+     * written on the card path at all, that describes every card payment
+     * the platform has taken.
+     *
+     * markDeliveryFunded only writes when the field IS NULL, so this is
+     * idempotent, and re-kicking dispatch on an already-assigned booking
+     * is a no-op. Verifying an old reference now repairs it.
+     */
+    if (payment.status === PaymentStatus.SUCCESS) {
+      if (payment.escrowStatus === EscrowStatus.HELD && payment.delivery?.id) {
+        await this.markDeliveryFunded(payment.delivery.id, `${txRef} (repair)`);
+        try { await this.deliveriesServiceRef?.kickDispatch(payment.delivery.id); }
+        catch (e: any) { this.logger.warn(`Repair dispatch failed for ${txRef}: ${e.message}`); }
+      }
+      return payment;
+    }
 
     const result = await this.flutterwaveService.verifyByTxRef(txRef);
 
