@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
+import { naira, nairaShort } from "@/lib/money";
 import FuelDriftBanner from '@/components/FuelDriftBanner';
 import {
   Users, Truck, ClipboardList, Zap, Package,
@@ -12,11 +13,6 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 
-// Postgres returns decimal columns as strings ("1500.00"), so
-// String.toLocaleString left them exactly as-is: fractional naira with
-// no thousands separator, and the same order read differently here than
-// on the delivery detail page. Whole naira only, house standard.
-const naira = (v: any) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`;
 
 interface Stats {
   users:      { total: number };
@@ -24,15 +20,6 @@ interface Stats {
   deliveries: { total: number; active: number; today: number; pending: number };
   revenue:    { total: number; commission: number; commissionRate?: number };
 }
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
-
-const fmtShort = (n: number) => {
-  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `₦${(n / 1_000).toFixed(0)}K`;
-  return `₦${n}`;
-};
 
 export default function DashboardPage() {
   const [stats,   setStats]   = useState<Stats | null>(null);
@@ -138,11 +125,11 @@ export default function DashboardPage() {
       drill: 'kyc',
     },
     {
-      label: 'Total Revenue', value: fmt(stats.revenue.total),
+      label: 'Total Revenue', value: naira(stats.revenue.total),
       Icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-100',
     },
     {
-      label: 'Platform Commission', value: fmt(stats.revenue.commission),
+      label: 'Platform Commission', value: naira(stats.revenue.commission),
       // rate % 0.01 === 0 is essentially never true in binary floating
       // point, so the old test always took the 1-decimal branch and a flat
       // 15% rendered as "15.0%". Round the percentage instead and drop the
@@ -170,7 +157,7 @@ export default function DashboardPage() {
               <p className="text-xs font-semibold text-gray-500">PACKAGES · last {split.windowDays} days</p>
               <span className="rounded bg-[#3A7BD5]/10 px-2 py-0.5 text-[10px] font-bold text-[#3A7BD5]">SEND</span>
             </div>
-            <p className="mt-1 text-2xl font-bold text-gray-900">₦{Number(split.packages.grossNgn).toLocaleString()}</p>
+            <p className="mt-1 text-2xl font-bold text-gray-900">{naira(split.packages.grossNgn)}</p>
             <p className="text-xs text-gray-500">{split.packages.bookings} paid bookings</p>
           </div>
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
@@ -178,7 +165,7 @@ export default function DashboardPage() {
               <p className="text-xs font-semibold text-gray-500">RIDES · last {split.windowDays} days</p>
               <span className="rounded bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700">RIDE</span>
             </div>
-            <p className="mt-1 text-2xl font-bold text-gray-900">₦{Number(split.rides.grossNgn).toLocaleString()}</p>
+            <p className="mt-1 text-2xl font-bold text-gray-900">{naira(split.rides.grossNgn)}</p>
             <p className="text-xs text-gray-500">{split.rides.bookings} paid bookings</p>
           </div>
         </div>
@@ -354,9 +341,9 @@ export default function DashboardPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
-                    <YAxis tickFormatter={fmtShort} tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} width={56} />
+                    <YAxis tickFormatter={nairaShort} tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} width={56} />
                     <Tooltip
-                      formatter={(v: any) => [fmt(v), 'Revenue']}
+                      formatter={(v: any) => [naira(v), 'Revenue']}
                       contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}
                     />
                     <Area type="monotone" dataKey="revenue" stroke="#3A7BD5" strokeWidth={2} fill="url(#rev)" />
@@ -555,7 +542,7 @@ function TargetsCard({ targets, onSave }: { targets: any; onSave: (p: { revenueN
   const [rev, setRev]         = useState(String(targets.monthlyRevenue?.target ?? 0));
   const [del, setDel]         = useState(String(targets.monthlyDeliveries?.target ?? 0));
   const [saving, setSaving]   = useState(false);
-  const fmtN = (n: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
+
 
   const submit = async () => {
     setSaving(true);
@@ -613,7 +600,7 @@ function TargetsCard({ targets, onSave }: { targets: any; onSave: (p: { revenueN
         </div>
       ) : (
         <div className="space-y-4">
-          <Bar label="Revenue"    actual={targets.monthlyRevenue?.actual  ?? 0} target={targets.monthlyRevenue?.target  ?? 0} pct={targets.monthlyRevenue?.pct}    formatter={fmtN} />
+          <Bar label="Revenue"    actual={targets.monthlyRevenue?.actual  ?? 0} target={targets.monthlyRevenue?.target  ?? 0} pct={targets.monthlyRevenue?.pct}    formatter={naira} />
           <Bar label="Deliveries" actual={targets.monthlyDeliveries?.actual ?? 0} target={targets.monthlyDeliveries?.target ?? 0} pct={targets.monthlyDeliveries?.pct} formatter={(n) => n.toLocaleString()} />
         </div>
       )}

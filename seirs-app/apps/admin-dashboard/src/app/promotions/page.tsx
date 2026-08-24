@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Percent, Plus, Calendar, Users, Loader2, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { naira, nairaFromKobo } from '@/lib/money';
 import { useConfirm } from '@/components/ConfirmDialog';
 
 interface Promo {
@@ -54,15 +55,16 @@ export default function PromotionsPage() {
   const renderValue = (p: Promo) => {
     if (p.type === 'free_delivery') return '100% off delivery';
     if (p.type === 'percent')       return `${p.value}% off`;
-    return `₦${Number(p.value).toLocaleString()} off`;
+    return `${naira(p.value)} off`;
   };
 
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-NG', {
     day: '2-digit', month: 'short', year: 'numeric',
   });
 
-  // Whole naira, from the kobo the entity stores.
-  const ngn = (kobo: number) => `₦${Math.round(Number(kobo ?? 0) / 100).toLocaleString()}`;
+  // Kobo is how the entity stores a cap. Divide down, then show the kobo:
+  // a ₦2,500.50 cap that renders as ₦2,501 is a cap nobody can reconcile.
+  const ngn = nairaFromKobo;
 
   // An admin could not previously see that a percentage promo was
   // uncapped, which is how a 50% code on a ₦40,000 delivery gets minted

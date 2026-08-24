@@ -62,11 +62,11 @@ export default function ActiveDeliveryScreen() {
   const locationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const mapRef           = useRef<MapView>(null);
 
-  // Real road-following route from Google Directions, with km + ETA.
+  // Real road-following route from Google Directions. Distance only:
+  // durationText is deliberately not read, SEIRS shows no arrival times.
   const {
     coords:       routeCoords,
     distanceText: routeDistance,
-    durationText: routeDuration,
   } = useDirectionsPolyline(
     delivery?.pickupLat  != null
       ? { latitude: Number(delivery.pickupLat),  longitude: Number(delivery.pickupLng)  }
@@ -552,21 +552,14 @@ export default function ActiveDeliveryScreen() {
                 />
               )}
             </MapView>
-            {(routeDistance || routeDuration) && (
+            {/* Distance only. The Directions duration used to sit beside it
+                and read as an arrival promise, which SEIRS never makes. */}
+            {!!routeDistance && (
               <View style={[styles.mapStatRow, { backgroundColor: theme.surfaceSecond, borderTopColor: theme.border }]}>
-                {routeDistance && (
-                  <View style={styles.mapStatItem}>
-                    <Ionicons name="navigate-outline" size={14} color={theme.textSecond} />
-                    <Text style={[styles.mapStatValue, { color: theme.text }]}>{routeDistance}</Text>
-                  </View>
-                )}
-                {routeDistance && routeDuration && <View style={[styles.mapStatDivider, { backgroundColor: theme.border }]} />}
-                {routeDuration && (
-                  <View style={styles.mapStatItem}>
-                    <Ionicons name="time-outline" size={14} color={theme.textSecond} />
-                    <Text style={[styles.mapStatValue, { color: theme.text }]}>{routeDuration}</Text>
-                  </View>
-                )}
+                <View style={styles.mapStatItem}>
+                  <Ionicons name="navigate-outline" size={14} color={theme.textSecond} />
+                  <Text style={[styles.mapStatValue, { color: theme.text }]}>{routeDistance}</Text>
+                </View>
               </View>
             )}
           </View>

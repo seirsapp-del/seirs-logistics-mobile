@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Wallet, Clock, ArrowDownCircle, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { naira } from '@/lib/money';
 import { useConfirm } from '@/components/ConfirmDialog';
 
 interface PendingPayout {
@@ -91,7 +92,7 @@ export default function WalletPage() {
     } finally { setBusyId(null); }
   };
 
-  const fmt = (n: number) => `₦${Number(n).toLocaleString()}`;
+
   const fmtDate = (iso: string) => new Date(iso).toLocaleString('en-NG', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   });
@@ -126,9 +127,9 @@ export default function WalletPage() {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
-        <SummaryCard label="Available Payouts" sub={`${summary?.pendingCount ?? 0} earnings ready`} value={fmt(summary?.pendingTotal ?? 0)} Icon={Clock}        color="text-yellow-600" />
-        <SummaryCard label="Held Earnings"     sub={`${summary?.heldCount ?? 0} flagged for review`}  value={fmt(summary?.heldTotal ?? 0)}    Icon={AlertCircle}   color="text-red-600" />
-        <SummaryCard label="Paid Out (MTD)"    sub={`${summary?.paidMtdCount ?? 0} transfers`}         value={fmt(summary?.paidMtdTotal ?? 0)} Icon={TrendingUp}    color="text-green-600" />
+        <SummaryCard label="Available Payouts" sub={`${summary?.pendingCount ?? 0} earnings ready`} value={naira(summary?.pendingTotal ?? 0)} Icon={Clock}        color="text-yellow-600" />
+        <SummaryCard label="Held Earnings"     sub={`${summary?.heldCount ?? 0} flagged for review`}  value={naira(summary?.heldTotal ?? 0)}    Icon={AlertCircle}   color="text-red-600" />
+        <SummaryCard label="Paid Out (MTD)"    sub={`${summary?.paidMtdCount ?? 0} transfers`}         value={naira(summary?.paidMtdTotal ?? 0)} Icon={TrendingUp}    color="text-green-600" />
       </div>
 
       {/* Held earnings (urgent) */}
@@ -156,7 +157,7 @@ export default function WalletPage() {
                 {held.map(h => (
                   <tr key={h.id}>
                     <td className="px-4 py-3 font-medium text-[#0F2B4C]">{h.driverName}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-800">{fmt(h.driverNet)}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-800">{naira(h.driverNet)}</td>
                     <td className="px-4 py-3 text-gray-600 text-xs">{h.holdReason ?? '-'}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(h.updatedAt)}</td>
                     <td className="px-4 py-3">
@@ -200,7 +201,7 @@ export default function WalletPage() {
                 {pending.map(p => (
                   <tr key={p.id}>
                     <td className="px-4 py-3 font-medium text-[#0F2B4C]">{p.driverName}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-800">{fmt(p.driverNet)}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-800">{naira(p.driverNet)}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(p.availableAt)}</td>
                     <td className="px-4 py-3 text-gray-500 font-mono text-xs">{p.deliveryId.slice(0, 8)}…</td>
                   </tr>
@@ -235,7 +236,7 @@ export default function WalletPage() {
                 {paid.map(w => (
                   <tr key={w.id}>
                     <td className="px-4 py-3 font-medium text-[#0F2B4C]">{w.driverName}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-800">{fmt(w.driverNet)}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-800">{naira(w.driverNet)}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(w.paidAt)}</td>
                     <td className="px-4 py-3 text-gray-500 font-mono text-xs">{w.flutterwaveTransferId ?? '-'}</td>
                   </tr>

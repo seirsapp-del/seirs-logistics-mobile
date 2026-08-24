@@ -19,6 +19,7 @@
 import { useEffect, useState } from 'react';
 import { Fuel, X } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { naira } from "@/lib/money";
 import { isSuperAdminFromUser } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
 
@@ -29,7 +30,6 @@ interface Drift {
   stale: boolean;
 }
 
-const naira = (v: number) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`;
 
 export default function FuelDriftBanner() {
   const [drift, setDrift]     = useState<Drift | null>(null);

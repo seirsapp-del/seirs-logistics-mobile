@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api';
+import { naira } from '@/lib/money';
 import FuelDriftBanner from '@/components/FuelDriftBanner';
 import { isSuperAdminFromUser } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
@@ -61,12 +62,12 @@ const CATEGORY_ORDER = [
 function formatValue(value: number, unit: string): string {
   const n = Number(value);
   switch (unit) {
-    case 'flat_ngn':  return n < 0 ? `−₦${Math.abs(n).toLocaleString()}` : `₦${n.toLocaleString()}`;
+    case 'flat_ngn':  return n < 0 ? `−${naira(Math.abs(n))}` : naira(n);
     case 'percent':   return `${n}%`;
-    case 'per_km':    return `₦${n}/km`;
-    case 'per_day':   return `₦${n}/day`;
-    case 'per_week':  return `₦${n.toLocaleString()}/wk`;
-    case 'per_month': return `₦${n.toLocaleString()}/mo`;
+    case 'per_km':    return `${naira(n)}/km`;
+    case 'per_day':   return `${naira(n)}/day`;
+    case 'per_week':  return `${naira(n)}/wk`;
+    case 'per_month': return `${naira(n)}/mo`;
     // Not money. These used to fall through to the naira branch, so
     // a 7 day abandonment threshold rendered as a naira amount.
     case 'minutes':   return `${n} ${n === 1 ? 'minute' : 'minutes'}`;

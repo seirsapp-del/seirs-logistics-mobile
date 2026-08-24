@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Shield, Plus, ExternalLink, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { naira } from '@/lib/money';
 import { ExternalPartnerModal, type ExternalPartner } from '@/components/ExternalPartnerEditor';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -18,9 +19,7 @@ const COVERAGE_LABEL: Record<string, string> = {
   cyber:           'Cyber Liability',
 };
 
-const fmtNgn = (n: number) => n > 0
-  ? new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n)
-  : '-';
+const fmtNgn = (n: number) => (n > 0 ? naira(n) : '-');
 
 export default function InsurancePage() {
   const [items,   setItems]   = useState<ExternalPartner[]>([]);

@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft, MapPin, Navigation, Package, User, Bike, Store, Receipt, AlertTriangle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { naira } from "@/lib/money";
 
 /* Leaflet reaches for `window` the moment it is imported, so the map can
    only ever load in the browser. */
@@ -32,7 +33,6 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled:  'bg-[#0F2B4C]/5 text-[#0F2B4C]/50',
 };
 
-const naira = (v: any) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`;
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === '') return null;
@@ -241,7 +241,7 @@ export default function DeliveryDetailPage() {
               <div className="text-xs uppercase tracking-wider text-[#0F2B4C]/40">Quote</div>
               <div className="font-medium text-[#0F2B4C]">
                 {d.returnQuoteNgn != null
-                  ? `\u20a6${Number(d.returnQuoteNgn).toLocaleString()}`
+                  ? naira(d.returnQuoteNgn)
                   : '-'}
                 {d.returnQuoteKm != null
                   ? ` \u00b7 ${Number(d.returnQuoteKm).toFixed(1)} km by road`
@@ -322,15 +322,15 @@ export default function DeliveryDetailPage() {
 
         {rfPrev && (
           <div className="mt-3 rounded-lg bg-[#0F2B4C]/[0.03] p-3 font-mono text-xs text-[#0F2B4C]">
-            <Row label="Fare paid" value={`\u20a6${Number(rfPrev.farePaid).toLocaleString()}`} />
-            <Row label={`Refund at ${rfPrev.percent}%`} value={`\u20a6${Number(rfPrev.refundNgn).toLocaleString()}`} />
-            <Row label="From SEIRS margin" value={`\u20a6${Number(rfPrev.fromMargin).toLocaleString()}`} />
-            <Row label="From rider payout" value={`\u20a6${Number(rfPrev.fromDriver).toLocaleString()}`} />
-            <Row label="Rider floor" value={`\u20a6${Number(rfPrev.driverFloorNgn).toLocaleString()}`} />
-            <Row label="Rider is paid" value={`\u20a6${Number(rfPrev.driverPayAfter).toLocaleString()}`} />
+            <Row label="Fare paid" value={naira(rfPrev.farePaid)} />
+            <Row label={`Refund at ${rfPrev.percent}%`} value={naira(rfPrev.refundNgn)} />
+            <Row label="From SEIRS margin" value={naira(rfPrev.fromMargin)} />
+            <Row label="From rider payout" value={naira(rfPrev.fromDriver)} />
+            <Row label="Rider floor" value={naira(rfPrev.driverFloorNgn)} />
+            <Row label="Rider is paid" value={naira(rfPrev.driverPayAfter)} />
             {rfPrev.floorApplied && (
               <div className="mt-2 rounded border border-[#D97706]/30 bg-[#D97706]/5 px-2 py-1 text-[11px] text-[#92400E]">
-                The floor rescued {`\u20a6${Number(rfPrev.absorbedByFloor).toLocaleString()}`} of the
+                The floor rescued {naira(rfPrev.absorbedByFloor)} of the
                 rider&apos;s pay. SEIRS covers that, not them.
               </div>
             )}
@@ -372,7 +372,7 @@ export default function DeliveryDetailPage() {
               </div>
               <div className="font-medium text-[#0F2B4C]">
                 {d.addressChangeQuoteNgn != null
-                  ? `\u20a6${Number(d.addressChangeQuoteNgn).toLocaleString()}`
+                  ? naira(d.addressChangeQuoteNgn)
                   : '-'}
                 {d.addressChangeQuoteKm != null
                   ? ` \u00b7 ${Number(d.addressChangeQuoteKm).toFixed(1)} km by road`
@@ -412,7 +412,7 @@ export default function DeliveryDetailPage() {
                     onChange={(e) => setAcQuote(e.target.value)}
                     placeholder={
                       d.addressChangeQuoteNgn != null
-                        ? String(Math.round(Number(d.addressChangeQuoteNgn)))
+                        ? Number(d.addressChangeQuoteNgn).toFixed(2)
                         : 'Naira'
                     }
                     className="w-full rounded-lg border border-[#0F2B4C]/15 px-3 py-2 text-sm outline-none focus:border-[#3A7BD5]"

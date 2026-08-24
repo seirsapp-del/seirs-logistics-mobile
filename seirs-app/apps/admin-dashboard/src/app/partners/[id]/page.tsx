@@ -7,6 +7,7 @@ import {
   Copy, ArrowLeft, FileText, Download, ExternalLink,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { naira } from '@/lib/money';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
 import { SendDocumentModal } from '@/components/SendDocumentModal';
 
@@ -18,8 +19,7 @@ const STATUS_STYLES: Record<string, string> = {
   active:         'bg-emerald-100 text-emerald-700',
 };
 
-const fmtNgn = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
+
 
 // Everything the admin knows about one partner store: the store row, the
 // owner account behind it, activity numbers, and the KYC documents from
@@ -227,12 +227,12 @@ export default function PartnerDetailPage() {
           </div>
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
             <div className="flex items-center gap-2 text-gray-400 mb-1"><Wallet size={14} /><span className="text-xs">Payouts owed</span></div>
-            <div className="text-2xl font-bold text-gray-900">{fmtNgn(activity?.payoutsPendingNgn ?? 0)}</div>
+            <div className="text-2xl font-bold text-gray-900">{naira(activity?.payoutsPendingNgn ?? 0)}</div>
             <div className="text-xs text-gray-500 mt-1">Pending + processing</div>
           </div>
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
             <div className="flex items-center gap-2 text-gray-400 mb-1"><Wallet size={14} /><span className="text-xs">Payouts paid</span></div>
-            <div className="text-2xl font-bold text-gray-900">{fmtNgn(activity?.payoutsPaidNgn ?? 0)}</div>
+            <div className="text-2xl font-bold text-gray-900">{naira(activity?.payoutsPaidNgn ?? 0)}</div>
             <div className="text-xs text-gray-500 mt-1">Lifetime paid out</div>
           </div>
         </div>

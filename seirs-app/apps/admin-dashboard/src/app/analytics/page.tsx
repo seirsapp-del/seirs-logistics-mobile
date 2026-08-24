@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
+import { naira, nairaShort } from '@/lib/money';
 import { Star } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -17,12 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled:  '#6B7280',
 };
 
-const fmt = (n: number) =>
-  n >= 1_000_000
-    ? `₦${(n / 1_000_000).toFixed(1)}M`
-    : n >= 1_000
-    ? `₦${(n / 1_000).toFixed(1)}K`
-    : `₦${n}`;
+
 
 export default function AnalyticsPage() {
   const [revenue,    setRevenue]    = useState<any[]>([]);
@@ -89,7 +85,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
                 <p className="text-xs font-semibold text-[#0F2B4C]/40 uppercase tracking-wide">Total Revenue</p>
-                <p className="text-3xl font-black text-[#0F2B4C] mt-1">{fmt(totalRevenue)}</p>
+                <p className="text-3xl font-black text-[#0F2B4C] mt-1">{naira(totalRevenue)}</p>
                 <p className="text-xs text-[#0F2B4C]/30 mt-1">last {days} days</p>
               </div>
               <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
@@ -114,9 +110,11 @@ export default function AnalyticsPage() {
                       dataKey="date"
                       tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }}
                     />
-                    <YAxis tickFormatter={(v) => fmt(v)} tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }} width={60} />
+                    {/* Axis ticks abbreviate because a full kobo amount will not fit in the
+                        gutter. The exact figure is one hover away in the tooltip. */}
+                    <YAxis tickFormatter={nairaShort} tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }} width={60} />
                     <Tooltip
-                      formatter={(v: any) => [fmt(Number(v)), 'Revenue']}
+                      formatter={(v: any) => [naira(v), 'Revenue']}
                       contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', boxShadow: 'none' }}
                     />
                     <Line

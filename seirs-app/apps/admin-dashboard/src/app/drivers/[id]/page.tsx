@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Bike, Car, Truck, FileText, Star, MapPin, IdCard, CheckCircle2, AlertTriangle, Copy, Download, XCircle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { naira } from "@/lib/money";
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
@@ -11,11 +12,6 @@ import { SendDocumentModal } from '@/components/SendDocumentModal';
 import { canExportNdprData, canHardDeleteAccount } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
 
-// Postgres returns decimal columns as strings ("1500.00"), so
-// String.toLocaleString left them exactly as-is: fractional naira with
-// no thousands separator, and the same order read differently here than
-// on the delivery detail page. Whole naira only, house standard.
-const naira = (v: any) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`;
 
 const VEHICLE_LUCIDE: Record<string, typeof Bike> = {
   bicycle:    Bike,
@@ -40,9 +36,6 @@ const DELIVERY_STATUS_COLORS: Record<string, string> = {
   cancelled:  'bg-gray-100 text-gray-500',
   failed:     'bg-red-100 text-red-700',
 };
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 export default function DriverDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -87,7 +80,7 @@ export default function DriverDetailPage() {
 
   const requestLevel = async () => {
     const toRaw = prompt('Move this driver to which level? (1-10)\n\nLevel caps:\n' +
-      levelCaps.map((c, i) => `L${i + 1}: ₦${Number(c).toLocaleString()}`).join('\n'));
+      levelCaps.map((c, i) => `L${i + 1}: ${naira(c)}`).join('\n'));
     if (!toRaw) return;
     const toLevel = Number(toRaw);
     if (!Number.isInteger(toLevel) || toLevel < 1 || toLevel > 10) { alert('Level must be 1-10.'); return; }
@@ -338,9 +331,9 @@ export default function DriverDetailPage() {
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Deliveries',    value: deliveryCount },
-            { label: 'Total Earned',  value: fmt(totalEarned) },
+            { label: 'Total Earned',  value: naira(totalEarned) },
             { label: 'Rating',        value: <span className="inline-flex items-center justify-center gap-1"><Star size={16} className="fill-amber-400 text-amber-400" /> {Number(driver.rating).toFixed(1)}</span> },
-            { label: 'Wallet Balance',value: fmt(Number(driver.walletBalance)) },
+            { label: 'Wallet Balance',value: naira(driver.walletBalance) },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
               <div className="text-xl font-bold text-gray-900">{s.value}</div>
@@ -380,7 +373,7 @@ export default function DriverDetailPage() {
             actually use direct debit for withdrawals. */}
         <Section title="Financial">
           <Field label="Loyalty balance" value={`${(loyalty?.balance ?? 0).toLocaleString()} pts (${loyalty?.tier ?? 'Bronze'})`} />
-          <Field label="Wallet balance" value={fmt(Number(driver.walletBalance ?? 0))} />
+          <Field label="Wallet balance" value={naira(driver.walletBalance ?? 0)} />
           <Field label="Bank" value={driver.user?.bankAccountName ? `${driver.user.bankAccountName} · ${driver.user.bankAccountNumber?.slice(-4) ?? '****'} · ${driver.user.bankCode ?? ''}` : null} />
           <Field label="Bank verified" value={driver.user?.bankVerifiedAt ? fmtDate(driver.user.bankVerifiedAt) : null} />
         </Section>
@@ -534,7 +527,7 @@ export default function DriverDetailPage() {
               <p className="text-sm font-semibold text-gray-800">Value Level {driver.valueLevel ?? 1} of 10</p>
               <p className="text-xs text-gray-500">
                 May carry declared values up to{' '}
-                <b>₦{Number(levelCaps[(Math.min(Math.max(driver.valueLevel ?? 1, 1), 10)) - 1] ?? 0).toLocaleString()}</b>
+                <b>{naira(levelCaps[(Math.min(Math.max(driver.valueLevel ?? 1, 1), 10)) - 1] ?? 0)}</b>
                 {' '}· climbs with clean deliveries, or by a manager-approved move
               </p>
             </div>

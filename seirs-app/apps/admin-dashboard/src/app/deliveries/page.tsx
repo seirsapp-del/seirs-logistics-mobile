@@ -2,15 +2,11 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { adminApi } from '@/lib/api';
+import { naira } from "@/lib/money";
 import { useSearchParams } from 'next/navigation';
 import { MapPin, Navigation , ChevronRight, ChevronDown, AlertCircle } from 'lucide-react';
 import { useConfirm } from '@/components/ConfirmDialog';
 
-// Postgres returns decimal columns as strings ("1500.00"), so
-// String.toLocaleString left them exactly as-is: fractional naira with
-// no thousands separator, and the same order read differently here than
-// on the delivery detail page. Whole naira only, house standard.
-const naira = (v: any) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`;
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-amber-100 text-amber-700',
@@ -275,7 +271,7 @@ function DeliveriesContent() {
                               </span>
                             </td>
                             <td className="px-4 py-2 text-xs text-[#0F2B4C]/70">
-                              {st.packagePriceNgn ? `₦${Math.round(Number(st.packagePriceNgn)).toLocaleString()}` : ''}
+                              {st.packagePriceNgn ? naira(st.packagePriceNgn) : ''}
                             </td>
                             <td className="px-4 py-2 text-[10px] text-[#0F2B4C]/40">
                               {st.weightKg ? `${Number(st.weightKg)}kg` : ''}

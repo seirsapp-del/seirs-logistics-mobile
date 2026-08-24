@@ -213,9 +213,6 @@ export default function DeliveryDetailScreen() {
   const arrived  = delivery.stops.filter(s => s.status === 'arrived').length;
   const done     = delivery.stops.filter(s => s.status === 'delivered').length;
 
-  const totalEta = delivery.estimatedTotalMinutes
-                ?? ((delivery.estimatedDriveMinutes ?? 0) + (delivery.estimatedDwellMinutes ?? 0));
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -256,7 +253,10 @@ export default function DeliveryDetailScreen() {
           )}
         </View>
 
-        {/* Earnings + ETA + distance */}
+        {/* Earnings + distance. The third tile printed "ETA ~N min" and is
+            gone: SEIRS promises no arrival time anywhere, and a number on a
+            stat tile reads as a commitment however it was labelled. Same
+            rule that removed the "~? min" placeholder from job/[id]. */}
         <View style={[styles.statsRow]}>
           <View style={[styles.statCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <Text style={[styles.statLabel, { color: theme.textSecond }]}>Earning</Text>
@@ -268,12 +268,6 @@ export default function DeliveryDetailScreen() {
             <Text style={[styles.statLabel, { color: theme.textSecond }]}>Distance</Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
               {Number(delivery.distanceKm ?? 0).toFixed(1)} km
-            </Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-            <Text style={[styles.statLabel, { color: theme.textSecond }]}>ETA</Text>
-            <Text style={[styles.statValue, { color: theme.text }]}>
-              ~{totalEta} min
             </Text>
           </View>
         </View>

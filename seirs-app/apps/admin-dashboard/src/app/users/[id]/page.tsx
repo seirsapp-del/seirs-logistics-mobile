@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { adminApi } from '@/lib/api';
+import { naira } from "@/lib/money";
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
@@ -10,11 +11,6 @@ import { canExportNdprData, canHardDeleteAccount } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
 import { AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
 
-// Postgres returns decimal columns as strings ("1500.00"), so
-// String.toLocaleString left them exactly as-is: fractional naira with
-// no thousands separator, and the same order read differently here than
-// on the delivery detail page. Whole naira only, house standard.
-const naira = (v: any) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`;
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-yellow-100 text-yellow-800',
@@ -25,8 +21,6 @@ const STATUS_COLORS: Record<string, string> = {
   failed:     'bg-red-100 text-red-700',
 };
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -278,7 +272,7 @@ export default function UserDetailPage() {
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Total Deliveries',   value: deliveryCount },
-            { label: 'Total Spent',        value: fmt(totalSpent) },
+            { label: 'Total Spent',        value: naira(totalSpent) },
             { label: 'Cancelled',          value: cancelledCount ?? 0 },
             { label: `Rewards (${loyalty?.tier ?? 'Bronze'})`, value: (loyalty?.balance ?? 0).toLocaleString() },
           ].map((s) => (

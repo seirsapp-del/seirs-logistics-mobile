@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  ManyToOne, JoinColumn, Index,
+  ManyToOne, JoinColumn, Index, RelationId,
 } from 'typeorm';
 import { Delivery } from '../deliveries/delivery.entity';
 import { User }     from '../users/user.entity';
@@ -22,6 +22,22 @@ export class ChatMessage {
   @ManyToOne(() => Delivery, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn()
   delivery: Delivery | null;
+
+  /**
+   * The delivery's id as a plain readable property.
+   *
+   * listConversations selected 'm.deliveryId' and then read
+   * (row as any).deliveryId, but the entity only had the `delivery`
+   * RELATION, so with getMany() that property was always undefined.
+   * Every conversation got keyed under undefined, `last` came back
+   * undefined, and the code dropped it. The result: BOTH inboxes were
+   * permanently empty for everyone, in all three apps, while the
+   * messages themselves saved and were readable inside a thread.
+   * Confirmed live 2026-08-24: the founder sent a message and the
+   * driver's inbox and unread badge both stayed at zero.
+   */
+  @RelationId((m: ChatMessage) => m.delivery)
+  deliveryId: string | null;
 
   /**
    * Support ticket this message belongs to, when it is not a delivery
