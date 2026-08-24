@@ -5,19 +5,19 @@ This file is generated. Edit `scratchpad/reg/*.py` and re-run `build.py`.
 ## Totals
 | Severity | Found | Closed | Open |
 |---|---:|---:|---:|
-| HIGH | 72 | 51 | 21 |
-| MEDIUM | 145 | 91 | 54 |
-| LOW | 61 | 49 | 12 |
-| **Total** | **278** | **191** | **87** |
+| HIGH | 72 | 54 | 18 |
+| MEDIUM | 145 | 120 | 25 |
+| LOW | 61 | 57 | 4 |
+| **Total** | **278** | **231** | **47** |
 
 15 of these were found by driving the phone, not by reading code.
-8 are blocked on a founder decision.
+6 are blocked on a founder decision.
 
 ---
 
 ## Customer app
 
-HIGH 10/13 closed · MEDIUM 9/41 · LOW 1/10
+HIGH 13/13 closed · MEDIUM 38/41 · LOW 9/10
 
 
 ### HIGH
@@ -30,11 +30,11 @@ HIGH 10/13 closed · MEDIUM 9/41 · LOW 1/10
   `app/(customer)/sos.tsx:177-188`  
   onPress showed Alert "Calling Police (199)..." and placed no call. Linking was not even imported in the file. In an emergency this is the worst possible lie.  
   *Fix:* Imported Linking, onPress now opens tel: with an Alert fallback.
-- [ ] **C-1.3 "Apply Code" permanently burns the promo and never reaches checkout**  
+- [x] **C-1.3 "Apply Code" permanently burns the promo and never reaches checkout**  
   `app/(customer)/promo.tsx:55`  
   Calls promotionsApi.redeem({code, subtotalKobo: 0}). The backend redeem() is a real redemption, not a validation: it counts against perUserLimit, persists a redemption row and increments the campaign-wide usageCount. With subtotal 0 the discount applies to nothing. No booking flow anywhere reads a promo code, so the promised checkout does not exist. Two harms: the customer loses their one allowed use and is told the opposite, and anyone can drain a campaign usageLimit from this screen without booking.  
   *Fix:* Add a validate-only endpoint (or dryRun flag) and call that; persist the accepted code into the booking store and pass it to deliveriesApi.create.
-- [ ] **C-2.1 share-trip shows a fabricated pickup and dropoff**  
+- [x] **C-2.1 share-trip shows a fabricated pickup and dropoff**  
   `app/(customer)/share-trip.tsx:31`  
   MOCK_TRIPS.find(tr => tr.id === id) ?? MOCK_TRIPS[2]. Real deliveries have UUIDs so find always misses and trip becomes the fictional Surulere to Ajah trip, rendered verbatim on the share card. Worst path: Drawer, SOS, "Share My Live Location" passes an undefined deliveryId, so a user sharing their location during an emergency shares someone else invented route. A 2026-08-15 sweep fixed the tracking code here and left the addresses.  
   *Fix:* In the .then at 42-44 also setFetchedTrip(d) and render fetchedTrip?.pickupAddress instead of trip.pickupAddress.
@@ -46,7 +46,7 @@ HIGH 10/13 closed · MEDIUM 9/41 · LOW 1/10
   `app/(customer)/sos.tsx:121 and all text styles`  
   Root background isDark ? #0A0000 : #FFF1F1 (near-white) while every text style is hardcoded white or translucent white. On #FFF1F1 all of it vanishes. A dark-mode device sweep never sees this; a daytime user in an emergency sees a blank red-tinted screen with a red circle.  
   *Fix:* Deep red (#7F1D1D) ground in light mode too, so the white text reads in both themes. Verified on device.
-- [ ] **C-5.1 The app promises a 10% scheduling discount that does not exist**  
+- [x] **C-5.1 The app promises a 10% scheduling discount that does not exist**  
   `i18n/locales/en.json:299 and :305`  
   "schedule the pickup an hour ahead. You get a 10% discount" and "The 10% discount applies automatically, no code". constants/rateCard.ts:443-449 enumerates every discount: bulkUploadOffPct 0.05 (min 50 packages), recurringOffPct 0.03, welcomeOffPct 0.10 (capped N300), loyalty points. There is no scheduling discount, and nothing in the backend matches either. A customer who schedules pays full price after being told twice it would be 10% less.  
   *Fix:* Delete the two sentences, or add an admin-tunable scheduledAheadOffPct to the rate card and honour it.
@@ -77,51 +77,51 @@ HIGH 10/13 closed · MEDIUM 9/41 · LOW 1/10
 
 ### MEDIUM
 
-- [ ] **C-1.4 share-trip "Copy" button never copies**  
+- [x] **C-1.4 share-trip "Copy" button never copies**  
   `app/(customer)/share-trip.tsx:55-58`  
   handleShare("copy") sets copied=true for 2s and returns. The label flips to "Copied!" with a checkmark and the clipboard is untouched. expo-clipboard is a dependency used correctly in 8 other screens.  
   *Fix:* await Clipboard.setStringAsync(shareLink) before setCopied(true).
-- [ ] **C-1.5 Profile fetches the wallet on every focus and renders nothing**  
+- [x] **C-1.5 Profile fetches the wallet on every focus and renders nothing**  
   `app/(customer)/(tabs)/profile.tsx:31,53,59`  
   walletBalance is set from paymentsApi.wallet() and never read. The comment at 217-221 explains the wallet cell was removed; the fetch was not. A wasted round-trip on every tab focus.  
   *Fix:* Delete the state and drop paymentsApi.wallet() from the Promise.all.
-- [ ] **C-1.6 Rewards tab fetches community pulse and renders nothing**  
+- [x] **C-1.6 Rewards tab fetches community pulse and renders nothing**  
   `app/(customer)/(tabs)/wallet.tsx:55,66,77`  
   pulse is set from deliveriesApi.communityPulse(); the section was removed. Styles pulseCard/pulseIcon/pulseCount/pulseCountUnit/pulseSub are dead too.  
   *Fix:* Remove the state, the call and the five styles.
-- [ ] **C-1.7 Home runs a scroll animation for buttons that no longer exist**  
+- [x] **C-1.7 Home runs a scroll animation for buttons that no longer exist**  
   `app/(customer)/(tabs)/index.tsx:63-95,147`  
   onScroll with scrollEventThrottle 16 drives hideFabs/showFabs animating fabTranslate; nothing renders it (FABs removed). animateAndGo, sendWidth, rideWidth have one reference each. Styles fabPair/fabRow/fabPressable/fabLabel and drawerOverlay..drawerSignOutText are dead.  
   *Fix:* Delete onScroll/scrollEventThrottle, lines 60-95 and the dead styles.
-- [ ] **C-1.8 Transaction detail has a share button with no onPress**  
+- [x] **C-1.8 Transaction detail has a share button with no onPress**  
   `app/(customer)/transaction/[id].tsx:48-50`  
   A Pressable with a share icon and no handler.  
   *Fix:* Wire it to Share.share or remove it.
-- [ ] **C-1.9 Rating submit failure is invisible**  
+- [x] **C-1.9 Rating submit failure is invisible**  
   `components/RatingModal.tsx:31-33`  
   On throw, setSubmitted(true) is skipped and the catch is empty. The spinner stops, the form reappears, no message.  
   *Fix:* Surface the error in the modal.
-- [ ] **C-1.10 Privacy screen has a loaded-but-unrendered toggle**  
+- [x] **C-1.10 Privacy screen has a loaded-but-unrendered toggle**  
   `app/(customer)/privacy.tsx:57,67,81`  
   personalisedAds is read from the server and onTogglePersonalised exists, but no ToggleRow renders it. PRIVACY_PREF_KEYS is declared with an explanatory comment and never used.  
   *Fix:* Render the row or delete the state.
-- [ ] **C-2.2 MOCK_VEHICLES fallback mislabels every cargo vehicle**  
+- [x] **C-2.2 MOCK_VEHICLES fallback mislabels every cargo vehicle**  
   `app/(customer)/fare-breakdown.tsx:54`  
   MOCK_VEHICLES ids are economy/premium/truck; the cargo picker passes bicycle/motorcycle/keke/car/van/truck_sm/truck_lg, so the lookup can never hit and it renders "Economy / Affordable everyday rides / 4 min" regardless. A landmine rather than a live bug because the cargo branch is unreachable (C-6.1).  
   *Fix:* Delete the screen or map ids properly.
-- [ ] **C-2.3 trip-progress falls back to mock trip and mock driver**  
+- [x] **C-2.3 trip-progress falls back to mock trip and mock driver**  
   `app/(customer)/trip-progress.tsx:79,82,92`  
   mockTrip ?? MOCK_TRIPS[2], MOCK_DRIVERS[0], and eta: mockDriver.eta (hardcoded 4) is used even when a real driver was fetched. Unreachable today (C-6.2).  
   *Fix:* Delete the screen.
-- [ ] **C-2.4 Transaction detail is 100% mock**  
+- [x] **C-2.4 Transaction detail is 100% mock**  
   `app/(customer)/transaction/[id].tsx:31`  
   MOCK_TRANSACTIONS.find(...) ?? MOCK_TRANSACTIONS[0], rendering "Wallet Top-up +N20,000 Bank Transfer success" as a real transaction. Unreachable today.  
   *Fix:* Delete the screen or wire it to the real ledger.
-- [ ] **C-2.5 Bundled article content carries stale dated promos and fabricated partnership claims**  
+- [x] **C-2.5 Bundled article content carries stale dated promos and fabricated partnership claims**  
   `constants/heroCards.ts:16, i18n/locales/en.json:288-296`  
   The file states the contract: keep it evergreen, no dated promos, since changing it needs an app release. The data below it says "Up to 25% off your first three orders this week" and "Shoprite Surulere and Lekki branches open next month, followed by Ikoyi in July. We are also in talks with Spar and ShopRite Apapa." publishedAt is 2026-05-17, so those dates are three months past, and it names real retailers with partnership claims.  
   *Fix:* Rewrite evergreen or move to the CMS.
-- [ ] **C-2.6 Fabricated performance statistic**  
+- [x] **C-2.6 Fabricated performance statistic**  
   `i18n/locales/en.json:311`  
   "Customers who schedule even 60 minutes ahead see deliveries arrive 18 minutes faster on average." No such data exists pre-launch, and it is also a delivery-speed claim.  
   *Fix:* Delete the sentence.
@@ -129,11 +129,11 @@ HIGH 10/13 closed · MEDIUM 9/41 · LOW 1/10
   `app/(customer)/send.tsx:2015-2021`  
   Comment claimed insets.bottom is ~48dp on the 3-button layout. request.tsx:376-378 records the measured truth: it lies as 0 there. Send, the primary conversion flow, was left on the raw value.  
   *Fix:* Math.max(insets.bottom, 24) and the comment now states what was measured.
-- [ ] **C-4.3 Onboarding three CTAs use raw insets.bottom**  
+- [x] **C-4.3 Onboarding three CTAs use raw insets.bottom**  
   `app/(auth)/onboarding.tsx:172`  
   paddingBottom: insets.bottom + Spacing.md. With insets.bottom 0 the "Become a Driver" button sits ~16px off the edge, under the nav bar. This is the first screen a new user ever sees.  
   *Fix:* Math.max(insets.bottom, 24) + Spacing.md.
-- [ ] **C-4.4 Tab bar uses raw insets.bottom**  
+- [x] **C-4.4 Tab bar uses raw insets.bottom**  
   `app/(customer)/(tabs)/_layout.tsx:61-62`  
   height 64 + insets.bottom, paddingBottom 10 + insets.bottom. app.json has edgeToEdgeEnabled true, so with insets.bottom 0 the labels sit 10px from the physical edge.  
   *Fix:* Math.max(insets.bottom, 12) in both.
@@ -149,11 +149,11 @@ HIGH 10/13 closed · MEDIUM 9/41 · LOW 1/10
   `app/(customer)/privacy.tsx:246`  
   https://seirs.app/dispute-resolution. No such route exists on the site.  
   *Fix:* Repointed at /terms-of-service, which carries the disputes section. Same fix applied to the driver app.
-- [ ] **C-5.5 Em-dash in user-visible copy (banned project-wide)**  
+- [x] **C-5.5 Em-dash in user-visible copy (banned project-wide)**  
   `app/(customer)/track.tsx:51`  
   picked_up: 'Arrived - meet them outside' uses an em-dash, rendered at line 493. 13 more sit in comments.  
   *Fix:* Replace with a comma or colon.
-- [ ] **C-5.6 Version string is fabricated**  
+- [x] **C-5.6 Version string is fabricated**  
   `i18n/locales/en.json:1051`  
   "SEIRS Logistics v2.0.0 Build 204", rendered at profile.tsx:287. app.json says version 1.0.0. Support will ask what version the user is on and get a made-up answer. Duplicated across all four locales.  
   *Fix:* Render from expo-constants.
@@ -161,47 +161,47 @@ HIGH 10/13 closed · MEDIUM 9/41 · LOW 1/10
   `i18n/locales/en.json:844, sos.tsx:140`  
   Copy said "Press and hold SOS button in an emergency" but the control uses onPress, a plain tap.  
   *Fix:* Copy changed to "Tap SOS in an emergency" in all four locales.
-- [~] **C-5.8 SOS gives three different emergency numbers**  
+- [x] **C-5.8 SOS gives three different emergency numbers**  
   `sos.tsx:24-25, en.json:857-858`  
   sos.tsx says Police 199; en.json callPolice says "Call Police (112)"; en.json says "call 199 directly"; sos.tsx assigns 112 to Ambulance. 112 is Nigeria national emergency number and 199 is commonly fire service.  
   *Fix:* FOUNDER DECISION: confirm the correct number set before launch. I will not guess at numbers someone dials in a crisis.
-- [ ] **C-5.9 Card-removal dialog shows the empty-state text**  
+- [x] **C-5.9 Card-removal dialog shows the empty-state text**  
   `app/(customer)/payment-methods.tsx:65`  
   Passes paymentMethods.emptyDesc as the body of a destructive confirmation, so under the heading "Remove VISA ****4532" it reads "Pay for your first delivery and your card appears here on its own."  
   *Fix:* Write a real confirmation body.
-- [ ] **C-5.10 "Activating in 5s" with a Cancel button, after the alert already fired**  
+- [x] **C-5.10 "Activating in 5s" with a Cancel button, after the alert already fired**  
   `app/(customer)/sos.tsx:66-69,59-64,157-161`  
   sosApi.trigger runs immediately; the countdown and Cancel imply it has not sent. cancelSOS does call sosApi.cancel so the outcome is correct, the copy is not.  
   *Fix:* "SOS sent. Cancel within 5s if this was a mistake."
-- [ ] **C-5.11 Hardcoded "Live Tracking Active"**  
+- [x] **C-5.11 Hardcoded "Live Tracking Active"**  
   `app/(customer)/share-trip.tsx:87`  
   Rendered unconditionally, including when the screen is opened from the drawer with no delivery at all.  
   *Fix:* Gate on a real delivery.
-- [ ] **C-5.12 Emoji and brand casing in RatingModal**  
+- [x] **C-5.12 Emoji and brand casing in RatingModal**  
   `components/RatingModal.tsx:70,50,53`  
   Uses a star emoji for the five rating stars and a folded-hands emoji; every other icon in the app is Ionicons or lucide, and emoji cannot be theme-tinted. Line 53 reads "helps us improve Seirs"; the brand is SEIRS everywhere else.  
   *Fix:* Swap to lucide icons and fix the casing.
-- [ ] **C-6.1 fare-breakdown.tsx (373 lines) is unreachable**  
+- [x] **C-6.1 fare-breakdown.tsx (373 lines) is unreachable**  
   `app/(customer)/fare-breakdown.tsx`  
   Its only caller is vehicle-select.tsx:460, which runs solely in the !isRide branch. request.tsx always passes mode ride, and send.tsx never touches either screen. The whole screen and the cargo branch feeding it are dead.  
   *Fix:* Delete, or reconnect if the cargo breakdown is wanted.
-- [ ] **C-6.2 trip-progress.tsx is unreachable**  
+- [x] **C-6.2 trip-progress.tsx is unreachable**  
   `app/(customer)/trip-progress.tsx`  
   Nothing navigates to it; only comments match. Carries the mock fallbacks in C-2.3, a hardcoded chatId "chat1" at 492, and __DEV__ auto-advance timers at 171-175.  
   *Fix:* Delete.
-- [ ] **C-6.3 transaction/[id].tsx is unreachable**  
+- [x] **C-6.3 transaction/[id].tsx is unreachable**  
   `app/(customer)/transaction/[id].tsx`  
   Unreachable, fully mock (C-2.4), dead share button (C-1.8).  
   *Fix:* Delete.
-- [~] **C-6.4 add-payment.tsx is unreachable but still charges a real N100**  
+- [x] **C-6.4 add-payment.tsx is unreachable but still charges a real N100**  
   `app/(customer)/add-payment.tsx:18-22,51`  
   No screen navigates to it, but it is registered at /add-payment and fully wired to paymentsApi.addCardStart, a real N100 Flutterwave charge. payment-methods.tsx states the flow was deliberately replaced by save-on-first-payment. That contradicts the standing note that the N100 add-card UX shipped and must not change without asking. Line 39 also promises a refund "within 5-10 business days".  
   *Fix:* FOUNDER DECISION: is save-on-first-payment the intended behaviour, and should this screen be deleted?
-- [ ] **C-6.6 components/RatingModal.tsx (135 lines) is exported and never imported**  
+- [x] **C-6.6 components/RatingModal.tsx (135 lines) is exported and never imported**  
   `components/RatingModal.tsx`  
   The live rating flow is app/(customer)/rate/[driverId].tsx. Carries C-1.9 and C-5.12.  
   *Fix:* Delete.
-- [ ] **C-7.1 promo.tsx comment claims the Apply check is validate-only**  
+- [x] **C-7.1 promo.tsx comment claims the Apply check is validate-only**  
   `app/(customer)/promo.tsx:44-47`  
   Says the live Apply check only validates existence/activity/per-user cap and the discount recalculates at booking. Both halves are false: the backend persists a redemption and increments usageCount, and there is no booking-time re-application. This comment is why C-1.3 looked safe.  
   *Fix:* Correct it when fixing C-1.3.
@@ -209,11 +209,11 @@ HIGH 10/13 closed · MEDIUM 9/41 · LOW 1/10
   `app/(customer)/send.tsx:2015-2017`  
   Claimed insets.bottom is ~48dp on 3-button Android; measured as 0.  
   *Fix:* Comment rewritten to state the measurement.
-- [ ] **C-7.3 payment-methods.tsx describes a CTA that does not exist**  
+- [x] **C-7.3 payment-methods.tsx describes a CTA that does not exist**  
   `app/(customer)/payment-methods.tsx:87-89`  
   Says the add-payment CTA lives in the body (empty state plus "Add another" at the bottom of the list). No such CTA exists anywhere in the file.  
   *Fix:* Delete the comment.
-- [ ] **C-8.1 Every finished delivery renders a grey badge instead of green**  
+- [x] **C-8.1 Every finished delivery renders a grey badge instead of green**  
   `app/(customer)/(tabs)/index.tsx:40`  
   statusVariant returns success for 'completed', but DeliveryStatus has no 'completed'; the terminal value is 'delivered'.  
   *Fix:* s === 'delivered' || s === 'completed' ? 'success' : ...
@@ -244,23 +244,23 @@ HIGH 10/13 closed · MEDIUM 9/41 · LOW 1/10
 
 ### LOW
 
-- [ ] **C-6.5 app/modal.tsx is an untouched Expo template**  
+- [x] **C-6.5 app/modal.tsx is an untouched Expo template**  
   `app/modal.tsx`  
   Renders "This is a modal". Reachable at /modal and listed in _sitemap.  
   *Fix:* Delete.
-- [ ] **C-7.4 heroCards.ts contradicts itself about ctaKey/ctaRoute**  
+- [x] **C-7.4 heroCards.ts contradicts itself about ctaKey/ctaRoute**  
   `constants/heroCards.ts:8-10 vs 81-82`  
   Lines 8-10 say they render an action button; 81-82 say the article view does not render a sticky CTA. No card sets either field and the article screen never reads them.  
   *Fix:* Remove the fields or implement them.
-- [ ] **C-7.5 Em-dashes in comments (banned project-wide)**  
+- [x] **C-7.5 Em-dashes in comments (banned project-wide)**  
   `hooks/use-bookmarks.ts:5,7; hooks/use-rate-card.ts:2,10,18,40,135,273,334,341,361; constants/nigerian-states.ts:5; utils/articleMeta.ts:4,21; i18n/index.ts:45`  
   13 occurrences.  
   *Fix:* Replace with colons, commas or hyphens.
-- [ ] **C-7.6 vehicle-select.tsx references a route that does not exist**  
+- [x] **C-7.6 vehicle-select.tsx references a route that does not exist**  
   `app/(customer)/vehicle-select.tsx:44-45`  
   Says cargo mode comes from /multi-stop (the legacy Economy/Premium/Truck list). There is no /multi-stop route and the cargo list is PACKAGE_VEHICLES.  
   *Fix:* Correct the comment.
-- [ ] **C-7.7 Standing TODO markers and ts-ignores**  
+- [x] **C-7.7 Standing TODO markers and ts-ignores**  
   `constants/rateCard.ts:260,267; app/_layout.tsx:40,42`  
   TODO: deprecate; bake into base + perKm. Two @ts-ignore.  
   *Fix:* Resolve or ticket them.
@@ -268,14 +268,14 @@ HIGH 10/13 closed · MEDIUM 9/41 · LOW 1/10
   `app/(customer)/(tabs)/index.tsx:96-98,197,200`  
   A tsc error that worked at runtime.  
   *Fix:* Added unpaid?: boolean to the trips state type.
-- [ ] **C-8.3 Unused imports**  
+- [x] **C-8.3 Unused imports**  
   `fare-breakdown.tsx:15, vehicle-select.tsx:15 (LAGOS_COORDS); share-trip.tsx:12 (MOCK_USER)`  
   *Fix:* Remove.
-- [ ] **C-8.4 Dead state and styles**  
+- [x] **C-8.4 Dead state and styles**  
   `sos.tsx:35; vehicle-select.tsx:178,125,515-519; index.tsx:51,30`  
   submitting never read; selectedShareable and shared plus five share styles left from the removed toggle; firstName and getGreetingKey unused.  
   *Fix:* Remove.
-- [ ] **C-8.5 Dead i18n keys implying features that do not exist**  
+- [x] **C-8.5 Dead i18n keys implying features that do not exist**  
   `i18n/locales/*.json (sos block and others)`  
   Nine in sos alone (tapToActivate, holdToCancel, callPolice, callTrustedContact, shareLocation, iAmSafe, iAmSafeConfirm, sosSent, sosSentMsg) implying "I am Safe" and "Trusted Contact" features that do not exist; plus liveChatComingSoon, verifyIdentityComingSoon, profile.walletSub, profile.myTrips, notifications.walletTopupSub.  
   *Fix:* Delete the keys or build the features.
