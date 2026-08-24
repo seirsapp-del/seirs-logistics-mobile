@@ -5,7 +5,10 @@ import { ContentHero } from '@/components/ContentHero';
 export const revalidate = 60;
 
 export const metadata = {
-  title: 'FAQ · SEIRS',
+  // No brand suffix here. The root layout template already renders
+  // "%s | SEIRS Logistics", so "FAQ · SEIRS" came out as
+  // "FAQ · SEIRS | SEIRS Logistics".
+  title: 'FAQ',
   description: 'Frequently asked questions about the SEIRS logistics platform.',
 };
 

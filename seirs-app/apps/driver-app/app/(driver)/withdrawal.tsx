@@ -24,7 +24,12 @@ import { earningsApi, paymentsApi, type EarningsDashboard } from '@/services/api
  * success screen always shows the exact transferred amount.
  */
 const QUICK_AMOUNTS = [1000, 2000, 3000, 5000, 10000, 20000, 50000];
-const MIN_WITHDRAWAL = 1000;
+// D-4.4: the server reads driver_min_payout_ngn from the Fee Catalogue,
+// so a hardcoded client gate silently disagrees the day an admin moves
+// the row. Read it from the dashboard when it is there; this constant is
+// only the fallback. BACKEND TODO: expose minPayoutNgn (and the daily
+// caps) on GET /earnings/dashboard.
+const MIN_WITHDRAWAL_FALLBACK = 1000;
 
 interface BankDetails {
   bankName:          string | null;
@@ -73,6 +78,13 @@ export default function WithdrawalScreen() {
   const instantEligible = Number(dashboard?.instantEligible ?? 0);
   const instantFeePct   = Number(dashboard?.instantFeePct ?? 5);
   const clearanceDays   = Number(dashboard?.clearanceBusinessDays ?? 2);
+  // Cast: the shared EarningsDashboard type has no minPayoutNgn yet. The
+  // server owns this number (Fee Catalogue driver_min_payout_ngn); once it
+  // is on the response the cast and the fallback both go away.
+  const minWithdrawalRaw = Number((dashboard as any)?.minPayoutNgn ?? (dashboard as any)?.minWithdrawalNgn ?? NaN);
+  const MIN_WITHDRAWAL  = Number.isFinite(minWithdrawalRaw) && minWithdrawalRaw > 0
+    ? Math.round(minWithdrawalRaw)
+    : MIN_WITHDRAWAL_FALLBACK;
   const available       = instant ? cleared + instantEligible : cleared;
   const numericAmount   = parseInt(amount.replace(/,/g, ''), 10) || 0;
   const hasBank         = !!(bank?.bankCode && bank?.bankAccountNumber);
@@ -147,7 +159,11 @@ export default function WithdrawalScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
+    // D-5.1: 'bottom' is deliberately NOT in edges. The sticky CTA bar
+    // below already adds insets.bottom, and with edgeToEdgeEnabled the two
+    // paddings stacked and floated the button ~112dp up the screen on
+    // 3-button navigation.
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <View style={[styles.header, { borderBottomColor: theme.border }]}>

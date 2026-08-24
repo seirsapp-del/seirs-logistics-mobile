@@ -236,6 +236,15 @@ export class PricingService implements OnModuleInit {
            SET "serviceFees" = '{"packageNgn":0,"rideNgn":0}'::jsonb
          WHERE "serviceFees" IS NULL
       `],
+      ['rate_cards.highValue', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "highValue" jsonb NULL`],
+      // Seeded with the values the engine has been hardcoding, so the
+      // first publish after this deploy does not move a single price.
+      // The point is that they become EDITABLE, not that they change.
+      ['rate_cards.highValue backfill', `
+        UPDATE "rate_cards"
+           SET "highValue" = '{"thresholdNgn":50000,"premiumPct":0.5,"driverSharePct":0}'::jsonb
+         WHERE "highValue" IS NULL
+      `],
       ['rate_cards.insurance', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "insurance" jsonb NULL`],
       // Cards published before the column existed carry NULL, which
       // would leave the admin editor with nothing to write into.

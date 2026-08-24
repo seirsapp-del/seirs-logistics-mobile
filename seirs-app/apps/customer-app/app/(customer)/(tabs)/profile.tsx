@@ -2,6 +2,7 @@ import {
   View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Linking, Platform, Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import Constants from 'expo-constants';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useState } from 'react';
@@ -13,7 +14,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
-import { deliveriesApi, paymentsApi, loyaltyApi, promotionsApi } from '@/services/api';
+import { deliveriesApi, loyaltyApi, promotionsApi } from '@/services/api';
 
 type MenuSection = { title: string; items: MenuItem[] };
 type MenuItem = { icon: string; label: string; sub?: string; onPress: () => void; danger?: boolean };
@@ -28,7 +29,6 @@ export default function ProfileScreen() {
 
   // Real backend-sourced stats. Default to 0 / null while loading so we
   // never show MOCK_USER numbers masquerading as the user's own data.
-  const [walletBalance,   setWalletBalance]   = useState<number | null>(null);
   const [loyaltyPoints,   setLoyaltyPoints]   = useState<number | null>(null);
   const [loyaltyTier,     setLoyaltyTier]     = useState<string | null>(null);
   const [completedTrips,  setCompletedTrips]  = useState<number | null>(null);
@@ -49,14 +49,15 @@ export default function ProfileScreen() {
     useCallback(() => {
       let cancelled = false;
       (async () => {
-        const [w, l, h, p] = await Promise.all([
-          paymentsApi.wallet().catch(() => null),
+        // paymentsApi.wallet() ran here on every focus and its result was
+        // never read: the wallet cell was removed when customers stopped
+        // holding NGN, the fetch was not (sweep C-1.5).
+        const [l, h, p] = await Promise.all([
           loyaltyApi.balance().catch(() => null),
           deliveriesApi.myDeliveries(1, 1).catch(() => null),
           promotionsApi.listActive().catch(() => null),
         ]);
         if (cancelled) return;
-        setWalletBalance(w?.balanceNaira ?? 0);
         setLoyaltyPoints(l?.balance ?? 0);
         setLoyaltyTier(l?.tier ?? null);
         setCompletedTrips((h as any)?.total ?? (h as any)?.items?.filter?.((i: any) => i.status === 'completed').length ?? 0);
@@ -284,7 +285,13 @@ export default function ProfileScreen() {
           </View>
         ))}
 
-        <Text style={[styles.version, { color: theme.textThird }]}>{t('profile.version')}</Text>
+        {/* Read from the app manifest, never typed by hand. This line said
+            "SEIRS Logistics v2.0.0 Build 204" while app.json said 1.0.0, so
+            support asking "what version are you on?" got a made-up answer
+            (sweep C-5.6). */}
+        <Text style={[styles.version, { color: theme.textThird }]}>
+          {t('profile.version', { version: Constants.expoConfig?.version ?? '?' })}
+        </Text>
 
         {/* Sign out */}
         <Pressable

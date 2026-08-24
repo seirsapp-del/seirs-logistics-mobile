@@ -24,7 +24,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "For Drivers",
   description:
-    "Drive with Seirs and earn on your terms. Daily wallet payouts, smart routing, real support. Join Nigeria's smartest last-mile delivery network.",
+    "Drive with SEIRS and earn on your terms. Daily wallet payouts, smart routing, real support. Join Nigeria's smartest last-mile delivery network.",
 };
 
 function FeatureCard({
@@ -111,7 +111,7 @@ export default async function ForDriversPage() {
         eyebrow="Earn on Your Terms"
         title={
           <>
-            Drive with Seirs.
+            Drive with SEIRS.
             <br />
             <span className="text-sky">Get paid daily.</span>
           </>
@@ -128,7 +128,7 @@ export default async function ForDriversPage() {
       <section className="py-section-sm lg:py-section-lg bg-off-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <p className="section-label mb-3">Why Seirs</p>
+            <p className="section-label mb-3">Why SEIRS</p>
             <h2 className="section-title mb-4">
               Built for drivers, not just dispatchers
             </h2>
@@ -317,7 +317,7 @@ export default async function ForDriversPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <StoryRow
             imageUrl={img.img_driver_portrait}
-            alt="A Seirs rider handing a package to a customer"
+            alt="A SEIRS rider handing a package to a customer"
             flip
             eyebrow="The work itself"
             title="Every delivery ends with a person"
@@ -352,7 +352,7 @@ export default async function ForDriversPage() {
             <StepRow
               step={1}
               title="Apply in the Driver app (5 min)"
-              body="Download the Seirs Driver app, create your account, fill in your basic info, upload your vehicle and ID photos."
+              body="Download the SEIRS Driver app, create your account, fill in your basic info, upload your vehicle and ID photos."
             />
             <StepRow
               step={2}
@@ -413,7 +413,7 @@ export default async function ForDriversPage() {
           launched. It is also the exact class of claim a competitor can
           trivially disprove. */}
       <PageCta
-        title="Ready to drive with Seirs?"
+        title="Ready to drive with SEIRS?"
         subtitle="Apply now, get your documents reviewed, and start taking jobs as soon as you are approved."
         primaryLabel="Apply to drive"
         primaryHref={STORE.play('driver')}

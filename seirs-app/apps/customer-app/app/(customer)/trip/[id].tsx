@@ -286,7 +286,9 @@ export default function TripDetailsScreen() {
 
         {/* Unpaid booking: the money card, in the exception-card idiom. */}
         {isUnpaid && (
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#F59E0B', borderWidth: 1.5 }]}>
+          /* SEIRS yellow, not the generic amber the exception cards below
+             use: unpaid is a brand-coloured nudge, not a warning. */
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: '#FFBE0B', borderWidth: 1.5 }]}>
             <Text style={[styles.cardValue, { color: colors.text, marginBottom: 4 }]}>
               Waiting for payment
             </Text>
@@ -295,9 +297,10 @@ export default function TripDetailsScreen() {
             </Text>
             <Pressable
               onPress={() => router.push({ pathname: '/(customer)/payment/[deliveryId]', params: { deliveryId: String(d.id) } } as any)}
-              style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#F59E0B' }}
+              style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#FFBE0B' }}
             >
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
+              {/* Navy on yellow: white on #FFBE0B is unreadable. */}
+              <Text style={{ color: '#0F2B4C', fontWeight: '700', fontSize: 15 }}>
                 Pay {fmt(d.price)}
               </Text>
             </Pressable>

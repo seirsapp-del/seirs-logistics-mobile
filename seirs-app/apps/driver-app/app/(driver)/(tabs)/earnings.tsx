@@ -1,6 +1,6 @@
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar, RefreshControl,
-  Modal, TextInput,
+  Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,7 +24,22 @@ type Period = 'today' | 'week' | 'month';
 // number). Stored per device; purely motivational, no money attached.
 const GOAL_DEFAULT = 50000;
 const GOAL_STORAGE_KEY = 'seirs_weekly_goal_ngn';
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'] as const;
+// D-10.4: this used to be a fixed ['Mon'..'Sat','Today'] run laid over a
+// ROLLING 7-day window, so on a Wednesday the bar labelled 'Sat' held
+// Tuesday's money. Only correct if today happened to be Sunday. Labels are
+// now derived from the same dates the buckets are built from: index 6 is
+// today, index 0 is six days ago.
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+function rollingDayLabels(): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    if (i === 6) { out.push('Today'); continue; }
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    out.push(WEEKDAY_SHORT[d.getDay()]);
+  }
+  return out;
+}
 
 export default function EarningsScreen() {
   const router  = useRouter();
@@ -87,8 +102,13 @@ export default function EarningsScreen() {
     }
     return totals;
   })();
-  const weekTotal      = dayTotals.reduce((s, n) => s + n, 0);
-  const todayTotal     = dayTotals[6] ?? 0;
+  // D-4.1: the header figures come from the server, which sums the WHOLE
+  // ledger. history is capped at 50 rows, so a driver past 50 trips in a
+  // week saw an understated week and an understated today. The rolling
+  // series below is still history-derived: it only shapes the bars.
+  const rollingTotal   = dayTotals.reduce((s, n) => s + n, 0);
+  const weekTotal      = Number(dashboard?.week?.earned  ?? rollingTotal);
+  const todayTotal     = Number(dashboard?.today?.earned ?? dayTotals[6] ?? 0);
   const totalEarned    = Number(dashboard?.allTime?.earned ?? dashboard?.totalEarnings ?? 0);
   const totalTrips     = Number(dashboard?.allTime?.deliveries ?? dashboard?.totalTrips ?? 0);
   // Withdrawable = cleared ledger balance. The old field names
@@ -96,6 +116,7 @@ export default function EarningsScreen() {
   // this permanently displayed ₦0.
   const balance        = Number(dashboard?.available ?? dashboard?.pendingBalance ?? dashboard?.balance ?? 0);
   const maxBar         = Math.max(1, ...dayTotals);
+  const dayLabels      = rollingDayLabels();
   const goalPct        = Math.min((weekTotal / goalTarget) * 100, 100);
   const recentEarnings = history.slice(0, 5);
 
@@ -215,7 +236,13 @@ export default function EarningsScreen() {
 
         {/* Goal edit modal */}
         <Modal visible={goalEditOpen} transparent animationType="fade" onRequestClose={() => setGoalEditOpen(false)}>
-          <View style={styles.goalModalOverlay}>
+          {/* D-5.3: autoFocus raises the keyboard the moment this opens and
+              the Save/Cancel row sits UNDER the input, so on Android the
+              buttons were hidden behind the keyboard. */}
+          <KeyboardAvoidingView
+            style={styles.goalModalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
             <View style={[styles.goalModalCard, { backgroundColor: theme.surface }]}>
               <Text style={[styles.goalModalTitle, { color: theme.text }]}>Set your weekly goal</Text>
               <Text style={[styles.goalModalSub, { color: theme.textSecond }]}>
@@ -242,7 +269,7 @@ export default function EarningsScreen() {
                 </Pressable>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Stats grid */}
@@ -261,16 +288,18 @@ export default function EarningsScreen() {
         {/* Weekly chart */}
         <View style={[styles.chartCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <View style={styles.chartHeader}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>This Week</Text>
-            <Text style={[styles.chartTotal, { color: '#16A34A' }]}>₦{weekTotal.toLocaleString()}</Text>
+            {/* Rolling window, not the calendar week: the bars cover the last
+                7 days including today, so the title must not say "This Week". */}
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Last 7 days</Text>
+            <Text style={[styles.chartTotal, { color: '#16A34A' }]}>₦{rollingTotal.toLocaleString()}</Text>
           </View>
           <View style={styles.barRow}>
             {dayTotals.map((amount, i) => {
               const pct   = (amount / maxBar) * 100;
               const isMax = amount === maxBar && amount > 0;
-              const day   = DAY_LABELS[i];
+              const day   = dayLabels[i];
               return (
-                <View key={day} style={styles.barCol}>
+                <View key={i} style={styles.barCol}>
                   <Text style={[styles.barAmt, { color: isMax ? theme.primary : theme.textThird }]}>
                     {amount >= 1000 ? `${(amount / 1000).toFixed(0)}k` : amount}
                   </Text>
@@ -286,7 +315,7 @@ export default function EarningsScreen() {
 
         {/* Earnings calendar (Klarna-style): per-day amounts, tap a day
             for the trip breakdown, arrows scroll back through history. */}
-        <EarningsCalendar history={history} theme={theme} />
+        <EarningsCalendar history={history} theme={theme} currentMonthTotal={dashboard?.month?.earned != null ? Number(dashboard.month.earned) : null} />
 
         {/* Recent transactions */}
         <View style={styles.section}>
@@ -372,8 +401,6 @@ const styles = StyleSheet.create({
   walletRight: { alignItems: 'flex-end', gap: 6 },
   walletLabel: { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.sm },
   walletAmount:{ color: '#fff', fontSize: FontSize['3xl'], fontWeight: FontWeight.bold as any, letterSpacing: -1, marginTop: 4 },
-  tierChip:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full },
-  tierChipText:{ color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
   balanceLabel:{ color: 'rgba(255,255,255,0.6)', fontSize: FontSize.xs },
   walletActions:{ flexDirection: 'row', gap: Spacing.sm },
   walletBtn:   { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.2)', paddingVertical: Spacing.sm, borderRadius: Radius.xl },

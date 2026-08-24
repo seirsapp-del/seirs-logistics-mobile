@@ -180,7 +180,10 @@ export default function ReleasePickupScreen() {
     setLoading(true);
     setError('');
     try {
-      const photoUploaded = await uploadApi.uploadFile(photoUri, 'partner-release');
+      // 'proof', not a 'partner-release' prefix (B-10.6). See the same
+      // fix in receive-dropoff: the prefix argument is discarded, and this
+      // is the counter handover's chain-of-custody photo.
+      const photoUploaded = await uploadApi.file(photoUri, 'image/jpeg', 'proof');
 
       await partnerApi.storeRelease({
         code:               dropoff.dropCode,

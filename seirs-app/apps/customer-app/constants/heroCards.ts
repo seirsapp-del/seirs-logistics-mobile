@@ -5,9 +5,9 @@
  *
  * Tapping a (non-animated) card opens its article view at
  * `/article/[id]` - a full-screen scrollable view with the hero image,
- * the title + description, and a long-form body. The optional `ctaKey` /
- * `ctaRoute` render an action button at the bottom of the article so
- * the customer can act on it (Send a package, Open multi-stop, etc.).
+ * the title + description, and a long-form body. There is no sticky CTA:
+ * an article ends with its own closing line, which is where the "Open
+ * Send a package" sentence lives.
  *
  * As of 2026-08-12 the admin CMS drives this carousel: any article
  * ticked "feature in app" becomes a slide (see hooks/use-hero-cards.ts).
@@ -78,10 +78,6 @@ export interface HeroCard {
   author?:    string;
   /** ISO 8601 publish date. Renders as a relative date ("2 days ago"). */
   publishedAt?: string;
-  /** Optional CTA - kept on the shape for future inline use; the article
-   *  view currently doesn't render a sticky CTA. */
-  ctaKey?:    string;
-  ctaRoute?:  string;
 }
 
 export const HERO_CARDS: HeroCard[] = [
@@ -99,8 +95,13 @@ export const HERO_CARDS: HeroCard[] = [
     badgeColor: '#FFBE0B',
     titleKey:   'home.heroCard2Title',
     descKey:    'home.heroCard2Desc',
-    bodyKey:    'article.outletShopriteBody',
-    author:     'SEIRS Partnerships',
+    // Body rewritten evergreen 2026-08-24. It used to name Shoprite, Spar
+    // and specific branches with partnership claims, and carried a dated
+    // "25% off this week" promo that was three months stale. This file is
+    // the OFFLINE FALLBACK and only changes with an app release, so nothing
+    // dated or contractual belongs in it.
+    bodyKey:    'article.outletPickupBody',
+    author:     'SEIRS Team',
     publishedAt:'2026-05-17T10:00:00Z',
   },
 

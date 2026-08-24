@@ -5,9 +5,8 @@
  * for reach-anywhere), presented as a screen in the app's restrained
  * business style: account card, SEIRS ID, grouped menu, sign out.
  */
-import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Modal, Image } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Image } from 'react-native';
 import { useEffect, useState } from 'react';
-import QRCode from 'react-native-qrcode-svg';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -27,7 +26,6 @@ export default function BusinessProfileTab() {
   const { isDark, setTheme, useSystemTheme } = useTheme();
   const { t } = useTranslation();
   const { user, logout, refresh } = useAuth();
-  const [qrVisible, setQrVisible] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
 
   /**
@@ -169,19 +167,10 @@ export default function BusinessProfileTab() {
         </Pressable>
       )}
 
-      {/* SEIRS ID QR, customer-app parity (founder 2026-08-16): shown at
-          partner counters and handoffs. Content is the accountId only. */}
-      <Modal visible={qrVisible} transparent animationType="fade" onRequestClose={() => setQrVisible(false)}>
-        <Pressable style={styles.qrBackdrop} onPress={() => setQrVisible(false)}>
-          <View style={[styles.qrCard, { backgroundColor: colors.surface }]}>
-            <QRCode value={user?.accountId ?? 'SEIRS'} size={200} />
-            <Text style={[styles.qrId, { color: colors.text }]}>{user?.accountId}</Text>
-            <Text style={[styles.qrHint, { color: colors.textSecond }]}>
-              {t('profile.qrHint', { defaultValue: 'Show this at partner counters and handoffs.' })}
-            </Text>
-          </View>
-        </Pressable>
-      </Modal>
+      {/* The SEIRS ID QR modal that used to sit here is gone (B-1.5):
+          qrVisible was only ever set false, so nothing could open it. The
+          ID row above pushes to /(business)/seirs-id, which is the live
+          QR screen. */}
 
       {sections.map((section) => (
         <View key={section.title}>
@@ -241,8 +230,4 @@ const styles = StyleSheet.create({
     marginHorizontal: 20, marginTop: 28, paddingVertical: 14, borderRadius: 14, borderWidth: 1,
   },
   signOutText: { color: '#DC2626', fontSize: 15, fontWeight: '600' },
-  qrBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
-  qrCard:     { alignItems: 'center', gap: 12, padding: 28, borderRadius: 20 },
-  qrId:       { fontSize: 16, fontWeight: '700', letterSpacing: 1 },
-  qrHint:     { fontSize: 13, textAlign: 'center', maxWidth: 220 },
 });

@@ -12,6 +12,12 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 
+// Postgres returns decimal columns as strings ("1500.00"), so
+// String.toLocaleString left them exactly as-is: fractional naira with
+// no thousands separator, and the same order read differently here than
+// on the delivery detail page. Whole naira only, house standard.
+const naira = (v: any) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`;
+
 interface Stats {
   users:      { total: number };
   drivers:    { total: number; pendingKyc: number };
@@ -137,8 +143,12 @@ export default function DashboardPage() {
     },
     {
       label: 'Platform Commission', value: fmt(stats.revenue.commission),
+      // rate % 0.01 === 0 is essentially never true in binary floating
+      // point, so the old test always took the 1-decimal branch and a flat
+      // 15% rendered as "15.0%". Round the percentage instead and drop the
+      // trailing zero only when there is one.
       sub: stats.revenue.commissionRate != null
-        ? `${(stats.revenue.commissionRate * 100).toFixed(stats.revenue.commissionRate % 0.01 === 0 ? 0 : 1)}% of gross revenue`
+        ? `${Number((stats.revenue.commissionRate * 100).toFixed(1))}% of gross revenue`
         : 'of gross revenue',
       Icon: TrendingUp, color: 'text-[#3A7BD5]', bg: 'bg-[#3A7BD5]/10',
     },
@@ -503,7 +513,7 @@ function DrillDrawer({ which, onClose, onChanged }: {
               <div key={d.id} className="px-5 py-3 border-b border-gray-50">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-xs font-bold text-[#0F2B4C]">{d.trackingCode}</span>
-                  <span className="text-xs font-semibold text-[#0F2B4C]">₦{d.price?.toLocaleString()}</span>
+                  <span className="text-xs font-semibold text-[#0F2B4C]">{naira(d.price)}</span>
                 </div>
                 <p className="text-xs text-gray-500 mt-1 truncate">{d.pickupAddress}</p>
                 <p className="text-xs text-gray-500 truncate">→ {d.dropoffAddress}</p>

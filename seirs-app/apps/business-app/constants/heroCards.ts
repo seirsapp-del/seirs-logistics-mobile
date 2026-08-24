@@ -5,9 +5,9 @@
  *
  * Tapping a (non-animated) card opens its article view at
  * `/article/[id]` - a full-screen scrollable view with the hero image,
- * the title + description, and a long-form body. The optional `ctaKey` /
- * `ctaRoute` render an action button at the bottom of the article so
- * the customer can act on it (Send a package, Open multi-stop, etc.).
+ * the title + description, and a long-form body. There is no sticky CTA:
+ * the ctaKey / ctaRoute fields this used to promise were never set by a
+ * card nor read by the article view, so they came out (B-9.4).
  *
  * As of 2026-08-12 the admin CMS drives this carousel: any article
  * ticked "feature in app" becomes a slide (see hooks/use-hero-cards.ts).
@@ -76,12 +76,12 @@ export interface HeroCard {
   bodyKey?:  string;
   /** Author or source attribution. Free text, shown in the meta row. */
   author?:    string;
-  /** ISO 8601 publish date. Renders as a relative date ("2 days ago"). */
+  /** ISO 8601 publish date. Renders as a relative date ("2 days ago").
+   *  The built-in FALLBACK cards below deliberately leave this unset
+   *  (B-2.4): they carried May dates, so whenever the CMS was empty or
+   *  offline the carousel showed cards badged NEW and stamped
+   *  "3 months ago". CMS-driven cards still carry a real date. */
   publishedAt?: string;
-  /** Optional CTA - kept on the shape for future inline use; the article
-   *  view currently doesn't render a sticky CTA. */
-  ctaKey?:    string;
-  ctaRoute?:  string;
 }
 
 export const HERO_CARDS: HeroCard[] = [
@@ -101,7 +101,6 @@ export const HERO_CARDS: HeroCard[] = [
     descKey:    'home.heroCard2Desc',
     bodyKey:    'article.outletShopriteBody',
     author:     'SEIRS Partnerships',
-    publishedAt:'2026-05-17T10:00:00Z',
   },
 
   // ── Card 3: WEEKLY TIP ───────────────────────────────────────────────
@@ -114,7 +113,6 @@ export const HERO_CARDS: HeroCard[] = [
     descKey:    'home.heroCard3Desc',
     bodyKey:    'article.tipScheduleBody',
     author:     'SEIRS Team',
-    publishedAt:'2026-05-18T09:00:00Z',
   },
 
   // ── Card 4: LIVE FEATURE (was "coming soon" until 2026-08-16,
@@ -129,7 +127,6 @@ export const HERO_CARDS: HeroCard[] = [
     descKey:    'home.heroCard4Desc',
     bodyKey:    'article.featureMultistopBody',
     author:     'SEIRS Product',
-    publishedAt:'2026-05-15T14:30:00Z',
   },
 
   // ── Card 5: PROMO / REFERRAL ─────────────────────────────────────────
@@ -142,7 +139,6 @@ export const HERO_CARDS: HeroCard[] = [
     descKey:    'home.heroCard5Desc',
     bodyKey:    'article.referralBody',
     author:     'SEIRS Team',
-    publishedAt:'2026-05-19T08:00:00Z',
   },
 ];
 

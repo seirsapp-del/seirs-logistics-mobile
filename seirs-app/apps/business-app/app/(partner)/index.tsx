@@ -24,16 +24,22 @@ export default function PartnerDashboard() {
   const [loading,    setLoading]    = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // A swallowed error used to be indistinguishable from an empty,
+  // correctly-configured store: the catch was silent and capacity fell
+  // back to a fabricated 50, so an outage rendered a confident
+  // "0 / 50 packages" bar (B-2.2). Hold the failure and say so instead.
+  const [loadError,  setLoadError]  = useState(false);
+
   useEffect(() => {
     partnerApi.dashboard()
-      .then(setData)
-      .catch(() => {})
+      .then((d) => { setData(d); setLoadError(false); })
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, []);
 
-  const capacity       = data?.maxCapacity ?? 50;
+  const capacity       = Number(data?.maxCapacity ?? 0);
   const inStock        = data?.packagesInStore ?? 0;
-  const capacityPct    = Math.min(100, Math.round((inStock / capacity) * 100));
+  const capacityPct    = capacity > 0 ? Math.min(100, Math.round((inStock / capacity) * 100)) : 0;
   const capacityColor  = capacityPct >= 90 ? '#DC2626' : capacityPct >= 70 ? '#D97706' : '#16A34A';
 
   return (
@@ -65,7 +71,7 @@ export default function PartnerDashboard() {
               <Text style={styles.switchText}>Back to business</Text>
             </Pressable>
             </View>
-            <Pressable style={styles.logoutBtn} onPress={() => setDrawerOpen(true)}>
+            <Pressable style={styles.menuBtn} onPress={() => setDrawerOpen(true)}>
               <Icon name="Menu" size={20} color="#fff" strokeWidth={1.5} />
             </Pressable>
           </View>
@@ -79,7 +85,11 @@ export default function PartnerDashboard() {
               <View style={[styles.capacityFill, { width: `${capacityPct}%`, backgroundColor: capacityColor }]} />
             </View>
             <Text style={styles.capacityCount}>
-              {inStock} / {capacity} packages
+              {loadError
+                ? 'Could not load store status. Pull to refresh.'
+                : capacity > 0
+                  ? `${inStock} / ${capacity} packages`
+                  : `${inStock} packages, capacity not set`}
             </Text>
           </View>
         </LinearGradient>
@@ -248,7 +258,9 @@ const styles = StyleSheet.create({
   },
   switchText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   partnerId:     { fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace', marginTop: 4 },
-  logoutBtn:     {
+  // Was called logoutBtn (B-9.4): it has opened the drawer, not signed
+  // anyone out, since the header was reworked.
+  menuBtn:       {
     width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center', justifyContent: 'center',
   },

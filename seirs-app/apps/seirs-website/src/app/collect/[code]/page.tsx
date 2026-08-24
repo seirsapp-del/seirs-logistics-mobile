@@ -39,7 +39,10 @@ interface TrackDTO {
   package?: { recipientFirstName: string | null } | null;
 }
 
-const naira = (n: number) => `₦${Number(n).toLocaleString('en-NG')}`;
+// Whole naira only. toLocaleString with no options rendered a decimal fee as
+// N1,500.5, on the exact number someone is being asked to hand over.
+const naira = (n: number) =>
+  `₦${Math.round(Number(n)).toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
 
 export default function CollectPage() {
   const { code }  = useParams<{ code: string }>();
@@ -58,7 +61,9 @@ export default function CollectPage() {
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`${API_BASE}/deliveries/track/${code}`, { cache: 'no-store' });
+      // Encoded, same as track/[code]. This path segment comes straight
+      // from the URL and was interpolated raw.
+      const r = await fetch(`${API_BASE}/deliveries/track/${encodeURIComponent(code)}`, { cache: 'no-store' });
       if (!r.ok) throw new Error('We could not find a package with that code.');
       setDelivery(await r.json());
       setError(null);
@@ -84,7 +89,7 @@ export default function CollectPage() {
     setPaying(true);
     setPayError(null);
     try {
-      const r = await fetch(`${API_BASE}/deliveries/track/${code}/collection-payment`, {
+      const r = await fetch(`${API_BASE}/deliveries/track/${encodeURIComponent(code)}/collection-payment`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ email, name, phone }),

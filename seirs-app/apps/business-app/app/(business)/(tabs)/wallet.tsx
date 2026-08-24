@@ -35,7 +35,6 @@ export default function WalletScreen() {
   const canPartner = !!(user as any)?.capabilities?.canPartner;
 
   const [segment,  setSegment]  = useState<Segment>('rewards');
-  const [wallet,   setWallet]   = useState<any>(null);
   const [txns,     setTxns]     = useState<any[]>([]);
   const [loyalty,  setLoyalty]  = useState<any>(null);
   const [payouts,  setPayouts]  = useState<any[]>([]);
@@ -44,16 +43,18 @@ export default function WalletScreen() {
 
   useEffect(() => {
     const loads: Promise<any>[] = [
-      businessApi.wallet().catch(() => null),
       // Points come from payments that actually settled, not from the
       // retired wallet ledger: this feed was still listing naira debits
       // like "-N10,103" for a sender who holds no balance (2026-08-16).
+      //
+      // businessApi.wallet() was still fired here on every mount and its
+      // answer was never read again (B-4.1): a retired ledger endpoint kept
+      // warm in production traffic for nothing. Dropped with its state.
       paymentsApi.history().catch(() => []),
       businessApi.loyalty().catch(() => null),
     ];
     if (canPartner) loads.push(partnerApi.payouts(1).catch(() => null));
-    Promise.all(loads).then(([w, t, l, p]) => {
-      setWallet(w);
+    Promise.all(loads).then(([t, l, p]) => {
       setTxns(Array.isArray(t) ? t : t?.items ?? []);
       setLoyalty(l);
       const rows = Array.isArray(p) ? p : p?.items ?? [];
@@ -86,7 +87,10 @@ export default function WalletScreen() {
             <Pressable onPress={() => setDrawerOpen(true)} hitSlop={10}>
               <Icon name="AlignLeft" size={22} color="#fff" />
             </Pressable>
-            <Text style={styles.heroTitle}>Wallet</Text>
+            {/* Senders tap a tab labelled Rewards; this heading was hardcoded
+                "Wallet" for both roles (B-4.2). Only an approved partner
+                store has an actual wallet, because only they hold earnings. */}
+            <Text style={styles.heroTitle}>{canPartner ? 'Wallet' : 'Rewards'}</Text>
             <View style={{ width: 22 }} />
           </View>
 
@@ -258,11 +262,6 @@ const styles = StyleSheet.create({
   heroBig:   { fontSize: 36, fontWeight: '900', color: '#fff' },
   heroUnit:  { fontSize: 15, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
   heroNote:  { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 8, lineHeight: 17, maxWidth: 300 },
-  noteCard: {
-    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
-    margin: 16, marginBottom: 0, padding: 14, borderRadius: 12, borderWidth: 1,
-  },
-  noteText:  { flex: 1, fontSize: 13, lineHeight: 17 },
   teaser: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     margin: 16, marginBottom: 0, padding: 16, borderRadius: 14, borderWidth: 1,

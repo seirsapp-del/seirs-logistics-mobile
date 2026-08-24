@@ -3,8 +3,14 @@ import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
-import { MapPin, Navigation , ChevronRight, ChevronDown} from 'lucide-react';
+import { MapPin, Navigation , ChevronRight, ChevronDown, AlertCircle } from 'lucide-react';
 import { useConfirm } from '@/components/ConfirmDialog';
+
+// Postgres returns decimal columns as strings ("1500.00"), so
+// String.toLocaleString left them exactly as-is: fractional naira with
+// no thousands separator, and the same order read differently here than
+// on the delivery detail page. Whole naira only, house standard.
+const naira = (v: any) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`;
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-amber-100 text-amber-700',
@@ -45,12 +51,18 @@ function DeliveriesContent() {
   // Rides vs packages: two product lines, one table (founder 23 Aug).
   const [kindFilter, setKindFilter] = useState<'' | 'ride' | 'package'>('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [error, setError]       = useState<string | null>(null);
   const q = search.trim().toLowerCase();
 
   const load = (p = 1, term = search) => {
     setLoading(true);
+    setError(null);
     adminApi.deliveries(p, statusFilter || undefined, term.trim() || undefined, kindFilter || undefined)
-      .then(setData).catch(() => {}).finally(() => setLoading(false));
+      .then((d) => setData(d))
+      // A swallowed error left the last-good table on screen, or an empty
+      // board on first load: neither says the request failed.
+      .catch((e: any) => setError(e?.message ?? 'Could not load deliveries'))
+      .finally(() => setLoading(false));
     setPage(p);
   };
 
@@ -126,6 +138,14 @@ function DeliveriesContent() {
             </span>
           )}
         </div>
+
+        {error && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button onClick={() => load(page)} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-20 text-[#0F2B4C]/30">Loading…</div>
@@ -203,7 +223,7 @@ function DeliveriesContent() {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-semibold text-[#0F2B4C]">₦{d.price?.toLocaleString()}</td>
+                      <td className="px-4 py-3 font-semibold text-[#0F2B4C]">{naira(d.price)}</td>
                       <td className="px-4 py-3 text-[#0F2B4C]/40 text-xs">
                         {new Date(d.createdAt).toLocaleDateString()}
                       </td>

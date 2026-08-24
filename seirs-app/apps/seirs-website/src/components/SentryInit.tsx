@@ -2,9 +2,11 @@
 
 import { useEffect } from 'react';
 
-// Lightweight Sentry init for the static-export marketing site. The
-// dynamic import keeps @sentry/browser out of every page bundle until
-// after first paint, so a missing DSN means zero runtime cost.
+// Lightweight Sentry init for the marketing site. It is not a static export
+// any more, whatever this comment used to say: next.config.ts documents
+// dropping `output: 'export'` because it broke /track/[code]. The dynamic
+// import keeps @sentry/browser out of every page bundle until after first
+// paint, so a missing DSN means zero runtime cost.
 export default function SentryInit(): null {
   useEffect(() => {
     const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;

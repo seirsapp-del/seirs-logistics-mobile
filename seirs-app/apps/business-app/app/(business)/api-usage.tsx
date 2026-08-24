@@ -5,8 +5,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
-import { request } from '@seirs/shared/services/api';
-import { useColors } from '@/context/ThemeContext';
+import { request } from '@/services/api';
+import { useColors, useTheme } from '@/context/ThemeContext';
 
 interface Usage {
   totalKeys:  number;
@@ -18,6 +18,7 @@ export default function ApiUsageScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useColors();
+  const { isDark } = useTheme();
   const [usage,   setUsage]   = useState<Usage | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -60,30 +61,22 @@ export default function ApiUsageScreen() {
               <Text style={styles.bigSub}>Across all your API keys</Text>
             </View>
 
-            <View style={styles.note}>
+            {/* Fixed cream #FEF9C3 with #92400E text: unreadable-pale on a
+                dark screen (B-10.8). Amber still marks the note, tinted. */}
+            <View style={[styles.note, {
+              backgroundColor: isDark ? '#D9770622' : '#FEF9C3',
+              borderColor:     isDark ? '#D9770655' : '#FDE68A',
+            }]}>
               <Icon name="Info" size={14} color="#D97706" />
-              <Text style={styles.noteText}>
+              <Text style={[styles.noteText, { color: isDark ? '#FCD34D' : '#92400E' }]}>
                 Detailed per-key call breakdown, latency p95, and error-rate charts ship in the next batch when the public /v1/* surface starts accepting traffic.
               </Text>
             </View>
 
-            <View style={[styles.benefitsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.benefitsTitle, { color: colors.text }]}>What we&apos;ll track</Text>
-              {[
-                { icon: 'BarChart3',     text: 'Calls per endpoint per day' },
-                { icon: 'Activity',      text: 'p50 / p95 / p99 latency'    },
-                { icon: 'AlertCircle',   text: 'Error rate (4xx / 5xx)'     },
-                { icon: 'TrendingUp',    text: 'Monthly bill estimate'      },
-                { icon: 'Globe',         text: 'Geographic call distribution' },
-              ].map(b => (
-                <View key={b.text} style={styles.benefitRow}>
-                  <View style={[styles.benefitIcon, { backgroundColor: colors.accent + '18' }]}>
-                    <Icon name={b.icon as any} size={12} color={colors.accent} />
-                  </View>
-                  <Text style={[styles.benefitText, { color: colors.textSecond }]}>{b.text}</Text>
-                </View>
-              ))}
-            </View>
+            {/* The "What we'll track" card listing five unbuilt features came
+                out (B-9.3): a roadmap rendered as a product surface reads as
+                a promise, and the app is meant to read as live. Put it back
+                as real numbers when the tracking exists. */}
           </>
         )}
       </ScrollView>
@@ -118,12 +111,8 @@ const styles = StyleSheet.create({
   bigValue:  { color: '#fff', fontSize: 40, fontWeight: '800', marginTop: 8 },
   bigSub:    { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 },
 
-  note:      { flexDirection: 'row', gap: 8, padding: 12, backgroundColor: '#FEF9C3', borderColor: '#FDE68A', borderWidth: 1, borderRadius: 10, alignItems: 'flex-start' },
-  noteText:  { flex: 1, fontSize: 13, color: '#92400E', lineHeight: 17 },
+  // Colours overridden per theme at the use site: see B-10.8.
+  note:      { flexDirection: 'row', gap: 8, padding: 12, borderWidth: 1, borderRadius: 10, alignItems: 'flex-start' },
+  noteText:  { flex: 1, fontSize: 13, lineHeight: 17 },
 
-  benefitsCard: { borderRadius: 12, padding: 16, gap: 8, borderWidth: 1 },
-  benefitsTitle:{ fontSize: 14, fontWeight: '700' },
-  benefitRow:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  benefitIcon:  { width: 24, height: 24, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  benefitText:  { flex: 1, fontSize: 13 },
 });

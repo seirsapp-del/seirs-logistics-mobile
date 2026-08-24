@@ -83,7 +83,20 @@ export default function ActiveDeliveryScreen() {
       setLoading(false);
       return;
     }
-    deliveriesApi.track(id)
+    /**
+     * This called deliveriesApi.track(id), which is
+     * GET /deliveries/track/:code and matches on trackingCode only. The
+     * id handed in here is the delivery UUID, so it could never match
+     * and the screen showed "Delivery not found" on every single trip
+     * (confirmed against production 2026-08-24, HTTP 404).
+     *
+     * .get() is the entitled fetch: the backend now serves the assigned
+     * driver as well as the customer, and redacts a ride passenger down
+     * to a first name on the way out. The tracking payload also lacked
+     * distanceKm, driverEarnings and the package fields this screen
+     * renders, which is where the "NaN km" would have come from.
+     */
+    deliveriesApi.get(id)
       .then(setDelivery)
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -384,9 +397,11 @@ export default function ActiveDeliveryScreen() {
           );
           return;
         }
+        // D-6.7: earnings do not land "shortly" and there is no driver
+        // wallet. State the real clearance, same as the withdrawal screen.
         Alert.alert(
           'Delivery Complete!',
-          `You've successfully delivered ${delivery.trackingCode}.\n\nPayment will be credited to your wallet shortly.`,
+          `You've successfully delivered ${delivery.trackingCode}.\n\nYour earnings for this trip clear in 2 business days, then you can withdraw them.`,
           [{ text: 'Back to Jobs', onPress: () => router.replace('/(driver)' as any) }],
         );
       } else {
@@ -423,10 +438,15 @@ export default function ActiveDeliveryScreen() {
     );
   }
 
-  const stepConfig  = ((delivery as any).kind === 'ride' ? RIDE_STEPS : STATUS_STEPS).find(s => s.key === delivery.status) ?? STATUS_STEPS[0];
+  // D-6.8: one step source for the whole screen. The banner already
+  // switched on kind but the Progress list was hardcoded to STATUS_STEPS,
+  // so a ride driver read "Package Collected" halfway through a trip.
+  const isRide      = (delivery as any).kind === 'ride';
+  const steps       = isRide ? RIDE_STEPS : STATUS_STEPS;
+  const stepConfig  = steps.find(s => s.key === delivery.status) ?? steps[0];
   const isDone      = delivery.status === 'delivered';
-  const needsProof  = delivery.status === 'in_transit' && (delivery as any).kind !== 'ride';
-  const statusIndex = STATUS_STEPS.findIndex(s => s.key === delivery.status);
+  const needsProof  = delivery.status === 'in_transit' && !isRide;
+  const statusIndex = steps.findIndex(s => s.key === delivery.status);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
@@ -572,16 +592,33 @@ export default function ActiveDeliveryScreen() {
           </View>
         </View>
 
-        {/* Package info */}
+        {/* D-6.8: a ride is not a package. The Size / Fragile / Description
+            rows are meaningless on a ride and the card title was telling the
+            driver they were carrying cargo. Rides keep only the two rows that
+            are true for them: distance and their own pay. Rows with a missing
+            value are dropped rather than rendered as "NaN km" (D-10.5). */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Package Details</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>{isRide ? 'Trip Details' : 'Package Details'}</Text>
           {[
-            { label: 'Description',   value: delivery.packageDescription,                          icon: 'cube-outline' },
-            { label: 'Size',          value: delivery.packageSize,                                  icon: 'resize-outline' },
-            { label: 'Fragile',       value: delivery.isFragile ? 'Yes: handle carefully' : 'No', icon: 'warning-outline' },
-            { label: 'Distance',      value: `${Number(delivery.distanceKm).toFixed(1)} km`,       icon: 'map-outline' },
-            { label: 'Your Earnings', value: `₦${Number(delivery.driverEarnings).toLocaleString()}`, icon: 'cash-outline' },
-          ].map(({ label, value, icon }) => (
+            ...(isRide ? [] : [
+              { label: 'Description', value: delivery.packageDescription,                        icon: 'cube-outline' },
+              { label: 'Size',        value: delivery.packageSize,                               icon: 'resize-outline' },
+              { label: 'Fragile',     value: delivery.isFragile ? 'Yes: handle carefully' : 'No', icon: 'warning-outline' },
+            ]),
+            {
+              label: 'Distance',
+              value: Number.isFinite(Number(delivery.distanceKm)) && delivery.distanceKm != null
+                ? `${Number(delivery.distanceKm).toFixed(1)} km` : null,
+              icon: 'map-outline',
+            },
+            {
+              // Driver money is always the server number, never recomputed here.
+              label: 'Your Earnings',
+              value: Number.isFinite(Number(delivery.driverEarnings)) && delivery.driverEarnings != null
+                ? `₦${Number(delivery.driverEarnings).toLocaleString()}` : null,
+              icon: 'cash-outline',
+            },
+          ].filter(r => r.value != null && r.value !== '').map(({ label, value, icon }) => (
             <View key={label} style={styles.infoRow}>
               <Ionicons name={icon as any} size={16} color={theme.textThird} />
               <Text style={[styles.infoLabel, { color: theme.textSecond }]}>{label}</Text>
@@ -730,8 +767,8 @@ export default function ActiveDeliveryScreen() {
         {/* Progress steps */}
         <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Progress</Text>
-          {STATUS_STEPS.filter(s => s.key !== 'delivered').map((s, i) => {
-            const thisIndex = STATUS_STEPS.findIndex(x => x.key === s.key);
+          {steps.filter(s => s.key !== 'delivered').map((s, i) => {
+            const thisIndex = steps.findIndex(x => x.key === s.key);
             const done      = thisIndex < statusIndex || delivery.status === 'delivered';
             const active    = s.key === delivery.status;
             return (
@@ -753,7 +790,7 @@ export default function ActiveDeliveryScreen() {
                     active && { fontWeight: FontWeight.bold },
                   ]}>{s.label}</Text>
                 </View>
-                {i < STATUS_STEPS.length - 2 && (
+                {i < steps.length - 2 && (
                   <View style={[styles.stepLine, { backgroundColor: done ? '#22C55E' : theme.border }]} />
                 )}
               </View>
@@ -904,8 +941,6 @@ const styles = StyleSheet.create({
   customerRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   chatBtn:       { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999 },
   chatBtnText:   { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
-  avatar:        { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  avatarText:    { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
   customerName:  { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
   reportBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

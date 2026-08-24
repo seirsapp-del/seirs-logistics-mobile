@@ -23,6 +23,7 @@ import { businessApi } from '@/services/api';
 import { deliveriesApi } from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
+import { collectUrl } from '@/constants/config';
 
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
@@ -120,7 +121,7 @@ export default function DeliveryDetailScreen() {
         message:
           `Package ${code} is waiting at a SEIRS partner store. ` +
           `Settle the collection fee and get the pickup address here: ` +
-          `https://seirs.app/collect/${code}`,
+          collectUrl(code),
       });
     } catch {
       /* share sheet dismissed */

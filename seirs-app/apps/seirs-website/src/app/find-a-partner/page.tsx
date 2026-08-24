@@ -150,7 +150,7 @@ export default function FindAPartnerPage() {
               Partner network
             </div>
             <h1 className="text-title-sm font-black lg:text-title-lg">
-              Find a Seirs partner store near you
+              Find a SEIRS partner store near you
             </h1>
             <p className="mt-4 text-lg text-white/70">
               Drop off a package on your way home, or pick up a delivery from a
@@ -296,7 +296,7 @@ export default function FindAPartnerPage() {
 
         {/* CTA to Send flow */}
         <div className="mt-16 rounded-2xl bg-gradient-to-br from-navy to-navy-dark p-8 text-center text-white sm:p-10">
-          <h2 className="text-2xl font-black sm:text-3xl">Ready to send with Seirs?</h2>
+          <h2 className="text-2xl font-black sm:text-3xl">Ready to send with SEIRS?</h2>
           <p className="mx-auto mt-3 max-w-xl text-white/70">
             {/* Was the plain text "seirs.app/track", which was not a link and
                 pointed at a URL that 404'd because no /track index existed.

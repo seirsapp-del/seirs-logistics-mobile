@@ -1,6 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { AlertCircle, Ban, ExternalLink } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 const TYPE_LABELS: Record<string, string> = {
   high_cancellation_rate: 'High Cancellation Rate',
@@ -22,19 +25,56 @@ export default function FraudPage() {
   const [page,    setPage]    = useState(1);
   const [filter,  setFilter]  = useState('open');
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
+  const [busyId,  setBusyId]  = useState<string | null>(null);
+  const confirm               = useConfirm();
 
   const load = (p = 1) => {
     setLoading(true);
+    setError(null);
     adminApi.fraud.list(p, filter || undefined)
-      .then(setData).catch(() => {}).finally(() => setLoading(false));
+      .then(setData)
+      .catch((e: any) => setError(e?.message ?? 'Could not load fraud flags'))
+      .finally(() => setLoading(false));
     setPage(p);
   };
 
   useEffect(() => { load(1); }, [filter]);
 
+  // resolveFlag only writes the flag row's status. It has never touched
+  // the account, so the old "Action (Ban)" button cleared the queue and
+  // left the flagged user fully able to sign in. The label now says what
+  // it does, and banning is a separate, confirmed action.
   const resolve = async (id: string, status: string) => {
-    await adminApi.fraud.resolve(id, status);
-    load(page);
+    setBusyId(id);
+    try {
+      await adminApi.fraud.resolve(id, status);
+      load(page);
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not update this flag');
+    } finally { setBusyId(null); }
+  };
+
+  // Ban the account behind the flag, then mark the flag actioned so the
+  // queue reflects that something actually happened.
+  const banUser = async (flag: any) => {
+    const userId = flag.user?.id ?? flag.userId;
+    if (!userId) { setError('This flag carries no account to ban.'); return; }
+    const ok = await confirm({
+      title:        `Ban ${flag.user?.name ?? 'this account'}?`,
+      message:      'They are signed out on their next request and cannot use the app until unbanned. Deliveries, ledger entries and history are preserved. The flag is marked actioned at the same time.',
+      confirmLabel: 'Ban account',
+      danger:       true,
+    });
+    if (!ok) return;
+    setBusyId(flag.id);
+    try {
+      await adminApi.updateUser(userId, { isActive: false });
+      await adminApi.fraud.resolve(flag.id, 'actioned');
+      load(page);
+    } catch (e: any) {
+      setError(e?.message ?? 'Ban failed');
+    } finally { setBusyId(null); }
   };
 
   return (
@@ -59,6 +99,15 @@ export default function FraudPage() {
           </div>
         </div>
 
+        {/* A failed fetch used to look identical to a clean board. */}
+        {error && (
+          <div className="mb-4 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <span className="flex-1">{error}</span>
+            <button onClick={() => load(page)} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-20 text-[#0F2B4C]/30">Loading…</div>
         ) : (
@@ -75,7 +124,17 @@ export default function FraudPage() {
                         {TYPE_LABELS[flag.type] ?? flag.type}
                       </span>
                     </div>
-                    <p className="text-sm text-[#0F2B4C]/60">{flag.user?.name} - {flag.user?.email}</p>
+                    {(flag.user?.id ?? flag.userId) ? (
+                      <Link
+                        href={`/users/${flag.user?.id ?? flag.userId}`}
+                        className="inline-flex items-center gap-1 text-sm text-[#3A7BD5] hover:underline"
+                      >
+                        {flag.user?.name} - {flag.user?.email}
+                        <ExternalLink size={12} />
+                      </Link>
+                    ) : (
+                      <p className="text-sm text-[#0F2B4C]/60">{flag.user?.name} - {flag.user?.email}</p>
+                    )}
                     {flag.details && (
                       <pre className="mt-2 text-xs bg-[#F5F5F0] rounded-lg p-2 text-[#0F2B4C]/50 overflow-x-auto border border-[#E5E7EB]">
                         {JSON.stringify(flag.details, null, 2)}
@@ -90,19 +149,31 @@ export default function FraudPage() {
                     <div className="flex flex-col gap-2 shrink-0">
                       <button
                         onClick={() => resolve(flag.id, 'reviewed')}
-                        className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 font-medium transition-colors"
+                        disabled={busyId === flag.id}
+                        className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 font-medium transition-colors disabled:opacity-50"
                       >
                         Mark Reviewed
                       </button>
                       <button
                         onClick={() => resolve(flag.id, 'actioned')}
-                        className="text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 font-medium transition-colors"
+                        disabled={busyId === flag.id}
+                        title="Closes the flag only. It does not touch the account."
+                        className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 font-medium transition-colors disabled:opacity-50"
                       >
-                        Action (Ban)
+                        Mark Actioned
+                      </button>
+                      <button
+                        onClick={() => banUser(flag)}
+                        disabled={busyId === flag.id}
+                        title="Deactivates the account, then marks the flag actioned."
+                        className="text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 font-medium transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      >
+                        <Ban size={12} /> Ban account
                       </button>
                       <button
                         onClick={() => resolve(flag.id, 'dismissed')}
-                        className="text-xs bg-[#0F2B4C]/5 text-[#0F2B4C]/60 px-3 py-1.5 rounded-lg hover:bg-[#0F2B4C]/10 font-medium transition-colors"
+                        disabled={busyId === flag.id}
+                        className="text-xs bg-[#0F2B4C]/5 text-[#0F2B4C]/60 px-3 py-1.5 rounded-lg hover:bg-[#0F2B4C]/10 font-medium transition-colors disabled:opacity-50"
                       >
                         Dismiss
                       </button>

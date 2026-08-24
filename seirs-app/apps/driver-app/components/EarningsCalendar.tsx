@@ -1,13 +1,13 @@
 /**
  * Klarna-style earnings calendar (2026-08-09, founder request).
  *
- * Month grid where each day shows what the driver earned; arrows
- * scroll back through previous months indefinitely (forward capped at
- * the current month). Tapping a day opens a per-trip breakdown below
- * the grid with the day's total.
+ * Month grid where each day shows what the driver earned. Tapping a day
+ * opens a per-trip breakdown below the grid with the day's total.
  *
- * Pure JS + aggregates the already-loaded earnings history client-side,
- * so no new native module, no new endpoint, hot-reload friendly.
+ * D-9.1: the arrows do NOT scroll back through history indefinitely. This
+ * component aggregates ONLY the history array it is handed (the earnings
+ * screen fetches the last 50 ledger rows), so months older than that page
+ * simply render empty. Paging the ledger by month needs a server endpoint.
  */
 import { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
@@ -29,6 +29,13 @@ interface EarningRow {
 interface Props {
   history: EarningRow[];
   theme:   typeof Colors.light;
+  /**
+   * D-4.2: server-computed total for the CURRENT calendar month
+   * (dashboard.month.earned). The grid can only sum the history page it was
+   * handed, which disagreed with the Month tab on the same screen for any
+   * busy driver. When this is provided it wins for the current month.
+   */
+  currentMonthTotal?: number | null;
 }
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -56,7 +63,7 @@ function compactNaira(n: number): string {
   return String(Math.round(n));
 }
 
-export function EarningsCalendar({ history, theme }: Props) {
+export function EarningsCalendar({ history, theme, currentMonthTotal }: Props) {
   const now = new Date();
   const [viewYear,  setViewYear]  = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
@@ -88,6 +95,8 @@ export function EarningsCalendar({ history, theme }: Props) {
   }, [byDay, viewYear, viewMonth]);
 
   const atCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth();
+  // Server number for this month, client sum for the months behind it.
+  const headerTotal = atCurrentMonth && currentMonthTotal != null ? currentMonthTotal : monthTotal;
 
   const goPrev = () => {
     setSelected(null);
@@ -140,7 +149,7 @@ export function EarningsCalendar({ history, theme }: Props) {
       </View>
 
       <Text style={[styles.monthTotal, { color: '#16A34A' }]}>
-        ₦{monthTotal.toLocaleString()} this month
+        ₦{headerTotal.toLocaleString()} {atCurrentMonth ? 'this month' : `in ${MONTHS[viewMonth]}`}
       </Text>
 
       {/* Weekday labels */}

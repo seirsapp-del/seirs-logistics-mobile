@@ -1,5 +1,5 @@
 /**
- * Live rate-card sync — fetches the active RateCard from the backend on
+ * Live rate-card sync: fetches the active RateCard from the backend on
  * app launch, caches it in AsyncStorage (so first launch without internet
  * still has *something* sensible), and refreshes every 5 minutes.
  *
@@ -7,7 +7,7 @@
  * curried calcRideFare / calcPackageFare exports, which read the cached
  * card via getActiveRateCard() at call time. When admin publishes a new
  * card, the next refresh pulls it and every subsequent fare calc reflects
- * the change — no app restart needed.
+ * the change, no app restart needed.
  *
  * SHAPE GAP: backend RateCard stores vehicles as a dict with combined
  * customer+driver fields (vehicleRates[id].baseFareCustomer etc.). The
@@ -15,7 +15,7 @@
  * vehicles[] arrays. Until we add the translation layer, we only sync
  * the fields that ARE the same shape on both ends:
  *   - regions (zoneOverrides, stateOverrides, restrictedSubZones)
- *   - zoneSurcharges (new v2 tier — admin can edit, customer respects)
+ *   - zoneSurcharges (new v2 tier: admin can edit, customer respects)
  *   - vatPct, fuelPrices, dwell, cancellation, returnTrip, cod
  * Vehicle base + perKm + categories + discounts stay bundled until
  * the shape transformation is in (tracked as follow-up).
@@ -37,7 +37,7 @@ const CACHE_KEY        = 'seirs.rateCard.active';
 // install that already cached v2 would keep overcharging after the
 // code fix shipped.
 const CACHE_VERSION    = 'v3';
-const REFRESH_INTERVAL = 5 * 60 * 1000;   // 5 min — matches backend cache TTL
+const REFRESH_INTERVAL = 5 * 60 * 1000;   // 5 min, matches backend cache TTL
 
 // Module-level: every calc function in rateCard.ts reads from this. Starts
 // as DEFAULT_RATE_CARD so the app prices correctly even before the first
@@ -132,7 +132,7 @@ function mergeFromBackend(remote: any): RateCard {
   const backendRegions = remote.regions ?? {};
   const d = DEFAULT_RATE_CARD;
 
-  // Tiny helper — picks remote value when present and numeric, else falls
+  // Tiny helper: picks remote value when present and numeric, else falls
   // back to the default. Keeps mergers readable below.
   const num = (v: any, fallback: number) =>
     typeof v === 'number' && Number.isFinite(v) ? v : fallback;
@@ -270,7 +270,7 @@ async function loadCached(): Promise<void> {
     const parsed = JSON.parse(raw);
     if (parsed?.cacheVersion !== CACHE_VERSION) return;   // stale shape
     _activeCard = parsed.card;
-  } catch { /* ignore — fall back to DEFAULT_RATE_CARD */ }
+  } catch { /* ignore: fall back to DEFAULT_RATE_CARD */ }
 }
 
 /**
@@ -331,14 +331,14 @@ async function fetchAndCache(force = false): Promise<void> {
     AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ cacheVersion: CACHE_VERSION, card: merged }))
       .catch(() => { /* cache write is best-effort */ });
   } catch {
-    // Backend unreachable — keep using cached or DEFAULT_RATE_CARD.
+    // Backend unreachable: keep using cached or DEFAULT_RATE_CARD.
   }
 }
 
 /**
  * Call once in the app root (RootLayout). Loads the AsyncStorage cache
  * synchronously-ish, fetches fresh from backend, and starts a 5-min
- * refresh interval. Safe to render before this resolves — the calc
+ * refresh interval. Safe to render before this resolves, the calc
  * functions fall back to DEFAULT_RATE_CARD.
  */
 export function useRateCardSync(): void {
@@ -358,7 +358,7 @@ export function useRateCardSync(): void {
   }, []);
 }
 
-/** Manual refresh — for screens to call after admin publish notifications. */
+/** Manual refresh: for screens to call after admin publish notifications. */
 export async function refreshRateCard(): Promise<void> {
   await fetchAndCache(true);
 }

@@ -62,11 +62,14 @@ export default function BusinessDocumentsScreen() {
       `Company: ${spend?.companyName ?? ''}`,
       `Generated: ${new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}`,
       '',
+      // The top-ups line and the "business wallet" wording went out in a
+      // file the business hands to its accountant and to FIRS, asserting a
+      // wallet relationship that does not exist (B-4.3). Senders hold no
+      // balance with SEIRS: they pay per booking.
       `Delivery payments: ${y.payments.toLocaleString()}`,
       `Total spent:       ${fmtNgn(y.spentNgn)}`,
-      `Wallet top-ups:    ${fmtNgn(y.toppedUpNgn)}`,
       '',
-      'Figures aggregate your SEIRS business wallet transactions,',
+      'Figures aggregate delivery payments made through SEIRS,',
       'suitable for company accounting and FIRS expense records.',
     ];
     Share.share({ title: `SEIRS spend statement ${y.year}`, message: lines.join('\n') }).catch(() => {});

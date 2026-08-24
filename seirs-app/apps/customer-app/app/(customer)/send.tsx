@@ -944,6 +944,12 @@ export default function SendScreen() {
         // The signed pin makes the review's number the charged number.
         quoteToken: runQuote?.quotePin?.token,
         termsAccepted: tcAgreed,
+        // Promo code the customer saved on /promo. It is carried, never
+        // redeemed early: POST /promotions/redeem burns the customer's one
+        // allowed use, so redemption must happen here, once, against a real
+        // subtotal. The backend delivery DTO does not read this field yet,
+        // so it is stripped by the validation whitelist until it does.
+        promoCode: draft.promoCode || undefined,
         pickupAddress:   pickup?.address ?? '',
         dropoffAddress:  dropoff?.address ?? '',
         pickupLat:       pickup?.lat,

@@ -19,6 +19,8 @@
 import { useEffect, useState } from 'react';
 import { Fuel, X } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { isSuperAdminFromUser } from '@/lib/rbac';
+import { getUser } from '@/lib/auth';
 
 interface Drift {
   petrol: { card: number; live: number; driftPct: number };
@@ -34,6 +36,12 @@ export default function FuelDriftBanner() {
   const [dismissed, setDismissed] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [done, setDone]       = useState<string | null>(null);
+
+  // Publishing a rate card is a super-admin route. This banner renders on
+  // the dashboard home and on /fees, both of which ops_manager and
+  // finance_officer can open, so the button used to hand them a 403.
+  // They still need to SEE the drift: it is the reason drivers are short.
+  const canPublish = isSuperAdminFromUser(getUser());
 
   const sync = async () => {
     setSyncing(true);
@@ -73,13 +81,19 @@ export default function FuelDriftBanner() {
           difference out of their own pocket on every trip until it is republished.
         </p>
         <div className="mt-2.5 flex flex-wrap items-center gap-3">
-          <button
-            onClick={sync}
-            disabled={syncing}
-            className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
-          >
-            {syncing ? 'Publishing…' : 'Apply pump prices and publish'}
-          </button>
+          {canPublish ? (
+            <button
+              onClick={sync}
+              disabled={syncing}
+              className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
+            >
+              {syncing ? 'Publishing…' : 'Apply pump prices and publish'}
+            </button>
+          ) : (
+            <span className="text-xs font-medium text-amber-900/70">
+              Publishing a corrected rate card needs a Super Admin. Please flag this to one.
+            </span>
+          )}
           {done && <span className="text-xs font-medium text-amber-900">{done}</span>}
         </div>
         <p className="mt-1.5 text-xs text-amber-800/60">

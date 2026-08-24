@@ -74,7 +74,9 @@ export default function RegisterScreen() {
     if (!form.email.trim())                      return 'Please enter your email address.';
     if (!form.email.includes('@'))               return 'Please enter a valid email address.';
     if (!form.phone.trim())                      return 'Please enter your phone number.';
-    if (!phoneValid)                             return 'Phone must be a Nigerian number starting with 080, 081, 070, 090, or 091 (11 digits total: e.g. 08012345678).';
+    // 071 is in the regex above and was missing from this list, so a Glo
+    // 071 user who mistyped was told their prefix is invalid (B-6.6).
+    if (!phoneValid)                             return 'Phone must be a Nigerian number starting with 070, 071, 080, 081, 090, or 091 (11 digits total: e.g. 08012345678).';
     if (!form.companyName.trim())                return 'Please enter your company name.';
     if (!form.state)                              return 'Please pick your state.';
     if (!form.city.trim())                        return 'Please enter your city or LGA (e.g. Ikeja, Surulere, Lekki).';

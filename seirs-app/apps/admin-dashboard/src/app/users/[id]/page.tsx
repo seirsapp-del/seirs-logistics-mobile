@@ -6,9 +6,15 @@ import { useConfirm } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
 import { SendDocumentModal } from '@/components/SendDocumentModal';
-import { isSuperAdminFromUser } from '@/lib/rbac';
+import { canExportNdprData, canHardDeleteAccount } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
 import { AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
+
+// Postgres returns decimal columns as strings ("1500.00"), so
+// String.toLocaleString left them exactly as-is: fractional naira with
+// no thousands separator, and the same order read differently here than
+// on the delivery detail page. Whole naira only, house standard.
+const naira = (v: any) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`;
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-yellow-100 text-yellow-800',
@@ -30,11 +36,28 @@ export default function UserDetailPage() {
   const [saving,  setSaving]  = useState(false);
   const [hardDeleteOpen, setHardDeleteOpen] = useState(false);
   const confirm               = useConfirm();
-  const superAdmin            = isSuperAdminFromUser(getUser());
+  // The NDPR tools are role-gated server-side. This check was computed
+  // here and never wired, so ops_manager and driver_compliance saw a
+  // live irreversible-purge button that only 403s after they have typed
+  // the reason and confirmed the name.
+  const sessionUser           = getUser();
+  const canExportNdpr         = canExportNdprData(sessionUser);
+  const canPurge              = canHardDeleteAccount(sessionUser);
 
-  useEffect(() => {
-    adminApi.user(id).then(setData).catch(() => {}).finally(() => setLoading(false));
-  }, [id]);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadUser = () => {
+    setLoading(true);
+    setError(null);
+    adminApi.user(id)
+      .then(setData)
+      // "User not found" and "the request failed" are different facts and
+      // used to render identically.
+      .catch((e: any) => setError(e?.message ?? 'Could not load this account'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadUser(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
 
   const toggleBan = async () => {
     if (!data) return;
@@ -111,7 +134,18 @@ export default function UserDetailPage() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>;
-  if (!data)   return <div className="min-h-screen flex items-center justify-center text-gray-400">User not found</div>;
+  if (!data) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="max-w-sm text-center">
+        <p className="text-gray-500">{error ?? 'User not found'}</p>
+        {error && (
+          <button onClick={loadUser} className="mt-3 text-sm font-semibold text-[#3A7BD5] underline hover:no-underline">
+            Retry
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   const {
     user, deliveries, deliveryCount, totalSpent, cancelledCount,
@@ -214,14 +248,16 @@ export default function UserDetailPage() {
             >
               Send document
             </button>
-            <button
-              onClick={exportData}
-              className="text-sm px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
-              title="NDPR Article 24 - right to data portability"
-            >
-              Export NDPR data
-            </button>
-            {user.role !== 'admin' && (
+            {canExportNdpr && (
+              <button
+                onClick={exportData}
+                className="text-sm px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+                title="NDPR Article 24 - right to data portability"
+              >
+                Export NDPR data
+              </button>
+            )}
+            {canPurge && user.role !== 'admin' && (
               <button
                 onClick={() => setHardDeleteOpen(true)}
                 className="text-sm px-4 py-2 rounded-lg font-medium bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
@@ -229,6 +265,11 @@ export default function UserDetailPage() {
               >
                 NDPR hard-delete
               </button>
+            )}
+            {!canExportNdpr && !canPurge && (
+              <p className="max-w-[11rem] text-xs text-gray-400">
+                NDPR export and erasure need a Super Admin, Support Agent or Finance Officer role.
+              </p>
             )}
           </div>
         </div>
@@ -399,7 +440,7 @@ export default function UserDetailPage() {
                         {d.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-gray-800">₦{d.price?.toLocaleString()}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-800">{naira(d.price)}</td>
                     <td className="px-4 py-3 text-gray-400 text-xs">
                       {new Date(d.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
                     </td>

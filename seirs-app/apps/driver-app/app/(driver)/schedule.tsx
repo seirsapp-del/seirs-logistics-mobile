@@ -3,8 +3,7 @@
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ArrowLeft, Calendar, Clock, ChevronRight, Bell, BellOff,
-  MapPin, Package, ChevronDown,
+  ArrowLeft, Calendar, Clock, MapPin, Package, ChevronDown,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -63,7 +62,6 @@ export default function ScheduleScreen() {
   const isDark  = cs === 'dark';
 
   const [schedule,    setSchedule]    = useState<Record<DayId, DaySchedule>>(DEFAULT_SCHEDULE);
-  const [reminders,   setReminders]   = useState(true);
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
   const [pickerOpen,  setPickerOpen]  = useState<{ day: DayId; field: 'start' | 'end' } | null>(null);
@@ -151,40 +149,24 @@ export default function ScheduleScreen() {
               </View>
               <View style={styles.jobBottom}>
                 <Text style={[styles.vehicleChip, { color: theme.textThird, borderColor: theme.border }]}>{job.vehicle}</Text>
-                <Pressable style={[styles.remindBtn, { backgroundColor: theme.primary + '15' }]}>
-                  <Bell size={12} color={theme.primary} strokeWidth={1.75} />
-                  <Text style={[styles.remindText, { color: theme.primary }]}>Remind me</Text>
-                </Pressable>
               </View>
             </View>
           ))
         )}
 
-        {/* 30-min reminders toggle */}
-        <View style={[styles.reminderCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
-          <View style={styles.reminderLeft}>
-            {reminders
-              ? <Bell    size={20} color={theme.primary}    strokeWidth={1.75} />
-              : <BellOff size={20} color={theme.textThird} strokeWidth={1.75} />
-            }
-            <View>
-              <Text style={[styles.reminderTitle, { color: theme.text }]}>30-minute reminders</Text>
-              <Text style={[styles.reminderSub, { color: theme.textThird }]}>Push alert before each scheduled job</Text>
-            </View>
-          </View>
-          <Switch
-            value={reminders}
-            onValueChange={setReminders}
-            trackColor={{ false: theme.border, true: theme.primary }}
-            thumbColor="#fff"
-          />
-        </View>
+        {/* D-1.10: a "30-minute reminders" switch used to sit here. It was
+            pure local state: never persisted, never read, and no such push
+            exists. Removed rather than left as a switch that does nothing. */}
 
         {/* Availability schedule */}
+        {/* D-1.9: these hours are stored in AsyncStorage on THIS phone and
+            nowhere else. Dispatch does not read them, so the screen must not
+            imply they change which jobs you are offered. Labelled honestly
+            rather than wired to a backend that does not exist. */}
         <Pressable style={styles.sectionRow} onPress={() => setShowSched(v => !v)}>
           <View style={styles.sectionLeft}>
             <Clock size={18} color={theme.primary} strokeWidth={1.75} />
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Availability Hours</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>My Working Hours</Text>
           </View>
           <View style={styles.sectionRight}>
             <Text style={[styles.sectionCount, { color: theme.textThird }]}>{activeDays} days active</Text>
@@ -194,6 +176,9 @@ export default function ScheduleScreen() {
 
         {showSched && (
           <View style={[styles.schedCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+            <Text style={[styles.schedNote, { color: theme.textThird }]}>
+              A personal note to yourself, saved on this phone only. It does not change which jobs you are offered: you get jobs whenever you are online.
+            </Text>
             {DAYS.map((day, i) => (
               <View
                 key={day}
@@ -258,7 +243,7 @@ export default function ScheduleScreen() {
               onPress={handleSave}
               disabled={saving}
             >
-              <Text style={styles.saveBtnText}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save Schedule'}</Text>
+              <Text style={styles.saveBtnText}>{saving ? 'Saving…' : saved ? 'Saved on this phone' : 'Save on this phone'}</Text>
             </Pressable>
           </View>
         )}
@@ -294,13 +279,8 @@ const styles = StyleSheet.create({
   addrText:   { fontSize: FontSize.sm, flex: 1 },
   jobBottom:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   vehicleChip:{ fontSize: FontSize.xs, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.full },
-  remindBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full },
-  remindText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold as any },
 
-  reminderCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
-  reminderLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },
-  reminderTitle:{ fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
-  reminderSub:  { fontSize: FontSize.xs, marginTop: 2 },
+  schedNote:    { fontSize: FontSize.xs, lineHeight: 17, paddingBottom: Spacing.sm },
 
   schedCard: { borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden' },
   dayRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md },

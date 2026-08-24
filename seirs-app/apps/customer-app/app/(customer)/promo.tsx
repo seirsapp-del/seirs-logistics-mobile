@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { promotionsApi, type PromoDTO } from '@/services/api';
+import { useSendDraftStore } from '@/store/useSendDraftStore';
 
 const describePromo = (p: PromoDTO) => {
   if (p.description) return p.description;
@@ -24,45 +25,80 @@ export default function PromoScreen() {
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
 
+  const { draft, ready: draftReady, patchDraft } = useSendDraftStore();
+
   const [code,        setCode]        = useState('');
   const [applied,     setApplied]     = useState<string | null>(null);
   const [error,       setError]       = useState('');
-  const [loading,     setLoading]     = useState(false);
   const [promos,      setPromos]      = useState<PromoDTO[]>([]);
   const [listLoading, setListLoading] = useState(true);
+  // Distinguishes "the list came back empty" from "the list never came
+  // back": only the first is grounds for rejecting a typed code.
+  const [listLoaded,  setListLoaded]  = useState(false);
 
   const loadPromos = () => {
     setListLoading(true);
     promotionsApi.listActive()
-      .then(setPromos)
-      .catch(() => setPromos([]))
+      .then(list => { setPromos(list); setListLoaded(true); })
+      .catch(() => { setPromos([]); setListLoaded(false); })
       .finally(() => setListLoading(false));
   };
 
   useEffect(() => { loadPromos(); }, []);
 
-  // Validate the code against the backend. We pass subtotalKobo=0 so
-  // the live "Apply" check only validates existence / activity / per-
-  // user cap: the actual discount calc runs again at booking time
-  // with the real subtotal.
-  const handleApply = async () => {
+  // Show the code the customer already accepted, so re-opening this screen
+  // does not look like it forgot.
+  useEffect(() => {
+    if (!draftReady || !draft.promoCode) return;
+    setCode(draft.promoCode);
+    setApplied(draft.promoCode);
+  }, [draftReady, draft.promoCode]);
+
+  /**
+   * Accept a code WITHOUT redeeming it.
+   *
+   * This screen used to call promotionsApi.redeem({ code, subtotalKobo: 0 }).
+   * That is not a validation call: the backend redeem() persists a
+   * redemption row, counts against perUserLimit and increments the
+   * campaign-wide usageCount. With a subtotal of zero the discount landed
+   * on nothing, so the customer spent their one allowed use to be told the
+   * code was "applied", and anyone could drain a campaign's usageLimit from
+   * this box without ever booking (sweep C-1.3, 2026-08-23).
+   *
+   * There is no validate-only endpoint and no dryRun flag today, so this
+   * screen does NOT talk to the promotions API at all. It matches the code
+   * against the already-fetched active list, stores it on the Send draft,
+   * and send.tsx passes it to deliveriesApi.create. Redemption then happens
+   * exactly once, at booking, against a real subtotal.
+   *
+   * BACKEND STILL REQUIRED: POST /deliveries currently has no promoCode
+   * field, so the code is accepted, carried and ignored until the delivery
+   * DTO reads it and calls redeem() server-side.
+   */
+  const handleApply = () => {
     const trimmed = code.trim().toUpperCase();
     if (!trimmed) return;
-    setLoading(true);
     setError('');
     setApplied(null);
-    try {
-      await promotionsApi.redeem({ code: trimmed, subtotalKobo: 0 });
-      setApplied(trimmed);
-    } catch (e: any) {
-      // Backend throws BadRequest with the human-readable reason;
-      // surface verbatim when it looks user-friendly, otherwise show
-      // a generic fallback. Don't claim "redeemed" if it failed.
-      const raw = e?.message ?? '';
-      setError(raw && raw.length < 140 ? raw : 'Invalid or expired promo code.');
-    } finally {
-      setLoading(false);
+
+    // Only judge the code when we actually have the active list. If the
+    // fetch failed we have nothing to check against, and refusing a valid
+    // code because the device was offline is worse than carrying it.
+    const known = promos.some(p => p.code?.toUpperCase() === trimmed);
+    if (listLoaded && promos.length > 0 && !known) {
+      setError('We could not find that code. Check the spelling, or pick one from the list below.');
+      return;
     }
+
+    patchDraft({ promoCode: trimmed });
+    setApplied(trimmed);
+  };
+
+  const handleClear = () => {
+    patchDraft({ promoCode: undefined });
+    setApplied(null);
+    setCode('');
+    setError('');
   };
 
   return (
@@ -108,16 +144,27 @@ export default function PromoScreen() {
           {applied ? (
             <View style={[styles.successRow, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
               <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-              <Text style={styles.successText}>Promo applied! Discount will show at checkout.</Text>
+              {/* Deliberately does NOT say "redeemed" or name a discount
+                  amount. The code is held on the draft and redeemed once,
+                  at booking, against the real subtotal. */}
+              <Text style={styles.successText}>Code saved. It goes with your next booking.</Text>
             </View>
           ) : null}
-          <Button
-            label={applied ? 'Applied!' : 'Apply Code'}
-            onPress={handleApply}
-            loading={loading}
-            disabled={!code.trim() || !!applied}
-            fullWidth
-          />
+          {applied ? (
+            <Button
+              label="Remove code"
+              variant="outline"
+              onPress={handleClear}
+              fullWidth
+            />
+          ) : (
+            <Button
+              label="Save Code"
+              onPress={handleApply}
+              disabled={!code.trim()}
+              fullWidth
+            />
+          )}
         </View>
 
         {/* Available promos */}

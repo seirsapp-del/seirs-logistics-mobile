@@ -46,21 +46,30 @@ export default function WalletPage() {
   const [paid,       setPaid]       = useState<RecentWithdrawal[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [busyId,     setBusyId]     = useState<string | null>(null);
+  const [error,      setError]      = useState<string | null>(null);
   const confirm                     = useConfirm();
 
+  // Every call used to swallow its own failure, so a 403 or a cold
+  // Railway boot rendered as an all-zero money summary: indistinguishable
+  // from a quiet day. Keep the partial data, but say what failed.
   const load = async () => {
     setLoading(true);
+    setError(null);
+    const failures: string[] = [];
     try {
       const [s, p, h, w] = await Promise.all([
-        adminApi.wallet.summary().catch(() => null),
-        adminApi.wallet.pendingPayouts().catch(() => []),
-        adminApi.wallet.heldEarnings().catch(() => []),
-        adminApi.wallet.recentWithdrawals().catch(() => []),
+        adminApi.wallet.summary().catch(() => { failures.push('summary'); return null; }),
+        adminApi.wallet.pendingPayouts().catch(() => { failures.push('pending payouts'); return []; }),
+        adminApi.wallet.heldEarnings().catch(() => { failures.push('held earnings'); return []; }),
+        adminApi.wallet.recentWithdrawals().catch(() => { failures.push('recent transfers'); return []; }),
       ]);
       setSummary(s);
       setPending(p ?? []);
       setHeld(h ?? []);
       setPaid(w ?? []);
+      if (failures.length) {
+        setError(`Could not load ${failures.join(', ')}. The figures below are incomplete.`);
+      }
     } finally { setLoading(false); }
   };
 
@@ -106,6 +115,14 @@ export default function WalletPage() {
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
+
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => load()} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">

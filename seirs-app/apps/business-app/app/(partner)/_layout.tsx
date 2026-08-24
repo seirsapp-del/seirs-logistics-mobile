@@ -31,8 +31,11 @@ export default function PartnerLayout() {
         tabBarStyle: {
           backgroundColor: colors.navBackground,
           borderTopColor:  colors.border,
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom,
+          // 8px floor, matching the business tab bar (B-5.1). On button-nav
+          // Androids insets.bottom reports 0, so the raw value left this bar
+          // flush against the phone navigation with no cushion at all.
+          height: 56 + Math.max(insets.bottom, 8),
+          paddingBottom: Math.max(insets.bottom, 8),
         },
         tabBarActiveTintColor:   colors.accent,
         tabBarInactiveTintColor: colors.tabIconDefault,

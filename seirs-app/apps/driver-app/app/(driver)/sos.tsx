@@ -139,12 +139,16 @@ export default function DriverSosScreen() {
 
           {activated ? (
             <View style={styles.activeState}>
+              {/* D-6.6: fireSOS POSTs immediately, so ops is already alerted
+                  by the time this renders. The old "SOS in Ns" read like a
+                  countdown before sending. Cancel is a real un-send, so the
+                  mechanism is fine: only the wording was lying. */}
               <Text style={styles.activeTitle}>
-                {countdown > 0 ? `SOS in ${countdown}s…` : 'SOS Activated!'}
+                {countdown > 0 ? 'SOS sent' : 'SOS Activated!'}
               </Text>
               <Text style={styles.activeDesc}>
                 {countdown > 0
-                  ? 'Your location is being shared with ops.'
+                  ? `Ops has been alerted and your location is being shared. Cancel within ${countdown}s if this was a mistake.`
                   : 'Help is on the way. Stay safe.'}
               </Text>
               {countdown > 0 && (

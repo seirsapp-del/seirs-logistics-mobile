@@ -178,7 +178,11 @@ export default function ReceiveDropoffScreen() {
     setLoading(true);
     setError('');
     try {
-      const uploaded = await uploadApi.uploadFile(photoUri, 'partner-receive');
+      // 'proof', not a 'partner-receive' prefix (B-10.6). uploadFile's
+      // second argument is _prefix and is explicitly ignored, so this
+      // chain-of-custody photo read as filed-by-prefix while landing
+      // nowhere in particular.
+      const uploaded = await uploadApi.file(photoUri, 'image/jpeg', 'proof');
       setPhotoUploadedUrl(uploaded.url);
       setStep('confirm');
       // The sender is standing right there: get the code moving before

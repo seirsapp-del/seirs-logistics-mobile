@@ -126,16 +126,22 @@ export default function BusinessSeirsIdScreen() {
           ))}
         </View>
 
+        {/* Fixed cream #FEF9C3 panel with #92400E text (B-10.8). This is
+            the warning that the SEIRS ID can be used to impersonate the
+            business, so it has to read in both themes. */}
         <Pressable
-          style={styles.alert}
+          style={[styles.alert, {
+            backgroundColor: isDark ? '#D9770622' : '#FEF9C3',
+            borderColor:     isDark ? '#D9770655' : '#FDE68A',
+          }]}
           onPress={() => Alert.alert(
             'Keep this code private',
             'Anyone with your SEIRS ID and your registered name could pass themselves off as your business at a handoff. Show it at the moment of use, never post it publicly.',
           )}
         >
           <View style={styles.alertRow}>
-            <Icon name="AlertTriangle" size={16} color="#92400E" />
-            <Text style={styles.alertText}>Keep this code private</Text>
+            <Icon name="AlertTriangle" size={16} color={isDark ? '#FCD34D' : '#92400E'} />
+            <Text style={[styles.alertText, { color: isDark ? '#FCD34D' : '#92400E' }]}>Keep this code private</Text>
           </View>
         </Pressable>
       </ScrollView>
@@ -171,7 +177,8 @@ const styles = StyleSheet.create({
   howStepText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   howText:  { flex: 1, fontSize: 13, lineHeight: 19 },
 
-  alert:    { backgroundColor: '#FEF9C3', borderColor: '#FDE68A', borderWidth: 1, borderRadius: 12, padding: 12 },
+  // Colours overridden per theme at the use site: see B-10.8.
+  alert:    { borderWidth: 1, borderRadius: 12, padding: 12 },
   alertRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  alertText:{ color: '#92400E', fontSize: 13, fontWeight: '600' },
+  alertText:{ fontSize: 13, fontWeight: '600' },
 });

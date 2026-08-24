@@ -132,8 +132,12 @@ export default function DriverRatingsScreen() {
         {recent.map(r => (
           <View key={r.id} style={[styles.reviewCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}>
             <View style={styles.reviewTop}>
+              {/* D-6.14: this printed r.customer.charAt(0) where r.customer is
+                  always "Trip SRS-XXXX", so every single review avatar read
+                  "T". GET /drivers/me/ratings returns no name (by design for
+                  rides), so show the score instead of a fake initial. */}
               <View style={[styles.reviewAvatar, { backgroundColor: theme.primary + '20' }]}>
-                <Text style={[styles.reviewInitial, { color: theme.primary }]}>{r.customer.charAt(0)}</Text>
+                <Star size={16} color={theme.primary} fill={theme.primary} strokeWidth={1} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.reviewCustomer, { color: theme.text }]}>{r.customer}</Text>
@@ -203,7 +207,6 @@ const styles = StyleSheet.create({
   reviewCard:    { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
   reviewTop:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   reviewAvatar:  { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
-  reviewInitial: { fontSize: FontSize.base, fontWeight: FontWeight.bold as any },
   reviewCustomer:{ fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
   reviewDate:    { fontSize: FontSize.xs, marginTop: 2 },
   reviewStars:   { flexDirection: 'row', gap: 2 },

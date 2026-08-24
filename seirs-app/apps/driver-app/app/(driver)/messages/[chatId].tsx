@@ -162,8 +162,10 @@ export default function DriverChatScreen() {
         <View style={styles.headerCenter}>
           <Avatar name={customer.name} size={36} />
           <View>
+            {/* D-1.12: a hardcoded green "Online" used to sit here. No presence
+                data is fetched anywhere, so it was green for a person who had
+                not opened the app in a week. Removed until presence is real. */}
             <Text style={[styles.headerName, { color: theme.text }]}>{customer.name}</Text>
-            <Text style={[styles.headerSub, { color: '#22C55E' }]}>{t('chat.online', { defaultValue: 'Online' })}</Text>
           </View>
         </View>
       </View>

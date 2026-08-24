@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
-  TextInput, Dimensions, Alert, RefreshControl, Animated, Easing,
+  Alert, RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -21,23 +21,20 @@ import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { deliveriesApi, loyaltyApi } from '@/services/api';
 import {
   AlignLeft, MapPin, Package, Car, Search,
-  Bell, TrendingUp, ChevronRight, Sparkles,
+  Bell, ChevronRight, Sparkles,
   Newspaper, Truck,
 } from 'lucide-react-native';
 
-const { width: W } = Dimensions.get('window');
-
-function getGreetingKey() {
-  const h = new Date().getHours();
-  if (h < 12) return 'home.goodMorning';
-  if (h < 17) return 'home.goodAfternoon';
-  return 'home.goodEvening';
-}
-
 type TripTab = 'in_progress' | 'delivered' | 'cancelled';
 
+// DeliveryStatus has no 'completed' member: the terminal value is
+// 'delivered'. Checking only 'completed' meant every finished delivery
+// rendered the grey default badge instead of green (sweep C-8.1).
 function statusVariant(s: string): any {
-  return s === 'completed' ? 'success' : s === 'in_progress' ? 'info' : s === 'cancelled' ? 'error' : 'default';
+  if (s === 'delivered' || s === 'completed') return 'success';
+  if (s === 'in_progress') return 'info';
+  if (s === 'cancelled')   return 'error';
+  return 'default';
 }
 
 export default function CustomerHomeScreen() {
@@ -48,7 +45,6 @@ export default function CustomerHomeScreen() {
   const { user } = useAuth();
   const { t }    = useTranslation();
 
-  const firstName  = user?.name?.split(' ')[0] ?? 'there';
 
   const insets = useSafeAreaInsets();
   const [activeTab,     setActiveTab]     = useState<TripTab>('in_progress');
@@ -57,42 +53,10 @@ export default function CustomerHomeScreen() {
   // hold NGN per CBN rules. Rewards/Points are the value-on-account proxy.
   const [points,        setPoints]        = useState<number | null>(null);
 
-  // Floating action buttons (Send + Ride): auto-hide on scroll-down,
-  // show on scroll-up. Each button expands its label briefly on press
-  // for a satisfying tap-to-action animation.
-  const fabTranslate = useRef(new Animated.Value(0)).current;
-  const lastScrollY  = useRef(0);
-  const fabHidden    = useRef(false);
-  const sendWidth    = useRef(new Animated.Value(56)).current;
-  const rideWidth    = useRef(new Animated.Value(56)).current;
-
-  const showFabs = useCallback(() => {
-    if (!fabHidden.current) return;
-    fabHidden.current = false;
-    Animated.timing(fabTranslate, { toValue: 0, duration: 200, useNativeDriver: true, easing: Easing.out(Easing.cubic) }).start();
-  }, [fabTranslate]);
-
-  const hideFabs = useCallback(() => {
-    if (fabHidden.current) return;
-    fabHidden.current = true;
-    Animated.timing(fabTranslate, { toValue: 140, duration: 200, useNativeDriver: true, easing: Easing.in(Easing.cubic) }).start();
-  }, [fabTranslate]);
-
-  const onScrollEvent = (e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    if (y > lastScrollY.current + 8) hideFabs();
-    else if (y < lastScrollY.current - 8) showFabs();
-    lastScrollY.current = y;
-  };
-
-  const animateAndGo = (which: 'send' | 'ride') => {
-    const widthRef = which === 'send' ? sendWidth : rideWidth;
-    Animated.sequence([
-      Animated.timing(widthRef, { toValue: 180, duration: 180, useNativeDriver: false, easing: Easing.out(Easing.cubic) }),
-      Animated.timing(widthRef, { toValue: 56,  duration: 180, useNativeDriver: false, easing: Easing.in(Easing.cubic), delay: 80 }),
-    ]).start();
-    setTimeout(() => router.push((which === 'send' ? '/(customer)/send' : '/(customer)/request') as any), 220);
-  };
+  // The show/hide-on-scroll animation that used to live here drove two
+  // floating action buttons (Send + Ride) that were removed from this
+  // screen. Nothing rendered fabTranslate, so onScroll fired at 16ms
+  // intervals to animate a value no view consumed. Deleted 2026-08-24.
   const [trips,         setTrips]         = useState<Array<{
     id: string; status: string; date: string; dropoffAddress: string; price: number; distance: string; kind?: string; unpaid?: boolean;
   }>>([]);
@@ -145,8 +109,6 @@ export default function CustomerHomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
-        onScroll={onScrollEvent}
-        scrollEventThrottle={16}
       >
 
         {/* ── Top bar: hamburger + SEIRS lockup (no pill bg) + avatar ────
@@ -195,7 +157,7 @@ export default function CustomerHomeScreen() {
           >
             {/* Green pulses only for real movement. An unpaid booking is
                 amber and says so: "in progress" was a lie for it. */}
-            <View style={[styles.activeDot, { backgroundColor: activeTrip.unpaid ? '#D97706' : theme.success }]} />
+            <View style={[styles.activeDot, { backgroundColor: activeTrip.unpaid ? '#FFBE0B' : theme.success }]} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.activeBannerTitle, { color: theme.text }]}>
                 {activeTrip.unpaid
@@ -480,43 +442,8 @@ const styles = StyleSheet.create({
   emptyBtn:   { marginTop: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: 12, borderRadius: Radius.full },
   emptyBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 
-  // Floating Action Buttons (Send + Ride): bottom-right corner.
-  fabPair: {
-    position: 'absolute', right: 16, gap: 12,
-  },
-  fabRow: {
-    height: 56, borderRadius: 28, overflow: 'hidden',
-    justifyContent: 'center',
-    alignSelf: 'flex-end',
-  },
-  fabPressable: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 17, gap: 10,
-  },
-  fabLabel: {
-    color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold,
-    letterSpacing: 0.3,
-  },
-
-  // Drawer
-  drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', flexDirection: 'row' },
-  drawer: {
-    width: W * 0.78, height: '100%',
-    paddingTop: 60, paddingBottom: Spacing.xl,
-  },
-  drawerProfile: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg,
-    borderBottomWidth: 1, marginBottom: Spacing.sm,
-  },
-  drawerName:  { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-  drawerEmail: { fontSize: FontSize.xs, marginTop: 2 },
-  drawerItem: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  drawerItemText: { fontSize: FontSize.base },
-  drawerSignOut: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, marginTop: Spacing.sm },
-  drawerSignOutText: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  // The FAB styles (fabPair/fabRow/fabPressable/fabLabel) and the inline
+  // drawer styles were deleted on 2026-08-24: the FABs were removed from
+  // this screen and the drawer moved into components/Drawer.tsx, but both
+  // style blocks and the scroll animation driving them were left behind.
 });

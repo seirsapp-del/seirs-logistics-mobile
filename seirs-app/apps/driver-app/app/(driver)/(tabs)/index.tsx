@@ -30,8 +30,6 @@ const URGENCY_COLOR: Record<string, string> = {
   instant:  '#EF4444',
 };
 
-// Default only; the real target is the driver's own saved goal.
-
 export default function DriverHomeScreen() {
   const router      = useRouter();
   const colorScheme = useColorScheme();
@@ -51,6 +49,11 @@ export default function DriverHomeScreen() {
   // The ledger's withdrawable figure, same source as the Earnings tab:
   // the hub used to show drivers.me().balance, a different number.
   const [withdrawable, setWithdrawable] = useState<number | null>(null);
+  // D-4.3: "Today" must come from the SAME place the Earnings tab reads it,
+  // the ledger dashboard. driverData.todayEarnings sums delivery.driverEarnings
+  // (the booked share, counted even before a ledger row exists), so the two
+  // screens showed different money for the same day.
+  const [todayLedger, setTodayLedger] = useState<number | null>(null);
 
   const locationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketRef        = useRef<Socket | null>(null);
@@ -58,8 +61,11 @@ export default function DriverHomeScreen() {
 
   useEffect(() => {
     earningsApi.dashboard()
-      .then((d: any) => setWithdrawable(Number(d?.available ?? 0)))
-      .catch(() => setWithdrawable(null));
+      .then((d: any) => {
+        setWithdrawable(Number(d?.available ?? 0));
+        setTodayLedger(d?.today?.earned != null ? Number(d.today.earned) : null);
+      })
+      .catch(() => { setWithdrawable(null); setTodayLedger(null); });
     driversApi.me().then((d) => {
       setDriverData(d);
       // Hydrate the online switch from the server. Without this the toggle
@@ -143,7 +149,21 @@ export default function DriverHomeScreen() {
 
   const stopLocationUpdates = () => {
     if (locationInterval.current) clearInterval(locationInterval.current);
+    // D-10.6: the ref was never nulled, so a later start/stop pair could
+    // clear an id that no longer belonged to a live timer.
+    locationInterval.current = null;
   };
+
+  // D-10.6: the 15s GPS poster had NO cleanup. It outlived the screen and
+  // kept calling updateLocation after logout, from a component that was
+  // already gone. active.tsx has always cleared its interval on unmount;
+  // this one never did.
+  useEffect(() => () => {
+    if (locationInterval.current) {
+      clearInterval(locationInterval.current);
+      locationInterval.current = null;
+    }
+  }, []);
 
   const handleToggleOnline = async () => {
     setToggling(true);
@@ -179,8 +199,8 @@ export default function DriverHomeScreen() {
   // a brand-new driver may not have any rating/earnings recorded yet -
   // coerce everything to Number with a sane default so .toFixed/.formatting
   // calls don't crash on strings or null.
-  const weekEarnings  = Number(driverData?.weekEarnings  ?? 0);
-  const todayEarnings = Number(driverData?.todayEarnings ?? 0);
+  // Ledger first, driver record only as a fallback while the dashboard loads.
+  const todayEarnings = todayLedger ?? Number(driverData?.todayEarnings ?? 0);
   // No fake defaults: a new driver has no rating, not a pretend 4.8.
   const rating        = Number(driverData?.rating        ?? 0);
   const tripCount     = Number(driverData?.totalTrips    ?? 0);
@@ -238,9 +258,13 @@ export default function DriverHomeScreen() {
               <Text style={styles.headerName}>Hi, {firstName}</Text>
             </View>
             <View style={styles.headerActions}>
-              <Pressable style={styles.headerBtn} onPress={() => router.push('/(driver)/notifications' as any)}>
+              {/* D-1.13: NotificationBell is itself a Pressable that routes to
+                  notifications. Wrapping it in a second Pressable meant the
+                  outer handler never fired and the tap target was doubled up.
+                  Plain View keeps the header button styling. */}
+              <View style={styles.headerBtn}>
                 <NotificationBell color="#fff" size={22} />
-              </Pressable>
+              </View>
               <Pressable style={styles.headerBtn} onPress={() => router.push('/(driver)/kyc' as any)}>
                 <Truck size={22} color="#fff" strokeWidth={1.5} />
               </Pressable>
@@ -417,7 +441,7 @@ export default function DriverHomeScreen() {
             </View>
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Withdrawable</Text>
             <Text style={[styles.widgetValue, { color: theme.text }]}>
-              {withdrawable == null ? '—' : `₦${withdrawable.toLocaleString()}`}
+              {withdrawable == null ? '-' : `₦${withdrawable.toLocaleString()}`}
             </Text>
             <Text style={[styles.widgetSub, { color: theme.textThird }]}>Today ₦{todayEarnings.toLocaleString()}</Text>
           </Pressable>
@@ -528,7 +552,6 @@ export default function DriverHomeScreen() {
 const styles = StyleSheet.create({
   headerGrad:    { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing.lg, gap: Spacing.md },
   headerRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  headerGreet:   { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.6)', letterSpacing: 1, textTransform: 'uppercase' },
   headerName:    { fontSize: FontSize.xl, fontWeight: FontWeight.bold as any, color: '#fff' },
   headerActions: { flexDirection: 'row', gap: Spacing.sm },
   headerBtn:     { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
@@ -566,15 +589,11 @@ const styles = StyleSheet.create({
   widgetContent: { paddingHorizontal: Spacing.md, gap: Spacing.sm },
   widgetCard:    { width: 130, borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: 4 },
   walletWidget:  { width: 150 },
-  heatmapWidget: { width: 160 },
   widgetIcon:    { width: 32, height: 32, borderRadius: Radius.md, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
   widgetLabel:   { fontSize: FontSize.xs },
   widgetValue:   { fontSize: FontSize.lg, fontWeight: FontWeight.bold as any },
   widgetSub:     { fontSize: FontSize.xs },
   ratingWarn:    { fontSize: FontSize.xs, fontWeight: FontWeight.bold as any },
-  goalTrack:     { height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 4 },
-  goalFill:      { height: 4, borderRadius: 2 },
-  heatmapBox:    { height: 50, borderRadius: Radius.md, marginTop: 4, justifyContent: 'center', alignItems: 'center' },
   heatmapPlaceholder: { fontSize: FontSize.xs },
 
   section:       { paddingHorizontal: Spacing.md, paddingTop: Spacing.lg },

@@ -22,7 +22,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "For Business",
   description:
-    "Send hundreds of packages with one click. Seirs Business gives Nigerian companies a single dashboard for bulk dispatch, multi-stop routing, business wallets, team access, and itemised receipts.",
+    "Send hundreds of packages with one click. SEIRS Business gives Nigerian companies a single dashboard for bulk dispatch, multi-stop routing, business wallets, team access, and itemised receipts.",
 };
 
 function FeatureCard({
@@ -72,7 +72,7 @@ export default async function ForBusinessPage() {
             <span className="text-sky">with one click.</span>
           </>
         }
-        subtitle="Seirs Business is for traders, e-commerce shops, restaurants, and SMEs who dispatch dozens to hundreds of packages a day. Bulk send, multi-stop routes, business wallet, team access, all from one dashboard."
+        subtitle="SEIRS Business is for traders, e-commerce shops, restaurants, and SMEs who dispatch dozens to hundreds of packages a day. Bulk send, multi-stop routes, business wallet, team access, all from one dashboard."
         icon={Briefcase}
         primaryCtaLabel="Talk to our team"
         primaryCtaHref="/contact?subject=business"
@@ -220,7 +220,7 @@ export default async function ForBusinessPage() {
               </div>
               <h3 className="text-navy font-bold text-2xl mb-2">Partner Store</h3>
               <p className="text-text-muted text-sm mb-6">
-                For neighbourhood shops who run a Seirs drop-off / pickup point.
+                For neighbourhood shops who run a SEIRS drop-off / pickup point.
               </p>
               <ul className="space-y-3">
                 <CheckRow>Earn a per-package fee on every handoff</CheckRow>
@@ -280,7 +280,7 @@ export default async function ForBusinessPage() {
             flip
             eyebrow="Who this is for"
             title="Built for the owner who does everything"
-            body="You take the orders, pack the parcels, answer the WhatsApp messages, and chase the riders. Seirs takes the last one off your plate: dispatch becomes a list you upload, not a morning you lose."
+            body="You take the orders, pack the parcels, answer the WhatsApp messages, and chase the riders. SEIRS takes the last one off your plate: dispatch becomes a list you upload, not a morning you lose."
           />
         </div>
       </section>

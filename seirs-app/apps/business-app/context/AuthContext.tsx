@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { clearPushRegistration } from '@seirs/shared/hooks/usePushRegistration';
-import { usersApi } from '@/services/api';
+import { setSessionExpiredHandler, usersApi } from '@/services/api';
 
 export type BusinessRole = 'sender' | 'partner' | null;
 
@@ -63,6 +63,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((stored) => { if (stored) setUser(JSON.parse(stored)); })
       .finally(() => setIsLoading(false));
+  }, []);
+
+  // Register the 401 handler. Both sibling apps did this and business never
+  // did (B-10.1): the shared client cleared the token, called a null handler
+  // and threw, while isAuthenticated stayed true off the in-memory user. The
+  // sender was left inside a fully rendered but EMPTY app (zeroed dashboard,
+  // "No deliveries found", 0 points) with every screen's catch swallowing the
+  // error, and only a force-quit got them out. Clear the session and send
+  // them to login, exactly as logout() does.
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+      setUser(null);
+      router.replace('/(auth)/login' as any);
+    });
   }, []);
 
   const refresh = async () => {

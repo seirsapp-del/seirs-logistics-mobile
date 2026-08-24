@@ -11,7 +11,7 @@ import {
   Activity, Send, MoonStar, Mail, Code2, BookOpen,
   Globe, List, Trash2, CircleDot,
 } from 'lucide-react';
-import { canAccess, canAccessFromUser, isSuperAdmin, isSuperAdminFromUser, ROLE_COLORS, ROLE_LABELS, NAV_SECTIONS } from '@/lib/rbac';
+import { canAccess, canAccessFromUser, isSuperAdmin, isSuperAdminFromUser, isNavItemVisible, ROLE_COLORS, ROLE_LABELS, NAV_SECTIONS } from '@/lib/rbac';
 import type { AdminRoleType } from '@/lib/rbac';
 import { SeirsMarkBold, SeirsLockup } from './SeirsLogo';
 
@@ -47,6 +47,26 @@ const FALLBACK_ICON = CircleDot;
  * thought to open the page (founder 2026-08-16: "so we dont forget or
  * miss any tickets").
  */
+function useOpenFraudCount() {
+  // rbac.ts declared badge: 'fraud' on Fraud & Risk and only the tickets
+  // badge was ever rendered, so an open fraud flag stayed invisible until
+  // someone happened to open the page. Exactly the bug the comment above
+  // records being fixed once already, for tickets.
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      adminApi.fraud.list(1, 'open')
+        .then((res: any) => { if (alive) setCount(Number(res?.total ?? res?.flags?.length ?? 0)); })
+        .catch(() => { if (alive) setCount(0); });
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+  return count;
+}
+
 function useOpenTicketCount() {
   const [count, setCount] = useState(0);
   useEffect(() => {
@@ -70,6 +90,7 @@ function useOpenTicketCount() {
 
 export default function AdminNav() {
   const openTickets = useOpenTicketCount();
+  const openFraud   = useOpenFraudCount();
   const router   = useRouter();
   const pathname = usePathname();
   const [user,      setUser]      = useState<any>(null);
@@ -155,7 +176,9 @@ export default function AdminNav() {
       {/* Nav sections */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 scrollbar-thin">
         {NAV_SECTIONS.map((section) => {
-          const visibleItems = section.items.filter((item) => isVisible(item.permission));
+          const visibleItems = section.items.filter(
+            (item) => isVisible(item.permission) && isNavItemVisible(item.href),
+          );
           if (visibleItems.length === 0) return null;
           return (
             <div key={section.title} className="mb-1">
@@ -197,6 +220,18 @@ export default function AdminNav() {
                         title={`${openTickets} ticket${openTickets === 1 ? '' : 's'} waiting on support`}
                       >
                         {openTickets > 99 ? '99+' : openTickets}
+                      </span>
+                    )}
+                    {item.badge === 'fraud' && openFraud > 0 && (
+                      <span
+                        className={`rounded-full bg-red-500 text-white text-[10px] font-bold leading-none ${
+                          collapsed
+                            ? 'absolute top-1.5 right-1.5 h-4 min-w-4 px-1 flex items-center justify-center'
+                            : 'px-1.5 py-0.5'
+                        }`}
+                        title={`${openFraud} open fraud flag${openFraud === 1 ? '' : 's'}`}
+                      >
+                        {openFraud > 99 ? '99+' : openFraud}
                       </span>
                     )}
                     {/* Tooltip when collapsed */}

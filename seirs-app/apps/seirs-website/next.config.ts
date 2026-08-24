@@ -8,17 +8,14 @@ import type { NextConfig } from "next";
  *   2. Silently disabled the ISR `revalidate = 60` in sitemap.ts.
  *   3. Contradicted the vercel.json output dir.
  *
- * ignoreBuildErrors + ignoreDuringBuilds are retained because the
- * existing marketing pages have accumulated warnings that are not
- * launch-blocking, but noted as tech debt for a follow-up pass.
+ * eslint.ignoreDuringBuilds and typescript.ignoreBuildErrors were both true
+ * here until 2026-08-23. They defeated the standing local-build-before-push
+ * rule for this app: `next build` exited 0 with real type errors in the
+ * tree, so nothing ever surfaced. That is how 72 lines of dead LangSwitcher,
+ * a `meta` lookup on a type with no `meta` field, and a pile of unused
+ * imports all survived. Both are off. If a build fails, fix the code.
  */
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   // Site-wide security headers. Applied to every response on Vercel.
   // Cheap, standards-track, and closes the most common vector attacks
   // (clickjacking, mime-sniffing, referrer leaks, cross-origin leaks).

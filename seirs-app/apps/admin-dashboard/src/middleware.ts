@@ -1,50 +1,34 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { NAV_SECTIONS, PERMISSIONS } from '@/lib/rbac';
 
 /**
  * Path → permission-key map for RBAC.
- * Mirrors PERMISSIONS in src/lib/rbac.ts.
+ *
+ * DERIVED from NAV_SECTIONS, never copied. The hand-maintained copy that
+ * used to live here held 25 entries against the nav's 40, so /roles,
+ * /fees, /settings, /website, /notify, /identity, /recycle-bin,
+ * /disputes, /interstate, /health, /email-templates, /service-catalog,
+ * /partner-applications, /last-order-compliance and the three developer
+ * pages were completely ungated: a media_content admin could open Role
+ * Management just by typing the URL. Adding a page to the sidebar now
+ * gates it here automatically.
  *
  * Note: middleware-level RBAC is UX (prevents accidental access).
  * Backend API routes enforce real security via JWT verification + RBAC guards.
  */
 const PATH_PERMISSIONS: Record<string, string> = {
-  '/':                  'overview',
-  '/ops-map':           'ops-map',
-  '/deliveries':        'deliveries',
-  '/drivers':           'drivers',
-  '/users':             'users',
-  '/partners':          'partners',
-  '/partner-redirects': 'partner-redirects',
-  '/specialists':       'specialists',
-  '/wallet':            'wallet',
-  '/pricing':           'pricing',
-  '/referrals':         'referrals',
-  '/insurance':         'insurance',
-  '/fraud':             'fraud',
-  '/duplicates':        'duplicates',
-  '/kyc':               'kyc',
-  '/tickets':           'tickets',
-  '/support':           'support',
-  '/suggestions':       'suggestions',
-  '/cms':               'cms',
-  '/promotions':        'promotions',
-  '/analytics':         'analytics',
-  '/reports':           'reports',
-  '/audit-log':         'audit-log',
-  '/admins':            'super_admin_only',
-  '/settings':          'super_admin_only',
-};
-
-const ROLE_PERMS: Record<string, string[]> = {
-  super_admin:       ['*'],
-  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','support','pricing'],
-  support_agent:     ['tickets','support','users','suggestions','deliveries'],
-  finance_officer:   ['overview','wallet','pricing','referrals','insurance','analytics','reports'],
-  driver_compliance: ['drivers','kyc','duplicates','fraud','users','audit-log'],
-  media_content:     ['cms','promotions'],
-  analyst:           ['overview','analytics','reports'],
-  partner_manager:   ['partners','partner-redirects','specialists','deliveries','overview'],
+  ...Object.fromEntries(
+    NAV_SECTIONS.flatMap((s) => s.items.map((i) => [i.href, i.permission] as const)),
+  ),
+  // Routes with no sidebar entry, so NAV_SECTIONS cannot supply them.
+  // /tickets was removed from the nav 2026-08-16 but still redirects to
+  // /support for old links, so it keeps the same grant.
+  '/tickets': 'tickets',
+  // /sos is deliberately absent: the SOS banner renders for EVERY admin
+  // on every page, and bouncing someone off the desk they were just told
+  // to open is worse than a wide grant. An open emergency is not
+  // role-scoped. The backend still guards the underlying routes.
 };
 
 function decodeJwtRole(token: string): string | undefined {
@@ -56,7 +40,12 @@ function decodeJwtRole(token: string): string | undefined {
     const padded  = payload + '='.repeat((4 - payload.length % 4) % 4);
     const json    = atob(padded);
     const data    = JSON.parse(json);
-    return data.adminRole ?? data.role;
+    // roleSlug is read first so this starts gating dynamic-role admins
+    // the moment the backend puts it in the token. Until it does, a
+    // custom-role admin decodes as plain 'admin', fails
+    // isKnownGranularRole and gets no middleware gating at all. That
+    // half of A-H18 is a backend change (auth.service JWT payload).
+    return data.roleSlug ?? data.adminRole ?? data.role;
   } catch {
     return undefined;
   }
@@ -65,7 +54,7 @@ function decodeJwtRole(token: string): string | undefined {
 function isAllowed(role: string | undefined, permission: string): boolean {
   if (!role) return false;
   if (permission === 'super_admin_only') return role === 'super_admin';
-  const perms = ROLE_PERMS[role] ?? [];
+  const perms = PERMISSIONS[role as keyof typeof PERMISSIONS] ?? [];
   return perms.includes('*') || perms.includes(permission);
 }
 
@@ -76,7 +65,7 @@ function isAllowed(role: string | undefined, permission: string): boolean {
  * never redirect, to avoid a redirect loop.
  */
 function isKnownGranularRole(role: string | undefined): boolean {
-  return !!role && role in ROLE_PERMS;
+  return !!role && role in PERMISSIONS;
 }
 
 export function middleware(request: NextRequest) {
@@ -85,13 +74,12 @@ export function middleware(request: NextRequest) {
   const isLoginPage  = pathname === '/login';
   // Spec V8 §3 - admin password recovery is reachable without a session
   const isPublicAuthPage = pathname === '/forgot-password' || pathname === '/reset-password';
-  // Public tracking page: anyone with a tracking code can view a delivery's
-  // timeline + live status without a login. This is the DHL-side of SEIRS
-  // tracking. Same reason share.seirs.app/{code} URLs work in a browser.
-  const isPublicTrackingPage = pathname === '/track' || pathname.startsWith('/track/');
+  // There is no /track route in this app: public tracking lives on the
+  // marketing site (seirs-website /track/[code]). The bypass that used to
+  // sit here was dead weight and implied a page that does not exist.
 
   // Unauthenticated - send to login (unless already on a public page)
-  if (!token && !isLoginPage && !isPublicAuthPage && !isPublicTrackingPage) {
+  if (!token && !isLoginPage && !isPublicAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('from', pathname);

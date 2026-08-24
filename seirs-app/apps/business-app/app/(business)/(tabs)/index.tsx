@@ -13,9 +13,6 @@ import { businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
-
 export default function BusinessDashboard() {
   const router   = useRouter();
   const insets   = useSafeAreaInsets();
@@ -116,8 +113,13 @@ export default function BusinessDashboard() {
                   onPress={() => router.push('/(business)/send-package' as any)} primary />
                 <ActionCard icon="FileSpreadsheet" label="CSV Upload"   sub="Bulk import from file"
                   onPress={() => router.push('/(business)/csv-upload' as any)} />
+                {/* Both cards pushed the same route with no distinguishing
+                    param and send-package read none, so "Special Cargo"
+                    promised trucks and cold chain and preselected nothing
+                    (B-1.3). It now arrives on the vehicle step with a truck
+                    already chosen. */}
                 <ActionCard icon="Truck"           label="Special Cargo" sub="Trucks, cold chain & heavy loads"
-                  onPress={() => router.push('/(business)/send-package' as any)} />
+                  onPress={() => router.push({ pathname: '/(business)/send-package', params: { preset: 'cargo' } } as any)} />
               </View>
 
               <View style={styles.statsGrid}>
@@ -222,13 +224,6 @@ function DeliveryRow({ delivery }: { delivery: any }) {
   );
 }
 
-function getTimeOfDay() {
-  const h = new Date().getHours();
-  if (h < 12) return 'morning';
-  if (h < 17) return 'afternoon';
-  return 'evening';
-}
-
 // Structural styles only: colors come from useColors() and override at use site.
 const styles = StyleSheet.create({
   header:      { paddingHorizontal: 24, paddingTop: 4, paddingBottom: 28 },
@@ -249,18 +244,10 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center', justifyContent: 'center',
   },
-  walletCard:  {
-    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 20,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-  },
-  walletLabel:   { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 4 },
-  walletBalance: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 12 },
-  fundBtn:       {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#fff', alignSelf: 'flex-start',
-    borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8,
-  },
-  fundBtnText:   { fontSize: 14, fontWeight: '700', color: '#0F2B4C' },
+  // walletCard / walletLabel / walletBalance / fundBtn / fundBtnText
+  // removed 2026-08-23 (B-4.4): a literal fund-wallet button stylesheet
+  // that outlived its JSX. Senders hold no balance with SEIRS, so there
+  // is nothing here to fund.
   body:          { padding: 20 },
   statsGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
   statCard:      {

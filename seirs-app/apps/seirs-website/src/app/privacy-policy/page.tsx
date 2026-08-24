@@ -5,7 +5,7 @@ import { Shield, Mail, ExternalLink } from "lucide-react";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Seirs Logistics Ltd privacy policy, how we collect, use, and protect your personal data in compliance with NDPR 2019 and NDPA 2023.",
+    "SEIRS Logistics Ltd privacy policy, how we collect, use, and protect your personal data in compliance with NDPR 2019 and NDPA 2023.",
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -53,8 +53,12 @@ export default function PrivacyPolicyPage() {
           <h1 className="text-title-sm lg:text-title-lg font-extrabold text-white mb-3">
             Privacy Policy
           </h1>
+          {/* Dates corrected 2026-08-23, same reason as the Terms: the text
+              had moved on and the date had not. Section 9 gained the website
+              paragraph on this date. Update BOTH whenever this text
+              changes. */}
           <p className="text-white/55 text-sm">
-            Last updated: 30 April 2026 &nbsp;&bull;&nbsp; Effective: 30 April 2026
+            Last updated: 23 August 2026 &nbsp;&bull;&nbsp; Effective: 23 August 2026
           </p>
         </div>
       </div>
@@ -77,7 +81,7 @@ export default function PrivacyPolicyPage() {
                   "Data Retention",
                   "Data Security",
                   "Your Rights",
-                  "Cookies",
+                  "Cookies and Website Storage",
                   "Children's Privacy",
                   "International Transfers",
                   "Changes",
@@ -100,7 +104,7 @@ export default function PrivacyPolicyPage() {
             {/* Highlight box */}
             <div className="bg-blue-50 border-l-4 border-sky rounded-r-card p-5 mb-8">
               <BodyText>
-                Seirs is committed to protecting your personal data in compliance with the{" "}
+                SEIRS is committed to protecting your personal data in compliance with the{" "}
                 <strong>Nigeria Data Protection Regulation (NDPR) 2019</strong> and the{" "}
                 <strong>Nigeria Data Protection Act 2023 (NDPA)</strong>. This policy explains
                 what we collect, why, and your rights.
@@ -110,7 +114,7 @@ export default function PrivacyPolicyPage() {
             <div id="section-1">
               <Section title="1. Who We Are">
                 <BodyText>
-                  Seirs Logistics Ltd (&quot;Seirs&quot;, &quot;we&quot;, &quot;us&quot;, &quot;our&quot;) operates a technology
+                  SEIRS Logistics Ltd (&quot;SEIRS&quot;, &quot;we&quot;, &quot;us&quot;, &quot;our&quot;) operates a technology
                   platform connecting businesses, customers, drivers, and partner stores for
                   last-mile delivery services in Nigeria. Our registered office is in Nigeria.
                   Contact us at{" "}
@@ -260,10 +264,34 @@ export default function PrivacyPolicyPage() {
             </div>
 
             <div id="section-9">
-              <Section title="9. Cookies">
+              {/* Website paragraph added 2026-08-23. This section covered the
+                  mobile apps and the admin dashboard and never mentioned the
+                  public website, which is the only surface most readers of
+                  this page are actually standing on, and which does write to
+                  their browser and does show them a notice about it. Under
+                  NDPA the notice should describe the surface in front of the
+                  reader. Keep this in step with CookieBanner.tsx and with any
+                  new localStorage key the site starts writing. */}
+              <Section title="9. Cookies and Website Storage">
                 <BodyText>
                   Our mobile apps do not use cookies. Our admin dashboard uses session cookies
                   strictly necessary for authentication. We do not use tracking or advertising cookies.
+                </BodyText>
+                <BodyText>
+                  This website sets no cookies and loads no third-party analytics or
+                  advertising scripts. It stores two values in your own browser, using
+                  local storage rather than cookies, and neither is transmitted to us:
+                </BodyText>
+                <BulletList
+                  items={[
+                    <><strong>seirs.cookie_consent:</strong> records that you have seen the storage notice, so it is not shown on every page</>,
+                    <><strong>seirs.referral_code:</strong> set only if you arrive on an invite link, so the code can be shown to you when you sign up in the app</>,
+                  ]}
+                />
+                <BodyText>
+                  Both are removed when you clear your browser data for this site, and
+                  neither identifies you. If we later add analytics, we will ask for your
+                  consent before anything loads.
                 </BodyText>
               </Section>
             </div>

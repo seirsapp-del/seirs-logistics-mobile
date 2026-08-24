@@ -33,15 +33,13 @@ export default function DevDocsPage() {
         <p className="text-sm opacity-80 mb-4">
           Endpoints reference, SDKs, sample code, sandbox guide, changelog. Built with Mintlify (or Nextra) and deployed as a separate Vercel project.
         </p>
-        <a
-          href="https://docs.seirs.app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 bg-white text-[#0F2B4C] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/90"
-        >
+        {/* The button used to open docs.seirs.app, a domain this same page
+            admits is a placeholder: the nav's only primary action went
+            nowhere. Restore the link when the docs site is deployed. */}
+        <span className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white/60">
           <ExternalLink size={14} />
-          Open docs.seirs.app
-        </a>
+          Not deployed yet
+        </span>
       </div>
 
       {/* Sections */}

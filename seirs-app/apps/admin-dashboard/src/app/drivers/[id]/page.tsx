@@ -2,12 +2,20 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bike, Car, Truck, FileText, Star, MapPin, IdCard, CheckCircle2, AlertTriangle, Copy, Download } from 'lucide-react';
+import { Bike, Car, Truck, FileText, Star, MapPin, IdCard, CheckCircle2, AlertTriangle, Copy, Download, XCircle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
 import { SendDocumentModal } from '@/components/SendDocumentModal';
+import { canExportNdprData, canHardDeleteAccount } from '@/lib/rbac';
+import { getUser } from '@/lib/auth';
+
+// Postgres returns decimal columns as strings ("1500.00"), so
+// String.toLocaleString left them exactly as-is: fractional naira with
+// no thousands separator, and the same order read differently here than
+// on the delivery detail page. Whole naira only, house standard.
+const naira = (v: any) => `₦${Math.round(Number(v ?? 0)).toLocaleString()}`;
 
 const VEHICLE_LUCIDE: Record<string, typeof Bike> = {
   bicycle:    Bike,
@@ -42,15 +50,28 @@ export default function DriverDetailPage() {
   const [data,    setData]    = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
   const confirm               = useConfirm();
 
-  const reload = () => adminApi.driver(id).then(setData).catch(() => {});
+  // Same gate as /users/[id]: the backend refuses NDPR export and
+  // erasure to roles outside its allow-lists, so do not render a live
+  // button that only fails after the confirmation is typed.
+  const sessionUser   = getUser();
+  const canExportNdpr = canExportNdprData(sessionUser);
+  const canPurge      = canHardDeleteAccount(sessionUser);
+
+  const reload = () => adminApi.driver(id).then((d) => { setData(d); setError(null); })
+    .catch((e: any) => setError(e?.message ?? 'Could not load this driver'));
 
   // Universal account actions. A driver profile wraps a user account,
   // so documents and NDPR rights work exactly as they do on /users/[id].
   const [sendDocOpen,   setSendDocOpen]   = useState(false);
   const [hardDeleteOpen, setHardDeleteOpen] = useState(false);
   const [coordsCopied,  setCoordsCopied]  = useState(false);
+  // Until now the only outcomes were Approve and Suspend, so a pending
+  // applicant with a forged licence could be approved or left in the
+  // queue forever. adminApi.rejectDriver existed with zero callers.
+  const [rejectOpen,    setRejectOpen]    = useState(false);
   const accountUserId = data?.driver?.user?.id as string | undefined;
 
   // Value level 1-10 (two-person rule). Caps come from the Fee
@@ -130,6 +151,17 @@ export default function DriverDetailPage() {
     setSaving(false);
   };
 
+  const reject = async (reason: string) => {
+    setSaving(true);
+    try {
+      await adminApi.rejectDriver(id, reason.trim());
+      setRejectOpen(false);
+      await reload();
+    } catch (e: any) {
+      setError(e?.message ?? 'Reject failed');
+    } finally { setSaving(false); }
+  };
+
   const suspend = async () => {
     const ok = await confirm({
       title:        'Suspend this driver?',
@@ -145,7 +177,21 @@ export default function DriverDetailPage() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>;
-  if (!data)   return <div className="min-h-screen flex items-center justify-center text-gray-400">Driver not found</div>;
+  // A failed fetch used to read "Driver not found", which is a different
+  // fact entirely. Say which one it is and offer the retry.
+  if (!data) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center max-w-sm">
+        <p className="text-gray-500">{error ?? 'Driver not found'}</p>
+        {error && (
+          <button onClick={() => { setLoading(true); reload().finally(() => setLoading(false)); }}
+            className="mt-3 text-sm font-semibold text-[#3A7BD5] underline hover:no-underline">
+            Retry
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   const {
     driver, deliveries, deliveryCount, totalEarned, cancelledCount,
@@ -159,6 +205,14 @@ export default function DriverDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="p-8 max-w-4xl mx-auto">
+        {error && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button onClick={() => reload()} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+          </div>
+        )}
+
         {/* Profile card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-start gap-6 mb-4">
@@ -208,10 +262,17 @@ export default function DriverDetailPage() {
             </div>
             <div className="flex flex-col gap-2 shrink-0">
               {driver.status === 'pending' && (
-                <button onClick={approve} disabled={saving}
-                  className="text-sm bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 font-medium">
-                  {saving ? '...' : 'Approve KYC'}
-                </button>
+                <>
+                  <button onClick={approve} disabled={saving}
+                    className="text-sm bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 font-medium">
+                    {saving ? '...' : 'Approve KYC'}
+                  </button>
+                  <button onClick={() => setRejectOpen(true)} disabled={saving}
+                    title="Turn this application down. The reason is stored on the driver record."
+                    className="text-sm bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 font-medium flex items-center gap-1.5 justify-center">
+                    <XCircle size={14} /> Reject KYC
+                  </button>
+                </>
               )}
               {driver.status === 'approved' && (
                 <button onClick={suspend} disabled={saving}
@@ -231,16 +292,25 @@ export default function DriverDetailPage() {
                     className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-1.5 justify-center">
                     <FileText size={14} /> Send document
                   </button>
-                  <button onClick={exportData}
-                    title="NDPR data portability: download everything SEIRS holds on this account as JSON"
-                    className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-1.5 justify-center">
-                    <Download size={14} /> Export NDPR data
-                  </button>
-                  <button onClick={() => setHardDeleteOpen(true)}
-                    title="NDPR erasure: permanently purge this account and its personal data"
-                    className="text-sm bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 font-medium">
-                    NDPR hard-delete
-                  </button>
+                  {canExportNdpr && (
+                    <button onClick={exportData}
+                      title="NDPR data portability: download everything SEIRS holds on this account as JSON"
+                      className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-1.5 justify-center">
+                      <Download size={14} /> Export NDPR data
+                    </button>
+                  )}
+                  {canPurge && (
+                    <button onClick={() => setHardDeleteOpen(true)}
+                      title="NDPR erasure: permanently purge this account and its personal data"
+                      className="text-sm bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 font-medium">
+                      NDPR hard-delete
+                    </button>
+                  )}
+                  {!canExportNdpr && !canPurge && (
+                    <p className="max-w-[11rem] text-xs text-gray-400">
+                      NDPR export and erasure need a Super Admin, Support Agent or Finance Officer role.
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -520,7 +590,7 @@ export default function DriverDetailPage() {
                         {d.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-green-700">₦{d.driverEarnings?.toLocaleString()}</td>
+                    <td className="px-4 py-3 font-semibold text-green-700">{naira(d.driverEarnings)}</td>
                     <td className="px-4 py-3 text-gray-400 text-xs">
                       {new Date(d.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
                     </td>
@@ -539,6 +609,14 @@ export default function DriverDetailPage() {
           onClose={() => setSendDocOpen(false)}
         />
       )}
+      {rejectOpen && (
+        <RejectDriverModal
+          driverName={driver.user?.name ?? 'this applicant'}
+          saving={saving}
+          onCancel={() => setRejectOpen(false)}
+          onConfirm={reject}
+        />
+      )}
       {hardDeleteOpen && (
         <HardDeleteModal
           userName={driver.user?.name ?? 'this driver'}
@@ -549,6 +627,61 @@ export default function DriverDetailPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * Rejection needs a reason: it is written to the driver record and is the
+ * only thing anyone reviewing the decision later will have. A browser
+ * prompt() was avoided deliberately (see users/[id]): some browser
+ * configurations block it outright.
+ */
+function RejectDriverModal({
+  driverName, saving, onCancel, onConfirm,
+}: {
+  driverName: string;
+  saving:     boolean;
+  onCancel:   () => void;
+  onConfirm:  (reason: string) => void;
+}) {
+  const [reason, setReason] = useState('');
+  const ok = reason.trim().length >= 10;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+        <div className="border-b border-gray-100 px-5 py-3">
+          <h2 className="font-bold text-[#0F2B4C]">Reject {driverName}?</h2>
+          <p className="mt-1 text-xs text-gray-500">
+            The application is turned down and the driver cannot accept trips. They can re-apply with corrected documents.
+          </p>
+        </div>
+        <div className="p-5">
+          <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Reason (required)</label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            autoFocus
+            placeholder="e.g. Licence number does not match the NDLEA record, and the plate on the vehicle photo is illegible."
+            className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm focus:border-[#3A7BD5] focus:outline-none"
+          />
+          <p className="mt-1 text-[11px] text-gray-400">
+            At least 10 characters. Stored on the driver record and shown to whoever reviews this decision.
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-3">
+          <button onClick={onCancel} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+          <button
+            onClick={() => onConfirm(reason)}
+            disabled={!ok || saving}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {saving ? 'Rejecting…' : 'Reject application'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -12,9 +12,13 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { driversApi } from '@/services/api';
 
 // Spec V8 §1 / §2.15: driver's view of a corridor pool trip with up
-// to 4 simultaneous active legs. Each leg shows pickup/dropoff,
-// status, ETA. Driver can mark a leg complete which slides the
-// capacity bound back and frees a slot for the next insertion.
+// to 4 simultaneous active legs. Each leg shows pickup, dropoff, status
+// and distance.
+//
+// D-9.1: this comment used to describe a "mark a leg complete" control on
+// this screen. There is none: the only action is "Open delivery", and the
+// status transitions happen there. It also promised an ETA per leg, which
+// was a fabricated 8 minutes (D-2.1) and is now real distance.
 
 interface Leg {
   id:           string;

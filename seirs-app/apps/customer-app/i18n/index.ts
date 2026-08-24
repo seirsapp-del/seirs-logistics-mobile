@@ -42,7 +42,7 @@ export async function initI18n() {
       lng,
       fallbackLng: 'en',
       interpolation: { escapeValue: false },
-      // i18next v24 dropped v3 — newer Hermes engines support full
+      // i18next v24 dropped v3: newer Hermes engines support full
       // Intl.PluralRules via the `intl-pluralrules` polyfill imported
       // at the entry point. v4 is the current default.
       compatibilityJSON: 'v4',

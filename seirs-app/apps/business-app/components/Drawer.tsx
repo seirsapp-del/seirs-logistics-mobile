@@ -6,6 +6,7 @@ import { Icon } from '@/components/Icon';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors, Palette } from '@/constants/theme';
+import { FAQ_URL, PRIVACY_URL } from '@/constants/config';
 
 interface Props {
   visible: boolean;
@@ -51,11 +52,26 @@ export function Drawer({ visible, onClose }: Props) {
     // name, RC number, or contact details.
     { icon: 'Pencil',          label: t('drawer.editProfile',     { defaultValue: 'Edit Business Details' }), onPress: () => navigate('/(business)/edit-profile') },
     { icon: 'QrCode',          label: t('drawer.seirsId',         { defaultValue: 'My SEIRS ID' }),      onPress: () => navigate('/(business)/seirs-id') },
-    { icon: 'Users',           label: t('drawer.teamMembers',     { defaultValue: 'Team Members' }),     onPress: () => navigate('/(business)/team') },
-    { icon: 'Banknote',        label: t('drawer.billing',         { defaultValue: 'Billing & Invoices' }), onPress: () => navigate('/(business)/wallet') },
+    // Team Members removed 2026-08-23 (B-1.1): it navigated to
+    // /(business)/team, which has no file and is absent from the generated
+    // router union, so it dead-ended on +not-found. Inventing a team screen
+    // is a product decision (seats, roles, invites, who pays), so the row
+    // stays out until that is specified rather than shipping a dead end.
+    // Repointed 2026-08-23 (B-1.2): this opened /(business)/wallet, the
+    // Rewards tab, not invoices. billing.tsx exists and the Profile tab
+    // already routes to it; only the drawer copy of the row was missed when
+    // the founder-reported Profile version was fixed.
+    { icon: 'Banknote',        label: t('drawer.billing',         { defaultValue: 'Billing & Invoices' }), onPress: () => navigate('/(business)/billing') },
     // Gap 6 (2026-08-09): bulk drop at a partner counter instead of
     // per-package door pickups. Each package gets its own QR.
     { icon: 'Store',           label: t('drawer.dropAtStore',     { defaultValue: 'Drop at Partner Store' }), onPress: () => navigate('/(business)/drop-at-store') },
+    // B-8.1: recurring.tsx is a complete Spec V8 recurring-delivery
+    // scheduler wired to a live backend cron, and nothing in the app
+    // navigated to it. Same for the three developer screens below.
+    { icon: 'Repeat',          label: t('drawer.recurring',       { defaultValue: 'Recurring Deliveries' }), onPress: () => navigate('/(business)/recurring') },
+    { icon: 'Key',             label: t('drawer.apiKeys',         { defaultValue: 'API Keys' }),         onPress: () => navigate('/(business)/api-keys') },
+    { icon: 'BarChart3',       label: t('drawer.apiUsage',        { defaultValue: 'API Usage' }),        onPress: () => navigate('/(business)/api-usage') },
+    { icon: 'Activity',        label: t('drawer.webhookLog',      { defaultValue: 'Webhook Log' }),      onPress: () => navigate('/(business)/webhook-log') },
     // Hybrid-account: senders can apply to additionally operate as a Partner
     // Store. Hidden once approval lands (canPartner === true): the
     // context switcher at the top of the app takes over from there.
@@ -70,8 +86,8 @@ export function Drawer({ visible, onClose }: Props) {
     // Canonical FAQ + legal copies live on the marketing site; open in
     // browser rather than shipping stub screens with no onPress (dead
     // buttons found in live testing 2026-08-09).
-    { icon: 'HelpCircle',      label: t('drawer.help',            { defaultValue: 'Help & FAQ' }),      onPress: () => { onClose(); Linking.openURL('https://seirs-website.vercel.app/faq'); } },
-    { icon: 'Lock',            label: t('drawer.privacy',         { defaultValue: 'Privacy Policy' }),  onPress: () => { onClose(); Linking.openURL('https://seirs-website.vercel.app/privacy-policy'); } },
+    { icon: 'HelpCircle',      label: t('drawer.help',            { defaultValue: 'Help & FAQ' }),      onPress: () => { onClose(); Linking.openURL(FAQ_URL); } },
+    { icon: 'Lock',            label: t('drawer.privacy',         { defaultValue: 'Privacy Policy' }),  onPress: () => { onClose(); Linking.openURL(PRIVACY_URL); } },
     // Straight to a NEW ticket (founder 2026-08-10: the old path
     // bounced through the Messages tab first).
     { icon: 'AlertTriangle',   label: t('drawer.sos',             { defaultValue: 'SOS Emergency' }),   onPress: () => navigate('/(business)/sos') },
@@ -86,8 +102,13 @@ export function Drawer({ visible, onClose }: Props) {
     { icon: 'FileText',   label: t('drawer.documents',      { defaultValue: 'Documents' }),       onPress: () => navigate('/(business)/documents') },
     { icon: 'Settings',   label: t('drawer.settings',       { defaultValue: 'Settings' }),        onPress: () => navigate('/(partner)/settings') },
     { icon: 'Globe',      label: t('drawer.language',       { defaultValue: 'Language' }),        onPress: () => navigate('/(partner)/language') },
-    { icon: 'HelpCircle', label: t('drawer.help',           { defaultValue: 'Help & FAQ' }),     onPress: () => { onClose(); Linking.openURL('https://seirs-website.vercel.app/faq'); } },
-    { icon: 'Lock',       label: t('drawer.privacy',        { defaultValue: 'Privacy Policy' }), onPress: () => { onClose(); Linking.openURL('https://seirs-website.vercel.app/privacy-policy'); } },
+    { icon: 'HelpCircle', label: t('drawer.help',           { defaultValue: 'Help & FAQ' }),     onPress: () => { onClose(); Linking.openURL(FAQ_URL); } },
+    { icon: 'Lock',       label: t('drawer.privacy',        { defaultValue: 'Privacy Policy' }), onPress: () => { onClose(); Linking.openURL(PRIVACY_URL); } },
+    // Added 2026-08-23 (B-8.2): partnerItems omitted the SOS row senderItems
+    // has, so a shopkeeper alone at a counter, arguably the most exposed user
+    // on the platform, had no panic control at all. sos.tsx states the founder
+    // intent: anyone holding the SEIRS app who feels unsafe can press it.
+    { icon: 'AlertTriangle', label: t('drawer.sos',            { defaultValue: 'SOS Emergency' }),   onPress: () => navigate('/(business)/sos') },
     { icon: 'MessageCircle', label: t('drawer.contactSupport', { defaultValue: 'Contact Support' }), onPress: () => navigate('/(business)/support/new') },
   ];
 

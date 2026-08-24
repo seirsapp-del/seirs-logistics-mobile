@@ -68,7 +68,15 @@ export default function DevAccountsPage() {
       current,
     );
     if (input === null) return;
-    const limit = input.trim() === '' ? null : Math.max(1, Math.min(100000, Number(input) || 60));
+    // `Number(input) || 60` turned a typed 0 into 60, so "block this key"
+    // silently became "default rate". 0 now clamps to the real minimum of
+    // 1 and anything non-numeric is rejected instead of being guessed at.
+    let limit: number | null = null;
+    if (input.trim() !== '') {
+      const n = Number(input.trim());
+      if (!Number.isFinite(n)) { alert('Rate limit must be a number.'); return; }
+      limit = Math.max(1, Math.min(100000, Math.round(n)));
+    }
     try {
       await adminApi.devPlatform.setKeyRateLimit(key.id, limit);
       load();
@@ -131,36 +139,42 @@ export default function DevAccountsPage() {
             const suspended  = ownerKeys.every(k => !k.active && k.suspendedAt);
             return (
               <div key={ownerId} className="border-b border-[#F3F4F6] last:border-b-0">
-                <button
-                  onClick={() => setOpenOwner(open ? null : ownerId)}
-                  className="w-full grid grid-cols-12 gap-4 px-4 py-3 items-center text-left hover:bg-gray-50"
-                >
-                  <div className="col-span-5 min-w-0 flex items-center gap-2">
-                    {open ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
-                    <p className="text-sm font-semibold text-[#0F2B4C] font-mono truncate">{ownerId}</p>
-                    {suspended && <span className="text-[10px] uppercase bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">Suspended</span>}
-                  </div>
-                  <div className="col-span-2 text-sm text-[#0F2B4C]">{ownerKeys.length} key{ownerKeys.length === 1 ? '' : 's'}</div>
-                  <div className="col-span-2 text-right">
-                    {liveCount > 0
-                      ? <span className="text-xs font-bold uppercase bg-[#16A34A18] text-[#16A34A] px-2 py-1 rounded">{liveCount} live</span>
-                      : <span className="text-xs text-gray-400">test only</span>}
-                  </div>
-                  <div className="col-span-1 text-right text-sm text-[#0F2B4C]">{callsToday.toLocaleString()}</div>
+                {/* Suspend/Resume used to be a clickable <span> nested
+                    inside this <button>: invalid HTML and unreachable by
+                    keyboard. It is a real sibling button now. */}
+                <div className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50">
+                  <button
+                    onClick={() => setOpenOwner(open ? null : ownerId)}
+                    aria-expanded={open}
+                    className="col-span-10 grid grid-cols-10 gap-4 items-center text-left"
+                  >
+                    <div className="col-span-5 min-w-0 flex items-center gap-2">
+                      {open ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                      <p className="text-sm font-semibold text-[#0F2B4C] font-mono truncate">{ownerId}</p>
+                      {suspended && <span className="text-[10px] uppercase bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">Suspended</span>}
+                    </div>
+                    <div className="col-span-2 text-sm text-[#0F2B4C]">{ownerKeys.length} key{ownerKeys.length === 1 ? '' : 's'}</div>
+                    <div className="col-span-2 text-right">
+                      {liveCount > 0
+                        ? <span className="text-xs font-bold uppercase bg-[#16A34A18] text-[#16A34A] px-2 py-1 rounded">{liveCount} live</span>
+                        : <span className="text-xs text-gray-400">test only</span>}
+                    </div>
+                    <div className="col-span-1 text-right text-sm text-[#0F2B4C]">{callsToday.toLocaleString()}</div>
+                  </button>
                   <div className="col-span-2 text-right">
                     {suspended ? (
-                      <span onClick={e => { e.stopPropagation(); resume(ownerId); }}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline cursor-pointer">
+                      <button onClick={() => resume(ownerId)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline">
                         <Play size={12} /> Resume
-                      </span>
+                      </button>
                     ) : (
-                      <span onClick={e => { e.stopPropagation(); suspend(ownerId); }}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline cursor-pointer">
+                      <button onClick={() => suspend(ownerId)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline">
                         <Pause size={12} /> Suspend
-                      </span>
+                      </button>
                     )}
                   </div>
-                </button>
+                </div>
                 {open && (
                   <div className="bg-gray-50 px-4 py-3 border-t border-[#F3F4F6] space-y-2">
                     {ownerKeys.map(k => (

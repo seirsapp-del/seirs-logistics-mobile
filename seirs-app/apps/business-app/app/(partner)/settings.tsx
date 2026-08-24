@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TextInput, Pressable, Switch,
+  View, Text, StyleSheet, ScrollView, TextInput, Pressable,
   ActivityIndicator, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -173,6 +173,9 @@ export default function PartnerSettingsScreen() {
                 onChangeText={(v) => set('openTime', v)}
                 placeholder="08:00"
                 placeholderTextColor={colors.textThird}
+                // 08:00 is digits and a colon: the alpha keyboard was wrong
+                // for both opening-hours fields (B-5.2).
+                keyboardType="numbers-and-punctuation"
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -183,32 +186,30 @@ export default function PartnerSettingsScreen() {
                 onChangeText={(v) => set('closeTime', v)}
                 placeholder="18:00"
                 placeholderTextColor={colors.textThird}
+                keyboardType="numbers-and-punctuation"
               />
             </View>
           </View>
         </View>
 
+        {/* B-10.7: three per-event switches used to live here while the
+            Profile tab had deliberately REMOVED its Notifications row on
+            the grounds that everything always sends, and notifications.tsx
+            records that push has not shipped. A partner could switch off
+            "Payout Processed" and nothing changed. One position, stated
+            once: put the switches back when there is something behind
+            them. The notify* fields stay on StoreSettings so the saved
+            record round-trips unchanged. */}
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.textSecond }]}>Notifications</Text>
-
-          {([
-            { key: 'notifyNewPackage', label: 'New Package Arrival',    sub: 'When a package arrives at your store' },
-            { key: 'notifyPickup',     label: 'Package Pickup',         sub: 'When a customer collects a package' },
-            { key: 'notifyPayout',     label: 'Payout Processed',       sub: 'When weekly earnings are transferred' },
-          ] as const).map(({ key, label, sub }) => (
-            <View key={key} style={[styles.notifRow, { borderTopColor: colors.border }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.notifLabel, { color: colors.text }]}>{label}</Text>
-                <Text style={[styles.notifSub, { color: colors.textThird }]}>{sub}</Text>
-              </View>
-              <Switch
-                value={settings[key]}
-                onValueChange={(v) => set(key, v)}
-                trackColor={{ false: colors.border, true: colors.accent }}
-                thumbColor="#fff"
-              />
+          <View style={[styles.notifRow, { borderTopColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.notifLabel, { color: colors.text }]}>Every store alert is on</Text>
+              <Text style={[styles.notifSub, { color: colors.textThird }]}>
+                Package arrivals, pickups and payouts all reach you. There is nothing to switch off yet.
+              </Text>
             </View>
-          ))}
+          </View>
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>

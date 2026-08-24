@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
-import { request } from '@seirs/shared/services/api';
+import { request } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
 interface Delivery {
@@ -79,7 +79,7 @@ export default function WebhookLogScreen() {
             <Icon name="Activity" size={32} color={colors.textThird} />
             <Text style={[styles.emptyText, { color: colors.text }]}>No webhook attempts yet.</Text>
             <Text style={[styles.emptySub, { color: colors.textSecond }]}>
-              Subscribe to events from the API Keys page; events fire when orders update.
+              Events fire against your endpoint when orders update. Endpoint subscription is not self-serve yet: contact support to register one.
             </Text>
           </View>
         ) : (

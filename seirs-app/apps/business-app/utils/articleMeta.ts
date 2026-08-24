@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 
 /**
- * Article meta helpers — pure functions used by the article view's meta
+ * Article meta helpers: pure functions used by the article view's meta
  * row. No state, no React, easy to unit test if we ever need to.
  */
 
@@ -18,7 +18,7 @@ export function calcReadingMinutes(body: string[] | string): number {
 }
 
 /**
- * Human-friendly relative date — "Today" / "Yesterday" / "3 days ago"
+ * Human-friendly relative date: "Today" / "Yesterday" / "3 days ago"
  * etc. Falls through to an absolute date for anything over a year old.
  * All strings come from i18n so locale formatting is consistent.
  */

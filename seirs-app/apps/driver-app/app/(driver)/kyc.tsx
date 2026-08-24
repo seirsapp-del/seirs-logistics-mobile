@@ -47,6 +47,21 @@ const INITIAL_DOCS: DocItem[] = [
   { id: 'guarantor',         label: 'Guarantor Letter',         Icon: Users,      desc: 'Letter from a guarantor (recommended, not required)', status: 'not_uploaded', required: false },
 ];
 
+// D-10.2: the doc ids above map 1:1 onto the *Url columns on the driver
+// entity (mirrors KYC_DOC_FIELD_MAP in drivers.service.ts). Without this
+// map the screen only ever knew about uploads made in the current session,
+// so an already-approved driver reopened KYC at 0% and re-uploaded all eight.
+const DOC_URL_FIELD: Record<string, string> = {
+  national_id_front: 'nationalIdFrontUrl',
+  national_id_back:  'nationalIdBackUrl',
+  drivers_license:   'driversLicenseUrl',
+  vehicle_photo:     'vehiclePhotoUrl',
+  ownership_proof:   'ownershipProofUrl',
+  insurance_cert:    'insuranceCertUrl',
+  selfie:            'selfieUrl',
+  guarantor:         'guarantorUrl',
+};
+
 const INSURANCE_PARTNERS = [
   { name: 'AXA Mansard', desc: 'Vehicle & third-party cover', url: 'https://axamansard.com' },
   { name: 'Leadway Assurance', desc: 'Motorcycle & auto insurance', url: 'https://leadway.com' },
@@ -68,6 +83,33 @@ export default function KycScreen() {
   // a denied/unavailable camera is surfaced before they try to
   // upload anything. 'unknown' = haven't checked yet (no banner).
   const [cameraStatus, setCameraStatus] = useState<'ok' | 'denied' | 'unknown'>('unknown');
+  const [loadingDocs, setLoadingDocs] = useState(true);
+
+  // D-10.2: hydrate from the driver record. /drivers/me spreads the whole
+  // entity, so every uploaded document already has its URL there. A doc with
+  // a URL is at minimum "Under Review"; once the driver record itself is
+  // approved the whole document set has been reviewed, so show Verified.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const me: any = await driversApi.me();
+        if (cancelled || !me) return;
+        const approved = me.status === 'approved';
+        setDocs(prev => prev.map(d => {
+          const url = me[DOC_URL_FIELD[d.id]];
+          if (!url) return d;
+          return { ...d, url, status: (approved ? 'verified' : 'uploaded') as DocStatus };
+        }));
+      } catch {
+        // Offline or profile missing: leave the defaults, the driver can
+        // still upload. Never block the screen on this.
+      } finally {
+        if (!cancelled) setLoadingDocs(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -172,16 +214,20 @@ export default function KycScreen() {
             <View>
               <Text style={[styles.progressTitle, { color: theme.text }]}>Verification Progress</Text>
               <Text style={[styles.progressSub, { color: theme.textSecond }]}>
-                {uploaded} of {requiredDocs.length} required documents submitted
+                {loadingDocs
+                  ? 'Checking your submitted documents...'
+                  : `${uploaded} of ${requiredDocs.length} required documents submitted`}
               </Text>
             </View>
-            <Text style={[styles.progressPct, { color: theme.primary }]}>{Math.round(progress)}%</Text>
+            {loadingDocs
+              ? <ActivityIndicator size="small" color={theme.primary} />
+              : <Text style={[styles.progressPct, { color: theme.primary }]}>{Math.round(progress)}%</Text>}
           </View>
-          {allSubmitted && (
+          {!loadingDocs && allSubmitted && (
             <View style={[styles.submittedBanner, { backgroundColor: '#16A34A18' }]}>
               <CheckCircle size={16} color="#16A34A" strokeWidth={1.75} />
               <Text style={[styles.submittedText, { color: '#16A34A' }]}>
-                All documents submitted: review within 24 hours
+                All documents submitted: review takes 24 hours to 3 business days
               </Text>
             </View>
           )}

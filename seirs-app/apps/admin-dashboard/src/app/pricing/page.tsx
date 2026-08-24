@@ -109,12 +109,19 @@ export default function PricingPage() {
     setSuccess(null);
     try {
       // Strip the snapshot id/version so the backend generates new ones.
+      // activatedBy is stripped too: it would otherwise carry the previous
+      // version's value straight onto the new one.
       const { id: _id, version: _v, isActive: _a, activatedAt: _aa,
-        deactivatedAt: _da, createdAt: _ca, ...payload } = card;
+        deactivatedAt: _da, createdAt: _ca, activatedBy: _ab, ...payload } = card;
       const result = await adminApi.rateCard.publish({
         ...payload,
         changeReason: changeReason.trim(),
-        activatedBy:  'admin',  // backend can later read from JWT
+        // activatedBy used to be the literal string 'admin', so the
+        // History "By" column said 'admin' for every version and pricing
+        // changes were unattributable. Dropped: the authoritative fix is
+        // the controller setting it from @CurrentUser(), the way syncFuel
+        // already does. Until that lands the column reads "-", which is
+        // honest, where 'admin' was not.
       });
       setSuccess(`Published version ${result?.version ?? '?'}.`);
       setChangeReason('');

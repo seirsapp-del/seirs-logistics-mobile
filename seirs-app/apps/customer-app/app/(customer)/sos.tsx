@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar, Alert, Linking,
+  View, Text, Pressable, StyleSheet, StatusBar, Alert, Linking, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,32 +10,86 @@ import * as Location from 'expo-location';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { sosApi } from '@/services/api';
+import { sosApi, apiRequest } from '@/services/api';
+
+/**
+ * One row of the emergency directory. Admin-managed and served from
+ * GET /config/emergency-contacts so the numbers can be corrected without
+ * shipping an app release: a wrong number on this screen is the most
+ * dangerous string in the product.
+ */
+type EmergencyContact = {
+  id:          string;
+  name:        string;
+  numbers:     string[];
+  instruction: string;
+  category?:   string;
+  sortOrder?:  number;
+};
+
+/**
+ * Offline fallback ONLY. Rendered under an explicit "offline list" banner
+ * when the directory fetch fails, so the user always has something to dial.
+ * Both numbers are correct for Nigeria: 112 is the national emergency line
+ * and 199 is the fire service. Do not grow this list, grow the admin one.
+ */
+const FALLBACK_CONTACT_IDS = ['fallback-112', 'fallback-199'] as const;
+
+// Category to icon. Unknown categories fall back to a plain phone glyph
+// rather than guessing, because the icon must not imply the wrong service.
+const CATEGORY_ICON: Record<string, string> = {
+  emergency: 'alert-circle-outline',
+  national:  'alert-circle-outline',
+  police:    'shield-outline',
+  fire:      'flame-outline',
+  medical:   'medkit-outline',
+  ambulance: 'medkit-outline',
+  road:      'car-outline',
+  traffic:   'car-outline',
+  women:     'people-outline',
+  child:     'people-outline',
+};
 
 export default function SOSScreen() {
   const router  = useRouter();
   const cs      = useColorScheme();
-  const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
   const { t }   = useTranslation();
 
-  // Translated each render so language switches reflect live.
-  const EMERGENCY_CONTACTS = [
-    { labelKey: 'police',      label: t('sos.police'),      number: '199',         icon: 'shield-outline' },
-    { labelKey: 'ambulance',   label: t('sos.ambulance'),   number: '112',         icon: 'medkit-outline' },
-    { labelKey: 'fireService', label: t('sos.fireService'), number: '01-7944929',  icon: 'flame-outline' },
-  ];
-  // Optional ?deliveryId= param when SOS is opened from the trip-progress
-  // screen: lets the backend notify the assigned driver too.
+  // Optional ?deliveryId= param when SOS is opened from a live trip screen:
+  // lets the backend notify the assigned driver too.
   const params  = useLocalSearchParams<{ deliveryId?: string }>();
 
   const [activated, setActivated] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [alertId,   setAlertId]   = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+
+  // Emergency directory. `contacts` null means "still loading"; `offline`
+  // true means the fetch failed and the two bundled national lines are
+  // what the user is looking at.
+  const [contacts, setContacts] = useState<EmergencyContact[] | null>(null);
+  const [offline,  setOffline]  = useState(false);
 
   const pulse1 = useRef(new Animated.Value(1)).current;
   const pulse2 = useRef(new Animated.Value(1)).current;
+
+  // Built here (not at module scope) so a language switch re-renders them.
+  const fallbackContacts: EmergencyContact[] = [
+    {
+      id:          FALLBACK_CONTACT_IDS[0],
+      name:        t('sos.fallback112Name'),
+      numbers:     ['112'],
+      instruction: t('sos.fallback112Use'),
+      category:    'national',
+    },
+    {
+      id:          FALLBACK_CONTACT_IDS[1],
+      name:        t('sos.fallback199Name'),
+      numbers:     ['199'],
+      instruction: t('sos.fallback199Use'),
+      category:    'fire',
+    },
+  ];
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -56,15 +110,46 @@ export default function SOSScreen() {
     return () => { loop.stop(); loop2.stop(); };
   }, []);
 
+  // Load the directory once on mount, independent of the SOS state: the
+  // founder's intent is that the user dials help directly WHILE SEIRS also
+  // responds, so the list must already be on screen when SOS fires.
+  useEffect(() => {
+    let cancelled = false;
+    apiRequest<{ items?: EmergencyContact[] }>('GET', '/config/emergency-contacts')
+      .then((res) => {
+        if (cancelled) return;
+        const items = (res?.items ?? [])
+          .filter(c => c && Array.isArray(c.numbers) && c.numbers.length > 0)
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+        if (items.length === 0) { setOffline(true); setContacts(fallbackContacts); return; }
+        setOffline(false);
+        setContacts(items);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setOffline(true);
+        setContacts(fallbackContacts);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!activated) return;
     if (countdown === 0) return;
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
   }, [activated, countdown]);
 
+  const dial = (number: string) => {
+    // Was an Alert reading "Calling Police (199)..." that placed no call.
+    // In an emergency that is the worst possible lie (sweep 2026-08-23).
+    const clean = number.replace(/[^0-9+*#]/g, '');
+    Linking.openURL(`tel:${clean}`).catch(() =>
+      Alert.alert(t('sos.callDialog'), number));
+  };
+
   const fireSOS = async () => {
-    setSubmitting(true);
     setActivated(true);
     setCountdown(5);
 
@@ -91,8 +176,6 @@ export default function SOSScreen() {
       // Surface the failure but stay in activated state: user can retry.
       Alert.alert(t('sos.cannotReach'),
         e?.message ?? t('sos.cannotReachMsg'));
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -131,7 +214,13 @@ export default function SOSScreen() {
           <View style={{ width: 36 }} />
         </View>
 
-        <View style={styles.body}>
+        {/* The whole screen scrolls, including while an SOS is active: the
+            directory below has to stay reachable during the emergency. */}
+        <ScrollView
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
 
           {/* SOS button */}
           <View style={styles.sosWrap}>
@@ -148,6 +237,9 @@ export default function SOSScreen() {
 
           {activated ? (
             <View style={styles.activeState}>
+              {/* The alert posts the instant the button is confirmed, so the
+                  countdown is an undo window, not a delay. The old copy said
+                  "Activating in 5s" and implied nothing had been sent yet. */}
               <Text style={styles.activeTitle}>
                 {countdown > 0 ? t('sos.activatingIn', { seconds: countdown }) : t('sos.activated')}
               </Text>
@@ -169,30 +261,59 @@ export default function SOSScreen() {
             </View>
           )}
 
-          {/* Emergency numbers */}
-          <View style={styles.emergencySection}>
-            <Text style={styles.emergencySectionTitle}>{t('sos.quickDial')}</Text>
-            <View style={styles.emergencyRow}>
-              {EMERGENCY_CONTACTS.map(ec => (
-                <Pressable
-                  key={ec.labelKey}
-                  style={styles.emergencyCard}
-                  onPress={() => {
-                    // Was an Alert reading "Calling Police (199)..." that
-                    // placed no call. In an emergency that is the worst
-                    // possible lie (sweep 2026-08-23).
-                    Linking.openURL(`tel:${ec.number}`).catch(() =>
-                      Alert.alert(t('sos.callDialog'), ec.number));
-                  }}
-                >
-                  <View style={styles.emergencyIcon}>
-                    <Ionicons name={ec.icon as any} size={22} color="#EF4444" />
+          {/* Emergency directory */}
+          <View style={styles.directorySection}>
+            <Text style={styles.directoryTitle}>{t('sos.directoryTitle')}</Text>
+            <Text style={styles.directorySub}>{t('sos.directorySub')}</Text>
+
+            {contacts === null ? (
+              <View style={styles.directoryLoading}>
+                <ActivityIndicator color="#fff" />
+                <Text style={styles.directoryLoadingText}>{t('sos.directoryLoading')}</Text>
+              </View>
+            ) : (
+              <>
+                {offline && (
+                  <View style={styles.offlineBanner}>
+                    <Ionicons name="cloud-offline-outline" size={16} color="#FFE4E4" />
+                    <Text style={styles.offlineBannerText}>{t('sos.directoryOffline')}</Text>
                   </View>
-                  <Text style={styles.emergencyLabel}>{ec.label}</Text>
-                  <Text style={styles.emergencyNum}>{ec.number}</Text>
-                </Pressable>
-              ))}
-            </View>
+                )}
+
+                {contacts.map(c => (
+                  <View key={c.id} style={styles.contactRow}>
+                    <View style={styles.contactIcon}>
+                      <Ionicons
+                        name={(CATEGORY_ICON[(c.category ?? '').toLowerCase()] ?? 'call-outline') as any}
+                        size={20}
+                        color="#FFE4E4"
+                      />
+                    </View>
+                    <View style={styles.contactBody}>
+                      <Text style={styles.contactName}>{c.name}</Text>
+                      {!!c.instruction && (
+                        <Text style={styles.contactInstruction} numberOfLines={2}>{c.instruction}</Text>
+                      )}
+                      <View style={styles.numberRow}>
+                        {c.numbers.map(n => (
+                          <Pressable
+                            key={n}
+                            onPress={() => dial(n)}
+                            hitSlop={6}
+                            style={styles.numberChip}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${t('sos.callDialog')} ${c.name} ${n}`}
+                          >
+                            <Ionicons name="call" size={13} color="#7F1D1D" />
+                            <Text style={styles.numberChipText}>{n}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
           </View>
 
           {/* Share trip */}
@@ -204,7 +325,7 @@ export default function SOSScreen() {
             <Text style={styles.shareBtnText}>{t('sos.shareLocationBtn')}</Text>
           </Pressable>
 
-        </View>
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
@@ -215,7 +336,7 @@ const styles = StyleSheet.create({
   backBtn:     { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
 
-  body: { flex: 1, alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
+  body: { flexGrow: 1, alignItems: 'center', gap: Spacing.lg, paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.xxl },
 
   sosWrap: { alignItems: 'center', justifyContent: 'center', width: 220, height: 220 },
   ring2:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(239,68,68,0.08)' },
@@ -226,7 +347,7 @@ const styles = StyleSheet.create({
   sosCountdown:{ color: 'rgba(255,255,255,0.85)', fontSize: FontSize.sm },
 
   activeState:  { alignItems: 'center', gap: Spacing.sm },
-  activeTitle:  { color: '#EF4444', fontSize: FontSize.lg, fontWeight: FontWeight.bold, textAlign: 'center' },
+  activeTitle:  { color: '#FFE4E4', fontSize: FontSize.lg, fontWeight: FontWeight.bold, textAlign: 'center' },
   activeDesc:   { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
   cancelBtn:    { paddingHorizontal: Spacing.lg, paddingVertical: 10, borderRadius: Radius.full, backgroundColor: 'rgba(255,255,255,0.15)', marginTop: Spacing.sm },
   cancelBtnText:{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
@@ -235,15 +356,26 @@ const styles = StyleSheet.create({
   idleTitle:  { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold, textAlign: 'center' },
   idleDesc:   { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
 
-  emergencySection:     { width: '100%', gap: Spacing.sm },
-  emergencySectionTitle:{ color: 'rgba(255,255,255,0.65)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5 },
-  emergencyRow:         { flexDirection: 'row', gap: Spacing.sm },
-  emergencyCard:        { flex: 1, alignItems: 'center', gap: 6, padding: Spacing.md, borderRadius: Radius.xl, backgroundColor: 'rgba(255,255,255,0.08)' },
-  emergencyIcon:        { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(239,68,68,0.15)', justifyContent: 'center', alignItems: 'center' },
-  emergencyLabel:       { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  // #EF4444 was near-invisible once the ground became deep red in both
-  // themes. The number is the thing you need to read here (2026-08-23).
-  emergencyNum:         { color: '#FFE4E4', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  directorySection: { width: '100%', gap: Spacing.sm },
+  directoryTitle:   { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  directorySub:     { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.xs, lineHeight: 17, marginTop: -4 },
+
+  directoryLoading:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md },
+  directoryLoadingText: { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.sm },
+
+  offlineBanner:     { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: Spacing.sm, borderRadius: Radius.lg, backgroundColor: 'rgba(255,255,255,0.10)' },
+  offlineBannerText: { flex: 1, color: '#FFE4E4', fontSize: FontSize.xs, lineHeight: 17 },
+
+  contactRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, backgroundColor: 'rgba(255,255,255,0.08)' },
+  contactIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(239,68,68,0.20)', justifyContent: 'center', alignItems: 'center' },
+  contactBody: { flex: 1, gap: 4 },
+  contactName: { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  // The "when to use this" line is the whole point of the directory: a
+  // number without a reason gets dialled wrong under stress.
+  contactInstruction: { color: 'rgba(255,255,255,0.70)', fontSize: FontSize.xs, lineHeight: 17 },
+  numberRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
+  numberChip:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: '#FFE4E4' },
+  numberChipText: { color: '#7F1D1D', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 
   shareBtn:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: 14, borderRadius: Radius.full, backgroundColor: 'rgba(255,255,255,0.15)' },
   shareBtnText: { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.semibold },

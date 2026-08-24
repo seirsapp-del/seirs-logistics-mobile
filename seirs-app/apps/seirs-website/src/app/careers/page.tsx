@@ -5,10 +5,15 @@ import { listContent, fmtDate, getImageSlots } from '@/lib/cms';
 export const revalidate = 60;
 
 export const metadata = {
-  title: 'Careers · SEIRS',
+  // Suffix dropped: the root layout template supplies "| SEIRS Logistics".
+  title: 'Careers',
   description: 'Open roles at SEIRS, building the logistics layer Nigeria has been waiting for.',
 };
 
+// WebsiteContent has no `meta` field, so the old `(r as any).meta?.location`
+// lookup was always undefined and every role rendered this string whatever
+// it actually was. The cast hid it from the compiler. Until the CMS carries a
+// location per role, say so once here rather than pretending to read one.
 const DEFAULT_LOCATION = 'Lagos, Nigeria';
 
 export default async function CareersPage() {
@@ -62,7 +67,7 @@ export default async function CareersPage() {
                     <div className="flex items-center gap-4 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <MapPin size={11} />
-                        {(r as any).meta?.location ?? DEFAULT_LOCATION}
+                        {DEFAULT_LOCATION}
                       </span>
                       <span>{fmtDate(r.publishedAt)}</span>
                     </div>

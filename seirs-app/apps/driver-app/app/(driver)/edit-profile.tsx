@@ -13,6 +13,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { usersApi, uploadApi } from '@/services/api';
+import { isValidNigerianMobile, toE164Ng } from '@/constants/phone';
 
 // Spec V8: driver standalone profile editor. Mirrors the customer version.
 // Vehicle fields are NOT exposed here; those live on the KYC re-submission
@@ -26,7 +27,6 @@ import { usersApi, uploadApi } from '@/services/api';
 // Validation shared with backend UpdateProfileDto.
 const NAME_CHARS   = /^[\p{L}][\p{L} .'\-]*[\p{L}.]$/u;
 const NAME_NO_SPAM = /^(?!.*\d{3,})(?!.*\s{2,})(?!.*(?:https?:|www\.|\.com|\.ng|\.co|@))/i;
-const NG_PHONE     = /^(\+?234[789]\d{9}|0[789]\d{9}|[789]\d{9})$/;
 const ISO_DATE     = /^\d{4}-\d{2}-\d{2}$/;
 
 function validateName(v: string, min = 2, max = 40, label = 'This field'): string | null {
@@ -36,9 +36,12 @@ function validateName(v: string, min = 2, max = 40, label = 'This field'): strin
   if (!NAME_NO_SPAM.test(s))             return 'No phone numbers, URLs, or emails';
   return null;
 }
+// D-10.7: one validator for the whole app. This screen used to accept any
+// 0[789] while registration only allowed a fixed prefix list, so a number
+// editable here could not be registered in the first place.
 function validatePhone(v: string): string | null {
   if (!v.trim()) return null;
-  if (!NG_PHONE.test(v.trim())) return 'Nigerian mobile only (0/234/+234 + 10 digits)';
+  if (!isValidNigerianMobile(v)) return 'Nigerian mobile only (0/234/+234 + 10 digits)';
   return null;
 }
 function validateDob(v: string): string | null {
@@ -123,7 +126,9 @@ export default function EditProfileScreen() {
       const payload: any = {
         firstName:  firstName.trim(),
         lastName:   lastName.trim(),
-        phone:      phone.trim(),
+        // Store one shape. Validation above guarantees a Nigerian mobile,
+        // so E.164 is safe and matches what registration now sends.
+        phone:      phone.trim() ? toE164Ng(phone) : '',
         profilePhoto,
       };
       if (middleName.trim())     payload.middleName            = middleName.trim();

@@ -3944,15 +3944,34 @@ export class DeliveriesService {
     return delivery;
   }
 
-  // Customer-scoped fetch with driver + stops eagerly loaded so the
-  // receipt screen has everything it needs in one round-trip.
+  /**
+   * Fetch one delivery for whoever is entitled to see it: the customer
+   * who booked it, or the driver carrying it.
+   *
+   * This was customer-only, which meant a driver opening their OWN
+   * assigned job got 404 "Delivery not found." Every Available Jobs tap
+   * and the ACTIVE JOB card dead-ended on it, and the trip screen
+   * inherited the same failure. Confirmed against production on
+   * 2026-08-24: the driver holding SRS-327EL8RP could not open it.
+   *
+   * The driver branch goes through redactCustomerForDriver, so a RIDE
+   * still yields a first name only and never a surname or phone. Admin
+   * payloads are a different path and keep full identity.
+   */
   async findByIdForUser(id: string, userId: string) {
     const delivery = await this.repo.findOne({
-      where:    { id, customer: { id: userId } },
+      where: [
+        { id, customer: { id: userId } },
+        { id, driver:   { user: { id: userId } } },
+      ],
       relations: ['driver', 'driver.user', 'customer'],
     });
     if (!delivery) throw new NotFoundException('Delivery not found.');
-    return delivery;
+
+    // Only redact when the viewer is NOT the customer: the sender must
+    // keep seeing their own receiver details in full.
+    const isCustomer = (delivery as any).customer?.id === userId;
+    return isCustomer ? delivery : this.redactCustomerForDriver(delivery as any);
   }
 
   // Driver-initiated claim of an unassigned pending job. Used by the

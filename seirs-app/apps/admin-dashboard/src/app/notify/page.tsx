@@ -7,13 +7,16 @@ import { adminApi } from '@/lib/api';
 // from the CMS (which schedules editorial content) - this is for
 // real-time messaging like "service paused in Lekki due to flooding".
 //
-// Backend wiring: hits FCM via the existing notifications module once
-// audience filtering ships. For now the form is fully functional and
-// validates input; the send handler hits a placeholder route that
-// will be wired up in the next batch.
+// Both send paths are live: sendToUser for one person, broadcastToAudience
+// for a whole segment. Neither is a placeholder. What does NOT exist is a
+// scheduler, so the Schedule control is disabled rather than quietly
+// firing now: see the Send section below.
 
-type Audience = 'all_customers' | 'all_drivers' | 'all_partners' | 'specific_zone' | 'one_user';
-type Schedule = 'now' | 'later';
+// specific_zone was handled by three branches below but never listed in
+// AUDIENCES, so the zone input was unreachable and the non-null find()
+// would have thrown the moment it was selected. Dropped until the
+// backend can actually filter a broadcast by zone.
+type Audience = 'all_customers' | 'all_drivers' | 'all_partners' | 'one_user';
 
 const AUDIENCES: Array<{ key: Audience; label: string; sub: string; Icon: any; color: string }> = [
   // One person first: support work is mostly one customer at a time, so
@@ -26,11 +29,8 @@ const AUDIENCES: Array<{ key: Audience; label: string; sub: string; Icon: any; c
 
 export default function NotifyComposerPage() {
   const [audience, setAudience] = useState<Audience>('one_user');
-  const [zone,     setZone]     = useState('');
   const [title,    setTitle]    = useState('');
   const [body,     setBody]     = useState('');
-  const [schedule, setSchedule] = useState<Schedule>('now');
-  const [scheduleAt, setScheduleAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState<{ recipients: number; pushed: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,13 +60,9 @@ export default function NotifyComposerPage() {
   const charLimit = 240;
   const titleOk = title.length > 0 && title.length <= 60;
   const bodyOk  = body.length  > 0 && body.length  <= charLimit;
-  const audienceOk =
-    audience === 'one_user'      ? !!recipient
-    : audience === 'specific_zone' ? zone.trim().length > 0
-    : true;
-  const scheduleOk = schedule === 'now' || scheduleAt.length > 0;
+  const audienceOk = audience === 'one_user' ? !!recipient : true;
 
-  const canSend = titleOk && bodyOk && audienceOk && scheduleOk && !submitting;
+  const canSend = titleOk && bodyOk && audienceOk && !submitting;
 
   const send = async () => {
     setSubmitting(true);
@@ -90,20 +86,18 @@ export default function NotifyComposerPage() {
         }, 6000);
         return;
       }
-      // Scheduled broadcasts are stored client-side intent only - the
-      // backend `broadcastToAudience` fires immediately. A scheduler cron
-      // (queue + delayed publish) is a follow-up; for now scheduled
-      // requests fall back to send-now and we surface that in the toast.
       // one_user returned above, so anything reaching here is a real
-      // audience broadcast.
+      // audience broadcast, and it fires immediately. There is no
+      // scheduler behind this call, which is why the Schedule control is
+      // disabled rather than accepting a datetime it would ignore.
       const res = await adminApi.notifications.broadcast({
         audience: audience as Exclude<Audience, 'one_user'>,
-        zone, title, body,
+        title, body,
       });
       setSent(res);
       setTimeout(() => {
         setSent(null);
-        setTitle(''); setBody(''); setZone('');
+        setTitle(''); setBody('');
       }, 4000);
     } catch (e: any) {
       setError(e?.message ?? 'Broadcast failed');
@@ -171,16 +165,6 @@ export default function NotifyComposerPage() {
             );
           })}
         </div>
-        {audience === 'specific_zone' && (
-          <input
-            type="text"
-            placeholder="City or LGA (e.g. Lekki, Yaba, Ikeja)"
-            value={zone}
-            onChange={e => setZone(e.target.value)}
-            className="w-full px-3 py-2 mt-2 rounded-lg border border-[#E5E7EB] text-sm focus:outline-none focus:border-[#3A7BD5]"
-          />
-        )}
-
         {audience === 'one_user' && (
           <div className="mt-3">
             {recipient ? (
@@ -266,36 +250,29 @@ export default function NotifyComposerPage() {
         </div>
       </div>
 
-      {/* Schedule */}
+      {/* Send timing. Schedule is disabled on purpose: send() never
+          passed scheduleAt anywhere, so picking a time and pressing
+          "Schedule broadcast" buzzed every phone immediately. An ops
+          person scheduling "Service resumes at 6am" woke the whole user
+          base at 11pm. Re-enable once a delayed-publish queue exists. */}
       <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-5 space-y-3">
         <h2 className="text-xs font-bold uppercase tracking-wide text-gray-600">Send</h2>
         <div className="flex gap-3">
-          <button
-            onClick={() => setSchedule('now')}
-            className={`flex-1 p-3 rounded-lg border-2 text-sm font-semibold ${
-              schedule === 'now' ? 'border-[#3A7BD5] bg-[#3A7BD5]/5 text-[#0F2B4C]' : 'border-[#E5E7EB] text-gray-500'
-            }`}
-          >
+          <div className="flex-1 p-3 rounded-lg border-2 border-[#3A7BD5] bg-[#3A7BD5]/5 text-sm font-semibold text-[#0F2B4C] text-center">
             Send now
-          </button>
-          <button
-            onClick={() => setSchedule('later')}
-            className={`flex-1 p-3 rounded-lg border-2 text-sm font-semibold flex items-center justify-center gap-1.5 ${
-              schedule === 'later' ? 'border-[#3A7BD5] bg-[#3A7BD5]/5 text-[#0F2B4C]' : 'border-[#E5E7EB] text-gray-500'
-            }`}
+          </div>
+          <div
+            aria-disabled="true"
+            title="Scheduled sending is not built yet"
+            className="flex-1 p-3 rounded-lg border-2 border-dashed border-[#E5E7EB] text-sm font-semibold text-gray-400 flex items-center justify-center gap-1.5 cursor-not-allowed"
           >
             <Calendar size={14} />
             Schedule
-          </button>
+          </div>
         </div>
-        {schedule === 'later' && (
-          <input
-            type="datetime-local"
-            value={scheduleAt}
-            onChange={e => setScheduleAt(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] text-sm focus:outline-none focus:border-[#3A7BD5]"
-          />
-        )}
+        <p className="text-xs text-gray-500">
+          Scheduling is not available yet. Every broadcast sent from this page goes out the moment you press send.
+        </p>
       </div>
 
       {/* Preview */}
@@ -304,7 +281,7 @@ export default function NotifyComposerPage() {
         <div className="bg-white/10 rounded-lg p-4 space-y-2">
           <p className="font-bold text-sm">{title || 'Notification title'}</p>
           <p className="text-xs opacity-90">{body || 'Notification message body - appears in the device notification tray and in-app notification center.'}</p>
-          <p className="text-[10px] opacity-50">to {aud.label}{audience === 'specific_zone' && zone ? ` · ${zone}` : ''}</p>
+          <p className="text-[10px] opacity-50">to {aud.label}</p>
         </div>
       </div>
 
@@ -314,7 +291,7 @@ export default function NotifyComposerPage() {
         className="w-full bg-[#0F2B4C] text-white py-3 rounded-lg font-semibold hover:bg-[#3A7BD5] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
       >
         <Send size={16} />
-        {submitting ? 'Sending…' : schedule === 'now' ? 'Send now' : 'Schedule broadcast'}
+        {submitting ? 'Sending…' : 'Send now'}
       </button>
     </div>
   );

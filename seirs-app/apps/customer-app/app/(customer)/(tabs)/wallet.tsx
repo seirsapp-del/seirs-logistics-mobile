@@ -52,7 +52,6 @@ export default function WalletScreen() {
   const [tier,      setTier]      = useState<string | null>(null);
   const [history,   setHistory]   = useState<any[]>([]);
   const [deliveries, setDeliveries] = useState<any[]>([]);
-  const [pulse,     setPulse]     = useState<any>(null);
   const [promo,     setPromo]     = useState<any>(null);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [loading,   setLoading]   = useState(false);
@@ -60,10 +59,12 @@ export default function WalletScreen() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [l, d, p, pr, rf] = await Promise.all([
+      // deliveriesApi.communityPulse() used to run here. The section it fed
+      // was removed on founder call (see the note further down), so the
+      // call was a round-trip whose result nothing read (sweep C-1.6).
+      const [l, d, pr, rf] = await Promise.all([
         loyaltyApi.balance().catch(() => null),
         deliveriesApi.myDeliveries(1, 60).catch(() => null),
-        deliveriesApi.communityPulse().catch(() => null),
         deliveriesApi.featuredPromotion().catch(() => null),
         loyaltyApi.myReferrals().catch(() => null),
       ]);
@@ -74,7 +75,6 @@ export default function WalletScreen() {
       }
       const items: any[] = Array.isArray(d) ? d : Array.isArray((d as any)?.items) ? (d as any).items : [];
       setDeliveries(items);
-      if (p) setPulse(p);
       if (pr) setPromo(pr);
       setReferrals(Array.isArray(rf) ? rf : []);
     } finally {
@@ -384,11 +384,6 @@ const styles = StyleSheet.create({
   achievementIcon:{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   achievementLabel:{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textAlign: 'center', lineHeight: 14 },
 
-  pulseCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginHorizontal: Spacing.md, marginBottom: Spacing.md, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1 },
-  pulseIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  pulseCount:{ fontSize: FontSize.base, fontWeight: FontWeight.bold },
-  pulseCountUnit:{ fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  pulseSub:  { fontSize: FontSize.xs, marginTop: 2, lineHeight: 15 },
 
   emptyCard: { marginHorizontal: Spacing.md, marginTop: Spacing.md, padding: Spacing.lg, borderRadius: Radius.xl, borderWidth: 1, alignItems: 'center', gap: 8 },
   emptyTitle:{ fontSize: FontSize.md, fontWeight: FontWeight.bold },

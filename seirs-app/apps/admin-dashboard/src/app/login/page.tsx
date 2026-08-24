@@ -79,6 +79,14 @@ function LoginForm() {
             Session expired due to inactivity.
           </div>
         )}
+        {/* Set by the global 401 handler in lib/api.ts: the token aged out
+            while the tab was closed, so the first request back failed. */}
+        {reason === 'expired' && (
+          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 mb-4 text-amber-400 text-sm">
+            <AlertCircle size={16} />
+            Your session expired. Sign in again to pick up where you left off.
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
 

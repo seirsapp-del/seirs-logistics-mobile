@@ -6,8 +6,12 @@ import { Reveal } from '@/components/Reveal';
 
 export const revalidate = 60;
 
-// Required by Next.js `output: 'export'`, see careers/[slug] for the
-// full reasoning. Re-deploy the website to pick up new news posts.
+// Pre-renders one page per published slug at build time. The old comment
+// said this was "required by Next.js `output: 'export'`"; that mode was
+// removed from next.config.ts (it broke /track/[code], which cannot be
+// enumerated at build time) and the config documents the removal. This is
+// now an optimisation, not a requirement: `revalidate = 60` above means a
+// slug published after the build still renders on demand and is cached.
 export async function generateStaticParams() {
   const items = await listContent('article', { pageSize: 100 });
   return items.map(a => ({ slug: a.slug }));
@@ -18,9 +22,11 @@ interface Props { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const a = await getContentBySlug(slug);
-  if (!a) return { title: 'Not found · SEIRS' };
+  // No brand suffix on any of these: the root layout template appends
+  // "| SEIRS Logistics" to whatever a page returns.
+  if (!a) return { title: 'Not found' };
   return {
-    title:       a.seoTitle ?? `${a.title} · SEIRS`,
+    title:       a.seoTitle ?? a.title,
     description: a.seoDescription ?? a.excerpt ?? undefined,
     openGraph: a.coverImageUrl ? { images: [a.coverImageUrl] } : undefined,
   };
@@ -232,7 +238,13 @@ export default async function ArticlePage({ params }: Props) {
                   loading="lazy"
                 />
               ) : (
-                // eslint-disable-next-line jsx-a11y/media-has-caption
+                // No <track> caption: the admin uploads a bare video file and
+                // there is nowhere in the CMS to attach a caption track yet.
+                // Add one to WebsiteContent before this grows past the odd
+                // article video. (This carried an eslint-disable for
+                // jsx-a11y/media-has-caption, which no enabled config
+                // reports, so the directive itself was the only lint warning
+                // in the app once linting was switched back on.)
                 <video src={v.src} controls preload="metadata" className="w-full h-full" />
               )}
             </div>

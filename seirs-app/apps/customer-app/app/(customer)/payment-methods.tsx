@@ -61,8 +61,11 @@ export default function PaymentMethodsScreen() {
 
   const handleDelete = (card: SavedCard) => {
     Alert.alert(
+      // The body used to be paymentMethods.emptyDesc, the EMPTY-STATE copy,
+      // so a destructive confirm read "Pay for your first delivery and your
+      // card appears here on its own." (sweep C-5.9).
       `${t('paymentMethods.remove')} ${card.brand.toUpperCase()} ****${card.last4}`,
-      t('paymentMethods.emptyDesc'),
+      t('paymentMethods.removeConfirm'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -84,9 +87,9 @@ export default function PaymentMethodsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* Header. Add-payment CTA lives in the body (empty state + "Add
-          another" at the bottom of the list) so the header stays uncluttered.
-          Duplicate + button was removed per UX pass. */}
+      {/* Header. There is no add-card CTA anywhere on this screen and there
+          should not be: cards save themselves on the first real payment.
+          The old comment described a CTA that never existed (sweep C-7.3). */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={theme.text} />

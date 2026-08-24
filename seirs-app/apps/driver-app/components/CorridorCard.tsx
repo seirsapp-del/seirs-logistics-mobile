@@ -1,5 +1,5 @@
 /**
- * "Heading somewhere?" — the corridor card for bicycle/on-foot couriers
+ * "Heading somewhere?": the corridor card for bicycle/on-foot couriers
  * (founder 2026-08-21: the inclusion tier's engine. A student walking to
  * campus can carry a school book that was going there anyway).
  *

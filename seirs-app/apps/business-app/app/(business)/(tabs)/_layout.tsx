@@ -68,7 +68,7 @@ export default function BusinessTabsLayout() {
         // against the phone's own navigation. On button-nav Androids
         // insets.bottom is 0, so the old bar had no cushion at all; the
         // labels were 10px and the inactive tint too faint to read. The
-        // bar now keeps an 8px floor under it, the labels step up to 12,
+        // bar now keeps an 8px floor under it, the labels step up to 11,
         // and inactive items use the secondary text colour instead of the
         // washed-out icon default.
         tabBarStyle: {

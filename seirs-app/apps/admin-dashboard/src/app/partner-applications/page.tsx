@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
-import { Store, Phone, MapPin, Package, FileText, CheckCircle2, XCircle, Image as ImageIcon } from 'lucide-react';
+import { Store, Phone, MapPin, Package, FileText, CheckCircle2, XCircle, Image as ImageIcon, AlertCircle } from 'lucide-react';
 
 interface Application {
   id: string;
@@ -35,12 +35,16 @@ export default function PartnerApplicationsPage() {
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId,  setBusyId]  = useState<string | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
+    setError(null);
     adminApi.partnerApplications()
       .then((list) => setApps(list))
-      .catch(()    => setApps([]))
+      // A swallowed failure read as "no applications waiting", which is
+      // the one thing this queue must never say when it is wrong.
+      .catch((e: any) => { setApps([]); setError(e?.message ?? 'Could not load partner applications'); })
       .finally(() => setLoading(false));
   };
 
@@ -90,6 +94,14 @@ export default function PartnerApplicationsPage() {
             Refresh
           </button>
         </div>
+
+        {error && (
+          <div className="mb-4 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <span className="flex-1">{error}</span>
+            <button onClick={load} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-gray-500 text-sm">Loading…</div>

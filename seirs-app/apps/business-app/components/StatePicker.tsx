@@ -138,7 +138,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
     backgroundColor: '#fff',
   },
-  rowPressed:    { backgroundColor: '#F3F4F6' },
   rowText:       { fontSize: 15, color: '#0F2B4C' },
   rowTextActive: { fontWeight: '700', color: '#3A7BD5' },
   empty:         { padding: 40, alignItems: 'center' },

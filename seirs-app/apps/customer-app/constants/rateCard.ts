@@ -257,14 +257,19 @@ export interface RateCard {
 
   ride: {
     vehicles:         readonly RideVehicleRate[];
-    serviceFeePct:    number;       // TODO: deprecate; bake into base + perKm
+    // Kept as its own line item. Folding it into base + perKm was floated
+    // as a TODO and rejected: the fee is admin-tunable per the standing
+    // rule that every policy knob ships as an editable row, and burying it
+    // in the base would make it uneditable without a release (2026-08-24).
+    serviceFeePct:    number;
     shareDiscountPct: number;
   };
 
   package: {
     vehicles:         readonly PackageVehicleRate[];
     weightTiers:      readonly WeightTier[];
-    serviceFeePct:    number;       // TODO: deprecate
+    // Same call as ride.serviceFeePct above: stays a separate, tunable row.
+    serviceFeePct:    number;
   };
 
   /** Per-category surcharge + safety rules. Keyed by category id used in send.tsx. */

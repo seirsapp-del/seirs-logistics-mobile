@@ -2,7 +2,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { adminApi } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
-import { Bike, Car, Truck, Star } from 'lucide-react';
+import { Bike, Car, Truck, Star, AlertCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useConfirm } from '@/components/ConfirmDialog';
 
@@ -24,12 +24,17 @@ function DriversContent() {
   const [data, setData]       = useState<any>(null);
   const [page, setPage]       = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
   const confirm               = useConfirm();
 
   const load = (p = 1) => {
     setLoading(true);
+    setError(null);
     adminApi.drivers(p, statusFilter || undefined)
-      .then(setData).catch(() => {}).finally(() => setLoading(false));
+      .then(setData)
+      // A 403 or a cold backend used to render as an empty driver list.
+      .catch((e: any) => setError(e?.message ?? 'Could not load drivers'))
+      .finally(() => setLoading(false));
     setPage(p);
   };
 
@@ -73,6 +78,14 @@ function DriversContent() {
             ))}
           </div>
         </div>
+
+        {error && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button onClick={() => load(page)} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-20 text-[#0F2B4C]/30">Loading…</div>
@@ -126,10 +139,17 @@ function DriversContent() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <Star size={12} fill="#FFBE0B" color="#FFBE0B" />
-                          <span className="font-semibold text-[#0F2B4C]">{Number(d.rating).toFixed(1)}</span>
-                        </div>
+                        {/* Number(null).toFixed(1) is "0.0", so every brand-new
+                            driver read as the worst on the platform. A dash
+                            says "no ratings yet", which is the actual fact. */}
+                        {d.rating == null ? (
+                          <span className="text-[#0F2B4C]/30" title="No ratings yet">-</span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <Star size={12} fill="#FFBE0B" color="#FFBE0B" />
+                            <span className="font-semibold text-[#0F2B4C]">{Number(d.rating).toFixed(1)}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-[#0F2B4C]/70">{d.totalDeliveries}</td>
                       <td className="px-4 py-3 flex gap-2">

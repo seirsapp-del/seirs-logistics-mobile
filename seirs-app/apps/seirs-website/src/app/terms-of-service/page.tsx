@@ -5,7 +5,7 @@ import { FileText, Mail } from "lucide-react";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Seirs Logistics Ltd terms of service, the rules and conditions governing use of the Seirs platform for customers, businesses, drivers, and partner stores.",
+    "SEIRS Logistics Ltd terms of service, the rules and conditions governing use of the SEIRS platform for customers, businesses, drivers, and partner stores.",
 };
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -47,7 +47,7 @@ function BulletList({ items }: { items: React.ReactNode[] }) {
 
 export default function TermsOfServicePage() {
   const tocItems = [
-    "About Seirs",
+    "About SEIRS",
     "Eligibility",
     "Account Types",
     "Prohibited Items",
@@ -85,8 +85,18 @@ export default function TermsOfServicePage() {
           <h1 className="text-title-sm lg:text-title-lg font-extrabold text-white mb-3">
             Terms of Service
           </h1>
+          {/* Dates corrected 2026-08-23. Both read 30 April while the text
+              had been materially changed twice since: section 8,
+              Undeliverable Packages, Storage and Disposal, was added on
+              2026-08-15, and the contents list was repaired the same week.
+              A stale date makes the section 16 promise, at least 14 days'
+              notice before material changes take effect, impossible for a
+              reader to check, and is itself inaccurate. That promise is not
+              breached by dating these today: it protects existing users, and
+              pre-launch there are none. Update BOTH dates whenever this text
+              changes, and once there are users, send the notice first. */}
           <p className="text-white/55 text-sm">
-            Last updated: 30 April 2026 &nbsp;&bull;&nbsp; Effective: 30 April 2026
+            Last updated: 23 August 2026 &nbsp;&bull;&nbsp; Effective: 23 August 2026
           </p>
         </div>
       </div>
@@ -118,14 +128,14 @@ export default function TermsOfServicePage() {
             {/* Agreement box */}
             <div className="bg-blue-50 border-l-4 border-sky rounded-r-card p-5 mb-8">
               <BodyText>
-                By creating an account or using Seirs services, you agree to these Terms. Please
+                By creating an account or using SEIRS services, you agree to these Terms. Please
                 read them carefully. If you do not agree, do not use our platform.
               </BodyText>
             </div>
 
-            <Section id="section-1" title="1. About Seirs">
+            <Section id="section-1" title="1. About SEIRS">
               <BodyText>
-                Seirs Logistics Ltd (&quot;Seirs&quot;, &quot;we&quot;, &quot;us&quot;) is a Nigerian technology company
+                SEIRS Logistics Ltd (&quot;SEIRS&quot;, &quot;we&quot;, &quot;us&quot;) is a Nigerian technology company
                 operating a last-mile delivery platform. We connect business senders with
                 verified delivery drivers and partner pickup stores. We are a technology
                 intermediary, we do not own delivery vehicles or operate physical stores.
@@ -160,7 +170,7 @@ export default function TermsOfServicePage() {
               </SubSection>
               <SubSection title="3.3 Driver Accounts">
                 <BodyText>
-                  Independent contractors, not employees of Seirs. Drivers must hold valid
+                  Independent contractors, not employees of SEIRS. Drivers must hold valid
                   Nigerian driving licenses, maintain valid vehicle insurance, and comply with
                   all applicable traffic laws. Drivers are solely responsible for safe vehicle
                   operation and personal income tax obligations.
@@ -200,7 +210,7 @@ export default function TermsOfServicePage() {
                 ]}
               />
               <BodyText>
-                Seirs reserves the right to refuse, cancel, or report any delivery we reasonably
+                SEIRS reserves the right to refuse, cancel, or report any delivery we reasonably
                 suspect contains prohibited items. The sender is solely liable for the contents
                 of any package.
               </BodyText>
@@ -212,7 +222,7 @@ export default function TermsOfServicePage() {
                   "Delivery prices are calculated based on distance, weight, vehicle type, and current fuel/FX rates",
                   "Prices displayed at order creation are estimates; final prices may vary for actual weight/distance",
                   "All prices are in Nigerian Naira (₦)",
-                  "Seirs reserves the right to adjust pricing with 7 days' notice for non-contracted accounts",
+                  "SEIRS reserves the right to adjust pricing with 7 days' notice for non-contracted accounts",
                   "Drivers receive a platform-determined share of the delivery fee; rates may change with 14 days' notice",
                   "Business accounts receive loyalty points (₦10 per point) redeemable against future deliveries",
                 ]}
@@ -225,14 +235,14 @@ export default function TermsOfServicePage() {
                   "Payments are processed via Flutterwave, a CBN-licensed payment service provider",
                   "Business wallet top-ups are processed immediately; they are non-refundable once delivery orders are created using those funds",
                   // Corrected 2026-08-14. These two clauses told every customer
-                  // they held a Seirs cash balance they could withdraw from.
+                  // they held a SEIRS cash balance they could withdraw from.
                   // Customer accounts do not hold NGN: only business accounts
                   // carry a prepaid wallet, and only drivers and partner stores
                   // withdraw to a bank. Promising a consumer balance is the CBN
                   // problem, and it was live in a legal document.
                   "Refunds for failed or cancelled deliveries are returned to the original payment method. Card refunds typically settle within 5–10 business days depending on your bank. Business accounts are credited back to the business wallet within 24 hours",
                   "Withdrawals to a Nigerian bank account are available to drivers and partner stores, processed within 3–5 business days and subject to identity verification. Customer accounts do not hold a cash balance",
-                  "Driver and partner store payouts are processed weekly every Monday; Seirs is not liable for delays caused by bank infrastructure",
+                  "Driver and partner store payouts are processed weekly every Monday; SEIRS is not liable for delays caused by bank infrastructure",
                 ]}
               />
             </Section>
@@ -243,7 +253,7 @@ export default function TermsOfServicePage() {
                   "Estimated delivery times are not guaranteed; they depend on traffic, weather, and driver availability",
                   "Maximum liability for lost or damaged packages is ₦50,000 per package unless a higher declared value is agreed in writing",
                   "Claims for lost or damaged packages must be submitted within 48 hours of the estimated delivery time",
-                  "Seirs is not liable for packages that cannot be delivered due to inaccessible addresses, recipient unavailability after two attempts, or customer-provided incorrect information",
+                  "SEIRS is not liable for packages that cannot be delivered due to inaccessible addresses, recipient unavailability after two attempts, or customer-provided incorrect information",
                 ]}
               />
             </Section>
@@ -253,15 +263,15 @@ export default function TermsOfServicePage() {
                 This section applies when a package cannot be handed to the recipient at
                 the delivery address. It sets out what we do, what it costs, and how long
                 we hold a package before it is treated as abandoned. Where an amount is
-                shown in the Seirs app at the time of booking, that amount applies.
+                shown in the SEIRS app at the time of booking, that amount applies.
               </BodyText>
 
               <SubSection title="8.1 Failed delivery attempts">
                 <BulletList
                   items={[
                     "Where a driver arrives and cannot complete the handover, the driver will attempt to contact the sender and, where a channel is available, the recipient",
-                    "If there is no response within the response window shown in the app, the matter is escalated to Seirs support",
-                    "Where support does not resolve the matter within the timeout shown in the app, the package may be moved to the nearest available Seirs partner counter for safekeeping",
+                    "If there is no response within the response window shown in the app, the matter is escalated to SEIRS support",
+                    "Where support does not resolve the matter within the timeout shown in the app, the package may be moved to the nearest available SEIRS partner counter for safekeeping",
                     "The sender and, where a channel is available, the recipient will be notified before a package is moved, including the counter location, the amount payable and the collection deadline",
                   ]}
                 />
@@ -272,7 +282,7 @@ export default function TermsOfServicePage() {
                   items={[
                     "Moving a package to a partner counter attracts a redirection fee reflecting the additional distance travelled and the counter's intake charge",
                     "Where the failure arises from the recipient's unavailability or an incorrect address supplied by the sender, the redirection and counter fees are payable by the party responsible",
-                    "Where the failure arises from an error by Seirs, no redirection or counter fee is charged",
+                    "Where the failure arises from an error by SEIRS, no redirection or counter fee is charged",
                     "A collection code is issued only once any amount due has been settled in the app. Partner counter staff do not collect payment and are not authorised to release a package without a valid code",
                   ]}
                 />
@@ -284,7 +294,7 @@ export default function TermsOfServicePage() {
                     "Packages held at a partner counter are stored free of charge for the free storage window shown in the app",
                     "After that window, storage accrues daily at the rate shown in the app until the package is collected, returned or disposed of",
                     "Storage charges are payable before the package is released",
-                    "Seirs holds packages as bailee only and does not insure stored packages beyond the liability limit in Section 7",
+                    "SEIRS holds packages as bailee only and does not insure stored packages beyond the liability limit in Section 7",
                   ]}
                 />
               </SubSection>
@@ -292,11 +302,11 @@ export default function TermsOfServicePage() {
               <SubSection title="8.4 Perishable and temperature-sensitive items">
                 <BodyText>
                   Food and other perishable or temperature-sensitive items cannot be stored.
-                  Where such an item cannot be delivered, Seirs will attempt to contact the
+                  Where such an item cannot be delivered, SEIRS will attempt to contact the
                   sender, and if the item cannot be delivered or returned within the
                   perishable window shown in the app, it may be disposed of on the same day.
                   Photographic evidence of disposal is retained. No refund of the delivery
-                  fee is due where the failure did not arise from an error by Seirs.
+                  fee is due where the failure did not arise from an error by SEIRS.
                 </BodyText>
               </SubSection>
 
@@ -304,10 +314,10 @@ export default function TermsOfServicePage() {
                 <BulletList
                   items={[
                     "A package that remains uncollected beyond the abandonment threshold shown in the app may be treated as abandoned",
-                    "Before a package is treated as abandoned, Seirs will give notice to the sender and, where a channel is available, the recipient, stating the deadline and the amounts outstanding",
-                    "Seirs may dispose of an abandoned package. Disposal is recorded with photographic evidence and the record is retained",
+                    "Before a package is treated as abandoned, SEIRS will give notice to the sender and, where a channel is available, the recipient, stating the deadline and the amounts outstanding",
+                    "SEIRS may dispose of an abandoned package. Disposal is recorded with photographic evidence and the record is retained",
                     "Amounts outstanding at the point of disposal remain payable and disposal does not extinguish them",
-                    "Seirs does not sell abandoned packages",
+                    "SEIRS does not sell abandoned packages",
                   ]}
                 />
               </SubSection>
@@ -317,7 +327,7 @@ export default function TermsOfServicePage() {
                   items={[
                     "A sender may request that an undeliverable package be returned to the original pickup address. The pickup address for a return cannot be changed",
                     "A return is charged as a delivery from the package's current location to the pickup address, together with any counter and storage fees already accrued",
-                    "Where a package is already with a driver, a return must be arranged through Seirs support before the driver is redirected",
+                    "Where a package is already with a driver, a return must be arranged through SEIRS support before the driver is redirected",
                   ]}
                 />
               </SubSection>
@@ -326,7 +336,7 @@ export default function TermsOfServicePage() {
                 <BulletList
                   items={[
                     "A sender is responsible for supplying a correct delivery address and correct recipient contact details",
-                    "Where a recipient is not a registered Seirs user, notifications depend on the contact details supplied by the sender and Seirs cannot guarantee that they are received",
+                    "Where a recipient is not a registered SEIRS user, notifications depend on the contact details supplied by the sender and SEIRS cannot guarantee that they are received",
                     "Charges arising from an incorrect address or unreachable recipient are payable by the sender",
                   ]}
                 />
@@ -349,7 +359,7 @@ export default function TermsOfServicePage() {
 
             <Section id="section-10" title="10. Suspension and Termination">
               <BodyText>
-                Seirs may suspend or permanently deactivate your account, with or without
+                SEIRS may suspend or permanently deactivate your account, with or without
                 notice, if:
               </BodyText>
               <BulletList
@@ -370,8 +380,8 @@ export default function TermsOfServicePage() {
 
             <Section id="section-11" title="11. Intellectual Property">
               <BodyText>
-                All content, software, trademarks, and designs on the Seirs platform are owned
-                by Seirs Logistics Ltd or licensed to us. You may not reproduce, distribute, or
+                All content, software, trademarks, and designs on the SEIRS platform are owned
+                by SEIRS Logistics Ltd or licensed to us. You may not reproduce, distribute, or
                 create derivative works without express written permission.
               </BodyText>
             </Section>
@@ -389,7 +399,7 @@ export default function TermsOfServicePage() {
 
             <Section id="section-13" title="13. Disclaimer of Warranties">
               <BodyText>
-                The platform is provided &quot;as is&quot; and &quot;as available.&quot; Seirs does not warrant
+                The platform is provided &quot;as is&quot; and &quot;as available.&quot; SEIRS does not warrant
                 uninterrupted or error-free operation. We are not liable for losses arising
                 from service interruptions, third-party failures (banks, telecoms, map
                 providers), or circumstances beyond our control (force majeure).
@@ -398,7 +408,7 @@ export default function TermsOfServicePage() {
 
             <Section id="section-14" title="14. Limitation of Liability">
               <BodyText>
-                To the maximum extent permitted by Nigerian law, Seirs&apos; total liability to
+                To the maximum extent permitted by Nigerian law, SEIRS&apos; total liability to
                 you for any claim arising from use of our services is limited to the amount
                 you paid us in the 3 months preceding the claim. We are not liable for
                 indirect, consequential, or punitive damages.

@@ -141,9 +141,43 @@ export async function getPartnerLogos(): Promise<PartnerLogo[]> {
 // enough for news posts + FAQ + changelog at launch; swap to react-
 // markdown if marketing wants tables, footnotes, or images-in-body.
 
+/**
+ * Hardened 2026-08-23. The output of this function is handed straight to
+ * dangerouslySetInnerHTML on /faq, /changelog, /news/[slug] and
+ * /careers/[slug], so anything it emits executes.
+ *
+ * Two holes were open. `esc` escaped & < > but not quotes, so any value
+ * interpolated into an attribute (an image src, a link href) could close the
+ * attribute and add one of its own, e.g. onerror=. And `inline` built an
+ * anchor href with no protocol check, so a body containing
+ * [click](javascript:...) shipped a live javascript: link. Bodies are
+ * admin-authored, which makes this stored admin-to-visitor XSS rather than an
+ * open door, but the guard is two lines.
+ */
+const ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+function esc(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ESCAPES[c]);
+}
+
+// Only these three shapes may reach an href or a src. Everything else,
+// javascript:, data:, vbscript: and whatever the browser invents next, is
+// rejected by not being on the list rather than by being blacklisted.
+const SAFE_URL = /^(?:https?:\/\/|mailto:|\/)/i;
+
+function safeUrl(raw: string): string | null {
+  const url = raw.trim();
+  return SAFE_URL.test(url) ? url : null;
+}
+
 export function renderMarkdown(md: string): string {
   if (!md) return '';
-  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const lines = esc(md).split('\n');
   const out: string[] = [];
   let inList = false;
@@ -162,7 +196,13 @@ export function renderMarkdown(md: string): string {
     const img = line.match(/^!\[(.*?)\]\((.+?)\)$/);
     if (img) {
       if (inList) { out.push('</ul>'); inList = false; }
-      out.push(`<img src="${img[2]}" alt="${img[1]}" class="w-full rounded-xl my-6" loading="lazy" />`);
+      const src = safeUrl(img[2]);
+      // An image whose src is not on the allowlist is dropped rather than
+      // rendered, and its alt text stands in so the story does not silently
+      // lose the caption that went with it.
+      out.push(src
+        ? `<img src="${src}" alt="${img[1]}" class="w-full rounded-xl my-6" loading="lazy" />`
+        : `<p>${img[1]}</p>`);
       continue;
     }
     if (/^- /.test(line)) {
@@ -181,7 +221,13 @@ function inline(s: string): string {
   return s
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-sky underline">$1</a>');
+    .replace(/\[(.+?)\]\((.+?)\)/g, (_m: string, label: string, target: string) => {
+      const href = safeUrl(target);
+      // A rejected href renders as plain label text. Dropping the anchor is
+      // the safe failure: the reader loses a link, not the page.
+      if (!href) return label;
+      return `<a href="${href}" target="_blank" rel="noopener" class="text-sky underline">${label}</a>`;
+    });
 }
 
 export function fmtDate(iso: string | null): string {

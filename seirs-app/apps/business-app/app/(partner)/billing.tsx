@@ -12,8 +12,13 @@ import { useColors } from '@/context/ThemeContext';
 // Spec V8 §4.11: partner sponsored-placement billing view. Live monthly
 // fee is read from the Fee Catalogue (admin-editable, propagates within
 // 60s) so the displayed price always matches what would actually be
-// charged. The actual subscribe/unsubscribe wire-up routes through
-// Flutterwave when the partner taps Activate: placeholder for now.
+// charged.
+//
+// Recurring billing is NOT wired yet: activating records an invoice and
+// charges no card. The benefits list used to claim "Auto-billed monthly
+// via Flutterwave" alongside the dialog saying nothing is charged, which
+// is the kind of contradiction a partner discovers at invoice time
+// (B-9.2). The list now describes what actually happens.
 
 const fmtNgn = (n: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
@@ -82,12 +87,13 @@ export default function PartnerBillingScreen() {
     }
   };
 
-  // Live metrics: invoice count + last-billed amount are live; impression
-  // counts await the placement_impressions table (Phase 2). Zero-state
-  // is rendered conservatively when not active.
-  const stats = active
-    ? { impressions: 0, clickThroughs: 0, monthSpend: lastInvoicedNgn }
-    : { impressions: 0, clickThroughs: 0, monthSpend: 0 };
+  // Spend is live (last invoiced amount). Impressions and click-throughs
+  // are NOT: they were literal 0 in both branches while the page sold a
+  // "live dashboard updated daily", so a paying partner read a permanent
+  // 0/0 ROI panel with no explanation (B-2.1). They render as a dash with
+  // a note until the placement_impressions table exists.
+  const IMPRESSIONS_TRACKED = false;
+  const stats = { monthSpend: active ? lastInvoicedNgn : 0 };
 
   return (
     <ScrollView
@@ -159,12 +165,18 @@ export default function PartnerBillingScreen() {
       <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text style={[styles.statsTitle, { color: colors.text }]}>This Month</Text>
         <View style={[styles.statsRow, { backgroundColor: colors.surfaceSecond }]}>
-          <Stat label="Impressions"     value={stats.impressions.toLocaleString()} />
+          <Stat label="Impressions"     value={IMPRESSIONS_TRACKED ? '0' : '-'} />
           <View style={[styles.statsDivider, { backgroundColor: colors.border }]} />
-          <Stat label="Click-throughs"  value={stats.clickThroughs.toLocaleString()} />
+          <Stat label="Click-throughs"  value={IMPRESSIONS_TRACKED ? '0' : '-'} />
           <View style={[styles.statsDivider, { backgroundColor: colors.border }]} />
           <Stat label="Spend"           value={fmtNgn(stats.monthSpend)} />
         </View>
+        {!IMPRESSIONS_TRACKED && (
+          <Text style={[styles.statsHint, { color: colors.textThird }]}>
+            Impression and click-through tracking ships with the placement
+            metrics table. Spend is live.
+          </Text>
+        )}
         {!active && (
           <Text style={[styles.statsHint, { color: colors.textThird }]}>
             Activate to start collecting placement metrics.
@@ -177,8 +189,8 @@ export default function PartnerBillingScreen() {
         {[
           { icon: 'MapPin',     text: 'Top-pinned spot on customer map within your service area' },
           { icon: 'Search',     text: 'Featured first in store-picker results when customers schedule drop-offs' },
-          { icon: 'BarChart3',  text: 'Live impression + click-through dashboard updated daily' },
-          { icon: 'CreditCard', text: 'Auto-billed monthly via Flutterwave: pause anytime, no contract' },
+          { icon: 'BarChart3',  text: 'Impression and click-through reporting once metrics tracking ships' },
+          { icon: 'CreditCard', text: 'Invoiced monthly, settled through Flutterwave: pause anytime, no contract' },
         ].map(b => (
           <View key={b.text} style={styles.benefitRow}>
             <View style={[styles.benefitIcon, { backgroundColor: colors.accent + '18' }]}>

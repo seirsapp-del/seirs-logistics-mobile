@@ -7,8 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
-import { request } from '@seirs/shared/services/api';
-import { useColors } from '@/context/ThemeContext';
+import { request } from '@/services/api';
+import { useColors, useTheme } from '@/context/ThemeContext';
 
 // Spec V8 Tier 3: developer console for API keys. Live + test key
 // management for SEIRS-as-a-platform integrators. Secret is shown
@@ -28,6 +28,7 @@ export default function ApiKeysScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useColors();
+  const { isDark } = useTheme();
 
   const [keys,    setKeys]    = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,11 +121,18 @@ export default function ApiKeysScreen() {
             </View>
           </View>
 
-          {/* Revealed-once secret */}
+          {/* Revealed-once secret. Was a fixed mint #F0FDF4 card holding a
+              #F3F4F6 code block: a light panel glaring out of a dark screen,
+              and this is the one-time secret the integrator has to read
+              accurately (B-10.8). Green still means "keep this", it is
+              tinted onto the surface now instead of replacing it. */}
           {revealedSecret && (
-            <View style={[styles.card, { borderColor: '#16A34A', backgroundColor: '#F0FDF4' }]}>
+            <View style={[styles.card, { borderColor: '#16A34A', backgroundColor: isDark ? '#16A34A22' : '#F0FDF4' }]}>
               <Text style={[styles.cardLabel, { color: '#16A34A' }]}>SECRET: SHOWN ONCE</Text>
-              <Text style={styles.secretMonospace}>{revealedSecret.secret}</Text>
+              <Text style={[
+                styles.secretMonospace,
+                { backgroundColor: isDark ? '#00000055' : '#F3F4F6', color: isDark ? '#E5E7EB' : '#0F2B4C' },
+              ]}>{revealedSecret.secret}</Text>
               <Pressable onPress={() => copy(revealedSecret.secret)} style={styles.copyBtn}>
                 <Icon name="Copy" size={14} color="#fff" />
                 <Text style={styles.copyBtnText}>Copy secret</Text>
@@ -225,7 +233,8 @@ const styles = StyleSheet.create({
   cardLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
 
   // Secret reveal stays green: semantic "saved successfully" color
-  secretMonospace: { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 14, color: '#0F2B4C', backgroundColor: '#F3F4F6', padding: 10, borderRadius: 8 },
+  // Colours overridden per theme at the use site: see B-10.8.
+  secretMonospace: { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 14, padding: 10, borderRadius: 8 },
   warnMonospace:   { fontSize: 12, color: '#92400E' },
   copyBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, backgroundColor: '#16A34A' },
   copyBtnText:{ color: '#fff', fontSize: 14, fontWeight: '700' },

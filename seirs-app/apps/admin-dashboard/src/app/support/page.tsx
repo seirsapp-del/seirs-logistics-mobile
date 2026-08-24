@@ -459,6 +459,26 @@ export default function SupportInboxPage() {
                       <MessageSquare size={12} /> Re-open chat
                     </button>
                   )}
+                  {/* chatReopen.close was defined against a live route and
+                      called by nothing, so support could open a 24h PII
+                      window and had no way to shut it early. */}
+                  {thread.ticket.linkedDeliveryId && (
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm('Close this delivery chat now?\nThe customer and driver lose the ability to message each other immediately.')) return;
+                        try {
+                          await adminApi.chatReopen.close(thread.ticket.linkedDeliveryId!);
+                          alert('Chat closed. This action was audit-logged.');
+                        } catch (e: any) {
+                          alert(`Close failed: ${e?.message ?? 'unknown'}`);
+                        }
+                      }}
+                      className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                      title="Close the customer-driver chat for this delivery now (audit-logged)"
+                    >
+                      <XCircle size={12} /> Close chat
+                    </button>
+                  )}
                   {!thread.ticket.assignedAgentId && (
                     <button onClick={assignToMe}
                       className="flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">

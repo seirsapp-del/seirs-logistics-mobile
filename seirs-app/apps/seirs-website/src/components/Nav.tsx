@@ -1,8 +1,8 @@
 ﻿"use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X, Globe, Check } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import SeirsLogo from "./SeirsLogo";
 
 // Track added 2026-08-15, second. /track/[code] has been live and working
@@ -24,19 +24,6 @@ const navLinks = [
   { label: "News",             href: "/news" },
   { label: "Contact",          href: "/contact" },
 ];
-
-// Spec V8 §i18n, supported languages. UI ships en-only at launch;
-// the dropdown persists the user preference, sets the html lang
-// attribute so browsers/screen-readers pick up the choice, and
-// signals to the user that browser translation kicks in. CMS schema
-// already supports lang-per-row for future translated content.
-const LANGS: Array<{ code: string; label: string; native: string }> = [
-  { code: 'en', label: 'English', native: 'English' },
-  { code: 'yo', label: 'Yoruba',  native: 'Yorùbá' },
-  { code: 'ig', label: 'Igbo',    native: 'Igbo' },
-  { code: 'ha', label: 'Hausa',   native: 'Hausa' },
-];
-const LANG_STORAGE_KEY = 'seirs.lang';
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
@@ -70,7 +57,7 @@ export default function Nav() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo: SEIRS okada mark + wordmark, mirrors mobile SeirsLogoV2 */}
-          <Link href="/" className="flex items-center flex-shrink-0" aria-label="Seirs Logistics home">
+          <Link href="/" className="flex items-center flex-shrink-0" aria-label="SEIRS Logistics home">
             <SeirsLogo variant="lockup" size={130} />
           </Link>
 
@@ -87,9 +74,15 @@ export default function Nav() {
             ))}
           </div>
 
-          {/* Desktop CTA. Language switcher hidden until real translations
-              ship (founder 2026-08-10: a dropdown that changes nothing
-              reads as broken). Re-add <LangSwitcher /> when content lands. */}
+          {/* Desktop CTA. There was a LangSwitcher here once. It was hidden
+              in 2026-08-10 (founder: a dropdown that changes nothing reads as
+              broken) and the 72-line component sat unrendered until it was
+              deleted on 2026-08-23, its only remaining reference being this
+              comment. The site is English with browser translation; the APPS
+              carry the Yoruba, Igbo and Hausa translations. When real site
+              translations land, build the switcher against whatever routing
+              they use rather than restoring a localStorage flag that only
+              ever set <html lang>. */}
           <div className="hidden md:flex items-center gap-2">
             <Link
               href="/contact"
@@ -137,84 +130,5 @@ export default function Nav() {
         </div>
       )}
     </nav>
-  );
-}
-
-// ─── Language switcher ──────────────────────────────────────────────────────
-// UI ships en-only at launch. The dropdown persists the user choice +
-// updates <html lang="..."> so screen readers and browser auto-
-// translation pick up the right language. CMS lookups can pass the
-// stored lang via a query param when translated content lands.
-
-function LangSwitcher() {
-  const [open,    setOpen]    = useState(false);
-  const [lang,    setLang]    = useState('en');
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(LANG_STORAGE_KEY) : null;
-    if (saved && LANGS.some(l => l.code === saved)) setLang(saved);
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (open && wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const pick = (code: string) => {
-    setLang(code);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LANG_STORAGE_KEY, code);
-      document.documentElement.lang = code;
-    }
-    setOpen(false);
-  };
-
-  const current = LANGS.find(l => l.code === lang) ?? LANGS[0];
-
-  return (
-    <div ref={wrapRef} className="relative">
-      <button
-        onClick={() => setOpen(o => !o)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className="flex items-center gap-1.5 text-text-muted hover:text-navy text-sm px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-      >
-        <Globe size={14} />
-        <span className="font-medium">{current.code.toUpperCase()}</span>
-      </button>
-      {open && (
-        <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50">
-          <p className="px-3 py-2 text-[10px] uppercase font-bold tracking-wider text-gray-400 border-b border-gray-100">
-            Language
-          </p>
-          {LANGS.map(l => (
-            <button
-              key={l.code}
-              onClick={() => pick(l.code)}
-              className={`w-full text-left flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 ${
-                l.code === lang ? 'text-navy font-semibold' : 'text-gray-700'
-              }`}
-            >
-              <span>
-                {l.native}
-                {l.label !== l.native && (
-                  <span className="text-gray-400 text-xs ml-1">({l.label})</span>
-                )}
-              </span>
-              {l.code === lang && <Check size={14} className="text-sky" />}
-            </button>
-          ))}
-          <div className="border-t border-gray-100 mt-1 pt-2 pb-1 px-3">
-            <p className="text-[10px] text-gray-500 leading-relaxed">
-              UI translation rolls out post-launch. For now your browser will translate the page automatically.
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
   );
 }

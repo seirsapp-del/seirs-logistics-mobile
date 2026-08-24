@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Share2, Users, TrendingUp, Gift, RefreshCw } from 'lucide-react';
+import { Share2, Users, TrendingUp, Gift, RefreshCw, AlertCircle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 interface ReferralRow {
@@ -22,16 +22,22 @@ export default function ReferralsPage() {
   const [rows, setRows]         = useState<ReferralRow[]>([]);
   const [summary, setSummary]   = useState<{ totalReferrals: number; monthToDate: number } | null>(null);
   const [loading, setLoading]   = useState(true);
+  const [error,   setError]     = useState<string | null>(null);
 
+  // A failed fetch used to render as "no referrals yet", which on this
+  // page reads as a dead referral programme rather than a dead request.
   const load = async () => {
     setLoading(true);
+    setError(null);
+    const failures: string[] = [];
     try {
       const [list, s] = await Promise.all([
-        adminApi.referrals.list().catch(() => []),
-        adminApi.referrals.summary().catch(() => null),
+        adminApi.referrals.list().catch(() => { failures.push('the referral list'); return []; }),
+        adminApi.referrals.summary().catch(() => { failures.push('the summary'); return null; }),
       ]);
       setRows(list ?? []);
       setSummary(s);
+      if (failures.length) setError(`Could not load ${failures.join(' and ')}.`);
     } finally { setLoading(false); }
   };
 
@@ -59,6 +65,14 @@ export default function ReferralsPage() {
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
+
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => load()} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         {[

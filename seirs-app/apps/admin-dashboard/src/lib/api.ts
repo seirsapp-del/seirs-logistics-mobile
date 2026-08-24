@@ -15,6 +15,21 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
+    // The admin cookie lasts 8 hours; the JWT inside it lasts 30 minutes.
+    // A tab left closed for 40 minutes therefore sails through the
+    // middleware and then 401s on every single request. Because almost
+    // every page catches quietly, the admin just saw empty boards and no
+    // hint they had been signed out. Bounce them once, with a reason.
+    // Auth routes are excluded: a wrong password on /login is a 401 too,
+    // and that must show as "invalid credentials", not a redirect.
+    if (res.status === 401 && typeof window !== 'undefined' && !path.startsWith('/auth/')) {
+      const { clearSession } = await import('./auth');
+      clearSession();
+      if (!window.location.pathname.startsWith('/login')) {
+        const from = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.replace(`/login?reason=expired&from=${from}`);
+      }
+    }
     throw new Error((err as any).message ?? 'Request failed');
   }
   return res.json();
@@ -22,8 +37,8 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
 
 // Spec V8 §3.6. sliding 30-min admin session. Backend issues admin
 // JWTs with 30m TTL. This helper extends the token while the admin is
-// active by calling /auth/refresh. Called from the dashboard layout
-// every ~5 minutes; no-op when no admin token is in storage.
+// active by calling /auth/refresh. Called from NavWrapper every 10
+// minutes (REFRESH_EVERY_MS); no-op when no admin token is in storage.
 export async function refreshAdminTokenIfPresent(): Promise<boolean> {
   const token = getToken();
   if (!token) return false;
@@ -77,6 +92,10 @@ export const adminApi = {
     ),
 
   stats: () => req<any>('/admin/stats'),
+
+  // GET /auth/me. Used by the Health page so the Auth row is a genuinely
+  // separate probe from the Backend API row.
+  me: () => req<any>('/auth/me'),
 
   // Live ops dashboard: aggregated real-time pulse. Client should poll on
   // ~30s interval when the dashboard is visible.

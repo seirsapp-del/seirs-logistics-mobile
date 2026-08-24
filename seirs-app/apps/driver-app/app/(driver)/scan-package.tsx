@@ -11,10 +11,10 @@
  * On match: full-screen green confirmation, auto-pops back after 1.6s.
  * On mismatch: red banner + scanner re-arms after a cooldown.
  *
- * Verification here is a trust aid for the driver; the authoritative
- * chain-of-custody record stays with the identity hand-off flow
- * (signature.tsx). Server-side scan logging lands post-launch via the
- * delivery_events SCAN type.
+ * Verification here is a trust aid for the driver and nothing more: the
+ * comparison is local to this screen and no scan event is sent anywhere.
+ * The authoritative chain-of-custody record is the identity hand-off flow
+ * (signature.tsx).
  */
 import { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Vibration, ActivityIndicator, TextInput } from 'react-native';

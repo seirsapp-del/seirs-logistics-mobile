@@ -1,0 +1,11 @@
+# Build output. vercel.json points at .next, so out/ is never deployed; a
+# stale out/ was left behind by the removed `output: 'export'` mode and held
+# 6 of the 21 routes, which is exactly the kind of thing someone opens by
+# accident and reads as the live site. Deleted 2026-08-23.
+/.next/
+/out/
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+
+node_modules/

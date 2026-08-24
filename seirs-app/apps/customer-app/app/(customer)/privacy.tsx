@@ -11,11 +11,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { usersApi } from '@/services/api';
 
-// Subset of notification-prefs keys we treat as "data & analytics consent"
-// so privacy + notifications stay in sync (a user who flips marketing off
-// in either screen sees it off in both).
-const PRIVACY_PREF_KEYS = ['analytics_share', 'personalised_ads', 'data_sharing'] as const;
-
 export default function PrivacyScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
@@ -54,7 +49,6 @@ export default function PrivacyScreen() {
   // Re-read on focus: the user may have just changed it in Settings.
   useFocusEffect(useCallback(() => { readLocationPerms(); }, [readLocationPerms]));
   const [analyticsShare,  setAnalyticsShare]  = useState(true);
-  const [personalisedAds, setPersonalisedAds] = useState(false);
   const [dataSharing,     setDataSharing]     = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -64,7 +58,6 @@ export default function PrivacyScreen() {
       try {
         const { prefs } = await usersApi.getNotificationPrefs();
         if (prefs?.analytics_share !== undefined)  setAnalyticsShare(prefs.analytics_share);
-        if (prefs?.personalised_ads !== undefined) setPersonalisedAds(prefs.personalised_ads);
         if (prefs?.data_sharing !== undefined)     setDataSharing(prefs.data_sharing);
       } catch {}
     })();
@@ -77,8 +70,12 @@ export default function PrivacyScreen() {
     }, 400);
   };
 
+  // personalisedAds was read from the server and had a handler, but no
+  // ToggleRow ever rendered it, and SEIRS runs no ad product for it to
+  // consent to. State, handler and the unused PRIVACY_PREF_KEYS list
+  // removed rather than shipping a switch for a feature that does not
+  // exist (sweep C-1.10).
   const onToggleAnalytics = (v: boolean) => { setAnalyticsShare(v);  queueSave({ analytics_share:  v }); };
-  const onTogglePersonalised = (v: boolean) => { setPersonalisedAds(v); queueSave({ personalised_ads: v }); };
   const onToggleDataSharing = (v: boolean) => { setDataSharing(v);   queueSave({ data_sharing:     v }); };
 
   const handleDeleteAccount = () => {

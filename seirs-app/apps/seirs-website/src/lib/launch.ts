@@ -61,6 +61,17 @@ export const CONTACT = {
   legal: 'legal@seirs.co', // LIVE
   careers: 'careers@seirs.co', // LIVE
 
+  // NEEDS_DATA. This is the statutory one. The Privacy Policy routes every
+  // NDPA data-subject request (access, correction, deletion, portability,
+  // objection, withdrawal of consent) to this address and promises a reply
+  // within 30 days, which is a binding commitment, not marketing copy. It
+  // was the only contact address on the site that was never tracked here,
+  // so nobody had ever confirmed the mailbox exists. If it does not, access
+  // and deletion requests bounce silently and the 30-day clock still runs.
+  // Verify it delivers to a monitored inbox, then mark this LIVE. If it
+  // cannot be created, repoint the policy at legal@seirs.co instead.
+  privacy: 'privacy@seirs.co',
+
   // NEEDS_DATA. The footer used to dial +234 800 000 0000, a placeholder that
   // connected to nothing, removed 2026-08-14. In Nigeria a WhatsApp link
   // converts far better than an email form, so prefer whatsapp over phone.
@@ -71,9 +82,23 @@ export const CONTACT = {
 } as const;
 
 // ── Site ────────────────────────────────────────────────────────────────────
-// NEEDS_DATA: three different canonical domains are referenced across
-// layout.tsx, sitemap.ts and CookieBanner. Set NEXT_PUBLIC_SITE_URL on Vercel
-// and this becomes the single source.
+// NEEDS_DATA: the one canonical domain.
+//
+// Inside THIS app it is now genuinely single-source: layout.tsx, sitemap.ts,
+// robots.ts and CookieBanner all import SITE_URL, and the three hardcoded
+// literals they used to carry are gone (2026-08-23).
+//
+// The platform-wide split is NOT fixed and cannot be fixed from here. The
+// backend reads the same idea under four other names, defaulting two ways:
+//   NEXT_PUBLIC_SITE_URL  this app                  -> seirs.app
+//   PUBLIC_SITE_URL       deliveries, payments      -> seirs.app
+//   WEBSITE_URL           mail                      -> seirs-website.vercel.app
+//   PUBLIC_WEB_URL        statements                -> seirs-website.vercel.app
+//   WEB_URL               one further backend read
+// So today a WhatsApp collect link goes to seirs.app/collect while the
+// password-reset email from the same backend goes to vercel.app/reset-password.
+// Setting the Vercel env var moves this app only. Settling the domain means
+// one shared constant the backend imports too (register item W-4).
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? 'https://seirs.app';
 
@@ -103,6 +128,16 @@ export const APP_SCREENSHOTS: Record<ScreenKey, string | null> = {
   driverEarnings: '/app-shots/driver-earnings.png',
   businessDashboard: '/app-shots/business-dashboard.png',
 };
+
+// ── Where SEIRS actually operates ───────────────────────────────────────────
+// NEEDS_DATA. Empty on purpose. The contact page used to state "Operations
+// currently active across Lagos and Abuja, with expansion to Port Harcourt
+// and Kano underway" while APPS_PUBLISHED was false, the store listings were
+// pending and the partner directory returned zero stores: nothing was active
+// anywhere, in any city. Coverage copy now reads from this list and is gated
+// on APPS_PUBLISHED, so it cannot reappear before there is something behind
+// it. Add the real cities on the day the first one runs.
+export const SERVICE_AREAS: readonly string[] = [];
 
 // ── Launch state ────────────────────────────────────────────────────────────
 // Flip to true on the day the apps are published. Anything that should read
@@ -159,10 +194,10 @@ export const LAUNCH_CHECKLIST = [
   },
   {
     key: 'NEXT_PUBLIC_SITE_URL',
-    what: 'The one canonical domain',
-    where: 'Vercel env vars',
-    blocks: 'Sitemap, OG tags and cookie copy disagree on the domain',
-    from: 'Founder, once the domain is chosen',
+    what: 'The one canonical domain, plus the four backend names that mean the same thing: PUBLIC_SITE_URL, WEBSITE_URL, PUBLIC_WEB_URL and WEB_URL',
+    where: 'Vercel env vars for this app, Railway env for the backend, and the ~20 hardcoded literals the backend still carries',
+    blocks: 'Setting the Vercel var fixes this app only. Until all five agree, a WhatsApp collect link and a password-reset email from the same backend point at different domains, and the public tracking and collect-fee flows sit on the unresolved host',
+    from: 'Founder, once the domain is chosen. Then export one shared constant all three apps and the backend import',
   },
   {
     key: 'APPS_PUBLISHED',
@@ -177,5 +212,33 @@ export const LAUNCH_CHECKLIST = [
     where: 'Admin dashboard',
     blocks: 'Find a Partner shows "0 partners in the network"',
     from: 'Operations, target roughly 10 before promoting it in the nav',
+  },
+  {
+    key: 'CONTACT.privacy',
+    what: 'A monitored mailbox at privacy@seirs.co',
+    where: 'Mail provider, then mark LIVE in src/lib/launch.ts',
+    blocks: 'Statutory NDPA access and deletion requests bounce silently while the Privacy Policy promises a reply within 30 days',
+    from: 'Founder. If the mailbox cannot exist, repoint the policy at legal@seirs.co',
+  },
+  {
+    key: 'Partner logos',
+    what: 'Real partner marks published as img_partner_logo_* page blocks, with the company name as the row title',
+    where: 'Admin dashboard, Website > Page Blocks',
+    blocks: 'The homepage "Trusted by" strip does not render at all. It used to repeat the SEIRS mark four times under that heading, which is the site vouching for itself, so the fallback was removed on 2026-08-23',
+    from: 'Operations, as partners sign',
+  },
+  {
+    key: 'Live city list',
+    what: 'The cities SEIRS actually operates in, and the ones genuinely being opened',
+    where: 'src/app/contact/page.tsx, the Our Location card',
+    blocks: 'The contact page says only "Lagos, Nigeria" and names no coverage. It claimed active operations in Lagos and Abuja plus expansion to Port Harcourt and Kano while nothing was live anywhere; that claim was removed on 2026-08-23 and is gated on APPS_PUBLISHED',
+    from: 'Operations, once the first city is genuinely running',
+  },
+  {
+    key: 'REFERRAL_DEFERRED_DEEPLINK',
+    what: 'Play Install Referrer / Apple attribution-token handling so a code from /r/<code> survives the install',
+    where: 'Customer app + backend, not the website',
+    blocks: 'Nothing today. /r/<code> saves the code to localStorage, but only the visitor\'s browser can read it, so attribution still depends on the new user typing the code into the app signup field',
+    from: 'Engineering, post-launch',
   },
 ] as const;

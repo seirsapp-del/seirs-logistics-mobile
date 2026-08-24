@@ -1,11 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
-import { getAdminRole } from '@/lib/auth';
-import { isSuperAdmin } from '@/lib/rbac';
+import { getUser } from '@/lib/auth';
+import { isSuperAdminFromUser } from '@/lib/rbac';
 import { useConfirm } from '@/components/ConfirmDialog';
 import {
-  Plus, Eye, CheckCircle, Send, Trash2, ImageIcon, Megaphone, Star, Filter,
+  Plus, Eye, CheckCircle, Send, Trash2, ImageIcon, Megaphone, Star, Filter, AlertCircle, Pencil,
 } from 'lucide-react';
 
 type ContentType = 'banner' | 'story' | 'promotion';
@@ -50,22 +50,34 @@ export default function CmsPage() {
   const [activeType,   setActiveType]   = useState<ContentType | 'all'>('all');
   const [activeStatus, setActiveStatus] = useState<ContentStatus | 'all'>('all');
   const [creating,     setCreating]     = useState(false);
-  const [newItem,      setNewItem]      = useState({ type: 'banner' as ContentType, title: '', body: '' });
+  const [newItem,      setNewItem]      = useState({ type: 'banner' as ContentType, title: '', body: '', imageUrl: '' });
+  const [uploading,    setUploading]    = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
   const [actionId,     setActionId]     = useState<string | null>(null);
+  const [error,        setError]        = useState<string | null>(null);
+  // cms.update was defined with no caller: a typo in a live in-app banner
+  // could only be fixed by deleting and recreating it, losing its id.
+  const [editing,      setEditing]      = useState<CmsItem | null>(null);
+  const [editDraft,    setEditDraft]    = useState({ title: '', body: '', imageUrl: '' });
   const confirm                         = useConfirm();
 
-  const role = getAdminRole();
-  const isSuper = isSuperAdmin(role);
+  // Same fix as /audit-log: the legacy check missed super admins whose
+  // role comes from the dynamic role system.
+  const isSuper = isSuperAdminFromUser(getUser());
 
   const load = () => {
     setLoading(true);
+    setError(null);
     adminApi.cms.list(
       activeType !== 'all' ? activeType : undefined,
       activeStatus !== 'all' ? activeStatus : undefined,
     ).then((data: any) => {
       setItems(Array.isArray(data) ? data : data?.items ?? []);
-    }).catch(() => {}).finally(() => setLoading(false));
+    })
+      // A swallowed error read as "nothing published", which on a content
+      // surface invites someone to create a duplicate of what is already there.
+      .catch((e: any) => setError(e?.message ?? 'Could not load CMS content'))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [activeType, activeStatus]);
@@ -74,10 +86,52 @@ export default function CmsPage() {
     if (!newItem.title.trim()) return;
     setSubmitting(true);
     try {
-      await adminApi.cms.create(newItem);
+      await adminApi.cms.create({
+        ...newItem,
+        imageUrl: newItem.imageUrl || undefined,
+      });
       setCreating(false);
-      setNewItem({ type: 'banner', title: '', body: '' });
+      setNewItem({ type: 'banner', title: '', body: '', imageUrl: '' });
       load();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // R2 upload, same helper /website already uses. An image-less banner
+  // system fails the app-must-look-alive rule on the one surface built
+  // to carry pictures.
+  const uploadImage = async (file: File, onDone: (url: string) => void) => {
+    setUploading(true);
+    setError(null);
+    try {
+      const { url } = await adminApi.upload.image(file, 'cms');
+      onDone(url);
+    } catch (e: any) {
+      setError(e?.message ?? 'Image upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const openEdit = (item: CmsItem) => {
+    setEditing(item);
+    setEditDraft({ title: item.title ?? '', body: item.body ?? '', imageUrl: item.imageUrl ?? '' });
+  };
+
+  const saveEdit = async () => {
+    if (!editing || !editDraft.title.trim()) return;
+    setSubmitting(true);
+    try {
+      await adminApi.cms.update(editing.id, {
+        title:    editDraft.title.trim(),
+        body:     editDraft.body,
+        imageUrl: editDraft.imageUrl || null,
+      });
+      setEditing(null);
+      load();
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not save this item');
     } finally {
       setSubmitting(false);
     }
@@ -128,6 +182,88 @@ export default function CmsPage() {
           Draft → <span className="text-amber-600 font-medium">Pending Approval</span> (Super Admin reviews) → <span className="text-emerald-600 font-medium">Published</span>
         </div>
 
+        {/* Edit modal */}
+        {editing && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+              <h2 className="text-lg font-bold text-[#0F2B4C] mb-1">Edit content item</h2>
+              <p className="text-xs text-gray-500 mb-4 capitalize">
+                {editing.type} · {STATUS_LABEL[editing.status]}
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Title</label>
+                  <input
+                    value={editDraft.title}
+                    onChange={(e) => setEditDraft((d) => ({ ...d, title: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Body / Description</label>
+                  <textarea
+                    value={editDraft.body}
+                    onChange={(e) => setEditDraft((d) => ({ ...d, body: e.target.value }))}
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5] resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Image</label>
+                  <div className="flex items-center gap-3">
+                    {editDraft.imageUrl ? (
+                      <img src={editDraft.imageUrl} alt="" className="h-14 w-14 rounded-lg border border-gray-200 object-cover" />
+                    ) : (
+                      <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-dashed border-gray-300 text-gray-300">
+                        <ImageIcon size={18} />
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) uploadImage(f, (url) => setEditDraft((d) => ({ ...d, imageUrl: url })));
+                      }}
+                      className="text-xs"
+                    />
+                    {editDraft.imageUrl && (
+                      <button
+                        onClick={() => setEditDraft((d) => ({ ...d, imageUrl: '' }))}
+                        className="text-xs font-semibold text-red-600 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {uploading && <p className="mt-1 text-xs text-gray-400">Uploading…</p>}
+                </div>
+                {editing.status === 'published' && (
+                  <p className="text-xs text-amber-700">
+                    This item is live. Saving changes what users see on their next app open.
+                  </p>
+                )}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setEditing(null)}
+                    className="flex-1 py-2 rounded-lg text-sm text-gray-500 border border-gray-200 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveEdit}
+                    disabled={submitting || !editDraft.title.trim()}
+                    className="flex-1 py-2 rounded-lg text-sm font-semibold bg-[#0F2B4C] text-white hover:bg-[#3A7BD5] disabled:opacity-50 transition-colors"
+                  >
+                    {submitting ? 'Saving…' : 'Save changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Create modal */}
         {creating && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -170,6 +306,29 @@ export default function CmsPage() {
                     placeholder="Optional description or markdown content…"
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5] resize-none"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Image</label>
+                  <div className="flex items-center gap-3">
+                    {newItem.imageUrl ? (
+                      <img src={newItem.imageUrl} alt="" className="h-14 w-14 rounded-lg border border-gray-200 object-cover" />
+                    ) : (
+                      <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-dashed border-gray-300 text-gray-300">
+                        <ImageIcon size={18} />
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) uploadImage(f, (url) => setNewItem((n) => ({ ...n, imageUrl: url })));
+                      }}
+                      className="text-xs"
+                    />
+                  </div>
+                  {uploading && <p className="mt-1 text-xs text-gray-400">Uploading…</p>}
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button
@@ -223,6 +382,14 @@ export default function CmsPage() {
           ))}
         </div>
 
+        {error && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button onClick={load} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+          </div>
+        )}
+
         {/* Items list */}
         {loading ? (
           <div className="text-center py-20 text-[#0F2B4C]/30">Loading…</div>
@@ -264,6 +431,13 @@ export default function CmsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => openEdit(item)}
+                    title="Edit title and body in place, keeping the item's id"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-50 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <Pencil size={13} /> Edit
+                  </button>
                   {item.status === 'draft' && isSuper && (
                     <button
                       onClick={() => approve(item.id)}

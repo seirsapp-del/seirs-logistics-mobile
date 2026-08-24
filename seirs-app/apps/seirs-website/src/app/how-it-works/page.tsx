@@ -21,7 +21,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "How It Works",
   description:
-    "From order creation to doorstep handoff, see exactly how Seirs Logistics matches customers, drivers, and partner stores across Nigeria for fast, secure last-mile delivery.",
+    "From order creation to doorstep handoff, see exactly how SEIRS Logistics matches customers, drivers, and partner stores across Nigeria for fast, secure last-mile delivery.",
 };
 
 /**
@@ -127,7 +127,7 @@ export default async function HowItWorksPage() {
             <span className="text-sky">trusted</span> network.
           </>
         }
-        subtitle="Seirs runs on three connected apps, one for customers sending packages, one for drivers fulfilling them, and one for businesses and partner stores managing volume. They all talk to the same backend, in real time."
+        subtitle="SEIRS runs on three connected apps, one for customers sending packages, one for drivers fulfilling them, and one for businesses and partner stores managing volume. They all talk to the same backend, in real time."
         icon={Workflow}
         primaryCtaLabel={
           <>
@@ -163,7 +163,7 @@ export default async function HowItWorksPage() {
                 "The price you see is the price you pay. No surcharges at the end.",
               ]}
               screen="customerBooking"
-              screenAlt="Booking a delivery in the Seirs customer app"
+              screenAlt="Booking a delivery in the SEIRS customer app"
             />
             <StoryStep
               step={2}
@@ -176,7 +176,7 @@ export default async function HowItWorksPage() {
                 "You see their photo, name, plate number and live location.",
               ]}
               screen="customerDriverAccepted"
-              screenAlt="A matched driver's profile in the Seirs customer app"
+              screenAlt="A matched driver's profile in the SEIRS customer app"
               flip
             />
             <StoryStep
@@ -190,7 +190,7 @@ export default async function HowItWorksPage() {
                 "Escrow releases to the driver only after you confirm delivery.",
               ]}
               screen="customerTracking"
-              screenAlt="Live delivery tracking in the Seirs customer app"
+              screenAlt="Live delivery tracking in the SEIRS customer app"
             />
           </div>
         </div>
@@ -269,7 +269,7 @@ export default async function HowItWorksPage() {
             <div className="text-center">
               <AppScreenshot
                 screen="driverHome"
-                alt="The Seirs driver app home screen"
+                alt="The SEIRS driver app home screen"
                 className="mb-6"
               />
               <div className="flex items-center justify-center gap-2.5 mb-2">
@@ -277,15 +277,20 @@ export default async function HowItWorksPage() {
                 <h3 className="text-navy font-bold text-lg">Driver App</h3>
               </div>
               <p className="text-text-muted text-sm leading-relaxed">
+                {/* "Onboarding takes about ten minutes" removed 2026-08-23.
+                    It sat oddly beside /for-drivers, which correctly says
+                    approval takes one to three business days, so the two
+                    pages together read as a ten-minute sign-up. Filling the
+                    form is not the wait; document review is. */}
                 Go online, accept jobs, navigate to pickup, complete handoffs,
-                and watch earnings land. Onboarding takes about ten minutes.
+                and watch earnings land.
               </p>
             </div>
 
             <div className="text-center">
               <AppScreenshot
                 screen="driverEarnings"
-                alt="The Seirs driver earnings screen"
+                alt="The SEIRS driver earnings screen"
                 className="mb-6"
               />
               <div className="flex items-center justify-center gap-2.5 mb-2">
@@ -308,7 +313,7 @@ export default async function HowItWorksPage() {
           they have never entered before. */}
       <PageCta
         title="Ready to try it?"
-        subtitle="Download the Seirs Customer app and send your first package."
+        subtitle="Download the SEIRS Customer app and send your first package."
         primaryLabel="Get the Customer App"
         primaryHref={STORE.play('customer')}
       />

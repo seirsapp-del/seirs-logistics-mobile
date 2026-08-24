@@ -8,6 +8,7 @@ import { Icon } from '@/components/Icon';
 import { Drawer } from '@/components/Drawer';
 import { businessApi, paymentsApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
+import { vehicleLabel } from '@/constants/vehicles';
 
 const STATUSES = ['all', 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled'];
 
@@ -71,6 +72,7 @@ export default function DeliveriesScreen() {
   }, []);
   const [page,       setPage]       = useState(1);
   const [hasMore,    setHasMore]    = useState(false);
+  const [loadError,  setLoadError]  = useState(false);
 
   const load = useCallback(async (p = 1, reset = false) => {
     if (p === 1) setLoading(true);
@@ -80,6 +82,12 @@ export default function DeliveriesScreen() {
       setDeliveries((prev) => (reset || p === 1 ? items : [...prev, ...items]));
       setHasMore(data?.hasMore ?? false);
       setPage(p);
+      setLoadError(false);
+    } catch {
+      // try/finally with no catch made this an unhandled rejection and the
+      // list silently kept its previous contents, so a dead network looked
+      // like "nothing changed" (B-10.9).
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -211,7 +219,9 @@ export default function DeliveriesScreen() {
         <View style={styles.cardBottom}>
           <View style={styles.meta}>
             <Icon name="Truck" size={12} color={colors.textThird} />
-            <Text style={[styles.metaText, { color: colors.textThird }]}>{item.vehicleType?.replace('_', ' ')}</Text>
+            {/* Was the raw backend enum: "motorcycle", "tricycle", "truck small"
+                (B-2.3). The wizard calls the same vehicle an Okada. */}
+            <Text style={[styles.metaText, { color: colors.textThird }]}>{vehicleLabel(item.vehicleType)}</Text>
           </View>
           {stopCount > 1 && (
             <View style={styles.meta}>
@@ -346,8 +356,10 @@ export default function DeliveriesScreen() {
           onEndReachedThreshold={0.3}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Icon name="Package" size={40} color={colors.textThird} />
-              <Text style={[styles.emptyText, { color: colors.textThird }]}>No deliveries found</Text>
+              <Icon name={loadError ? 'AlertCircle' : 'Package'} size={40} color={loadError ? '#DC2626' : colors.textThird} />
+              <Text style={[styles.emptyText, { color: loadError ? '#DC2626' : colors.textThird }]}>
+                {loadError ? 'Could not load your deliveries. Pull down to try again.' : 'No deliveries found'}
+              </Text>
             </View>
           }
         />
@@ -393,10 +405,8 @@ const styles = StyleSheet.create({
   meta:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText:     { fontSize: 12, textTransform: 'capitalize' },
   price:        { marginLeft: 'auto', fontSize: 14, fontWeight: '700' },
-  cancelLink:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 12 },
   payLink:      { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   payLinkText:  { fontSize: 13.5, fontWeight: '700' },
-  cancelLinkText: { color: '#DC2626', fontSize: 12, fontWeight: '700' },
   empty:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyText:    { fontSize: 15 },
 });

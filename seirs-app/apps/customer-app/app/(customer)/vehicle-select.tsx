@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcRideFare, calcPackageFare, LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
+import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcRideFare, calcPackageFare, DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { deliveriesApi , pricingApi } from '@/services/api';
 
 // UI presentation for the rate-card package vehicles: keyed by the
@@ -42,12 +42,15 @@ export default function VehicleSelectScreen() {
   }>();
 
   // 'ride' mode comes from /request (Okada/Keke/Car/Danfo, fare scales with km).
-  // 'cargo' mode comes from /multi-stop (the legacy Economy/Premium/Truck list).
+  // That is the ONLY caller: /request always passes mode 'ride'. There is no
+  // /multi-stop route (an older comment claimed there was) and the package
+  // flow prices its own vehicle step inside /send, so the cargo branch below
+  // is defensive only.
   const isRide = params.mode === 'ride';
   const distKm = Number(params.distanceKm ?? '0') || 0;
 
   // Coords drive regional + zone surcharges in the fare calc. Passing them
-  // here keeps the picker price aligned with what fare-breakdown computes
+  // here keeps the picker price aligned with what the review screen charges
   // (otherwise the picker undercounts and the user gets sticker-shock on
   // the next screen).
   const pickupCoords  = Number(params.pickupLat)  && Number(params.pickupLng)
@@ -120,13 +123,9 @@ export default function VehicleSelectScreen() {
     return live ? Math.round(Number(live.total) * sharedFactor) : localTotal;
   };
 
-  // Share-ride lives on this screen now (used to live on /request).
-  // Only applies to car / danfo; the toggle row is hidden otherwise.
-  const [shared, setShared] = useState(false);
-
   // List of vehicles, with a uniform shape both modes can render.
-  // Ride mode prices come from calcRideFare against the actual route
-  // distance + current share-ride toggle.
+  // Ride mode prices come from the server ride quote against the
+  // actual route distance.
   const list = isRide
     ? RIDE_VEHICLES.map(v => ({
         id:          v.id,
@@ -147,14 +146,12 @@ export default function VehicleSelectScreen() {
         })(),
         // Capacity, not minutes: SEIRS makes no time promises.
         metaText:    `${v.capacityCount} rider${v.capacityCount === 1 ? '' : 's'}`,
-        shareable:   false,
       }))
     : PACKAGE_VEHICLES.map(v => {
         const ui = PACKAGE_UI[v.id] ?? { icon: 'cube-outline', eta: '-', descKey: v.noteKey, features: [] };
         // Cargo flow doesn't have a weight at this screen: the picker
         // shows base + km only. Final fare (with weight/category/COD)
-        // resolves on fare-breakdown which reads them from the params
-        // forwarded by /multi-stop or /send.
+        // resolves on the /send review step, which re-quotes the server.
         const priced = calcPackageFare(v.id, distKm, 0, { pickupCoords, dropoffCoords });
         return {
           id:          v.id,
@@ -166,7 +163,6 @@ export default function VehicleSelectScreen() {
           eta:         ui.eta,
           features:    ui.features,
           priceLabel:  `₦${liveTotal(v.id, priced.total).toLocaleString()}`,
-          shareable:   false,
         };
       });
 
@@ -175,7 +171,6 @@ export default function VehicleSelectScreen() {
   const initial = list.find(v => v.id === params.preselect)?.id ?? list[0].id;
   const [selected, setSelected] = useState(initial);
   const selectedVehicle = list.find(v => v.id === selected) ?? list[0];
-  const selectedShareable = selectedVehicle.shareable;
 
   // Okada at night is a known safety/legality concern in most Nigerian
   // cities (most major roads restrict it past 7-9pm and security risk
@@ -186,15 +181,7 @@ export default function VehicleSelectScreen() {
   const isNight = hr >= 22 || hr < 5;
   const showOkadaNightWarning = isRide && selected === 'okada' && isNight;
 
-  // Picking a non-shareable vehicle while share was toggled on would
-  // leave `shared` stuck true (toggle row hides, but state remains) -
-  // confusing if the user later switches back to a shareable one and
-  // sees the discount already applied. Reset on every selection change.
-  const selectVehicle = (id: string) => {
-    setSelected(id);
-    const next = list.find(v => v.id === id);
-    if (next && !next.shareable) setShared(false);
-  };
+  const selectVehicle = (id: string) => setSelected(id);
 
   // ── Map background ──────────────────────────────────────────────────────
   const pickupLat  = Number(params.pickupLat  ?? '0') || null;
@@ -429,50 +416,36 @@ export default function VehicleSelectScreen() {
               <Text style={[styles.ctaValue, { color: theme.text }]}>{selectedVehicle.label} · {selectedVehicle.priceLabel}</Text>
             </View>
             <Button
-              label={isRide ? t('vehicleSelect2.reviewRide', { defaultValue: 'Review ride' }) : t('fareBreakdown2.title')}
-              disabled={isRide && !rideQuotes?.[ID_TO_ENUM[selected] ?? selected]}
+              label={t('vehicleSelect2.reviewRide', { defaultValue: 'Review ride' })}
+              disabled={!rideQuotes?.[ID_TO_ENUM[selected] ?? selected]}
               onPress={() => {
-                if (isRide) {
-                  const q = rideQuotes?.[ID_TO_ENUM[selected] ?? selected];
-                  if (!q) return; // no pinned price, no forward
-                  router.push({
-                    pathname: '/(customer)/confirm-ride',
-                    params: {
-                      mode:        'ride',
-                      pickup:      params.pickup,
-                      dropoff:     params.dropoff,
-                      pickupLat:   params.pickupLat ?? '',
-                      pickupLng:   params.pickupLng ?? '',
-                      dropoffLat:  params.dropoffLat ?? '',
-                      dropoffLng:  params.dropoffLng ?? '',
-                      vehicleId:   selected,
-                      distanceKm:  params.distanceKm ?? '0',
-                      fareTotal:   String(Math.round(Number(q.total))),
-                      serviceFee:  String(Math.round(Number(q.serviceFee ?? 0))),
-                      luggageFee:  String(Math.round(Number((q as any).luggageFee ?? 0))),
-                      luggage,
-                      riderName:   params.riderName ?? '',
-                      quoteToken:  q.quotePin?.token ?? '',
-                    },
-                  } as any);
-                  return;
-                }
+                // Ride-only forward. The old cargo branch pushed to
+                // /fare-breakdown, a screen no caller could ever reach
+                // (it mislabelled every cargo vehicle as "Economy" because
+                // its lookup table used ride ids). Deleted 2026-08-24; the
+                // package flow reviews and re-quotes inside /send.
+                const q = rideQuotes?.[ID_TO_ENUM[selected] ?? selected];
+                if (!q) return; // no pinned price, no forward
                 router.push({
-                pathname: '/(customer)/fare-breakdown',
-                params: {
-                  mode:         params.mode ?? 'cargo',
-                  pickup:       params.pickup,
-                  dropoff:      params.dropoff,
-                  pickupLat:    params.pickupLat ?? '',
-                  pickupLng:    params.pickupLng ?? '',
-                  dropoffLat:   params.dropoffLat ?? '',
-                  dropoffLng:   params.dropoffLng ?? '',
-                  vehicleId:    selected,
-                  shared:       shared ? '1' : '0',
-                  distanceKm:   params.distanceKm ?? '0',
-                  durationText: params.durationText ?? '',
-                },
-                });
+                  pathname: '/(customer)/confirm-ride',
+                  params: {
+                    mode:        'ride',
+                    pickup:      params.pickup,
+                    dropoff:     params.dropoff,
+                    pickupLat:   params.pickupLat ?? '',
+                    pickupLng:   params.pickupLng ?? '',
+                    dropoffLat:  params.dropoffLat ?? '',
+                    dropoffLng:  params.dropoffLng ?? '',
+                    vehicleId:   selected,
+                    distanceKm:  params.distanceKm ?? '0',
+                    fareTotal:   String(Math.round(Number(q.total))),
+                    serviceFee:  String(Math.round(Number(q.serviceFee ?? 0))),
+                    luggageFee:  String(Math.round(Number((q as any).luggageFee ?? 0))),
+                    luggage,
+                    riderName:   params.riderName ?? '',
+                    quoteToken:  q.quotePin?.token ?? '',
+                  },
+                } as any);
               }}
               size="lg"
               rightIcon={<Ionicons name="arrow-forward" size={18} color="#fff" />}
@@ -512,11 +485,6 @@ const styles = StyleSheet.create({
 
   warnRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, marginTop: Spacing.sm },
   warnText:    { flex: 1, fontSize: FontSize.sm, lineHeight: 18 },
-  shareRow:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5, marginTop: Spacing.sm },
-  shareIcon:   { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  shareTitle:  { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  shareSub:    { fontSize: FontSize.xs, marginTop: 2 },
-  shareCheck:  { width: 22, height: 22, borderRadius: 11, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
 
   ctaWrap:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: 'transparent' },
   ctaSummary:  { flex: 0 },

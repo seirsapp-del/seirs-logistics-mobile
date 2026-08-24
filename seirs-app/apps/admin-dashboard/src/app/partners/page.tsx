@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Store, Plus, Search, MapPin, Package, Store as StoreIcon, AlertTriangle } from 'lucide-react';
+import { Store, Plus, Search, MapPin, Package, Store as StoreIcon, AlertTriangle, AlertCircle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 // Faded design-preview rows shown when there are ZERO real partner stores.
@@ -38,14 +38,19 @@ export default function PartnersPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState<string>('');
   const [search, setSearch]   = useState('');
+  const [error,  setError]    = useState<string | null>(null);
 
-  useEffect(() => {
+  // A swallowed failure looked exactly like "no partner stores yet".
+  const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     adminApi.partnerStores.list(filter || undefined)
       .then(setRows)
-      .catch(() => setRows([]))
+      .catch((e: any) => { setRows([]); setError(e?.message ?? 'Could not load partner stores'); })
       .finally(() => setLoading(false));
   }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return rows;
@@ -85,6 +90,14 @@ export default function PartnersPage() {
           Review applications
         </Link>
       </div>
+
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => load()} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">

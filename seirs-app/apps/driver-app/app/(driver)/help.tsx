@@ -7,7 +7,21 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { DRIVER_HELP_FAQS } from '@/constants/driverMockData';
+
+// Verified against the live system 2026-08-10 (founder audit): the old
+// answers promised instant earnings, an invented ₦200 no-show fee, a
+// 500-trip rating window, and decline penalties, none of which exist.
+const DRIVER_HELP_FAQS = [
+  { topic: 'Earnings', q: 'When will I receive my earnings?',       a: 'Earnings from each delivery clear 2 business days after it completes, then you can withdraw free any time (minimum ₦1,000). Need it sooner? Instant withdrawal unlocks earnings that are at least 24 hours old for a small fee, shown before you confirm.' },
+  { topic: 'Earnings', q: 'How much does SEIRS take per delivery?', a: 'SEIRS takes a 30% service fee from each delivery fare; you keep 70%. Every trip in your earnings history shows the fare, the SEIRS fee, and your net so you can check the math yourself.' },
+  { topic: 'Safety',   q: 'How do I report a difficult customer?',  a: 'Open Contact Support from the menu and describe what happened; you can reference the tracking code of the trip. Support replies during working hours (6am to 10pm WAT). For danger or threats, use SOS immediately.' },
+  { topic: 'Trips',    q: 'What if the customer does not show up?', a: 'Message or call the customer from the trip screen first. If they stay unreachable, contact support from the same trip so the team can resolve it; do not abandon the package or leave it unattended.' },
+  { topic: 'Account',  q: 'How is my rating calculated?',           a: 'Your rating is the average of every customer rating on your completed deliveries. If your average stays below 3.5, your account may be reviewed; the Ratings screen shows tips to improve.' },
+  { topic: 'KYC',      q: 'What documents do I need for KYC?',      a: 'A government-issued ID (NIN, driver\'s licence, or international passport, front and back), a selfie, your driver\'s licence, vehicle photos, proof of vehicle ownership, and a valid insurance certificate. A guarantor letter is recommended but optional.' },
+  { topic: 'Account',  q: 'Can I change my vehicle or bank account?', a: 'Yes, but both are protected changes: submit the new details in the app and our team reviews them before they apply. Bank changes pause withdrawals until approved; vehicle changes need photos of the outside, inside, and plate.' },
+  { topic: 'Trips',    q: 'Can I decline a job request?',           a: 'Yes, you can decline any job request without penalty. Going into Wind Down mode stops new offers entirely while you finish your current jobs.' },
+];
+
 
 const TOPICS = [
   { icon: 'cash-outline',          label: 'Earnings' },
@@ -150,7 +164,12 @@ export default function DriverHelpScreen() {
         )}
 
         {/* Report issue */}
-        <Pressable style={[styles.reportBtn, { backgroundColor: isDark ? '#1A0000' : '#FEF2F2', borderColor: '#FECACA' }]}>
+        {/* D-1.7: this card had a chevron and no onPress, so the one route
+            out of a dispute was a dead tap. */}
+        <Pressable
+          style={[styles.reportBtn, { backgroundColor: isDark ? '#1A0000' : '#FEF2F2', borderColor: '#FECACA' }]}
+          onPress={() => router.push('/(driver)/support/new' as any)}
+        >
           <Ionicons name="flag-outline" size={18} color="#EF4444" />
           <View style={{ flex: 1 }}>
             <Text style={[styles.reportTitle, { color: '#EF4444' }]}>Report a Trip Issue</Text>

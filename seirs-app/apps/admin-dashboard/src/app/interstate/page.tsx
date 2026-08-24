@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { Truck, MapPin, ArrowRight, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
-// Spec V8 §3.12 - interstate trip board. Surfaces driver-declared
-// intercity trips so ops can match orphaned long-haul packages or
-// override allocations.
+// Spec V8 §3.12 - interstate trip board. READ-ONLY: it surfaces
+// driver-declared intercity trips and their spare capacity so ops know
+// who is going where. It does NOT match packages or override
+// allocations; the comment used to claim both, and an ops person went
+// looking for controls that were never built.
 interface InterstateTrip {
   id:              string;
   fromCity:        string;
@@ -34,17 +36,20 @@ export default function InterstateTripBoard() {
   const [trips,   setTrips]   = useState<InterstateTrip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
+  const [status,  setStatus]  = useState<'active' | 'completed' | 'cancelled'>('active');
 
   const load = () => {
     setLoading(true);
     setError(null);
-    adminApi.interstateTrips.list('active')
+    // The filter was pinned to 'active' though the API also serves
+    // completed and cancelled, so half the board was unreachable.
+    adminApi.interstateTrips.list(status)
       .then((data: any) => setTrips(Array.isArray(data) ? data : []))
       .catch((e: any) => setError(e?.message ?? 'Could not load trips'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [status]);
 
   return (
     <div className="p-6 space-y-6">
@@ -55,15 +60,30 @@ export default function InterstateTripBoard() {
         <div className="flex-1">
           <h1 className="text-lg font-bold text-[#0F2B4C]">Interstate Trip Board</h1>
           <p className="text-sm text-gray-500">
-            Drivers declare planned intercity routes; ops can match orphaned long-haul packages here.
+            Drivers declare planned intercity routes and spare capacity. Read-only for now: matching is done by contacting the driver.
           </p>
         </div>
-        <button
-          onClick={load}
-          className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-white border border-[#E5E7EB] rounded-lg hover:bg-gray-50"
-        >
-          <RefreshCw size={14} /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {(['active', 'completed', 'cancelled'] as const).map(s => (
+            <button
+              key={s}
+              onClick={() => setStatus(s)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border capitalize transition-colors ${
+                status === s
+                  ? 'bg-[#3A7BD5] text-white border-[#3A7BD5]'
+                  : 'bg-white text-[#0F2B4C]/50 border-[#E5E7EB] hover:border-[#0F2B4C]/20'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+          <button
+            onClick={load}
+            className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-white border border-[#E5E7EB] rounded-lg hover:bg-gray-50"
+          >
+            <RefreshCw size={14} /> Refresh
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -96,9 +116,18 @@ export default function InterstateTripBoard() {
                   <ArrowRight size={14} className="text-gray-400" />
                   <span className="font-semibold text-[#0F2B4C]">{t.toCity}</span>
                 </div>
+                {/* The phone was typed on the interface and never
+                    rendered, so ops could see who was driving to Kano and
+                    had no way to reach them. Admins always see full name
+                    and phone: that is deliberate on this dashboard. */}
                 <span className="text-xs text-gray-600">
-                  {t.driver?.user?.name ?? 'Unknown driver'}
+                  {t.driver?.id ? (
+                    <a href={`/drivers/${t.driver.id}`} className="font-medium text-[#3A7BD5] hover:underline">
+                      {t.driver?.user?.name ?? 'Unknown driver'}
+                    </a>
+                  ) : (t.driver?.user?.name ?? 'Unknown driver')}
                   {t.driver?.vehicleType ? ` · ${t.driver.vehicleType}` : ''}
+                  {t.driver?.user?.phone ? ` · ${t.driver.user.phone}` : ''}
                 </span>
                 <span className="text-xs text-gray-500">
                   {depart.toLocaleString('en-NG', {

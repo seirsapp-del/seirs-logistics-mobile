@@ -9,17 +9,19 @@
  *      bookings show their price. User taps Confirm.
  *   3. Frontend iterates valid bookings and calls businessApi.create-
  *      Delivery for each (the same endpoint as the in-app new-delivery
- *      form). Wallet debit + Delivery + DeliveryStop rows created
- *      atomically per booking.
+ *      form). Delivery + DeliveryStop rows only: the wallet debit this
+ *      comment used to describe was removed at 128-131, because senders
+ *      hold no balance with SEIRS.
  *
- * Nothing is charged before the user explicitly confirms. Invalid
+ * Nothing is charged anywhere in this flow. Confirm creates UNPAID
+ * bookings and each is paid per booking from Deliveries. Invalid
  * bookings are shown as warnings: the user can fix locally and
  * re-upload, OR proceed to create only the valid ones.
  */
 import { useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +30,8 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Icon } from '@/components/Icon';
 import { businessApi } from '@/services/api';
-import { useColors } from '@/context/ThemeContext';
+import { useColors, useTheme } from '@/context/ThemeContext';
+import { TERMS_URL } from '@/constants/config';
 
 // Shape of the backend preview response: mirrors what
 // business.service.uploadCsvDeliveries() returns.
@@ -59,8 +62,9 @@ interface CsvPreviewResponse {
   totalRows:     number;
   bookings:      BookingPreview[];
   grandTotal:    number;
-  walletBalance: number;
-  canAfford:     boolean;
+  // walletBalance / canAfford dropped 2026-08-23 (B-4.4): neither was ever
+  // rendered after the balance check came out, and senders hold no balance
+  // with SEIRS to check against.
   bulkDiscountApplied: boolean;
   bulkDiscountPercent: number;
 }
@@ -82,12 +86,19 @@ export default function CsvUploadScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const { isDark } = useTheme();
 
   const [file,     setFile]     = useState<{ name: string; uri: string } | null>(null);
   const [preview,  setPreview]  = useState<CsvPreviewResponse | null>(null);
   const [step,     setStep]     = useState<'pick' | 'preview' | 'creating' | 'done'>('pick');
   const [progress, setProgress] = useState({ done: 0, failed: 0, total: 0 });
   const [error,    setError]    = useState('');
+  /**
+   * Bulk bookings used to call createDelivery with no termsAccepted at all,
+   * so a batch of forty captured no consent to the failed-delivery terms
+   * while the single-booking flow gates payment on exactly that (B-10.3).
+   */
+  const [tcAgreed, setTcAgreed] = useState(false);
 
   const pickFile = async () => {
     setError('');
@@ -120,6 +131,10 @@ export default function CsvUploadScreen() {
 
   const confirmCreate = async () => {
     if (!preview) return;
+    if (!tcAgreed) {
+      Alert.alert('Agree to the terms', 'Tick the box to accept the SEIRS Terms of Service, including what happens if a delivery fails.');
+      return;
+    }
     const valid = preview.bookings.filter(b => b.valid);
     if (valid.length === 0) {
       Alert.alert('Nothing to create', 'There are no valid bookings in this CSV. Fix the errors and re-upload.');
@@ -159,6 +174,12 @@ export default function CsvUploadScreen() {
           km:                    booking.pricePreview?.km ?? 0,
           estimatedDriveMinutes: 0,
           scheduledAt:           first.scheduledAt,
+          termsAccepted:         true,
+          // NOTE: no quoteToken. The CSV preview endpoint prices each
+          // booking but does not sign a quote pin, so the total on the
+          // Create button is unpinned and the server may legitimately
+          // charge something else (the other half of B-10.3). Signing a
+          // pin per booking is a backend change.
         });
         done++;
       } catch {
@@ -225,11 +246,17 @@ export default function CsvUploadScreen() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 160 }}>
 
         {/* Instructions */}
-        <View style={styles.infoBox}>
+        {/* Fixed #EBF3FF panel with #374151 body text. The old comment
+            claimed it read cleanly against either background: it does not,
+            it glares as a light card on a dark screen (B-10.8). */}
+        <View style={[styles.infoBox, {
+          backgroundColor: isDark ? '#3A7BD522' : '#EBF3FF',
+          borderColor:     isDark ? '#3A7BD555' : '#BFDBFE',
+        }]}>
           <Icon name="Info" size={16} color="#3A7BD5" />
           <View style={{ flex: 1 }}>
-            <Text style={styles.infoTitle}>How it works</Text>
-            <Text style={styles.infoText}>
+            <Text style={[styles.infoTitle, { color: isDark ? '#93C5FD' : '#0F2B4C' }]}>How it works</Text>
+            <Text style={[styles.infoText, { color: colors.text }]}>
               1. Pick your CSV file (template available via the icon top-right).{'\n'}
               2. We geocode addresses and price every booking on the server.{'\n'}
               3. Review the preview below: fix any flagged rows.{'\n'}
@@ -237,7 +264,7 @@ export default function CsvUploadScreen() {
                   SEIRS: every booking is paid per booking through
                   Flutterwave, and only drivers and partner counters have
                   withdrawable earnings. */}
-              4. Tap Confirm to create the deliveries, then pay for the batch.{'\n\n'}
+              4. Tap Create to book them. They land unpaid: pay for each from Deliveries.{'\n\n'}
               <Text style={styles.bold}>Group multi-stop bookings</Text> by giving rows the same{' '}
               <Text style={styles.bold}>booking_ref</Text>. Empty booking_ref = standalone single-stop.
             </Text>
@@ -302,10 +329,14 @@ export default function CsvUploadScreen() {
         {step === 'done' && (
           <View style={[styles.doneCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Icon name="CheckCircle2" size={32} color="#16A34A" />
-            <Text style={[styles.doneTitle, { color: colors.text }]}>Done</Text>
+            <Text style={[styles.doneTitle, { color: colors.text }]}>Bookings created</Text>
+            {/* This card said only "Created N bookings" and the word unpaid
+                appeared nowhere on the screen (B-10.2). Nothing has been
+                charged at this point: name the state and name where to pay. */}
             <Text style={[styles.doneSub, { color: colors.textSecond }]}>
-              Created {progress.done} bookings.
+              {progress.done} bookings created and awaiting payment.
               {progress.failed > 0 ? ` ${progress.failed} failed.` : ''}
+              {' '}Nothing has been charged yet: pay for each one from Deliveries.
             </Text>
             <Pressable style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={() => router.replace('/(business)/(tabs)/deliveries' as any)}>
               <Text style={styles.primaryBtnText}>View Deliveries</Text>
@@ -320,13 +351,32 @@ export default function CsvUploadScreen() {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
         }]}>
+          <Pressable style={styles.tcRow} onPress={() => setTcAgreed(v => !v)}>
+            <View style={[styles.tcBox, {
+              borderColor:     tcAgreed ? colors.primary : colors.textThird,
+              backgroundColor: tcAgreed ? colors.primary : 'transparent',
+            }]}>
+              {tcAgreed && <Icon name="Check" size={12} color="#fff" />}
+            </View>
+            <Text style={[styles.tcText, { color: colors.textSecond }]}>
+              I agree to the SEIRS Terms of Service for every booking in this file, including what happens if a delivery fails.{' '}
+              <Text style={{ color: colors.primary, fontWeight: '600' }} onPress={() => Linking.openURL(TERMS_URL)}>
+                Read them
+              </Text>
+            </Text>
+          </Pressable>
           <Pressable
-            style={[styles.ctaBtn, { backgroundColor: colors.primary }]}
+            style={[styles.ctaBtn, { backgroundColor: tcAgreed ? colors.primary : colors.border }]}
             onPress={confirmCreate}
+            disabled={!tcAgreed}
           >
             <Icon name="Check" size={18} color="#fff" />
+            {/* The button used to read "Confirm: N480,000" and charge nothing
+                (B-10.2). A sender tapped a total and believed it settled. It
+                creates unpaid bookings, so it says so, with the amount still
+                shown as what will be owed. */}
             <Text style={styles.ctaBtnText}>
-              Confirm: ₦{Math.round(preview.grandTotal).toLocaleString()} ({preview.bookings.filter(b => b.valid).length} bookings)
+              Create {preview.bookings.filter(b => b.valid).length} bookings (₦{Math.round(preview.grandTotal).toLocaleString()} to pay)
             </Text>
           </Pressable>
         </View>
@@ -451,16 +501,14 @@ const styles = StyleSheet.create({
   },
   headerTitle:  { fontSize: 16, fontWeight: '700' },
 
-  // Info banner intentionally keeps light-blue accent in both modes: it
-  // reads cleanly against either background and the brand sky-blue tint
-  // signals it's informational.
+  // Sky-blue still signals "informational", but the colours are chosen
+  // per theme at the use site now: see B-10.8.
   infoBox:      {
     flexDirection: 'row', gap: 12, alignItems: 'flex-start',
-    backgroundColor: '#EBF3FF', borderRadius: 12, padding: 14, marginBottom: 20,
-    borderWidth: 1, borderColor: '#BFDBFE',
+    borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1,
   },
-  infoTitle:    { fontSize: 14, fontWeight: '700', color: '#0F2B4C', marginBottom: 4 },
-  infoText:     { fontSize: 13, color: '#374151', lineHeight: 18 },
+  infoTitle:    { fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  infoText:     { fontSize: 13, lineHeight: 18 },
   bold:         { fontWeight: '700' },
 
   dropzone:     {
@@ -533,5 +581,8 @@ const styles = StyleSheet.create({
   },
   ctaBtnDisabled: { opacity: 0.4 },
   ctaBtnText:   { color: '#fff', fontWeight: '700', fontSize: 15 },
+  tcRow:        { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
+  tcBox:        { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, marginTop: 1, alignItems: 'center', justifyContent: 'center' },
+  tcText:       { flex: 1, fontSize: 12.5, lineHeight: 17 },
   affordWarn:   { fontSize: 12, color: '#DC2626', textAlign: 'center', marginTop: 6 },
 });

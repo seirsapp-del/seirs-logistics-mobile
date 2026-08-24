@@ -5,6 +5,8 @@ import { Trash2, RotateCcw, AlertTriangle, ShieldAlert, Clock } from 'lucide-rea
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
+import { canHardDeleteAccount } from '@/lib/rbac';
+import { getUser } from '@/lib/auth';
 
 // Recycle Bin: users scheduled for hard-delete but still within the 30-day
 // grace window. Admin can restore (cancel deletion) or force-purge now.
@@ -46,13 +48,19 @@ export default function RecycleBinPage() {
   // Which row is being purged for good. Held separately from busyId so
   // the two-stage modal cannot be confused with the one-tap restore.
   const [purging, setPurging] = useState<PendingDeletion | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
   const confirm               = useConfirm();
+  // "Delete forever" is the same super_admin/support_agent NDPR path as
+  // /users/[id]. Rendering it to every role that can reach this
+  // compliance surface promised a purge the API then refused.
+  const canPurge              = canHardDeleteAccount(getUser());
 
   const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     adminApi.pendingDeletions.list()
       .then((data) => setRows(Array.isArray(data) ? data : []))
-      .catch(() => setRows([]))
+      .catch((e: any) => { setRows([]); setError(e?.message ?? 'Could not load the recycle bin'); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -140,6 +148,22 @@ export default function RecycleBinPage() {
         ))}
       </div>
 
+      {/* A failed fetch used to render as "Recycle bin is empty", which on a
+          compliance surface reads as "nothing is scheduled for deletion". */}
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+          <span className="flex-1">{error}</span>
+          <button onClick={load} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+        </div>
+      )}
+
+      {!canPurge && (
+        <p className="text-xs text-gray-500">
+          Read-only: purging an account before its scheduled date needs a Super Admin or Support Agent role. Restore is available to you.
+        </p>
+      )}
+
       {/* Info banner */}
       <div className="flex items-start gap-3 bg-[#3A7BD5]/8 border border-[#3A7BD5]/20 rounded-xl p-4">
         <ShieldAlert size={16} className="text-[#3A7BD5] mt-0.5 shrink-0" />
@@ -222,15 +246,17 @@ export default function RecycleBinPage() {
                             <RotateCcw size={12} />
                             {busyId === r.id ? '…' : 'Restore'}
                           </button>
-                          <button
-                            onClick={() => setPurging(r)}
-                            disabled={busyId === r.id}
-                            className="inline-flex items-center gap-1 text-xs text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 font-medium disabled:opacity-50"
-                            title="Purge now instead of waiting for the scheduled date. Cannot be undone."
-                          >
-                            <Trash2 size={12} />
-                            Delete forever
-                          </button>
+                          {canPurge && (
+                            <button
+                              onClick={() => setPurging(r)}
+                              disabled={busyId === r.id}
+                              className="inline-flex items-center gap-1 text-xs text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 font-medium disabled:opacity-50"
+                              title="Purge now instead of waiting for the scheduled date. Cannot be undone."
+                            >
+                              <Trash2 size={12} />
+                              Delete forever
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

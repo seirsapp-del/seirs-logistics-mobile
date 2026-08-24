@@ -10,7 +10,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           {/* Brand column */}
           <div className="lg:col-span-1">
-            <Link href="/" className="inline-flex items-center mb-4" aria-label="Seirs Logistics home">
+            <Link href="/" className="inline-flex items-center mb-4" aria-label="SEIRS Logistics home">
               {/* Footer background is navy, so render logo in white */}
               <SeirsLogo variant="lockup" size={150} color="#FFFFFF" />
             </Link>
@@ -119,9 +119,12 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* App-store badges, render in 'coming soon' state until the
-            apps publish and NEXT_PUBLIC_PLAY_STORE_URL + APP_STORE_URL
-            are set on Vercel. */}
+        {/* App-store badges. The 'coming soon' state this comment described
+            was removed on 2026-08-14: they are always real links now, built
+            from the final package ids in lib/launch.ts, so they point at the
+            correct forever-URL and start resolving the day the listings
+            publish. NEXT_PUBLIC_PLAY_STORE_URL / APP_STORE_URL still win if
+            set, for a beta or a regional listing. */}
         <div className="border-t border-white/10 pt-8 mb-6">
           <h4 className="text-white font-bold text-sm tracking-wider uppercase mb-4">
             Get the App
@@ -129,29 +132,35 @@ export default function Footer() {
           <AppStoreBadges theme="navy" />
         </div>
 
-        {/* Divider */}
+        {/* Divider.
+            text-white/40 raised to /55 on 2026-08-23. On the navy ground it
+            measured 3.52:1, below the 4.5:1 AA threshold, and it was carrying
+            the Privacy Policy, Terms of Service and Careers links at text-xs:
+            the smallest type on the page in the lowest-contrast colour, on
+            the three links a reader is most likely to be squinting for.
+            /55 measures 5.35:1. */}
         <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-white/40 text-sm text-center sm:text-left">
-            &copy; 2026 Seirs Logistics Ltd. All rights reserved.
+          <p className="text-white/55 text-sm text-center sm:text-left">
+            &copy; 2026 SEIRS Logistics Ltd. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <Link
               href="/privacy-policy"
-              className="text-white/40 hover:text-white/70 text-xs transition-colors"
+              className="text-white/55 hover:text-white text-xs transition-colors"
             >
               Privacy Policy
             </Link>
             <span className="text-white/20">·</span>
             <Link
               href="/terms-of-service"
-              className="text-white/40 hover:text-white/70 text-xs transition-colors"
+              className="text-white/55 hover:text-white text-xs transition-colors"
             >
               Terms of Service
             </Link>
             <span className="text-white/20">·</span>
             <Link
               href="/careers"
-              className="text-white/40 hover:text-white/70 text-xs transition-colors"
+              className="text-white/55 hover:text-white text-xs transition-colors"
             >
               Careers
             </Link>

@@ -90,11 +90,15 @@ export default function ApplyPartnerScreen() {
     }
     setSubmitting(true);
     try {
-      // Upload required photos in parallel
+      // Upload required photos in parallel, all into 'kyc' (B-10.5).
+      // These three are the owner's government ID, the CAC certificate and
+      // the storefront photo: folder is optional and was omitted, so they
+      // landed unsegregated while UploadFolder defines 'kyc' for exactly
+      // this. Every other upload in the app passes a folder.
       const [storefront, owner, cac] = await Promise.all([
-        uploadApi.file(storefrontPhoto!),
-        uploadApi.file(ownerId!),
-        cacReg ? uploadApi.file(cacReg) : Promise.resolve({ url: '' }),
+        uploadApi.file(storefrontPhoto!, 'image/jpeg', 'kyc'),
+        uploadApi.file(ownerId!, 'image/jpeg', 'kyc'),
+        cacReg ? uploadApi.file(cacReg, 'image/jpeg', 'kyc') : Promise.resolve({ url: '' }),
       ]);
       // Combine structured parts into the canonical storeAddress string
       // the backend already stores. Same format as business register.

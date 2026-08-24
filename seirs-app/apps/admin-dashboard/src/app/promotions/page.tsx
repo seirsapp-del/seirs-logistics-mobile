@@ -61,6 +61,33 @@ export default function PromotionsPage() {
     day: '2-digit', month: 'short', year: 'numeric',
   });
 
+  // Whole naira, from the kobo the entity stores.
+  const ngn = (kobo: number) => `₦${Math.round(Number(kobo ?? 0) / 100).toLocaleString()}`;
+
+  // An admin could not previously see that a percentage promo was
+  // uncapped, which is how a 50% code on a ₦40,000 delivery gets minted
+  // by accident. Uncapped percent promos are called out in red.
+  const renderCap = (pr: Promo) => {
+    const floor = pr.minSubtotalKobo > 0 ? `min ${ngn(pr.minSubtotalKobo)}` : null;
+    if (pr.maxDiscountKobo != null) {
+      return (
+        <span className="text-gray-700">
+          max {ngn(pr.maxDiscountKobo)}
+          {floor ? <span className="text-gray-400"> · {floor}</span> : null}
+        </span>
+      );
+    }
+    if (pr.type === 'percent') {
+      return (
+        <span className="text-red-600 font-semibold">
+          Uncapped
+          {floor ? <span className="text-gray-400 font-normal"> · {floor}</span> : null}
+        </span>
+      );
+    }
+    return <span className="text-gray-400">{floor ?? 'None'}</span>;
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -141,6 +168,7 @@ export default function PromotionsPage() {
                   <th className="text-left px-4 py-3">Code</th>
                   <th className="text-left px-4 py-3">Type</th>
                   <th className="text-left px-4 py-3">Value</th>
+                  <th className="text-left px-4 py-3">Cap</th>
                   <th className="text-left px-4 py-3">Uses / Limit</th>
                   <th className="text-left px-4 py-3">Valid Period</th>
                   <th className="text-left px-4 py-3">Status</th>
@@ -153,8 +181,9 @@ export default function PromotionsPage() {
                     <td className="px-4 py-3 font-mono font-bold text-[#0F2B4C] tracking-wider">{p.code}</td>
                     <td className="px-4 py-3 text-gray-600">{TYPE_LABEL[p.type] ?? p.type}</td>
                     <td className="px-4 py-3 font-semibold text-gray-800">{renderValue(p)}</td>
+                    <td className="px-4 py-3 text-xs">{renderCap(p)}</td>
                     <td className="px-4 py-3 text-gray-600">{p.usageCount} / {p.usageLimit || '∞'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(p.validFrom)}. {fmtDate(p.validTo)}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(p.validFrom)} to {fmtDate(p.validTo)}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_STYLES[p.status]}`}>{p.status}</span>
                     </td>
@@ -201,6 +230,13 @@ export default function PromotionsPage() {
   );
 }
 
+// Code fallback for the default cap on a percentage promo. Admin-tunable
+// via the Fee Catalogue key below once it is seeded; until then this
+// value applies. Every perk needs a ceiling, so a percent promo is never
+// created with maxDiscountKobo null from this modal.
+const DEFAULT_PERCENT_CAP_NGN = 2000;
+const PERCENT_CAP_FEE_KEY     = 'promo_max_discount_default_ngn';
+
 function CreatePromoModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [code, setCode]               = useState('');
   const [type, setType]               = useState<'flat_discount' | 'percent' | 'free_delivery'>('flat_discount');
@@ -210,12 +246,34 @@ function CreatePromoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
   const [validTo,   setValidTo]       = useState('');
   const [usageLimit, setUsageLimit]   = useState('1000');
   const [perUserLimit, setPerUserLimit] = useState('1');
+  // Both held in whole naira in the form and converted to kobo on submit,
+  // which is what the entity stores.
+  const [maxDiscount, setMaxDiscount] = useState(String(DEFAULT_PERCENT_CAP_NGN));
+  const [minSubtotal, setMinSubtotal] = useState('0');
   const [saving, setSaving]           = useState(false);
   const [err,    setErr]              = useState<string | null>(null);
+
+  // Pull the default cap from the Fee Catalogue if the row exists, so the
+  // number is admin-tunable rather than baked into this bundle. A missing
+  // row, or a role without fee access, quietly keeps the code fallback.
+  useEffect(() => {
+    let alive = true;
+    adminApi.fees.get(PERCENT_CAP_FEE_KEY)
+      .then((row: any) => {
+        const n = Number(row?.value);
+        if (alive && row?.active !== false && Number.isFinite(n) && n > 0) setMaxDiscount(String(Math.round(n)));
+      })
+      .catch(() => { /* code fallback stands */ });
+    return () => { alive = false; };
+  }, []);
+
+  const capNgn = Number(maxDiscount);
+  const capOk  = type !== 'percent' || (Number.isFinite(capNgn) && capNgn > 0);
 
   const submit = async () => {
     setSaving(true); setErr(null);
     try {
+      const minNgn = Number(minSubtotal);
       await adminApi.promotions.create({
         code,
         type,
@@ -225,6 +283,10 @@ function CreatePromoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
         validTo:   new Date(validTo).toISOString(),
         usageLimit:   Number(usageLimit),
         perUserLimit: Number(perUserLimit),
+        // Null only where a cap is meaningless: a flat discount is
+        // already its own ceiling. A percent promo always carries one.
+        maxDiscountKobo: Number.isFinite(capNgn) && capNgn > 0 ? Math.round(capNgn) * 100 : null,
+        minSubtotalKobo: Number.isFinite(minNgn) && minNgn > 0 ? Math.round(minNgn) * 100 : 0,
       });
       onSaved();
     } catch (e: any) {
@@ -285,6 +347,32 @@ function CreatePromoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                Max discount (₦){type === 'percent' ? ' *' : ''}
+              </label>
+              <input value={maxDiscount} onChange={e => setMaxDiscount(e.target.value)} type="number" min="0"
+                placeholder="0 = no cap"
+                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+              <p className="mt-1 text-[11px] text-gray-400">
+                {type === 'percent'
+                  ? 'Required. Without it a 50% code on a large booking has no ceiling.'
+                  : 'Optional. A flat discount is already its own ceiling.'}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Min subtotal (₦)</label>
+              <input value={minSubtotal} onChange={e => setMinSubtotal(e.target.value)} type="number" min="0"
+                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+              <p className="mt-1 text-[11px] text-gray-400">0 means the code works on any order.</p>
+            </div>
+          </div>
+          {type === 'percent' && !capOk && (
+            <p className="text-xs font-semibold text-red-600">
+              A percentage promotion needs a maximum discount.
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Total Uses (0 = ∞)</label>
               <input value={usageLimit} onChange={e => setUsageLimit(e.target.value)} type="number"
                 className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
@@ -298,7 +386,7 @@ function CreatePromoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50">
           <button onClick={onClose} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
-          <button onClick={submit} disabled={saving || !code || !validFrom || !validTo}
+          <button onClick={submit} disabled={saving || !code || !validFrom || !validTo || !capOk}
             className="px-4 py-2 text-sm font-semibold bg-[#0F2B4C] text-white rounded-lg hover:bg-[#3A7BD5] disabled:opacity-50">
             {saving ? 'Saving…' : 'Create'}
           </button>

@@ -22,11 +22,15 @@ interface DriverRow {
   lastOrderActiveAt?:   string;
 }
 
-const ACCEPTANCE_THRESHOLD = 80;
+// Code fallback only. The live number comes from the Fee Catalogue so
+// the founder can move it without a deploy (admin-tunable-everything).
+const ACCEPTANCE_THRESHOLD_FALLBACK = 80;
+const ACCEPTANCE_THRESHOLD_FEE_KEY  = 'last_order_min_acceptance_pct';
 
 export default function LastOrderCompliancePage() {
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [threshold, setThreshold] = useState(ACCEPTANCE_THRESHOLD_FALLBACK);
 
   useEffect(() => {
     adminApi.driverCompliance()
@@ -35,12 +39,24 @@ export default function LastOrderCompliancePage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // A missing fee row, or a role without fee access, keeps the fallback.
+  useEffect(() => {
+    let alive = true;
+    adminApi.fees.get(ACCEPTANCE_THRESHOLD_FEE_KEY)
+      .then((row: any) => {
+        const n = Number(row?.value);
+        if (alive && Number.isFinite(n) && n > 0) setThreshold(n);
+      })
+      .catch(() => { /* code fallback stands */ });
+    return () => { alive = false; };
+  }, []);
+
   // Bucket the drivers - surfaced backend will compute these properly;
   // until then we treat any driver with acceptance under threshold as
   // a compliance concern, and any with last-order toggle activity in
   // the last hour as winding down.
   const belowThreshold = drivers.filter(d =>
-    d.todayAcceptanceRate != null && d.todayAcceptanceRate < ACCEPTANCE_THRESHOLD,
+    d.todayAcceptanceRate != null && d.todayAcceptanceRate < threshold,
   );
   const windingDown = drivers.filter(d => !!d.lastOrderActiveAt);
 
@@ -54,7 +70,7 @@ export default function LastOrderCompliancePage() {
           <div>
             <h1 className="text-lg font-bold text-[#0F2B4C]">Last-Order Compliance</h1>
             <p className="text-sm text-gray-500">
-              Watch driver acceptance rates and Last Order toggle activity. Drivers below {ACCEPTANCE_THRESHOLD}% can&apos;t enable the wind-down mode.
+              Watch driver acceptance rates and Last Order toggle activity. {threshold}% is the target acceptance rate; today it is advisory, nothing blocks the wind-down toggle.
             </p>
           </div>
         </div>
@@ -94,7 +110,7 @@ export default function LastOrderCompliancePage() {
         ) : (
           drivers.map(d => {
             const rate = d.todayAcceptanceRate;
-            const meets = rate == null || rate >= ACCEPTANCE_THRESHOLD;
+            const meets = rate == null || rate >= threshold;
             const status =
               d.lastOrderActiveAt ? { label: 'Winding down',  color: '#16A34A' } :
               d.isOnline           ? { label: 'Accepting',     color: '#3A7BD5' } :

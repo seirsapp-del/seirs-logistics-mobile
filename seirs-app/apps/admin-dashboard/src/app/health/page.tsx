@@ -4,10 +4,16 @@ import { adminApi } from '@/lib/api';
 import { Activity, CheckCircle2, AlertCircle, XCircle, RefreshCw } from 'lucide-react';
 
 // Spec V8 §3.11 - system health snapshot. Lightweight ops view that
-// pings each external dependency and the analytics endpoints to
-// confirm everything responds. Real ops dashboards usually layer this
-// on top of Grafana / Datadog; this surface is for the times an admin
-// needs to know "is anything obviously down right now?"
+// times a real call against each SEIRS surface an admin depends on.
+//
+// It does NOT probe external dependencies. Nothing here touches
+// Flutterwave, Google Maps, R2 or email: the previous version of this
+// comment claimed it did, which is exactly the kind of thing someone
+// trusts at 2am. Real dependency probes need backend health endpoints.
+//
+// Real ops dashboards usually layer this on top of Grafana / Datadog;
+// this surface is for the times an admin needs to know "is anything
+// obviously down right now?"
 
 type CheckStatus = 'ok' | 'warn' | 'down' | 'pending';
 
@@ -38,7 +44,9 @@ export default function HealthDashboardPage() {
 
     // Each check is a real API call timed end-to-end
     next.push(await timeCheck('api',         'Backend API',          () => adminApi.stats()));
-    next.push(await timeCheck('auth',        'Auth (admin/me)',      () => adminApi.stats()));
+    // This row used to call adminApi.stats() as well, so two green rows
+    // came from one probe: a broken auth path would still have read OK.
+    next.push(await timeCheck('auth',        'Auth (admin/me)',      () => adminApi.me()));
     next.push(await timeCheck('analytics',   'Analytics endpoints',  () => adminApi.analytics.revenue(7)));
     next.push(await timeCheck('opsmap',      'Ops Map (Postgres)',   () => adminApi.opsMap.activeDeliveries()));
     next.push(await timeCheck('drivers',     'Drivers list',         () => adminApi.drivers(1)));

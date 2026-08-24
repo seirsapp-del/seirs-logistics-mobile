@@ -12,13 +12,15 @@ import { driversApi } from '@/services/api';
 
 // Spec V8 §2.11: driver wind-down toggle. When enabled, the matching
 // service stops auto-assigning new jobs while the driver finishes the
-// ones already accepted. Gating: only enable if today's acceptance
-// rate ≥ 80% so drivers can't game it to skip undesirable orders.
+// ones already accepted.
 //
-// Backend wiring is planned (last-order column + matching service
-// filter); this UI surface lets us ship the experience and bind it
-// when the column lands. Acceptance-rate calc reads from delivery
-// history once driversApi exposes it.
+// D-9.1: the backend IS wired (lastOrderMode column + matching filter);
+// this comment used to claim it was still "planned".
+// D-6.5: the "re-enabling within 30 minutes counts against next-day
+// priority" bullet was removed. No code enforces it and it contradicted
+// the one-way-toggle bullet directly above it.
+// D-1.11 (still open): todayAcceptanceRate is hardcoded null server-side,
+// so the 80% gate below is informational only.
 export default function LastOrderScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
@@ -170,7 +172,6 @@ export default function LastOrderScreen() {
                 'Dispatcher stops sending you new job offers',
                 'Active jobs continue normally: complete them at your pace',
                 'You can\'t re-enable jobs without fully signing off (one-way toggle)',
-                'Re-enabling within 30 minutes counts against next-day priority',
               ].map(t => (
                 <Text key={t} style={[styles.bullet, { color: theme.textSecond }]}>• {t}</Text>
               ))}

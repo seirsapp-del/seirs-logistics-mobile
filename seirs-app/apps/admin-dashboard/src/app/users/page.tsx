@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { AlertCircle } from 'lucide-react';
 
 const ROLE_COLORS: Record<string, string> = {
   customer: 'bg-blue-100 text-blue-700',
@@ -28,12 +29,17 @@ export default function UsersPage() {
   const [page,    setPage]    = useState(1);
   const [role,    setRole]    = useState('');
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
   const confirm = useConfirm();
 
   const load = (p = 1) => {
     setLoading(true);
+    setError(null);
     adminApi.users(p, role || undefined)
-      .then(setData).catch(() => {}).finally(() => setLoading(false));
+      .then(setData)
+      // A swallowed error looked exactly like "no users on this filter".
+      .catch((e: any) => setError(e?.message ?? 'Could not load users'))
+      .finally(() => setLoading(false));
     setPage(p);
   };
 
@@ -83,6 +89,14 @@ export default function UsersPage() {
             ))}
           </div>
         </div>
+
+        {error && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button onClick={() => load(page)} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-20 text-[#0F2B4C]/30">Loading…</div>

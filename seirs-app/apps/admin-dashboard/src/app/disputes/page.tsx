@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { adminApi } from '@/lib/api';
 import { Search, Package, Camera, FileText, ChevronRight, AlertCircle, ShieldCheck } from 'lucide-react';
 
@@ -38,8 +39,9 @@ const STAGE_COLOR: Record<string, string> = {
   driver_to_recipient: '#16A34A',
 };
 
-export default function DisputesPage() {
-  const [deliveryId, setDeliveryId] = useState('');
+function DisputesContent() {
+  const searchParams = useSearchParams();
+  const [deliveryId, setDeliveryId] = useState(searchParams.get('deliveryId') ?? '');
   const [chain,      setChain]      = useState<Handoff[]>([]);
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState('');
@@ -90,7 +92,7 @@ export default function DisputesPage() {
               value={deliveryId}
               onChange={e => setDeliveryId(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && load()}
-              placeholder="UUID - paste from delivery detail page"
+              placeholder="UUID - or use Open chain of custody on a delivery"
               className="w-full pl-10 pr-3 py-2 rounded-lg border border-[#E5E7EB] text-sm font-mono focus:outline-none focus:border-[#3A7BD5]"
             />
           </div>
@@ -225,5 +227,13 @@ export default function DisputesPage() {
         </table>
       </div>
     </div>
+  );
+}
+
+export default function DisputesPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-[#0F2B4C]/40">Loading…</div>}>
+      <DisputesContent />
+    </Suspense>
   );
 }

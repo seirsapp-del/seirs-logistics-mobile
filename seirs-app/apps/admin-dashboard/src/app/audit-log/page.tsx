@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
-import { getAdminRole } from '@/lib/auth';
-import { isSuperAdmin } from '@/lib/rbac';
-import { ShieldAlert, Filter, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { getUser } from '@/lib/auth';
+import { isSuperAdminFromUser } from '@/lib/rbac';
+import { ShieldAlert, Filter, ChevronLeft, ChevronRight, Lock, AlertCircle } from 'lucide-react';
 
 interface AuditEntry {
   id:        string;
@@ -43,6 +43,7 @@ export default function AuditLogPage() {
   const [adminId,   setAdminId]   = useState('');
   const [action,    setAction]    = useState('');
   const [expanded,  setExpanded]  = useState<string | null>(null);
+  const [error,     setError]     = useState<string | null>(null);
 
   const [isSuper,  setIsSuper]  = useState<boolean | null>(null);
 
@@ -51,14 +52,26 @@ export default function AuditLogPage() {
     adminApi.auditLog.list(p, adminId || undefined, action || undefined)
       .then((data: any) => {
         const items = Array.isArray(data) ? data : data?.items ?? [];
-        setEntries(p === 1 ? items : (prev) => [...prev, ...items]);
+        // Previous/Next are page jumps, not infinite scroll. Appending on
+        // anything but page 1 meant Next to 3 then Previous to 2 stacked
+        // page 2 on top of the accumulated list: duplicate rows and
+        // duplicate React keys. Every page change replaces the list.
+        setEntries(items);
         setHasMore(data?.hasMore ?? false);
         setPage(p);
-      }).catch(() => {}).finally(() => setLoading(false));
+        setError(null);
+      })
+      // An immutable record that silently renders empty on a failed fetch
+      // is worse than no record at all.
+      .catch((e: any) => setError(e?.message ?? 'Could not load the audit log'))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    const superAdmin = isSuperAdmin(getAdminRole());
+    // isSuperAdmin only reads the legacy user.adminRole, so a super admin
+    // on a dynamic role was shown "Access Restricted" on their own audit
+    // log. isSuperAdminFromUser handles both shapes.
+    const superAdmin = isSuperAdminFromUser(getUser());
     setIsSuper(superAdmin);
     if (superAdmin) load(1);
     else setLoading(false);
@@ -131,6 +144,14 @@ export default function AuditLogPage() {
             Clear
           </button>
         </div>
+
+        {error && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button onClick={() => load(page)} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+          </div>
+        )}
 
         {/* Log table */}
         {loading && entries.length === 0 ? (

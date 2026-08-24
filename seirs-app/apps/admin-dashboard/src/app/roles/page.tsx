@@ -129,10 +129,16 @@ export default function RolesPage() {
     setSaving(true);
     setError('');
     try {
+      // The editor expands '*' to every slug when it opens. Posting that
+      // expansion back turned the super_admin wildcard into a frozen list,
+      // so every page added afterwards needed an explicit grant and
+      // permissions.includes('*') stopped matching. Collapse it back.
+      const selected  = Array.from(draftPerms);
+      const isWildcard = allPermSlugs.length > 0 && allPermSlugs.every(s => draftPerms.has(s));
       const body = {
         name:        draftName.trim(),
         description: draftDescription.trim(),
-        permissions: Array.from(draftPerms),
+        permissions: isWildcard ? ['*'] : selected,
         badgeColor:  draftColor,
       };
       if (editing) {

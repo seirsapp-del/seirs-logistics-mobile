@@ -3,7 +3,8 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { HeroBackdrop } from "@/components/HeroBackdrop";
-import { Mail, Phone, MapPin, Send, CheckCircle, Building2, Truck, Store, MessageSquare } from "lucide-react";
+import { Mail, MapPin, Send, CheckCircle, Building2, Truck, Store, MessageSquare } from "lucide-react";
+import { APPS_PUBLISHED, SERVICE_AREAS } from "@/lib/launch";
 
 const subjects = [
   // 'sender' added 2026-08-15, first because it is the largest audience the
@@ -54,7 +55,10 @@ const contactCards = [
     // support, for an app nobody can install yet. Pre-launch the honest
     // urgent channel is the same support inbox. Restore the in-app
     // wording once the apps are published.
-    icon: Phone,
+    // Icon corrected 2026-08-23: this card was a Phone icon over a mailto
+    // link showing an email address, so the one card meant to look like the
+    // urgent channel signposted a call that is not on offer.
+    icon: Mail,
     label: "Delivery Issues",
     value: "support@seirs.co",
     href: "mailto:support@seirs.co",
@@ -364,13 +368,24 @@ function ContactForm() {
                 <h3 className="text-navy font-bold">Our Location</h3>
               </div>
               <p className="text-text-muted text-sm leading-relaxed">
-                Seirs Logistics Ltd
+                SEIRS Logistics Ltd
                 <br />
                 Lagos, Nigeria
               </p>
-              <p className="text-text-muted text-xs mt-3">
-                Operations currently active across Lagos and Abuja, with expansion to Port Harcourt and Kano underway.
-              </p>
+              {/* Coverage claim, rewritten 2026-08-23. This read "Operations
+                  currently active across Lagos and Abuja, with expansion to
+                  Port Harcourt and Kano underway" while APPS_PUBLISHED was
+                  false, the store listings were pending and the partner
+                  directory returned zero stores. Nothing was active in any of
+                  the four cities. It now renders only once the apps are
+                  published AND a real city list exists in launch.ts, so it is
+                  a data swap rather than a sentence someone has to remember
+                  to delete. Tracked as "Live city list" in LAUNCH_CHECKLIST. */}
+              {APPS_PUBLISHED && SERVICE_AREAS.length > 0 && (
+                <p className="text-text-muted text-xs mt-3">
+                  Currently serving {SERVICE_AREAS.join(", ")}.
+                </p>
+              )}
             </div>
 
             {/* Specific enquiries */}

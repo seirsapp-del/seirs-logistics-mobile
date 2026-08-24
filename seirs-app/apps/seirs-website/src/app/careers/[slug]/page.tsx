@@ -5,12 +5,12 @@ import { getContentBySlug, listContent, fmtDate, renderMarkdown } from '@/lib/cm
 
 export const revalidate = 60;
 
-// Required by Next.js `output: 'export'` (next.config.ts). Vercel build
-// hits the CMS at build time and pre-renders one page per slug. If the
-// CMS is unreachable or empty during the build, returns []; the listing
-// at /careers still renders, individual slugs just 404 until the next
-// deploy. Re-deploy after publishing new content (or wire a Vercel
-// deploy hook from the admin CMS publish action).
+// The Vercel build hits the CMS and pre-renders one page per role. The old
+// comment called this "required by Next.js `output: 'export'`"; that mode
+// was removed from next.config.ts and the config documents why. With
+// `revalidate = 60` above, a role published after the build is rendered on
+// demand rather than 404ing until the next deploy, so an empty list here is
+// a cold start, not a broken page.
 export async function generateStaticParams() {
   const roles = await listContent('job_listing', { pageSize: 100 });
   return roles.map(r => ({ slug: r.slug }));
@@ -21,9 +21,11 @@ interface Props { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const r = await getContentBySlug(slug);
-  if (!r) return { title: 'Role not found · SEIRS' };
+  // No brand suffix on either: the root layout template appends
+  // "| SEIRS Logistics" to whatever a page returns.
+  if (!r) return { title: 'Role not found' };
   return {
-    title:       r.seoTitle ?? `${r.title} · SEIRS Careers`,
+    title:       r.seoTitle ?? r.title,
     description: r.seoDescription ?? r.excerpt ?? `${r.title}, open role at SEIRS Logistics.`,
   };
 }
@@ -50,7 +52,10 @@ export default async function JobPage({ params }: Props) {
           )}
           <span className="flex items-center gap-1.5">
             <MapPin size={14} />
-            {(role as any).meta?.location ?? 'Lagos, Nigeria'}
+            {/* WebsiteContent carries no `meta` field, so this read
+                undefined every time and the fallback was the only value that
+                ever rendered. See the note in careers/page.tsx. */}
+            Lagos, Nigeria
           </span>
           <span>Posted {fmtDate(role.publishedAt)}</span>
         </div>

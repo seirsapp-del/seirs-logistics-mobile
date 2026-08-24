@@ -1,12 +1,16 @@
 ﻿import type { MetadataRoute } from 'next';
 import { listContent } from '@/lib/cms';
+import { SITE_URL } from '@/lib/launch';
 
 // Next.js Metadata API sitemap, generates /sitemap.xml at build /
 // revalidate time. ISR cadence matches the article fetch so newly
 // published articles appear in the sitemap within ~1 minute.
 export const revalidate = 60;
 
-const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://seirs.app';
+// One source for the canonical host, shared with layout.tsx, robots.ts
+// and CookieBanner. This used to read the env var directly, which was the
+// same default but a second place to change.
+const BASE = SITE_URL;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [articles, jobs] = await Promise.all([

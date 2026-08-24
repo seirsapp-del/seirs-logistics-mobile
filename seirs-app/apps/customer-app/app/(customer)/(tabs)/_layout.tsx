@@ -58,8 +58,11 @@ export default function CustomerTabsLayout() {
           backgroundColor: theme.navBackground,
           borderTopColor:  theme.border,
           borderTopWidth:  isDark ? 0 : 1,
-          height:          64 + insets.bottom,
-          paddingBottom:   10 + insets.bottom,
+          // edgeToEdgeEnabled is on and insets.bottom reports 0 on the
+          // 3-button Android nav layout, which put the tab labels 10px from
+          // the physical edge. The floor is the measured clearance.
+          height:          64 + Math.max(insets.bottom, 12),
+          paddingBottom:   10 + Math.max(insets.bottom, 12),
           paddingTop:      8,
         },
         tabBarLabelStyle: {

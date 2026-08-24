@@ -148,7 +148,11 @@ export default function AddBankScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
+    // D-5.1: 'bottom' is deliberately NOT in edges. The sticky CTA bar
+    // below already adds insets.bottom, and with edgeToEdgeEnabled the two
+    // paddings stacked and floated the button ~112dp up the screen on
+    // 3-button navigation.
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <View style={[styles.header, { borderBottomColor: theme.border }]}>

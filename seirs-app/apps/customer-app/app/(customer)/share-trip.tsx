@@ -8,10 +8,13 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { Avatar } from '@/components/ui/Avatar';
-import { MOCK_TRIPS, MOCK_USER } from '@/constants/mockData';
+import * as Clipboard from 'expo-clipboard';
+import { MOCK_TRIPS } from '@/constants/mockData';
 import { deliveriesApi } from '@/services/api';
 import { useEffect } from 'react';
+
+// A delivery only has a live location worth sharing while it is running.
+const LIVE_STATUSES = ['assigned', 'accepted', 'picked_up', 'in_transit', 'arrived'];
 
 const SHARE_VIA = [
   { id: 'whatsapp', label: 'WhatsApp',    icon: 'logo-whatsapp', color: '#25D366' },
@@ -28,31 +31,77 @@ export default function ShareTripScreen() {
   const { t }   = useTranslation();
   const { id, code } = useLocalSearchParams<{ id?: string; code?: string }>();
 
-  const trip = MOCK_TRIPS.find(tr => tr.id === id) ?? MOCK_TRIPS[2];
   const [copied, setCopied] = useState(false);
 
-  // The REAL tracking code, never the mock table's. Callers pass it as
-  // `code`; failing that we fetch it from the delivery id. Sharing
-  // MOCK_TRIPS[2].trackingCode sent recipients a link to a stranger's
-  // (fictional) trip: found in the 2026-08-15 mock-fallback sweep.
-  const [realCode, setRealCode] = useState<string | null>(code ?? null);
-  const isMockId = !!MOCK_TRIPS.find(tr => tr.id === id);
-  useEffect(() => {
-    if (realCode || !id || isMockId) return;
-    deliveriesApi.get(String(id))
-      .then((d: any) => { if (d?.trackingCode) setRealCode(d.trackingCode); })
-      .catch(() => {});
-  }, [realCode, id, isMockId]);
+  /**
+   * The route rendered on the share card MUST be the customer's own.
+   *
+   * This was `MOCK_TRIPS.find(tr => tr.id === id) ?? MOCK_TRIPS[2]`. Real
+   * deliveries carry UUIDs so the find always missed, and every share card
+   * printed the fictional Surulere to Ajah trip. The worst path was the
+   * drawer SOS: it opens this screen with no deliveryId at all, so someone
+   * sharing their location in an emergency shared an invented route
+   * (sweep C-2.1, 2026-08-23).
+   *
+   * Exact match only now. No id, no match, no addresses: the screen says so
+   * instead of inventing a journey.
+   */
+  const mockTrip = MOCK_TRIPS.find(tr => tr.id === id) ?? null;
+  const [fetchedTrip, setFetchedTrip] = useState<any | null>(null);
+  const [lookupDone,  setLookupDone]  = useState(false);
 
-  const trackingCode = realCode ?? (isMockId ? trip.trackingCode : null);
+  useEffect(() => {
+    let cancelled = false;
+    if (mockTrip) { setLookupDone(true); return; }
+
+    if (id) {
+      deliveriesApi.get(String(id))
+        .then((d: any) => { if (!cancelled) setFetchedTrip(d ?? null); })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setLookupDone(true); });
+      return () => { cancelled = true; };
+    }
+
+    // Opened from the drawer SOS with no id. Rather than share nothing (or
+    // worse, a fabricated route) find the customer's own trip in progress.
+    deliveriesApi.myDeliveries(1, 10)
+      .then((res: any) => {
+        if (cancelled) return;
+        const live = (res?.items ?? []).find((d: any) =>
+          LIVE_STATUSES.includes(String(d?.status)));
+        if (live) setFetchedTrip(live);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLookupDone(true); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const trip = fetchedTrip ?? mockTrip;
+
+  // Callers may hand us the tracking code directly; otherwise it comes off
+  // the delivery we just fetched. Never off the mock table for a real id.
+  const trackingCode: string | null = code ?? trip?.trackingCode ?? null;
 
   // Public tracking page lives on the marketing website: seirs.app/track/{code}.
   // Anyone with the code can open this in any browser without a login.
   const shareLink = trackingCode ? `https://seirs.app/track/${trackingCode}` : null;
 
+  // "Live Tracking Active" was rendered unconditionally, including when the
+  // screen was opened with no delivery at all (sweep C-5.11).
+  const isLive = !!trip && LIVE_STATUSES.includes(String(trip.status));
+
   const handleShare = async (via: string) => {
     if (!shareLink) return; // code still loading: buttons are inert, not wrong
     if (via === 'copy') {
+      // The label used to flip to "Copied!" while the clipboard was left
+      // untouched, so the customer pasted whatever was there before
+      // (sweep C-1.4).
+      try {
+        await Clipboard.setStringAsync(shareLink);
+      } catch {
+        return; // no false "Copied!" if the clipboard write failed
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       return;
@@ -81,72 +130,91 @@ export default function ShareTripScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Live badge */}
-        <View style={[styles.liveBanner, { backgroundColor: isDark ? '#001800' : '#F0FDF4', borderColor: '#BBF7D0' }]}>
-          <View style={styles.liveDot} />
-          <Text style={[styles.liveText, { color: '#16A34A' }]}>Live Tracking Active</Text>
-        </View>
+        {/* Live badge. Only when a real delivery is actually running. */}
+        {isLive && (
+          <View style={[styles.liveBanner, { backgroundColor: isDark ? '#001800' : '#F0FDF4', borderColor: '#BBF7D0' }]}>
+            <View style={styles.liveDot} />
+            <Text style={[styles.liveText, { color: '#16A34A' }]}>{t('shareTrip.liveActive')}</Text>
+          </View>
+        )}
 
-        {/* Trip snapshot */}
-        <View style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-          <View style={styles.tripRoute}>
-            <View style={[styles.routeDot, { backgroundColor: '#22C55E' }]} />
-            <Text style={[styles.routeAddr, { color: theme.text }]} numberOfLines={1}>{trip.pickupAddress}</Text>
+        {!trip && lookupDone ? (
+          /* No delivery to share. Reached from the drawer SOS when nothing
+             is in progress. Says so rather than printing a made-up route. */
+          <View style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+            <Text style={[styles.infoTitle, { color: theme.text }]}>{t('shareTrip.noTripTitle')}</Text>
+            <Text style={[styles.infoDesc, { color: theme.textSecond }]}>{t('shareTrip.noTripDesc')}</Text>
           </View>
-          <View style={[styles.routeLine, { backgroundColor: theme.border }]} />
-          <View style={styles.tripRoute}>
-            <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
-            <Text style={[styles.routeAddr, { color: theme.text }]} numberOfLines={1}>{trip.dropoffAddress}</Text>
-          </View>
-          <View style={[styles.trackingRow, { borderTopColor: theme.border }]}>
-            <Ionicons name="barcode-outline" size={14} color={theme.textSecond} />
-            <Text style={[styles.trackCode, { color: theme.textSecond }]}>{trackingCode ?? '…'}</Text>
-          </View>
-        </View>
-
-        {/* Share link */}
-        <View style={[styles.linkCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
-          <Text style={[styles.linkLabel, { color: theme.textSecond }]}>Tracking Link</Text>
-          <View style={[styles.linkRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
-            <Ionicons name="link-outline" size={16} color={theme.textThird} />
-            <Text style={[styles.linkText, { color: theme.text }]} numberOfLines={1}>{shareLink}</Text>
-            <Pressable
-              style={[styles.copyBtn, { backgroundColor: copied ? '#22C55E' : theme.primary }]}
-              onPress={() => handleShare('copy')}
-            >
-              <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={14} color="#fff" />
-              <Text style={styles.copyBtnText}>{copied ? 'Copied!' : 'Copy'}</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Share via */}
-        <Text style={[styles.viaLabel, { color: theme.textSecond }]}>Share Via</Text>
-        <View style={styles.viaRow}>
-          {SHARE_VIA.map(opt => (
-            <Pressable
-              key={opt.id}
-              style={styles.viaItem}
-              onPress={() => handleShare(opt.id)}
-            >
-              <View style={[styles.viaIcon, { backgroundColor: opt.color + '15' }]}>
-                <Ionicons name={opt.icon as any} size={24} color={opt.color} />
+        ) : (
+          <>
+            {/* Trip snapshot */}
+            <View style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+              <View style={styles.tripRoute}>
+                <View style={[styles.routeDot, { backgroundColor: '#22C55E' }]} />
+                <Text style={[styles.routeAddr, { color: theme.text }]} numberOfLines={1}>
+                  {trip?.pickupAddress ?? '…'}
+                </Text>
               </View>
-              <Text style={[styles.viaText, { color: theme.textSecond }]}>{opt.label}</Text>
-            </Pressable>
-          ))}
-        </View>
+              <View style={[styles.routeLine, { backgroundColor: theme.border }]} />
+              <View style={styles.tripRoute}>
+                <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
+                <Text style={[styles.routeAddr, { color: theme.text }]} numberOfLines={1}>
+                  {trip?.dropoffAddress ?? '…'}
+                </Text>
+              </View>
+              <View style={[styles.trackingRow, { borderTopColor: theme.border }]}>
+                <Ionicons name="barcode-outline" size={14} color={theme.textSecond} />
+                <Text style={[styles.trackCode, { color: theme.textSecond }]}>{trackingCode ?? '…'}</Text>
+              </View>
+            </View>
 
-        {/* Access info */}
-        <View style={[styles.infoCard, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
-          <Ionicons name="shield-checkmark-outline" size={18} color={theme.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.infoTitle, { color: theme.text }]}>Secure Sharing</Text>
-            <Text style={[styles.infoDesc, { color: theme.textSecond }]}>
-              Only people with this link can view your live location. The link expires when your trip ends.
-            </Text>
-          </View>
-        </View>
+            {/* Share link */}
+            <View style={[styles.linkCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
+              <Text style={[styles.linkLabel, { color: theme.textSecond }]}>Tracking Link</Text>
+              <View style={[styles.linkRow, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
+                <Ionicons name="link-outline" size={16} color={theme.textThird} />
+                <Text style={[styles.linkText, { color: theme.text }]} numberOfLines={1}>{shareLink ?? '…'}</Text>
+                <Pressable
+                  style={[styles.copyBtn, { backgroundColor: copied ? '#22C55E' : theme.primary, opacity: shareLink ? 1 : 0.5 }]}
+                  onPress={() => handleShare('copy')}
+                  disabled={!shareLink}
+                >
+                  <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={14} color="#fff" />
+                  <Text style={styles.copyBtnText}>{copied ? t('shareTrip.linkCopied') : t('shareTrip.copyLink')}</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Share via */}
+            <Text style={[styles.viaLabel, { color: theme.textSecond }]}>Share Via</Text>
+            <View style={styles.viaRow}>
+              {SHARE_VIA.map(opt => (
+                <Pressable
+                  key={opt.id}
+                  style={[styles.viaItem, { opacity: shareLink ? 1 : 0.5 }]}
+                  onPress={() => handleShare(opt.id)}
+                  disabled={!shareLink}
+                >
+                  <View style={[styles.viaIcon, { backgroundColor: opt.color + '15' }]}>
+                    <Ionicons name={opt.icon as any} size={24} color={opt.color} />
+                  </View>
+                  <Text style={[styles.viaText, { color: theme.textSecond }]}>{opt.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Access info */}
+            <View style={[styles.infoCard, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '30' }]}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={theme.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.infoTitle, { color: theme.text }]}>Secure Sharing</Text>
+                <Text style={[styles.infoDesc, { color: theme.textSecond }]}>
+                  Only people with this link can view your live location. The link expires when your trip ends.
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
 
       </ScrollView>
     </SafeAreaView>

@@ -34,7 +34,7 @@ export default function SosBanner() {
       className="flex items-center justify-center gap-2 bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700"
     >
       <Siren size={16} className="animate-pulse" />
-      {count === 1 ? '1 ACTIVE SOS ALERT' : `${count} ACTIVE SOS ALERTS`} — open the SOS desk
+      {count === 1 ? '1 ACTIVE SOS ALERT' : `${count} ACTIVE SOS ALERTS`}: open the SOS desk
     </Link>
   );
 }

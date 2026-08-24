@@ -15,6 +15,12 @@ import {
   // registered here, and the component renders nothing for unknown names.
   AlignLeft, BellOff, CheckCheck, LifeBuoy, MessageSquare, Paperclip, Receipt,
   MessageCircle, MoreHorizontal,
+  // Added 2026-08-23 (B-7.1), the third under-fill of this registry. All six
+  // were live call sites rendering NOTHING: AlertTriangle is the SOS Emergency
+  // drawer row and the seirs-id security warning, QrCode is "My SEIRS ID" in
+  // both drawers, ShieldCheck the verified-identity card, FileSignature the
+  // contract documents, Flag "Report an issue", File every "other" document.
+  AlertTriangle, Flag, QrCode, ShieldCheck, FileSignature, File,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -35,7 +41,19 @@ const ICONS: Record<string, LucideIcon> = {
   // registered here, and the component renders nothing for unknown names.
   AlignLeft, BellOff, CheckCheck, LifeBuoy, MessageSquare, Paperclip, Receipt,
   MessageCircle, MoreHorizontal,
+  // Added 2026-08-23 (B-7.1), the third under-fill of this registry. All six
+  // were live call sites rendering NOTHING: AlertTriangle is the SOS Emergency
+  // drawer row and the seirs-id security warning, QrCode is "My SEIRS ID" in
+  // both drawers, ShieldCheck the verified-identity card, FileSignature the
+  // contract documents, Flag "Report an issue", File every "other" document.
+  AlertTriangle, Flag, QrCode, ShieldCheck, FileSignature, File,
 };
+
+// Last-resort glyph, borrowed from the `FALLBACK[name] ?? something` shape
+// Illustration.tsx uses. An unregistered name must never again render as
+// empty space: a missing SOS icon reads as "there is no button here".
+// A visible circle is a control the user can still find and tap.
+const FALLBACK_ICON: LucideIcon = Circle;
 
 interface IconProps {
   name:         keyof typeof ICONS;
@@ -45,13 +63,12 @@ interface IconProps {
 }
 
 export function Icon({ name, size = 20, color = '#000', strokeWidth = 1.75 }: IconProps) {
-  const LucideIcon = ICONS[name];
-  // Dev-time warning when a name isn't registered. Previously this silently
-  // returned null, which led to invisible back-arrows, trash buttons, etc.
-  // Warning fires once per missing name so the dev console doesn't flood.
-  if (!LucideIcon) {
-    if (__DEV__) console.warn(`[Icon] "${name}" is not registered. Add it to apps/business-app/components/Icon.tsx.`);
-    return null;
+  const registered = ICONS[name];
+  // Dev-time warning when a name isn't registered, so it still gets fixed
+  // rather than hiding behind the fallback for another three audits.
+  if (!registered && __DEV__) {
+    console.warn(`[Icon] "${name}" is not registered. Add it to apps/business-app/components/Icon.tsx.`);
   }
+  const LucideIcon = registered ?? FALLBACK_ICON;
   return <LucideIcon size={size} color={color} strokeWidth={strokeWidth} />;
 }

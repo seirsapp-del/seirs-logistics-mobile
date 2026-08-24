@@ -1,4 +1,4 @@
-// Intl.PluralRules polyfill — Hermes (RN's JS engine) doesn't ship it,
+// Intl.PluralRules polyfill: Hermes (RN's JS engine) doesn't ship it,
 // so i18next's plural resolver was falling back to v3 format and logging
 // a warning on every screen. Importing this side-effect-only registers
 // `Intl.PluralRules` globally before i18next initialises.
@@ -39,7 +39,7 @@ async function getStoredLanguage(): Promise<string> {
  * can await it; otherwise the first screen that calls t() would see an
  * undefined `t` for one render and crash.
  *
- * Idempotent — safe to call more than once. The previous fire-and-forget
+ * Idempotent: safe to call more than once. The previous fire-and-forget
  * auto-init pattern caused a TypeError when the layout did
  * `import { initI18n }` because no such export existed.
  */

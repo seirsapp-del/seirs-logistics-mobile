@@ -37,10 +37,15 @@ import { Text as RNText, TextInput as RNTextInput } from 'react-native';
  * fixed-height rows first.
  */
 const MAX_FONT_SCALE = 1.25;
-// @ts-ignore defaultProps is the supported way to set this app-wide
-RNText.defaultProps = { ...(RNText.defaultProps ?? {}), maxFontSizeMultiplier: MAX_FONT_SCALE };
-// @ts-ignore
-RNTextInput.defaultProps = { ...(RNTextInput.defaultProps ?? {}), maxFontSizeMultiplier: MAX_FONT_SCALE };
+// defaultProps is the supported way to set this app-wide but is not on
+// RN's public types. Two @ts-ignore lines used to sit here, which also
+// silenced any future error on these statements; a narrow cast keeps the
+// type checking (sweep C-7.7).
+type WithDefaultProps = { defaultProps?: Record<string, unknown> };
+const textDefaults      = RNText as unknown as WithDefaultProps;
+const textInputDefaults = RNTextInput as unknown as WithDefaultProps;
+textDefaults.defaultProps = { ...(textDefaults.defaultProps ?? {}), maxFontSizeMultiplier: MAX_FONT_SCALE };
+textInputDefaults.defaultProps = { ...(textInputDefaults.defaultProps ?? {}), maxFontSizeMultiplier: MAX_FONT_SCALE };
 
 configureApi(API_BASE);
 

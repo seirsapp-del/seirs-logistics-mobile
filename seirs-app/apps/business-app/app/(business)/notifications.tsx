@@ -27,6 +27,10 @@ interface Notif {
   body:  string;
   time:  string;
   read:  boolean;
+  // The notification row carries the delivery it is about. Without it the
+  // row only un-bolded itself: a "package delivered" notification was a
+  // dead end (B-1.4).
+  deliveryId?: string;
 }
 
 // Brand palette only: green, sky blue, navy (dark mode gets the muted
@@ -68,6 +72,7 @@ export default function BusinessNotificationsScreen() {
         body:  n.body ?? n.message ?? '',
         time:  relativeTime(n.createdAt ?? ''),
         read:  !!n.isRead || !!n.readAt || !!n.read,
+        deliveryId: n.deliveryId ?? undefined,
       })));
     } catch {
       setNotifs([]);
@@ -177,7 +182,13 @@ export default function BusinessNotificationsScreen() {
                 )}
               >
               <Pressable
-                onPress={() => markOneRead(item.id)}
+                onPress={() => {
+                  markOneRead(item.id);
+                  // Open what the notification is ABOUT when the payload
+                  // names a delivery (B-1.4). Announcements carry none and
+                  // correctly stay put.
+                  if (item.deliveryId) router.push(`/(business)/delivery/${item.deliveryId}` as any);
+                }}
                 style={[styles.row, { borderBottomColor: theme.border, backgroundColor: theme.background }]}
               >
                 <View style={[styles.rowIcon, { backgroundColor: ic.color + '15' }]}>

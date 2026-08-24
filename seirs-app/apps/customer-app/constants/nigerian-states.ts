@@ -2,7 +2,7 @@
  * All 36 Nigerian states + Federal Capital Territory.
  *
  * Used by the register / address-edit forms to constrain the State field
- * to a known set. Keeps the dispatch system honest — pricing zones,
+ * to a known set. Keeps the dispatch system honest: pricing zones,
  * inter-state surcharges, and reporting all key off these canonical names.
  *
  * Order: Lagos + FCT first (most users), then alphabetical.

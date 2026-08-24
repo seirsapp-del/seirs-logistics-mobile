@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
- * Local bookmark store — keeps a list of hero-card IDs the user has
+ * Local bookmark store: keeps a list of hero-card IDs the user has
  * saved for later. Persists to AsyncStorage so bookmarks survive app
- * restart. No backend yet — when the CMS lands (Phase 2) we can sync
+ * restart. No backend yet: when the CMS lands (Phase 2) we can sync
  * these to the user account.
  *
  * Module-level cache means every screen that calls `useBookmarks()`

@@ -205,9 +205,20 @@ export default function DeliveryDetailPage() {
             {d.createdAt ? ` · booked ${new Date(d.createdAt).toLocaleString()}` : ''}
           </p>
         </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${STATUS_COLORS[d.status] ?? 'bg-[#0F2B4C]/5'}`}>
-          {String(d.status ?? '').replace('_', ' ')}
-        </span>
+        <div className="flex flex-col items-end gap-2">
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${STATUS_COLORS[d.status] ?? 'bg-[#0F2B4C]/5'}`}>
+            {String(d.status ?? '').replace('_', ' ')}
+          </span>
+          {/* /disputes needs the delivery UUID and this page never showed
+              it, so the liability chain was reachable only by digging the
+              id out of the URL by hand. */}
+          <Link
+            href={`/disputes?deliveryId=${encodeURIComponent(String(d.id ?? ''))}`}
+            className="text-xs font-semibold text-[#3A7BD5] hover:underline"
+          >
+            Open chain of custody
+          </Link>
+        </div>
       </div>
 
       {d.returnStatus && (

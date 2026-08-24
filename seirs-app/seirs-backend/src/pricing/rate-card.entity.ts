@@ -283,12 +283,40 @@ export class RateCard {
     rideNgn?:    number;
   } | null;
 
+  /**
+   * NO @Column here meant TypeORM never mapped this field, so the
+   * self-heal created the database column and every publish silently
+   * dropped whatever the admin typed (found 2026-08-23 while fixing
+   * highValue, which had the identical bug).
+   */
+  @Column({ type: 'jsonb', nullable: true })
   insurance: {
     enabled:                   boolean;
     premiumPct:                number;
     minPremiumNgn:             number;
     declaredValueThresholdNgn: number;
     maxCoverageNgn:            number;
+  } | null;
+
+  /**
+   * High-value cover: the premium charged on a declared value above the
+   * threshold, and the slice of it paid to the driver who carries the
+   * risk.
+   *
+   * The engine has read card.highValue since it was written, but there
+   * was no column, so it always fell through to the hardcoded 50,000 /
+   * 0.5% / 0%. The admin pricing page has offered all three fields the
+   * whole time and publishing them changed nothing: a real money line
+   * that was not admin-tunable, against the standing rule.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  highValue: {
+    /** Declared value above which the premium starts. */
+    thresholdNgn:   number;
+    /** Percent of the EXCESS over the threshold. */
+    premiumPct:     number;
+    /** Percent of the collected premium paid to the driver. 0 = all SEIRS. */
+    driverSharePct: number;
   } | null;
 
   /** Partner store economics. */

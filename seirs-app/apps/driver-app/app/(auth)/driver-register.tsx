@@ -21,24 +21,22 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword } from '@seirs/shared';
+import { isValidNigerianMobile, toE164Ng, NG_MOBILE_HINT } from '@/constants/phone';
 
 type VehicleType = 'bicycle' | 'motorcycle' | 'tricycle' | 'car' | 'van' | 'truck_small' | 'truck_large';
 
+// D-6.3: labels must match app/(driver)/vehicle.tsx. Same app, one vocabulary,
+// and it is the Nigerian one: okada, keke, danfo.
 const VEHICLES: { id: VehicleType; label: string; desc: string; Icon: any }[] = [
-  { id: 'bicycle',     label: 'Bicycle',      desc: 'Up to 5 kg',      Icon: Bike  },
-  { id: 'motorcycle',  label: 'Motorcycle',   desc: 'Up to 20 kg',     Icon: Bike  },
-  { id: 'tricycle',    label: 'Tricycle/Keke',desc: 'Up to 100 kg',    Icon: Truck },
-  { id: 'car',         label: 'Car',          desc: 'Up to 200 kg',    Icon: Car   },
-  { id: 'van',         label: 'Van',          desc: 'Up to 800 kg',    Icon: Van   },
-  { id: 'truck_small', label: 'Truck (Small)',desc: 'Up to 3,000 kg',  Icon: Truck },
-  { id: 'truck_large', label: 'Truck (Large)',desc: '3,000 kg+',       Icon: Truck },
+  { id: 'bicycle',     label: 'Bicycle',              desc: 'Up to 5 kg',      Icon: Bike  },
+  { id: 'motorcycle',  label: 'Okada (Motorcycle)',   desc: 'Up to 20 kg',     Icon: Bike  },
+  { id: 'tricycle',    label: 'Keke (Tricycle)',      desc: 'Up to 100 kg',    Icon: Truck },
+  { id: 'car',         label: 'Car',                  desc: 'Up to 200 kg',    Icon: Car   },
+  { id: 'van',         label: 'Van / Danfo',          desc: 'Up to 800 kg',    Icon: Van   },
+  { id: 'truck_small', label: 'Small Truck',          desc: 'Up to 3,000 kg',  Icon: Truck },
+  { id: 'truck_large', label: 'Large Truck',          desc: '3,000 kg+',       Icon: Truck },
 ];
 
-// Nigerian mobile numbers are 11 digits total: 0 + 2-digit network code + 8 digits.
-// Earlier regex used \d{7} (10 digits total) which rejected every valid number.
-const NIGERIAN_PHONE_RE = /^0(70|71|80|81|90|91)\d{8}$/;
-const normalisePhone = (raw: string) =>
-  raw.replace(/[\s-]/g, '').replace(/^\+234/, '0');
 
 export default function DriverRegisterScreen() {
   const router      = useRouter();
@@ -66,8 +64,8 @@ export default function DriverRegisterScreen() {
       setError('Please fill in all required fields and select a vehicle type.');
       return;
     }
-    if (!NIGERIAN_PHONE_RE.test(normalisePhone(phone))) {
-      setError('Enter a valid Nigerian mobile number (e.g. 08012345678: 11 digits; +234 prefix also accepted).');
+    if (!isValidNigerianMobile(phone)) {
+      setError(NG_MOBILE_HINT);
       return;
     }
     const pwErr = validatePassword(password);
@@ -96,7 +94,9 @@ export default function DriverRegisterScreen() {
       await authApi.register({
         name: fullName,
         email,
-        phone: `+234${phone.replace(/^0/, '')}`,
+        // D-10.3: normalise before building E.164. Posting the raw field
+        // registered "+2348012345678" as "+234+2348012345678".
+        phone: toE164Ng(phone),
         password,
         role: 'driver',
         vehicleType: vehicle!,

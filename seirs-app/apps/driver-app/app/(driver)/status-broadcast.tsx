@@ -9,13 +9,17 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 
-// Spec V8 §2.14: quick three-button status broadcast. When network is
-// flaky or driver is delayed, one tap sends a status that's queued and
-// delivered to the customer's tracking screen the moment connectivity
-// recovers. Powered by the offline GPS sync layer (be.offline planned).
+// Spec V8 §2.14: quick three-button status broadcast. One tap posts a
+// status the customer sees on their tracking screen.
 //
-// Server endpoint comes with be.offline; for now the screen renders +
-// provides feedback so drivers can practice the flow during testing.
+// D-6.4 / D-9.1: this screen used to promise offline queuing ("queued
+// locally and delivered when your connection comes back", "will retry
+// until acknowledged", "logged offline every 30s and uploaded in
+// batches"). None of that exists: send() is a bare await that alerts on
+// failure, there is no NetInfo dependency and no AsyncStorage queue.
+// A driver who lost signal in traffic was relying on a queue that was
+// never built. The copy now says what the code actually does. If the
+// queue is ever built, the copy can come back with it.
 
 type Status = 'network' | 'traffic' | 'help';
 
@@ -47,9 +51,15 @@ export default function StatusBroadcastScreen() {
       await driversApi.sendStatusBroadcast({ type: WIRE[key] });
       setSent(key);
       const msg = OPTIONS.find(o => o.key === key)?.label ?? '';
-      Alert.alert('Status sent', `Customer will see: "${msg}". Will retry until acknowledged if your network is offline.`);
+      Alert.alert('Status sent', `Customer will see: "${msg}".`);
     } catch (e: any) {
-      Alert.alert('Could not send', e?.message ?? 'Try again.');
+      // No queue exists, so a failed send is simply not sent. Say so.
+      Alert.alert(
+        'Not sent',
+        `${e?.message ?? 'The status could not be sent.'}
+
+This needs a connection. Try again once you have signal.`,
+      );
     } finally {
       setSending(null);
     }
@@ -68,7 +78,7 @@ export default function StatusBroadcastScreen() {
       <ScrollView contentContainerStyle={styles.content}>
 
         <Text style={[styles.intro, { color: theme.textSecond }]}>
-          Tap any status to send it to the customer. Works offline: your message is queued locally and delivered the moment your connection comes back.
+          Tap any status to send it to the customer. Sending needs a connection: if it fails, nothing is stored, so try again once you have signal.
         </Text>
 
         {OPTIONS.map(o => {
@@ -107,7 +117,7 @@ export default function StatusBroadcastScreen() {
         <View style={[styles.footnote, { backgroundColor: theme.primary + '10' }]}>
           <Wifi size={14} color={theme.primary} />
           <Text style={[styles.footnoteText, { color: theme.textSecond }]}>
-            Tip: SEIRS keeps logging your location offline (every 30s) and uploads in batches when network returns. Your customer always sees your latest known position.
+            Your customer sees the last position SEIRS received from you. If you lose signal, that position stops updating until you are back online.
           </Text>
         </View>
       </ScrollView>

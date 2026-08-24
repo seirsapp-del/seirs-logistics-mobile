@@ -169,7 +169,10 @@ export default function OnboardingScreen() {
       </Animated.View>
 
       {/* ── Bottom sheet (fixed across all slides) ─────────────────────── */}
-      <View style={[styles.sheet, { backgroundColor: sheetBg, paddingBottom: insets.bottom + Spacing.md }]}>
+      {/* insets.bottom measures 0 on this 3-button Android nav layout, so the
+          raw value puts the last CTA (Become a Driver) under the nav bar. The
+          floor is what actually clears it (measured, request.tsx:376). */}
+      <View style={[styles.sheet, { backgroundColor: sheetBg, paddingBottom: Math.max(insets.bottom, 24) + Spacing.md }]}>
         <Pressable
           style={[styles.primaryBtn, { backgroundColor: '#0F2B4C' }]}
           onPress={() => router.push('/(auth)/register' as any)}

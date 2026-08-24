@@ -34,7 +34,7 @@ const STATUS_CONFIG: Record<string, {
   // Brand palette only (audit 2026-08-10: purple + off-brand blues removed).
   // Unpaid booking: dispatch only sees paid work, so nothing is
   // "finding a rider" yet and this screen must not pretend otherwise.
-  awaiting_payment: { labelKey: 'tracking.stepAwaitingPayment', step: 0, gradient: ['#D97706', '#B45309'], icon: 'card' },
+  awaiting_payment: { labelKey: 'tracking.stepAwaitingPayment', step: 0, gradient: ['#FFBE0B', '#E0A800'], icon: 'card' },
   pending:    { labelKey: 'tracking.stepPending',   step: 1, gradient: ['#3A7BD5', '#2A5FA8'], icon: 'search' },
   assigned:   { labelKey: 'tracking.stepAssigned',  step: 2, gradient: ['#3A7BD5', '#1F4E8C'], icon: 'navigate' },
   picked_up:  { labelKey: 'tracking.stepPickedUp',  step: 3, gradient: ['#FFBE0B', '#D99E00'], icon: 'cube' },
@@ -48,7 +48,7 @@ const RIDE_LABELS: Record<string, string> = {
   awaiting_payment: 'Waiting for payment',
   pending:          'Finding your rider',
   assigned:         'Rider on the way',
-  picked_up:        'Arrived — meet them outside',
+  picked_up:        'Arrived, meet them outside',
   in_transit:       'On the trip',
   delivered:        'Ride completed',
   failed:           'Ride failed',
@@ -556,14 +556,15 @@ export default function TrackScreen() {
                 )}
                 {currentStatus === 'awaiting_payment' && !!deliveryData?.id && (
                   <Pressable
-                    style={{ marginTop: 10, backgroundColor: '#D97706', borderRadius: 12,
+                    style={{ marginTop: 10, backgroundColor: '#FFBE0B', borderRadius: 12,
                              paddingVertical: 12, alignItems: 'center' }}
                     onPress={() => router.push({
                       pathname: '/(customer)/payment/[deliveryId]',
                       params: { deliveryId: deliveryData.id },
                     } as any)}
                   >
-                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>
+                    {/* Navy on brand yellow: white on #FFBE0B is unreadable. */}
+                    <Text style={{ color: '#0F2B4C', fontSize: 14, fontWeight: '700' }}>
                       Complete payment
                     </Text>
                   </Pressable>

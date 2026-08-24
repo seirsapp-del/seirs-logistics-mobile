@@ -2,7 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import FuelDriftBanner from '@/components/FuelDriftBanner';
-import { DollarSign, Save, X, History, Search, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { isSuperAdminFromUser } from '@/lib/rbac';
+import { getUser } from '@/lib/auth';
+import { DollarSign, Save, X, History, Search, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
 
 interface Fee {
   key:               string;
@@ -91,15 +93,25 @@ export default function FeeCataloguePage() {
   const [newActive,   setNewActive]   = useState(true);
   const [saving,      setSaving]      = useState(false);
   const [savedKey,    setSavedKey]    = useState<string | null>(null);
+  const [error,       setError]       = useState<string | null>(null);
+
+  // PATCH /fees/:key is super-admin only, but the nav grants this page to
+  // ops_manager and finance_officer. They could open any fee, edit it,
+  // hit an always-enabled Save and collect a 403 alert. Read-only for
+  // them now, and the drawer says so before they start typing.
+  const canEdit = isSuperAdminFromUser(getUser());
 
   // Initial load
-  useEffect(() => {
+  const load = () => {
     setLoading(true);
+    setError(null);
     adminApi.fees.list()
       .then(rows => setFees(Array.isArray(rows) ? rows : []))
-      .catch(() => setFees([]))
+      .catch((e: any) => { setFees([]); setError(e?.message ?? 'Could not load the fee catalogue'); })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
 
   // Group + filter for rendering
   const grouped = useMemo(() => {
@@ -178,10 +190,25 @@ export default function FeeCataloguePage() {
             </p>
           </div>
         </div>
-        <div className="text-sm text-gray-500">
-          {fees.length} fees · {fees.filter(f => f.active).length} active
+        <div className="flex items-center gap-3 text-sm text-gray-500">
+          {!canEdit && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">
+              <Lock size={11} /> Read-only
+            </span>
+          )}
+          <span>{fees.length} fees · {fees.filter(f => f.active).length} active</span>
         </div>
       </div>
+
+      {/* A 403 or a cold Railway boot used to render as "No fees
+          configured yet", which reads as a bad seed, not a bad request. */}
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span className="flex-1">{error}</span>
+          <button onClick={load} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative max-w-md">
@@ -201,7 +228,11 @@ export default function FeeCataloguePage() {
         <div className="text-center py-20 text-gray-400">No fees configured yet - backend seed should have run on first deploy.</div>
       ) : (
         <div className="space-y-6">
-          {CATEGORY_ORDER.filter(cat => grouped[cat]?.length).map(cat => (
+          {/* Anything the backend adds that CATEGORY_ORDER has not heard of
+              used to vanish silently. Known categories keep their order,
+              unknown ones fall in at the end rather than disappearing. */}
+          {[...CATEGORY_ORDER, ...Object.keys(grouped).filter(c => !CATEGORY_ORDER.includes(c)).sort()]
+            .filter(cat => grouped[cat]?.length).map(cat => (
             <section key={cat}>
               <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F2B4C]/60 mb-2 px-1">
                 {CATEGORY_LABEL[cat] ?? cat}
@@ -272,8 +303,9 @@ export default function FeeCataloguePage() {
                   type="number"
                   step="any"
                   value={newValue}
+                  disabled={!canEdit}
                   onChange={e => setNewValue(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-base font-semibold focus:outline-none focus:border-[#3A7BD5]"
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-base font-semibold focus:outline-none focus:border-[#3A7BD5] disabled:bg-gray-50 disabled:text-gray-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Preview: <span className="font-bold text-[#0F2B4C]">{formatValue(Number(newValue) || 0, editing.unit)}</span>
@@ -290,6 +322,7 @@ export default function FeeCataloguePage() {
                   <input
                     type="checkbox"
                     checked={newActive}
+                    disabled={!canEdit}
                     onChange={e => setNewActive(e.target.checked)}
                     className="sr-only peer"
                   />
@@ -306,27 +339,39 @@ export default function FeeCataloguePage() {
                 </label>
                 <textarea
                   value={newNote}
+                  disabled={!canEdit}
                   onChange={e => setNewNote(e.target.value)}
                   rows={2}
                   placeholder="e.g. raised due to fuel spike on 2026-05-04"
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:border-[#3A7BD5]"
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:border-[#3A7BD5] disabled:bg-gray-50"
                 />
                 <p className="text-[11px] text-gray-500 mt-1">
                   Captured in the history log alongside who changed it and when.
                 </p>
               </div>
 
-              {/* Save button */}
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full bg-[#0F2B4C] text-white font-semibold py-2.5 rounded-lg hover:bg-[#1a3d6b] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-              >
-                <Save size={15} />
-                {saving ? 'Saving…' : 'Save change'}
-              </button>
+              {/* Save button. Hidden entirely rather than disabled: a
+                  greyed-out Save invites a support ticket, a plain
+                  sentence does not. */}
+              {canEdit ? (
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="w-full bg-[#0F2B4C] text-white font-semibold py-2.5 rounded-lg hover:bg-[#1a3d6b] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Save size={15} />
+                  {saving ? 'Saving…' : 'Save change'}
+                </button>
+              ) : (
+                <div className="flex items-start gap-2 p-3 bg-gray-50 border border-[#E5E7EB] rounded-lg">
+                  <Lock size={14} className="text-gray-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-gray-600">
+                    Read-only. Fee values are editable by a Super Admin only. You can review the current value and its full change history here.
+                  </p>
+                </div>
+              )}
 
-              {Number(editing.value) !== Number(newValue) && (
+              {canEdit && Number(editing.value) !== Number(newValue) && (
                 <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <AlertCircle size={14} className="text-yellow-600 shrink-0 mt-0.5" />
                   <p className="text-xs text-yellow-900">

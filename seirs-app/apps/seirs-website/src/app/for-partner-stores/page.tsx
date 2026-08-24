@@ -18,7 +18,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Partner Stores",
   description:
-    "Turn your shop into a Seirs drop-off point. Earn a per-package fee on everything you handle, drive foot traffic, and see every naira itemised in your in-app statements. Open to existing Nigerian businesses with shopfront space.",
+    "Turn your shop into a SEIRS drop-off point. Earn a per-package fee on everything you handle, drive foot traffic, and see every naira itemised in your in-app statements. Open to existing Nigerian businesses with shopfront space.",
 };
 
 function FeatureCard({
@@ -82,10 +82,10 @@ export default async function ForPartnerStoresPage() {
           <>
             Turn your shop into a
             <br />
-            <span className="text-sky">Seirs drop-off point.</span>
+            <span className="text-sky">SEIRS drop-off point.</span>
           </>
         }
-        subtitle="Already running a kiosk, supermarket, pharmacy, or any neighbourhood shopfront? Become a Seirs Partner Store. Earn for every package you handle, drive foot traffic, and watch every naira on your statement. No upfront cost."
+        subtitle="Already running a kiosk, supermarket, pharmacy, or any neighbourhood shopfront? Become a SEIRS Partner Store. Earn for every package you handle, drive foot traffic, and watch every naira on your statement. No upfront cost."
         icon={Store}
         primaryCtaLabel={
           <>
@@ -191,7 +191,7 @@ export default async function ForPartnerStoresPage() {
             <FeatureCard
               icon={Store}
               title="Featured in customer search"
-              body="Customers nearby will see your shop in the Seirs Customer app when picking a drop-off point, your shop name, photo, and hours displayed."
+              body="Customers nearby will see your shop in the SEIRS Customer app when picking a drop-off point, your shop name, photo, and hours displayed."
             />
           </div>
         </div>
@@ -217,7 +217,7 @@ export default async function ForPartnerStoresPage() {
                 Storage space for at least 10 packages at any given time
               </CheckRow>
               <CheckRow>
-                A working smartphone for the Seirs Business app
+                A working smartphone for the SEIRS Business app
               </CheckRow>
               <CheckRow>
                 Valid CAC business registration OR personal NIN if running as sole trader
@@ -253,7 +253,7 @@ export default async function ForPartnerStoresPage() {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={img.img_partner_apply ?? img.img_partner_store}
-          alt="A Seirs partner store serving customers"
+          alt="A SEIRS partner store serving customers"
           className="w-full h-56 sm:h-72 lg:h-96 object-cover"
           loading="lazy"
         />

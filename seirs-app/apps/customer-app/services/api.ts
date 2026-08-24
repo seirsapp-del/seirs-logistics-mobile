@@ -30,6 +30,11 @@ export {
   supportApi,
   // Wave 16E addition
   maintenanceApi,
+  // Raw request helper. The SOS screen reads GET /config/emergency-contacts,
+  // an admin-managed list that has no typed wrapper in shared yet. Exported
+  // here so the screen does not hand-roll a fetch and lose the auth header
+  // and the 401 session handling.
+  request as apiRequest,
 } from '@seirs/shared/services/api';
 
 export type {

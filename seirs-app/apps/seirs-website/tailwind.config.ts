@@ -14,7 +14,14 @@ const config: Config = {
         sky: "#3A7BD5",
         "off-white": "#F5F5F0",
         "text-dark": "#1F2937",
-        "text-muted": "#6B7280",
+        // Darkened 2026-08-23 from #6B7280. That value measured 4.42:1 on
+        // the #F5F5F0 off-white this site uses for most section grounds,
+        // under the 4.5:1 WCAG AA threshold, and it is the body-copy colour
+        // site-wide: every FeatureCard body, every section-sub, every muted
+        // paragraph. #5B6472 is the same blue-grey family, sits between
+        // Tailwind's gray-500 and gray-600, and measures 5.47:1 on off-white
+        // and 6.0:1 on white.
+        "text-muted": "#5B6472",
         "success-green": "#16A34A",
         "warning-amber": "#D97706",
         // The brand yellow, added as a token 2026-08-15. It was already in

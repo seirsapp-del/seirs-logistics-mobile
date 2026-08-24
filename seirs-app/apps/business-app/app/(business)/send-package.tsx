@@ -1,5 +1,5 @@
 /**
- * Business · Send a Package — the CUSTOMER-SEND pattern, exactly
+ * Business · Send a Package: the CUSTOMER-SEND pattern, exactly
  * (founder 2026-08-15/16, asked twice: full-screen steps, illustration
  * headers, package-first form, "Add another package" loop, itemized
  * total, one payment).
@@ -32,7 +32,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useMultiStopDirections } from '@/components/useMultiStopDirections';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { Illustration } from '@/components/Illustration';
 import {
@@ -42,6 +42,8 @@ import {
 import { useBusinessStore, type StoreLite } from '@/store/businessStore';
 import { type VehicleType } from '@seirs/shared';
 import { useColors } from '@/context/ThemeContext';
+import { VEHICLE_LABEL } from '@/constants/vehicles';
+import { TERMS_URL } from '@/constants/config';
 
 const STEPS = ['Packages', 'Pickup', 'Vehicle', 'Review'] as const;
 const STEP_SLOTS = ['send-package', 'send-address', 'send-vehicle', 'send-fare'] as const;
@@ -52,10 +54,9 @@ const STEP_CAPTIONS = [
   'Check every line, then pay once for the whole run.',
 ] as const;
 
-const VEHICLE_LABEL: Record<string, string> = {
-  bicycle: 'Bicycle / On-foot', motorcycle: 'Okada', tricycle: 'Keke',
-  car: 'Car', van: 'Danfo / Van', truck_small: 'Small Truck', truck_large: 'Large Truck',
-};
+// VEHICLE_LABEL moved to @/constants/vehicles on 2026-08-23 (B-2.3). It
+// lived here only, so the Deliveries list had no way to reach it and
+// printed the raw enum: an Okada booked here came back a "motorcycle".
 // Bicycle / On-foot: the inclusion tier (founder 2026-08-21). A person
 // with no vehicle carries small drops short distances and gets paid.
 const VEHICLE_ORDER = ['bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'];
@@ -80,9 +81,21 @@ export default function SendPackageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  /**
+   * The dashboard's "Special Cargo" card promised trucks and cold chain
+   * and pushed this screen with no param at all, so it was the same
+   * button as "Send a Package" (B-1.3). It now arrives with preset=cargo
+   * and a truck already chosen.
+   */
+  const { preset } = useLocalSearchParams<{ preset?: string }>();
+  const isCargoPreset = preset === 'cargo';
   const {
     draft, setDraft, addStop, removeStop, updateStop, resetDraft,
   } = useBusinessStore();
+
+  useEffect(() => {
+    if (isCargoPreset) setDraft({ vehicleType: 'truck_small' as VehicleType });
+  }, [isCargoPreset]);
 
   const mapRef = useRef<MapView>(null);
   /**
@@ -412,9 +425,13 @@ export default function SendPackageScreen() {
   };
 
   // ── Photos ───────────────────────────────────────────────────────────
-  const pickPhoto = async (idx: number) => {
+  /**
+   * The control wears a Camera icon and only ever opened the gallery
+   * (B-10.10), so a sender with the parcel in front of them had to leave
+   * the app, use the camera, and come back. Ask which, then honour it.
+   */
+  const addPhotoFromLibrary = async (idx: number) => {
     const current = draft.stops[idx]?.photoUris ?? [];
-    if (current.length >= 5) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert('Photo needed', 'Allow photo access: every package needs its picture for handoff proof.');
@@ -424,6 +441,28 @@ export default function SendPackageScreen() {
     if (!result.canceled && result.assets?.[0]?.uri) {
       updateStop(idx, { photoUris: [...current, result.assets[0].uri] });
     }
+  };
+
+  const addPhotoFromCamera = async (idx: number) => {
+    const current = draft.stops[idx]?.photoUris ?? [];
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Camera needed', 'Allow camera access to photograph the parcel, or pick an existing photo.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      updateStop(idx, { photoUris: [...current, result.assets[0].uri] });
+    }
+  };
+
+  const pickPhoto = (idx: number) => {
+    if ((draft.stops[idx]?.photoUris ?? []).length >= 5) return;
+    Alert.alert('Package photo', 'Photograph the parcel now, or pick one you already have.', [
+      { text: 'Take photo',      onPress: () => { addPhotoFromCamera(idx); } },
+      { text: 'Choose existing', onPress: () => { addPhotoFromLibrary(idx); } },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
   const removePhoto = (idx: number, photoIdx: number) => {
     const current = draft.stops[idx]?.photoUris ?? [];
@@ -488,7 +527,9 @@ export default function SendPackageScreen() {
    * dropped the map entirely. The review step now draws the real
    * road-following route with a numbered pin per package, so the sender
    * confirms WHERE everything goes before paying. Google's own distance
-   * replaces the straight-line estimate the moment it resolves.
+   * replaces the straight-line estimate the moment it resolves, for the
+   * display, the QUOTE and the booking alike. It used to replace it for
+   * display only while the quote stayed on crow-flies (B-10.4).
    */
   const pickupPoint = draft.pickupLat != null && draft.pickupLng != null
     ? { latitude: draft.pickupLat, longitude: draft.pickupLng }
@@ -523,7 +564,11 @@ export default function SendPackageScreen() {
     pricingApi.quote({
       vehicleType: draft.vehicleType,
       categoryCode: packages[0]?.categoryCode ?? 'standard_parcel',
-      km: totalKm,
+      // routeKm, not totalKm (B-10.4). The effect already re-runs on routeKm,
+      // but it re-quoted with the SAME straight-line number every time, so the
+      // pin was burned for nothing and the run was quoted on crow-flies x 1.45
+      // while the review displayed and handleSubmit booked the road distance.
+      km: routeKm,
       stopCount: draft.stops.length,
       weightKg: totalWeight,
       estimatedDwellMinutes: draft.stops.length * 4,
@@ -653,7 +698,17 @@ export default function SendPackageScreen() {
       const payload = vehiclePayload(v);
       return vehicleCap(v) >= count && (payload === 0 || payload >= kg);
     });
-    if (fits && fits !== draft.vehicleType) setDraft({ vehicleType: fits });
+    if (!fits) return;
+    if (isCargoPreset) {
+      // Special Cargo arrived on a truck deliberately: the recommender may
+      // step UP to a bigger vehicle but must never quietly downgrade the
+      // sender back to an okada.
+      const fitsIdx = VEHICLE_ORDER.indexOf(fits);
+      const curIdx  = VEHICLE_ORDER.indexOf(draft.vehicleType);
+      if (fitsIdx > curIdx) setDraft({ vehicleType: fits as VehicleType });
+      return;
+    }
+    if (fits !== draft.vehicleType) setDraft({ vehicleType: fits as VehicleType });
   };
 
   const next = () => {
@@ -1393,7 +1448,10 @@ export default function SendPackageScreen() {
                   <Text style={[styles.hint, { color: scheduledHour == null ? '#DC2626' : colors.textSecond }]}>
                     {scheduledHour == null
                       ? 'Pick an hour to continue.'
-                      : `Driver arrives ${scheduledDayOffset === 0 ? 'today' : 'tomorrow'} around ${TIME_SLOTS.find(t => t.hour === scheduledHour)?.label}.`}
+                      /* The sender picked a PICKUP hour, not an arrival. Said
+                         as "Driver arrives" it read as a delivery promise,
+                         which Lagos traffic turns into a refund (B-6.2). */
+                      : `Pickup is booked for ${scheduledDayOffset === 0 ? 'today' : 'tomorrow'}, around ${TIME_SLOTS.find(t => t.hour === scheduledHour)?.label}.`}
                   </Text>
                 </View>
               )}
@@ -1656,7 +1714,7 @@ export default function SendPackageScreen() {
                   I agree to the SEIRS Terms of Service, including what happens if a delivery fails.{' '}
                   <Text
                     style={{ color: colors.primary, fontWeight: '600' }}
-                    onPress={() => Linking.openURL('https://seirs.app/terms-of-service')}
+                    onPress={() => Linking.openURL(TERMS_URL)}
                   >
                     Read them
                   </Text>
@@ -1847,7 +1905,10 @@ export default function SendPackageScreen() {
                 {dropPoints.map((_, i) => `${i + 1}`).join('  ')} · {dropPoints.length} drop{dropPoints.length === 1 ? '' : 's'}
               </Text>
               <Text style={[styles.mapLegendSub, { color: colors.textThird }]}>
-                {route.distanceText ?? `~${routeKm}km`}{route.durationText ? ` · ${route.durationText}` : ''}
+                {/* Kilometres only, same as the collapsed map above. The
+                    expanded legend was still printing the Google ETA and
+                    broke the rule the thumbnail states (B-6.1). */}
+                {route.distanceText ?? `~${routeKm}km`}
               </Text>
             </View>
           </View>
@@ -1900,8 +1961,6 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, marginTop: 1 },
   dots:     { flexDirection: 'row', gap: 4 },
   dot:      { width: 8, height: 8, borderRadius: 4 },
-  errorBox:  { backgroundColor: '#EF444415', borderRadius: 10, padding: 12, marginBottom: 12 },
-  errorText: { color: '#DC2626', fontSize: 14, fontWeight: '600' },
   stepHero:        { alignItems: 'center', marginBottom: 18, gap: 8 },
   stepHeroCaption: { fontSize: 14, textAlign: 'center', maxWidth: 280, lineHeight: 18 },
   pkgCard:  { borderRadius: 16, borderWidth: 1, padding: 14, gap: 4 },

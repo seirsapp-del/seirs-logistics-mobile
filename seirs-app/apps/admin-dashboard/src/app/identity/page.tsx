@@ -160,7 +160,10 @@ export default function IdentityVerificationPage() {
 
       {/* Status tabs */}
       <div className="flex gap-2 border-b border-[#E5E7EB]">
-        {(['submitted', 'approved', 'rejected', 'withdrawn'] as const).map(s => (
+        {/* revoked and expired were supported by the type, the styles and
+            the API, but had no tab, so revoking a verification made the
+            record vanish from the dashboard entirely. */}
+        {(['submitted', 'approved', 'rejected', 'withdrawn', 'revoked', 'expired'] as const).map(s => (
           <button
             key={s}
             onClick={() => setStatus(s)}

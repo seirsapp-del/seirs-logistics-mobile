@@ -215,7 +215,10 @@ export default function JobDetailScreen() {
         <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <Text style={[styles.fareLabel, { color: theme.textSecond }]}>Estimated Earnings</Text>
           <Text style={[styles.fareAmount, { color: theme.primary }]}>₦{(job.driverEarnings ?? job.price ?? 0).toLocaleString()}</Text>
-          <Text style={[styles.fareNote, { color: theme.textThird }]}>After 30% Seirs commission</Text>
+          {/* D-4.5: the rate used to be hardcoded as "After 30% Seirs
+              commission" and would go stale the day the rate moves. The
+              exact fee is already itemised per trip in earnings history. */}
+          <Text style={[styles.fareNote, { color: theme.textThird }]}>Your share after the SEIRS service fee</Text>
         </View>
 
         {/* Customer */}

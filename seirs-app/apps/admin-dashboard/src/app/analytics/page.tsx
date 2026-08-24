@@ -105,15 +105,18 @@ export default function AnalyticsPage() {
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={revenue} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    {/* getRevenueByDay returns { date, revenue, count } and
+                        `date` is already a formatted label like "5 Aug".
+                        Reading r.day gave undefined, so the axis rendered
+                        blank and the tooltip said "Invalid Date". No
+                        formatter: the string is the label. */}
                     <XAxis
-                      dataKey="day"
-                      tickFormatter={(v) => new Date(v).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })}
+                      dataKey="date"
                       tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }}
                     />
                     <YAxis tickFormatter={(v) => fmt(v)} tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }} width={60} />
                     <Tooltip
                       formatter={(v: any) => [fmt(Number(v)), 'Revenue']}
-                      labelFormatter={(l) => new Date(l).toLocaleDateString('en-NG', { weekday: 'short', month: 'short', day: 'numeric' })}
                       contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', boxShadow: 'none' }}
                     />
                     <Line
@@ -205,7 +208,10 @@ export default function AnalyticsPage() {
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-6">
-                <h2 className="text-sm font-semibold text-[#0F2B4C]/60 mb-4">Deliveries by Category</h2>
+                {/* The backend groups this by d.urgency, not by category
+                    code, so the legend reads express/standard. Renamed to
+                    match the query rather than mislabelling the data. */}
+                <h2 className="text-sm font-semibold text-[#0F2B4C]/60 mb-4">Deliveries by Urgency</h2>
                 {byCategory.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>

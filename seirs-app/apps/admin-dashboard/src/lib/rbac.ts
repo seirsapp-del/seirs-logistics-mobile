@@ -33,12 +33,19 @@ export const ROLE_COLORS: Record<AdminRoleType, string> = {
   partner_manager:   'bg-orange-100 text-orange-700',
 };
 
-const PERMISSIONS: Record<AdminRoleType, string[]> = {
+// Exported so src/middleware.ts can import the one true map. It used to
+// keep its own copy, which had drifted: ops_manager was missing fees,
+// health, notify and eight more, so the middleware and the sidebar
+// disagreed about who could open what.
+export const PERMISSIONS: Record<AdminRoleType, string[]> = {
   super_admin:       ['*'],
   ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','support','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs'],
   support_agent:     ['tickets','support','users','suggestions','deliveries','disputes'],
   finance_officer:   ['overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage'],
-  driver_compliance: ['drivers','kyc','identity','duplicates','fraud','users','audit-log','interstate','last-order-compliance'],
+  // audit-log removed 2026-08-23: /audit-log is super-admin only, so the
+  // grant put a nav entry in front of a wall that always said Access
+  // Restricted. Grant it back only if the page stops being super-admin only.
+  driver_compliance: ['drivers','kyc','identity','duplicates','fraud','users','interstate','last-order-compliance'],
   media_content:     ['cms','promotions','email-templates','dev-docs'],
   analyst:           ['overview','analytics','reports'],
   partner_manager:   ['partners','partner-redirects','specialists','deliveries','overview'],
@@ -84,6 +91,50 @@ export function isSuperAdminFromUser(
   if (!user) return false;
   if (user.roleSlug === 'super_admin') return true;
   return isSuperAdmin(user.adminRole);
+}
+
+// ── NDPR tooling allow-lists ────────────────────────────────────────────
+// These mirror AdminService.NDPR_EXPORT_ROLES / NDPR_DELETE_ROLES on the
+// backend exactly. Symptom they fix: /users/[id] and /drivers/[id]
+// rendered a fully enabled "NDPR hard-delete" to ops_manager and
+// driver_compliance, who only discovered the API refuses them after
+// typing a reason and confirming the account name. Keep both lists in
+// step with the service if the backend allow-lists ever move.
+const NDPR_EXPORT_ROLES = ['super_admin', 'support_agent', 'finance_officer'];
+const NDPR_DELETE_ROLES = ['super_admin', 'support_agent'];
+
+type SessionUser = { adminRole?: AdminRoleType; role?: string; roleSlug?: string | null } | null;
+
+// The slug the backend will actually see for this session. A dynamic role
+// carries roleSlug; a legacy admin carries role='admin' and nothing else,
+// and the backend treats that as super_admin.
+function effectiveRoleSlug(user: SessionUser): string | undefined {
+  if (!user) return undefined;
+  if (user.roleSlug) return user.roleSlug;
+  if (user.adminRole) return user.adminRole;
+  return isLegacyAdmin(user.role) ? AdminRole.SUPER_ADMIN : undefined;
+}
+
+export function canExportNdprData(user: SessionUser): boolean {
+  const slug = effectiveRoleSlug(user);
+  return !!slug && NDPR_EXPORT_ROLES.includes(slug);
+}
+
+export function canHardDeleteAccount(user: SessionUser): boolean {
+  const slug = effectiveRoleSlug(user);
+  return !!slug && NDPR_DELETE_ROLES.includes(slug);
+}
+
+// Ship flags for nav entries whose feature is not live yet. The page
+// itself stays routable (and middleware-gated, since PATH_PERMISSIONS is
+// derived from NAV_SECTIONS) but it does not take a permanent sidebar
+// slot. /partner-redirects renders three preview rows against no backend.
+export const NAV_FEATURE_FLAGS: Record<string, boolean> = {
+  '/partner-redirects': false,
+};
+
+export function isNavItemVisible(href: string): boolean {
+  return NAV_FEATURE_FLAGS[href] !== false;
 }
 
 export interface NavSection {

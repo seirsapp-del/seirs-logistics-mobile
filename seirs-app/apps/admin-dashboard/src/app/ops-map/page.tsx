@@ -33,6 +33,22 @@ interface PendingPin  { id: string; trackingCode: string; lat: number; lng: numb
 
 const DEFAULT_CENTER = { lat: 6.5244, lng: 3.3792 };
 
+// Google Maps parses InfoWindow content as HTML, so every value
+// interpolated into these strings is an injection point. A driver who
+// sets their name to an <img onerror=...> payload would have run script
+// in the dashboard origin, where the admin session token lives, the
+// moment ops clicked their pin. `label` is worse still: it arrives
+// straight off the ?label= query param, so the attack needed no account
+// at all, just a link. Escape at the boundary, every time.
+function esc(v: unknown): string {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Layer registry: which overlays are on. Persisted per-admin in
 // localStorage so the ops person's preferred view survives reloads.
 type LayerKey = 'online' | 'offline' | 'requests' | 'stores' | 'routes' | 'heat';
@@ -206,10 +222,10 @@ export default function OpsMapPage() {
           strokeWeight: 2,
         },
         d.name,
-        `<div style="font:13px system-ui"><b>${d.name}</b><br/>` +
+        `<div style="font:13px system-ui"><b>${esc(d.name)}</b><br/>` +
         (d.isOnline
           ? '<span style="color:#16A34A">● Online now</span>'
-          : `<span style="color:#6B7280">○ Offline</span><br/><small>Last seen: ${lastSeen}</small>`) +
+          : `<span style="color:#6B7280">○ Offline</span><br/><small>Last seen: ${esc(lastSeen)}</small>`) +
         `</div>`,
       );
     });
@@ -230,8 +246,8 @@ export default function OpsMapPage() {
             strokeWeight: 2,
           },
           p.trackingCode,
-          `<div style="font:13px system-ui"><b>Unassigned request</b><br/>${p.trackingCode}<br/>` +
-          `<small>Waiting ${p.ageMinutes} min${urgent ? ' · <b style="color:#DC2626">needs attention</b>' : ''}</small></div>`,
+          `<div style="font:13px system-ui"><b>Unassigned request</b><br/>${esc(p.trackingCode)}<br/>` +
+          `<small>Waiting ${esc(p.ageMinutes)} min${urgent ? ' · <b style="color:#DC2626">needs attention</b>' : ''}</small></div>`,
         );
       });
     }
@@ -251,7 +267,7 @@ export default function OpsMapPage() {
             strokeWeight: 1.5,
           },
           s.storeName,
-          `<div style="font:13px system-ui"><b>${s.storeName}</b><br/><small>${s.storeAddress}</small><br/>` +
+          `<div style="font:13px system-ui"><b>${esc(s.storeName)}</b><br/><small>${esc(s.storeAddress)}</small><br/>` +
           (s.acceptingNew
             ? '<span style="color:#16A34A">Accepting drop-offs</span>'
             : '<span style="color:#D97706">Paused</span>') +
@@ -275,8 +291,8 @@ export default function OpsMapPage() {
           strokeWeight: 3,
         },
         'SOS',
-        `<div style="font:13px system-ui"><b style="color:#DC2626">🚨 SOS · ${a.user?.name ?? 'Unknown'}</b><br/>` +
-        `<small>${a.user?.phone ?? ''} · raised ${new Date(a.createdAt).toLocaleTimeString()}</small><br/>` +
+        `<div style="font:13px system-ui"><b style="color:#DC2626">🚨 SOS · ${esc(a.user?.name ?? 'Unknown')}</b><br/>` +
+        `<small>${esc(a.user?.phone ?? '')} · raised ${esc(new Date(a.createdAt).toLocaleTimeString())}</small><br/>` +
         `<a href="/sos">Open the SOS desk</a></div>`,
       );
     });
@@ -352,7 +368,7 @@ export default function OpsMapPage() {
     });
     m.addListener('click', () => {
       infoRef.current?.setContent(
-        `<div style="font:13px system-ui"><b>${label}</b><br/><small>${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}</small></div>`,
+        `<div style="font:13px system-ui"><b>${esc(label)}</b><br/><small>${esc(pos.lat.toFixed(6))}, ${esc(pos.lng.toFixed(6))}</small></div>`,
       );
       infoRef.current?.open({ map: mapRef.current, anchor: m });
     });

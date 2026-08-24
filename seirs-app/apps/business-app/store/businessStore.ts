@@ -23,7 +23,7 @@ export interface StoreLite {
 
 export interface DeliveryStop {
   address:        string;
-  // Latitude/longitude — set when the user picks an address from the
+  // Latitude/longitude: set when the user picks an address from the
   // Google Places autocomplete or taps the map. Required at submit
   // time but optional during entry.
   lat?:           number;
@@ -79,7 +79,7 @@ export interface DraftDelivery {
   pickupLng?:       number;
   stops:            DeliveryStop[];
 
-  // Step 0 — what they're sending. categoryCode references
+  // Step 0: what they're sending. categoryCode references
   // ServiceCategory.code from the backend catalog (documents, fragile,
   // bulk_goods, etc.). vehicleType is auto-suggested from category +
   // weight but user-overrideable. weightKg is required at submit.
@@ -89,12 +89,12 @@ export interface DraftDelivery {
   vehicleType:      string;          // motorcycle | car | van | ... | truck_large
   packageDescription?: string;       // optional free text
 
-  // Step 2 — schedule.
+  // Step 2: schedule.
   scheduledAt?:     string;          // ISO datetime; absent = ASAP
   isRecurring:      boolean;
   recurringPattern: 'daily' | 'weekly' | 'monthly' | null;
 
-  // Auto-optimize toggle for the route. Default ON — Google Directions
+  // Auto-optimize toggle for the route. Default ON: Google Directions
   // reorders waypoints for shortest total drive time and we ship the
   // result to the backend so the driver visits in optimal sequence.
   autoOptimizeRoute: boolean;
@@ -112,7 +112,7 @@ interface BusinessStore {
   addStop:     (stop: DeliveryStop) => void;
   removeStop:  (idx: number) => void;
   updateStop:  (idx: number, patch: Partial<DeliveryStop>) => void;
-  /** Replace the entire stops array — used after auto-optimize reorders. */
+  /** Replace the entire stops array, used after auto-optimize reorders. */
   reorderStops: (newOrder: DeliveryStop[]) => void;
 }
 

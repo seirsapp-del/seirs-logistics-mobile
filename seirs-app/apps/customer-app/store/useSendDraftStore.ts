@@ -30,6 +30,15 @@ export interface SendDraft {
   scheduledDate:  string;
   scheduledHour:  number | null;
   paymentId:      string;
+  /**
+   * Promo code the customer accepted on /promo. Held here (not redeemed
+   * on that screen) because POST /promotions/redeem is a REAL redemption:
+   * it writes a redemption row and increments the campaign usage count.
+   * Calling it from the code box burned the customer's one allowed use
+   * against a subtotal of zero. The code now rides along to
+   * deliveriesApi.create so redemption happens once, at booking.
+   */
+  promoCode?:     string;
   /** Epoch ms of the last write, used to expire stale drafts. */
   savedAt:        number;
 

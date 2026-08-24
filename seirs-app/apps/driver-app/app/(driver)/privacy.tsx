@@ -40,16 +40,14 @@ export default function DriverPrivacyScreen() {
   // Re-read on focus: the driver may have just changed it in Settings.
   useFocusEffect(useCallback(() => { readLocationPerms(); }, [readLocationPerms]));
 
-  const [analyticsData,     setAnalyticsData]     = useState(true);
-  const [personalisedOffers,setPersonalisedOffers]= useState(false);
+  const [analyticsData, setAnalyticsData] = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const { prefs } = await usersApi.getNotificationPrefs();
-        if (prefs?.analytics_share   !== undefined) setAnalyticsData(prefs.analytics_share);
-        if (prefs?.personalised_ads  !== undefined) setPersonalisedOffers(prefs.personalised_ads);
+        if (prefs?.analytics_share !== undefined) setAnalyticsData(prefs.analytics_share);
       } catch {}
     })();
   }, []);
@@ -61,8 +59,7 @@ export default function DriverPrivacyScreen() {
     }, 400);
   };
 
-  const onAnalyticsData     = (v: boolean) => { setAnalyticsData(v);     queueSave({ analytics_share:   v }); };
-  const onPersonalisedOffers= (v: boolean) => { setPersonalisedOffers(v); queueSave({ personalised_ads: v }); };
+  const onAnalyticsData = (v: boolean) => { setAnalyticsData(v); queueSave({ analytics_share: v }); };
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -83,14 +80,17 @@ export default function DriverPrivacyScreen() {
       await usersApi.exportData();
       Alert.alert('Export queued', 'Your data export has been requested. You will receive an email with the download link within 24 hours.');
     } catch {
-      Alert.alert('Export failed', 'Please try again later or contact support@seirs.co');
+      Alert.alert('Export failed', 'Please try again later or contact support@seirs.app');
     }
   };
 
 
+  // D-6.12: the "Personalised Offers / bonus offers tailored to your
+  // driving patterns" row was removed. The bonus program is deferred, so
+  // the toggle offered something that does not exist. Put it back with
+  // the program, not before it.
   const DATA_ITEMS = [
-    { label: 'Analytics & Performance',  sub: 'Help improve the platform by sharing anonymised usage data', value: analyticsData,      setter: onAnalyticsData      },
-    { label: 'Personalised Offers',       sub: 'Receive bonus offers tailored to your driving patterns',     value: personalisedOffers,  setter: onPersonalisedOffers  },
+    { label: 'Analytics & Performance', sub: 'Help improve the platform by sharing anonymised usage data', value: analyticsData, setter: onAnalyticsData },
   ];
 
   const LEGAL_ITEMS = [
@@ -181,22 +181,14 @@ export default function DriverPrivacyScreen() {
         {/* Your data */}
         <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Your Data</Text>
-          <Pressable
-            style={[styles.actionRow, { borderBottomColor: theme.border, borderBottomWidth: 0.5 }]}
-            onPress={handleDownloadData}
-          >
+          {/* D-1.8: the "Clear Trip History Cache" row that sat here had no
+              onPress, and nothing to clear either: trips are never cached on
+              the device. Removed rather than faked. */}
+          <Pressable style={styles.actionRow} onPress={handleDownloadData}>
             <Ionicons name="download-outline" size={20} color={theme.primary} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.rowLabel, { color: theme.text }]}>Download My Data</Text>
               <Text style={[styles.rowSub, { color: theme.textSecond }]}>Request a copy of all your account data</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
-          </Pressable>
-          <Pressable style={styles.actionRow}>
-            <Ionicons name="trash-outline" size={20} color={theme.textSecond} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.rowLabel, { color: theme.text }]}>Clear Trip History Cache</Text>
-              <Text style={[styles.rowSub, { color: theme.textSecond }]}>Remove locally cached trip data from this device</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
           </Pressable>

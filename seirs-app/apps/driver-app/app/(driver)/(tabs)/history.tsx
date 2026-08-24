@@ -160,28 +160,14 @@ export default function DriverHistoryScreen() {
                   <Text style={[styles.customerName, { color: theme.textSecond }]}>{item.customer.name}</Text>
                 </View>
                 <View style={styles.footerRight}>
-                  {item.distanceKm > 0 && (
-                    <Text style={[styles.distText, { color: theme.textThird }]}>{item.distanceKm} km · </Text>
+                  {!!item.distance && (
+                    <Text style={[styles.distText, { color: theme.textThird }]}>{item.distance} · </Text>
                   )}
                   <Text style={[styles.earnText, { color: item.driverEarnings > 0 ? '#22C55E' : theme.textThird }]}>
                     {item.driverEarnings > 0 ? `+₦${item.driverEarnings.toLocaleString()}` : '-'}
                   </Text>
                 </View>
               </View>
-
-              {/* Rating received */}
-              {item.rating && (
-                <View style={[styles.ratingRow, { backgroundColor: isDark ? '#1A1400' : '#FFFBEB' }]}>
-                  {[1, 2, 3, 4, 5].map(s => (
-                    <Ionicons key={s} name={s <= item.rating! ? 'star' : 'star-outline'} size={13} color="#FFBE0B" />
-                  ))}
-                  {item.ratingComment && (
-                    <Text style={[styles.ratingComment, { color: theme.textSecond }]} numberOfLines={1}>
-                      "{item.ratingComment}"
-                    </Text>
-                  )}
-                </View>
-              )}
             </Pressable>
           );
         }}
@@ -221,8 +207,6 @@ const styles = StyleSheet.create({
   distText:     { fontSize: FontSize.sm },
   earnText:     { fontSize: FontSize.base, fontWeight: FontWeight.bold },
 
-  ratingRow:    { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: Spacing.sm, padding: 6, borderRadius: Radius.md },
-  ratingComment:{ flex: 1, fontSize: FontSize.xs, marginLeft: 4 },
 
   empty:     { paddingTop: Spacing.xl * 2, alignItems: 'center', gap: Spacing.md },
   emptyIcon: { width: 88, height: 88, borderRadius: 44, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.xs },

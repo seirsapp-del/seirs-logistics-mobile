@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getPageBlock, getImageSlots, getPartnerLogos } from "@/lib/cms";
+import { getPageBlock, getImageSlots, getPartnerLogos, listContent } from "@/lib/cms";
 import { PartnerMarquee } from "@/components/PartnerMarquee";
 import { Reveal } from "@/components/Reveal";
 import { GetAppButton } from "@/components/GetAppButton";
@@ -164,21 +164,37 @@ export default async function HomePage() {
   // Inline-editable hero block, falls back to the hardcoded copy below
   // when the CMS row is missing or unreachable, so marketing can edit
   // without breaking the page.
-  const [hero, img, livePartnerLogos] = await Promise.all([
+  const [hero, img, livePartnerLogos, articles] = await Promise.all([
     getPageBlock('home_hero'),
     getImageSlots(),
     getPartnerLogos(),
+    listContent('article', { pageSize: 200 }),
   ]);
 
+  // Which story slugs actually resolve.
+  //
+  // This page hardcoded eleven slugs, one language story in the hero chip and
+  // ten moving-* tiles, and /news/[slug] calls notFound() when the CMS has no
+  // match. So every slug an editor had not published yet was a 404 reachable
+  // in one click from the homepage, and nothing on the page could tell.
+  // Everything is still rendered; only the LINK is conditional, so an
+  // unpublished story quietly loses its link rather than the section losing a
+  // tile. If the CMS is unreachable, listContent returns [] and no tile links
+  // anywhere, which is the safe direction to fail in.
+  const publishedSlugs = new Set(articles.map((a) => a.slug));
+
   // Uncapped: whatever the admin has published under img_partner_logo_*.
-  // Until real partners sign, the SEIRS mark stands in (founder 2026-08-14),
-  // which keeps the strip's shape and motion reviewable without implying a
-  // partnership that does not exist. Four copies so the loop has something
-  // to actually scroll.
-  const partnerLogos =
-    livePartnerLogos.length > 0
-      ? livePartnerLogos
-      : Array.from({ length: 4 }, () => ({ name: 'SEIRS', url: '/seirs-logo.png' }));
+  //
+  // There is no stand-in any more. Until 2026-08-23 this fell back to four
+  // copies of the SEIRS mark, each captioned "SEIRS", under a heading
+  // reading "Trusted by". The old comment argued that repeating our own
+  // logo avoided implying a partnership that does not exist, but the
+  // heading IS the implication: a visitor reads "Trusted by" over four
+  // marks and takes it as social proof, whoever the marks belong to. The
+  // site vouching for itself is worse than an absent section, so the strip
+  // renders nothing at all while the list is empty (PartnerMarquee already
+  // returns null on []). Tracked as "Partner logos" in LAUNCH_CHECKLIST.
+  const partnerLogos = livePartnerLogos;
 
   return (
     <>
@@ -335,16 +351,35 @@ export default async function HomePage() {
                   sentence wrapped to three, so the invitation to read the
                   story is desktop-only and the claim itself, which is the
                   part that matters, stays whole. */}
-              <Link
-                href="/news/speaking-nigerian-languages"
-                className="lg:col-start-1 w-fit inline-flex items-center gap-2 lg:gap-2.5 bg-white/5 border border-white/15 rounded-lg px-2.5 py-1.5 lg:px-3 lg:py-2 mb-6 lg:mb-8 hover:bg-white/10 transition-colors"
-              >
-                <Globe size={13} className="text-[#FFBE0B] flex-shrink-0" strokeWidth={1.75} />
-                <span className="text-white/75 text-caption-sm lg:text-caption-lg whitespace-nowrap">
-                  The apps speak Yoruba, Igbo and Hausa.
-                  <span className="hidden lg:inline"> Read how we&apos;re improving that</span>
-                </span>
-              </Link>
+              {(() => {
+                // The claim is true whether or not the story behind it is
+                // published, so the chip always renders. It only becomes a
+                // link when the article exists.
+                const hasStory = publishedSlugs.has('speaking-nigerian-languages');
+                const chipClass =
+                  'lg:col-start-1 w-fit inline-flex items-center gap-2 lg:gap-2.5 bg-white/5 border border-white/15 rounded-lg px-2.5 py-1.5 lg:px-3 lg:py-2 mb-6 lg:mb-8';
+                const body = (
+                  <>
+                    <Globe size={13} className="text-[#FFBE0B] flex-shrink-0" strokeWidth={1.75} />
+                    <span className="text-white/75 text-caption-sm lg:text-caption-lg whitespace-nowrap">
+                      The apps speak Yoruba, Igbo and Hausa.
+                      {hasStory && (
+                        <span className="hidden lg:inline"> Read how we&apos;re improving that</span>
+                      )}
+                    </span>
+                  </>
+                );
+                return hasStory ? (
+                  <Link
+                    href="/news/speaking-nigerian-languages"
+                    className={`${chipClass} hover:bg-white/10 transition-colors`}
+                  >
+                    {body}
+                  </Link>
+                ) : (
+                  <div className={chipClass}>{body}</div>
+                );
+              })()}
 
               {/* Value props, not vanity metrics. Honesty rule 2026-08-11:
                   the old fake stats (10,000+ deliveries, 99.2% on-time)
@@ -389,7 +424,7 @@ export default async function HomePage() {
             <p className="section-label mb-3">Simple Process</p>
             <h2 className="section-title mb-4">How It Works</h2>
             <p className="section-sub">
-              From order creation to doorstep delivery, Seirs makes logistics effortless.
+              From order creation to doorstep delivery, SEIRS makes logistics effortless.
             </p>
           </div>
 
@@ -401,7 +436,7 @@ export default async function HomePage() {
               section fits in about one and a half screens instead of three
               stacked cards.
 
-              The old step 1 copy said you "pay instantly from your Seirs
+              The old step 1 copy said you "pay instantly from your SEIRS
               wallet". Customers do not hold NGN balances, per CBN rules and
               our own standing rule that the customer side never says Wallet.
               Corrected to card payment, which is what actually happens. */}
@@ -409,7 +444,7 @@ export default async function HomePage() {
             <Reveal>
               <AppScreenshot
                 screen="customerBooking"
-                alt="Creating a delivery in the Seirs customer app"
+                alt="Creating a delivery in the SEIRS customer app"
               />
             </Reveal>
 
@@ -425,7 +460,11 @@ export default async function HomePage() {
                   n: 2,
                   icon: Truck,
                   title: "Driver Picks Up",
-                  body: "A verified, background-checked driver is assigned and dispatched to your pickup in minutes. You get their name, photo and live location.",
+                  // "dispatched to your pickup in minutes" removed 2026-08-23. It is a
+                  // soft arrival-time promise on a platform whose whole position is
+                  // that it does not make them, and Lagos traffic decides this, not
+                  // us. What is left is all verifiable.
+                  body: "A verified, background-checked driver is assigned and dispatched to your pickup. You get their name, photo and live location.",
                 },
                 {
                   n: 3,
@@ -465,7 +504,7 @@ export default async function HomePage() {
                 Built for Nigerian Businesses
               </h2>
               <p className="text-text-muted text-lg leading-relaxed mb-6">
-                Whether you ship 10 parcels a day or 10,000 a month, Seirs scales with you. Manage your entire logistics operation from one dashboard, no spreadsheets, no chasing drivers.
+                Whether you ship 10 parcels a day or 10,000 a month, SEIRS scales with you. Manage your entire logistics operation from one dashboard, no spreadsheets, no chasing drivers.
               </p>
               {/* Founder 2026-08-14: fold the six feature cards into where the
                   rate-card paragraph sat, and make them terser still. That
@@ -515,7 +554,7 @@ export default async function HomePage() {
             <Reveal delay={120}><div>
             <AppScreenshot
               screen="businessDashboard"
-              alt="The Seirs business app dashboard"
+              alt="The SEIRS business app dashboard"
             />
             </div></Reveal>
           </div>
@@ -550,9 +589,14 @@ export default async function HomePage() {
               { slot: img.img_move_documents,   title: "Documents",          story: "Signed contracts across town in an hour",     slug: "moving-documents" },
               { slot: img.img_move_building,    title: "Building materials", story: "Cement and cable straight to site",           slug: "moving-building-materials" },
               { slot: img.img_move_animals,     title: "Live animals",       story: "Yes: even the Christmas chicken",             slug: "moving-live-animals" },
-            ].map((t, i) => (
-              <Reveal key={t.title} delay={(i % 5) * 90}>
-                <Link href={`/news/${t.slug}`} className="lift group relative rounded-card overflow-hidden bg-navy aspect-[4/5] block focus-visible:ring-2 focus-visible:ring-sky">
+            ].map((t, i) => {
+              // Only a published story gets a link. An unpublished one still
+              // shows its tile, because the category is real either way, it
+              // just does not promise a story that 404s.
+              const hasStory = publishedSlugs.has(t.slug);
+              const shell = 'lift group relative rounded-card overflow-hidden bg-navy aspect-[4/5] block';
+              const inner = (
+                <>
                   {t.slot && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={t.slot} alt={t.title}
@@ -563,16 +607,35 @@ export default async function HomePage() {
                     <div className="w-8 h-1 bg-[#FFBE0B] rounded-full mb-2" />
                     <h3 className="text-white font-bold text-sm leading-tight">{t.title}</h3>
                     <p className="text-white/70 text-xs leading-snug mt-1">{t.story}</p>
-                    <p className="text-yellow text-caption-sm font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Read the story</p>
+                    {hasStory && (
+                      <p className="text-yellow text-caption-sm font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Read the story</p>
+                    )}
                   </div>
-                </Link>
-              </Reveal>
-            ))}
+                </>
+              );
+              return (
+                <Reveal key={t.title} delay={(i % 5) * 90}>
+                  {hasStory ? (
+                    <Link href={`/news/${t.slug}`} className={`${shell} focus-visible:ring-2 focus-visible:ring-sky`}>
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div className={shell}>{inner}</div>
+                  )}
+                </Reveal>
+              );
+            })}
           </div>
-          <p className="text-center text-text-muted text-sm mt-8">
-            Each tile opens the real story: the situation, the waste, and how we&apos;re
-            helping. All of it lives in the newsroom and is editable by the team.
-          </p>
+          {/* Only claim the tiles open stories when at least one of them
+              does. Before 2026-08-23 this sentence was unconditional over ten
+              hardcoded slugs, any of which could 404. */}
+          {publishedSlugs.size > 0 && (
+            <p className="text-center text-text-muted text-sm mt-8">
+              Each published tile opens the real story: the situation, the waste,
+              and how we&apos;re helping. All of it lives in the newsroom and is
+              editable by the team.
+            </p>
+          )}
         </div>
       </section>
 
@@ -622,7 +685,7 @@ export default async function HomePage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.img_handoff_hands}
-                  alt="A Seirs rider handing a package to the person collecting it"
+                  alt="A SEIRS rider handing a package to the person collecting it"
                   className="w-full rounded-card object-cover aspect-[4/3] lg:aspect-[16/10] shadow-lg"
                   loading="lazy"
                 />

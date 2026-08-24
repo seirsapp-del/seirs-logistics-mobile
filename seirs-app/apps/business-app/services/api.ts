@@ -10,6 +10,11 @@
  * configureSessionStorageKey('seirs_business_user').
  */
 export {
+  // request is exported here deliberately (B-3.1): api-keys, api-usage and
+  // webhook-log were reaching past this barrel straight into the shared
+  // module for it, which is the one guardrail this app has against an
+  // import silently resolving to undefined.
+  request,
   configureApi,
   configureSessionStorageKey,
   onSessionExpired,

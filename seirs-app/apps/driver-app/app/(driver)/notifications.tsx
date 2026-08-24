@@ -160,7 +160,12 @@ export default function DriverNotificationsScreen() {
     switch (n.type) {
       case 'payment': router.push('/(driver)/(tabs)/earnings' as any); break;
       case 'rating':  router.push('/(driver)/ratings' as any); break;
-      case 'job':     router.push(n.deliveryId ? ('/(driver)/active' as any) : ('/(driver)/(tabs)' as any)); break;
+      // D-1.4: deliveryId was checked and then thrown away, so the active
+      // screen opened with no id and rendered its not-found state.
+      case 'job':
+        if (n.deliveryId) router.push({ pathname: '/(driver)/active' as any, params: { id: n.deliveryId } });
+        else router.push('/(driver)/(tabs)' as any);
+        break;
       default: break; // system/broadcast: nothing to open
     }
   };

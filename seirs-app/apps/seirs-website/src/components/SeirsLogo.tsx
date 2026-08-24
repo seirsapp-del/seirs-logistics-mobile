@@ -40,7 +40,7 @@ export default function SeirsLogo({
     <span
       className={`inline-flex items-center ${className ?? ''}`}
       style={{ gap }}
-      aria-label="Seirs Logistics"
+      aria-label="SEIRS Logistics"
     >
       <SeirsMark    size={markW} color={color} bold={bold} />
       <SeirsWordmark size={wordW} color={color} />

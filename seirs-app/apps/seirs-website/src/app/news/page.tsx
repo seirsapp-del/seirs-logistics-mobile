@@ -6,7 +6,8 @@ import { ContentHero } from '@/components/ContentHero';
 export const revalidate = 60;
 
 export const metadata = {
-  title: 'News & Updates · SEIRS',
+  // Suffix dropped: the root layout template supplies "| SEIRS Logistics".
+  title: 'News & Updates',
   description: 'Product updates, company news, and stories from the SEIRS logistics platform.',
 };
 

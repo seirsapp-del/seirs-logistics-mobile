@@ -190,6 +190,10 @@ export default function InterstateScreen() {
               value={departAt}
               onChangeText={setDepartAt}
               placeholder="YYYY-MM-DD HH:mm"
+              keyboardType="numbers-and-punctuation"
+              autoCorrect={false}
+              autoCapitalize="none"
+              maxLength={16}
               placeholderTextColor={theme.textThird}
               style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
             />
@@ -223,7 +227,10 @@ export default function InterstateScreen() {
               <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>Carry packages</Text>
               <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>Uses your spare kg above</Text>
             </View>
-            <Text style={{ color: takePassengers || takePackages ? theme.primary : theme.textThird, fontWeight: '700' }}>{takePackages ? 'ON' : 'OFF'}</Text>
+            {/* D-6.10: this was bound to (takePassengers || takePackages), so
+                turning packages off while passengers was on left the word OFF
+                painted in the ON colour. */}
+            <Text style={{ color: takePackages ? theme.primary : theme.textThird, fontWeight: '700' }}>{takePackages ? 'ON' : 'OFF'}</Text>
           </Pressable>
 
           <Pressable
