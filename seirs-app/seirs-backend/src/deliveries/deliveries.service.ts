@@ -2423,10 +2423,38 @@ export class DeliveriesService {
      */
     const transport = Math.round(Number(breakdown?.customer?.total ?? 0));
 
-    // The founder-approved flat row is a FLOOR, not the price: a short
-    // return still costs a rider a trip. Spec 2026-08-21.
-    const returnFloor = await this.feesServiceRef?.getValueOr?.('return_to_sender_fee', 0) ?? 0;
-    const transportCharged = Math.max(transport, Math.round(Number(returnFloor)));
+    /**
+     * No floor. return_to_sender_fee and storage_return_fee are the
+     * INVOLUNTARY overstay path ("passes 5 working days uncollected and
+     * is returned"), not a sender choosing to recall their own parcel.
+     * Flooring a voluntary recall at the overstay price would overcharge
+     * a short return.
+     */
+    const transportCharged = transport;
+
+    /**
+     * Storage accrued, per the spec's counter row: "counter fee, plus
+     * storage accrued, plus a delivery from that counter to the original
+     * pickup address."
+     *
+     * Read directly rather than by importing PartnerStoreService.
+     * deliveries.service has no partner-store dependency and adding one
+     * risks the circular-import boot crash we already hit once between
+     * MatchingService and FeesModule.
+     */
+    let storageOwed = 0;
+    if (atCounter) {
+      try {
+        const rows = await this.repo.manager.query(
+          `SELECT "storageFeesAccruedNgn" FROM "store_dropoffs" WHERE "deliveryId" = $1 LIMIT 1`,
+          [delivery.id],
+        );
+        const raw = Array.isArray(rows) && Array.isArray(rows[0]) ? rows[0][0] : rows?.[0];
+        storageOwed = Math.round(Number(raw?.storageFeesAccruedNgn ?? 0)) || 0;
+      } catch (e: any) {
+        this.logger.warn(`return-quote storage lookup failed for ${delivery.id}: ${e?.message ?? e}`);
+      }
+    }
 
     // Anything the counter is still holding against the package. Unpaid
     // redirect fee first: the package cannot leave without it either way.
@@ -2434,7 +2462,7 @@ export class DeliveriesService {
       ? Math.round(Number(delivery.redirectFeeNgn ?? 0))
       : 0;
 
-    const total = transportCharged + counterOwed;
+    const total = transportCharged + counterOwed + storageOwed;
 
     return {
       atCounter,
@@ -2444,6 +2472,9 @@ export class DeliveriesService {
       km:            Number(road.km.toFixed(2)),
       transportNgn:  transportCharged,
       counterOwedNgn: counterOwed,
+      // Named separately so the sender sees WHY the number is what it is,
+      // rather than one opaque total.
+      storageOwedNgn: storageOwed,
       totalNgn:      total,
       // Support is only needed when a rider actually HAS the package.
       // This said "a rider is still carrying this package" on pending,
@@ -2463,9 +2494,24 @@ export class DeliveriesService {
    * A package already sitting at a counter is nobody's emergency, so that
    * one is approved as it is requested.
    */
-  async requestReturn(deliveryId: string, customerId: string) {
-    const { BadRequestException } = await import('@nestjs/common');
+  /**
+   * Spec 7356423a: "A return can cost more than the original delivery,
+   * because it is priced from wherever the rider got to. That is
+   * defensible, but only if the sender sees the amount before they
+   * confirm."
+   *
+   * acceptedTotalNgn is what the app displayed. If it no longer matches
+   * the live quote the sender is re-asked instead of being committed to
+   * a number they never saw. Same shape as the booking quote pin.
+   */
+  async requestReturn(deliveryId: string, customerId: string, acceptedTotalNgn?: number) {
+    const { BadRequestException, ConflictException } = await import('@nestjs/common');
     const quote = await this.getReturnQuote(deliveryId, customerId);
+    if (acceptedTotalNgn != null && Math.round(Number(acceptedTotalNgn)) !== quote.totalNgn) {
+      throw new ConflictException(
+        `RETURN_QUOTE_CHANGED: this return is now ₦${quote.totalNgn.toLocaleString()}, not ₦${Math.round(Number(acceptedTotalNgn)).toLocaleString()}. Check the new price before confirming.`,
+      );
+    }
     const delivery = await this.repo.findOne({ where: { id: deliveryId }, relations: ['customer'] });
     if (!delivery) throw new NotFoundException('Delivery not found.');
 

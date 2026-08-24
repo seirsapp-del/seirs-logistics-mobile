@@ -207,8 +207,14 @@ export class DeliveriesController {
   // At a counter this is self-service. On a bike it opens a support
   // ticket, because turning a rider around is not a sender's call.
   @Post(':id/return')
-  requestReturn(@Param('id') id: string, @CurrentUser() user: User) {
-    return this.deliveriesService.requestReturn(id, user.id);
+  requestReturn(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    // What the app showed the sender. Echoed back so a price that
+    // moved between quote and confirm re-asks instead of committing.
+    @Body() body?: { acceptedTotalNgn?: number },
+  ) {
+    return this.deliveriesService.requestReturn(id, user.id, body?.acceptedTotalNgn);
   }
 
   // POST /api/v1/deliveries/:id/return/pay
