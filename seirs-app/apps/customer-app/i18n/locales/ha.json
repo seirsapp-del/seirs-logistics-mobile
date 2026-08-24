@@ -588,7 +588,16 @@
     "fallback112Name": "Lambar gaggawa ta ƙasa",
     "fallback112Use": "Ka fara da wannan don kowace gaggawa a ko'ina a Najeriya: 'yan sanda, motar asibiti ko kashe gobara.",
     "fallback199Name": "Ma'aikatar kashe gobara",
-    "fallback199Use": "Ka yi amfani da wannan don gobara, ko idan wani ya makale a gida ko a mota."
+    "fallback199Use": "Ka yi amfani da wannan don gobara, ko idan wani ya makale a gida ko a mota.",
+    "noteTitle": "Me ke faruwa?",
+    "noteSub": "An riga an sanar da tallafi kuma ana raba wurin da kake. Wannan na zabi ne: yana gaya musu abin da suke shigowa ciki.",
+    "notePlaceholder": "misali: Wani mutum ya bi ni daga mota a Ojota",
+    "noteSend": "Aika wa tallafi",
+    "noteAdd": "Gaya wa tallafi abin da ke faruwa",
+    "noteUpdate": "Sabunta abin da ke faruwa",
+    "noteSeen": "Tallafi na iya gani: “{{note}}”",
+    "noteFailed": "An kasa aika wannan bayanin",
+    "noteFailedMsg": "Tallafi na da faɗakarwar ka da wurin ka. Sake gwadawa, ko ka kira lambar gaggawa da ke ƙasa."
   },
   "report": {
     "title": "Bayar da Rahoton Matsala",

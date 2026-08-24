@@ -732,6 +732,9 @@ export interface SosAlertDTO {
   lng:        number | null;
   note:       string | null;
   createdAt:  string;
+  // What support did about it, written by the admin at the moment of
+  // closing. Null until an admin resolves the alert with a note.
+  resolutionNote?: string | null;
 }
 
 export const sosApi = {
@@ -742,6 +745,19 @@ export const sosApi = {
 
   // User cancels their own active alert (false alarm).
   cancel: (id: string) => request<SosAlertDTO>('PATCH', `/sos/${id}/cancel`),
+
+  /**
+   * The raiser says what is happening, on an alert that has ALREADY been
+   * sent (founder 2026-08-24: "the driver can't leave a quick message to
+   * know the issue").
+   *
+   * Deliberately a second call rather than a field on trigger(): an SOS
+   * must never become a form. The button fires help first, and this is
+   * how the detail catches up. Backend caps the note at 500 chars and
+   * only accepts it from the account that raised the alert.
+   */
+  addNote: (id: string, note: string) =>
+    request<SosAlertDTO>('PATCH', `/sos/${id}/note`, { note }),
 };
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────

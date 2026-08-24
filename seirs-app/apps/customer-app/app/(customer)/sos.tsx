@@ -1,5 +1,6 @@
 import {
   View, Text, Pressable, StyleSheet, StatusBar, Alert, Linking, ScrollView, ActivityIndicator,
+  Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,6 +64,20 @@ export default function SOSScreen() {
   const [activated, setActivated] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [alertId,   setAlertId]   = useState<string | null>(null);
+
+  // "What is happening?" state. Asked only AFTER the alert has gone out:
+  // an SOS must never become a form, so the button is the alarm and the
+  // detail is a separate, skippable step (founder 2026-08-24). Backed by
+  // PATCH /sos/:id/note. Alert.prompt is iOS-only and does nothing at all
+  // on Android, so this is a real Modal with a TextInput, the same fix
+  // the driver app uses for its receiver-name prompt.
+  const [noteOpen,   setNoteOpen]   = useState(false);
+  const [noteText,   setNoteText]   = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteSent,   setNoteSent]   = useState(false);
+  // Guards the one-time auto-open, otherwise the modal reopens on every
+  // countdown tick and traps the user inside it.
+  const notePrompted = useRef(false);
 
   // Emergency directory. `contacts` null means "still loading"; `offline`
   // true means the fetch failed and the two bundled national lines are
@@ -141,6 +156,34 @@ export default function SOSScreen() {
     return () => clearTimeout(timer);
   }, [activated, countdown]);
 
+  /**
+   * Ask what is happening only once the 5s undo window has closed. Popping
+   * it immediately would cover the Cancel SOS button, which is the one
+   * control a mistaken press needs.
+   */
+  useEffect(() => {
+    if (!alertId || countdown > 0 || notePrompted.current) return;
+    notePrompted.current = true;
+    setNoteOpen(true);
+  }, [alertId, countdown]);
+
+  const submitNote = async () => {
+    const clean = noteText.trim();
+    if (!clean || !alertId) return;
+    setNoteSaving(true);
+    try {
+      await sosApi.addNote(alertId, clean);
+      setNoteSent(true);
+      setNoteOpen(false);
+    } catch (e: any) {
+      // Stay open so the typed text is not lost. Support already has the
+      // alert and the location: only the detail failed to attach.
+      Alert.alert(t('sos.noteFailed'), e?.message ?? t('sos.noteFailedMsg'));
+    } finally {
+      setNoteSaving(false);
+    }
+  };
+
   const dial = (number: string) => {
     // Was an Alert reading "Calling Police (199)..." that placed no call.
     // In an emergency that is the worst possible lie (sweep 2026-08-23).
@@ -198,6 +241,10 @@ export default function SOSScreen() {
     setActivated(false);
     setCountdown(5);
     setAlertId(null);
+    setNoteOpen(false);
+    setNoteText('');
+    setNoteSent(false);
+    notePrompted.current = false;
   };
 
   return (
@@ -250,6 +297,24 @@ export default function SOSScreen() {
                 <Pressable style={styles.cancelBtn} onPress={cancelSOS}>
                   <Text style={styles.cancelBtnText}>{t('sos.cancelSos')}</Text>
                 </Pressable>
+              )}
+
+              {/* Stays available after the modal is answered or skipped:
+                  what is happening can change while help is on its way. */}
+              {!!alertId && countdown === 0 && (
+                <>
+                  {noteSent && (
+                    <Text style={styles.noteSentLine} numberOfLines={3}>
+                      {t('sos.noteSeen', { note: noteText.trim() })}
+                    </Text>
+                  )}
+                  <Pressable style={styles.detailBtn} onPress={() => setNoteOpen(true)}>
+                    <Ionicons name="chatbubble-ellipses-outline" size={16} color="#7F1D1D" />
+                    <Text style={styles.detailBtnText}>
+                      {noteSent ? t('sos.noteUpdate') : t('sos.noteAdd')}
+                    </Text>
+                  </Pressable>
+                </>
               )}
             </View>
           ) : (
@@ -326,6 +391,65 @@ export default function SOSScreen() {
           </Pressable>
 
         </ScrollView>
+
+        {/*
+          What is happening? Asked AFTER the alert is already on the ops desk,
+          never before: the button is the alarm, this is only detail.
+
+          Alert.prompt is iOS-only and fails silently on Android, so this is a
+          real Modal with a TextInput.
+
+          Colours are pinned to the SOS palette rather than the theme: this
+          screen is deep red with white text in BOTH themes, and a theme
+          surface here would put near-white text on a near-white card in light
+          mode, which is the defect that made this screen unreadable once
+          already.
+        */}
+        <Modal
+          visible={noteOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setNoteOpen(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.noteBackdrop}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.noteCard}>
+              <Text style={styles.noteTitle}>{t('sos.noteTitle')}</Text>
+              <Text style={styles.noteSub}>{t('sos.noteSub')}</Text>
+              <TextInput
+                value={noteText}
+                onChangeText={setNoteText}
+                placeholder={t('sos.notePlaceholder')}
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                style={styles.noteInput}
+                multiline
+                maxLength={500}
+                autoFocus
+                editable={!noteSaving}
+              />
+              <View style={styles.noteActions}>
+                <Pressable
+                  style={styles.noteSkipBtn}
+                  onPress={() => setNoteOpen(false)}
+                  disabled={noteSaving}
+                >
+                  <Text style={styles.noteSkipText}>{t('common.skip')}</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.noteSendBtn, (!noteText.trim() || noteSaving) && styles.noteSendBtnOff]}
+                  onPress={submitNote}
+                  disabled={!noteText.trim() || noteSaving}
+                >
+                  {noteSaving
+                    ? <ActivityIndicator size="small" color="#7F1D1D" />
+                    : <Text style={styles.noteSendText}>{t('sos.noteSend')}</Text>}
+                </Pressable>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -355,6 +479,26 @@ const styles = StyleSheet.create({
   idleState:  { alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md },
   idleTitle:  { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold, textAlign: 'center' },
   idleDesc:   { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
+
+  // "Tell support what is happening" entry point + the modal. Light chip on
+  // the deep red ground so it reads in both themes.
+  detailBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.lg, paddingVertical: 10, borderRadius: Radius.full, backgroundColor: '#FFE4E4', marginTop: Spacing.sm },
+  detailBtnText: { color: '#7F1D1D', fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  noteSentLine:  { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.sm, textAlign: 'center', fontStyle: 'italic', lineHeight: 19 },
+
+  noteBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
+  noteCard:     { width: '100%', maxWidth: 380, borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm, backgroundColor: '#3B0A0A', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  noteTitle:    { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  noteSub:      { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.sm, lineHeight: 19 },
+  noteInput:    { minHeight: 88, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.10)',
+                  borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 10, color: '#fff', fontSize: FontSize.base,
+                  textAlignVertical: 'top', marginTop: 4 },
+  noteActions:  { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: Spacing.sm, marginTop: 4 },
+  noteSkipBtn:  { paddingVertical: 10, paddingHorizontal: 16 },
+  noteSkipText: { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  noteSendBtn:  { paddingVertical: 10, paddingHorizontal: 18, borderRadius: Radius.md, backgroundColor: '#FFE4E4', minWidth: 120, alignItems: 'center' },
+  noteSendBtnOff: { opacity: 0.45 },
+  noteSendText: { color: '#7F1D1D', fontSize: FontSize.base, fontWeight: FontWeight.bold },
 
   directorySection: { width: '100%', gap: Spacing.sm },
   directoryTitle:   { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },

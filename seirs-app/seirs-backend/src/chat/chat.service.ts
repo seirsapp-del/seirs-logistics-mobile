@@ -79,6 +79,23 @@ export class ChatService {
     const isRide       = String(delivery?.kind ?? 'package') === 'ride';
     const senderIsRider = delivery?.customer?.id === u.id;
     const first = String(u.firstName ?? u.name ?? '').trim().split(/\s+/)[0] || 'User';
+    /**
+     * senderId, flat, alongside the reduced sender object.
+     *
+     * Every chat client decides which side of the screen a bubble
+     * goes on with `item.senderId === myUserId`, but ChatMessage
+     * exposes the sender RELATION and never the foreign key, so
+     * senderId was absent from the payload entirely. undefined ===
+     * myId is false for every message, so EVERY message rendered as
+     * the other party: left aligned, wrong avatar, in all three
+     * apps. Founder spotted it 2026-08-24: "why is every chat on the
+     * left side".
+     *
+     * Same root cause as the empty inbox: a foreign key the entity
+     * never declared. System messages keep senderId null, which is
+     * what the clients already test for to render a centred pill.
+     */
+    (m as any).senderId = u.id ?? null;
     m.sender = {
       id:           u.id,
       // A ride passenger is first-name-only to the other side; the

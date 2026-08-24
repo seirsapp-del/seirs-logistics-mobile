@@ -1,5 +1,6 @@
 import {
   View, Text, Pressable, StyleSheet, StatusBar, Alert, Linking,
+  Modal, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,6 +35,20 @@ export default function DriverSosScreen() {
   const [alertId,    setAlertId]    = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // "What is happening?" state. The alert is ALREADY sent by the time any
+  // of this renders: an SOS must never become a form, so detail is a
+  // second, skippable step on an alert that has gone out (founder
+  // 2026-08-24: "the driver can't leave a quick message to know the
+  // issue"). Alert.prompt is iOS-only and does nothing at all on Android,
+  // so this is a real Modal, same as the receiver-name prompt in active.tsx.
+  const [noteOpen,   setNoteOpen]   = useState(false);
+  const [noteText,   setNoteText]   = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteSent,   setNoteSent]   = useState(false);
+  // Guards the one-time auto-open. Without it the modal reopens on every
+  // countdown tick and traps the driver in it.
+  const notePrompted = useRef(false);
+
   const pulse1 = useRef(new Animated.Value(1)).current;
   const pulse2 = useRef(new Animated.Value(1)).current;
 
@@ -61,6 +76,35 @@ export default function DriverSosScreen() {
     return () => clearTimeout(t);
   }, [activated, countdown]);
 
+  /**
+   * Ask what is happening only once the 5s undo window has closed. Popping
+   * it immediately would cover the Cancel SOS button, which is the one
+   * control a mistaken press needs.
+   */
+  useEffect(() => {
+    if (!alertId || countdown > 0 || notePrompted.current) return;
+    notePrompted.current = true;
+    setNoteOpen(true);
+  }, [alertId, countdown]);
+
+  const submitNote = async () => {
+    const clean = noteText.trim();
+    if (!clean || !alertId) return;
+    setNoteSaving(true);
+    try {
+      await sosApi.addNote(alertId, clean);
+      setNoteSent(true);
+      setNoteOpen(false);
+    } catch (e: any) {
+      // Stay open so the text is not lost: ops already has the alert and
+      // the location, this is only the detail failing to attach.
+      Alert.alert('Could not send that detail',
+        e?.message ?? 'Ops already has your alert and your location. Try again, or call 199.');
+    } finally {
+      setNoteSaving(false);
+    }
+  };
+
   const fireSOS = async () => {
     setSubmitting(true);
     setActivated(true);
@@ -78,10 +122,12 @@ export default function DriverSosScreen() {
     } catch { /* keep undefined */ }
 
     try {
+      // No placeholder note. The note field now carries what the driver
+      // actually typed after the alert went out, and "Driver SOS" told the
+      // ops desk nothing the role badge did not already say.
       const created = await sosApi.trigger({
         deliveryId: params.deliveryId,
         lat, lng,
-        note: 'Driver SOS',
       });
       setAlertId(created.id);
     } catch (e: any) {
@@ -108,6 +154,10 @@ export default function DriverSosScreen() {
     setActivated(false);
     setCountdown(5);
     setAlertId(null);
+    setNoteOpen(false);
+    setNoteText('');
+    setNoteSent(false);
+    notePrompted.current = false;
   };
 
   return (
@@ -156,6 +206,24 @@ export default function DriverSosScreen() {
                   <Text style={styles.cancelBtnText}>Cancel SOS</Text>
                 </Pressable>
               )}
+
+              {/* Stays available after the modal is skipped or answered:
+                  what is happening can change while help is on its way. */}
+              {!!alertId && countdown === 0 && (
+                <>
+                  {noteSent && (
+                    <Text style={styles.noteSentLine} numberOfLines={3}>
+                      Ops can see: “{noteText.trim()}”
+                    </Text>
+                  )}
+                  <Pressable style={styles.detailBtn} onPress={() => setNoteOpen(true)}>
+                    <Ionicons name="chatbubble-ellipses-outline" size={16} color="#7F1D1D" />
+                    <Text style={styles.detailBtnText}>
+                      {noteSent ? 'Update what is happening' : 'Tell ops what is happening'}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
             </View>
           ) : (
             <View style={styles.idleState}>
@@ -186,6 +254,69 @@ export default function DriverSosScreen() {
           </View>
 
         </View>
+
+        {/*
+          What is happening? Asked AFTER the alert is already on the ops desk,
+          never before: the button is the alarm, this is only detail.
+
+          Alert.prompt is iOS-only and fails silently on Android (the founder
+          is on a Samsung A30), so this is a real Modal with a TextInput, the
+          same fix active.tsx uses for the receiver-name prompt.
+
+          Colours are pinned to the SOS palette rather than the theme: this
+          screen is deep red with white text in BOTH themes, and a theme
+          surface here would put near-white text on a near-white card in
+          light mode, which is the defect that made the screen unreadable
+          once already.
+        */}
+        <Modal
+          visible={noteOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setNoteOpen(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.noteBackdrop}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.noteCard}>
+              <Text style={styles.noteTitle}>What is happening?</Text>
+              <Text style={styles.noteSub}>
+                Support is already alerted and your location is being shared.
+                This is optional: it just tells them what they are coming into.
+              </Text>
+              <TextInput
+                value={noteText}
+                onChangeText={setNoteText}
+                placeholder="e.g. Passenger is threatening me, I am parked at the filling station"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                style={styles.noteInput}
+                multiline
+                maxLength={500}
+                autoFocus
+                editable={!noteSaving}
+              />
+              <View style={styles.noteActions}>
+                <Pressable
+                  style={styles.noteSkipBtn}
+                  onPress={() => setNoteOpen(false)}
+                  disabled={noteSaving}
+                >
+                  <Text style={styles.noteSkipText}>Skip</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.noteSendBtn, (!noteText.trim() || noteSaving) && styles.noteSendBtnOff]}
+                  onPress={submitNote}
+                  disabled={!noteText.trim() || noteSaving}
+                >
+                  {noteSaving
+                    ? <ActivityIndicator size="small" color="#7F1D1D" />
+                    : <Text style={styles.noteSendText}>Send to ops</Text>}
+                </Pressable>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -215,6 +346,26 @@ const styles = StyleSheet.create({
   idleState:  { alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md },
   idleTitle:  { color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold, textAlign: 'center' },
   idleDesc:   { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
+
+  // "Tell ops what is happening" entry point + the modal. Light chip on the
+  // deep red ground so it reads in both themes.
+  detailBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.lg, paddingVertical: 10, borderRadius: Radius.full, backgroundColor: '#FFE4E4', marginTop: Spacing.sm },
+  detailBtnText: { color: '#7F1D1D', fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  noteSentLine:  { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.sm, textAlign: 'center', fontStyle: 'italic', lineHeight: 19 },
+
+  noteBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
+  noteCard:     { width: '100%', maxWidth: 380, borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm, backgroundColor: '#3B0A0A', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  noteTitle:    { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  noteSub:      { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.sm, lineHeight: 19 },
+  noteInput:    { minHeight: 88, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.10)',
+                  borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 10, color: '#fff', fontSize: FontSize.base,
+                  textAlignVertical: 'top', marginTop: 4 },
+  noteActions:  { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: Spacing.sm, marginTop: 4 },
+  noteSkipBtn:  { paddingVertical: 10, paddingHorizontal: 16 },
+  noteSkipText: { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.base, fontWeight: FontWeight.semibold },
+  noteSendBtn:  { paddingVertical: 10, paddingHorizontal: 18, borderRadius: Radius.md, backgroundColor: '#FFE4E4', minWidth: 120, alignItems: 'center' },
+  noteSendBtnOff: { opacity: 0.45 },
+  noteSendText: { color: '#7F1D1D', fontSize: FontSize.base, fontWeight: FontWeight.bold },
 
   emergencySection:     { width: '100%', gap: Spacing.sm },
   emergencySectionTitle:{ color: 'rgba(255,255,255,0.65)', fontSize: FontSize.xs, fontWeight: FontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5 },

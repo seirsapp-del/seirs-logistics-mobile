@@ -776,7 +776,16 @@
     "fallback112Name": "National emergency number",
     "fallback112Use": "Use this first for any emergency anywhere in Nigeria: police, ambulance or fire.",
     "fallback199Name": "Fire service",
-    "fallback199Use": "Use this for a fire, or for anyone trapped in a building or a vehicle."
+    "fallback199Use": "Use this for a fire, or for anyone trapped in a building or a vehicle.",
+    "noteTitle": "What is happening?",
+    "noteSub": "Support is already alerted and your location is being shared. This is optional: it only tells them what they are coming into.",
+    "notePlaceholder": "e.g. A man followed me off the bus at Ojota",
+    "noteSend": "Send to support",
+    "noteAdd": "Tell support what is happening",
+    "noteUpdate": "Update what is happening",
+    "noteSeen": "Support can see: “{{note}}”",
+    "noteFailed": "Could not send that detail",
+    "noteFailedMsg": "Support already has your alert and your location. Try again, or dial an emergency number below."
   },
   "report": {
     "title": "Report Issue",

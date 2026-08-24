@@ -588,7 +588,16 @@
     "fallback112Name": "Nọ́mbà pàjáwìrì orílẹ̀-èdè",
     "fallback112Use": "Lo èyí ní àkọ́kọ́ fún pàjáwìrì èyíkéyìí níbikíbi ní Nàìjíríà: ọlọ́pàá, ọkọ̀ aláìsàn tàbí ẹgbẹ́ apana-iná.",
     "fallback199Name": "Ẹgbẹ́ apana-iná",
-    "fallback199Use": "Lo èyí fún iná, tàbí fún ẹnikẹ́ni tí ó há mọ́ inú ilé tàbí inú ọkọ̀."
+    "fallback199Use": "Lo èyí fún iná, tàbí fún ẹnikẹ́ni tí ó há mọ́ inú ilé tàbí inú ọkọ̀.",
+    "noteTitle": "Kí ló ń ṣẹlẹ̀?",
+    "noteSub": "A ti kìlọ̀ fún àtìlẹ́yin tẹ́lẹ̀, ibí tí o wà sì ń jáde. Èyí jẹ́ àṣàyàn: ó kàn sọ fún wọn ohun tí wọ́n ń wọlé bá.",
+    "notePlaceholder": "àpẹẹrẹ: Ọkùnrin kan tẹ̀lé mi kúrò nínu ọkọ̀ ní Ojota",
+    "noteSend": "Fi ránṣẹ́ sí àtìlẹ́yin",
+    "noteAdd": "Sọ fún àtìlẹ́yin ohun tí ń ṣẹlẹ̀",
+    "noteUpdate": "Ṣàtúnṣe ohun tí ń ṣẹlẹ̀",
+    "noteSeen": "Àtìlẹ́yin lè rí: “{{note}}”",
+    "noteFailed": "A kò lè fi àlàyé yẹn ránṣẹ́",
+    "noteFailedMsg": "Àtìlẹ́yin ti ní ì kìlọ̀ rẹ àti ibí tí o wà. Gbìyànjú lẹ́ẹ̀kan si, tàbí pe nọ́mbà pajawiri ní ìsàlẹ̀."
   },
   "report": {
     "title": "Ròyìn Ìṣòro",

@@ -51,6 +51,17 @@ export class SosAlert {
   @Column({ type: 'timestamptz', nullable: true })
   resolvedAt: Date | null;
 
+  /**
+   * What support actually did about it.
+   *
+   * Resolve used to record only who closed it and when, which makes the
+   * queue unreviewable: a month later nobody can tell a false alarm from
+   * a real incident that was handled. Free text, capped, written by the
+   * admin at the moment of closing (founder 2026-08-24).
+   */
+  @Column({ type: 'text', nullable: true })
+  resolutionNote: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

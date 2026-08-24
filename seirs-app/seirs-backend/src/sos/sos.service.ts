@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SosAlert, SosStatus } from './sos-alert.entity';
@@ -132,7 +132,47 @@ export class SosService {
   }
 
   /** Admin marks an alert as handled. */
-  async resolve(alertId: string, admin: User): Promise<SosAlert> {
+  /**
+   * The raiser adds detail to an alert that has ALREADY gone out.
+   *
+   * An SOS must never be a form: you press once and help is called. So
+   * the app fires first and asks what is happening afterwards, and this
+   * is where that answer lands. Ops sees the note appear on the card
+   * seconds after the red flag, which is the difference between
+   * "someone pressed SOS" and "someone pressed SOS because a passenger
+   * is threatening them".
+   *
+   * Only the person who raised it, and only while it is still active.
+   */
+  async addNote(alertId: string, user: User, note: string): Promise<SosAlert> {
+    const alert = await this.repo.findOne({
+      where: { id: alertId },
+      relations: ['user'],
+    });
+    if (!alert) throw new NotFoundException('Alert not found.');
+    if (alert.user?.id !== user.id) throw new ForbiddenException('Not your alert.');
+
+    const clean = String(note ?? '').trim();
+    if (!clean) throw new BadRequestException('Say what is happening.');
+    alert.note = clean.slice(0, 500);
+    const saved = await this.repo.save(alert);
+
+    // Push it to the admins already watching this alert.
+    this.trackingGateway.broadcastSosAlert({
+      id:        saved.id,
+      userId:    user.id,
+      userName:  user.name,
+      userPhone: user.phone,
+      deliveryId: (saved as any).delivery?.id ?? null,
+      lat:       saved.lat,
+      lng:       saved.lng,
+      note:      saved.note,
+      createdAt: saved.createdAt,
+    });
+    return saved;
+  }
+
+  async resolve(alertId: string, admin: User, resolutionNote?: string): Promise<SosAlert> {
     if (admin.role !== UserRole.ADMIN) {
       throw new ForbiddenException('Admin only.');
     }
@@ -141,6 +181,9 @@ export class SosService {
     alert.status     = SosStatus.RESOLVED;
     alert.resolvedAt = new Date();
     alert.resolvedBy = admin;
+    // What was done about it, so the queue can be reviewed later.
+    const note = String(resolutionNote ?? '').trim();
+    if (note) alert.resolutionNote = note.slice(0, 1000);
     return this.repo.save(alert);
   }
 
@@ -149,8 +192,15 @@ export class SosService {
     if (admin.role !== UserRole.ADMIN) {
       throw new ForbiddenException('Admin only.');
     }
+    /**
+     * delivery is @ManyToOne without eager, so without this relation
+     * a.delivery was always undefined and the admin card's
+     * "Open their booking" link never rendered: on the one screen
+     * whose job is the first minute of an emergency.
+     */
     return this.repo.find({
       where: { status: SosStatus.ACTIVE },
+      relations: ['delivery'],
       order: { createdAt: 'DESC' },
       take:  100,
     });

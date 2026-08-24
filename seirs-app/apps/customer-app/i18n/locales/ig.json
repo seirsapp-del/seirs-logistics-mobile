@@ -588,7 +588,16 @@
     "fallback112Name": "Nọmba mberede mba",
     "fallback112Use": "Buru ụzọ jiri nke a maka mberede ọ bụla ebe ọ bụla na Naịjirịa: ndị uwe ojii, ụgbọ ala ọgwụ ma ọ bụ ndị mgbanyụ ọkụ.",
     "fallback199Name": "Ndị mgbanyụ ọkụ",
-    "fallback199Use": "Jiri nke a maka ọkụ, ma ọ bụ maka onye ọ bụla tọrọ atọ n'ụlọ ma ọ bụ n'ụgbọ ala."
+    "fallback199Use": "Jiri nke a maka ọkụ, ma ọ bụ maka onye ọ bụla tọrọ atọ n'ụlọ ma ọ bụ n'ụgbọ ala.",
+    "noteTitle": "Gịnị na-eme?",
+    "noteSub": "A dọọlarị nkwado aka na ntị, a na-ekerịkwa ebe ị nọ. Nke a bụ nhọrọ: ọ na-agwa ha ihe ha na-abata.",
+    "notePlaceholder": "dịka: Otu nwoke sooro m si n'ụgbọ ala na Ojota",
+    "noteSend": "Ziga na nkwado",
+    "noteAdd": "Gwa nkwado ihe na-eme",
+    "noteUpdate": "Melite ihe na-eme",
+    "noteSeen": "Nkwado nwere ike ịhụ: “{{note}}”",
+    "noteFailed": "Enweghị ike izipụ nkọwa ahụ",
+    "noteFailedMsg": "Nkwado enweelarị ọkwa gị na ebe ị nọ. Nwaa ọzọ, ma ọ bụ kpọọ otu nọmba ihe mberede n'okpuru."
   },
   "report": {
     "title": "Kọọ Nsogbu",

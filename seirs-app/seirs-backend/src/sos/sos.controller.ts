@@ -28,8 +28,23 @@ export class SosController {
 
   // PATCH /api/v1/sos/:id/resolve - admin marks alert as handled
   @Patch(':id/resolve')
-  resolve(@Param('id') id: string, @CurrentUser() user: User) {
-    return this.svc.resolve(id, user);
+  resolve(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body?: { resolutionNote?: string },
+  ) {
+    return this.svc.resolve(id, user, body?.resolutionNote);
+  }
+
+  // PATCH /api/v1/sos/:id/note - the raiser says what is happening, on an
+  // alert that has already been sent. Detail must never gate the alarm.
+  @Patch(':id/note')
+  addNote(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: { note: string },
+  ) {
+    return this.svc.addNote(id, user, body?.note);
   }
 
   // GET /api/v1/sos/active - admin dashboard feed
