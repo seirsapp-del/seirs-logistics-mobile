@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar, Alert, Linking,
+  View, Text, Pressable, StyleSheet, StatusBar, Alert, Linking, ScrollView,
   Modal, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -173,7 +173,15 @@ export default function DriverSosScreen() {
           <View style={{ width: 36 }} />
         </View>
 
-        <View style={styles.body}>
+        {/* Scrolls rather than clipping. The active state now carries the
+            note echo and the "tell ops what is happening" button, and on a
+            short screen that pushed Quick Dial off the bottom with no way
+            to reach it. Customer SOS already scrolls for the same reason. */}
+        <ScrollView
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
 
           <View style={styles.sosWrap}>
             <Animated.View style={[styles.ring2, { transform: [{ scale: pulse2 }] }]} />
@@ -253,7 +261,7 @@ export default function DriverSosScreen() {
             </View>
           </View>
 
-        </View>
+        </ScrollView>
 
         {/*
           What is happening? Asked AFTER the alert is already on the ops desk,
@@ -327,7 +335,7 @@ const styles = StyleSheet.create({
   backBtn:     { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
 
-  body: { flex: 1, alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
+  body: { flexGrow: 1, alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
 
   sosWrap: { alignItems: 'center', justifyContent: 'center', width: 220, height: 220 },
   ring2:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(239,68,68,0.08)' },
@@ -351,7 +359,7 @@ const styles = StyleSheet.create({
   // deep red ground so it reads in both themes.
   detailBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.lg, paddingVertical: 10, borderRadius: Radius.full, backgroundColor: '#FFE4E4', marginTop: Spacing.sm },
   detailBtnText: { color: '#7F1D1D', fontSize: FontSize.base, fontWeight: FontWeight.bold },
-  noteSentLine:  { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.sm, textAlign: 'center', fontStyle: 'italic', lineHeight: 19 },
+  noteSentLine:  { color: 'rgba(255,255,255,0.85)', fontSize: FontSize.sm, textAlign: 'center', fontStyle: 'italic', lineHeight: 19, paddingHorizontal: Spacing.sm },
 
   noteBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
   noteCard:     { width: '100%', maxWidth: 380, borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm, backgroundColor: '#3B0A0A', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },

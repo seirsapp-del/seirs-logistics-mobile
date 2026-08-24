@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, StatusBar, Alert, Linking, ActivityIndicator,
-  Modal, TextInput, KeyboardAvoidingView, Platform,
+  Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -114,7 +114,15 @@ export default function BusinessSosScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <View style={styles.body}>
+      {/* Scrolls rather than clipping. The active state now carries the note
+          echo and the "tell support what is happening" button, and on a short
+          screen that pushed the national emergency numbers off the bottom
+          with no way to reach them. */}
+      <ScrollView
+        contentContainerStyle={styles.body}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {!alertId ? (
           <>
             <Pressable style={styles.sosBtn} onPress={confirmFire} disabled={firing}>
@@ -168,7 +176,7 @@ export default function BusinessSosScreen() {
             </Pressable>
           ))}
         </View>
-      </View>
+      </ScrollView>
 
       {/*
         What is happening? Asked AFTER the alert is already on the ops desk,
@@ -239,7 +247,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   title:   { color: '#fff', fontSize: 17, fontWeight: '700' },
 
-  body:    { flex: 1, alignItems: 'center', paddingHorizontal: 28, paddingTop: 40, gap: 18 },
+  body:    { flexGrow: 1, alignItems: 'center', paddingHorizontal: 28, paddingTop: 40, gap: 18 },
   sosBtn:  { width: 170, height: 170, borderRadius: 85, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
              shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 16, elevation: 10 },
   sosBtnText: { color: '#B91C1C', fontSize: 44, fontWeight: '900', letterSpacing: 2 },

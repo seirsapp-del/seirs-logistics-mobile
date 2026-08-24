@@ -546,7 +546,21 @@ export default function DeliveryDetailPage() {
           </h2>
           {d.driver
             ? <>
-                <div className="text-sm font-semibold text-[#0F2B4C]">{d.driver.user?.name ?? d.driver.id?.slice(0, 8)}</div>
+                {/* The sender name a few lines up has always been a link
+                    and the driver name was a plain div, so on one card an
+                    admin could click one person and not the other
+                    (founder 2026-08-24, mid emergency). Driver profile
+                    where we have the driver row, account otherwise. */}
+                {d.driver.id || d.driver.user?.id ? (
+                  <Link
+                    href={d.driver.id ? `/drivers/${d.driver.id}` : `/users/${d.driver.user.id}`}
+                    className="text-sm font-semibold text-[#3A7BD5] hover:underline"
+                  >
+                    {d.driver.user?.name ?? d.driver.id?.slice(0, 8)}
+                  </Link>
+                ) : (
+                  <div className="text-sm font-semibold text-[#0F2B4C]">{d.driver.user?.name ?? '-'}</div>
+                )}
                 <Row label="Phone"   value={d.driver.user?.phone} />
                 <Row label="Vehicle" value={d.driver.vehicleType} />
                 {/* Where the rider was when the job was assigned, recorded
@@ -558,6 +572,28 @@ export default function DeliveryDetailPage() {
                     label="Distance at accept"
                     value={`${Number(d.driverAcceptedDistanceKm).toFixed(1)} km from pickup`}
                   />
+                )}
+                {/* Where the rider is RIGHT NOW, in numbers. The map above
+                    draws a dot, which is unreadable down a phone line and
+                    cannot be pasted anywhere. Ops needs to be able to say
+                    the coordinates out loud. */}
+                {d.driver.lastLat != null && d.driver.lastLng != null && (
+                  <div className="mt-2 rounded-lg bg-[#F3F4F6] px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-[#0F2B4C]/40">
+                      Live position
+                    </div>
+                    <div className="font-mono text-xs text-[#0F2B4C]">
+                      {Number(d.driver.lastLat).toFixed(5)}, {Number(d.driver.lastLng).toFixed(5)}
+                    </div>
+                    <a
+                      className="mt-1 inline-block text-xs font-semibold text-[#3A7BD5] hover:underline"
+                      href={`https://www.google.com/maps?q=${d.driver.lastLat},${d.driver.lastLng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open where they are now
+                    </a>
+                  </div>
                 )}
                 {d.driverAcceptedLat != null && d.driverAcceptedLng != null && (
                   <a

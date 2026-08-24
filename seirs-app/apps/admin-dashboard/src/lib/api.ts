@@ -109,7 +109,18 @@ export const adminApi = {
   // nobody saw. Banner + queue + ops flare all read from here.
   sos: {
     active:  ()          => req<any[]>('/sos/active'),
-    resolve: (id: string) => req<any>(`/sos/${id}/resolve`, { method: 'PATCH' }),
+    /**
+     * Closing an alert now records what was done about it (founder
+     * 2026-08-24). Without it the queue is unreviewable: a month later
+     * nobody can tell a false alarm from a real incident that was handled.
+     * The body is optional so an emergency queue can still be cleared
+     * fast; the backend caps the note at 1000 chars.
+     */
+    resolve: (id: string, resolutionNote?: string) =>
+      req<any>(`/sos/${id}/resolve`, {
+        method: 'PATCH',
+        body:   JSON.stringify({ resolutionNote: resolutionNote ?? undefined }),
+      }),
   },
   driverLevels: {
     config: () => req<{ caps: number[] }>('/admin/driver-levels/config'),
