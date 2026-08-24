@@ -67,3 +67,6 @@ yarn-error.*
 
 # Claude Code local session data (not for repo)
 .claude/
+
+# Metro prebuild artifacts (see project_seirs_dev_routine)
+*.bundle
