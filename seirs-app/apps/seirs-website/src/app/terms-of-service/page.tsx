@@ -50,7 +50,10 @@ export default function TermsOfServicePage() {
     "About SEIRS",
     "Eligibility",
     "Account Types",
-    "Prohibited Items",
+    // Renamed 2026-08-24: the section no longer only prohibits. Live
+    // animals and perishables moved out of the banned list into 4.1 and
+    // 4.2 as restricted categories with real conditions (sweep W-6).
+    "Prohibited and Restricted Items",
     "Pricing and Fees",
     "Payments and Refunds",
     "Delivery Terms",
@@ -94,9 +97,13 @@ export default function TermsOfServicePage() {
               reader to check, and is itself inaccurate. That promise is not
               breached by dating these today: it protects existing users, and
               pre-launch there are none. Update BOTH dates whenever this text
-              changes, and once there are users, send the notice first. */}
+              changes, and once there are users, send the notice first.
+
+              Rolled to 24 August: sections 4, 5, 6, 3.2 and 10 were all
+              materially rewritten that day for sweep findings W-6, W-8 and
+              W-9. */}
           <p className="text-white/55 text-sm">
-            Last updated: 23 August 2026 &nbsp;&bull;&nbsp; Effective: 23 August 2026
+            Last updated: 24 August 2026 &nbsp;&bull;&nbsp; Effective: 24 August 2026
           </p>
         </div>
       </div>
@@ -162,10 +169,21 @@ export default function TermsOfServicePage() {
                 </BodyText>
               </SubSection>
               <SubSection title="3.2 Business Sender Accounts">
+                {/* "Business wallet funds are non-refundable except as stated
+                    in Section 6" deleted 2026-08-24 (sweep W-8, founder
+                    ruling). The symptom: this document created a prepaid
+                    customer-funds balance. Describing money a sender has
+                    handed over and not yet spent is deposit-taking language,
+                    and SEIRS is not a bank and holds no CBN licence to be one.
+                    Senders, business and customer alike, pay per booking
+                    through Flutterwave. Do not reintroduce a softened version
+                    of this clause: the correct number of clauses describing a
+                    sender-held balance is zero. Only drivers and partner
+                    stores have a withdrawable ledger, and that is earnings
+                    they accrued, not money they deposited. */}
                 <BodyText>
                   Companies or sole traders sending parcels in bulk. Subject to additional KYC
-                  verification. Business wallet funds are non-refundable except as stated in
-                  Section 6.
+                  verification. Business accounts pay for each booking at the time it is made.
                 </BodyText>
               </SubSection>
               <SubSection title="3.3 Driver Accounts">
@@ -191,20 +209,30 @@ export default function TermsOfServicePage() {
               </SubSection>
             </Section>
 
-            <Section id="section-4" title="4. Prohibited Items">
+            <Section id="section-4" title="4. Prohibited and Restricted Items">
               <div className="bg-amber-50 border-l-4 border-warning-amber rounded-r-card p-5 mb-4">
                 <BodyText>
                   <strong>The following items are strictly prohibited from our platform:</strong>
                 </BodyText>
               </div>
+              {/* "Live animals" and "Perishable items without prior
+                  arrangement" were carved out of this list on 2026-08-24
+                  (sweep W-6). Both are live service categories the product
+                  sells and the pricing engine prices (live_animals, food_hot,
+                  food_cold, each with its own rate-card surcharge and its own
+                  blocked-vehicle rules), and the homepage advertises both by
+                  name. The symptom: a customer whose live-animal or hot-food
+                  delivery went wrong was met with a clause saying it had never
+                  been allowed, while the app had taken the booking and priced
+                  it. The product is the source of truth, so the real
+                  conditions are written out in 4.1 and 4.2 instead. Everything
+                  else on this list stays strictly prohibited. */}
               <BulletList
                 items={[
                   "Illegal substances, narcotics, or controlled drugs",
                   "Weapons, firearms, ammunition, or explosives",
                   "Stolen goods or counterfeit products",
-                  "Perishable items without prior arrangement",
                   "Hazardous materials (flammable, corrosive, toxic, or radioactive)",
-                  "Live animals",
                   "Currency, bearer bonds, or negotiable instruments exceeding ₦500,000",
                   "Items prohibited under Nigerian law",
                 ]}
@@ -214,13 +242,77 @@ export default function TermsOfServicePage() {
                 suspect contains prohibited items. The sender is solely liable for the contents
                 of any package.
               </BodyText>
+
+              <SubSection title="4.1 Perishable and temperature-sensitive items">
+                <BodyText>
+                  Hot food, chilled and frozen goods and other perishable items are carried.
+                  They are not prohibited and need no prior arrangement: each is its own
+                  service category in the app, priced on its own rate card, and restricted to
+                  the vehicle types that category allows.
+                </BodyText>
+                <BodyText>
+                  Because a perishable parcel loses its value within hours and becomes a health
+                  liability after that, it follows a shortened exception path rather than the
+                  ordinary one. A perishable order is never held at a partner counter, never
+                  enters storage, and is not held back for a second delivery attempt. Where the
+                  handover cannot be completed, SEIRS contacts the sender, and if the item
+                  cannot be delivered or returned within the perishable window shown in the app
+                  it may be disposed of the same day, with photographic evidence retained.
+                  Section 8.4 governs and, for perishable items, prevails over the storage and
+                  further-attempt provisions elsewhere in these Terms.
+                </BodyText>
+              </SubSection>
+
+              <SubSection title="4.2 Live animals">
+                <BodyText>
+                  {/* The vehicle rule is real (the category carries a
+                      blocked-vehicle list, so the app refuses a bike, keke or
+                      car for it) but it is rate-card data an admin can tune,
+                      so it is described here by what it is for rather than
+                      enumerated. Same reason fee amounts are never typed into
+                      this document. */}
+                  Live animals are carried. They are not prohibited: the category is priced on
+                  its own rate card, and can only be booked on the vehicle types the app allows
+                  for it, which are those with enclosed, ventilated load space. The following
+                  conditions apply, and are the sender&apos;s responsibility:
+                </BodyText>
+                <BulletList
+                  items={[
+                    "The sender must provide humane, secure and lawful containment suitable for the whole journey, with adequate ventilation, and remains responsible for the animal's condition throughout",
+                    "The sender must hold every permit, movement certificate and clearance the movement requires, including those required to cross a state boundary, and must produce them on request",
+                    "A live animal is handed to a person at the delivery address. It is never left at a gate, with a neighbour, or with any other third party, and it is never held at a partner counter or placed into storage",
+                    "SEIRS carries animals. We do not provide veterinary care, feeding, watering, welfare inspection, or any other form of animal husbandry, and none should be assumed",
+                    "A driver may refuse a job, or end one already under way, where an animal is unsafely or unlawfully contained, or where continuing would be unlawful or unsafe",
+                    "Because an animal cannot be held at a counter, an animal that cannot be handed over is returned to the pickup address under Section 8.6, and is not routed into the storage path in Section 8.2 or 8.3",
+                  ]}
+                />
+              </SubSection>
             </Section>
 
             <Section id="section-5" title="5. Pricing and Fees">
+              {/* "Prices displayed at order creation are estimates; final
+                  prices may vary for actual weight/distance" replaced
+                  2026-08-24 (sweep W-9). The symptom: how-it-works promised
+                  "the price you see is the price you pay" while this document
+                  called the same number an estimate, so the two surfaces
+                  contradicted each other on the one term a consumer-protection
+                  challenge starts from. Neither was accurate. What the backend
+                  actually does is stronger than an estimate and narrower than
+                  a no-surcharge promise: the review quote is signed with the
+                  moment it was priced (PricingService.signQuotePin) and a
+                  booking carrying a valid pin is written at exactly that
+                  number, while an expired or tampered pin is refused with
+                  QUOTE_EXPIRED so the app has to re-price and re-show first.
+                  The wording below and the wording on how-it-works describe
+                  that same mechanism and must be changed together. No pin
+                  lifetime is quoted here: it is a constant in the pricing
+                  service and would date this document the day it is tuned. */}
               <BulletList
                 items={[
                   "Delivery prices are calculated based on distance, weight, vehicle type, and current fuel/FX rates",
-                  "Prices displayed at order creation are estimates; final prices may vary for actual weight/distance",
+                  "The price shown when you review a booking is locked to that quote. A booking placed while that quote still holds is charged at exactly the price shown to you, not at a recalculated figure",
+                  "If the quote lapses before you book, we refuse the booking rather than repricing it silently, and show you the current price again before any payment is taken. You are never charged a price you have not seen and accepted",
+                  "Fees that can arise after a booking (redirection to a partner counter, counter handling, storage, and return to sender) are separate from the delivery price and arise only in the circumstances set out in Section 8. Each is shown in the app, at the amount then applying, and is agreed before it is incurred",
                   "All prices are in Nigerian Naira (₦)",
                   "SEIRS reserves the right to adjust pricing with 7 days' notice for non-contracted accounts",
                   "Drivers receive a platform-determined share of the delivery fee; rates may change with 14 days' notice",
@@ -233,15 +325,19 @@ export default function TermsOfServicePage() {
               <BulletList
                 items={[
                   "Payments are processed via Flutterwave, a CBN-licensed payment service provider",
-                  "Business wallet top-ups are processed immediately; they are non-refundable once delivery orders are created using those funds",
-                  // Corrected 2026-08-14. These two clauses told every customer
-                  // they held a SEIRS cash balance they could withdraw from.
-                  // Customer accounts do not hold NGN: only business accounts
-                  // carry a prepaid wallet, and only drivers and partner stores
-                  // withdraw to a bank. Promising a consumer balance is the CBN
-                  // problem, and it was live in a legal document.
-                  "Refunds for failed or cancelled deliveries are returned to the original payment method. Card refunds typically settle within 5–10 business days depending on your bank. Business accounts are credited back to the business wallet within 24 hours",
-                  "Withdrawals to a Nigerian bank account are available to drivers and partner stores, processed within 3–5 business days and subject to identity verification. Customer accounts do not hold a cash balance",
+                  // 2026-08-14 corrected the customer half of this and left the
+                  // business half standing: a top-up clause, a wallet-credit
+                  // refund route, and a wallet balance refundable to a bank in
+                  // Section 10. 2026-08-24 (sweep W-8, founder ruling) deleted
+                  // all three. The symptom was deposit-taking language in a
+                  // binding document: taken together those clauses told a
+                  // business sender it could hand SEIRS money in advance, hold
+                  // it, and get it back, which is a licensed activity SEIRS
+                  // does not perform. The bullet below is the denial, not a
+                  // softer version of the promise. Keep it a denial.
+                  "Senders pay for each booking at the time it is made. SEIRS does not operate a wallet, stored-value account, or prepaid balance of any kind for customer or business senders, and does not accept money on deposit",
+                  "Refunds for failed or cancelled deliveries are returned to the original payment method. Card refunds typically settle within 5–10 business days depending on your bank",
+                  "Withdrawals to a Nigerian bank account are available to drivers and partner stores, from earnings they have accrued, processed within 3–5 business days and subject to identity verification",
                   "Driver and partner store payouts are processed weekly every Monday; SEIRS is not liable for delays caused by bank infrastructure",
                 ]}
               />
@@ -371,10 +467,21 @@ export default function TermsOfServicePage() {
                   "Required by law or regulatory order",
                 ]}
               />
+              {/* "Outstanding wallet balances will be refunded to a verified
+                  Nigerian bank account within 14 business days" deleted
+                  2026-08-24 (sweep W-8, founder ruling). It was the third and
+                  most explicit statement that a sender could hold money with
+                  SEIRS and get it back, which is the deposit-taking problem in
+                  its plainest form. What survives is the only balance that
+                  actually exists: a driver's or partner store's accrued
+                  earnings, paid out through the ordinary Section 6 route
+                  rather than a separate closure window invented here. */}
               <BodyText>
-                You may close your account at any time by contacting support. Outstanding wallet
-                balances will be refunded to a verified Nigerian bank account within 14 business
-                days.
+                You may close your account at any time by contacting support. Where a driver or
+                partner store account is closed with earnings still accrued, those earnings are
+                paid out to a verified Nigerian bank account under Section 6. Senders hold no
+                balance with SEIRS, so nothing is returned on closure beyond any refund already
+                due on a booking.
               </BodyText>
             </Section>
 

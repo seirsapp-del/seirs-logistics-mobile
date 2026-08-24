@@ -152,6 +152,23 @@ export default async function HowItWorksPage() {
           </div>
 
           <div className="space-y-10 lg:space-y-24">
+            {/* Step 1's third point was "The price you see is the price you
+                pay. No surcharges at the end." Replaced 2026-08-24 (sweep
+                W-9). The symptom: this page promised absolute price finality
+                while the Terms called the same number an estimate, and the
+                product does charge later-stage fees (partner counter
+                handling, storage, a redirect, a return) when a delivery
+                fails. A consumer sitting with both pages open had a complaint
+                ready-made.
+
+                What replaces it is the guarantee the backend actually makes,
+                which is a strong one: the review quote is signed with the
+                moment it was priced and a booking carrying a valid pin is
+                written at exactly that number, while a lapsed pin is refused
+                with QUOTE_EXPIRED so the app re-prices and re-shows before
+                anyone pays. Section 5 of the Terms now describes the same
+                mechanism in the same terms. Change the two together or they
+                drift apart again. */}
             <StoryStep
               step={1}
               icon={Smartphone}
@@ -160,7 +177,8 @@ export default async function HowItWorksPage() {
               points={[
                 "Send a package or request a ride, from the same screen.",
                 "Auto-quoted from zone pricing and a fuel index, not a guess.",
-                "The price you see is the price you pay. No surcharges at the end.",
+                "The quote is locked when you book: you are charged the number you saw, or we refuse the booking and show you the new price first.",
+                "Later-stage fees exist and we say so: counter storage, a redirect, a return. Each one is shown and agreed before it is incurred, never added afterwards.",
               ]}
               screen="customerBooking"
               screenAlt="Booking a delivery in the SEIRS customer app"

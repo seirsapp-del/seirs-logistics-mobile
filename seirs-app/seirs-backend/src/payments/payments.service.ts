@@ -670,12 +670,37 @@ export class PaymentsService {
       escrowStatus: EscrowStatus.HELD,
     });
     const savedWallet = await this.paymentsRepo.save(payment);
+    // Escrow is HELD here too, so the delivery must be stamped funded.
+    await this.markDeliveryFunded(delivery.id, `wallet:${savedWallet.id}`);
     try { await this.deliveriesServiceRef?.kickDispatch(delivery.id); }
     catch (e: any) { this.logger.warn(`Wallet dispatch kick failed: ${e.message}`); }
     return savedWallet;
   }
 
   // ── Verify Flutterwave payment (webhook + manual) ─────────────────────────
+
+  /**
+   * Stamp a delivery as funded. Every path that puts money into escrow
+   * MUST call this before kickDispatch, because kickDispatch and the
+   * available-jobs feed both gate on paymentHeldAt.
+   *
+   * It is a helper rather than an inline UPDATE precisely because it was
+   * missed: the field was written in exactly one disabled branch, so
+   * every card payment the platform took was orphaned from its delivery.
+   */
+  private async markDeliveryFunded(deliveryId: string, ref: string): Promise<void> {
+    try {
+      await this.dataSource.query(
+        `UPDATE deliveries SET "paymentHeldAt" = NOW() WHERE "id" = $1 AND "paymentHeldAt" IS NULL`,
+        [deliveryId],
+      );
+    } catch (e: any) {
+      this.logger.error(
+        `CRITICAL: could not mark ${ref} funded: ${e?.message ?? e}. `
+        + 'Money is held but this delivery will not dispatch.',
+      );
+    }
+  }
 
   async confirmFlutterwavePayment(
     txRef: string,
@@ -883,8 +908,31 @@ export class PaymentsService {
       payment.escrowStatus = EscrowStatus.HELD;
       this.logger.log(`Payment confirmed: ${txRef} (₦${result.amount})`);
 
-      // Money is secured: mark the delivery funded and let dispatch run.
+      /**
+       * Stamp the delivery as funded. THIS IS THE STEP THAT WAS
+       * MISSING, and it orphaned every card payment the platform has
+       * ever taken.
+       *
+       * paymentHeldAt was written in exactly one place, a business
+       * credit branch that is permanently disabled, yet four things
+       * gate on it: kickDispatch returns early without it, the
+       * available-jobs feed filters on IS NOT NULL, the tracking
+       * payload derives awaitingPayment from it, and the stale-pending
+       * sweep uses it to decide what to cancel.
+       *
+       * So the money was collected and held in escrow, the card was
+       * tokenised, loyalty was awarded, and the delivery itself never
+       * learned it had been paid. No driver could see it and the
+       * 60-minute sweep would eventually cancel a booking the customer
+       * had already paid for.
+       *
+       * Caught on the founder's first live payment, 2026-08-24:
+       * SRS-9CJ7LJP2, paid at 06:58, still pending at 09:01.
+       *
+       * Set it BEFORE kickDispatch, because kickDispatch reads it.
+       */
       if (payment.delivery?.id) {
+        await this.markDeliveryFunded(payment.delivery.id, txRef);
         try { await this.deliveriesServiceRef?.kickDispatch(payment.delivery.id); }
         catch (e: any) { this.logger.warn(`Post-payment dispatch failed for ${txRef}: ${e.message}`); }
       }

@@ -56,9 +56,13 @@ export default function PrivacyPolicyPage() {
           {/* Dates corrected 2026-08-23, same reason as the Terms: the text
               had moved on and the date had not. Section 9 gained the website
               paragraph on this date. Update BOTH whenever this text
-              changes. */}
+              changes.
+
+              Rolled to 24 August: sections 2 and 3 stopped describing a
+              sender wallet balance, alongside the same removal in the Terms
+              (sweep W-8). */}
           <p className="text-white/55 text-sm">
-            Last updated: 23 August 2026 &nbsp;&bull;&nbsp; Effective: 23 August 2026
+            Last updated: 24 August 2026 &nbsp;&bull;&nbsp; Effective: 24 August 2026
           </p>
         </div>
       </div>
@@ -138,7 +142,13 @@ export default function PrivacyPolicyPage() {
                     <><strong>Account data:</strong> Account ID, account type (customer, business sender, partner store, driver), password (stored as a bcrypt hash, never in plain text)</>,
                     <><strong>Business data:</strong> Company name, RC number, business address (for business accounts)</>,
                     <><strong>Location data:</strong> Pickup and delivery addresses, real-time GPS coordinates during active deliveries (drivers only)</>,
-                    <><strong>Financial data:</strong> Wallet balance, transaction history, payout records. We do not store full card numbers, payment processing is handled by our PCI-DSS compliant partner (Flutterwave).</>,
+                    // "Wallet balance" narrowed to earnings 2026-08-24 (sweep
+                    // W-8). Listing a wallet balance as data we hold on every
+                    // account read as confirmation that senders keep money
+                    // with SEIRS, which is the deposit-taking claim the Terms
+                    // have just had removed. The only balance that exists is a
+                    // driver's or partner store's accrued earnings.
+                    <><strong>Financial data:</strong> Earnings balance and payout records (drivers and partner stores), and transaction history. We do not store full card numbers, payment processing is handled by our PCI-DSS compliant partner (Flutterwave).</>,
                     <><strong>Usage data:</strong> App activity logs, device type, IP address, session duration</>,
                     <><strong>Communications:</strong> Support messages, dispute details</>,
                   ]}
@@ -152,7 +162,7 @@ export default function PrivacyPolicyPage() {
                   items={[
                     "To create and manage your account",
                     "To process, match, and track delivery orders",
-                    "To process payments and maintain wallet balances",
+                    "To process payments and maintain driver and partner store earnings balances",
                     "To send transactional emails and push notifications (delivery updates, OTP codes, payout confirmations)",
                     "To verify your identity and prevent fraud",
                     "To calculate earnings and issue partner store payouts",

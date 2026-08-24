@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import {
   Briefcase,
   Upload,
-  Wallet,
+  CreditCard,
   FileSpreadsheet,
   Clock,
   TrendingUp,
@@ -22,7 +22,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "For Business",
   description:
-    "Send hundreds of packages with one click. SEIRS Business gives Nigerian companies a single dashboard for bulk dispatch, multi-stop routing, business wallets, team access, and itemised receipts.",
+    "Send hundreds of packages with one click. SEIRS Business gives Nigerian companies a single dashboard for bulk dispatch, multi-stop routing, team access, and itemised receipts.",
 };
 
 function FeatureCard({
@@ -72,7 +72,7 @@ export default async function ForBusinessPage() {
             <span className="text-sky">with one click.</span>
           </>
         }
-        subtitle="SEIRS Business is for traders, e-commerce shops, restaurants, and SMEs who dispatch dozens to hundreds of packages a day. Bulk send, multi-stop routes, business wallet, team access, all from one dashboard."
+        subtitle="SEIRS Business is for traders, e-commerce shops, restaurants, and SMEs who dispatch dozens to hundreds of packages a day. Bulk send, multi-stop routes, team access, all from one dashboard."
         icon={Briefcase}
         primaryCtaLabel="Talk to our team"
         primaryCtaHref="/contact?subject=business"
@@ -143,7 +143,7 @@ export default async function ForBusinessPage() {
               flip
               eyebrow="Your team"
               title="Everyone dispatches, nobody guesses"
-              body="Add your manager and dispatchers with their own logins and permissions. One shared wallet funds the work, every booking is attributed to whoever made it, and the whole month lands in one itemised statement."
+              body="Add your manager and dispatchers with their own logins and permissions. Every booking is attributed to whoever made it and paid for at the moment it is made, and the whole month lands in one itemised statement."
               points={[
                 'Roles from owner to viewer, with spending visibility per person',
                 'Every action carries an audit trail for your records',
@@ -162,10 +162,16 @@ export default async function ForBusinessPage() {
               funding channel and points-off-future-bookings redemption were
               claims nothing in the code verifies. */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Was "Business wallet: fund once, dispatch all day. Every
+                delivery debits the wallet". Replaced 2026-08-24 (sweep W-8).
+                The symptom: this card sold a prepaid sender balance, which is
+                deposit-taking, which SEIRS is not licensed to do and the Terms
+                no longer describe. Every booking is paid at the time it is
+                made through Flutterwave. Do not bring a top-up card back. */}
             <FeatureCard
-              icon={Wallet}
-              title="Business wallet"
-              body="Fund once, dispatch all day. Every delivery debits the wallet: no card-on-file friction, no payment delays at peak hours."
+              icon={CreditCard}
+              title="Pay per booking"
+              body="No float parked with us and nothing to reconcile at month end. Each dispatch is paid when it is booked, through Flutterwave, and lands on one itemised statement."
             />
             <FeatureCard
               icon={Clock}
@@ -207,7 +213,7 @@ export default async function ForBusinessPage() {
               <ul className="space-y-3">
                 <CheckRow>Bulk dispatch + CSV upload</CheckRow>
                 <CheckRow>Multi-stop route optimisation</CheckRow>
-                <CheckRow>Business wallet with team access</CheckRow>
+                <CheckRow>Team logins with roles and spend visibility</CheckRow>
                 <CheckRow>Recurring deliveries + scheduling</CheckRow>
                 <CheckRow>Branded delivery notifications to recipients</CheckRow>
                 <CheckRow>API access for shop integrations (Shopify, custom)</CheckRow>

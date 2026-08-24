@@ -10,7 +10,7 @@ import {
   MapPin,
   CheckCircle,
   Users,
-  Wallet,
+  CreditCard,
   Upload,
   Shield,
   Headphones,
@@ -302,8 +302,13 @@ export default async function HomePage() {
               </h1>
 
               <p className="text-white/75 text-body-lg lg:text-body-lg-d mb-7 lg:mb-8 max-w-lg">
+                {/* "business wallets" removed from the fallback lede
+                    2026-08-24 (sweep W-8). SEIRS holds no sender balance and
+                    the Terms no longer describe one, so the homepage must not
+                    sell one either. Matches the OG description in layout.tsx
+                    word for word, deliberately. */}
                 {hero?.excerpt ??
-                  'Send thousands of packages with one click. Real-time tracking, business wallets, and a network of verified drivers and partner stores across Nigeria.'}
+                  'Send thousands of packages with one click. Real-time tracking, multi-stop runs, and a network of verified drivers and partner stores across Nigeria.'}
               </p>
             </div>
 
@@ -513,9 +518,14 @@ export default async function HomePage() {
                   removes the last of that from this section and buys back the
                   length the six cards were spending. */}
               <div className="grid grid-cols-2 gap-x-4 gap-y-3 mb-8">
+                {/* "One prepaid balance" replaced 2026-08-24 (sweep W-8).
+                    It sold the business wallet the Terms have just stopped
+                    promising: a sender handing SEIRS money in advance is
+                    deposit-taking, and we are not a bank. Booking-time card
+                    payment through Flutterwave is what actually happens. */}
                 {[
                   { icon: Upload, label: "Bulk CSV upload" },
-                  { icon: Wallet, label: "One prepaid balance" },
+                  { icon: CreditCard, label: "Pay per booking" },
                   { icon: Users, label: "Your team, your limits" },
                   { icon: Zap, label: "Saved routes" },
                   { icon: MapPin, label: "Multi-stop runs" },
