@@ -1,4 +1,4 @@
-﻿export const AdminRole = {
+export const AdminRole = {
   SUPER_ADMIN:       'super_admin',
   OPS_MANAGER:       'ops_manager',
   SUPPORT_AGENT:     'support_agent',
@@ -37,18 +37,25 @@ export const ROLE_COLORS: Record<AdminRoleType, string> = {
 // keep its own copy, which had drifted: ops_manager was missing fees,
 // health, notify and eight more, so the middleware and the sidebar
 // disagreed about who could open what.
+// 'sos' is granted to EVERY role on purpose. The SOS banner renders on
+// every admin page for every admin with no permission check of its own
+// (NavWrapper mounts SosBanner unconditionally), so any role can be told
+// "open the SOS desk" and must be able to. Because PATH_PERMISSIONS in
+// middleware.ts is derived from NAV_SECTIONS, giving the nav item a
+// narrower key would gate /sos behind that key and bounce the very
+// people the banner just summoned. An open emergency is not role-scoped.
 export const PERMISSIONS: Record<AdminRoleType, string[]> = {
   super_admin:       ['*'],
-  ops_manager:       ['overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','support','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs'],
-  support_agent:     ['tickets','support','users','suggestions','deliveries','disputes'],
-  finance_officer:   ['overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage'],
+  ops_manager:       ['sos','overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','support','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs'],
+  support_agent:     ['sos','tickets','support','users','suggestions','deliveries','disputes'],
+  finance_officer:   ['sos','overview','wallet','pricing','fees','referrals','insurance','analytics','reports','dev-accounts','dev-usage'],
   // audit-log removed 2026-08-23: /audit-log is super-admin only, so the
   // grant put a nav entry in front of a wall that always said Access
   // Restricted. Grant it back only if the page stops being super-admin only.
-  driver_compliance: ['drivers','kyc','identity','duplicates','fraud','users','interstate','last-order-compliance'],
-  media_content:     ['cms','promotions','email-templates','dev-docs'],
-  analyst:           ['overview','analytics','reports'],
-  partner_manager:   ['partners','partner-redirects','specialists','deliveries','overview'],
+  driver_compliance: ['sos','drivers','kyc','identity','duplicates','fraud','users','interstate','last-order-compliance'],
+  media_content:     ['sos','cms','promotions','email-templates','dev-docs'],
+  analyst:           ['sos','overview','analytics','reports'],
+  partner_manager:   ['sos','partners','partner-redirects','specialists','deliveries','overview'],
 };
 
 // Legacy users that pre-date granular adminRole carry role='admin' on the
@@ -58,9 +65,23 @@ function isLegacyAdmin(role: AdminRoleType | string | undefined): boolean {
   return role === 'admin';
 }
 
+/**
+ * Permissions every signed-in admin holds, whatever their role.
+ *
+ * 'sos' is here rather than only in PERMISSIONS above because a custom
+ * dynamic role gets its permission list from the backend role catalogue,
+ * which this app cannot add a slug to. Without this, a super admin who
+ * created a custom role would see the SOS banner on every page and have
+ * no SOS Desk in the sidebar, which is the exact defect being fixed
+ * (founder 2026-08-24: "i see sos alert and here i see no sos tab").
+ * The backend still guards the SOS endpoints themselves.
+ */
+export const ALWAYS_GRANTED = ['sos'];
+
 export function canAccess(role: AdminRoleType | undefined, page: string): boolean {
   if (!role) return false;
   if (isLegacyAdmin(role)) return true;
+  if (ALWAYS_GRANTED.includes(page)) return true;
   const perms = PERMISSIONS[role] ?? [];
   return perms.includes('*') || perms.includes(page);
 }
@@ -74,6 +95,7 @@ export function canAccessFromUser(
 ): boolean {
   if (!user) return false;
   if (user.role === 'admin' && !user.adminRole && !user.roleSlug) return true;
+  if (ALWAYS_GRANTED.includes(page)) return true;
   if (Array.isArray(user.permissions) && user.roleSlug) {
     return user.permissions.includes('*') || user.permissions.includes(page);
   }
@@ -156,6 +178,18 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/',         label: 'Dashboard',        icon: 'LayoutDashboard', permission: 'overview'    },
       { href: '/ops-map',  label: 'Real-Time Ops Map', icon: 'Map',            permission: 'ops-map'     },
+      // The SOS desk had NO nav entry at all: the page existed and the
+      // only way in was clicking the red banner, so if that banner ever
+      // failed to render the emergency queue was unreachable (founder
+      // spotted it 2026-08-24: "i see sos alert and here i see no sos tab").
+      // First in OVERVIEW because it outranks everything when it is live.
+      // Permission is its own 'sos' key, granted to every role above.
+      // It was first written as 'overview', but support_agent,
+      // driver_compliance and media_content do not hold 'overview': they
+      // would have seen the SOS banner on every page and had no SOS Desk
+      // in their sidebar, and middleware (which derives its path gate
+      // from this list) would have had /sos behind a key they lack.
+      { href: '/sos',      label: 'SOS Desk',          icon: 'Siren',          permission: 'sos'         },
     ],
   },
   {

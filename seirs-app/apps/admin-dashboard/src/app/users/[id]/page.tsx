@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import { naira } from "@/lib/money";
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -9,7 +10,7 @@ import { HardDeleteModal } from '@/components/HardDeleteModal';
 import { SendDocumentModal } from '@/components/SendDocumentModal';
 import { canExportNdprData, canHardDeleteAccount } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
-import { AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Lock, ArrowLeft } from 'lucide-react';
 
 
 const STATUS_COLORS: Record<string, string> = {
@@ -153,6 +154,17 @@ export default function UserDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="p-8 max-w-4xl mx-auto">
+        {/* Back to the list. This page had no route out at all, and it is
+            the most linked-to page in the dashboard (fraud flags, SOS
+            alerts, support threads, recycle bin, delivery and partner
+            detail all land here), so an admin could arrive and have
+            nothing to click to leave (founder 2026-08-24: "why can't i
+            click back here and it will take me back to the previous
+            screen"). Same affordance as the delivery detail page. */}
+        <Link href="/users" className="inline-flex items-center gap-1 text-sm text-[#3A7BD5] hover:underline mb-4">
+          <ArrowLeft size={14} /> All customers
+        </Link>
+
         {/* Profile card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 flex items-start gap-6">
           <div className="w-16 h-16 rounded-full bg-[#3A7BD5] flex items-center justify-center text-white text-2xl font-black shrink-0">

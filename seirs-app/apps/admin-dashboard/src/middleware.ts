@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { NAV_SECTIONS, PERMISSIONS } from '@/lib/rbac';
+import { ALWAYS_GRANTED, NAV_SECTIONS, PERMISSIONS } from '@/lib/rbac';
 
 /**
  * Path → permission-key map for RBAC.
@@ -25,10 +25,13 @@ const PATH_PERMISSIONS: Record<string, string> = {
   // /tickets was removed from the nav 2026-08-16 but still redirects to
   // /support for old links, so it keeps the same grant.
   '/tickets': 'tickets',
-  // /sos is deliberately absent: the SOS banner renders for EVERY admin
-  // on every page, and bouncing someone off the desk they were just told
-  // to open is worse than a wide grant. An open emergency is not
-  // role-scoped. The backend still guards the underlying routes.
+  // /sos used to be listed here as deliberately ungated. It now carries a
+  // real nav entry, so NAV_SECTIONS supplies it above under the 'sos'
+  // permission, which rbac.ts grants to every role for the same reason
+  // the exemption existed: the SOS banner renders for EVERY admin on
+  // every page, and bouncing someone off the desk they were just told to
+  // open is worse than a wide grant. The backend still guards the
+  // underlying routes.
 };
 
 function decodeJwtRole(token: string): string | undefined {
@@ -54,6 +57,9 @@ function decodeJwtRole(token: string): string | undefined {
 function isAllowed(role: string | undefined, permission: string): boolean {
   if (!role) return false;
   if (permission === 'super_admin_only') return role === 'super_admin';
+  // Keeps the sidebar and this gate agreeing about /sos. If the sidebar
+  // shows the SOS Desk to everyone, this must not bounce anyone off it.
+  if (ALWAYS_GRANTED.includes(permission)) return true;
   const perms = PERMISSIONS[role as keyof typeof PERMISSIONS] ?? [];
   return perms.includes('*') || perms.includes(permission);
 }
@@ -115,6 +121,10 @@ export function middleware(request: NextRequest) {
           const url = request.nextUrl.clone();
           url.pathname = '/';
           url.searchParams.set('denied', '1');
+          // Carry the path along so the dashboard can name the page that
+          // was refused. Without it the admin just lands on the dashboard
+          // and cannot tell whether their click missed or was blocked.
+          url.searchParams.set('from', pathname);
           return NextResponse.redirect(url);
         }
         // No safe redirect target - let the page render with a "denied" banner

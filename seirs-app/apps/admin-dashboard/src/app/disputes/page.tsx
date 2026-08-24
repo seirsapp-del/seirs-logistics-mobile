@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { adminApi } from '@/lib/api';
 import { Search, Package, Camera, FileText, ChevronRight, AlertCircle, ShieldCheck } from 'lucide-react';
@@ -62,6 +62,21 @@ function DisputesContent() {
       setLoading(false);
     }
   };
+
+  // Arriving from a delivery's "Open chain of custody" link
+  // (/disputes?deliveryId=...) used to only type the UUID into the box and
+  // stop there, so the admin landed on an empty page holding the answer
+  // and had to notice the Look up button to see anything. Run the lookup
+  // for them. Ref-guarded so it fires once on arrival and never fights
+  // the admin if they clear the box and type a different id.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    const fromLink = searchParams.get('deliveryId')?.trim();
+    if (!fromLink || autoRan.current) return;
+    autoRan.current = true;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   return (
     <div className="p-6 space-y-6">

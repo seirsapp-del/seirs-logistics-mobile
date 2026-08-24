@@ -32,6 +32,21 @@ export default function DashboardPage() {
   const [drill, setDrill] = useState<DrillKey | null>(null);
 
   /**
+   * Explain the bounce. middleware.ts redirects a role that opens a page
+   * it lacks to /?denied=1, and nothing anywhere read that param, so the
+   * admin was silently teleported to the dashboard with no idea why the
+   * page they clicked did not open. Read from window.location rather than
+   * useSearchParams so this page needs no Suspense boundary.
+   */
+  const [deniedFrom, setDeniedFrom] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get('denied') === '1') setDeniedFrom(q.get('from') ?? '');
+    } catch { /* no query string is the normal case */ }
+  }, []);
+
+  /**
    * Open support tickets, surfaced on the landing page so nothing sits
    * unanswered (founder 2026-08-16: "the number of ticket should be
    * visible in the dasboard and we can click it so we dont forget or
@@ -144,6 +159,25 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen">
       <main className="p-6 lg:p-8 max-w-7xl mx-auto">
+
+        {deniedFrom !== null && (
+          <div className="mb-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <ShieldAlert size={16} className="mt-0.5 shrink-0" />
+            <span className="flex-1">
+              {deniedFrom
+                ? <><span className="font-mono font-semibold">{deniedFrom}</span> is not part of your role, so you were brought back here.</>
+                : 'That page is not part of your role, so you were brought back here.'}
+              {' '}Ask a super admin if you need access.
+            </span>
+            <button
+              onClick={() => setDeniedFrom(null)}
+              className="shrink-0 text-amber-700 hover:text-amber-900"
+              aria-label="Dismiss"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
 
         {/* Fuel is the largest variable cost in the business and the one
             most likely to drift unnoticed. It belongs above the fold. */}

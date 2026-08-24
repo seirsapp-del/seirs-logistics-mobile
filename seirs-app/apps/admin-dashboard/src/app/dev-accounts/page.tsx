@@ -2,12 +2,26 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { Code2, AlertCircle, Loader2, RefreshCw, Pause, Play, Gauge, ChevronDown, ChevronRight } from 'lucide-react';
-import { useConfirm } from '@/components/ConfirmDialog';
+import { useConfirm, useNotify, usePrompt } from '@/components/ConfirmDialog';
+
+// The owner block is what turns "suspend a UUID" into "suspend Ada
+// Okafor". The backend does not send it yet (dev-platform.service
+// listAllKeys does a bare find with no join), so every field here is
+// optional and the UI falls back to the raw id. Admins must always see
+// full identity, so the moment the join lands this renders it.
+interface KeyOwner {
+  id?:        string;
+  name?:      string;
+  email?:     string;
+  phone?:     string;
+  accountId?: string;
+}
 
 interface ApiKey {
   id:        string;
   publicKey: string;
   ownerUserId: string;
+  owner?:    KeyOwner;
   mode:      'live' | 'test';
   name:      string;
   active:    boolean;
@@ -25,6 +39,8 @@ export default function DevAccountsPage() {
   const [error,   setError]   = useState<string | null>(null);
   const [openOwner, setOpenOwner] = useState<string | null>(null);
   const confirm                   = useConfirm();
+  const prompt                    = usePrompt();
+  const notify                    = useNotify();
 
   const load = () => {
     setLoading(true);
@@ -37,14 +53,23 @@ export default function DevAccountsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const suspend = async (ownerUserId: string) => {
-    const reason = prompt('Suspend reason (visible in audit log):');
-    if (!reason || reason.trim().length < 4) return;
+  const suspend = async (ownerUserId: string, who: string) => {
+    const reason = await prompt({
+      title:        'Suspend this developer account?',
+      message:      `Every API key held by ${who} stops working immediately. Their live integration starts failing on the next request.`,
+      label:        'Suspend reason',
+      placeholder:  'Repeated 429s from an unthrottled retry loop.',
+      minLength:    4,
+      helper:       'Kept in the audit log and shown to ops on each suspended key.',
+      confirmLabel: 'Suspend keys',
+      danger:       true,
+    });
+    if (reason === null) return;
     try {
       const r = await adminApi.devPlatform.suspendOwner(ownerUserId, reason.trim());
-      alert(`Suspended ${r.suspended} key${r.suspended === 1 ? '' : 's'} for this owner.`);
+      void notify({ tone: 'success', message: `Suspended ${r.suspended} key${r.suspended === 1 ? '' : 's'} for this owner.` });
       load();
-    } catch (e: any) { alert(e?.message ?? 'Suspend failed'); }
+    } catch (e: any) { void notify({ tone: 'error', title: 'Suspend failed', message: e?.message ?? 'Suspend failed' }); }
   };
 
   const resume = async (ownerUserId: string) => {
@@ -56,17 +81,24 @@ export default function DevAccountsPage() {
     if (!ok) return;
     try {
       const r = await adminApi.devPlatform.resumeOwner(ownerUserId);
-      alert(`Resumed ${r.resumed} key${r.resumed === 1 ? '' : 's'} for this owner.`);
+      void notify({ tone: 'success', message: `Resumed ${r.resumed} key${r.resumed === 1 ? '' : 's'} for this owner.` });
       load();
-    } catch (e: any) { alert(e?.message ?? 'Resume failed'); }
+    } catch (e: any) { void notify({ tone: 'error', title: 'Resume failed', message: e?.message ?? 'Resume failed' }); }
   };
 
   const setRateLimit = async (key: ApiKey) => {
     const current = key.rateLimitOverridePerMin == null ? '' : String(key.rateLimitOverridePerMin);
-    const input = prompt(
-      `Rate-limit override for "${key.name}" (req/min). Leave blank to revert to default (60).`,
-      current,
-    );
+    const input = await prompt({
+      title:        'Rate-limit override',
+      message:      `How many requests per minute should "${key.name}" be allowed? Leave blank to revert to the default of 60.`,
+      label:        'Requests per minute',
+      initialValue: current,
+      placeholder:  '60',
+      numeric:      true,
+      multiline:    false,
+      helper:       'Takes effect on the key’s next request. 1 is the minimum: to stop the key entirely, suspend the account.',
+      confirmLabel: 'Set limit',
+    });
     if (input === null) return;
     // `Number(input) || 60` turned a typed 0 into 60, so "block this key"
     // silently became "default rate". 0 now clamps to the real minimum of
@@ -74,13 +106,16 @@ export default function DevAccountsPage() {
     let limit: number | null = null;
     if (input.trim() !== '') {
       const n = Number(input.trim());
-      if (!Number.isFinite(n)) { alert('Rate limit must be a number.'); return; }
+      if (!Number.isFinite(n)) {
+        void notify({ tone: 'error', title: 'Not a number', message: 'The rate limit has to be a number of requests per minute.' });
+        return;
+      }
       limit = Math.max(1, Math.min(100000, Math.round(n)));
     }
     try {
       await adminApi.devPlatform.setKeyRateLimit(key.id, limit);
       load();
-    } catch (e: any) { alert(e?.message ?? 'Update failed'); }
+    } catch (e: any) { void notify({ tone: 'error', title: 'Update failed', message: e?.message ?? 'Update failed' }); }
   };
 
   const byOwner = keys.reduce<Record<string, ApiKey[]>>((acc, k) => {
@@ -137,6 +172,11 @@ export default function DevAccountsPage() {
             const callsToday = ownerKeys.reduce((s, k) => s + (k.callsToday ?? 0), 0);
             const liveCount  = ownerKeys.filter(k => k.mode === 'live' && k.active).length;
             const suspended  = ownerKeys.every(k => !k.active && k.suspendedAt);
+            // Any key of this owner carries the same owner block, so take
+            // the first one that has it rather than assuming index 0.
+            const owner      = ownerKeys.find(k => k.owner)?.owner;
+            const ownerName  = owner?.name?.trim() || null;
+            const ownerLine  = [owner?.email, owner?.phone, owner?.accountId].filter(Boolean).join(' · ');
             return (
               <div key={ownerId} className="border-b border-[#F3F4F6] last:border-b-0">
                 {/* Suspend/Resume used to be a clickable <span> nested
@@ -150,8 +190,21 @@ export default function DevAccountsPage() {
                   >
                     <div className="col-span-5 min-w-0 flex items-center gap-2">
                       {open ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
-                      <p className="text-sm font-semibold text-[#0F2B4C] font-mono truncate">{ownerId}</p>
-                      {suspended && <span className="text-[10px] uppercase bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">Suspended</span>}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-semibold text-[#0F2B4C] truncate ${ownerName ? '' : 'font-mono'}`}>
+                            {ownerName ?? ownerId}
+                          </p>
+                          {suspended && <span className="text-[10px] uppercase bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold shrink-0">Suspended</span>}
+                        </div>
+                        {/* Identity, never redacted: an admin suspending an
+                            account has to know whose integration they are
+                            switching off. Falls back to the owner id until
+                            the backend join ships. */}
+                        <p className="text-[11px] text-gray-500 truncate">
+                          {ownerLine || <span className="font-mono">owner id {ownerId}</span>}
+                        </p>
+                      </div>
                     </div>
                     <div className="col-span-2 text-sm text-[#0F2B4C]">{ownerKeys.length} key{ownerKeys.length === 1 ? '' : 's'}</div>
                     <div className="col-span-2 text-right">
@@ -168,7 +221,7 @@ export default function DevAccountsPage() {
                         <Play size={12} /> Resume
                       </button>
                     ) : (
-                      <button onClick={() => suspend(ownerId)}
+                      <button onClick={() => suspend(ownerId, ownerName ?? 'this owner')}
                         className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline">
                         <Pause size={12} /> Suspend
                       </button>

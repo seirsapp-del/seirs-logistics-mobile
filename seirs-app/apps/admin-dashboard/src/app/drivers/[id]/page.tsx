@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bike, Car, Truck, FileText, Star, MapPin, IdCard, CheckCircle2, AlertTriangle, Copy, Download, XCircle } from 'lucide-react';
+import { Bike, Car, Truck, FileText, Star, MapPin, IdCard, CheckCircle2, AlertTriangle, Copy, Download, XCircle, ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { naira } from "@/lib/money";
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -198,6 +198,16 @@ export default function DriverDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="p-8 max-w-4xl mx-auto">
+        {/* Back to the list. This page had no route out at all: an admin
+            who opened a driver from Drivers, the dashboard KYC card, the
+            interstate table or global search could only leave via the
+            sidebar or the browser button (founder 2026-08-24: "why can't
+            i click back here and it will take me back to the previous
+            screen"). Same affordance as the delivery detail page. */}
+        <Link href="/drivers" className="inline-flex items-center gap-1 text-sm text-[#3A7BD5] hover:underline mb-4">
+          <ArrowLeft size={14} /> All drivers
+        </Link>
+
         {error && (
           <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <AlertTriangle size={16} className="mt-0.5 shrink-0" />
