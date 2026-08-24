@@ -233,6 +233,26 @@ export class EarningsService {
    */
   async payoutDriver(driverId: string, requestedNaira?: number, instant?: boolean): Promise<{ paidAmount: number; feeNgn: number; transferId?: string; payoutEarningIds: string[] }> {
     const driver = await this.userRepo.findOneBy({ id: driverId });
+
+    /**
+     * Demo accounts never receive real money.
+     *
+     * This guard existed on the wallet path and on admin manual-assign,
+     * but NOT here, and not in runDailyPayouts which calls this. The
+     * seeded demo driver carries a real payout account and Flutterwave
+     * runs in live mode, so the 13:00 Lagos cron would have attempted an
+     * actual bank transfer the moment a demo or marketing account
+     * accrued the minimum. Found 2026-08-24 by a scenario agent that
+     * deliberately refused to complete a delivery in case it fired.
+     *
+     * payoutDriver is the single choke point for both the manual request
+     * and the cron, so one check covers both.
+     */
+    if ((driver as any)?.isDemo) {
+      throw new BadRequestException(
+        'Demo accounts cannot withdraw. This is a staged account, not a real one.',
+      );
+    }
     if (!driver) throw new NotFoundException('Driver not found');
     if (!driver.bankCode || !driver.bankAccountNumber || !driver.bankAccountName) {
       throw new BadRequestException('Driver bank account not configured');

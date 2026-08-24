@@ -4038,10 +4038,15 @@ export class DeliveriesService {
       ).catch(() => {});
     }
 
-    return this.repo.findOne({
+    // The claimer is a driver by definition here, so the response goes
+    // through the same redaction as the job feeds. It did not, and
+    // returned the entire customer User row including bank details and
+    // home coordinates (found 2026-08-24).
+    const claimed = await this.repo.findOne({
       where:     { id: deliveryId },
       relations: ['customer', 'driver', 'driver.user'],
     });
+    return claimed ? this.redactCustomerForDriver(claimed as any) : claimed;
   }
 
   async emailReceipt(id: string, userId: string) {

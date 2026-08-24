@@ -471,7 +471,28 @@ export class DriversService {
         RETURNING "id"`,
       [seats, tripId],
     );
-    if (!res?.length) throw new BadRequestException('Those seats were just taken.');
+
+    /**
+     * Read the result by SHAPE, not by length.
+     *
+     * This was `if (!res?.length) throw`, and it never once fired. For an
+     * UPDATE, TypeORM's postgres driver can hand back [rows, affected]
+     * rather than rows, so a rejected increment arrives as [[], 0] whose
+     * .length is 2: truthy. The database guard held perfectly and the
+     * code simply did not notice it had been refused, so bookTripSeats
+     * went on to create the delivery anyway.
+     *
+     * Measured on production 2026-08-24: five simultaneous one-seat
+     * bookings on a four-seat car left seatsBooked at 4 with FIVE live
+     * bookings against the trip. Passenger five held a valid, chargeable
+     * booking and no seat. That is the founder's no-stuffing rule broken
+     * by a truthiness bug.
+     */
+    const rows: any[] = Array.isArray(res)
+      ? (Array.isArray(res[0]) ? res[0] : res)
+      : [];
+    const reserved = rows.some((r) => r && (r.id ?? r.ID));
+    if (!reserved) throw new BadRequestException('Those seats were just taken.');
   }
 
   async releaseSeats(tripId: string, seats: number) {
