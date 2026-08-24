@@ -11,6 +11,7 @@ import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/Icon';
 import { HamburgerButton } from '@/components/HamburgerButton';
 import { deliveriesApi } from '@/services/api';
+import { naira, nairaAmount } from '@/utils/money';
 
 // My Trips rebuilt as the business Deliveries screen, exactly (founder
 // 2026-08-22: "the exact same as deliveries on the business app, that's
@@ -53,8 +54,7 @@ const BUCKET: Record<string, string> = {
 
 const ACTIVE_STATUSES = new Set(['pending', 'assigned', 'picked_up', 'in_transit', 'in_progress']);
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
+
 
 type Trip = {
   id: string;
@@ -89,10 +89,12 @@ function toTrip(d: any): Trip {
     pickupAddress:  d.pickupAddress ?? '-',
     dropoffAddress: d.dropoffAddress ?? '-',
     distance:       d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '-',
-    // Whole naira on the card: the rate card computes in kobo precision
-    // and "N1,473.15" reads like an error to a customer (founder catch,
-    // 2026-08-15). The receipt keeps the exact figure.
-    price:          Math.round(Number(d.price ?? 0)),
+    // Kobo on the card, same as the receipt (founder reversal
+    // 2026-08-24). This used to round to whole naira because
+    // "N1,473.15" was thought to read like an error; the founder's call
+    // is that it reads like arithmetic, and rounding is what actually
+    // breaks: the card and the receipt stopped agreeing.
+    price:          Number(d.price ?? 0),
     vehicleType:    d.vehicleType ?? '',
     driver:         drv,
     rating:         d.customerRating ?? null,
@@ -187,7 +189,7 @@ export default function HistoryScreen() {
     Alert.alert(
       'Cancel this booking?',
       feeNgn > 0
-        ? `Tracking ${trip.trackingCode}. A cancellation fee of NGN ${feeNgn.toLocaleString()} applies and the rest is refunded.`
+        ? `Tracking ${trip.trackingCode}. A cancellation fee of NGN ${nairaAmount(feeNgn)} applies and the rest is refunded.`
         : `Tracking ${trip.trackingCode}. No cancellation fee applies.`,
       [
         { text: 'Keep', style: 'cancel' },
@@ -254,7 +256,7 @@ export default function HistoryScreen() {
               {new Date(item.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
             </Text>
           </View>
-          <Text style={[styles.price, { color: theme.text }]}>{fmt(item.price)}</Text>
+          <Text style={[styles.price, { color: theme.text }]}>{naira(item.price)}</Text>
         </View>
 
         {/* Actions get their own row, same as business: everything on one

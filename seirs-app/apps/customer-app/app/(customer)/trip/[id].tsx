@@ -30,6 +30,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
+import { naira } from '@/utils/money';
 
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
@@ -48,7 +49,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   ussd:          'Paid by USSD',
 };
 
-const fmt = (n: any) => `₦${Math.round(Number(n ?? 0)).toLocaleString()}`;
+
 
 // The names Nigerians use, not the backend enum.
 const VEHICLE_LABEL: Record<string, string> = {
@@ -186,11 +187,11 @@ export default function TripDetailsScreen() {
         'Return this package?',
         `${q.note}\n\nBack to: ${q.returnTo}\n` +
         `${q.km} km by road\n` +
-        `Transport: ₦${Number(q.transportNgn).toLocaleString()}\n` +
+        `Transport: ${naira(q.transportNgn)}\n` +
         (q.counterOwedNgn > 0
-          ? `Counter owed: ₦${Number(q.counterOwedNgn).toLocaleString()}\n`
+          ? `Counter owed: ${naira(q.counterOwedNgn)}\n`
           : '') +
-        `Total: ₦${Number(q.totalNgn).toLocaleString()}` +
+        `Total: ${naira(q.totalNgn)}` +
         (q.needsSupport ? '\n\nSupport has to approve this before you can pay.' : ''),
         [
           { text: 'Not now', style: 'cancel' },
@@ -265,12 +266,12 @@ export default function TripDetailsScreen() {
             <Text style={[styles.cardLabel, { color: colors.textThird }]}>
               {neverPaid ? 'TOTAL' : 'TOTAL PAID'}
             </Text>
-            <Text style={[styles.cardValue, { color: colors.text }]}>{fmt(d.price)}</Text>
+            <Text style={[styles.cardValue, { color: colors.text }]}>{naira(d.price)}</Text>
           </View>
           {fareLines.map(([label, amount]) => (
             <View key={label} style={styles.rowBetween}>
               <Text style={[styles.cardLabel, { color: colors.textThird }]}>{label}</Text>
-              <Text style={[styles.cardValue, { color: colors.textSecond }]}>{fmt(amount)}</Text>
+              <Text style={[styles.cardValue, { color: colors.textSecond }]}>{naira(amount)}</Text>
             </View>
           ))}
           {/* The payment truth line. A cancelled unpaid booking once read
@@ -301,7 +302,7 @@ export default function TripDetailsScreen() {
             >
               {/* Navy on yellow: white on #FFBE0B is unreadable. */}
               <Text style={{ color: '#0F2B4C', fontWeight: '700', fontSize: 15 }}>
-                Pay {fmt(d.price)}
+                Pay {naira(d.price)}
               </Text>
             </Pressable>
           </View>
@@ -328,7 +329,7 @@ export default function TripDetailsScreen() {
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
               Nobody was available, so this is being kept safe at a SEIRS partner
-              store. {fmt(d.redirectFeeOwedNgn)} settles it and reveals the pickup
+              store. {naira(d.redirectFeeOwedNgn)} settles it and reveals the pickup
               location.
             </Text>
             <Pressable
@@ -336,7 +337,7 @@ export default function TripDetailsScreen() {
               style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#F59E0B' }}
             >
               <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
-                Pay {fmt(d.redirectFeeOwedNgn)}
+                Pay {naira(d.redirectFeeOwedNgn)}
               </Text>
             </Pressable>
             <Pressable onPress={shareCollectLink} style={{ marginTop: 8, paddingVertical: 8, alignItems: 'center' }}>
@@ -364,7 +365,7 @@ export default function TripDetailsScreen() {
                 style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#7C3AED' }}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
-                  Pay {fmt(d.returnQuoteNgn)} to start the return
+                  Pay {naira(d.returnQuoteNgn)} to start the return
                 </Text>
               </Pressable>
             )}
@@ -465,7 +466,7 @@ export default function TripDetailsScreen() {
               )}
 
               {!!st.packagePriceNgn && (
-                <Text style={[styles.pkgMeta, { color: colors.textThird }]}>{fmt(st.packagePriceNgn)}</Text>
+                <Text style={[styles.pkgMeta, { color: colors.textThird }]}>{naira(st.packagePriceNgn)}</Text>
               )}
 
               {/* The receiver's own code. Sharing this instead of the run

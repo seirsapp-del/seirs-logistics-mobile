@@ -28,6 +28,7 @@ import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { deliveriesApi, paymentsApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { naira } from '@/utils/money';
 
 const VEHICLE_LABEL: Record<string, string> = {
   okada: 'Okada', keke: 'Keke', car: 'Car', danfo: 'Danfo',
@@ -52,9 +53,12 @@ export default function ConfirmRideScreen() {
   }>();
 
   const distKm     = Number(params.distanceKm ?? '0') || 0;
-  const total      = Math.round(Number(params.fareTotal ?? '0') || 0);
-  const serviceFee = Math.round(Number(params.serviceFee ?? '0') || 0);
-  const luggageFee = Math.round(Number(params.luggageFee ?? '0') || 0);
+  // Kobo survives the hop from vehicle-select (founder 2026-08-24).
+  // Rounding each line here meant the fare breakdown stopped summing to
+  // the total the rider was actually charged.
+  const total      = Number(params.fareTotal ?? '0') || 0;
+  const serviceFee = Number(params.serviceFee ?? '0') || 0;
+  const luggageFee = Number(params.luggageFee ?? '0') || 0;
   const riderName  = (params.riderName ?? '').trim();
 
   // How they'll pay, previewed before the payment screen: a saved
@@ -98,7 +102,7 @@ export default function ConfirmRideScreen() {
         pathname: '/(customer)/payment/[deliveryId]',
         params: {
           deliveryId,
-          price:        String(Math.round(Number(created?.price ?? total))),
+          price:        String(Number(created?.price ?? total)),
           trackingCode: created?.trackingCode ?? '',
         },
       } as any);
@@ -144,13 +148,13 @@ export default function ConfirmRideScreen() {
     ['Passenger',   riderName || (user?.name ?? 'You')],
     ...(riderName ? [['Booked by', user?.name ?? 'You'] as [string, string]] : []),
     ...(params.luggage && params.luggage !== 'none'
-      ? [['Luggage', params.luggage === 'large' ? `Large${luggageFee > 0 ? ` · ₦${luggageFee.toLocaleString()}` : ''}` : 'Small bag'] as [string, string]]
+      ? [['Luggage', params.luggage === 'large' ? `Large${luggageFee > 0 ? ` · ${naira(luggageFee)}` : ''}` : 'Small bag'] as [string, string]]
       : []),
-    ...(serviceFee > 0 ? [['Service fee', `₦${serviceFee.toLocaleString()}`] as [string, string]] : []),
+    ...(serviceFee > 0 ? [['Service fee', naira(serviceFee)] as [string, string]] : []),
     ['Payment', savedCard
       ? `${String(savedCard.brand ?? 'Card').toUpperCase()} ···· ${savedCard.last4} · one tap`
       : 'Card or transfer at checkout'],
-    ['Total',       `₦${total.toLocaleString()}`],
+    ['Total',       naira(total)],
   ];
 
   return (
@@ -261,7 +265,7 @@ export default function ConfirmRideScreen() {
               ? <ActivityIndicator color="#fff" />
               : (
                 <Text style={styles.ctaText}>
-                  {t('confirmRide.bookCta', { defaultValue: `Book ride · ₦${total.toLocaleString()}` })}
+                  {t('confirmRide.bookCta', { defaultValue: `Book ride · ${naira(total)}` })}
                 </Text>
               )}
           </Pressable>

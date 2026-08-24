@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcPackageFare, DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { deliveriesApi , pricingApi } from '@/services/api';
+import { naira } from '@/utils/money';
 
 // UI presentation for the rate-card package vehicles: keyed by the
 // canonical id calcPackageFare looks up. Keeping this here (not on the
@@ -120,7 +121,9 @@ export default function VehicleSelectScreen() {
 
   const liveTotal = (appId: string, localTotal: number, sharedFactor = 1): number => {
     const live = liveQuotes?.[ID_TO_ENUM[appId] ?? appId];
-    return live ? Math.round(Number(live.total) * sharedFactor) : localTotal;
+    // No rounding: this figure ends up on the pay button, and the server
+    // charges the kobo (founder 2026-08-24).
+    return live ? Number(live.total) * sharedFactor : localTotal;
   };
 
   // List of vehicles, with a uniform shape both modes can render.
@@ -142,7 +145,7 @@ export default function VehicleSelectScreen() {
           // Server-priced or nothing: a placeholder is honest, a local
           // guess the engine will not charge is not.
           const q = rideQuotes?.[ID_TO_ENUM[v.id] ?? v.id];
-          return q ? `₦${Math.round(Number(q.total)).toLocaleString()}` : '…';
+          return q ? naira(q.total) : '…';
         })(),
         // Capacity, not minutes: SEIRS makes no time promises.
         metaText:    `${v.capacityCount} rider${v.capacityCount === 1 ? '' : 's'}`,
@@ -162,7 +165,7 @@ export default function VehicleSelectScreen() {
           description: t(`send.${ui.descKey}`, { defaultValue: '' }),
           eta:         ui.eta,
           features:    ui.features,
-          priceLabel:  `₦${liveTotal(v.id, priced.total).toLocaleString()}`,
+          priceLabel:  naira(liveTotal(v.id, priced.total)),
         };
       });
 
@@ -324,13 +327,13 @@ export default function VehicleSelectScreen() {
                       const lines = [
                         ['Base fare', bd.base], ['Distance + fuel', bd.distance],
                         ['Night', bd.night], ['Peak', bd.peak], ['Weekend', bd.weekend],
-                        ['Luggage', Math.round(Number((q as any).luggageFee ?? 0))],
-                        ['Service fee', Math.round(Number((q as any).serviceFee ?? 0))],
+                        ['Luggage', Number((q as any).luggageFee ?? 0)],
+                        ['Service fee', Number((q as any).serviceFee ?? 0)],
                         ['VAT', bd.vat],
                       ].filter(([, n]) => Number(n) > 0)
-                        .map(([l, n]) => `${l}: ₦${Number(n).toLocaleString()}`);
+                        .map(([l, n]) => `${l}: ${naira(n)}`);
                       Alert.alert(
-                        `${v.label} · ₦${Math.round(Number((q as any).total)).toLocaleString()}`,
+                        `${v.label} · ${naira((q as any).total)}`,
                         lines.join('\n') + '\n\nThis exact number is what you pay: it is pinned.',
                       );
                     }}
@@ -438,9 +441,11 @@ export default function VehicleSelectScreen() {
                     dropoffLng:  params.dropoffLng ?? '',
                     vehicleId:   selected,
                     distanceKm:  params.distanceKm ?? '0',
-                    fareTotal:   String(Math.round(Number(q.total))),
-                    serviceFee:  String(Math.round(Number(q.serviceFee ?? 0))),
-                    luggageFee:  String(Math.round(Number((q as any).luggageFee ?? 0))),
+                    // Passed through unrounded so the breakdown on the next
+                    // screen still sums to the pinned total.
+                    fareTotal:   String(Number(q.total)),
+                    serviceFee:  String(Number(q.serviceFee ?? 0)),
+                    luggageFee:  String(Number((q as any).luggageFee ?? 0)),
                     luggage,
                     riderName:   params.riderName ?? '',
                     quoteToken:  q.quotePin?.token ?? '',

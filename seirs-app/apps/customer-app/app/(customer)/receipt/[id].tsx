@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { deliveriesApi } from '@/services/api';
+import { naira } from '@/utils/money';
 
 export default function ReceiptScreen() {
   const router = useRouter();
@@ -95,7 +96,7 @@ export default function ReceiptScreen() {
   const onShare = async () => {
     try {
       await Share.share({
-        message: `SEIRS receipt ${trackingCode}: ₦${totalAmount.toLocaleString()}${paymentMethod ? ` paid by ${paymentMethod.replace('_', ' ')}` : ''}`,
+        message: `SEIRS receipt ${trackingCode}: ${naira(totalAmount)}${paymentMethod ? ` paid by ${paymentMethod.replace('_', ' ')}` : ''}`,
       });
     } catch {}
   };
@@ -206,12 +207,12 @@ export default function ReceiptScreen() {
               {fareRows.map(row => (
                 <View key={row.label} style={styles.fareRow}>
                   <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{row.label}</Text>
-                  <Text style={[styles.fareAmt,   { color: theme.text }]}>₦{row.amount.toLocaleString()}</Text>
+                  <Text style={[styles.fareAmt,   { color: theme.text }]}>{naira(row.amount)}</Text>
                 </View>
               ))}
               <View style={[styles.totalRow, { borderTopColor: theme.border }]}>
                 <Text style={[styles.totalLabel, { color: theme.text }]}>Total Paid</Text>
-                <Text style={[styles.totalAmt,   { color: theme.primary }]}>₦{totalAmount.toLocaleString()}</Text>
+                <Text style={[styles.totalAmt,   { color: theme.primary }]}>{naira(totalAmount)}</Text>
               </View>
               {paymentMethod ? (
                 <View style={[styles.payBadge, { backgroundColor: theme.surfaceSecond }]}>

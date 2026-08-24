@@ -5,7 +5,7 @@ import { RoutingService } from '../routing/routing.service';
 import { WhatsAppService } from '../notifications/whatsapp.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { LessThan, Repository, MoreThan } from 'typeorm';
+import { LessThan, Repository, MoreThan, IsNull } from 'typeorm';
 import { secureCode } from '../common/utils/auth-codes';
 import { Delivery, DeliveryStatus, PackageSize, UrgencyLevel } from './delivery.entity';
 import { DeliveryStop, DeliveryStopStatus } from './delivery-stop.entity';
@@ -4048,13 +4048,37 @@ export class DeliveriesService {
    * payloads are a different path and keep full identity.
    */
   async findByIdForUser(id: string, userId: string) {
-    const delivery = await this.repo.findOne({
+    let delivery = await this.repo.findOne({
       where: [
         { id, customer: { id: userId } },
         { id, driver:   { user: { id: userId } } },
       ],
       relations: ['driver', 'driver.user', 'customer'],
     });
+
+    /**
+     * A driver deciding whether to ACCEPT a job is not yet on it, so
+     * neither branch above matches and they 404 on the very screen
+     * that exists to help them decide. Adding the assigned-driver
+     * branch fixed opening your own job and left this one broken
+     * (found on device 2026-08-24, one fix after the other).
+     *
+     * An unclaimed job is only viewable on the same terms it is
+     * offered: pending, funded, driverless, and only by a real
+     * driver. That is exactly the available-jobs feed's own gate, so
+     * this exposes nothing the driver could not already list.
+     */
+    if (!delivery && this.driversService) {
+      const asDriver = await this.driversService.findByUserId(userId).catch(() => null);
+      if (asDriver) {
+        delivery = await this.repo.findOne({
+          where: { id, status: DeliveryStatus.PENDING, driver: IsNull() },
+          relations: ['driver', 'driver.user', 'customer'],
+        });
+        if (delivery && !delivery.paymentHeldAt) delivery = null;  // unfunded jobs are not offered
+      }
+    }
+
     if (!delivery) throw new NotFoundException('Delivery not found.');
 
     // Only redact when the viewer is NOT the customer: the sender must

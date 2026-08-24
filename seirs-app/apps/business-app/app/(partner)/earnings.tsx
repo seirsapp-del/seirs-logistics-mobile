@@ -5,13 +5,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
-import { useColors } from '@/context/ThemeContext';
+import { useColors } from '@/context/ThemeContext';
+import { naira } from '@/utils/money';
 
 const PERIODS = ['week', 'month'] as const;
 type Period = typeof PERIODS[number];
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 interface EarningsDay { date: string; amount: number; packages: number; }
 interface Payout { id: string; amount: number; status: 'paid' | 'pending' | 'processing'; period: string; paidAt?: string; }
@@ -80,7 +79,7 @@ export default function EarningsScreen() {
           <View style={styles.summaryRow}>
             <View style={[styles.summaryCard, { flex: 2, backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.summaryLabel, { color: colors.textThird }]}>Total Earned</Text>
-              <Text style={[styles.summaryAmount, { color: colors.text }]}>{fmt(data?.totalEarnings ?? 0)}</Text>
+              <Text style={[styles.summaryAmount, { color: colors.text }]}>{naira(data?.totalEarnings ?? 0)}</Text>
               <View style={styles.summaryMeta}>
                 <Icon name="Package" size={12} color={colors.textThird} />
                 <Text style={[styles.summaryMetaText, { color: colors.textThird }]}>{data?.totalPackages ?? 0} packages</Text>
@@ -94,7 +93,7 @@ export default function EarningsScreen() {
                   (found on device 2026-08-19). Show the range and be
                   explicit that it is their share. */}
               <Text style={[styles.summaryAmount, { color: colors.text, fontSize: 18 }]}>
-                {fmt(data?.perPackageRate ?? 0)}
+                {naira(data?.perPackageRate ?? 0)}
               </Text>
               <Text style={[styles.summaryMetaText, { color: colors.textThird }]}>
                 your share, by weight
@@ -107,7 +106,7 @@ export default function EarningsScreen() {
               <Icon name="Wallet" size={20} color={colors.accent} />
               <View>
                 <Text style={[styles.payoutLabel, { color: colors.textSecond }]}>Pending Payout</Text>
-                <Text style={[styles.payoutAmount, { color: colors.text }]}>{fmt(data?.pendingPayout ?? 0)}</Text>
+                <Text style={[styles.payoutAmount, { color: colors.text }]}>{naira(data?.pendingPayout ?? 0)}</Text>
               </View>
             </View>
             <View style={styles.payoutRight}>
@@ -125,7 +124,7 @@ export default function EarningsScreen() {
                   const label = new Date(d.date).toLocaleDateString('en-NG', { weekday: 'short' });
                   return (
                     <View key={d.date} style={styles.bar}>
-                      <Text style={[styles.barAmt, { color: colors.textThird }]}>{d.amount > 0 ? fmt(d.amount).replace('₦', '') : ''}</Text>
+                      <Text style={[styles.barAmt, { color: colors.textThird }]}>{d.amount > 0 ? naira(d.amount).replace('₦', '') : ''}</Text>
                       <View style={styles.barTrack}>
                         <View style={[styles.barFill, { height: `${Math.max(pct, 4)}%` as any, backgroundColor: colors.accent }]} />
                       </View>
@@ -167,7 +166,7 @@ export default function EarningsScreen() {
                     )}
                   </View>
                   <View style={styles.payoutRowRight}>
-                    <Text style={[styles.payoutRowAmt, { color: colors.text }]}>{fmt(pay.amount)}</Text>
+                    <Text style={[styles.payoutRowAmt, { color: colors.text }]}>{naira(pay.amount)}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: color + '18' }]}>
                       <Text style={[styles.statusText, { color }]}>{pay.status}</Text>
                     </View>

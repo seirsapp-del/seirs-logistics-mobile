@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
 import { driversApi, earningsApi, notificationsApi } from '@/services/api';
+import { naira, nairaShort } from '@/utils/money';
 
 interface MenuSection {
   title: string;
@@ -227,7 +228,7 @@ export default function DriverProfileScreen() {
             {[
               { label: 'Total Trips',  value: totalTrips.toLocaleString(), route: '/(driver)/history' },
               { label: 'Rating',       value: ratingCount > 0 ? rating.toFixed(1) : '-', route: '/(driver)/ratings' },
-              { label: 'Total Earned', value: allTime >= 1_000_000 ? `₦${(allTime / 1_000_000).toFixed(1)}M` : `₦${allTime.toLocaleString()}`, route: '/(driver)/earnings' },
+              { label: 'Total Earned', value: nairaShort(allTime), route: '/(driver)/earnings' },
             ].map(s => (
               <Pressable
                 key={s.label}
@@ -249,7 +250,7 @@ export default function DriverProfileScreen() {
         >
           <View>
             <Text style={[styles.balLabel, { color: theme.textSecond }]}>Withdrawable Balance</Text>
-            <Text style={[styles.balAmount, { color: theme.text }]}>₦{available.toLocaleString()}</Text>
+            <Text style={[styles.balAmount, { color: theme.text }]}>{naira(available)}</Text>
           </View>
           <View style={[styles.withdrawQuick, { backgroundColor: theme.primary }]}>
             <Ionicons name="arrow-up-circle-outline" size={16} color="#fff" />

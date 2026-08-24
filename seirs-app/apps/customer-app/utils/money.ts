@@ -45,11 +45,24 @@ export function nairaFromKobo(kobo: unknown): string {
 }
 
 /**
- * Compact form for chart axes and tiles where a full kobo amount would
- * not fit. Abbreviation is not rounding-for-display: any exact figure
- * it stands in for is still shown to the kobo somewhere on the screen.
+ * Stat-tile form. Abbreviates only past a million, where a full figure
+ * would blow the tile's width; everything below that is shown to the
+ * kobo. Abbreviation is not rounding-for-display: any figure it stands
+ * in for is still available exactly elsewhere on the screen.
  */
 export function nairaShort(v: unknown): string {
+  const n = Number(v ?? 0);
+  const safe = Number.isFinite(n) ? n : 0;
+  if (Math.abs(safe) >= 1_000_000) return `₦${(safe / 1_000_000).toFixed(1)}M`;
+  return naira(safe);
+}
+
+/**
+ * Chart-axis form. Axis gutters are far narrower than a tile, so this
+ * abbreviates from a thousand up. Only ever use it for tick labels: the
+ * exact figure belongs in the tooltip, which uses naira().
+ */
+export function nairaAxis(v: unknown): string {
   const n = Number(v ?? 0);
   const safe = Number.isFinite(n) ? n : 0;
   if (Math.abs(safe) >= 1_000_000) return `₦${(safe / 1_000_000).toFixed(1)}M`;

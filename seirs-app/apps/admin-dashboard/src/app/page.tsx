@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
-import { naira, nairaShort } from "@/lib/money";
+import { naira, nairaAxis } from "@/lib/money";
 import FuelDriftBanner from '@/components/FuelDriftBanner';
 import {
   Users, Truck, ClipboardList, Zap, Package,
@@ -341,7 +341,7 @@ export default function DashboardPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
-                    <YAxis tickFormatter={nairaShort} tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} width={56} />
+                    <YAxis tickFormatter={nairaAxis} tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} width={56} />
                     <Tooltip
                       formatter={(v: any) => [naira(v), 'Revenue']}
                       contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}

@@ -22,7 +22,8 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
 import { deliveriesApi, dropoffApi } from '@/services/api';
 import DeliveryTrackMap from '@/components/DeliveryTrackMap';
-import { StreetAutocomplete } from '@/components/StreetAutocomplete';
+import { StreetAutocomplete } from '@/components/StreetAutocomplete';
+import { naira } from '@/utils/money';
 
 // Labels looked up via t(`tracking.step${cap}`) at render so language
 // switches reflect live.
@@ -234,11 +235,11 @@ export default function TrackScreen() {
         'Return this package?',
         `${q.note}\n\nBack to: ${q.returnTo}\n` +
         `${q.km} km by road\n` +
-        `Transport: \u20a6${Number(q.transportNgn).toLocaleString()}\n` +
+        `Transport: ${naira(q.transportNgn)}\n` +
         (q.counterOwedNgn > 0
-          ? `Counter owed: \u20a6${Number(q.counterOwedNgn).toLocaleString()}\n`
+          ? `Counter owed: ${naira(q.counterOwedNgn)}\n`
           : '') +
-        `Total: \u20a6${Number(q.totalNgn).toLocaleString()}` +
+        `Total: ${naira(q.totalNgn)}` +
         (q.needsSupport ? '\n\nSupport has to approve this before you can pay.' : ''),
         [
           { text: 'Not now', style: 'cancel' },
@@ -295,7 +296,7 @@ export default function TrackScreen() {
       setAddrCoords(null);
       Alert.alert(
         'Sent to support',
-        `We quoted \u20a6${Number(res.quoteNgn).toLocaleString()} for the ${Number(res.km).toFixed(1)} km ` +
+        `We quoted ${naira(res.quoteNgn)} for the ${Number(res.km).toFixed(1)} km ` +
         `from where your rider is now. Support will approve or decline, and you only pay if they approve.`,
       );
     } catch (e: any) {
@@ -731,7 +732,7 @@ export default function TrackScreen() {
                 </Text>
                 <Text style={{ fontSize: FontSize.sm, color: theme.textSecond, lineHeight: 19 }}>
                   Nobody was available at the door, so your package is safe at a nearby SEIRS partner store.
-                  A redirect fee of ₦{Number(deliveryData.redirectFeeOwedNgn).toLocaleString()} (plus any storage days)
+                  A redirect fee of {naira(deliveryData.redirectFeeOwedNgn)} (plus any storage days)
                   applies. Settle it to reveal the pickup location and collection details.
                 </Text>
 
@@ -747,7 +748,7 @@ export default function TrackScreen() {
                   }}
                 >
                   <Text style={{ color: '#FFFFFF', fontWeight: FontWeight.bold as any, fontSize: FontSize.sm }}>
-                    {payingFee ? 'Opening payment...' : `Pay ₦${Number(deliveryData.redirectFeeOwedNgn).toLocaleString()}`}
+                    {payingFee ? 'Opening payment...' : `Pay ${naira(deliveryData.redirectFeeOwedNgn)}`}
                   </Text>
                 </Pressable>
 
@@ -779,7 +780,7 @@ export default function TrackScreen() {
                     style={{ marginTop: 12, borderRadius: Radius.lg, paddingVertical: 12, alignItems: 'center', backgroundColor: '#7C3AED' }}
                   >
                     <Text style={{ color: '#FFFFFF', fontWeight: FontWeight.bold as any, fontSize: FontSize.sm }}>
-                      Pay \u20a6{Number(deliveryData.returnQuoteNgn ?? 0).toLocaleString()} to start the return
+                      Pay {naira(deliveryData.returnQuoteNgn ?? 0)} to start the return
                     </Text>
                   </Pressable>
                 )}
@@ -881,7 +882,7 @@ export default function TrackScreen() {
                 )}
                 {deliveryData.price != null && (
                   <Text style={[styles.metaPrice, { color: theme.primary }]}>
-                    ₦{Number(deliveryData.price).toLocaleString()}
+                    {naira(deliveryData.price)}
                   </Text>
                 )}
               </View>

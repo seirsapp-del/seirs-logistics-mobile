@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { naira } from '@/lib/money';
 import {
   Package, MapPin, Bike, Clock, CheckCircle2, XCircle, AlertTriangle,
   Camera, User, Store, Info, RefreshCw, Car, WifiOff, Lock, Wallet,
@@ -153,10 +154,6 @@ function formatTime(iso: string): string {
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }
-
-// Whole naira only. A fee rendered as N1,500.5 reads as a bug to the person
-// being asked to pay it.
-const naira = (n: number) => `₦${Math.round(n).toLocaleString('en-NG')}`;
 
 // Tailwind can only see literal class names, so we spell out every
 // status color combo instead of interpolating.

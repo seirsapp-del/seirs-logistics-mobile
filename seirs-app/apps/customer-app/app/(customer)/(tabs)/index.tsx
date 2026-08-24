@@ -17,6 +17,7 @@ import { Illustration } from '@/components/Illustration';
 import { HeroCarousel } from '@/components/HeroCarousel';
 import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { deliveriesApi, loyaltyApi } from '@/services/api';
+import { naira } from '@/utils/money';
 import {
   AlignLeft, MapPin, Package, Car, Search,
   Bell, ChevronRight, Sparkles,
@@ -339,7 +340,7 @@ export default function CustomerHomeScreen() {
                 </View>
                 <View style={styles.tripRight}>
                   <Text style={[styles.tripPrice, { color: theme.text }]}>
-                    ₦{Math.round(t.price).toLocaleString()}
+                    {naira(t.price)}
                   </Text>
                   <Badge label={t.status.replace('_', ' ')} variant={statusVariant(t.status)} isDark={isDark} />
                 </View>

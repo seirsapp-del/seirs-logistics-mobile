@@ -21,9 +21,8 @@ import { Drawer } from '@/components/Drawer';
 import { businessApi, paymentsApi, partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
+import { naira } from '@/utils/money';
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 type Segment = 'rewards' | 'earnings';
 
@@ -128,9 +127,9 @@ export default function WalletScreen() {
           ) : (
             <View style={styles.heroBody}>
               <Text style={styles.heroLabel}>SEIRS owes your store</Text>
-              <Text style={styles.heroBig}>{fmt(pendingOwed)}</Text>
+              <Text style={styles.heroBig}>{naira(pendingOwed)}</Text>
               <Text style={styles.heroNote}>
-                Paid out so far: {fmt(paidOut)} · settled weekly to your business bank account.
+                Paid out so far: {naira(paidOut)} · settled weekly to your business bank account.
               </Text>
             </View>
           )}
@@ -229,7 +228,7 @@ export default function WalletScreen() {
                     </Text>
                   </View>
                   <Text style={[styles.rowAmt, { color: p.status === 'paid' ? '#16A34A' : colors.text }]}>
-                    {fmt(Number(p.amount ?? 0))}
+                    {naira(Number(p.amount ?? 0))}
                   </Text>
                 </View>
               ))

@@ -15,9 +15,8 @@ import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { documentsApi, businessApi, partnerApi, type UserDocumentDTO } from '@/services/api';
+import { naira } from '@/utils/money';
 
-const fmtNgn = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 interface SpendYear   { year: number; spentNgn: number; payments: number; toppedUpNgn: number }
 interface PayoutYear  { year: number; paidNgn: number; payouts: number }
@@ -67,7 +66,7 @@ export default function BusinessDocumentsScreen() {
       // wallet relationship that does not exist (B-4.3). Senders hold no
       // balance with SEIRS: they pay per booking.
       `Delivery payments: ${y.payments.toLocaleString()}`,
-      `Total spent:       ${fmtNgn(y.spentNgn)}`,
+      `Total spent:       ${naira(y.spentNgn)}`,
       '',
       'Figures aggregate delivery payments made through SEIRS,',
       'suitable for company accounting and FIRS expense records.',
@@ -82,7 +81,7 @@ export default function BusinessDocumentsScreen() {
       `Generated: ${new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}`,
       '',
       `Payouts received: ${y.payouts.toLocaleString()}`,
-      `Total paid out:   ${fmtNgn(y.paidNgn)}`,
+      `Total paid out:   ${naira(y.paidNgn)}`,
       '',
       'Figures cover payouts marked paid in the SEIRS partner ledger,',
       'suitable for your business records and tax filing.',
@@ -134,7 +133,7 @@ export default function BusinessDocumentsScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.rowTitle, { color: theme.text }]}>{y.year} spend statement</Text>
                         <Text style={[styles.rowMeta, { color: theme.textSecond }]}>
-                          {y.payments} payments · {fmtNgn(y.spentNgn)} spent
+                          {y.payments} payments · {naira(y.spentNgn)} spent
                         </Text>
                       </View>
                       <Icon name="Share2" size={16} color={theme.primary} />
@@ -153,7 +152,7 @@ export default function BusinessDocumentsScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.rowTitle, { color: theme.text }]}>{y.year} payout statement</Text>
                         <Text style={[styles.rowMeta, { color: theme.textSecond }]}>
-                          {y.payouts} payouts · {fmtNgn(y.paidNgn)} received
+                          {y.payouts} payouts · {naira(y.paidNgn)} received
                         </Text>
                       </View>
                       <Icon name="Share2" size={16} color="#16A34A" />

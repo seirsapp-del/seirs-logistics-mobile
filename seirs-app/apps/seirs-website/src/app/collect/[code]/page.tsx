@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { naira } from '@/lib/money';
 import {
   Package, Store, Lock, CheckCircle2, XCircle, Loader2, ShieldCheck, Info,
 } from 'lucide-react';
@@ -38,11 +39,6 @@ interface TrackDTO {
   redirectFeeOwedNgn: number | null;
   package?: { recipientFirstName: string | null } | null;
 }
-
-// Whole naira only. toLocaleString with no options rendered a decimal fee as
-// N1,500.5, on the exact number someone is being asked to hand over.
-const naira = (n: number) =>
-  `₦${Math.round(Number(n)).toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
 
 export default function CollectPage() {
   const { code }  = useParams<{ code: string }>();

@@ -11,12 +11,13 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Button } from '@/components/ui/Button';
 import { promotionsApi, type PromoDTO } from '@/services/api';
 import { useSendDraftStore } from '@/store/useSendDraftStore';
+import { naira } from '@/utils/money';
 
 const describePromo = (p: PromoDTO) => {
   if (p.description) return p.description;
   if (p.type === 'free_delivery') return 'Free delivery on your next order';
   if (p.type === 'percent')       return `${p.value}% off your next order`;
-  return `₦${Number(p.value).toLocaleString()} off your next order`;
+  return `${naira(p.value)} off your next order`;
 };
 
 export default function PromoScreen() {

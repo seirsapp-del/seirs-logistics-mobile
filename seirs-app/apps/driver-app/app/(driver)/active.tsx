@@ -16,6 +16,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { deliveriesApi, driversApi, uploadApi } from '@/services/api';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { Avatar } from '@/components/ui/Avatar';
+import { naira } from '@/utils/money';
 
 const STATUS_STEPS: {
   key: string; label: string; icon: string;
@@ -505,6 +506,23 @@ export default function ActiveDeliveryScreen() {
               ref={mapRef}
               provider={PROVIDER_GOOGLE}
               style={{ width: '100%', height: 220 }}
+              /**
+               * Gestures OFF. This map sits inside the page ScrollView,
+               * so with them on it swallowed every vertical drag: a rider
+               * trying to scroll down to Proof of Delivery panned the map
+               * off their route instead, and could not reach Confirm
+               * Delivered or the nobody-home link at all. Found on device
+               * 2026-08-24. Same reason DeliveryTrackMap and the job
+               * detail map disable them.
+               *
+               * The route is the point here, not free panning: the driver
+               * gets real navigation by opening Google Maps.
+               */
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              toolbarEnabled={false}
               showsTraffic
               showsUserLocation={false}
               initialRegion={{
@@ -608,7 +626,7 @@ export default function ActiveDeliveryScreen() {
               // Driver money is always the server number, never recomputed here.
               label: 'Your Earnings',
               value: Number.isFinite(Number(delivery.driverEarnings)) && delivery.driverEarnings != null
-                ? `₦${Number(delivery.driverEarnings).toLocaleString()}` : null,
+                ? naira(delivery.driverEarnings) : null,
               icon: 'cash-outline',
             },
           ].filter(r => r.value != null && r.value !== '').map(({ label, value, icon }) => (

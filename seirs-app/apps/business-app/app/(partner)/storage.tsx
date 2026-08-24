@@ -9,6 +9,7 @@ import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
+import { naira } from '@/utils/money';
 
 // Spec V8 §4.10: partner sees overstayed packages with accruing storage
 // fees. Packages enter the list once they cross 24hr in-store. Tier_1
@@ -44,8 +45,6 @@ const TABS: Array<{ key: TierKey; label: string }> = [
   { key: 'return_eligible', label: '>72h' },
 ];
 
-const fmtNgn = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 export default function PartnerStorageScreen() {
   const insets   = useSafeAreaInsets();
@@ -94,7 +93,7 @@ export default function PartnerStorageScreen() {
 
       <View style={styles.summary}>
         <Text style={styles.summaryLabel}>OVERSTAY FEES THIS PERIOD</Text>
-        <Text style={styles.summaryAmount}>{fmtNgn(totalAccrued)}</Text>
+        <Text style={styles.summaryAmount}>{naira(totalAccrued)}</Text>
         <Text style={styles.summarySub}>
           Across {items.length} package{items.length === 1 ? '' : 's'} that have crossed the 24-hour free window.
         </Text>
@@ -175,7 +174,7 @@ export default function PartnerStorageScreen() {
                 <View style={[styles.midDivider, { backgroundColor: colors.border }]} />
                 <View style={styles.midItem}>
                   <Text style={[styles.midLabel, { color: colors.textSecond }]}>FEES ACCRUED</Text>
-                  <Text style={[styles.midValue, { color: meta.color }]}>{fmtNgn(item.storageFeesAccruedNgn)}</Text>
+                  <Text style={[styles.midValue, { color: meta.color }]}>{naira(item.storageFeesAccruedNgn)}</Text>
                 </View>
               </View>
 

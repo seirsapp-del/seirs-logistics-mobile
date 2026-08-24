@@ -24,6 +24,7 @@ import { deliveriesApi } from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { collectUrl } from '@/constants/config';
+import { naira } from '@/utils/money';
 
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
@@ -35,7 +36,7 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled:  '#6B7280',
 };
 
-const fmt = (n: any) => `₦${Math.round(Number(n ?? 0)).toLocaleString()}`;
+
 
 export default function DeliveryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -136,11 +137,11 @@ export default function DeliveryDetailScreen() {
         'Return this package?',
         `${q.note}\n\nBack to: ${q.returnTo}\n` +
         `${q.km} km by road\n` +
-        `Transport: \u20a6${Number(q.transportNgn).toLocaleString()}\n` +
+        `Transport: ${naira(q.transportNgn)}\n` +
         (q.counterOwedNgn > 0
-          ? `Counter owed: \u20a6${Number(q.counterOwedNgn).toLocaleString()}\n`
+          ? `Counter owed: ${naira(q.counterOwedNgn)}\n`
           : '') +
-        `Total: \u20a6${Number(q.totalNgn).toLocaleString()}` +
+        `Total: ${naira(q.totalNgn)}` +
         (q.needsSupport ? '\n\nSupport has to approve this before you can pay.' : ''),
         [
           { text: 'Not now', style: 'cancel' },
@@ -202,12 +203,12 @@ export default function DeliveryDetailScreen() {
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.rowBetween}>
             <Text style={[styles.cardLabel, { color: colors.textThird }]}>TOTAL PAID</Text>
-            <Text style={[styles.cardValue, { color: colors.text }]}>{fmt(d.price)}</Text>
+            <Text style={[styles.cardValue, { color: colors.text }]}>{naira(d.price)}</Text>
           </View>
           {Number(d.partnerHandlingNgn ?? 0) > 0 && (
             <View style={styles.rowBetween}>
               <Text style={[styles.cardLabel, { color: colors.textThird }]}>COUNTER HANDLING</Text>
-              <Text style={[styles.cardValue, { color: colors.textSecond }]}>{fmt(d.partnerHandlingNgn)}</Text>
+              <Text style={[styles.cardValue, { color: colors.textSecond }]}>{naira(d.partnerHandlingNgn)}</Text>
             </View>
           )}
         </View>
@@ -234,7 +235,7 @@ export default function DeliveryDetailScreen() {
             </Text>
             <Text style={{ fontSize: 14, color: colors.textSecond, lineHeight: 19 }}>
               Nobody was available, so this is being kept safe at a SEIRS partner
-              store. {fmt(d.redirectFeeOwedNgn)} settles it and reveals the pickup
+              store. {naira(d.redirectFeeOwedNgn)} settles it and reveals the pickup
               location.
             </Text>
             <Pressable
@@ -242,7 +243,7 @@ export default function DeliveryDetailScreen() {
               style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#F59E0B' }}
             >
               <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
-                Pay {fmt(d.redirectFeeOwedNgn)}
+                Pay {naira(d.redirectFeeOwedNgn)}
               </Text>
             </Pressable>
             <Pressable onPress={shareCollectLink} style={{ marginTop: 8, paddingVertical: 8, alignItems: 'center' }}>
@@ -270,7 +271,7 @@ export default function DeliveryDetailScreen() {
                 style={{ marginTop: 12, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#7C3AED' }}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
-                  Pay {fmt(d.returnQuoteNgn)} to start the return
+                  Pay {naira(d.returnQuoteNgn)} to start the return
                 </Text>
               </Pressable>
             )}
@@ -325,7 +326,7 @@ export default function DeliveryDetailScreen() {
               </View>
 
               {!!st.packagePriceNgn && (
-                <Text style={[styles.pkgMeta, { color: colors.textThird }]}>{fmt(st.packagePriceNgn)}</Text>
+                <Text style={[styles.pkgMeta, { color: colors.textThird }]}>{naira(st.packagePriceNgn)}</Text>
               )}
 
               {/* The receiver's own code. Sharing this instead of the run

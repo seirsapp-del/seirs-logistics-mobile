@@ -20,7 +20,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { driversApi } from '@/services/api';
+import { driversApi } from '@/services/api';
+import { naira } from '@/utils/money';
 
 interface Stop {
   id:             string;
@@ -261,7 +262,7 @@ export default function DeliveryDetailScreen() {
           <View style={[styles.statCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
             <Text style={[styles.statLabel, { color: theme.textSecond }]}>Earning</Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
-              ₦{Math.round(delivery.driverEarnings).toLocaleString()}
+              {naira(delivery.driverEarnings)}
             </Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: theme.surfaceSecond, borderColor: theme.border }]}>
@@ -481,7 +482,7 @@ function BreakdownLine({ theme, label, value, bold }: { theme: any; label: strin
     <View style={styles.brkRow}>
       <Text style={[styles.brkLabel, { color: theme.textSecond, fontWeight: bold ? '700' : '400' }]}>{label}</Text>
       <Text style={[styles.brkValue, { color: theme.text, fontWeight: bold ? '700' : '500' }]}>
-        ₦{Math.round(value).toLocaleString()}
+        {naira(value)}
       </Text>
     </View>
   );

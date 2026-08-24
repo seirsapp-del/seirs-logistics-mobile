@@ -15,7 +15,8 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { dropoffApi, feesApi } from '@/services/api';
-import { Illustration } from '@/components/Illustration';
+import { Illustration } from '@/components/Illustration';
+import { nairaAmount } from '@/utils/money';
 
 // Spec V8 §3: async customer entry point. Customer schedules a drop-off,
 // gets a printable QR + 6-char backup code, walks into the picked store
@@ -486,7 +487,7 @@ export default function DropAtStoreScreen() {
                 value={declaredValue}
                 onChangeText={setDeclaredValue}
                 keyboardType="number-pad"
-                placeholder={t('dropAtStore.declaredValuePlaceholder', { amount: highValueNgn.toLocaleString() })}
+                placeholder={t('dropAtStore.declaredValuePlaceholder', { amount: nairaAmount(highValueNgn) })}
                 placeholderTextColor={theme.textThird}
                 style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
               />

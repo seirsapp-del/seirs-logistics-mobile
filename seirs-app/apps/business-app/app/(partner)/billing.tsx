@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
+import { naira } from '@/utils/money';
 
 // Spec V8 §4.11: partner sponsored-placement billing view. Live monthly
 // fee is read from the Fee Catalogue (admin-editable, propagates within
@@ -20,8 +21,6 @@ import { useColors } from '@/context/ThemeContext';
 // is the kind of contradiction a partner discovers at invoice time
 // (B-9.2). The list now describes what actually happens.
 
-const fmtNgn = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 export default function PartnerBillingScreen() {
   const insets = useSafeAreaInsets();
@@ -34,8 +33,10 @@ export default function PartnerBillingScreen() {
   const [busy,         setBusy]         = useState(false);
 
   const active = sponsorship?.status === 'active';
+  // Kobo is the stored unit; the naira figure keeps its decimals so the
+  // partner's invoice matches what actually left their account.
   const lastInvoicedNgn = sponsorship?.lastInvoicedFeeKobo != null
-    ? Math.round(sponsorship.lastInvoicedFeeKobo / 100)
+    ? Number(sponsorship.lastInvoicedFeeKobo) / 100
     : 0;
 
   const load = useCallback(async () => {
@@ -59,7 +60,7 @@ export default function PartnerBillingScreen() {
     if (next) {
       Alert.alert(
         'Activate Sponsored Placement',
-        `Your store will appear pinned at the top of the customer map.\n\nMonthly fee: ${monthlyPrice != null ? fmtNgn(monthlyPrice) : '-'}.\n\nFlutterwave recurring billing is being wired in Phase 2 payments: for now the invoice is recorded but no card is charged. Pause anytime, no contract.`,
+        `Your store will appear pinned at the top of the customer map.\n\nMonthly fee: ${monthlyPrice != null ? naira(monthlyPrice) : '-'}.\n\nFlutterwave recurring billing is being wired in Phase 2 payments: for now the invoice is recorded but no card is charged. Pause anytime, no contract.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Activate', onPress: async () => {
@@ -136,7 +137,7 @@ export default function PartnerBillingScreen() {
           <ActivityIndicator color={colors.accent} style={{ alignSelf: 'flex-start', marginVertical: 8 }} />
         ) : monthlyPrice != null ? (
           <Text style={[styles.planPrice, { color: colors.text }]}>
-            {fmtNgn(monthlyPrice)}<Text style={[styles.planPriceSecond, { color: colors.textSecond }]}> /month</Text>
+            {naira(monthlyPrice)}<Text style={[styles.planPriceSecond, { color: colors.textSecond }]}> /month</Text>
           </Text>
         ) : (
           <Text style={[styles.planPrice, { color: colors.text }]}>Price unavailable</Text>
@@ -169,7 +170,7 @@ export default function PartnerBillingScreen() {
           <View style={[styles.statsDivider, { backgroundColor: colors.border }]} />
           <Stat label="Click-throughs"  value={IMPRESSIONS_TRACKED ? '0' : '-'} />
           <View style={[styles.statsDivider, { backgroundColor: colors.border }]} />
-          <Stat label="Spend"           value={fmtNgn(stats.monthSpend)} />
+          <Stat label="Spend"           value={naira(stats.monthSpend)} />
         </View>
         {!IMPRESSIONS_TRACKED && (
           <Text style={[styles.statsHint, { color: colors.textThird }]}>

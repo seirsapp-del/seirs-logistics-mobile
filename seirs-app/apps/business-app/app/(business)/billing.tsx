@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { paymentsApi, businessApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
+import { naira as nairaFmt, nairaFromKobo } from '@/utils/money';
 
 type Payment = {
   id: string;
@@ -32,8 +33,10 @@ type Payment = {
   delivery?: { trackingCode?: string } | null;
 };
 
-const naira = (kobo: string | number) =>
-  `₦${Math.round(Number(kobo || 0) / 100).toLocaleString()}`;
+// Kobo in, naira out, to two decimals. Rounding the division threw away
+// the kobo a business is billed for, so an invoice list never tallied
+// with the card statement (founder reversal 2026-08-24).
+const naira = nairaFromKobo;
 
 const when = (iso?: string) => {
   if (!iso) return '';
@@ -138,7 +141,7 @@ export default function BillingScreen() {
                       </Text>
                     </View>
                     <Text style={[styles.rowAmount, { color: colors.text }]}>
-                      ₦{Math.round(Number(y.spentNgn || 0)).toLocaleString()}
+                      {nairaFmt(y.spentNgn || 0)}
                     </Text>
                   </View>
                 ))}

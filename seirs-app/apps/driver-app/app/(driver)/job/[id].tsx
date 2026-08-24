@@ -13,6 +13,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
+import { naira } from '@/utils/money';
+import { useAuth } from '@/context/AuthContext';
 
 const URGENCY_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
   instant:   { label: 'Instant',   color: '#EF4444', Icon: Zap  },
@@ -73,6 +75,7 @@ export default function JobDetailScreen() {
   const theme     = Colors[cs ?? 'light'];
   const isDark    = cs === 'dark';
   const insets    = useSafeAreaInsets();
+  const { user } = useAuth();
 
   // ?offered=1 → auto-match pushed this to the driver (countdown applies).
   // No flag = driver tapped the job from the browse list (no countdown).
@@ -83,6 +86,22 @@ export default function JobDetailScreen() {
   const [job,       setJob]       = useState<any | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [claiming,  setClaiming]  = useState(false);
+
+  /**
+   * Which job is this, from this driver's point of view?
+   *
+   * `unclaimed` is the only state where Accept is meaningful. `mine`
+   * means continue it. `taken` means somebody else got there first, and
+   * saying so is kinder than a button that will fail.
+   */
+  const myUserId = user?.id ?? null;
+  const jobState: 'unclaimed' | 'mine' | 'taken' | 'closed' = (() => {
+    if (!job) return 'unclaimed';
+    const st = String(job.status ?? 'pending');
+    if (st === 'delivered' || st === 'cancelled') return 'closed';
+    if (job.driverUserId) return job.driverUserId === myUserId ? 'mine' : 'taken';
+    return 'unclaimed';
+  })();
   const [photoOpen, setPhotoOpen] = useState<string | null>(null);
   const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const mapRef     = useRef<MapView>(null);
@@ -114,6 +133,13 @@ export default function JobDetailScreen() {
           isFragile:         !!d.isFragile,
           packagePhotos:     Array.isArray(d.packagePhotos) ? d.packagePhotos : [],
           kind,
+          // Status and ownership drive which actions are legal. Reading
+          // neither is why this screen offered "Accept Job" on a job that
+          // was already in transit (founder caught it 2026-08-24 by
+          // comparing the customer app and the admin dashboard, which
+          // both showed the truth).
+          status:      String(d.status ?? 'pending'),
+          driverUserId: (d as any).driver?.user?.id ?? null,
           tripId: (d as any).tripId ?? null,
           customer: {
             // A ride passenger never gets a surname or a phone shown to a
@@ -319,7 +345,7 @@ export default function JobDetailScreen() {
             decides on money first, then distance, then where from. */}
         <View style={[styles.fareCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
           <Text style={[styles.fareLabel, { color: theme.textSecond }]}>Estimated Earnings</Text>
-          <Text style={[styles.fareAmount, { color: theme.primary }]}>₦{(job.driverEarnings ?? job.price ?? 0).toLocaleString()}</Text>
+          <Text style={[styles.fareAmount, { color: theme.primary }]}>{naira(job.driverEarnings ?? job.price ?? 0)}</Text>
           {/* D-4.5: the rate used to be hardcoded as "After 30% Seirs
               commission" and would go stale the day the rate moves. The
               exact fee is already itemised per trip in earnings history. */}
@@ -533,20 +559,46 @@ export default function JobDetailScreen() {
         borderTopColor: theme.border,
         paddingBottom: Spacing.md + Math.max(insets.bottom, 24),
       }]}>
-        <Pressable style={[styles.declineBtn, { borderColor: '#EF4444' }]} onPress={handleDecline} disabled={claiming}>
-          <XCircle size={20} color="#EF4444" strokeWidth={1.75} />
-          <Text style={[styles.declineText, { color: '#EF4444' }]}>Decline</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.acceptBtn, { backgroundColor: theme.primary, opacity: claiming ? 0.6 : 1 }]}
-          onPress={handleAccept}
-          disabled={claiming}
-        >
-          {claiming
-            ? <ActivityIndicator color="#fff" />
-            : <CheckCircle size={20} color="#fff" strokeWidth={1.75} />}
-          <Text style={styles.acceptText}>{claiming ? 'Accepting...' : 'Accept Job'}</Text>
-        </Pressable>
+        {jobState === 'unclaimed' ? (
+          <>
+            <Pressable style={[styles.declineBtn, { borderColor: '#EF4444' }]} onPress={handleDecline} disabled={claiming}>
+              <XCircle size={20} color="#EF4444" strokeWidth={1.75} />
+              <Text style={[styles.declineText, { color: '#EF4444' }]}>Decline</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.acceptBtn, { backgroundColor: theme.primary, opacity: claiming ? 0.6 : 1 }]}
+              onPress={handleAccept}
+              disabled={claiming}
+            >
+              {claiming
+                ? <ActivityIndicator color="#fff" />
+                : <CheckCircle size={20} color="#fff" strokeWidth={1.75} />}
+              <Text style={styles.acceptText}>{claiming ? 'Accepting...' : 'Accept Job'}</Text>
+            </Pressable>
+          </>
+        ) : jobState === 'mine' ? (
+          <Pressable
+            style={[styles.acceptBtn, { backgroundColor: theme.primary, flex: 1 }]}
+            onPress={() => router.replace({ pathname: '/(driver)/active', params: { id: job.id } } as any)}
+          >
+            <Navigation size={20} color="#fff" strokeWidth={1.75} />
+            <Text style={styles.acceptText}>Continue this job</Text>
+          </Pressable>
+        ) : jobState === 'closed' ? (
+          <View style={[styles.stateNote, { backgroundColor: theme.surfaceSecond }]}>
+            <CheckCircle size={18} color="#16A34A" strokeWidth={1.75} />
+            <Text style={[styles.stateNoteText, { color: theme.textSecond }]}>
+              This job is finished. Nothing left to do here.
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.stateNote, { backgroundColor: theme.surfaceSecond }]}>
+            <XCircle size={18} color={theme.textThird} strokeWidth={1.75} />
+            <Text style={[styles.stateNoteText, { color: theme.textSecond }]}>
+              Another driver took this one. It is off your list.
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Package photo, full size. A 64dp thumbnail is not enough to tell a
@@ -642,6 +694,8 @@ const styles = StyleSheet.create({
   backLinkText: { color: '#fff', fontWeight: FontWeight.semibold as any },
 
   actionBar:   { flexDirection: 'row', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1 },
+  stateNote:     { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 16, borderRadius: Radius.lg },
+  stateNoteText: { flex: 1, fontSize: FontSize.sm },
   declineBtn:  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, height: 56, borderRadius: Radius.xl, borderWidth: 2 },
   declineText: { fontSize: FontSize.base, fontWeight: FontWeight.semibold as any },
   acceptBtn:   { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, height: 56, borderRadius: Radius.xl },

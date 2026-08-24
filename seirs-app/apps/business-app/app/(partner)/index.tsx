@@ -10,9 +10,8 @@ import { Drawer } from '@/components/Drawer';
 import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors, useTheme } from '@/context/ThemeContext';
+import { naira } from '@/utils/money';
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 export default function PartnerDashboard() {
   const insets = useSafeAreaInsets();
@@ -109,7 +108,7 @@ export default function PartnerDashboard() {
               <View style={styles.earningsCard}>
                 <View style={styles.earningsLeft}>
                   <Text style={styles.earningsLabel}>This Week's Earnings</Text>
-                  <Text style={styles.earningsAmount}>{fmt(data?.weekEarnings ?? 0)}</Text>
+                  <Text style={styles.earningsAmount}>{naira(data?.weekEarnings ?? 0)}</Text>
                   <Text style={styles.earningsSub}>Payout every Monday</Text>
                 </View>
                 <Pressable

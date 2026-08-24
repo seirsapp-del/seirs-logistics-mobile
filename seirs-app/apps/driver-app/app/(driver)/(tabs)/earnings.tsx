@@ -16,6 +16,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { earningsApi } from '@/services/api';
 import { EarningsCalendar } from '@/components/EarningsCalendar';
+import { naira, nairaShort } from '@/utils/money';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -138,10 +139,11 @@ export default function EarningsScreen() {
   ];
 
   const STATS = [
-    { label: 'This Week',    value: `₦${weekTotal.toLocaleString()}`,                                                Icon: Calendar,   color: theme.primary },
-    { label: 'Avg / Trip',   value: `₦${Math.round(totalEarned / Math.max(totalTrips, 1)).toLocaleString()}`,         Icon: TrendingUp, color: '#16A34A' },
+    { label: 'This Week',    value: naira(weekTotal),                                                                 Icon: Calendar,   color: theme.primary },
+    { label: 'Avg / Trip',   value: naira(totalEarned / Math.max(totalTrips, 1)),                                     Icon: TrendingUp, color: '#16A34A' },
+    // Trips are a count, not money: they stay whole.
     { label: 'Total Trips',  value: totalTrips.toLocaleString(),                                                      Icon: Receipt,    color: '#0F2B4C' },
-    { label: 'Total Earned', value: totalEarned >= 1_000_000 ? `₦${(totalEarned / 1_000_000).toFixed(1)}M` : `₦${totalEarned.toLocaleString()}`, Icon: Ribbon, color: '#FFBE0B' },
+    { label: 'Total Earned', value: nairaShort(totalEarned),                                                          Icon: Ribbon,     color: '#FFBE0B' },
   ];
 
   return (
@@ -183,13 +185,13 @@ export default function EarningsScreen() {
             <View style={styles.walletTop}>
               <View>
                 <Text style={styles.walletLabel}>{displayLabel}</Text>
-                <Text style={styles.walletAmount}>₦{displayAmount.toLocaleString()}</Text>
+                <Text style={styles.walletAmount}>{naira(displayAmount)}</Text>
               </View>
               <View style={styles.walletRight}>
                 {/* "Withdrawable", not "Available": the founder read the
                     old label as a duplicate of the This Week figure. This
                     is the cleared cash-out balance, a different number. */}
-                <Text style={styles.balanceLabel}>Withdrawable ₦{balance.toLocaleString()}</Text>
+                <Text style={styles.balanceLabel}>Withdrawable {naira(balance)}</Text>
               </View>
             </View>
             <View style={styles.walletActions}>
@@ -222,13 +224,13 @@ export default function EarningsScreen() {
             <View style={[styles.goalFill, { width: `${goalPct}%`, backgroundColor: goalPct >= 100 ? '#16A34A' : '#D97706' }]} />
           </View>
           <View style={styles.goalBottom}>
-            <Text style={[styles.goalCurrent, { color: theme.textSecond }]}>₦{weekTotal.toLocaleString()}</Text>
-            <Text style={[styles.goalTarget,  { color: theme.textThird }]}>Target ₦{goalTarget.toLocaleString()} · tap to change</Text>
+            <Text style={[styles.goalCurrent, { color: theme.textSecond }]}>{naira(weekTotal)}</Text>
+            <Text style={[styles.goalTarget,  { color: theme.textThird }]}>Target {naira(goalTarget)} · tap to change</Text>
           </View>
           {goalPct >= 100 && (
             <View style={[styles.goalBanner, { backgroundColor: '#16A34A15' }]}>
               <Text style={[styles.goalBannerText, { color: '#16A34A' }]}>
-                Goal reached! You beat your ₦{goalTarget.toLocaleString()} target. Raise it and see how far you can go.
+                Goal reached! You beat your {naira(goalTarget)} target. Raise it and see how far you can go.
               </Text>
             </View>
           )}
@@ -291,7 +293,7 @@ export default function EarningsScreen() {
             {/* Rolling window, not the calendar week: the bars cover the last
                 7 days including today, so the title must not say "This Week". */}
             <Text style={[styles.cardTitle, { color: theme.text }]}>Last 7 days</Text>
-            <Text style={[styles.chartTotal, { color: '#16A34A' }]}>₦{rollingTotal.toLocaleString()}</Text>
+            <Text style={[styles.chartTotal, { color: '#16A34A' }]}>{naira(rollingTotal)}</Text>
           </View>
           <View style={styles.barRow}>
             {dayTotals.map((amount, i) => {
@@ -343,7 +345,7 @@ export default function EarningsScreen() {
             // gross fare + SEIRS cut per trip so drivers see exactly how
             // their net was computed. The cut never enters their balance.
             const sub = gross > 0
-              ? `${date} · Fare ₦${gross.toLocaleString()} − SEIRS ₦${cut.toLocaleString()}`
+              ? `${date} · Fare ${naira(gross)} − SEIRS ${naira(cut)}`
               : date;
             return (
               <Pressable
@@ -362,7 +364,7 @@ export default function EarningsScreen() {
                   <Text style={[styles.txDate,  { color: theme.textSecond }]} numberOfLines={1}>{sub}</Text>
                 </View>
                 <Text style={[styles.txAmount, { color: amtColor }]}>
-                  {isCredit ? '+' : '−'}₦{amount.toLocaleString()}
+                  {isCredit ? '+' : '−'}{naira(amount)}
                 </Text>
                 <ChevronRight size={14} color={theme.textThird} strokeWidth={1.75} style={{ marginLeft: 4 }} />
               </Pressable>

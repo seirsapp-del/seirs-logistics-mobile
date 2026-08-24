@@ -288,18 +288,34 @@ export class ChatService {
     const deliveryIds = deliveries.map(d => d.id);
 
     // Fetch latest message + unread count for each delivery in two queries.
-    const latestRows = await this.repo
-      .createQueryBuilder('m')
-      .select(['m.id', 'm.body', 'm.senderId', 'm.createdAt', 'm.deliveryId'])
-      .where('m.deliveryId IN (:...ids)', { ids: deliveryIds })
-      .orderBy('m.createdAt', 'DESC')
-      .getMany();
-
-    const latestByDelivery = new Map<string, ChatMessage>();
-    for (const row of latestRows) {
-      const did = (row as any).deliveryId;
-      if (!latestByDelivery.has(did)) latestByDelivery.set(did, row);
-    }
+    /**
+     * getRawMany, not getMany.
+     *
+     * This selected m.deliveryId and then read it off a hydrated
+     * entity, but ChatMessage exposes the delivery RELATION, not the
+     * foreign key, so the value was always undefined. Every
+     * conversation keyed under undefined and was dropped, which left
+     * BOTH inboxes permanently empty in all three apps while the
+     * messages themselves saved and read fine inside a thread.
+     * Raw rows return the actual column, so there is no entity
+     * mapping left to get wrong.
+     */
+    const latestRaw = await this.repo
+      .createQueryBuilder('m')
+      .select('m.id',          'id')
+      .addSelect('m.body',       'body')
+      .addSelect('m.createdAt',  'createdAt')
+      .addSelect('m.deliveryId', 'deliveryId')
+      .where('m.deliveryId IN (:...ids)', { ids: deliveryIds })
+      .orderBy('m.createdAt', 'DESC')
+      .getRawMany<{ id: string; body: string; createdAt: Date; deliveryId: string }>();
+
+    const latestByDelivery = new Map<string, { body: string; createdAt: Date }>();
+    for (const row of latestRaw) {
+      if (row.deliveryId && !latestByDelivery.has(row.deliveryId)) {
+        latestByDelivery.set(row.deliveryId, { body: row.body, createdAt: row.createdAt });
+      }
+    }
 
     const unreadRows = await this.repo
       .createQueryBuilder('m')

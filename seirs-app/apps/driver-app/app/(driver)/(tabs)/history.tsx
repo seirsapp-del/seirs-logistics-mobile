@@ -10,6 +10,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
 import { driversApi } from '@/services/api';
+import { naira } from '@/utils/money';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   delivered:  { label: 'Delivered',   color: '#16A34A', icon: 'checkmark-circle' },
@@ -86,7 +87,7 @@ export default function DriverHistoryScreen() {
         </View>
         <View style={[styles.earnBadge, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: theme.primary + '40' }]}>
           <Ionicons name="trending-up" size={13} color={theme.primary} />
-          <Text style={[styles.earnBadgeText, { color: theme.primary }]}>₦{totalEarned.toLocaleString()} earned</Text>
+          <Text style={[styles.earnBadgeText, { color: theme.primary }]}>{naira(totalEarned)} earned</Text>
         </View>
       </View>
 
@@ -164,7 +165,7 @@ export default function DriverHistoryScreen() {
                     <Text style={[styles.distText, { color: theme.textThird }]}>{item.distance} · </Text>
                   )}
                   <Text style={[styles.earnText, { color: item.driverEarnings > 0 ? '#22C55E' : theme.textThird }]}>
-                    {item.driverEarnings > 0 ? `+₦${item.driverEarnings.toLocaleString()}` : '-'}
+                    {item.driverEarnings > 0 ? `+${naira(item.driverEarnings)}` : '-'}
                   </Text>
                 </View>
               </View>

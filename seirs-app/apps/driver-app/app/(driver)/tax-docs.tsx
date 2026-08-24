@@ -12,6 +12,7 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi, documentsApi, type UserDocumentDTO } from '@/services/api';
+import { naira } from '@/utils/money';
 
 // Icon per document category (admin-sent official docs).
 const DOC_ICON: Record<string, any> = {
@@ -50,8 +51,6 @@ interface YearSummary {
   trips:          number;
 }
 
-const fmtNgn = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 export default function TaxDocsScreen() {
   const router = useRouter();
@@ -106,9 +105,9 @@ export default function TaxDocsScreen() {
       `Generated: ${generated}`,
       '',
       `Trips completed:      ${Number(m.tripCount).toLocaleString()}`,
-      `Gross earnings:       ${fmtNgn(m.grossNgn)}`,
-      `SEIRS commission:     ${fmtNgn(m.commissionNgn)}`,
-      `Net earnings (yours): ${fmtNgn(m.netNgn)}`,
+      `Gross earnings:       ${naira(m.grossNgn)}`,
+      `SEIRS commission:     ${naira(m.commissionNgn)}`,
+      `Net earnings (yours): ${naira(m.netNgn)}`,
       '',
       'Figures are the canonical aggregates from the SEIRS earnings ledger.',
       'Monthly statements are for your own records; FIRS filing uses the',
@@ -134,9 +133,9 @@ export default function TaxDocsScreen() {
             <p style="font-size: 11px; color: #667; margin: 0 0 20px;">Generated ${generated}</p>
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
               <tr><td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">Trips completed</td><td style="text-align: right; border-bottom: 1px solid #e5e7eb;">${y.trips.toLocaleString()}</td></tr>
-              <tr><td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">Gross earnings</td><td style="text-align: right; border-bottom: 1px solid #e5e7eb;">${fmtNgn(y.grossNgn)}</td></tr>
-              <tr><td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">SEIRS commission</td><td style="text-align: right; border-bottom: 1px solid #e5e7eb;">-${fmtNgn(y.commissionNgn)}</td></tr>
-              <tr><td style="padding: 8px 0; font-weight: 700;">Net earnings</td><td style="text-align: right; font-weight: 700;">${fmtNgn(y.netNgn)}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">Gross earnings</td><td style="text-align: right; border-bottom: 1px solid #e5e7eb;">${naira(y.grossNgn)}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">SEIRS commission</td><td style="text-align: right; border-bottom: 1px solid #e5e7eb;">-${naira(y.commissionNgn)}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: 700;">Net earnings</td><td style="text-align: right; font-weight: 700;">${naira(y.netNgn)}</td></tr>
             </table>
             <p style="font-size: 10px; color: #889; margin-top: 28px; line-height: 1.5;">
               Figures are the canonical aggregates from the SEIRS earnings ledger, suitable for FIRS
@@ -154,9 +153,9 @@ export default function TaxDocsScreen() {
       `Generated: ${generated}`,
       '',
       `Trips completed:      ${y.trips.toLocaleString()}`,
-      `Gross earnings:       ${fmtNgn(y.grossNgn)}`,
-      `SEIRS commission:     ${fmtNgn(y.commissionNgn)}`,
-      `Net earnings (yours): ${fmtNgn(y.netNgn)}`,
+      `Gross earnings:       ${naira(y.grossNgn)}`,
+      `SEIRS commission:     ${naira(y.commissionNgn)}`,
+      `Net earnings (yours): ${naira(y.netNgn)}`,
       '',
       'Figures are the canonical aggregates from the SEIRS earnings ledger,',
       'suitable for FIRS self-assessment filing. Questions? Contact support',
@@ -240,7 +239,7 @@ export default function TaxDocsScreen() {
                     {MONTH_NAMES[m.month - 1]} {m.year}
                   </Text>
                   <Text style={[styles.yearSub, { color: theme.textSecond }]}>
-                    {m.tripCount} trip{m.tripCount === 1 ? '' : 's'} · net {fmtNgn(m.netNgn)}
+                    {m.tripCount} trip{m.tripCount === 1 ? '' : 's'} · net {naira(m.netNgn)}
                   </Text>
                 </View>
                 <View style={[styles.shareBtn, { backgroundColor: theme.primary }]}>
@@ -288,11 +287,11 @@ export default function TaxDocsScreen() {
               </View>
 
               <View style={styles.breakdown}>
-                <Stat label="Gross"      value={fmtNgn(y.grossNgn)}      theme={theme} />
+                <Stat label="Gross"      value={naira(y.grossNgn)}      theme={theme} />
                 <View style={[styles.divider, { backgroundColor: theme.border }]} />
-                <Stat label="Commission" value={`-${fmtNgn(y.commissionNgn)}`} theme={theme} color="#DC2626" />
+                <Stat label="Commission" value={`-${naira(y.commissionNgn)}`} theme={theme} color="#DC2626" />
                 <View style={[styles.divider, { backgroundColor: theme.border }]} />
-                <Stat label="Net"        value={fmtNgn(y.netNgn)}        theme={theme} color="#16A34A" />
+                <Stat label="Net"        value={naira(y.netNgn)}        theme={theme} color="#16A34A" />
               </View>
             </Pressable>
           ))

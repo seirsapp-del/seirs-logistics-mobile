@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
+import { naira } from '@/utils/money';
 
 const SCHEDULE_STORAGE_KEY = 'seirs_driver_working_hours';
 
@@ -136,7 +137,7 @@ export default function ScheduleScreen() {
                   <Clock size={12} color={theme.primary} strokeWidth={1.75} />
                   <Text style={[styles.timeText, { color: theme.primary }]}>{job.date} · {fmtTime(job.time)}</Text>
                 </View>
-                <Text style={[styles.jobFare, { color: theme.primary }]}>₦{job.fare.toLocaleString()}</Text>
+                <Text style={[styles.jobFare, { color: theme.primary }]}>{naira(job.fare)}</Text>
               </View>
               <Text style={[styles.jobCustomer, { color: theme.text }]}>{job.customer}</Text>
               <View style={styles.addrRow}>

@@ -9,6 +9,7 @@ import { Drawer } from '@/components/Drawer';
 import { businessApi, paymentsApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 import { vehicleLabel } from '@/constants/vehicles';
+import { naira } from '@/utils/money';
 
 const STATUSES = ['all', 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled'];
 
@@ -29,8 +30,6 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled:  '#DC2626',
 };
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n);
 
 interface Delivery {
   id:              string;
@@ -156,7 +155,7 @@ export default function DeliveriesScreen() {
   const handlePay = (item: Delivery) => {
     if (!savedCard) { openCheckout(item); return; }
     Alert.alert(
-      `Pay ${fmt(item.price)}`,
+      `Pay ${naira(item.price)}`,
       `Charge ${String(savedCard.brand ?? 'card').toUpperCase()} •••• ${savedCard.last4}, or open the full checkout for another method?`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -168,7 +167,7 @@ export default function DeliveriesScreen() {
               setPaying(item.id);
               const res = await paymentsApi.payWithSavedCard(item.id, savedCard.id);
               if (res.success) {
-                Alert.alert('Paid', `${fmt(item.price)} charged to •••• ${res.last4 ?? savedCard.last4}. A driver is being matched.`);
+                Alert.alert('Paid', `${naira(item.price)} charged to •••• ${res.last4 ?? savedCard.last4}. A driver is being matched.`);
                 load(1, true);
               } else {
                 Alert.alert('Card declined', res.error ?? 'Try the full checkout instead.', [
@@ -235,7 +234,7 @@ export default function DeliveriesScreen() {
               {new Date(item.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
             </Text>
           </View>
-          <Text style={[styles.price, { color: colors.text }]}>{fmt(item.price)}</Text>
+          <Text style={[styles.price, { color: colors.text }]}>{naira(item.price)}</Text>
         </View>
 
         {/* Actions get their own row. Vehicle, stops, date, price, Pay now

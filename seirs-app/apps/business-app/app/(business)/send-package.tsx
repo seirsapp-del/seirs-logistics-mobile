@@ -44,6 +44,7 @@ import { type VehicleType } from '@seirs/shared';
 import { useColors } from '@/context/ThemeContext';
 import { VEHICLE_LABEL } from '@/constants/vehicles';
 import { TERMS_URL } from '@/constants/config';
+import { naira } from '@/utils/money';
 
 const STEPS = ['Packages', 'Pickup', 'Vehicle', 'Review'] as const;
 const STEP_SLOTS = ['send-package', 'send-address', 'send-vehicle', 'send-fare'] as const;
@@ -598,19 +599,22 @@ export default function SendPackageScreen() {
      * own line, so folding it into the package prices as well made the
      * same money appear twice.
      *
-     * Rounded to whole naira HERE, with the last line absorbing the
-     * drift, because the receipt is read at whole-naira precision: shares
-     * that summed exactly to the total still printed 5,302 + 5,802 next
-     * to a total of 11,103 (seen on device 2026-08-16).
+     * Split in KOBO with the last line absorbing the drift, so the shares
+     * add up to the carriage exactly. This used to round to whole naira,
+     * for the same reason: shares that summed to the total still printed
+     * 5,302 + 5,802 against a total of 11,103 (seen on device
+     * 2026-08-16). The founder reversed the whole-naira rule on
+     * 2026-08-24, so the drift is now absorbed at kobo precision instead
+     * and the receipt reconciles at the precision Flutterwave reports.
      */
     const handling = Number(quote?.customer?.partnerHandling ?? 0);
     const carriage = total - handling;
     const weights = draft.stops.map(s => 1 + pctOf(s.categoryCode) / 100);
     const wSum = weights.reduce((a, b) => a + b, 0);
-    const shares = weights.map(w => Math.round(carriage * w / wSum));
-    const drift = Math.round(carriage) - shares.reduce((a, b) => a + b, 0);
-    shares[n - 1] += drift;
-    return shares;
+    const sharesKobo = weights.map(w => Math.round((carriage * w / wSum) * 100));
+    const driftKobo = Math.round(carriage * 100) - sharesKobo.reduce((a, b) => a + b, 0);
+    sharesKobo[n - 1] += driftKobo;
+    return sharesKobo.map(k => k / 100);
   }, [quote, draft.stops, catalog, draft.categoryCode, draft.pickupStoreId]);
 
   // ── Validation per step ──────────────────────────────────────────────
@@ -1608,7 +1612,7 @@ export default function SendPackageScreen() {
                         </Text>
                       </View>
                       <Text style={[styles.linePrice, { color: colors.text }]}>
-                        {packageLines ? `₦${Math.round(packageLines[i]).toLocaleString()}` : '…'}
+                        {packageLines ? naira(packageLines[i]) : '…'}
                       </Text>
                       <Icon name={expandedPkg === i ? 'ChevronUp' : 'ChevronDown'} size={15} color={colors.textThird} />
                     </Pressable>
@@ -1657,7 +1661,7 @@ export default function SendPackageScreen() {
                       </Text>
                     </View>
                     <Text style={[styles.linePrice, { color: colors.textSecond }]}>
-                      ₦{Math.round(Number(quote.customer.partnerHandling)).toLocaleString()}
+                      {naira(quote.customer.partnerHandling)}
                     </Text>
                   </View>
                 )}
@@ -1665,7 +1669,7 @@ export default function SendPackageScreen() {
                   <Text style={[styles.totalLabel, { color: colors.text }]}>Total · one payment</Text>
                   <Text style={[styles.totalValue, { color: colors.primary }]}>
                     {quote?.customer?.total != null
-                      ? `₦${Math.round(Number(quote.customer.total)).toLocaleString()}`
+                      ? naira(quote.customer.total)
                       : '…'}
                   </Text>
                 </View>
@@ -1686,9 +1690,9 @@ export default function SendPackageScreen() {
                   ['Vehicle', VEHICLE_LABEL[draft.vehicleType] ?? draft.vehicleType],
                   ['When', scheduleNow ? 'Send now' : (TIME_SLOTS.find(t => t.hour === scheduledHour)?.label ?? '-')],
                   ...(Number(quote?.customer?.serviceFee ?? 0) > 0
-                    ? [['Service fee', `₦${Math.round(Number(quote!.customer.serviceFee)).toLocaleString()}`] as [string, string]]
+                    ? [['Service fee', naira(quote!.customer.serviceFee)] as [string, string]]
                     : []),
-                  ['Total', quote?.customer?.total != null ? `₦${Math.round(Number(quote.customer.total)).toLocaleString()}` : '…'],
+                  ['Total', quote?.customer?.total != null ? naira(quote.customer.total) : '…'],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, paddingVertical: 5 }}>
                     <Text style={[styles.lineSub, { color: colors.textSecond, fontSize: 14 }]}>{lbl}</Text>
@@ -1939,7 +1943,7 @@ export default function SendPackageScreen() {
               <Text style={styles.ctaText}>
                 {step === 3
                   ? (quote?.customer?.total != null
-                      ? `Pay ₦${Math.round(Number(quote.customer.total)).toLocaleString()}`
+                      ? `Pay ${naira(quote.customer.total)}`
                       : 'Book this run')
                   : 'Continue'}
               </Text>

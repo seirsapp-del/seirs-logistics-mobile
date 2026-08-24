@@ -9,6 +9,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { earningsApi, paymentsApi, type EarningsDashboard } from '@/services/api';
+import { naira } from '@/utils/money';
 
 /**
  * Withdraw screen: THE single real money-out path for drivers.
@@ -82,8 +83,11 @@ export default function WithdrawalScreen() {
   // server owns this number (Fee Catalogue driver_min_payout_ngn); once it
   // is on the response the cast and the fallback both go away.
   const minWithdrawalRaw = Number((dashboard as any)?.minPayoutNgn ?? (dashboard as any)?.minWithdrawalNgn ?? NaN);
+  // Used exactly as the server states it. Rounding it here could put the
+  // client's minimum below the server's and hand the driver a rejection
+  // after they had already been told the amount was fine.
   const MIN_WITHDRAWAL  = Number.isFinite(minWithdrawalRaw) && minWithdrawalRaw > 0
-    ? Math.round(minWithdrawalRaw)
+    ? minWithdrawalRaw
     : MIN_WITHDRAWAL_FALLBACK;
   const available       = instant ? cleared + instantEligible : cleared;
   const numericAmount   = parseInt(amount.replace(/,/g, ''), 10) || 0;
@@ -93,6 +97,10 @@ export default function WithdrawalScreen() {
   const frozen          = !!bank?.pendingBankAccountNumber;
   const canWithdraw     = hasBank && !frozen && numericAmount >= MIN_WITHDRAWAL && numericAmount <= available;
 
+  // The payout field itself stays whole-naira entry: this masks what the
+  // driver TYPES, it is not a rendering of a server figure. Every amount
+  // this screen reports back (balance, fee, what was actually paid) goes
+  // through naira() and carries its kobo.
   const formatAmount = (raw: string) => {
     const digits = raw.replace(/\D/g, '');
     return digits ? parseInt(digits, 10).toLocaleString() : '';
@@ -101,11 +109,11 @@ export default function WithdrawalScreen() {
   const handleWithdraw = () => {
     if (!canWithdraw) return;
     const feeNote = instant && numericAmount > cleared
-      ? `\n\nInstant fee: ${instantFeePct}% applies to the ₦${Math.min(numericAmount - cleared, instantEligible).toLocaleString()} not yet cleared.`
+      ? `\n\nInstant fee: ${instantFeePct}% applies to the ${naira(Math.min(numericAmount - cleared, instantEligible))} not yet cleared.`
       : '';
     Alert.alert(
       'Confirm Withdrawal',
-      `Withdraw up to ₦${numericAmount.toLocaleString()} to ${bank?.bankName ?? 'your bank'} ` +
+      `Withdraw up to ${naira(numericAmount)} to ${bank?.bankName ?? 'your bank'} ` +
       `(${bank?.bankAccountNumber})?\n\nAmounts are matched to your completed deliveries, ` +
       `so the exact figure can be slightly lower. You will see the final amount sent.${feeNote}`,
       [
@@ -137,17 +145,17 @@ export default function WithdrawalScreen() {
         </View>
         <Text style={[styles.successTitle, { color: theme.text }]}>Withdrawal Sent!</Text>
         <Text style={[styles.successSub, { color: theme.textSecond }]}>
-          ₦{paidAmount.toLocaleString()} is on its way to {bank?.bankName ?? 'your bank'} ({bank?.bankAccountNumber}).
+          {naira(paidAmount)} is on its way to {bank?.bankName ?? 'your bank'} ({bank?.bankAccountNumber}).
           Arrival time depends on your bank.
         </Text>
         {paidFee > 0 && (
           <Text style={[styles.successNote, { color: theme.textThird }]}>
-            Includes an instant withdrawal fee of ₦{paidFee.toLocaleString()} ({instantFeePct}% of the not-yet-cleared portion).
+            Includes an instant withdrawal fee of {naira(paidFee)} ({instantFeePct}% of the not-yet-cleared portion).
           </Text>
         )}
         {paidAmount < numericAmount && (
           <Text style={[styles.successNote, { color: theme.textThird }]}>
-            You asked for ₦{numericAmount.toLocaleString()}; ₦{paidAmount.toLocaleString()} was paid because
+            You asked for {naira(numericAmount)}; {naira(paidAmount)} was paid because
             withdrawals match whole deliveries. The rest stays available.
           </Text>
         )}
@@ -200,13 +208,13 @@ export default function WithdrawalScreen() {
               green wash background clashed; green stays on the number) */}
           <View style={[styles.balCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
             <Text style={[styles.balLabel, { color: theme.textSecond }]}>Available to withdraw</Text>
-            <Text style={[styles.balAmount, { color: '#16A34A' }]}>₦{available.toLocaleString()}</Text>
-            <Text style={[styles.balMin, { color: theme.textThird }]}>Minimum withdrawal ₦{MIN_WITHDRAWAL.toLocaleString()}</Text>
+            <Text style={[styles.balAmount, { color: '#16A34A' }]}>{naira(available)}</Text>
+            <Text style={[styles.balMin, { color: theme.textThird }]}>Minimum withdrawal {naira(MIN_WITHDRAWAL)}</Text>
             {pending > 0 && (
               <View style={styles.pendingRow}>
                 <Ionicons name="time-outline" size={13} color={theme.textThird} />
                 <Text style={[styles.balPending, { color: theme.textThird }]}>
-                  ₦{pending.toLocaleString()} clearing ({clearanceDays} business days after each delivery)
+                  {naira(pending)} clearing ({clearanceDays} business days after each delivery)
                 </Text>
               </View>
             )}
@@ -230,7 +238,7 @@ export default function WithdrawalScreen() {
               <Text style={[styles.instantTitle, { color: theme.text }]}>Instant withdrawal · {instantFeePct}% fee</Text>
               <Text style={[styles.instantSub, { color: theme.textSecond }]}>
                 {instantEligible > 0
-                  ? `Unlock ₦${instantEligible.toLocaleString()} of earnings still clearing (24h+ old) without waiting the ${clearanceDays} business days.`
+                  ? `Unlock ${naira(instantEligible)} of earnings still clearing (24h+ old) without waiting the ${clearanceDays} business days.`
                   : `Earnings older than 24h that have not finished the ${clearanceDays} business day clearance can be unlocked here for a ${instantFeePct}% fee. Nothing is eligible right now.`}
               </Text>
             </View>
@@ -280,7 +288,7 @@ export default function WithdrawalScreen() {
                     ]}
                     onPress={() => setAmount(q.toLocaleString())}
                   >
-                    <Text style={[styles.quickText, { color: numericAmount === q ? theme.primary : theme.textSecond }]}>₦{q.toLocaleString()}</Text>
+                    <Text style={[styles.quickText, { color: numericAmount === q ? theme.primary : theme.textSecond }]}>{naira(q)}</Text>
                   </Pressable>
                 );
               })}
@@ -346,7 +354,7 @@ export default function WithdrawalScreen() {
           >
             <Ionicons name="arrow-up-circle-outline" size={20} color={canWithdraw ? '#fff' : theme.textThird} />
             <Text style={[styles.withdrawBtnText, { color: canWithdraw ? '#fff' : theme.textThird }]}>
-              {submitting ? 'Processing…' : `Withdraw${numericAmount >= MIN_WITHDRAWAL ? ` ₦${numericAmount.toLocaleString()}` : ''}`}
+              {submitting ? 'Processing…' : `Withdraw${numericAmount >= MIN_WITHDRAWAL ? ` ${naira(numericAmount)}` : ''}`}
             </Text>
           </Pressable>
         </View>

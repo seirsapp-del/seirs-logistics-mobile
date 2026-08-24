@@ -80,7 +80,7 @@ export default function TravelBuddyScreen() {
         pathname: '/(customer)/payment/[deliveryId]',
         params: {
           deliveryId:   created.id,
-          price:        String(Math.round(Number(created.price ?? 0))),
+          price:        String(Number(created.price ?? 0)),
           trackingCode: created.trackingCode ?? '',
         },
       } as any);

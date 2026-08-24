@@ -11,10 +11,11 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { promotionsApi, type PromoDTO } from '@/services/api';
+import { naira } from '@/utils/money';
 
 // Render the discount value as a chip label per promo type.
 function promoLabel(p: PromoDTO): string {
-  if (p.type === 'flat_discount') return `₦${Number(p.value).toLocaleString()} off`;
+  if (p.type === 'flat_discount') return `${naira(p.value)} off`;
   if (p.type === 'percent')       return `${Number(p.value)}% off`;
   return 'Free delivery';
 }

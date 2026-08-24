@@ -9,6 +9,7 @@ import { ShieldCheck } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { paymentsApi, deliveriesApi } from '@/services/api';
+import { naira } from '@/utils/money';
 
 // Spec V8 §"Confirmed Decisions": COD removed. Everything routes through
 // Flutterwave's hosted checkout (card, bank transfer, USSD live there;
@@ -55,7 +56,10 @@ export default function PaymentScreen() {
       .catch(() => setLoadErr(true));
   }, [deliveryId]);
 
-  const displayPrice = Math.round(Number(delivery?.price ?? price ?? 0));
+  // Shown to the kobo: this is the figure Flutterwave will charge, and a
+  // pay button that says a different number than the receipt is a support
+  // ticket waiting to happen (founder 2026-08-24).
+  const displayPrice = Number(delivery?.price ?? price ?? 0);
   const alreadyPaid  = !!delivery?.paymentHeldAt;
   const code         = delivery?.trackingCode ?? trackingCode;
 
@@ -170,7 +174,7 @@ export default function PaymentScreen() {
             card. Kobo belongs on the receipt, not here. */}
         <View style={[styles.amountCard, { backgroundColor: theme.primary }]}>
           <Text style={styles.amountLabel}>Amount to pay</Text>
-          <Text style={styles.amount}>₦{displayPrice.toLocaleString()}</Text>
+          <Text style={styles.amount}>{naira(displayPrice)}</Text>
           <Text style={styles.amountNote}>Card processing is added at checkout by Flutterwave.</Text>
         </View>
 
@@ -186,7 +190,7 @@ export default function PaymentScreen() {
             ))}
             <View style={[styles.sumRow, { borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 8, marginTop: 4 }]}>
               <Text style={[styles.sumLabel, { color: theme.textThird }]}>Total</Text>
-              <Text style={[styles.sumTotal, { color: theme.text }]}>₦{displayPrice.toLocaleString()}</Text>
+              <Text style={[styles.sumTotal, { color: theme.text }]}>{naira(displayPrice)}</Text>
             </View>
           </View>
         )}
@@ -251,7 +255,7 @@ export default function PaymentScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <Text style={styles.payBtnText}>
-                    Pay ₦{displayPrice.toLocaleString()} with {String(savedCard.brand ?? 'card').toUpperCase()} •••• {savedCard.last4}
+                    Pay {naira(displayPrice)} with {String(savedCard.brand ?? 'card').toUpperCase()} •••• {savedCard.last4}
                   </Text>
                 )}
               </Pressable>
@@ -271,7 +275,7 @@ export default function PaymentScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.payBtnText}>
-                  Pay ₦{displayPrice.toLocaleString()}
+                  Pay {naira(displayPrice)}
                 </Text>
               )}
             </Pressable>

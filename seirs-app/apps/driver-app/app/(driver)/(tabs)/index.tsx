@@ -23,6 +23,7 @@ import { useAuth } from '@/context/AuthContext';
 import { driversApi, earningsApi } from '@/services/api';
 import { NotificationBell } from '@/components/NotificationBell';
 import { SOCKET_URL } from '@/constants/config';
+import { naira } from '@/utils/money';
 
 const URGENCY_COLOR: Record<string, string> = {
   economy:  '#16A34A',
@@ -441,9 +442,9 @@ export default function DriverHomeScreen() {
             </View>
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Withdrawable</Text>
             <Text style={[styles.widgetValue, { color: theme.text }]}>
-              {withdrawable == null ? '-' : `₦${withdrawable.toLocaleString()}`}
+              {withdrawable == null ? '-' : naira(withdrawable)}
             </Text>
-            <Text style={[styles.widgetSub, { color: theme.textThird }]}>Today ₦{todayEarnings.toLocaleString()}</Text>
+            <Text style={[styles.widgetSub, { color: theme.textThird }]}>Today {naira(todayEarnings)}</Text>
           </Pressable>
 
           {/* Weekly Goal widget PARKED (founder deferred the weekly-goal
@@ -528,7 +529,7 @@ export default function DriverHomeScreen() {
                 </View>
                 <View style={styles.jobRight}>
                   <Text style={[styles.earnLabel, { color: theme.textThird }]}>You earn</Text>
-                  <Text style={[styles.jobFare, { color: theme.primary }]}>₦{Number(job.youEarnNgn ?? job.driverEarnings ?? 0).toLocaleString()}</Text>
+                  <Text style={[styles.jobFare, { color: theme.primary }]}>{naira(job.youEarnNgn ?? job.driverEarnings ?? 0)}</Text>
                   <View style={styles.distRow}>
                     <Clock size={12} color={theme.textThird} strokeWidth={1.75} />
                     <Text style={[styles.jobDist, { color: theme.textThird }]}>{job.distanceKm != null ? `${job.distanceKm} km` : 'nearby'}</Text>

@@ -411,6 +411,10 @@ export default function DeliveryDetailPage() {
                     value={acQuote}
                     onChange={(e) => setAcQuote(e.target.value)}
                     placeholder={
+                      /* Mirrors the live quote to the kobo so the admin can
+                         see exactly what is being corrected. No thousands
+                         separator: this field is typed into, and a comma
+                         would come back as garbage. */
                       d.addressChangeQuoteNgn != null
                         ? Number(d.addressChangeQuoteNgn).toFixed(2)
                         : 'Naira'

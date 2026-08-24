@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { useAuth } from '@/context/AuthContext';
 import { usersApi, driversApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
+import { naira } from '@/utils/money';
 
 interface Readiness {
   ready:    boolean;
@@ -150,7 +151,7 @@ export default function DeleteAccountScreen() {
                   <View key={i} style={{ marginTop: 8 }}>
                     <Text style={[styles.blockerLabel, { color: '#92400E' }]}>
                       {b.type === 'active_deliveries' ? `${b.count} active deliver${b.count === 1 ? 'y' : 'ies'}` :
-                       b.type === 'wallet_balance'    ? `Wallet balance: ₦${b.count.toLocaleString()}` :
+                       b.type === 'wallet_balance'    ? `Wallet balance: ${naira(b.count)}` :
                        `${b.type}: ${b.count}`}
                     </Text>
                     <Text style={[styles.blockerAction, { color: '#92400E' }]}>{b.action}</Text>

@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react-native';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
+import { naira } from '@/utils/money';
 
 interface EarningRow {
   id:            string;
@@ -56,6 +57,9 @@ function rowDate(e: EarningRow): Date | null {
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
+// Compact labels for the day cells only: a full kobo amount cannot fit in
+// a calendar square. Every figure the driver acts on (the month total, the
+// day total, each ledger row) is rendered to the kobo by naira().
 function compactNaira(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 10_000)    return `${Math.round(n / 1000)}k`;
@@ -149,7 +153,7 @@ export function EarningsCalendar({ history, theme, currentMonthTotal }: Props) {
       </View>
 
       <Text style={[styles.monthTotal, { color: '#16A34A' }]}>
-        ₦{headerTotal.toLocaleString()} {atCurrentMonth ? 'this month' : `in ${MONTHS[viewMonth]}`}
+        {naira(headerTotal)} {atCurrentMonth ? 'this month' : `in ${MONTHS[viewMonth]}`}
       </Text>
 
       {/* Weekday labels */}
@@ -211,7 +215,7 @@ export function EarningsCalendar({ history, theme, currentMonthTotal }: Props) {
               {selectedDay} {MONTHS[viewMonth]}
             </Text>
             <Text style={[styles.dayPanelTotal, { color: '#16A34A' }]}>
-              ₦{selectedTotal.toLocaleString()}
+              {naira(selectedTotal)}
             </Text>
           </View>
           {selectedRows.length === 0 ? (
@@ -224,7 +228,7 @@ export function EarningsCalendar({ history, theme, currentMonthTotal }: Props) {
                 {r.label ?? (`Trip ${r.trackingCode ?? ''}`.trim() || 'Delivery')}
               </Text>
               <Text style={[styles.dayRowAmt, { color: theme.text }]}>
-                ₦{rowAmount(r).toLocaleString()}
+                {naira(rowAmount(r))}
               </Text>
             </View>
           ))}

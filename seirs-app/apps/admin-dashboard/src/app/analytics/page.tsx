@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
-import { naira, nairaShort } from '@/lib/money';
+import { naira, nairaAxis } from '@/lib/money';
 import { Star } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -112,7 +112,7 @@ export default function AnalyticsPage() {
                     />
                     {/* Axis ticks abbreviate because a full kobo amount will not fit in the
                         gutter. The exact figure is one hover away in the tooltip. */}
-                    <YAxis tickFormatter={nairaShort} tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }} width={60} />
+                    <YAxis tickFormatter={nairaAxis} tick={{ fontSize: 11, fill: '#0F2B4C', opacity: 0.4 }} width={60} />
                     <Tooltip
                       formatter={(v: any) => [naira(v), 'Revenue']}
                       contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', boxShadow: 'none' }}

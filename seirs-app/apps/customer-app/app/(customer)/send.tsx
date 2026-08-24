@@ -57,7 +57,8 @@ const PACKAGE_CATEGORIES = [
 type CategoryId = typeof PACKAGE_CATEGORIES[number]['id'];
 
 import { PACKAGE_VEHICLES, calcPackageFare } from '@/constants/mockData';
-import { getActiveRateCard } from '@/hooks/use-rate-card';
+import { getActiveRateCard } from '@/hooks/use-rate-card';
+import { naira } from '@/utils/money';
 
 const VEHICLES = PACKAGE_VEHICLES;
 // Business Vehicle step, ported verbatim (founder 2026-08-21: exactly).
@@ -667,13 +668,13 @@ export default function SendScreen() {
           // 2026-08-22): render exactly what the server charged, which
           // is 0 until the admin publishes a value. COD and insurance
           // remain engine-absent and stay zeroed.
-          service:   Math.round(Number(c.serviceFee ?? 0)),
+          service:   Number(c.serviceFee ?? 0),
           // Declaring a value above the card's threshold adds a real
           // premium to what you pay (pricing.service computes it and
           // folds it into total). It was charged and never shown, which
           // is the "hidden non-zero fee" the summary below calls a lie
           // (found on device 2026-08-23 declaring N150,000).
-          highValue: Math.round(Number(c.highValuePremium ?? 0)),
+          highValue: Number(c.highValuePremium ?? 0),
           codFee:    0,
           insurance: 0,
           discounts: {
@@ -1011,7 +1012,7 @@ export default function SendScreen() {
           pathname: '/(customer)/payment/[deliveryId]',
           params: {
             deliveryId:   created.id,
-            price:        String(Math.round(Number(created.price ?? 0))),
+            price:        String(Number(created.price ?? 0)),
             trackingCode: created.trackingCode ?? '',
           },
         } as any);
@@ -1935,9 +1936,12 @@ export default function SendScreen() {
                 </Text>
                 {packages.map((pk, i) => {
                   const openNow = expandedPkg === i;
+                  // An indicative per-package share, shown to the kobo like
+                  // every other figure. The one number that is charged is
+                  // the run total on the row below.
                   const share = packages.length > 1
-                    ? Math.round(Number(runQuote?.customer?.total ?? 0) / packages.length)
-                    : Math.round(fare.total);
+                    ? Number(runQuote?.customer?.total ?? 0) / packages.length
+                    : fare.total;
                   return (
                     <View key={i} style={[styles.pkgRevRow, { borderTopColor: theme.border, borderTopWidth: i === 0 ? 0 : 1 }]}>
                       <Pressable style={styles.pkgRevHead} onPress={() => setExpandedPkg(openNow ? null : i)}>
@@ -1975,7 +1979,7 @@ export default function SendScreen() {
                             {(pk.receiverFirst || '-') + ' · ' + (pk.weightKg || '?') + 'kg'}
                           </Text>
                         </View>
-                        <Text style={[styles.fareAmt, { color: theme.text }]}>₦{share.toLocaleString()}</Text>
+                        <Text style={[styles.fareAmt, { color: theme.text }]}>{naira(share)}</Text>
                         <Ionicons name={openNow ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textThird} />
                       </Pressable>
 
@@ -2020,7 +2024,7 @@ export default function SendScreen() {
                   <Text style={[styles.fareTotalLabel, { color: theme.text }]}>
                     {t('send.totalOnePayment', { defaultValue: 'Total · one payment' })}
                   </Text>
-                  <Text style={[styles.fareTotalAmt, { color: theme.accent }]}>₦{Math.round(fare.total).toLocaleString()}</Text>
+                  <Text style={[styles.fareTotalAmt, { color: theme.accent }]}>{naira(fare.total)}</Text>
                 </View>
                 <Text style={[styles.capNote, { color: theme.textSecond }]}>
                   {t('send.reviewFootnote', { defaultValue: 'Final fare uses the road distance at booking. Every package gets its own tracking code for its receiver.' })}
@@ -2049,13 +2053,13 @@ export default function SendScreen() {
                   // row is noise, a hidden non-zero fee is a lie.
                   ...(fare.service > 0
                     ? [[t('send.serviceFee', { defaultValue: 'Service fee' }),
-                        `₦${Math.round(fare.service).toLocaleString()}`] as [string, string]]
+                        naira(fare.service)] as [string, string]]
                     : []),
                   ...(Number((fare as any).highValue) > 0
                     ? [[t('send.highValueFee', { defaultValue: 'High-value cover' }),
-                        `₦${Math.round(Number((fare as any).highValue)).toLocaleString()}`] as [string, string]]
+                        naira((fare as any).highValue)] as [string, string]]
                     : []),
-                  [t('send.total'),          `₦${Math.round(fare.total).toLocaleString()}`],
+                  [t('send.total'),          naira(fare.total)],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <View key={lbl} style={[styles.fareRow, { borderBottomColor: theme.border }]}>
                     <Text style={[styles.fareLabel, { color: theme.textSecond }]}>{lbl}</Text>
@@ -2138,7 +2142,7 @@ export default function SendScreen() {
               <View style={styles.ctaInner}>
                 <Text style={styles.ctaText}>
                   {step === 3
-                    ? `${t('send.payCta', { defaultValue: 'Pay' })} ₦${Math.round(fare.total).toLocaleString()}`
+                    ? `${t('send.payCta', { defaultValue: 'Pay' })} ${naira(fare.total)}`
                     : t('common.continue')}
                 </Text>
                 <ArrowRight size={18} color="#fff" strokeWidth={2.5} />

@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { earningsApi, type DriverEarning } from '@/services/api';
+import { naira } from '@/utils/money';
 
 const STATUS_LABEL: Record<string, string> = {
   pending:   'Clearing',
@@ -69,9 +70,11 @@ export default function DriverTransactionDetailScreen() {
   const rows = [
     { label: 'Entry ID',     value: tx.id.slice(0, 8).toUpperCase() },
     { label: 'Date',         value: new Date(tx.createdAt).toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
-    { label: 'Gross fare',   value: `₦${gross.toLocaleString()}` },
-    { label: 'SEIRS fee',    value: `−₦${cut.toLocaleString()}` },
-    { label: 'Your net',     value: `₦${net.toLocaleString()}` },
+    // Gross − fee = net, to the kobo. Rounding these three independently
+    // is exactly how the arithmetic stopped adding up (founder 2026-08-24).
+    { label: 'Gross fare',   value: naira(gross) },
+    { label: 'SEIRS fee',    value: `−${naira(cut)}` },
+    { label: 'Your net',     value: naira(net) },
     { label: 'Status',       value: statusLabel },
     ...(tx.paidAt ? [{ label: 'Paid to bank', value: new Date(tx.paidAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) }] : []),
   ];
@@ -95,7 +98,7 @@ export default function DriverTransactionDetailScreen() {
           <View style={[styles.heroIcon, { backgroundColor: iconBg }]}>
             <Ionicons name={iconName as any} size={36} color={iconColor} />
           </View>
-          <Text style={[styles.heroAmount, { color: amtColor }]}>{amtSign}₦{net.toLocaleString()}</Text>
+          <Text style={[styles.heroAmount, { color: amtColor }]}>{amtSign}{naira(net)}</Text>
           <Text style={[styles.heroLabel, { color: theme.textSecond }]}>Delivery earnings</Text>
           <View style={[styles.statusPill, { backgroundColor: statusColor + '18' }]}>
             <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
