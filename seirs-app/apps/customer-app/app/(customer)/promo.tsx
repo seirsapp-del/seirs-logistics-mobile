@@ -131,7 +131,13 @@ export default function PromoScreen() {
               placeholderTextColor={theme.textThird}
               autoCapitalize="characters"
               value={code}
-              onChangeText={t => { setCode(t.toUpperCase()); setError(''); setApplied(null); }}
+              onChangeText={next => {
+                setCode(next.toUpperCase());
+                setError('');
+                // Editing an accepted code drops it from the draft too, so
+                // the booking never carries a code the box no longer shows.
+                if (applied) { setApplied(null); patchDraft({ promoCode: undefined }); }
+              }}
             />
             {applied && <Ionicons name="checkmark-circle" size={20} color="#22C55E" />}
           </View>
@@ -190,7 +196,11 @@ export default function PromoScreen() {
               { backgroundColor: theme.surface, borderColor: applied === promo.code ? '#22C55E' : theme.border },
               Shadows.xs,
             ]}
-            onPress={() => { setCode(promo.code); setApplied(null); setError(''); }}
+            onPress={() => {
+              setCode(promo.code);
+              setError('');
+              if (applied) { setApplied(null); patchDraft({ promoCode: undefined }); }
+            }}
           >
             <View style={[styles.promoIconWrap, { backgroundColor: isDark ? '#001020' : '#EFF6FF' }]}>
               <Ionicons name="ticket-outline" size={22} color={theme.primary} />

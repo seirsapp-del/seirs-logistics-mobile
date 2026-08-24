@@ -168,7 +168,7 @@ export default function HistoryScreen() {
 
   const handleCancel = async (trip: Trip) => {
     // Never quote a cancellation fee from the bundled rate card: ask the
-    // server what it costs right now, exactly as trip-progress does.
+    // server what it costs right now.
     setCancelling(trip.id);
     let feeNgn = 0;
     let cancellable = true;

@@ -200,9 +200,10 @@ export class PartnerStoreController {
   @Get('store/:storeId/dropoffs')
   listForStore(
     @Param('storeId') storeId: string,
+    @CurrentUser() staff: any,
     @Query('onlyActive') onlyActive?: string,
   ) {
-    return this.svc.listForStore(storeId, { onlyActive: onlyActive === 'true' });
+    return this.svc.listForStore(storeId, staff.id, { onlyActive: onlyActive === 'true' });
   }
 
   // GET /api/v1/partner-store/store/:storeId/capacity
@@ -223,8 +224,8 @@ export class PartnerStoreController {
 
   // GET /api/v1/partner-store/store/:storeId/overstays
   @Get('store/:storeId/overstays')
-  overstays(@Param('storeId') storeId: string) {
-    return this.svc.listOverstays(storeId);
+  overstays(@Param('storeId') storeId: string, @CurrentUser() staff: any) {
+    return this.svc.listOverstays(storeId, staff.id);
   }
 
   // GET /api/v1/partner-store/store/:storeId/deletion-readiness
@@ -232,8 +233,8 @@ export class PartnerStoreController {
   // Returns blockers list (in-store packages, scheduled drop-offs)
   // so the partner-app UI can guide the operator through cleanup.
   @Get('store/:storeId/deletion-readiness')
-  deletionReadiness(@Param('storeId') storeId: string) {
-    return this.svc.getDeletionReadiness(storeId);
+  deletionReadiness(@Param('storeId') storeId: string, @CurrentUser() staff: any) {
+    return this.svc.getDeletionReadiness(storeId, staff.id);
   }
 
   // ── Hybrid-account: user upgrades from Business Sender to also become a

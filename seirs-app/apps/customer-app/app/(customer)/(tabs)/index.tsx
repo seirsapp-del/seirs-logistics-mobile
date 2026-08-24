@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
-  Alert, RefreshControl,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -10,8 +10,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   Colors, Spacing, Radius, FontSize, FontWeight, Shadows,
 } from '@/constants/theme';
-import { useAuth } from '@/context/AuthContext';
-import { Avatar } from '@/components/ui/Avatar';
 import { NotificationBell } from '@/components/NotificationBell';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/Drawer';
@@ -42,7 +40,6 @@ export default function CustomerHomeScreen() {
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
   const isDark  = cs === 'dark';
-  const { user } = useAuth();
   const { t }    = useTranslation();
 
 

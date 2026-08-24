@@ -1066,7 +1066,8 @@ export class PartnerStoreService {
     });
   }
 
-  async listForStore(partnerStoreId: string, opts?: { onlyActive?: boolean }) {
+  async listForStore(partnerStoreId: string, staffUserId: string, opts?: { onlyActive?: boolean }) {
+    await this.requireStoreStaff(partnerStoreId, staffUserId);
     const where: any = [
       { pickupStoreId: partnerStoreId },
       { dropoffStoreId: partnerStoreId },
@@ -1085,6 +1086,9 @@ export class PartnerStoreService {
   // counts against maxCapacity. Returned as a bucketed string for the
   // customer-facing UI per Spec V8 (Plenty / Limited / Full) and as
   // exact numbers for the partner's own dashboard.
+  // Capacity is counts only, no PII, and the same numbers are already
+  // public through /capacity/nearby. It is also called internally while
+  // booking, where there is no staff actor, so it stays unguarded.
   async getCapacity(partnerStoreId: string) {
     const store = await this.storeRepo.findOne({ where: { id: partnerStoreId } });
     if (!store) throw new NotFoundException('Partner store not found');
@@ -1313,6 +1317,22 @@ export class PartnerStoreService {
 
   // Lets a partner pause incoming bookings without going fully offline.
   // The customer-facing capacity browser filters out paused stores.
+  /**
+   * Every per-store read must prove the caller works there.
+   *
+   * Four readers shipped with no actor argument at all, so ANY signed-in
+   * account could pull a counter's full manifest including the dropCode
+   * and backupCode that release a parcel. Confirmed on production with
+   * an unrelated driver token (2026-08-24). Admins keep their own path.
+   */
+  private async requireStoreStaff(partnerStoreId: string, staffUserId: string) {
+    const staff = await this.usersRepo.findOne({ where: { id: staffUserId } });
+    if (!staff || staff.partnerStoreId !== partnerStoreId) {
+      throw new ForbiddenException('You are not registered as staff for this store');
+    }
+    return staff;
+  }
+
   async setStoreStatus(storeId: string, status: 'active' | 'paused', staffUserId: string) {
     const staff = await this.usersRepo.findOne({ where: { id: staffUserId } });
     if (!staff || staff.partnerStoreId !== storeId) {
@@ -1331,7 +1351,8 @@ export class PartnerStoreService {
   // packages in custody. Returns a structured blocker list so the UI
   // can guide them: "Return these N overstays first" / "Release these
   // M packages awaiting collection".
-  async getDeletionReadiness(partnerStoreId: string) {
+  async getDeletionReadiness(partnerStoreId: string, staffUserId: string) {
+    await this.requireStoreStaff(partnerStoreId, staffUserId);
     const blockers: Array<{ type: string; count: number; action: string }> = [];
 
     const inStore = await this.dropoffRepo.count({
@@ -1372,7 +1393,8 @@ export class PartnerStoreService {
   // window, with hours-overdue and accrued fees computed live. Powers
   // biz.partStorage. Sorted oldest-arrival first so the most urgent
   // are at the top.
-  async listOverstays(partnerStoreId: string) {
+  async listOverstays(partnerStoreId: string, staffUserId: string) {
+    await this.requireStoreStaff(partnerStoreId, staffUserId);
     const all = await this.dropoffRepo.find({
       where: [
         { pickupStoreId:  partnerStoreId, status: In(IN_STORE_STATUSES) },

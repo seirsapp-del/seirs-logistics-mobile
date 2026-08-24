@@ -12,7 +12,7 @@ import { loyaltyApi, deliveriesApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import {
   Gift, Plus, Sparkles, QrCode, Flame, Trophy, Users, Zap,
-  Package, Award, ArrowRight, Star,
+  Package, Award, ArrowRight,
 } from 'lucide-react-native';
 import { HamburgerButton } from '@/components/HamburgerButton';
 

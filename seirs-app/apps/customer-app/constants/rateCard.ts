@@ -711,7 +711,7 @@ export function insurancePremium(card: RateCard, optedIn: boolean, declaredValue
   return raw;
 }
 
-/** Dwell-fee (post-trip) - for trip-progress integration. */
+/** Dwell-fee (post-trip): charged for driver waiting time at a stop. */
 export function dwellFee(card: RateCard, waitMinutes: number): number {
   const billable = Math.max(0, Math.min(card.dwell.capMinutes, waitMinutes) - card.dwell.freeMinutes);
   return billable * card.dwell.perMinuteNgn;

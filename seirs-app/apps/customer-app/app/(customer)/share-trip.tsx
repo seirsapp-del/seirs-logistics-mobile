@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Share, Alert,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';

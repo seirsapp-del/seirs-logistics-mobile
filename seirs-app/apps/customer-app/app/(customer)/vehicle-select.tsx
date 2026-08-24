@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
-import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcRideFare, calcPackageFare, DEFAULT_MAP_REGION } from '@/constants/mockData';
+import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcPackageFare, DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { deliveriesApi , pricingApi } from '@/services/api';
 
 // UI presentation for the rate-card package vehicles: keyed by the

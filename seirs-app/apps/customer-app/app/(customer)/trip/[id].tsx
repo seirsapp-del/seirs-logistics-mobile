@@ -13,8 +13,8 @@
  *
  * Two mocks died in the port: the driver chat button pushed a
  * hardcoded 'chat1' (now the real deliveryId thread) and Track went to
- * trip-progress with the fabricated 'd1' driver (now /track by code,
- * same as history).
+ * the old trip-progress screen with the fabricated 'd1' driver (now
+ * /track by code, same as history; that screen was deleted 2026-08-24).
  */
 import { useEffect, useState } from 'react';
 import {

@@ -2,8 +2,8 @@
  * Confirm ride, rebuilt 2026-08-22 (founder: rides were "our weakest
  * link"). The old screen showed a FABRICATED driver from MOCK_DRIVERS,
  * defaulted to cash (a method the platform does not support), priced
- * with a local formula the server ignored, and pushed into the mock
- * trip-progress screen.
+ * with a local formula the server ignored, and pushed into a mock
+ * progress screen (since deleted).
  *
  * Now it is the ride's Review step, in the same language as Send step
  * 4: Order Summary from the PINNED server quote, the passenger named,

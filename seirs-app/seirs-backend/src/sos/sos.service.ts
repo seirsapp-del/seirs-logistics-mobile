@@ -38,6 +38,25 @@ export class SosService {
         relations: ['customer', 'driver', 'driver.user'],
       });
       if (!delivery) throw new NotFoundException('Delivery not found.');
+
+      /**
+       * The caller must actually be on this trip.
+       *
+       * Any authenticated account could attach an alert to any delivery
+       * id (confirmed on production 2026-08-24). Two harms: admins saw a
+       * false SOS against a stranger's trip, and the notify-the-other-
+       * party branch below then pushed "<name> pressed SOS during your
+       * active trip" to that stranger.
+       *
+       * An SOS with no deliveryId is always allowed: someone in trouble
+       * away from a booking still needs the button.
+       */
+      const isParty =
+        delivery.customer?.id === user.id ||
+        delivery.driver?.user?.id === user.id;
+      if (!isParty) {
+        throw new ForbiddenException('You are not on this trip.');
+      }
     }
 
     const alert = this.repo.create({
