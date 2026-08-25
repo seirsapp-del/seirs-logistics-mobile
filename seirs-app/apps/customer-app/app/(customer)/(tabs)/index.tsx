@@ -195,7 +195,7 @@ export default function CustomerHomeScreen() {
         >
           <Pressable
             style={[styles.chip, { backgroundColor: theme.primary + '15', borderColor: theme.primary }]}
-            onPress={() => router.push('/(customer)/wallet' as any)}
+            onPress={() => router.push('/(customer)/(tabs)/wallet')}
           >
             <Sparkles size={14} color={theme.primary} strokeWidth={2} />
             <Text style={[styles.chipText, { color: theme.primary }]}>
@@ -262,7 +262,7 @@ export default function CustomerHomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('home.recentTrips')}</Text>
-            <Pressable onPress={() => router.push('/(customer)/history' as any)}>
+            <Pressable onPress={() => router.push('/(customer)/(tabs)/history')}>
               <Text style={[styles.seeAll, { color: theme.accent }]}>{t('home.seeAll')}</Text>
             </Pressable>
           </View>

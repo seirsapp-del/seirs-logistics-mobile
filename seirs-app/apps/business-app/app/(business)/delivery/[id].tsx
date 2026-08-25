@@ -12,34 +12,54 @@
  */
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Share, Alert,
-  Linking,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Share, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Icon } from '@/components/Icon';
+import { useSeirsDialog } from '@/components/SeirsDialog';
 import { businessApi } from '@/services/api';
-import { deliveriesApi } from '@/services/api';
+import { deliveriesApi, paymentsApi } from '@/services/api';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { collectUrl } from '@/constants/config';
+import { statusTint } from '@/constants/tint';
 import { naira } from '@/utils/money';
+import DeliveryTrackMap from '@/components/DeliveryTrackMap';
+import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
+import { Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 
-const STATUS_COLOR: Record<string, string> = {
-  pending:    '#D97706',
-  assigned:   '#3A7BD5',
-  picked_up:  '#6366F1',
-  in_transit: '#6366F1',
-  delivered:  '#16A34A',
-  failed:     '#DC2626',
-  cancelled:  '#6B7280',
-};
+/**
+ * Status colour now comes from constants/tint.ts (2026-08-24), shared
+ * with the deliveries list so the two screens finally agree. The map
+ * that was here backed each badge with `hue + '20'`, which composites to
+ * roughly 3:1 against its own text over the light surface: legible in
+ * dark, which is where it was designed, and weak in light.
+ */
 
 
 
 export default function DeliveryDetailScreen() {
+  // Themed dialogs, not the Android system AlertDialog (work order
+  // item 4, 2026-08-24). Same signature as Alert.alert, so these are
+  // straight renames, but it renders every button instead of
+  // silently discarding the fourth.
+  const dialog = useSeirsDialog();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  /**
+   * Live rider position. The business app carried no tracking at all
+   * until 2026-08-24: this screen listed packages and payment and never
+   * said where the rider was, while consumers had a live map. Costs
+   * nothing, so there is no reason to withhold it from the senders who
+   * book the most.
+   *
+   * Declared above every early return: this screen returns early while
+   * loading and when the delivery will not load, and a hook that only
+   * runs on some renders breaks the order React relies on.
+   */
+  const { driverLocation } = useDeliveryTracking(String(id));
   const router = useRouter();
   const { isDark } = useTheme();
   const colors = Colors[isDark ? 'dark' : 'light'];
@@ -47,6 +67,33 @@ export default function DeliveryDetailScreen() {
   const [d, setD] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
+
+  /**
+   * Finish paying for a booking whose checkout never completed.
+   *
+   * Deliberately the hosted Flutterwave page and not the saved-card
+   * one-tap the list tab offers: this screen does not load the card
+   * list, and a Pay button that silently charges a card the sender
+   * cannot see on the same screen is worse than one extra tap.
+   */
+  const openCheckout = async () => {
+    if (!id) return;
+    try {
+      setPaying(true);
+      const res = await paymentsApi.initiate(String(id), 'card', 'card');
+      const url = res?.authorizationUrl;
+      if (!url) {
+        dialog.alert('Could not start payment', res?.error ?? 'Please try again in a moment.');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (e: any) {
+      dialog.alert('Could not start payment', e?.message ?? 'Please try again in a moment.');
+    } finally {
+      setPaying(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -72,6 +119,32 @@ export default function DeliveryDetailScreen() {
     }).catch(() => {});
   };
 
+  /**
+   * Open the screenshottable ticket for ONE package (work order item 6,
+   * 2026-08-24).
+   *
+   * The driver's scan screen has been telling riders to ask the sender
+   * to "tap Show package QR" since before any such button existed, so
+   * this label is deliberately word-for-word what the rider says out
+   * loud at the door.
+   *
+   * Per package, never per run: each parcel on a business run has its
+   * own public tracking code, and a receiver must get theirs and nobody
+   * else's. The delivery id rides along so the QR screen can page
+   * between the other packages in the same run.
+   */
+  const openPackageQr = (code: string, description?: string, receiver?: string) => {
+    router.push({
+      pathname: '/(business)/package-qr',
+      params: {
+        id: String(id),
+        code,
+        description: description ?? '',
+        receiver: receiver ?? '',
+      },
+    } as any);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -94,7 +167,42 @@ export default function DeliveryDetailScreen() {
   }
 
   const stops: any[] = Array.isArray(d.stops) ? d.stops : [];
-  const runColor = STATUS_COLOR[d.status] ?? colors.textThird;
+  const runTint = statusTint(d.status, isDark);
+
+  /**
+   * Where to aim the live map on a MULTI-PACKAGE run.
+   *
+   * business.service.createDelivery writes dropoffAddress/Lat/Lng only
+   * when the run has exactly one stop and explicitly nulls them for
+   * everything else, so the render guard below (pickupLat AND dropoffLat)
+   * was false on every multi-package run. The one screen shape this app
+   * exists for, several parcels out at once, was the only one that never
+   * got a map, while a single-parcel run did (found 2026-08-25).
+   *
+   * Aim at the next package still to be delivered, since that is where
+   * the rider is heading; on a finished run fall back to the last one.
+   */
+  const openStop =
+    stops.find((s) => s?.status !== 'delivered' && s?.status !== 'failed')
+    ?? stops[stops.length - 1];
+  const dropPoint =
+    d.dropoffLat != null && d.dropoffLng != null
+      ? { lat: Number(d.dropoffLat), lng: Number(d.dropoffLng) }
+      : openStop?.lat != null && openStop?.lng != null
+        ? { lat: Number(openStop.lat), lng: Number(openStop.lng) }
+        : null;
+  const openStopIndex = openStop ? stops.indexOf(openStop) : -1;
+
+  /**
+   * The fare is charged at checkout, not at booking: business.service
+   * creates the run UNPAID and opens Flutterwave, and paymentHeldAt is
+   * stamped only once the webhook confirms escrow. This screen printed
+   * "TOTAL PAID" against d.price regardless, so a sender who backed out
+   * of the checkout was told their money had gone through, on the one
+   * screen that offered no way to pay (found 2026-08-25). The list tab
+   * had the correct rule all along.
+   */
+  const isUnpaid = String(d.status) === 'pending' && !d.paymentHeldAt;
 
   /**
    * Settle what is owed on a package that ended up at a counter.
@@ -107,9 +215,9 @@ export default function DeliveryDetailScreen() {
     try {
       const res = await deliveriesApi.payRedirectFee(String(id));
       if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
-      else Alert.alert('Could not start payment', 'Please try again in a moment.');
+      else dialog.alert('Could not start payment', 'Please try again in a moment.');
     } catch (e: any) {
-      Alert.alert('Could not start payment', e?.message ?? 'Please try again.');
+      dialog.alert('Could not start payment', e?.message ?? 'Please try again.');
     }
   };
 
@@ -133,7 +241,7 @@ export default function DeliveryDetailScreen() {
   const requestReturn = async () => {
     try {
       const q = await deliveriesApi.getReturnQuote(String(id));
-      Alert.alert(
+      dialog.alert(
         'Return this package?',
         `${q.note}\n\nBack to: ${q.returnTo}\n` +
         `${q.km} km by road\n` +
@@ -150,7 +258,7 @@ export default function DeliveryDetailScreen() {
             onPress: async () => {
               try {
                 const r = await deliveriesApi.requestReturn(String(id));
-                Alert.alert(
+                dialog.alert(
                   r.status === 'pending' ? 'Sent to support' : 'Return approved',
                   r.status === 'pending'
                     ? 'A rider is carrying this package, so support has to arrange it. We will let you know.'
@@ -158,14 +266,14 @@ export default function DeliveryDetailScreen() {
                 );
                 setD(await businessApi.delivery(String(id)));
               } catch (e: any) {
-                Alert.alert('Could not request that', e?.message ?? 'Please try again.');
+                dialog.alert('Could not request that', e?.message ?? 'Please try again.');
               }
             },
           },
         ],
       );
     } catch (e: any) {
-      Alert.alert('Could not price a return', e?.message ?? 'Please try again.');
+      dialog.alert('Could not price a return', e?.message ?? 'Please try again.');
     }
   };
 
@@ -175,7 +283,7 @@ export default function DeliveryDetailScreen() {
       const res = await deliveriesApi.payReturn(String(id));
       if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
     } catch (e: any) {
-      Alert.alert('Could not start payment', e?.message ?? 'Please try again.');
+      dialog.alert('Could not start payment', e?.message ?? 'Please try again.');
     }
   };
 
@@ -191,18 +299,67 @@ export default function DeliveryDetailScreen() {
             {stops.length > 1 ? `${stops.length} packages · one payment` : 'Single package'}
           </Text>
         </View>
-        <View style={[styles.badge, { backgroundColor: runColor + '20' }]}>
-          <Text style={[styles.badgeText, { color: runColor }]}>{String(d.status ?? '').replace('_', ' ')}</Text>
+        <View style={[styles.badge, { backgroundColor: runTint.bg }]}>
+          <Text style={[styles.badgeText, { color: runTint.fg }]}>{String(d.status ?? '').replace('_', ' ')}</Text>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        {!!d.pickupLat && !!dropPoint && (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, padding: 0, overflow: 'hidden', marginBottom: 12 }]}>
+            <Text style={[styles.cardLabel, { color: colors.textThird, paddingHorizontal: 16, paddingTop: 16 }]}>
+              {String(d.status) === 'delivered' ? 'WHERE IT WENT' : 'WHERE IT IS'}
+            </Text>
+            {/* Say WHICH parcel the pin belongs to. One drop pin on a
+                five-package run would otherwise read as the whole run's
+                destination, which it is not. No arrival time, ever. */}
+            {stops.length > 1 && openStopIndex >= 0 && (
+              <Text style={{ color: colors.textSecond, fontSize: FontSize.xs, paddingHorizontal: 16, paddingTop: 2 }}>
+                {String(d.status) === 'delivered'
+                  ? `Last drop · package ${openStopIndex + 1} of ${stops.length}`
+                  : `Drop pin: package ${openStopIndex + 1} of ${stops.length}`}
+              </Text>
+            )}
+            <DeliveryTrackMap
+              pickup={{ lat: d.pickupLat, lng: d.pickupLng }}
+              dropoff={dropPoint}
+              driver={driverLocation}
+              isDark={isDark}
+              theme={colors}
+            />
+            {driverLocation && (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+                <Text style={[styles.cardLabel, { color: colors.textThird }]}>RIDER RIGHT NOW</Text>
+                {/* Numbers, not just a dot. Ops reads these to a
+                    receiving branch down a phone line. */}
+                <Text style={{ color: colors.text, fontSize: FontSize.sm, fontWeight: FontWeight.bold, fontVariant: ['tabular-nums'], marginTop: 2 }}>
+                  {Number(driverLocation.lat).toFixed(5)}, {Number(driverLocation.lng).toFixed(5)}
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    Linking.openURL(
+                      `https://www.google.com/maps?q=${Number(driverLocation.lat)},${Number(driverLocation.lng)}`,
+                    ).catch(() => {});
+                  }}
+                  style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <Icon name="ExternalLink" size={14} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
+                    See where your rider is on Google Maps
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        )}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.cardLabel, { color: colors.textThird }]}>COLLECTED FROM</Text>
           <Text style={[styles.cardValue, { color: colors.text }]}>{d.pickupAddress}</Text>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.rowBetween}>
-            <Text style={[styles.cardLabel, { color: colors.textThird }]}>TOTAL PAID</Text>
+            <Text style={[styles.cardLabel, { color: colors.textThird }]}>
+              {isUnpaid ? 'TOTAL DUE' : 'TOTAL PAID'}
+            </Text>
             <Text style={[styles.cardValue, { color: colors.text }]}>{naira(d.price)}</Text>
           </View>
           {Number(d.partnerHandlingNgn ?? 0) > 0 && (
@@ -210,6 +367,28 @@ export default function DeliveryDetailScreen() {
               <Text style={[styles.cardLabel, { color: colors.textThird }]}>COUNTER HANDLING</Text>
               <Text style={[styles.cardValue, { color: colors.textSecond }]}>{naira(d.partnerHandlingNgn)}</Text>
             </View>
+          )}
+          {/* An abandoned checkout used to dead-end here: the list tab
+              offered Pay now and this screen, which is where a sender
+              lands after tapping the card, offered nothing at all. */}
+          {isUnpaid && (
+            <>
+              <Text style={{ color: colors.textSecond, fontSize: FontSize.xs, marginTop: 6, lineHeight: 17 }}>
+                This booking is saved but not paid for. A driver is matched once payment goes through.
+              </Text>
+              <Pressable
+                onPress={openCheckout}
+                disabled={paying}
+                style={({ pressed }) => [
+                  styles.payBtn,
+                  { backgroundColor: colors.primary, opacity: paying ? 0.6 : pressed ? 0.85 : 1 },
+                ]}
+              >
+                <Text style={styles.payBtnText}>
+                  {paying ? 'Opening…' : `Pay ${naira(d.price)}`}
+                </Text>
+              </Pressable>
+            </>
           )}
         </View>
 
@@ -298,7 +477,7 @@ export default function DeliveryDetailScreen() {
         </Text>
 
         {stops.map((st, i) => {
-          const c = STATUS_COLOR[st.status] ?? colors.textThird;
+          const pkgTint = statusTint(st.status, isDark);
           const receiver = [st.receiverFirstName, st.receiverLastName].filter(Boolean).join(' ') || st.recipientName;
           const code = st.packageTrackingCode;
           return (
@@ -307,8 +486,8 @@ export default function DeliveryDetailScreen() {
                 <Text style={[styles.pkgTitle, { color: colors.text }]} numberOfLines={1}>
                   {st.packageDescription?.trim() || `Package ${st.sequenceOrder ?? i + 1}`}
                 </Text>
-                <View style={[styles.badge, { backgroundColor: c + '20' }]}>
-                  <Text style={[styles.badgeText, { color: c }]}>{String(st.status ?? 'pending').replace('_', ' ')}</Text>
+                <View style={[styles.badge, { backgroundColor: pkgTint.bg }]}>
+                  <Text style={[styles.badgeText, { color: pkgTint.fg }]}>{String(st.status ?? 'pending').replace('_', ' ')}</Text>
                 </View>
               </View>
 
@@ -332,19 +511,37 @@ export default function DeliveryDetailScreen() {
               {/* The receiver's own code. Sharing this instead of the run
                   code keeps the other receivers' details private. */}
               {!!code && (
-                <View style={[styles.codeRow, { borderTopColor: colors.border }]}>
-                  <Text style={[styles.code, { color: colors.text }]}>{code}</Text>
-                  <Pressable onPress={() => copyCode(code)} hitSlop={8} style={styles.codeBtn}>
-                    <Icon name={copied === code ? 'Check' : 'Copy'} size={14} color={colors.primary} />
-                    <Text style={[styles.codeBtnText, { color: colors.primary }]}>
-                      {copied === code ? 'Copied' : 'Copy'}
-                    </Text>
+                <>
+                  <View style={[styles.codeRow, { borderTopColor: colors.border }]}>
+                    <Text style={[styles.code, { color: colors.text }]}>{code}</Text>
+                    <Pressable onPress={() => copyCode(code)} hitSlop={8} style={styles.codeBtn}>
+                      <Icon name={copied === code ? 'Check' : 'Copy'} size={14} color={colors.primary} />
+                      <Text style={[styles.codeBtnText, { color: colors.primary }]}>
+                        {copied === code ? 'Copied' : 'Copy'}
+                      </Text>
+                    </Pressable>
+                    <Pressable onPress={() => shareCode(code, st.receiverFirstName)} hitSlop={8} style={styles.codeBtn}>
+                      <Icon name="Share2" size={14} color={colors.primary} />
+                      <Text style={[styles.codeBtnText, { color: colors.primary }]}>Send</Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Full width and its own row, not a third icon in the
+                      line above. The QR is the only handover option with a
+                      chain of custody behind it (the other two are
+                      self-attested), so it should not read as the least
+                      important of three cramped links. */}
+                  <Pressable
+                    onPress={() => openPackageQr(code, st.packageDescription, receiver)}
+                    style={({ pressed }) => [
+                      styles.qrBtn,
+                      { borderColor: colors.border, backgroundColor: colors.surfaceSecond, opacity: pressed ? 0.7 : 1 },
+                    ]}
+                  >
+                    <Icon name="QrCode" size={16} color={colors.primary} />
+                    <Text style={[styles.qrBtnText, { color: colors.primary }]}>Show package QR</Text>
                   </Pressable>
-                  <Pressable onPress={() => shareCode(code, st.receiverFirstName)} hitSlop={8} style={styles.codeBtn}>
-                    <Icon name="Share2" size={14} color={colors.primary} />
-                    <Text style={[styles.codeBtnText, { color: colors.primary }]}>Send</Text>
-                  </Pressable>
-                </View>
+                </>
               )}
             </View>
           );
@@ -355,6 +552,23 @@ export default function DeliveryDetailScreen() {
             <Text style={{ color: colors.textSecond, fontSize: 14 }}>
               {d.dropoffAddress ?? 'No package details recorded for this delivery.'}
             </Text>
+
+            {/* Older bookings predate per-package codes and carry only the
+                run code. The receiver still needs something to show at the
+                door, so fall back to that rather than leaving this screen
+                without a QR at all (2026-08-24). */}
+            {!!d.trackingCode && (
+              <Pressable
+                onPress={() => openPackageQr(String(d.trackingCode), d.packageDescription, d.recipientName)}
+                style={({ pressed }) => [
+                  styles.qrBtn,
+                  { borderColor: colors.border, backgroundColor: colors.surfaceSecond, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Icon name="QrCode" size={16} color={colors.primary} />
+                <Text style={[styles.qrBtnText, { color: colors.primary }]}>Show package QR</Text>
+              </Pressable>
+            )}
           </View>
         )}
 
@@ -397,4 +611,11 @@ const styles = StyleSheet.create({
   code:     { flex: 1, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
   codeBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
   codeBtnText:{ fontSize: 13, fontWeight: '700' },
+  payBtn:     { marginTop: 10, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', paddingVertical: 13 },
+  payBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  // Solid theme surface, not a low-alpha tint of the primary. A
+  // translucent fill reads as a subtle glow over near-black and as
+  // sludge over the cream light background (work order item 5).
+  qrBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
+  qrBtnText:{ fontSize: 14, fontWeight: '700' },
 });

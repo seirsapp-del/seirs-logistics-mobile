@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, Vibration } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Vibration } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Icon } from '@/components/Icon';
@@ -7,6 +7,7 @@ import { partnerApi } from '@/services/api';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/context/ThemeContext';
 
+import { alertDialog } from '@/components/SeirsDialog';
 type ScanResult = { trackingNumber: string; recipientName: string; status: string };
 
 export default function ScanScreen() {
@@ -65,13 +66,13 @@ export default function ScanScreen() {
     setLoading(true);
     try {
       await partnerApi.markCollected(result.trackingNumber);
-      Alert.alert(
+      alertDialog(
         'Collection Confirmed',
         `${result.recipientName}'s package has been marked as collected.`,
         [{ text: 'Scan Another', onPress: reset }, { text: 'Go to Inventory', onPress: () => router.push('/(partner)/inventory' as any) }],
       );
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Could not mark as collected.');
+      alertDialog('Error', e.message ?? 'Could not mark as collected.');
     } finally {
       setLoading(false);
     }

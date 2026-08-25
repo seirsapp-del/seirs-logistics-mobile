@@ -1,7 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TextInput, Pressable,
-  ActivityIndicator, Alert,
+  View, Text, StyleSheet, ScrollView, TextInput, Pressable, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -10,6 +9,7 @@ import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
 
+import { alertDialog } from '@/components/SeirsDialog';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 interface StoreSettings {
@@ -69,15 +69,15 @@ export default function PartnerSettingsScreen() {
 
   const handleSave = async () => {
     if (!settings.storeName.trim()) {
-      Alert.alert('Validation', 'Store name is required.');
+      alertDialog('Validation', 'Store name is required.');
       return;
     }
     setSaving(true);
     try {
       await partnerApi.updateSettings(settings);
-      Alert.alert('Saved', 'Your store settings have been updated.');
+      alertDialog('Saved', 'Your store settings have been updated.');
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Could not save settings.');
+      alertDialog('Error', e.message ?? 'Could not save settings.');
     } finally { setSaving(false); }
   };
 
@@ -348,7 +348,7 @@ function ClosingSection({ storeId }: { storeId: string }) {
 
   const handleClose = () => {
     if (!readiness?.ready) return;
-    Alert.alert(
+    alertDialog(
       'Close partner store?',
       'This pauses incoming bookings, removes you from the customer map, and starts the offboarding workflow. Final wallet payout follows the next regular cycle.',
       [
@@ -359,9 +359,9 @@ function ClosingSection({ storeId }: { storeId: string }) {
           onPress: async () => {
             try {
               await partnerApi.storeSetStatus(storeId, 'paused');
-              Alert.alert('Store paused', 'Bookings are off. Contact ops to complete offboarding when ready.');
+              alertDialog('Store paused', 'Bookings are off. Contact ops to complete offboarding when ready.');
             } catch (e: any) {
-              Alert.alert('Could not close', e?.message ?? 'Try again.');
+              alertDialog('Could not close', e?.message ?? 'Try again.');
             }
           },
         },

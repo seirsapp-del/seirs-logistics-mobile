@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
-  TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Share,
+  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -15,8 +15,10 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { dropoffApi, feesApi } from '@/services/api';
-import { Illustration } from '@/components/Illustration';
+import { Illustration } from '@/components/Illustration';
+
 import { nairaAmount } from '@/utils/money';
+import { showDialog } from '@/components/SeirsDialog';
 
 // Spec V8 §3: async customer entry point. Customer schedules a drop-off,
 // gets a printable QR + 6-char backup code, walks into the picked store
@@ -168,7 +170,7 @@ export default function DropAtStoreScreen() {
 
   const copyCode = async (code: string) => {
     await Clipboard.setStringAsync(code);
-    Alert.alert(t('dropAtStore.copiedTitle'), t('dropAtStore.copiedBody', { code }));
+    showDialog({ title: t('dropAtStore.copiedTitle'), message: t('dropAtStore.copiedBody', { code }) });
   };
 
   const shareCode = async () => {

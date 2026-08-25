@@ -8,7 +8,7 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Image } from 'react-native';
 import { useEffect, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import { Alert } from 'react-native';
+import { useSeirsDialog } from '@/components/SeirsDialog';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,9 @@ import { useColors, useTheme } from '@/context/ThemeContext';
 const SITE = 'https://seirs-website.vercel.app';
 
 export default function BusinessProfileTab() {
+  // Themed dialogs, not the Android system AlertDialog (work order
+  // item 4, 2026-08-24).
+  const dialog = useSeirsDialog();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
@@ -46,7 +49,7 @@ export default function BusinessProfileTab() {
       await usersApi.updateProfile({ profilePhoto: up.url });
       await refresh();
     } catch (e: any) {
-      Alert.alert('Could not update photo', e?.message ?? 'Try again.');
+      dialog.alert('Could not update photo', e?.message ?? 'Try again.');
     } finally {
       setPhotoBusy(false);
     }
@@ -103,12 +106,30 @@ export default function BusinessProfileTab() {
         { icon: isDark ? 'Moon' : 'Sun',
           label: `Appearance: ${isDark ? 'Dark' : 'Light'}`,
           onPress: () => {
-            Alert.alert('Appearance', 'How should the app look?', [
-              { text: 'Follow my phone', onPress: () => { void useSystemTheme(); } },
-              { text: 'Light',           onPress: () => setTheme('light') },
-              { text: 'Dark',            onPress: () => setTheme('dark') },
-              { text: 'Cancel', style: 'cancel' },
-            ]);
+            /**
+             * Four buttons again, and this time all four render.
+             *
+             * The history: this shipped with four, Android's AlertDialog
+             * draws only the first THREE and silently discards the rest,
+             * so Cancel was never drawn and the dialog could not be
+             * dismissed from the screen at all (found 2026-08-24). The
+             * stopgap that morning was to delete Cancel and live with
+             * three. SeirsDialog is a real component rather than a call
+             * into the OS, so it renders every button it is handed and
+             * stacks them, and the constraint that forced the deletion is
+             * gone. Cancel is back.
+             */
+            dialog.alert(
+              'Appearance',
+              `How should the app look? Currently ${isDark ? 'Dark' : 'Light'}.`,
+              [
+                { text: 'Follow my phone', onPress: () => { void useSystemTheme(); } },
+                { text: 'Light',           onPress: () => setTheme('light') },
+                { text: 'Dark',            onPress: () => setTheme('dark') },
+                { text: 'Cancel',          style: 'cancel' },
+              ],
+              { cancelable: true },
+            );
           } },
       ],
     },

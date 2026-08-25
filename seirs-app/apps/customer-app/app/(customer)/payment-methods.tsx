@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
-  ActivityIndicator, Alert, RefreshControl,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +11,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { paymentsApi, type SavedCard } from '@/services/api';
 import { Illustration } from '@/components/Illustration';
 
+import { alertDialog } from '@/components/SeirsDialog';
 /**
  * Payment Methods: lists Flutterwave-tokenized cards saved during prior
  * checkouts. Cards are saved via the "Save this card for next time" toggle
@@ -55,12 +55,12 @@ export default function PaymentMethodsScreen() {
       await paymentsApi.setDefaultCard(id);
       setCards(cards.map(c => ({ ...c, isDefault: c.id === id })));
     } catch (e: any) {
-      Alert.alert(t('paymentMethods.couldNotSetDefault'), e?.message ?? t('editProfile.tryAgain'));
+      alertDialog(t('paymentMethods.couldNotSetDefault'), e?.message ?? t('editProfile.tryAgain'));
     }
   };
 
   const handleDelete = (card: SavedCard) => {
-    Alert.alert(
+    alertDialog(
       // The body used to be paymentMethods.emptyDesc, the EMPTY-STATE copy,
       // so a destructive confirm read "Pay for your first delivery and your
       // card appears here on its own." (sweep C-5.9).
@@ -75,7 +75,7 @@ export default function PaymentMethodsScreen() {
               await paymentsApi.deleteSavedCard(card.id);
               setCards(cards.filter(c => c.id !== card.id));
             } catch (e: any) {
-              Alert.alert(t('paymentMethods.couldNotRemove'), e?.message ?? t('editProfile.tryAgain'));
+              alertDialog(t('paymentMethods.couldNotRemove'), e?.message ?? t('editProfile.tryAgain'));
             }
           },
         },

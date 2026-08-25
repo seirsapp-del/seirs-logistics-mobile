@@ -13,7 +13,7 @@
  * before they exist.
  */
 import {
-  View, Text, Pressable, StyleSheet, StatusBar, Alert, ActivityIndicator, Linking,
+  View, Text, Pressable, StyleSheet, StatusBar, ActivityIndicator, Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -29,6 +29,7 @@ import { DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { deliveriesApi, paymentsApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { naira } from '@/utils/money';
+import { showDialog } from '@/components/SeirsDialog';
 
 const VEHICLE_LABEL: Record<string, string> = {
   okada: 'Okada', keke: 'Keke', car: 'Car', danfo: 'Danfo',
@@ -108,16 +109,17 @@ export default function ConfirmRideScreen() {
       } as any);
     } catch (e: any) {
       if (e?.code === 'QUOTE_EXPIRED' || /expired/i.test(String(e?.message ?? ''))) {
-        Alert.alert(
-          'Price refreshed',
-          'You took a moment, so the price was re-checked. Pick your ride again to see the current number.',
-          [{ text: 'OK', onPress: () => router.back() }],
-        );
+        showDialog({
+          title: 'Price refreshed',
+          message: 'You took a moment, so the price was re-checked. Pick your ride again to see the current number.',
+          dismissable: false,
+          actions: [{ text: 'OK', style: 'primary', onPress: () => router.back() }],
+        });
       } else {
-        Alert.alert(
-          t('confirmRide.errTitle', { defaultValue: 'Could not book' }),
-          e?.message ?? t('confirmRide.errBookingFailed', { defaultValue: 'Booking failed. Please try again.' }),
-        );
+        showDialog({
+          title: t('confirmRide.errTitle', { defaultValue: 'Could not book' }),
+          message: e?.message ?? t('confirmRide.errBookingFailed', { defaultValue: 'Booking failed. Please try again.' }),
+        });
       }
     } finally {
       setConfirming(false);

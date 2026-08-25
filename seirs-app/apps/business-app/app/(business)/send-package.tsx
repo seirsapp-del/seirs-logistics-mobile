@@ -15,15 +15,20 @@
  *               backend books with) + total, then one payment: credit
  *               drains first, otherwise Flutterwave checkout.
  *
- * This is the ONLY in-app booking flow. The old map-first wizard was
- * deleted with this rebuild: two booking screens meant two sets of
- * rules, and the divergence is exactly what the founder kept finding.
- * CSV upload still books through the same backend endpoint.
+ * This is the ONLY booking flow in the app, with nothing beside it. The
+ * old map-first wizard was deleted with this rebuild, and CSV bulk
+ * upload was deleted on 2026-08-24 (commit 5e804b1): it booked without
+ * the consent checkbox and without the quote pin, so bulk orders
+ * captured no agreement to the failed-delivery terms and were charged
+ * an unpinned number. Two booking screens meant two sets of rules, and
+ * the divergence is exactly what the founder kept finding. The line
+ * that used to sit here saying "CSV upload still books through the same
+ * backend endpoint" outlived the screen it described.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
-  ActivityIndicator, Alert, Image, Linking, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Image, Linking, KeyboardAvoidingView, Platform,
   Keyboard, Dimensions, Modal, Share, StatusBar as RNStatusBar,
   BackHandler,
 } from 'react-native';
@@ -32,6 +37,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useMultiStopDirections } from '@/components/useMultiStopDirections';
+import { tint } from '@/constants/tint';
+import { useSeirsDialog } from '@/components/SeirsDialog';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { Illustration } from '@/components/Illustration';
@@ -41,7 +48,7 @@ import {
 } from '@/services/api';
 import { useBusinessStore, type StoreLite } from '@/store/businessStore';
 import { type VehicleType } from '@seirs/shared';
-import { useColors } from '@/context/ThemeContext';
+import { useColors, useTheme } from '@/context/ThemeContext';
 import { VEHICLE_LABEL } from '@/constants/vehicles';
 import { TERMS_URL } from '@/constants/config';
 import { naira } from '@/utils/money';
@@ -79,6 +86,12 @@ const TIME_SLOTS = Array.from({ length: 17 }, (_, i) => {
 interface Prediction { place_id: string; main_text: string; secondary_text: string }
 
 export default function SendPackageScreen() {
+  const { isDark } = useTheme();
+  // Themed dialogs, not the Android system AlertDialog (work order
+  // item 4, 2026-08-24). Same signature as Alert.alert, so these are
+  // straight renames, but it renders every button instead of
+  // silently discarding the fourth.
+  const dialog = useSeirsDialog();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
@@ -255,6 +268,32 @@ export default function SendPackageScreen() {
       .then(r => { const v = Number(r?.value); if (v > 0) setHighValueNgn(v); })
       .catch(() => { /* keep the 100000 fallback, same as the backend's */ });
   }, []);
+
+  /**
+   * A package that BECOMES high-value has to lose its gate/neighbour
+   * fallback (founder policy 2026-08-11: hand to receiver or partner
+   * counter only, or the mandatory signature has a hole in it).
+   *
+   * The chips below are only `disabled` when the value is already over
+   * the threshold, which blocks a new tap and does nothing to a choice
+   * already made. Pick "Leave at gate", then type 500000 into the value
+   * box, and the chip stayed selected and lit while the hint underneath
+   * said the opposite (found 2026-08-25).
+   *
+   * The customer app resets it and has done since 2026-08-21. This app
+   * did not, and unlike the customer path there is no server-side net:
+   * deliveries.service.create throws BadRequest on this combination,
+   * business.service.createDelivery writes fallbackPref straight onto
+   * the stop with no check at all. So on THIS app it booked.
+   */
+  useEffect(() => {
+    draft.stops.forEach((s, i) => {
+      const hv = Number(s.declaredValueNgn ?? 0) >= highValueNgn;
+      if (hv && (s.fallbackPref === 'gate' || s.fallbackPref === 'neighbour')) {
+        updateStop(i, { fallbackPref: 'hand_only', fallbackNeighbourName: undefined });
+      }
+    });
+  }, [draft.stops, highValueNgn]);
 
   /**
    * Packages come FIRST, vehicle comes after (founder 2026-08-16: the
@@ -435,7 +474,7 @@ export default function SendPackageScreen() {
     const current = draft.stops[idx]?.photoUris ?? [];
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Photo needed', 'Allow photo access: every package needs its picture for handoff proof.');
+      dialog.alert('Photo needed', 'Allow photo access: every package needs its picture for handoff proof.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
@@ -448,7 +487,7 @@ export default function SendPackageScreen() {
     const current = draft.stops[idx]?.photoUris ?? [];
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Camera needed', 'Allow camera access to photograph the parcel, or pick an existing photo.');
+      dialog.alert('Camera needed', 'Allow camera access to photograph the parcel, or pick an existing photo.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
@@ -459,7 +498,7 @@ export default function SendPackageScreen() {
 
   const pickPhoto = (idx: number) => {
     if ((draft.stops[idx]?.photoUris ?? []).length >= 5) return;
-    Alert.alert('Package photo', 'Photograph the parcel now, or pick one you already have.', [
+    dialog.alert('Package photo', 'Photograph the parcel now, or pick one you already have.', [
       { text: 'Take photo',      onPress: () => { addPhotoFromCamera(idx); } },
       { text: 'Choose existing', onPress: () => { addPhotoFromLibrary(idx); } },
       { text: 'Cancel', style: 'cancel' },
@@ -480,7 +519,7 @@ export default function SendPackageScreen() {
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const { latitude, longitude } = loc.coords;
       if (!(latitude >= 4 && latitude <= 14 && longitude >= 2.5 && longitude <= 15)) {
-        Alert.alert('Outside Nigeria', 'Type the pickup address instead.');
+        dialog.alert('Outside Nigeria', 'Type the pickup address instead.');
         return;
       }
       const j = await mapsApi.geocode({ latlng: `${latitude},${longitude}` });
@@ -504,6 +543,28 @@ export default function SendPackageScreen() {
    */
   useEffect(() => { setError(null); }, [draft, scheduleNow, scheduledHour, step]);
   const [scheduledDayOffset, setScheduledDayOffset] = useState<0 | 1>(0);
+
+  /**
+   * The chosen pickup slot as an ISO string, or undefined for Send now.
+   *
+   * Hoisted out of handleSubmit on 2026-08-25 because the QUOTE was not
+   * sending it. The rate card prices night, peak and weekend surcharges
+   * off scheduledAt, so a run booked at 22:40 for a 9 AM pickup was
+   * quoted at tonight's NIGHT rate, and a Friday booking for a Saturday
+   * slot missed the weekend one entirely. Worse, createDelivery DOES
+   * pass scheduledAt to the engine, so the server's own breakdown was
+   * priced on the slot while the pin the sender is charged from was
+   * priced on the moment they were standing there: two different
+   * numbers on one booking, with driverEarnings taken from the wrong
+   * one. Quote and book now agree on when the run happens.
+   */
+  const scheduledAtIso = useMemo(() => {
+    if (scheduleNow || scheduledHour == null) return undefined;
+    const d = new Date();
+    d.setDate(d.getDate() + scheduledDayOffset);
+    d.setHours(scheduledHour, 0, 0, 0);
+    return d.toISOString();
+  }, [scheduleNow, scheduledHour, scheduledDayOffset]);
 
   // ── Route distance (straight-line stand-in; server prices road km) ───
   const totalKm = useMemo(() => {
@@ -581,10 +642,14 @@ export default function SendPackageScreen() {
         (draft.pickupStoreId ? draft.stops.length : 0) +
         draft.stops.filter((s) => s.destinationStoreId).length,
       pickupCoords: draft.pickupLat != null ? { latitude: draft.pickupLat, longitude: draft.pickupLng } : undefined,
+      // Price the run for WHEN it happens, not for when the sender is
+      // looking at the screen. Undefined means Send now, which the
+      // engine already treats as this instant.
+      scheduledAt: scheduledAtIso,
     } as any)
       .then(setQuote)
       .catch((e: any) => setQuoteError(e?.message ?? 'Could not price this run.'));
-  }, [step, routeKm, draft.stops, draft.vehicleType, quoteReloadKey]);
+  }, [step, routeKm, draft.stops, draft.vehicleType, scheduledAtIso, quoteReloadKey]);
 
   // Per-package attribution preview: identical math to the backend
   // (surcharge-weighted equal shares, last line absorbs rounding).
@@ -747,7 +812,26 @@ export default function SendPackageScreen() {
 
   // ── Submit: upload photos → book → pay ──────────────────────────────
   const handleSubmit = async () => {
-    if (!quote) { Alert.alert('One moment', 'The price is still computing.'); return; }
+    // Two different states share `quote === null`, and telling a sender
+    // the price "is still computing" when the quote actually FAILED is
+    // an invitation to keep tapping forever (2026-08-25). quoteError
+    // separates them, and the retry is the same one the review card
+    // offers.
+    if (!quote) {
+      if (quoteError) {
+        dialog.alert(
+          'Price could not be worked out',
+          `${quoteError} Nothing has been booked. Tap Try again to price this run.`,
+          [
+            { text: 'Not now', style: 'cancel' },
+            { text: 'Try again', onPress: () => setQuoteReloadKey(k => k + 1) },
+          ],
+        );
+      } else {
+        dialog.alert('One moment', 'The price is still being worked out. Try again in a second.');
+      }
+      return;
+    }
     setLoading(true);
     try {
       // Every photo of every package uploads (customer parity: up to 5).
@@ -760,14 +844,7 @@ export default function SendPackageScreen() {
         }
         photoUrlsPerPackage.push(urls);
       }
-      const scheduledAt = !scheduleNow && scheduledHour != null
-        ? (() => {
-            const d = new Date();
-            d.setDate(d.getDate() + scheduledDayOffset);
-            d.setHours(scheduledHour, 0, 0, 0);
-            return d.toISOString();
-          })()
-        : undefined;
+      const scheduledAt = scheduledAtIso;
 
       const res = await businessApi.createDelivery({
         termsAccepted: tcAgreed,
@@ -827,14 +904,14 @@ export default function SendPackageScreen() {
         try {
           await Linking.openURL(res.payment.authorizationUrl);
         } catch {
-          Alert.alert(
+          dialog.alert(
             'Could not open checkout',
             `Booking ${trackingCode} is saved and unpaid. Open it from Deliveries and tap Pay now to try again.`,
           );
         }
         router.replace('/(business)/(tabs)/deliveries' as any);
       } else {
-        Alert.alert(
+        dialog.alert(
           'Run booked',
           // No "remaining credit" line: senders do not hold a balance with
           // SEIRS. Only partner counters and drivers have wallets, and
@@ -847,7 +924,7 @@ export default function SendPackageScreen() {
       // An expired pin means the price may have moved: re-quote so the
       // review shows the current number before they book again.
       if (/expired/i.test(String(e?.message ?? ''))) setQuoteReloadKey(k => k + 1);
-      Alert.alert('Could not book', e?.message ?? 'Please try again.');
+      dialog.alert('Could not book', e?.message ?? 'Please try again.');
     } finally { setLoading(false); }
   };
 
@@ -1925,10 +2002,15 @@ export default function SendPackageScreen() {
               started jumping to the offending package: the sender saw the
               right card and no explanation (found on device 2026-08-16).
               Here it is always on screen, whatever the scroll position. */}
+          {/* Colour moved out of the StyleSheet because it has to know the
+              theme. '#EF444418' is a 9% red that composites to a pinkish
+              grey over the cream light background, and this is the banner
+              that tells a sender WHY their booking was refused, on the
+              last screen before payment (2026-08-24). */}
           {!!error && (
-            <View style={styles.footerError}>
-              <Icon name="AlertCircle" size={15} color="#DC2626" />
-              <Text style={styles.footerErrorText}>{error}</Text>
+            <View style={[styles.footerError, { backgroundColor: tint('red', isDark).bg }]}>
+              <Icon name="AlertCircle" size={15} color={tint('red', isDark).fg} />
+              <Text style={[styles.footerErrorText, { color: tint('red', isDark).fg }]}>{error}</Text>
             </View>
           )}
           <Pressable
@@ -2100,10 +2182,10 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1 },
   footerError: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#EF444418', borderRadius: 10,
+    borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10,
   },
-  footerErrorText: { flex: 1, color: '#DC2626', fontSize: 14, fontWeight: '600' },
+  footerErrorText: { flex: 1, fontSize: 14, fontWeight: '600' },
   cta:     { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   ctaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

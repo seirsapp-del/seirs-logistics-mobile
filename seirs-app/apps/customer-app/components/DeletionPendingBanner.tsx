@@ -1,10 +1,11 @@
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Amber banner rendered above the main tab stack whenever the current user
 // has a pending deletion. Tapping Cancel hits the backend, clears the
 // AuthContext state, and the banner disappears. No banner = no deletion
@@ -23,7 +24,7 @@ export function DeletionPendingBanner() {
   const dateLabel = scheduled.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
 
   const handleCancel = () => {
-    Alert.alert(
+    alertDialog(
       'Cancel account deletion?',
       'Your account will stay active and none of your data will be removed.',
       [
@@ -36,7 +37,7 @@ export function DeletionPendingBanner() {
             try {
               await cancelPendingDeletion();
             } catch (e: any) {
-              Alert.alert('Could not cancel', e?.message ?? 'Please try again.');
+              alertDialog('Could not cancel', e?.message ?? 'Please try again.');
             } finally {
               setBusy(false);
             }

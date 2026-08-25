@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Alert,
-  ActivityIndicator, RefreshControl, TextInput, Switch, Modal,
+  View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TextInput, Switch, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { businessApi } from '@/services/api';
-import { useColors } from '@/context/ThemeContext';
+import { tint } from '@/constants/tint';
+import { useColors, useTheme } from '@/context/ThemeContext';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Spec V8 §4.2: recurring delivery templates for business senders.
 // Each row is a saved schedule that auto-creates a delivery on its
 // cadence. Backend cron fires every 5 min and dispatches due rows.
@@ -55,6 +56,7 @@ const fmtNext = (iso: string) => {
 };
 
 export default function RecurringScreen() {
+  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useColors();
@@ -85,19 +87,19 @@ export default function RecurringScreen() {
       await businessApi.recurringTemplates.toggle(t.id, !t.isActive);
       load();
     } catch (e: any) {
-      Alert.alert('Could not update', e?.message ?? 'Try again.');
+      alertDialog('Could not update', e?.message ?? 'Try again.');
     }
   };
 
   const remove = (t: Template) => {
-    Alert.alert(
+    alertDialog(
       'Delete template?',
       `"${t.name}" will stop auto-firing. This can't be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: async () => {
           try { await businessApi.recurringTemplates.remove(t.id); load(); }
-          catch (e: any) { Alert.alert('Could not delete', e?.message ?? 'Try again.'); }
+          catch (e: any) { alertDialog('Could not delete', e?.message ?? 'Try again.'); }
         } },
       ],
     );
@@ -153,8 +155,12 @@ export default function RecurringScreen() {
           templates.map(t => (
             <View key={t.id} style={[styles.templateCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.templateRow}>
-                <View style={[styles.templateIcon, { backgroundColor: t.isActive ? '#16A34A18' : '#9CA3AF18' }]}>
-                  <Icon name="Repeat" size={18} color={t.isActive ? '#16A34A' : '#9CA3AF'} />
+                {/* '#9CA3AF18' over white composited to #F6F6F7, which is
+                    2.35:1 against its own grey icon and the weakest reading
+                    in the whole app (2026-08-24). Both states now come from
+                    the token so active and paused stay the same weight. */}
+                <View style={[styles.templateIcon, { backgroundColor: tint(t.isActive ? 'green' : 'grey', isDark).bg }]}>
+                  <Icon name="Repeat" size={18} color={tint(t.isActive ? 'green' : 'grey', isDark).fg} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.templateName, { color: colors.text }]}>{t.name}</Text>

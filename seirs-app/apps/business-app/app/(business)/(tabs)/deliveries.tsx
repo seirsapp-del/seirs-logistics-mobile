@@ -1,13 +1,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import {
-  View, Text, Pressable, StyleSheet, FlatList, TextInput, ActivityIndicator, Alert, Linking, ScrollView,
+  View, Text, Pressable, StyleSheet, FlatList, TextInput, ActivityIndicator, Linking, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
+import { useSeirsDialog } from '@/components/SeirsDialog';
 import { Drawer } from '@/components/Drawer';
 import { businessApi, paymentsApi } from '@/services/api';
-import { useColors } from '@/context/ThemeContext';
+import { useColors, useTheme } from '@/context/ThemeContext';
+import { statusTint } from '@/constants/tint';
 import { vehicleLabel } from '@/constants/vehicles';
 import { naira } from '@/utils/money';
 
@@ -22,14 +24,29 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled:  'Cancelled',
 };
 
-const STATUS_COLOR: Record<string, string> = {
+/**
+ * Status colour now comes from constants/tint.ts (2026-08-24).
+ *
+ * The map that was here paired a saturated hue with `hue + '20'` as its
+ * own background, which composited to 2.86:1 over the light surface,
+ * below the 4.5:1 AA floor for a 11px badge. It also disagreed with the
+ * delivery-detail screen on two statuses: in_transit was navy here and
+ * indigo there, and cancelled was RED here and grey there. Cancelled
+ * being red made it indistinguishable from failed, which is a different
+ * and much worse outcome for a sender. One shared mapping settles both.
+ *
+ * What stayed behind is the SELECTED FILTER CHIP, which is a different
+ * job: it paints the whole chip in the hue and puts white text on it, so
+ * it wants a saturated fill rather than a pale surface, and it was never
+ * part of the low-alpha defect. Values below are unchanged.
+ */
+const CHIP_ACCENT: Record<string, string> = {
   pending:    '#D97706',
   assigned:   '#3A7BD5',
   in_transit: '#0F2B4C',
   delivered:  '#16A34A',
   cancelled:  '#DC2626',
 };
-
 
 interface Delivery {
   id:              string;
@@ -48,6 +65,12 @@ interface Delivery {
 }
 
 export default function DeliveriesScreen() {
+  const { isDark } = useTheme();
+  // Themed dialogs, not the Android system AlertDialog (work order
+  // item 4, 2026-08-24). Same signature as Alert.alert, so these are
+  // straight renames, but it renders every button instead of
+  // silently discarding the fourth.
+  const dialog = useSeirsDialog();
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -98,7 +121,7 @@ export default function DeliveriesScreen() {
   const onRefresh = () => { setRefreshing(true); load(1, true); };
 
   const handleCancel = (item: Delivery) => {
-    Alert.alert(
+    dialog.alert(
       'Cancel delivery?',
       `Tracking: ${item.trackingNumber ?? item.trackingCode ?? item.id.slice(0, 8)}. The driver will be notified. If you already paid and the fare is still held, it is refunded to the card you paid with. This cannot be undone.`,
       [
@@ -108,7 +131,7 @@ export default function DeliveriesScreen() {
             await businessApi.cancelDelivery(item.id);
             load();
           } catch (e: any) {
-            Alert.alert('Could not cancel', e?.message ?? 'Try again.');
+            dialog.alert('Could not cancel', e?.message ?? 'Try again.');
           }
         } },
       ],
@@ -131,17 +154,17 @@ export default function DeliveriesScreen() {
       const res = await paymentsApi.initiate(item.id, 'card', 'card');
       const url = res?.authorizationUrl;
       if (!url) {
-        Alert.alert('Could not start payment', res?.error ?? 'Please try again in a moment.');
+        dialog.alert('Could not start payment', res?.error ?? 'Please try again in a moment.');
         return;
       }
       const opened = await Linking.canOpenURL(url);
       if (!opened) {
-        Alert.alert('Could not open checkout', 'Your device blocked the payment page.');
+        dialog.alert('Could not open checkout', 'Your device blocked the payment page.');
         return;
       }
       await Linking.openURL(url);
     } catch (e: any) {
-      Alert.alert('Could not start payment', e?.message ?? 'Please try again in a moment.');
+      dialog.alert('Could not start payment', e?.message ?? 'Please try again in a moment.');
     } finally {
       setPaying(null);
     }
@@ -154,7 +177,7 @@ export default function DeliveriesScreen() {
    */
   const handlePay = (item: Delivery) => {
     if (!savedCard) { openCheckout(item); return; }
-    Alert.alert(
+    dialog.alert(
       `Pay ${naira(item.price)}`,
       `Charge ${String(savedCard.brand ?? 'card').toUpperCase()} •••• ${savedCard.last4}, or open the full checkout for another method?`,
       [
@@ -167,16 +190,16 @@ export default function DeliveriesScreen() {
               setPaying(item.id);
               const res = await paymentsApi.payWithSavedCard(item.id, savedCard.id);
               if (res.success) {
-                Alert.alert('Paid', `${naira(item.price)} charged to •••• ${res.last4 ?? savedCard.last4}. A driver is being matched.`);
+                dialog.alert('Paid', `${naira(item.price)} charged to •••• ${res.last4 ?? savedCard.last4}. A driver is being matched.`);
                 load(1, true);
               } else {
-                Alert.alert('Card declined', res.error ?? 'Try the full checkout instead.', [
+                dialog.alert('Card declined', res.error ?? 'Try the full checkout instead.', [
                   { text: 'Not now', style: 'cancel' },
                   { text: 'Open checkout', onPress: () => openCheckout(item) },
                 ]);
               }
             } catch (e: any) {
-              Alert.alert('Could not charge the card', e?.message ?? 'Try the full checkout instead.');
+              dialog.alert('Could not charge the card', e?.message ?? 'Try the full checkout instead.');
             } finally {
               setPaying(null);
             }
@@ -187,7 +210,7 @@ export default function DeliveriesScreen() {
   };
 
   const renderItem = ({ item }: { item: Delivery }) => {
-    const c = STATUS_COLOR[item.status] ?? colors.textThird;
+    const st = statusTint(item.status, isDark);
     const stopCount = item.stops?.length ?? (item.isMultiStop ? 0 : 1);
     const address = item.dropoffAddress
       ?? (item.stops?.[item.stops.length - 1] as any)?.address
@@ -211,8 +234,8 @@ export default function DeliveriesScreen() {
             </Text>
             <Text style={[styles.address, { color: colors.textSecond }]} numberOfLines={1}>{address}</Text>
           </View>
-          <View style={[styles.badge, { backgroundColor: c + '20' }]}>
-            <Text style={[styles.badgeText, { color: c }]}>{item.status.replace('_', ' ')}</Text>
+          <View style={[styles.badge, { backgroundColor: st.bg }]}>
+            <Text style={[styles.badgeText, { color: st.fg }]}>{item.status.replace('_', ' ')}</Text>
           </View>
         </View>
         <View style={styles.cardBottom}>
@@ -310,7 +333,7 @@ export default function DeliveriesScreen() {
         {STATUSES.map((s) => {
           const active = status === s;
           // 'All' has no status color of its own: uses the brand primary.
-          const accent = s === 'all' ? colors.primary : STATUS_COLOR[s];
+          const accent = s === 'all' ? colors.primary : CHIP_ACCENT[s];
           return (
             <Pressable
               key={s}

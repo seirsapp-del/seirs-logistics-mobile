@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  View, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +12,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { addressesApi, deliveriesApi, type SavedAddressDTO } from '@/services/api';
 import InlineAddressPicker from '@/components/InlineAddressPicker';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Spec V8: saved address book synced to backend so the data follows
 // the user across devices + can pre-fill driver routing. AsyncStorage
 // is kept as a warm cache so the list renders before the network round
@@ -76,7 +76,7 @@ export default function AddressesScreen() {
 
   const addAddress = async () => {
     if (!draftLabel.trim() || !draftText.trim()) {
-      Alert.alert(t('addresses.labelAndAddressRequired'));
+      alertDialog(t('addresses.labelAndAddressRequired'));
       return;
     }
     try {
@@ -90,7 +90,7 @@ export default function AddressesScreen() {
       setDraftLabel(''); setDraftText(''); setDraftLat(null); setDraftLng(null); setDraftType('home');
       setAdding(false);
     } catch (e: any) {
-      Alert.alert(t('addresses.couldNotSave'), e?.message ?? t('editProfile.tryAgain'));
+      alertDialog(t('addresses.couldNotSave'), e?.message ?? t('editProfile.tryAgain'));
     }
   };
 
@@ -112,7 +112,7 @@ export default function AddressesScreen() {
   );
 
   const removeAddress = (id: string) => {
-    Alert.alert(t('addresses.removeTitle'), t('addresses.removeMsg'), [
+    alertDialog(t('addresses.removeTitle'), t('addresses.removeMsg'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'), style: 'destructive',

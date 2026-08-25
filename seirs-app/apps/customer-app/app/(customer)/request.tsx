@@ -1,4 +1,4 @@
-import { Alert,
+import {
   View, Text, Pressable, StyleSheet, StatusBar, ActivityIndicator, Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +20,7 @@ import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { LAGOS_COORDS, DEFAULT_MAP_REGION } from '@/constants/mockData';
 
 import { mapsApi, deliveriesApi } from '@/services/api';
+import { showDialog } from '@/components/SeirsDialog';
 
 // Places and geocoding go through our backend (security review
 // 2026-08-12): the Google key is no longer shipped inside the app.
@@ -94,15 +95,15 @@ export default function RequestDriverScreen() {
     const sub = (navigation as any).addListener?.('beforeRemove', (e: any) => {
       if (!pickup && !dropoff) return;
       e.preventDefault();
-      Alert.alert(
-        'Discard this trip?',
-        'Your pickup and destination will be cleared.',
-        [
-          { text: 'Keep editing', style: 'cancel' },
+      showDialog({
+        title: 'Discard this trip?',
+        message: 'Your pickup and destination will be cleared.',
+        actions: [
           { text: 'Discard', style: 'destructive',
             onPress: () => (navigation as any).dispatch(e.data.action) },
+          { text: 'Keep editing', style: 'cancel' },
         ],
-      );
+      });
     });
     return sub;
   }, [navigation, pickup, dropoff]);
@@ -316,7 +317,9 @@ export default function RequestDriverScreen() {
         dropoffLng: String(dropoff.lng),
         distanceKm: String(distKmParsed),
         riderName:  riderIsMe ? '' : riderName.trim(),
-        durationText: durationText ?? '',
+        // durationText was passed here and never read on the other side.
+        // It is not passed at all now: no screen should be one line away
+        // from printing a Google ETA (2026-08-23 sweep).
       },
     });
   };

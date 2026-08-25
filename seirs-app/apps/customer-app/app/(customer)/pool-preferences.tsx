@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Switch, Alert,
+  View, Text, Pressable, StyleSheet, ScrollView, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Spec V8 §1.15: opt-in/out of corridor pooling. When pool acceptance
 // is on, the dispatcher may add additional legs (other passengers or
 // packages) to the same vehicle as long as it stays within +20% of
@@ -61,7 +62,7 @@ export default function PoolPreferencesScreen() {
 
   const togglePool = (next: boolean) => {
     if (!next) {
-      Alert.alert(
+      alertDialog(
         t('poolPrefs2.acceptPool'),
         t('poolPrefs2.title'),
         [

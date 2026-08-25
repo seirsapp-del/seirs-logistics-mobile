@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Switch, Alert, Linking,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Switch, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { usersApi } from '@/services/api';
 
+import { alertDialog } from '@/components/SeirsDialog';
 export default function PrivacyScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
@@ -79,7 +80,7 @@ export default function PrivacyScreen() {
   const onToggleDataSharing = (v: boolean) => { setDataSharing(v);   queueSave({ data_sharing:     v }); };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    alertDialog(
       t('deleteAccount.title'),
       t('deleteAccount.warning'),
       [
@@ -95,12 +96,12 @@ export default function PrivacyScreen() {
   const handleDataDownload = async () => {
     try {
       await usersApi.exportData();
-      Alert.alert(
+      alertDialog(
         'Export queued',
         'Your data is being prepared. You will receive an email with the download link within 24 hours.',
       );
     } catch {
-      Alert.alert(t('deleteAccount.exportFailed'), 'support@seirs.co');
+      alertDialog(t('deleteAccount.exportFailed'), 'support@seirs.co');
     }
   };
 

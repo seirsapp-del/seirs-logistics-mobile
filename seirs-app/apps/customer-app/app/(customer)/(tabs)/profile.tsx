@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Linking, Platform, Modal,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Linking, Platform, Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
@@ -16,6 +16,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
 import { deliveriesApi, loyaltyApi, promotionsApi } from '@/services/api';
 
+import { alertDialog } from '@/components/SeirsDialog';
 type MenuSection = { title: string; items: MenuItem[] };
 type MenuItem = { icon: string; label: string; sub?: string; onPress: () => void; danger?: boolean };
 
@@ -74,7 +75,7 @@ export default function ProfileScreen() {
   );
 
   const handleLogout = () => {
-    Alert.alert(t('profile.signOut'), t('profile.signOutConfirm'), [
+    alertDialog(t('profile.signOut'), t('profile.signOutConfirm'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('profile.signOut'), style: 'destructive', onPress: logout },
     ]);
@@ -121,7 +122,7 @@ export default function ProfileScreen() {
         { icon: 'help-circle-outline',   label: t('profile.helpCenter'), sub: t('profile.helpCenterSub'), onPress: () => router.push('/(customer)/help') },
         { icon: 'chatbubble-outline',    label: t('profile.liveChat'),   sub: t('profile.liveChatSub'),   onPress: () => router.push('/(customer)/support/new' as any) },
         { icon: 'alert-circle-outline',  label: t('profile.sos', { defaultValue: 'SOS Emergency' }), sub: t('profile.sosSub', { defaultValue: 'Immediate help with live location' }), onPress: () => router.push('/(customer)/sos' as any), danger: true },
-        { icon: 'document-text-outline', label: t('profile.terms'),      sub: t('profile.termsSub'),      onPress: () => Linking.openURL('https://seirs-website.vercel.app/terms-of-service').catch(() => Alert.alert(t('common.comingSoon'), t('profile.termsComingSoon'))) },
+        { icon: 'document-text-outline', label: t('profile.terms'),      sub: t('profile.termsSub'),      onPress: () => Linking.openURL('https://seirs-website.vercel.app/terms-of-service').catch(() => alertDialog(t('common.comingSoon'), t('profile.termsComingSoon'))) },
       ],
     },
   ];
@@ -175,10 +176,17 @@ export default function ProfileScreen() {
                 {/* Verified badge appears once admin approves the identity
                     submission (user.identityVerifiedAt is set). Silent when
                     unverified. see [[project_seirs_identity_policy]]. */}
+                {/* Theme audit 2026-08-24: the label was a fixed
+                    #065F46, a near-black green picked while looking at
+                    light mode. Over the same 9%-alpha green on the dark
+                    surface it measures 1.96:1, which is not a dim badge,
+                    it is an invisible one, and dark is the default
+                    theme. The tint stays translucent because it reads
+                    correctly over both surfaces; only the ink moves. */}
                 {(user as any)?.identityVerifiedAt && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#10B98118', borderColor: '#10B98140', borderWidth: 1, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 }}>
-                    <Ionicons name="shield-checkmark" size={11} color="#059669" />
-                    <Text style={{ color: '#065F46', fontSize: 10, fontWeight: '700', letterSpacing: 0.3 }}>Verified</Text>
+                    <Ionicons name="shield-checkmark" size={11} color={isDark ? '#34D399' : '#059669'} />
+                    <Text style={{ color: isDark ? '#6EE7B7' : '#065F46', fontSize: 10, fontWeight: '700', letterSpacing: 0.3 }}>Verified</Text>
                   </View>
                 )}
               </View>
@@ -189,10 +197,17 @@ export default function ProfileScreen() {
                 entry tier. every new user is Bronze, so showing it adds
                 visual noise for the ~90% who haven't unlocked anything).
                 Silver / Gold / Platinum are aspirational and worth showing. */}
+            {/* Theme audit 2026-08-24: this pill was broken in BOTH
+                directions. The amber label (#B45309) measures 2.67:1 on
+                the dark surface, and the brand-yellow medal measures
+                1.56:1 on the light one, so whichever theme you opened,
+                half the pill had all but disappeared. Each half now
+                takes the ink that works on the surface it is actually
+                sitting on. */}
             {loyaltyTier && loyaltyTier.toLowerCase() !== 'bronze' && (
               <View style={[styles.tierPill, { backgroundColor: '#FFBE0B20', borderColor: '#FFBE0B40' }]}>
-                <Ionicons name="medal" size={13} color="#FFBE0B" />
-                <Text style={[styles.tierText, { color: '#B45309' }]}>{loyaltyTier}</Text>
+                <Ionicons name="medal" size={13} color={isDark ? '#FFBE0B' : '#B45309'} />
+                <Text style={[styles.tierText, { color: isDark ? '#FCD34D' : '#B45309' }]}>{loyaltyTier}</Text>
               </View>
             )}
           </View>
@@ -343,7 +358,7 @@ export default function ProfileScreen() {
               <Pressable
                 onPress={async () => {
                   await Clipboard.setStringAsync((user as any).accountId);
-                  Alert.alert('Copied', 'Your SEIRS ID has been copied.');
+                  alertDialog('Copied', 'Your SEIRS ID has been copied.');
                 }}
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.border, borderRadius: Radius.lg, paddingVertical: 12 }}
               >

@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator,
-  Alert, Switch,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
-import { useColors } from '@/context/ThemeContext';
+import { tint } from '@/constants/tint';
+import { useColors, useTheme } from '@/context/ThemeContext';
 import { naira } from '@/utils/money';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Spec V8 §4.11: partner sponsored-placement billing view. Live monthly
 // fee is read from the Fee Catalogue (admin-editable, propagates within
 // 60s) so the displayed price always matches what would actually be
@@ -23,6 +24,7 @@ import { naira } from '@/utils/money';
 
 
 export default function PartnerBillingScreen() {
+  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useColors();
@@ -58,7 +60,7 @@ export default function PartnerBillingScreen() {
 
   const handleToggle = (next: boolean) => {
     if (next) {
-      Alert.alert(
+      alertDialog(
         'Activate Sponsored Placement',
         `Your store will appear pinned at the top of the customer map.\n\nMonthly fee: ${monthlyPrice != null ? naira(monthlyPrice) : '-'}.\n\nFlutterwave recurring billing is being wired in Phase 2 payments: for now the invoice is recorded but no card is charged. Pause anytime, no contract.`,
         [
@@ -66,13 +68,13 @@ export default function PartnerBillingScreen() {
           { text: 'Activate', onPress: async () => {
             setBusy(true);
             try { await partnerApi.sponsorship.activate(); await load(); }
-            catch (e: any) { Alert.alert('Could not activate', e?.message ?? 'Try again.'); }
+            catch (e: any) { alertDialog('Could not activate', e?.message ?? 'Try again.'); }
             finally { setBusy(false); }
           } },
         ],
       );
     } else {
-      Alert.alert(
+      alertDialog(
         'Pause Sponsored Placement',
         'Your store will return to standard map ranking. No further monthly invoices until you reactivate.',
         [
@@ -80,7 +82,7 @@ export default function PartnerBillingScreen() {
           { text: 'Pause', style: 'destructive', onPress: async () => {
             setBusy(true);
             try { await partnerApi.sponsorship.pause(); await load(); }
-            catch (e: any) { Alert.alert('Could not pause', e?.message ?? 'Try again.'); }
+            catch (e: any) { alertDialog('Could not pause', e?.message ?? 'Try again.'); }
             finally { setBusy(false); }
           } },
         ],
@@ -123,9 +125,12 @@ export default function PartnerBillingScreen() {
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardTopRow}>
           <Text style={[styles.cardLabel, { color: colors.textSecond }]}>YOUR PLAN</Text>
-          <View style={[styles.statusChip, { backgroundColor: active ? '#16A34A18' : colors.surfaceSecond }]}>
-            <View style={[styles.statusDot, { backgroundColor: active ? '#16A34A' : colors.textThird }]} />
-            <Text style={[styles.statusText, { color: active ? '#16A34A' : colors.textSecond }]}>
+          {/* Active used a 9% green alpha while inactive used a theme
+              token, so the two states were not even the same weight, and
+              the active one read 2.96:1 in light mode (2026-08-24). */}
+          <View style={[styles.statusChip, { backgroundColor: active ? tint('green', isDark).bg : colors.surfaceSecond }]}>
+            <View style={[styles.statusDot, { backgroundColor: active ? tint('green', isDark).fg : colors.textThird }]} />
+            <Text style={[styles.statusText, { color: active ? tint('green', isDark).fg : colors.textSecond }]}>
               {active ? 'Active' : 'Inactive'}
             </Text>
           </View>

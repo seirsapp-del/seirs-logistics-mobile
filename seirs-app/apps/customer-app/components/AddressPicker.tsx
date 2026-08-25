@@ -8,8 +8,7 @@
  *   onSelect    : called with { address, lat, lng } when user picks a result
  */
 import {
-  View, Text, TextInput, Pressable, FlatList,
-  StyleSheet, ActivityIndicator, Modal, Platform, StatusBar, Alert, Linking,
+  View, Text, TextInput, Pressable, FlatList, StyleSheet, ActivityIndicator, Modal, Platform, StatusBar, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -20,6 +19,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { mapsApi } from '@/services/api';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Places and geocoding now go through our backend (security review
 // 2026-08-12). The Google key used to sit in this file, which meant it
 // shipped inside the installed app where anyone could extract it and
@@ -124,7 +124,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
         // and "user set Don't ask again" (need to go to system settings).
         // Either way surface something so the button doesn't look broken.
         if (!canAskAgain) {
-          Alert.alert(
+          alertDialog(
             'Location permission denied',
             'Location is off for SEIRS in your phone Settings. Turn it on to auto-fill your address.',
             [
@@ -133,7 +133,7 @@ export default function AddressPicker({ label, dotColor, value, onSelect }: Prop
             ],
           );
         } else {
-          Alert.alert(
+          alertDialog(
             'Location needed',
             'We need your location to auto-fill your current address. Tap the button again and allow.',
           );

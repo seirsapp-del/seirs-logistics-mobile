@@ -10,8 +10,7 @@
  * no coloured cards.
  */
 import {
-  View, Text, Pressable, StyleSheet, FlatList, StatusBar,
-  RefreshControl, ActivityIndicator, Alert,
+  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +21,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { notificationsApi } from '@/services/api';
 
+import { alertDialog } from '@/components/SeirsDialog';
 interface Notif {
   id:    string;
   type:  string;
@@ -29,6 +29,10 @@ interface Notif {
   body:  string;
   time:  string;
   read:  boolean;
+  // The API sends both and the screen used to drop them, which is why
+  // tapping a notification could only ever mark it read.
+  deliveryId?:   string | null;
+  trackingCode?: string | null;
 }
 
 // Brand palette only: green, sky blue, navy (dark mode gets the muted
@@ -71,6 +75,8 @@ export default function CustomerNotificationsScreen() {
         body:  n.body ?? n.message ?? '',
         time:  relativeTime(n.createdAt ?? ''),
         read:  !!n.isRead || !!n.readAt || !!n.read,
+        deliveryId:   n.deliveryId ?? null,
+        trackingCode: n.trackingCode ?? null,
       })));
     } catch {
       setNotifs([]);
@@ -99,14 +105,40 @@ export default function CustomerNotificationsScreen() {
     try { await notificationsApi.markRead(id); } catch {}
   };
 
+  /**
+   * Open what the notification is about.
+   *
+   * Tapping used to mark read and nothing else, so on an already-read
+   * row it did nothing at all (founder 2026-08-24). A chat notification
+   * opens the conversation; anything carrying a delivery opens that
+   * delivery; a notification with neither still just marks read.
+   */
+  const openNotif = (item: Notif) => {
+    void markOneRead(item.id);
+    if (!item.deliveryId) return;
+    if (item.type === 'chat_message') {
+      router.push({
+        pathname: '/(customer)/messages/[chatId]',
+        params:   { chatId: String(item.deliveryId) },
+      } as any);
+      return;
+    }
+    router.push({
+      pathname: '/(customer)/trip/[id]',
+      params:   { id: String(item.deliveryId) },
+    } as any);
+  };
+
   const dismissOne = async (id: string) => {
     setNotifs(prev => prev.filter(n => n.id !== id));
     try { await notificationsApi.remove(id); } catch {}
   };
 
   const clearAll = () => {
-    Alert.alert('Clear notifications', 'Which ones should go?', [
-      { text: 'Cancel', style: 'cancel' },
+    // Cancel LAST: three options stack vertically, and reading a list of
+    // real choices with the way out at the top is backwards going down a
+    // page. Android put it first; this dialog does not have to.
+    alertDialog('Clear notifications', 'Which ones should go?', [
       {
         text: 'Clear read only',
         onPress: async () => {
@@ -122,6 +154,7 @@ export default function CustomerNotificationsScreen() {
           try { await notificationsApi.removeAll(false); } catch {}
         },
       },
+      { text: 'Cancel', style: 'cancel' },
     ]);
   };
 
@@ -187,7 +220,7 @@ export default function CustomerNotificationsScreen() {
                 )}
               >
               <Pressable
-                onPress={() => markOneRead(item.id)}
+                onPress={() => openNotif(item)}
                 style={[styles.row, { borderBottomColor: theme.border, backgroundColor: theme.background }]}
               >
                 <View style={[styles.rowIcon, { backgroundColor: ic.color + '15' }]}>

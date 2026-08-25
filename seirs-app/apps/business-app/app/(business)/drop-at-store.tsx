@@ -14,11 +14,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, Pressable, TextInput, ScrollView,
-  ActivityIndicator, Alert, Share, StatusBar, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Share, StatusBar, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { Icon } from '@/components/Icon';
+import { useSeirsDialog } from '@/components/SeirsDialog';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
@@ -41,6 +42,11 @@ const BUCKET_META: Record<string, { label: string; color: string }> = {
 };
 
 export default function BusinessDropAtStoreScreen() {
+  // Themed dialogs, not the Android system AlertDialog (work order
+  // item 4, 2026-08-24). Same signature as Alert.alert, so these are
+  // straight renames, but it renders every button instead of
+  // silently discarding the fourth.
+  const dialog = useSeirsDialog();
   const router = useRouter();
   const { isDark } = useTheme();
   const theme = Colors[isDark ? 'dark' : 'light'];
@@ -97,7 +103,7 @@ export default function BusinessDropAtStoreScreen() {
       setSessionCount(c => c + 1);
       setStep('receipt');
     } catch (e: any) {
-      Alert.alert('Could not schedule drop-off', e?.message ?? 'Please try again.');
+      dialog.alert('Could not schedule drop-off', e?.message ?? 'Please try again.');
     } finally {
       setSubmitting(false);
     }

@@ -53,14 +53,12 @@
     "title": "Allon Sarrafawa",
     "totalDeliveries": "Jimillar Isarwa",
     "activeDeliveries": "Aiki",
-    "walletBalance": "Taskar Walat",
     "weeklySpend": "Kashe Kudi na Mako",
     "loyaltyPoints": "Maki Aminci",
     "recentDeliveries": "Isarwa na Kwanan nan",
     "viewAll": "Duba duka",
     "noDeliveries": "Babu isarwa tukuna",
     "newDelivery": "Sabuwar Isarwa",
-    "csvUpload": "Loda CSV",
     "quickActions": "Matakan Sauri"
   },
   "deliveries": {
@@ -94,30 +92,6 @@
     "orderSummary": "Taƙaitaccen Oda",
     "stops": "Tasha",
     "estimatedCost": "Kuɗin Ƙididdiga"
-  },
-  "csvUpload": {
-    "title": "Loda CSV",
-    "subtitle": "Loda fayil CSV don ƙirƙirar bayarwa da yawa lokaci ɗaya",
-    "downloadTemplate": "Sauke Samfuri",
-    "selectFile": "Zaɓi Fayil CSV",
-    "preview": "Hangen Nesa",
-    "rows": "{{count}} layi",
-    "uploadBtn": "Loda & Ƙirƙira Bayarwa",
-    "required": "Ginshiƙai da ake buƙata: Sunan Mai Karɓa, Waya, Adireshi"
-  },
-  "wallet": {
-    "title": "Walat",
-    "balance": "Taskar",
-    "loyaltyPoints": "Maki Aminci",
-    "pointsValue": "Darajar ₦{{value}}",
-    "fundWallet": "Cika Walat",
-    "transactionHistory": "Tarihin Ma'amaloli",
-    "noTransactions": "Babu ma'amaloli tukuna",
-    "credit": "Karɓa",
-    "debit": "Kashe",
-    "topUp": "Cika",
-    "enterAmount": "Shigar adadin",
-    "customAmount": "Adadin da kuke so"
   },
   "team": {
     "title": "Mambobin Ƙungiya",
@@ -263,7 +237,7 @@
     "heroTagline": "Kai kowane abu, ko'ina a Najeriya",
     "heroBadgeOutlet": "Sabon Wuri",
     "heroBadgeTip": "Shawarar Mako",
-    "heroBadgeNew": "Nan ba da jimawa ba",
+    "heroBadgeNew": "Sabo",
     "heroBadgePromo": "Sami lada",
     "heroCard2Title": "Yanzu muna kai daga Shoprite Ikeja",
     "heroCard2Desc": "Har zuwa rangwame 25% akan oda ɗinka uku na farko a wannan makon",

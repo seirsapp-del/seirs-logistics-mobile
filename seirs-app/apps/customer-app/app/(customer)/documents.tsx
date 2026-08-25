@@ -110,9 +110,13 @@ export default function CustomerDocumentsScreen() {
 
       <Modal visible={!!viewing} transparent animationType="slide" onRequestClose={() => setViewing(null)}>
         <View style={styles.modalOverlay}>
+          {/* insets.bottom measures 0 on this Android 3-button nav bar, so
+              the raw value left the Share/Close row 20px off the physical
+              edge with the nav bar over it. Same hard floor the Send CTA
+              and onboarding use (2026-08-23 sweep, C-4.6). */}
           <View style={[
             styles.modalCard,
-            { backgroundColor: theme.surface, paddingBottom: 20 + insets.bottom },
+            { backgroundColor: theme.surface, paddingBottom: 20 + Math.max(insets.bottom, 24) },
           ]}>
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: theme.text }]}>{viewing?.title}</Text>

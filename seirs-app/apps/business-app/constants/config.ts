@@ -32,3 +32,14 @@ export const TERMS_URL   = `${WEB_BASE}/terms-of-service`;
 export const PRIVACY_URL = `${WEB_BASE}/privacy-policy`;
 export const FAQ_URL     = `${WEB_BASE}/faq`;
 export const collectUrl  = (code: string) => `${WEB_BASE}/collect/${code}`;
+/**
+ * Public tracking page for one package code. Needs no SEIRS account and
+ * no app, which is the whole point: a business run's receivers are
+ * usually strangers to us, holding a code a sender sent them over
+ * WhatsApp (founder 2026-08-24, package QR).
+ *
+ * Routed through WEB_BASE for the same reason as the rest of this file.
+ * Some older strings elsewhere hardcode https://seirs.app/track/..., and
+ * that host does not resolve today.
+ */
+export const trackUrl    = (code: string) => `${WEB_BASE}/track/${code}`;

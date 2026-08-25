@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, TextInput, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert,
+  View, Text, Pressable, StyleSheet, TextInput, StatusBar, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { deliveriesApi } from '@/services/api';
+import { showDialog } from '@/components/SeirsDialog';
 
 const TAG_KEYS = ['tagPunctual', 'tagProfessional', 'tagSafeDriver', 'tagCleanCar', 'tagGreatMusic', 'tagFriendly'];
 const STAR_LABEL_KEYS = ['', 'starTerrible', 'starBad', 'starOkay', 'starGood', 'starExcellent'];
@@ -51,7 +52,6 @@ export default function RateDriverScreen() {
   const [hovered,  setHovered]  = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [comment,  setComment]  = useState('');
-  const [tipping,  setTipping]  = useState<number | null>(null);
   const [loading,  setLoading]  = useState(false);
 
   const display = hovered || stars;
@@ -66,11 +66,11 @@ export default function RateDriverScreen() {
 
   const handleSubmit = async () => {
     if (!tripId) {
-      Alert.alert(t('rateDriver.noTripLinked'), t('rateDriver.noTripLinkedMsg'));
+      showDialog({ title: t('rateDriver.noTripLinked'), message: t('rateDriver.noTripLinkedMsg') });
       return;
     }
     if (!stars) {
-      Alert.alert(t('rateDriver.pickRating'), t('rateDriver.pickRatingMsg'));
+      showDialog({ title: t('rateDriver.pickRating'), message: t('rateDriver.pickRatingMsg') });
       return;
     }
     setLoading(true);
@@ -80,13 +80,11 @@ export default function RateDriverScreen() {
       await deliveriesApi.rate(tripId, stars, noteText || undefined);
       router.replace('/(customer)/(tabs)' as any);
     } catch (e: any) {
-      Alert.alert(t('rateDriver.couldNotSubmit'), e?.message ?? t('rateDriver.tryAgain'));
+      showDialog({ title: t('rateDriver.couldNotSubmit'), message: e?.message ?? t('rateDriver.tryAgain') });
     } finally {
       setLoading(false);
     }
   };
-
-  const TIP_OPTIONS = [100, 200, 500];
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -181,34 +179,25 @@ export default function RateDriverScreen() {
             </View>
           </View>
 
-          {/* Tip */}
-          <View style={styles.tipSection}>
-            <Text style={[styles.tipTitle, { color: theme.text }]}>{t('rateDriver.addTip')}</Text>
-            <View style={styles.tipOptions}>
-              {TIP_OPTIONS.map(amount => (
-                <Pressable
-                  key={amount}
-                  style={[
-                    styles.tipBtn,
-                    { borderColor: tipping === amount ? theme.primary : theme.border },
-                    tipping === amount && { backgroundColor: isDark ? '#001020' : '#EFF6FF' },
-                  ]}
-                  onPress={() => setTipping(prev => prev === amount ? null : amount)}
-                >
-                  <Text style={[styles.tipBtnText, { color: tipping === amount ? theme.primary : theme.textSecond }]}>
-                    ₦{amount}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+          {/*
+            The tip picker lived here. It set local state, rendered
+            "Submit Rating + N500 tip" on the CTA, and then handleSubmit
+            called deliveriesApi.rate() with the stars and the note only:
+            the amount was never sent anywhere, no endpoint exists to
+            take it, and no driver was ever paid a naira of it. The
+            customer walked away believing they had tipped (found in the
+            2026-08-23 sweep). Removed rather than left in: a payment
+            promise the platform cannot keep is worse than no tip button.
+            Restore it together with a real tip charge and a driver
+            credit, not before.
+          */}
 
         </ScrollView>
 
         {/* CTA */}
         <View style={[styles.cta, { borderTopColor: theme.border, backgroundColor: theme.surface }]}>
           <Button
-            label={tipping ? t('rateDriver.submitRatingWithTip', { amount: tipping }) : t('rateDriver.submitRating')}
+            label={t('rateDriver.submitRating')}
             onPress={handleSubmit}
             loading={loading}
             disabled={stars === 0}
@@ -263,12 +252,6 @@ const styles = StyleSheet.create({
   commentLabel:   { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
   commentWrap:    { borderRadius: Radius.lg, borderWidth: 1.5, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, minHeight: 100 },
   commentInput:   { fontSize: FontSize.base, lineHeight: 22 },
-
-  tipSection:  { gap: Spacing.sm },
-  tipTitle:    { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  tipOptions:  { flexDirection: 'row', gap: Spacing.sm },
-  tipBtn:      { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: Radius.xl, borderWidth: 1.5 },
-  tipBtnText:  { fontSize: FontSize.base, fontWeight: FontWeight.bold },
 
   cta: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, borderTopWidth: 1 },
 });

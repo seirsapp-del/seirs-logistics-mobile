@@ -12,8 +12,7 @@
  * dedicated WS room for now).
  */
 import {
-  View, Text, StyleSheet, FlatList, Pressable, TextInput, StatusBar,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Alert, Linking,
+  View, Text, StyleSheet, FlatList, Pressable, TextInput, StatusBar, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +25,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { useAuth } from '@/context/AuthContext';
 import { supportApi, uploadApi, type SupportThreadDTO } from '@/services/api';
 
+import { alertDialog } from '@/components/SeirsDialog';
 export default function SupportTicketThreadScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
@@ -73,7 +73,7 @@ export default function SupportTicketThreadScreen() {
       await load();
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
-      Alert.alert(
+      alertDialog(
         t('support.error.sendTitle', { defaultValue: 'Could not send' }),
         e?.message ?? String(e),
       );
@@ -96,7 +96,7 @@ export default function SupportTicketThreadScreen() {
       await load();
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
-      Alert.alert(
+      alertDialog(
         t('support.error.uploadTitle', { defaultValue: 'Could not upload photo' }),
         e?.message ?? String(e),
       );
@@ -108,7 +108,7 @@ export default function SupportTicketThreadScreen() {
   const pickCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Camera permission needed', 'Enable camera access in your phone settings.');
+      alertDialog('Camera permission needed', 'Enable camera access in your phone settings.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -120,7 +120,7 @@ export default function SupportTicketThreadScreen() {
   const pickGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Photo permission needed', 'Enable photo access in your phone settings.');
+      alertDialog('Photo permission needed', 'Enable photo access in your phone settings.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -131,7 +131,7 @@ export default function SupportTicketThreadScreen() {
 
   const attach = () => {
     if (uploading || sending) return;
-    Alert.alert(
+    alertDialog(
       t('chat.attach.title', { defaultValue: 'Attach photo' }),
       t('chat.attach.subtitle', { defaultValue: 'Choose where to attach from.' }),
       [

@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -12,8 +14,31 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
  * description + chevron at the bottom.
  *
  * Image is `<Image>` with `resizeMode="cover"` so it always fills the
- * frame. If `imageUrl` is missing the card falls back to a navy gradient
- * so the layout still reads correctly while you source artwork.
+ * frame.
+ *
+ * ── THE LARGE EMPTY BLOCK (found on device 2026-08-24) ────────────────
+ * The founder opened the business dashboard and the "Send many packages
+ * in one run" slide showed roughly 250px of nothing above its text, on
+ * the first screen of the app, so it read as broken.
+ *
+ * Nothing was missing and no URL was dead. The card is a fixed 200px
+ * tall with its title and description absolutely positioned at the
+ * bottom, so about 150px of it is always image area. The built-in
+ * fallback cards in constants/heroCards.ts deliberately carry NO
+ * imageUrl (see the walrus/pine-forest note in that file: random stock
+ * photos were brand damage), and this component's fallback was a flat
+ * gradient. In dark mode that gradient ran #1C2128 to #0D1117, which is
+ * the dark background colour, so the reserved area was not merely plain,
+ * it was invisible. The card looked like a caption floating in a hole.
+ *
+ * Two fixes, both here:
+ *   1. The imageless fallback now carries the SEIRS okada mark as a
+ *      watermark, so the reserved space has a subject and the card reads
+ *      as designed rather than unfinished. Same treatment customer-app
+ *      uses, so the two apps' carousels stay one design.
+ *   2. A CMS card whose imageUrl 404s used to leave the same hole, since
+ *      a failed <Image> renders nothing at all. onError now drops it back
+ *      onto the branded fallback instead of a bare rectangle.
  */
 
 interface Props {
@@ -43,6 +68,12 @@ export function HeroCardImage({
   const titleText = title ?? (titleKey ? t(titleKey) : undefined);
   const descText  = desc  ?? (descKey  ? t(descKey)  : undefined);
 
+  // A CMS image that will not load must not leave a hole. Reset on a new
+  // url so a card that failed once is retried when the admin fixes it.
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => { setImageFailed(false); }, [imageUrl]);
+  const showImage = !!imageUrl && !imageFailed;
+
   return (
     <Pressable
       onPress={onPress}
@@ -54,19 +85,36 @@ export function HeroCardImage({
       ]}
     >
       {/* Background image: covers the whole card. */}
-      {imageUrl ? (
+      {showImage ? (
         <Image
           source={{ uri: imageUrl }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
+          onError={() => setImageFailed(true)}
         />
       ) : (
-        <LinearGradient
-          colors={isDark ? ['#1C2128', '#0D1117'] : ['#0F2B4C', '#1A3A63']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+        <>
+          <LinearGradient
+            colors={isDark ? ['#1C2128', '#0D1117'] : ['#0F2B4C', '#1A3A63']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* The okada, watermarked into the space the layout reserves
+              for artwork. Nudged up because the bottom of the card is
+              spoken for by the title and description. pointerEvents none
+              so it never eats the tap that opens the article. */}
+          <View
+            pointerEvents="none"
+            style={{
+              ...StyleSheet.absoluteFillObject,
+              alignItems: 'center', justifyContent: 'center',
+              opacity: 0.14, transform: [{ translateY: -14 }],
+            }}
+          >
+            <SeirsMarkBold size={190} color="#FFFFFF" hubColor="#0F2B4C" />
+          </View>
+        </>
       )}
 
       {/* Dark gradient over the bottom 60% so the title + desc read on

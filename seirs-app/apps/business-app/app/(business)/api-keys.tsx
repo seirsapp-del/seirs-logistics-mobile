@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Alert,
-  ActivityIndicator, TextInput, KeyboardAvoidingView, Platform,
+  View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
+import { tint } from '@/constants/tint';
 import { request } from '@/services/api';
 import { useColors, useTheme } from '@/context/ThemeContext';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Spec V8 Tier 3: developer console for API keys. Live + test key
 // management for SEIRS-as-a-platform integrators. Secret is shown
 // ONCE on creation and never again.
@@ -50,7 +51,7 @@ export default function ApiKeysScreen() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!newName.trim()) { Alert.alert('Name required'); return; }
+    if (!newName.trim()) { alertDialog('Name required'); return; }
     setCreatingNew(true);
     try {
       const res = await request<{ publicKey: string; secret: string }>(
@@ -61,14 +62,14 @@ export default function ApiKeysScreen() {
       setCreating(false);
       load();
     } catch (e: any) {
-      Alert.alert('Could not create key', e?.message ?? 'Try again.');
+      alertDialog('Could not create key', e?.message ?? 'Try again.');
     } finally {
       setCreatingNew(false);
     }
   };
 
   const revoke = (key: ApiKey) => {
-    Alert.alert(
+    alertDialog(
       'Revoke key',
       `Apps using ${key.publicKey} will stop working immediately. This cannot be undone.`,
       [
@@ -81,7 +82,7 @@ export default function ApiKeysScreen() {
               await request('DELETE', `/dev-platform/keys/${key.id}`);
               load();
             } catch (e: any) {
-              Alert.alert('Could not revoke', e?.message ?? 'Try again.');
+              alertDialog('Could not revoke', e?.message ?? 'Try again.');
             }
           },
         },
@@ -91,7 +92,7 @@ export default function ApiKeysScreen() {
 
   const copy = async (text: string) => {
     await Clipboard.setStringAsync(text);
-    Alert.alert('Copied');
+    alertDialog('Copied');
   };
 
   return (
@@ -195,7 +196,15 @@ export default function ApiKeysScreen() {
             keys.map(k => (
               <View key={k.id} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, !k.active && { opacity: 0.5 }]}>
                 <View style={styles.keyTop}>
-                  <Text style={[styles.modePill, { backgroundColor: k.mode === 'live' ? '#16A34A18' : '#D9770618', color: k.mode === 'live' ? '#16A34A' : '#D97706' }]}>
+                  {/* Was green/amber at 9% alpha with the same hue as its
+                      own text: 2.96:1 over white, under the 4.5:1 AA floor
+                      for a pill this size, and pale mush next to it
+                      (2026-08-24). The token pairs a paler surface with a
+                      darker text in light mode and leaves dark untouched. */}
+                  <Text style={[styles.modePill, {
+                    backgroundColor: tint(k.mode === 'live' ? 'green' : 'amber', isDark).bg,
+                    color:           tint(k.mode === 'live' ? 'green' : 'amber', isDark).fg,
+                  }]}>
                     {k.mode === 'live' ? 'LIVE' : 'TEST'}
                   </Text>
                   <Text style={[styles.keyName, { color: colors.text }]}>{k.name}</Text>

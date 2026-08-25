@@ -15,9 +15,7 @@
  * scoped to a delivery. There is no separate thread entity.
  */
 import {
-  View, Text, Pressable, StyleSheet, FlatList, TextInput,
-  KeyboardAvoidingView, Platform, StatusBar, ActivityIndicator, ScrollView,
-  Image, Modal, Alert,
+  View, Text, Pressable, StyleSheet, FlatList, TextInput, KeyboardAvoidingView, Platform, StatusBar, ActivityIndicator, ScrollView, Image, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +31,7 @@ import { useChat } from '@seirs/shared/hooks/useChat';
 import { chatApi, uploadApi } from '@/services/api';
 import { SOCKET_URL } from '@/constants/config';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Customer-side canned messages. Kept short so they fit on chips + are
 // actionable. Translated via i18n keys chat.quickReplies.customer.*
 const QUICK_REPLIES = [
@@ -94,7 +93,7 @@ export default function ChatScreen() {
       await send('', url);
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
-      Alert.alert(
+      alertDialog(
         t('chat.attach.errorTitle', { defaultValue: 'Could not send photo' }),
         e?.message ?? String(e),
       );
@@ -106,7 +105,7 @@ export default function ChatScreen() {
   const pickFromCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
+      alertDialog(
         t('chat.attach.permTitle', { defaultValue: 'Camera permission needed' }),
         t('chat.attach.permBody',  { defaultValue: 'Enable camera access in your phone settings to take a photo.' }),
       );
@@ -125,7 +124,7 @@ export default function ChatScreen() {
   const pickFromGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
+      alertDialog(
         t('chat.attach.permTitle', { defaultValue: 'Photo permission needed' }),
         t('chat.attach.permBody',  { defaultValue: 'Enable photo access in your phone settings to attach a picture.' }),
       );
@@ -143,7 +142,7 @@ export default function ChatScreen() {
 
   const handleAttach = () => {
     if (uploading || sending) return;
-    Alert.alert(
+    alertDialog(
       t('chat.attach.title',   { defaultValue: 'Attach photo' }),
       t('chat.attach.subtitle',{ defaultValue: 'Choose where to attach from.' }),
       [
@@ -284,6 +283,7 @@ export default function ChatScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.quickReplyStrip}
           contentContainerStyle={styles.quickReplyRow}
           keyboardShouldPersistTaps="handled"
         >
@@ -397,9 +397,16 @@ const styles = StyleSheet.create({
   systemPill:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
   systemText:  { fontSize: 11, fontWeight: FontWeight.medium },
 
-  quickReplyRow:  { paddingHorizontal: Spacing.md, paddingVertical: 8, gap: 8 },
-  quickReplyChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
-  quickReplyText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  // alignItems 'center' is load-bearing: a horizontal ScrollView's
+  // content container defaults to 'stretch', which grew every chip to
+  // the full height of the strip and turned the 999 radius into a giant
+  // oval (founder 2026-08-24).
+  quickReplyRow:  { paddingHorizontal: Spacing.md, paddingVertical: 8, gap: 8, alignItems: 'center' },
+  // flexGrow 0 stops the strip itself swallowing the space the message
+  // list leaves over.
+  quickReplyStrip:{ flexGrow: 0, flexShrink: 0 },
+  quickReplyChip: { paddingHorizontal: 16, paddingVertical: 11, borderRadius: 999, borderWidth: 1 },
+  quickReplyText: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 
   inputBar:  {
     flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm,

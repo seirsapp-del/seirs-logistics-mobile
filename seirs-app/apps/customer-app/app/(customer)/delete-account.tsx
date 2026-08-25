@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator,
-  KeyboardAvoidingView, Platform, ScrollView,
+  View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usersApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 
+import { alertDialog } from '@/components/SeirsDialog';
 const CONFIRM_PHRASE = 'delete my account';
 
 // Spec V8: NDPR right to erasure. Soft-deletes (isActive=false) with
@@ -39,12 +39,12 @@ export default function DeleteAccountScreen() {
       const data = await usersApi.exportData();
       const json = JSON.stringify(data, null, 2);
       await Clipboard.setStringAsync(json);
-      Alert.alert(
+      alertDialog(
         'Copied to clipboard',
         `Your data export (${(json.length / 1024).toFixed(1)} KB) has been copied. Paste it into a notes app or email to yourself, then save the file somewhere safe.`,
       );
     } catch (e: any) {
-      Alert.alert(t('deleteAccount.exportFailed'), e?.message ?? t('deleteAccount.tryAgain'));
+      alertDialog(t('deleteAccount.exportFailed'), e?.message ?? t('deleteAccount.tryAgain'));
     } finally {
       setExporting(false);
     }
@@ -55,7 +55,7 @@ export default function DeleteAccountScreen() {
     confirmText.trim().toLowerCase() === CONFIRM_PHRASE;
 
   const handleSubmit = () => {
-    Alert.alert(
+    alertDialog(
       t('deleteAccount.title'),
       t('deleteAccount.warning'),
       [
@@ -72,7 +72,7 @@ export default function DeleteAccountScreen() {
               const scheduled = (res as any)?.scheduledAt
                 ? new Date((res as any).scheduledAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
                 : 'in 30 days';
-              Alert.alert(
+              alertDialog(
                 'Account deletion scheduled',
                 `Your account will be permanently deleted on ${scheduled}. Sign back in anytime before then and tap "Cancel" in the amber banner at the top to keep your account.`,
                 [{ text: t('common.ok'), onPress: async () => {
@@ -81,7 +81,7 @@ export default function DeleteAccountScreen() {
                 }}],
               );
             } catch (e: any) {
-              Alert.alert(t('deleteAccount.couldNotDelete'), e?.message ?? t('deleteAccount.tryAgain'));
+              alertDialog(t('deleteAccount.couldNotDelete'), e?.message ?? t('deleteAccount.tryAgain'));
             } finally {
               setLoading(false);
             }

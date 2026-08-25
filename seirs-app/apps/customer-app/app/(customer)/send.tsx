@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, Pressable, StyleSheet, StatusBar, TextInput,
-  ActivityIndicator, Image, Alert, Keyboard, ScrollView, Linking, Modal, Dimensions,
+  ActivityIndicator, Image, Keyboard, ScrollView, Linking, Modal, Dimensions,
   KeyboardAvoidingView, Platform,
   BackHandler,
 } from 'react-native';
@@ -57,8 +57,10 @@ const PACKAGE_CATEGORIES = [
 type CategoryId = typeof PACKAGE_CATEGORIES[number]['id'];
 
 import { PACKAGE_VEHICLES, calcPackageFare } from '@/constants/mockData';
-import { getActiveRateCard } from '@/hooks/use-rate-card';
+import { getActiveRateCard } from '@/hooks/use-rate-card';
+
 import { naira } from '@/utils/money';
+import { showDialog } from '@/components/SeirsDialog';
 
 const VEHICLES = PACKAGE_VEHICLES;
 // Business Vehicle step, ported verbatim (founder 2026-08-21: exactly).
@@ -532,8 +534,9 @@ export default function SendScreen() {
 
   const mapRef   = useRef<MapView>(null);
 
-  // Real road-following polyline + km + ETA
-  const { coords: routeCoords, distanceText, durationText, distanceMeters } = useDirectionsPolyline(
+  // Real road-following polyline and km. durationText is deliberately
+  // NOT read: SEIRS promises no arrival times (2026-08-23 sweep).
+  const { coords: routeCoords, distanceText, distanceMeters } = useDirectionsPolyline(
     pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : null,
     dropoff ? { latitude: dropoff.lat, longitude: dropoff.lng } : null,
   );
@@ -625,11 +628,22 @@ export default function SendScreen() {
       dropoffCoords: packages.length === 1 && packages[0].dropoff
         ? { latitude: packages[0].dropoff.lat, longitude: packages[0].dropoff.lng }
         : undefined,
+      // Price the booking for WHEN it happens, not for when the sender
+      // is looking at the screen (2026-08-25). The rate card prices
+      // night, peak and weekend surcharges off scheduledAt, and
+      // create() below already sends scheduledFor, so the quote and the
+      // booking were pricing two different moments: a run booked at
+      // 22:40 for a 9 AM pickup carried tonight's NIGHT surcharge. The
+      // pin means the sender is charged the reviewed number either way,
+      // so the wrong one was simply the one they saw and paid.
+      scheduledAt: !scheduleNow && scheduledHour != null
+        ? buildScheduledFor(scheduledDate, scheduledHour).toISOString()
+        : undefined,
     } as any)
       .then((q: any) => { if (!cancelled) setRunQuote(q); })
       .catch((e: any) => { if (!cancelled) setRunQuoteError(e?.message ?? 'Could not price this booking.'); });
     return () => { cancelled = true; };
-  }, [packages, vehicleId, distKmRoute, pickup, quoteNonce]);
+  }, [packages, vehicleId, distKmRoute, pickup, scheduleNow, scheduledDate, scheduledHour, quoteNonce]);
 
   // Never silently fall back to the single-package number for a run: a
   // wrong total is worse than an honest "not priced yet".
@@ -819,7 +833,7 @@ export default function SendScreen() {
     if ((packages[pkgIndex]?.photos.length ?? 0) >= 5) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== 'granted') {
-      Alert.alert(t('send.alertPermissionTitle'), t('send.alertPermissionBody'));
+      showDialog({ title: t('send.alertPermissionTitle'), message: t('send.alertPermissionBody') });
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
@@ -1017,7 +1031,7 @@ export default function SendScreen() {
           },
         } as any);
       } else {
-        router.replace('/(customer)/history' as any);
+        router.replace('/(customer)/(tabs)/history');
       }
     } catch (e: any) {
       // An expired pin means the price may have moved: re-quote so the
@@ -1564,12 +1578,13 @@ export default function SendScreen() {
                   style={[styles.scheduleOpt, highlight(true)]}
                   onPress={() => {
                     const st = storePicked;
-                    Alert.alert(
-                      st.storeName,
-                      `${st.storeAddress}` +
-                      (st.openingHours ? `\n\nHours: ${st.openingHours}` : '') +
-                      (st.phone ? `\nPhone: ${st.phone}` : ''),
-                    );
+                    showDialog({
+                      title: st.storeName,
+                      message:
+                        `${st.storeAddress}` +
+                        (st.openingHours ? `\n\nHours: ${st.openingHours}` : '') +
+                        (st.phone ? `\nPhone: ${st.phone}` : ''),
+                    });
                   }}
                 >
                   <Store size={20} color={theme.accent} strokeWidth={1.75} />

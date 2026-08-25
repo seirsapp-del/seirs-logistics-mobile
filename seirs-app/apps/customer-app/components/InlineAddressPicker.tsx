@@ -10,7 +10,7 @@
  *  - Tap "Use my location"→ uses GPS + reverse geocode (or friendly fallback).
  */
 import {
-  View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, Alert, Linking,
+  View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -20,6 +20,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import type { PickedAddress } from '@/components/AddressPicker';
 import { mapsApi } from '@/services/api';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Places and geocoding go through our backend (security review
 // 2026-08-12): the Google key is no longer shipped inside the app.
 
@@ -97,7 +98,7 @@ export default function InlineAddressPicker({ label, dotColor, value, onSelect, 
       const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         if (!canAskAgain) {
-          Alert.alert(
+          alertDialog(
             'Location permission denied',
             'Location is off for SEIRS in your phone Settings. Turn it on to auto-fill your address.',
             [
@@ -106,7 +107,7 @@ export default function InlineAddressPicker({ label, dotColor, value, onSelect, 
             ],
           );
         } else {
-          Alert.alert(
+          alertDialog(
             'Location needed',
             'We need your location to auto-fill your current address. Tap the button again and allow.',
           );

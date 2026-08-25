@@ -15,6 +15,11 @@ import Constants from 'expo-constants';
 import { initI18n } from '@/i18n';
 import { usePushRegistration } from '@seirs/shared/hooks/usePushRegistration';
 import { ErrorBoundary } from '@seirs/shared/components/ErrorBoundary';
+// Themed replacement for the Android system AlertDialog (work order
+// item 4, 2026-08-24). Sits inside ThemeProvider because it reads the
+// palette, and outside AuthProvider so a dialog can be raised from any
+// screen including the signed-out ones.
+import { SeirsDialogProvider } from '@/components/SeirsDialog';
 import {
   configureErrorReporter,
   installGlobalErrorHandler,
@@ -142,8 +147,23 @@ function OTAUpdateChecker() {
 // flash of the inside of the app on cold launch.
 function AppContent() {
   const { isLoading, isAuthenticated, user } = useAuth();
-  // Register the device push token once authenticated. No-op until
-  // expo-notifications is installed + a native rebuild ships.
+  /**
+   * Register the device push token once authenticated.
+   *
+   * This call has been here since before expo-notifications was a
+   * dependency of THIS app. It appeared to work on the dev laptop only
+   * because the monorepo hoists the package up from customer-app and
+   * driver-app, so the JS resolved and nobody noticed. In a clean EAS
+   * release build for business the native module would never have been
+   * linked and push would have died silently, with no crash to point at
+   * it: the classic works-in-dev-breaks-in-release failure.
+   *
+   * Fixed 2026-08-24 by declaring `expo-notifications` in this app's own
+   * package.json and adding its config plugin to app.json. Both are
+   * NATIVE changes, so they do nothing until `npx expo run:android`
+   * rebuilds this app. Until that rebuild ships, push on business is
+   * still unverified.
+   */
   usePushRegistration(isAuthenticated);
   useEffect(() => {
     setReporterUserIdGetter(() => user?.id ?? null);
@@ -179,9 +199,11 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <ThemeProvider>
-            <AuthProvider>
-              <AppContent />
-            </AuthProvider>
+            <SeirsDialogProvider>
+              <AuthProvider>
+                <AppContent />
+              </AuthProvider>
+            </SeirsDialogProvider>
           </ThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

@@ -8,6 +8,7 @@ import { useRateCardSync } from '@/hooks/use-rate-card';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { DeletionPendingBanner } from '@/components/DeletionPendingBanner';
+import { DialogHost } from '@/components/SeirsDialog';
 import { View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { API_BASE } from '@/constants/config';
@@ -107,6 +108,12 @@ function RootStack() {
         </Stack>
       </View>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      {/* The themed replacement for Alert.alert, mounted once so any
+          screen can call showDialog(). It renders a Modal, so it sits
+          above the stack wherever it is placed in this tree. Without it
+          showDialog falls back to the Android system dialog, which is
+          what we are getting away from (2026-08-24). */}
+      <DialogHost />
     </View>
   );
 }

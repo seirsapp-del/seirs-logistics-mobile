@@ -53,14 +53,12 @@
     "title": "Dashbọọdụ",
     "totalDeliveries": "Nnyefe Niile",
     "activeDeliveries": "Na-arụ Ọrụ",
-    "walletBalance": "Ego Dị n'Akpa",
     "weeklySpend": "Mmefu Izu Ọsọ",
     "loyaltyPoints": "Pọintị Iguzosi Ike",
     "recentDeliveries": "Nnyefe Ndị Ọhụrụ",
     "viewAll": "Lee ha niile",
     "noDeliveries": "Enweghị nnyefe ka ugbu a",
     "newDelivery": "Nnyefe Ọhụrụ",
-    "csvUpload": "Bulite CSV",
     "quickActions": "Omume Ngwa Ngwa"
   },
   "deliveries": {
@@ -94,30 +92,6 @@
     "orderSummary": "Nchịkọta Iwu",
     "stops": "Ebe Nkwụsị",
     "estimatedCost": "Ọnụahịa A Tụrụ"
-  },
-  "csvUpload": {
-    "title": "Bulite CSV",
-    "subtitle": "Bulite faịlụ CSV iji mepụta ọtụtụ mbubata otu ugboro",
-    "downloadTemplate": "Budata Ihe Atụ",
-    "selectFile": "Họrọ Faịlụ CSV",
-    "preview": "Nlebanya",
-    "rows": "{{count}} ahịrị",
-    "uploadBtn": "Bulite & Mepụta Mbubata",
-    "required": "Kọlụm dị mkpa: Aha Onye Nnata, Ekwentị, Adreesị"
-  },
-  "wallet": {
-    "title": "Akpa Ego",
-    "balance": "Ego Dị",
-    "loyaltyPoints": "Pọintị Iguzosi Ike",
-    "pointsValue": "Uru ₦{{value}}",
-    "fundWallet": "Tinye Ego n'Akpa",
-    "transactionHistory": "Akụkọ Azụmahịa",
-    "noTransactions": "Enweghị azụmahịa ka ugbu a",
-    "credit": "Ndata",
-    "debit": "Mmefu",
-    "topUp": "Tinye Ego",
-    "enterAmount": "Tinye ọnụego",
-    "customAmount": "Ọnụego ị họọrọ"
   },
   "team": {
     "title": "Ndị Otu",
@@ -263,7 +237,7 @@
     "heroTagline": "Bufee ihe ọ bụla, n'ebe ọ bụla na Naịjirịa",
     "heroBadgeOutlet": "Ọnụ ụzọ Ọhụrụ",
     "heroBadgeTip": "Ndụmọdụ Izu",
-    "heroBadgeNew": "Na-abịa nso",
+    "heroBadgeNew": "Ọhụrụ",
     "heroBadgePromo": "Nweta ụgwọ ọrụ",
     "heroCard2Title": "Anyị na-ezigaru site na Shoprite Ikeja ugbu a",
     "heroCard2Desc": "Ruo na mbelata 25% n'iwu mbụ atọ gị n'izu a",

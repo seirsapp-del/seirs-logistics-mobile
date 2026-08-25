@@ -8,8 +8,7 @@
  * no coloured cards.
  */
 import {
-  View, Text, Pressable, StyleSheet, FlatList, StatusBar,
-  RefreshControl, ActivityIndicator, Alert,
+  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +19,7 @@ import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { notificationsApi } from '@/services/api';
 
+import { alertDialog } from '@/components/SeirsDialog';
 interface Notif {
   id:    string;
   type:  string;
@@ -107,8 +107,10 @@ export default function BusinessNotificationsScreen() {
   };
 
   const clearAll = () => {
-    Alert.alert('Clear notifications', 'Which ones should go?', [
-      { text: 'Cancel', style: 'cancel' },
+    // Cancel LAST: three options stack vertically, and reading a list of
+    // real choices with the way out at the top is backwards going down a
+    // page. Android put it first; this dialog does not have to.
+    alertDialog('Clear notifications', 'Which ones should go?', [
       {
         text: 'Clear read only',
         onPress: async () => {
@@ -124,6 +126,7 @@ export default function BusinessNotificationsScreen() {
           try { await notificationsApi.removeAll(false); } catch {}
         },
       },
+      { text: 'Cancel', style: 'cancel' },
     ]);
   };
 

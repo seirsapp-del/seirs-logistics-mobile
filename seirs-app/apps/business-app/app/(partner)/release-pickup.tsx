@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, Vibration,
-  TextInput, ScrollView, KeyboardAvoidingView, Platform, Image,
+  View, Text, StyleSheet, Pressable, ActivityIndicator, Vibration, TextInput, ScrollView, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -11,6 +10,7 @@ import { Icon } from '@/components/Icon';
 import { partnerApi, identityApi, uploadApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Spec V8 §3 / §4.8: partner staff releases a package to the recipient
 // after identity verification. Two methods supported per Spec V8 §1.17:
 //   - PHYSICAL_ID + email OTP (primary path for recipients with ID)
@@ -105,7 +105,7 @@ export default function ReleasePickupScreen() {
 
   const requestOtp = async () => {
     if (!dropoff?.recipientUserId) {
-      Alert.alert(
+      alertDialog(
         'Cannot send OTP',
         'This recipient has no SEIRS account. Use the SEIRS-ID path with their typed signature instead.',
       );
@@ -117,7 +117,7 @@ export default function ReleasePickupScreen() {
       const res = await identityApi.issueHandoffOtp(dropoff.id, dropoff.recipientUserId);
       setOtpSent(true);
       setOtpExpiryMin(res.expiresInMinutes);
-      Alert.alert(
+      alertDialog(
         'OTP sent',
         `A 6-digit code has been emailed to ${dropoff.recipientName}. It expires in ${res.expiresInMinutes} minutes.`,
       );
@@ -148,10 +148,10 @@ export default function ReleasePickupScreen() {
   // ── Photo capture ────────────────────────────────────────────────────────
 
   const pickPhoto = async () => {
-    Alert.alert('Collection photo', 'Capture a photo of the recipient with the package.', [
+    alertDialog('Collection photo', 'Capture a photo of the recipient with the package.', [
       { text: 'Camera', onPress: async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') { Alert.alert('Camera access required'); return; }
+        if (status !== 'granted') { alertDialog('Camera access required'); return; }
         const r = await ImagePicker.launchCameraAsync({ quality: 0.85 });
         if (!r.canceled) setPhotoUri(r.assets[0].uri);
       }},
@@ -163,16 +163,16 @@ export default function ReleasePickupScreen() {
 
   const submit = async () => {
     if (!dropoff) return;
-    if (!photoUri) { Alert.alert('Photo required', 'Take a collection photo before releasing the package.'); return; }
+    if (!photoUri) { alertDialog('Photo required', 'Take a collection photo before releasing the package.'); return; }
 
     if (method === 'physical_id') {
       if (!idType || !idNumber.trim() || !otp.trim()) {
-        Alert.alert('Missing fields', 'ID type, ID number, and the OTP from the recipient are all required.');
+        alertDialog('Missing fields', 'ID type, ID number, and the OTP from the recipient are all required.');
         return;
       }
     } else {
       if (!seirsCode.trim() || !typedName.trim()) {
-        Alert.alert('Missing fields', 'SEIRS ID code and typed full name are both required.');
+        alertDialog('Missing fields', 'SEIRS ID code and typed full name are both required.');
         return;
       }
     }
@@ -194,7 +194,7 @@ export default function ReleasePickupScreen() {
           : { seirsCode: seirsCode.trim().toUpperCase(), typedName: typedName.trim() }),
       });
 
-      Alert.alert(
+      alertDialog(
         'Released',
         `Package handed over to ${dropoff.recipientName}. Audit trail recorded.`,
         [

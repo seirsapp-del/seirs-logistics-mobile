@@ -21,6 +21,10 @@ import {
   // both drawers, ShieldCheck the verified-identity card, FileSignature the
   // contract documents, Flag "Report an issue", File every "other" document.
   AlertTriangle, Flag, QrCode, ShieldCheck, FileSignature, File,
+  // Added 2026-08-24 for the package QR screen: the multi-package run
+  // pages between one parcel's ticket and the next, and ArrowLeft is
+  // already spoken for by the header back button on that screen.
+  ChevronLeft, ExternalLink,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -47,6 +51,10 @@ const ICONS: Record<string, LucideIcon> = {
   // both drawers, ShieldCheck the verified-identity card, FileSignature the
   // contract documents, Flag "Report an issue", File every "other" document.
   AlertTriangle, Flag, QrCode, ShieldCheck, FileSignature, File,
+  // Added 2026-08-24 for the package QR screen: the multi-package run
+  // pages between one parcel's ticket and the next, and ArrowLeft is
+  // already spoken for by the header back button on that screen.
+  ChevronLeft, ExternalLink,
 };
 
 // Last-resort glyph, borrowed from the `FALLBACK[name] ?? something` shape

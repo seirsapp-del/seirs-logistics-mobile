@@ -1,6 +1,6 @@
 import {
   View, Text, Pressable, StyleSheet, ScrollView, TextInput, StatusBar,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { Icon } from '@/components/Icon';
 import { supportApi, deliveriesApi } from '@/services/api';
+import { showDialog } from '@/components/SeirsDialog';
 
 /**
  * Report an issue, rebuilt in the business design language (founder
@@ -82,7 +83,7 @@ export default function ReportScreen() {
       });
       setDone(true);
     } catch (e: any) {
-      Alert.alert(t('rateDriver.couldNotSubmit'), e?.message ?? t('rateDriver.tryAgain'));
+      showDialog({ title: t('rateDriver.couldNotSubmit'), message: e?.message ?? t('rateDriver.tryAgain') });
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -14,6 +14,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { deliveriesApi, dropoffApi, identityApi } from '@/services/api';
+import { showDialog } from '@/components/SeirsDialog';
 
 // Spec V8 §1.17: recipient-side handoff identity surface. Used when the
 // customer is collecting a package (door delivery from driver, or pickup
@@ -104,12 +105,12 @@ export default function RecipientIdScreen() {
     setIssuing(deliveryId);
     try {
       const res = await identityApi.issueHandoffOtp(deliveryId, user.id);
-      Alert.alert(
-        'Code sent',
-        `A 6-digit verification code has been emailed to you. It expires in ${res.expiresInMinutes} minutes. Check your inbox and read it aloud to the staff or driver at handoff.`,
-      );
+      showDialog({
+        title: 'Code sent',
+        message: `A 6-digit verification code has been emailed to you. It expires in ${res.expiresInMinutes} minutes. Check your inbox and read it aloud to the staff or driver at handoff.`,
+      });
     } catch (e: any) {
-      Alert.alert('Could not send code', e?.message ?? 'Try again in a moment.');
+      showDialog({ title: 'Could not send code', message: e?.message ?? 'Try again in a moment.' });
     } finally {
       setIssuing(null);
     }

@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar, Alert, Linking, ScrollView, ActivityIndicator,
+  View, Text, Pressable, StyleSheet, StatusBar, Linking, ScrollView, ActivityIndicator,
   Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { sosApi, apiRequest } from '@/services/api';
 
+import { alertDialog } from '@/components/SeirsDialog';
 /**
  * One row of the emergency directory. Admin-managed and served from
  * GET /config/emergency-contacts so the numbers can be corrected without
@@ -178,7 +179,7 @@ export default function SOSScreen() {
     } catch (e: any) {
       // Stay open so the typed text is not lost. Support already has the
       // alert and the location: only the detail failed to attach.
-      Alert.alert(t('sos.noteFailed'), e?.message ?? t('sos.noteFailedMsg'));
+      alertDialog(t('sos.noteFailed'), e?.message ?? t('sos.noteFailedMsg'));
     } finally {
       setNoteSaving(false);
     }
@@ -189,7 +190,7 @@ export default function SOSScreen() {
     // In an emergency that is the worst possible lie (sweep 2026-08-23).
     const clean = number.replace(/[^0-9+*#]/g, '');
     Linking.openURL(`tel:${clean}`).catch(() =>
-      Alert.alert(t('sos.callDialog'), number));
+      alertDialog(t('sos.callDialog'), number));
   };
 
   const fireSOS = async () => {
@@ -217,13 +218,13 @@ export default function SOSScreen() {
       setAlertId(created.id);
     } catch (e: any) {
       // Surface the failure but stay in activated state: user can retry.
-      Alert.alert(t('sos.cannotReach'),
+      alertDialog(t('sos.cannotReach'),
         e?.message ?? t('sos.cannotReachMsg'));
     }
   };
 
   const handleSOS = () => {
-    Alert.alert(
+    alertDialog(
       t('sos.confirmSendTitle'),
       t('sos.confirmSendMsg'),
       [

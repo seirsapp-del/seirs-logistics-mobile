@@ -18,6 +18,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'expo-router';
 import { sosApi } from '@/services/api';
 
+import { alertDialog } from '@/components/SeirsDialog';
 export default function BusinessSosScreen() {
   const router     = useRouter();
   const { isDark } = useTheme();
@@ -58,14 +59,14 @@ export default function BusinessSosScreen() {
       // alarm button below is untimed and is one Skip away.
       if (created?.id) setNoteOpen(true);
     } catch (e: any) {
-      Alert.alert('Could not send the alert', e?.message ?? 'Call 112 directly if you are in danger.');
+      alertDialog('Could not send the alert', e?.message ?? 'Call 112 directly if you are in danger.');
     } finally {
       setFiring(false);
     }
   };
 
   const confirmFire = () => {
-    Alert.alert(
+    alertDialog(
       'Send SOS alert?',
       'SEIRS support is alerted immediately with your location and account. False alarms can be cancelled in the next moments.',
       [
@@ -82,7 +83,7 @@ export default function BusinessSosScreen() {
     setNoteOpen(false);
     setNoteText('');
     setNoteSent(false);
-    Alert.alert('Cancelled', 'The alert was withdrawn as a false alarm.');
+    alertDialog('Cancelled', 'The alert was withdrawn as a false alarm.');
   };
 
   const submitNote = async () => {
@@ -96,7 +97,7 @@ export default function BusinessSosScreen() {
     } catch (e: any) {
       // Stay open so the typed text is not lost. Support already has the
       // alert and the location: only the detail failed to attach.
-      Alert.alert('Could not send that detail',
+      alertDialog('Could not send that detail',
         e?.message ?? 'Support already has your alert and your location. Try again, or call 112.');
     } finally {
       setNoteSaving(false);

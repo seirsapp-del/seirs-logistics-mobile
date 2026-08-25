@@ -1,11 +1,13 @@
 import {
   View, Text, Pressable, StyleSheet, ScrollView, TextInput, StatusBar,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Icon } from '@/components/Icon';
+import { tint } from '@/constants/tint';
+import { useSeirsDialog } from '@/components/SeirsDialog';
 import { useColors, useTheme } from '@/context/ThemeContext';
 import { businessApi, supportApi } from '@/services/api';
 
@@ -28,6 +30,11 @@ const CATEGORIES = [
 ] as const;
 
 export default function BusinessReportScreen() {
+  // Themed dialogs, not the Android system AlertDialog (work order
+  // item 4, 2026-08-24). Same signature as Alert.alert, so these are
+  // straight renames, but it renders every button instead of
+  // silently discarding the fourth.
+  const dialog = useSeirsDialog();
   const router  = useRouter();
   const colors  = useColors();
   const { isDark } = useTheme();
@@ -69,7 +76,7 @@ export default function BusinessReportScreen() {
       });
       setDone(true);
     } catch (e: any) {
-      Alert.alert('Could not send', e?.message ?? 'Please try again.');
+      dialog.alert('Could not send', e?.message ?? 'Please try again.');
     } finally {
       setLoading(false);
     }
@@ -80,8 +87,12 @@ export default function BusinessReportScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <View style={styles.doneWrap}>
-          <View style={[styles.doneIcon, { backgroundColor: '#16A34A20' }]}>
-            <Icon name="Check" size={34} color="#16A34A" />
+          {/* '#16A34A20' composited to #D9EBDB over the cream light
+              background: the exact grey-green sludge the founder flagged on
+              the driver ACTIVE JOB card, 2.65:1 against its own tick
+              (2026-08-24). Opaque token, correct in both themes. */}
+          <View style={[styles.doneIcon, { backgroundColor: tint('green', isDark).bg }]}>
+            <Icon name="Check" size={34} color={tint('green', isDark).fg} />
           </View>
           <Text style={[styles.doneTitle, { color: colors.text }]}>Report received</Text>
           <Text style={[styles.doneBody, { color: colors.textSecond }]}>

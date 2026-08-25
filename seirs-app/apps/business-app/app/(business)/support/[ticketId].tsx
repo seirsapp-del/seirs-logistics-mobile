@@ -3,8 +3,7 @@
  * Paperclip attach for screenshots. 15s poll while open.
  */
 import {
-  View, Text, StyleSheet, FlatList, Pressable, TextInput, StatusBar,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Alert, Linking,
+  View, Text, StyleSheet, FlatList, Pressable, TextInput, StatusBar, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
@@ -16,6 +15,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supportApi, uploadApi, type SupportThreadDTO } from '@/services/api';
 
+import { alertDialog } from '@/components/SeirsDialog';
 export default function BusinessSupportThreadScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
@@ -54,7 +54,7 @@ export default function BusinessSupportThreadScreen() {
       await load();
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
-      Alert.alert('Could not send', e?.message ?? String(e));
+      alertDialog('Could not send', e?.message ?? String(e));
       setInput(body);
     } finally { setSending(false); }
   };
@@ -69,25 +69,25 @@ export default function BusinessSupportThreadScreen() {
       await load();
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
-      Alert.alert('Could not upload photo', e?.message ?? String(e));
+      alertDialog('Could not upload photo', e?.message ?? String(e));
     } finally { setUploading(false); }
   };
 
   const pickCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Camera permission needed'); return; }
+    if (!perm.granted) { alertDialog('Camera permission needed'); return; }
     const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
     if (!r.canceled && r.assets?.[0]?.uri) await sendImage(r.assets[0].uri);
   };
   const pickGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Photo permission needed'); return; }
+    if (!perm.granted) { alertDialog('Photo permission needed'); return; }
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
     if (!r.canceled && r.assets?.[0]?.uri) await sendImage(r.assets[0].uri);
   };
   const attach = () => {
     if (uploading || sending) return;
-    Alert.alert('Attach photo', 'Choose where to attach from.', [
+    alertDialog('Attach photo', 'Choose where to attach from.', [
       { text: 'Take photo',   onPress: pickCamera  },
       { text: 'From gallery', onPress: pickGallery },
       { text: 'Cancel',       style: 'cancel'      },

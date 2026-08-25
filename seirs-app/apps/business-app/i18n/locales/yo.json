@@ -53,14 +53,12 @@
     "title": "Pátákó-ìṣiṣẹ́",
     "totalDeliveries": "Àpapọ̀ Ìránṣẹ́",
     "activeDeliveries": "Tó n Ṣiṣẹ́",
-    "walletBalance": "Iye Àpamọ́wọ̀",
     "weeklySpend": "Ìnáwó Ọ̀sẹ̀",
     "loyaltyPoints": "Àwọn Ìdí Ìdúróṣinṣin",
     "recentDeliveries": "Àwọn Ìránṣẹ́ Àìpẹ́",
     "viewAll": "Wo gbogbo",
     "noDeliveries": "Kò sí ìránṣẹ́ síbẹ̀ṣibẹ̀",
     "newDelivery": "Ìránṣẹ́ Tuntun",
-    "csvUpload": "Gbé CSV Sókè",
     "quickActions": "Àwọn Ìgbésẹ̀ Yára"
   },
   "deliveries": {
@@ -94,30 +92,6 @@
     "orderSummary": "Àkópọ̀ Àṣẹ",
     "stops": "Àwọn Idúró",
     "estimatedCost": "Iye Tó Ń Ṣẹ̀dá"
-  },
-  "csvUpload": {
-    "title": "Ìgbé CSV Sókè",
-    "subtitle": "Gbé fáìlì CSV sókè láti ṣẹ̀dá ọ̀pọ̀lọpọ̀ ìránṣẹ́ ní ìgbà kan",
-    "downloadTemplate": "Gba Àwòṣe",
-    "selectFile": "Yan Fáìlì CSV",
-    "preview": "Àkíyèsí",
-    "rows": "{{count}} ọ̀wọ́",
-    "uploadBtn": "Gbé sókè & Ṣẹ̀dá Àwọn Ìránṣẹ́",
-    "required": "Àwọn ọ̀wọ́ tó pọndandan: Orúkọ Olùgbà, Fóònù, Àdírẹ́ẹ̀sì"
-  },
-  "wallet": {
-    "title": "Àpamọ́wọ̀",
-    "balance": "Iye",
-    "loyaltyPoints": "Àwọn Ìdí Ìdúróṣinṣin",
-    "pointsValue": "Iye ₦{{value}}",
-    "fundWallet": "Ṣe Ìgbowó Àpamọ́wọ̀",
-    "transactionHistory": "Ìtàn Ìdúnàádúrà",
-    "noTransactions": "Kò sí ìdúnàádúrà síbẹ̀ṣibẹ̀",
-    "credit": "Gbigba",
-    "debit": "Ìsanwó",
-    "topUp": "Fún Ni",
-    "enterAmount": "Tẹ̀ iye",
-    "customAmount": "Iye tí o fẹ́"
   },
   "team": {
     "title": "Àwọn Ọmọ-ẹgbẹ́",
@@ -263,7 +237,7 @@
     "heroTagline": "Gbé ohunkóhun, sí ibikíbi ní Nàìjíríà",
     "heroBadgeOutlet": "Ìta Tuntun",
     "heroBadgeTip": "Ìmọ̀ràn Ọ̀sẹ̀",
-    "heroBadgeNew": "Ó ń bọ̀",
+    "heroBadgeNew": "Tuntun",
     "heroBadgePromo": "Gba ẹ̀bùn",
     "heroCard2Title": "A ti ń firanṣẹ láti Shoprite Ikeja",
     "heroCard2Desc": "Ẹ̀dínkún 25% lórí ìbéère mẹta àkọkọ rẹ ní ọ̀sẹ̀ yìí",

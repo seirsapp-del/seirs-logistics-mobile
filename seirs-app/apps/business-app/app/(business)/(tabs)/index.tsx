@@ -11,12 +11,14 @@ import { SeirsMarkBold } from '@/components/SeirsLogoV2';
 import { NotificationBell } from '@/components/NotificationBell';
 import { businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
-import { useColors } from '@/context/ThemeContext';
+import { useColors, useTheme } from '@/context/ThemeContext';
+import { tint, statusTint } from '@/constants/tint';
 
 export default function BusinessDashboard() {
   const router   = useRouter();
   const insets   = useSafeAreaInsets();
   const colors   = useColors();
+  const { isDark } = useTheme();
   const { user } = useAuth();
   const [data,       setData]       = useState<any>(null);
   const [loading,    setLoading]    = useState(true);
@@ -29,11 +31,16 @@ export default function BusinessDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Hue, not a raw hex. The icon circle used to be `color + '18'` with
+  // the same hex as its own icon, which composites to under 3:1 over
+  // the light surface for the green and amber tiles: below the WCAG
+  // floor for a graphical object, and on the first screen of the app
+  // (2026-08-24).
   const stats = [
-    { label: 'Today\'s Deliveries', value: data?.todayDeliveries ?? 0, icon: 'Package' as const, color: '#3A7BD5' },
-    { label: 'Active',              value: data?.activeDeliveries ?? 0, icon: 'Zap'     as const, color: '#16A34A' },
-    { label: 'Pending',             value: data?.pendingDeliveries ?? 0, icon: 'Clock'   as const, color: '#D97706' },
-    { label: 'Loyalty Points',      value: data?.loyaltyPoints ?? 0,    icon: 'Star'    as const, color: '#D97706' },
+    { label: 'Today\'s Deliveries', value: data?.todayDeliveries ?? 0, icon: 'Package' as const, hue: 'blue'  as const },
+    { label: 'Active',              value: data?.activeDeliveries ?? 0, icon: 'Zap'     as const, hue: 'green' as const },
+    { label: 'Pending',             value: data?.pendingDeliveries ?? 0, icon: 'Clock'   as const, hue: 'amber' as const },
+    { label: 'Loyalty Points',      value: data?.loyaltyPoints ?? 0,    icon: 'Star'    as const, hue: 'amber' as const },
   ];
 
   return (
@@ -126,8 +133,8 @@ export default function BusinessDashboard() {
                     key={s.label}
                     style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   >
-                    <View style={[styles.statIcon, { backgroundColor: s.color + '18' }]}>
-                      <Icon name={s.icon} size={18} color={s.color} />
+                    <View style={[styles.statIcon, { backgroundColor: tint(s.hue, isDark).bg }]}>
+                      <Icon name={s.icon} size={18} color={tint(s.hue, isDark).fg} />
                     </View>
                     <Text style={[styles.statValue, { color: colors.text }]}>{s.value.toLocaleString()}</Text>
                     <Text style={[styles.statLabel, { color: colors.textSecond }]}>{s.label}</Text>
@@ -202,11 +209,12 @@ function ActionCard({ icon, label, sub, onPress, primary }: {
 
 function DeliveryRow({ delivery }: { delivery: any }) {
   const colors = useColors();
-  const STATUS_COLOR: Record<string, string> = {
-    pending:   '#D97706', assigned: '#3A7BD5', in_transit: '#0F2B4C',
-    delivered: '#16A34A', cancelled: '#DC2626',
-  };
-  const c = STATUS_COLOR[delivery.status] ?? colors.textThird;
+  const { isDark } = useTheme();
+  // This was the THIRD private copy of a status-colour map in this
+  // app, and like the other two it drew cancelled in red, which made
+  // it indistinguishable from failed. One shared mapping now, and one
+  // that reads in light mode as well as dark (2026-08-24).
+  const st = statusTint(delivery.status, isDark);
   return (
     <View style={[styles.deliveryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.deliveryLeft}>
@@ -215,8 +223,8 @@ function DeliveryRow({ delivery }: { delivery: any }) {
           {delivery.dropoffAddress ?? delivery.pickupAddress ?? '-'}
         </Text>
       </View>
-      <View style={[styles.statusBadge, { backgroundColor: c + '20' }]}>
-        <Text style={[styles.statusText, { color: c }]}>{delivery.status}</Text>
+      <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
+        <Text style={[styles.statusText, { color: st.fg }]}>{delivery.status}</Text>
       </View>
     </View>
   );

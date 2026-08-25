@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, StatusBar,
-  ActivityIndicator, Alert, Image,
+  ActivityIndicator, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
+import { showDialog, type DialogAction } from '@/components/SeirsDialog';
 
 const VEHICLE_LABEL: Record<string, string> = {
   motorcycle: 'Okada', tricycle: 'Keke', car: 'Car', van: 'Danfo / Bus',
@@ -38,7 +39,7 @@ export default function TravelBuddyScreen() {
 
   const search = async () => {
     if (!from.trim() || !to.trim()) {
-      Alert.alert('Both cities needed', 'Where are you leaving from, and where to?');
+      showDialog({ title: 'Both cities needed', message: 'Where are you leaving from, and where to?' });
       return;
     }
     setLoading(true);
@@ -47,29 +48,53 @@ export default function TravelBuddyScreen() {
       const rows = await deliveriesApi.travelBuddyTrips(from.trim(), to.trim());
       setTrips(rows ?? []);
     } catch (e: any) {
-      Alert.alert('Search failed', e?.message ?? 'Try again.');
+      showDialog({ title: 'Search failed', message: e?.message ?? 'Try again.' });
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Seat picker, then luggage.
+   *
+   * BUG FIXED 2026-08-24: this built up to five Alert buttons (four seat
+   * counts plus Cancel) and handed them to Alert.alert. Android's
+   * AlertDialog has three button slots and React Native silently drops
+   * everything past the third, so on any trip with three or more seats
+   * left, "3 seats" and "4 seats" were never rendered and neither was
+   * Cancel: the customer could not book more than two seats and had no
+   * button to back out with. Nothing warned about it because the drop
+   * happens inside the platform. SeirsDialog renders every action, in a
+   * list that scrolls, so a choice can no longer vanish.
+   *
+   * The luggage step had the mirror problem in miniature: three options
+   * and no way out at all.
+   */
   const bookSeat = (trip: any) => {
     const seatWord = (n: number) => `${n} seat${n === 1 ? '' : 's'}`;
-    const options: any[] = [];
+    const seats: DialogAction[] = [];
     for (let n = 1; n <= Math.min(4, trip.seatsLeft); n++) {
-      options.push({
+      seats.push({
         text: seatWord(n),
         onPress: () => {
-          Alert.alert('Luggage?', 'A small bag rides free. Large luggage adds a small fee.', [
-            { text: 'No luggage',  onPress: () => doBook(trip, n, 'none') },
-            { text: 'Small bag',   onPress: () => doBook(trip, n, 'small') },
-            { text: 'Large',       onPress: () => doBook(trip, n, 'large') },
-          ]);
+          showDialog({
+            title: 'Any luggage?',
+            message: 'A small bag rides free. Large luggage adds a small fee.',
+            actions: [
+              { text: 'No luggage', onPress: () => doBook(trip, n, 'none') },
+              { text: 'Small bag',  onPress: () => doBook(trip, n, 'small') },
+              { text: 'Large',      onPress: () => doBook(trip, n, 'large') },
+              { text: 'Cancel',     style: 'cancel' },
+            ],
+          });
         },
       });
     }
-    options.push({ text: 'Cancel', style: 'cancel' });
-    Alert.alert('How many seats?', `${trip.seatsLeft} available on this trip.`, options);
+    showDialog({
+      title: 'How many seats?',
+      message: `${trip.seatsLeft} available on this trip.`,
+      actions: [...seats, { text: 'Cancel', style: 'cancel' }],
+    });
   };
 
   const doBook = async (trip: any, seats: number, luggage: string) => {
@@ -85,7 +110,7 @@ export default function TravelBuddyScreen() {
         },
       } as any);
     } catch (e: any) {
-      Alert.alert('Could not book', e?.message ?? 'Try again.');
+      showDialog({ title: 'Could not book', message: e?.message ?? 'Try again.' });
     } finally {
       setBooking(null);
     }

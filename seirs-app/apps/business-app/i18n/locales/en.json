@@ -53,14 +53,12 @@
     "title": "Dashboard",
     "totalDeliveries": "Total Deliveries",
     "activeDeliveries": "Active",
-    "walletBalance": "Wallet Balance",
     "weeklySpend": "Weekly Spend",
     "loyaltyPoints": "Loyalty Points",
     "recentDeliveries": "Recent Deliveries",
     "viewAll": "View all",
     "noDeliveries": "No deliveries yet",
     "newDelivery": "New Delivery",
-    "csvUpload": "CSV Upload",
     "quickActions": "Quick Actions"
   },
   "deliveries": {
@@ -94,30 +92,6 @@
     "orderSummary": "Order Summary",
     "stops": "Stops",
     "estimatedCost": "Estimated Cost"
-  },
-  "csvUpload": {
-    "title": "CSV Upload",
-    "subtitle": "Upload a CSV file to create multiple deliveries at once",
-    "downloadTemplate": "Download Template",
-    "selectFile": "Select CSV File",
-    "preview": "Preview",
-    "rows": "{{count}} rows",
-    "uploadBtn": "Upload & Create Deliveries",
-    "required": "Required columns: Recipient Name, Phone, Address"
-  },
-  "wallet": {
-    "title": "Wallet",
-    "balance": "Balance",
-    "loyaltyPoints": "Loyalty Points",
-    "pointsValue": "₦{{value}} value",
-    "fundWallet": "Fund Wallet",
-    "transactionHistory": "Transaction History",
-    "noTransactions": "No transactions yet",
-    "credit": "Credit",
-    "debit": "Debit",
-    "topUp": "Top Up",
-    "enterAmount": "Enter amount",
-    "customAmount": "Custom amount"
   },
   "team": {
     "title": "Team Members",
@@ -263,7 +237,7 @@
     "heroTagline": "Move anything, anywhere in Nigeria",
     "heroBadgeOutlet": "New outlet",
     "heroBadgeTip": "Weekly tip",
-    "heroBadgeNew": "Coming soon",
+    "heroBadgeNew": "New",
     "heroBadgePromo": "Earn rewards",
     "heroCard2Title": "Now delivering from Shoprite Ikeja",
     "heroCard2Desc": "Give us the address, we handle the pickup",

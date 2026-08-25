@@ -7,7 +7,6 @@ import { Image,
   ScrollView,
   ActivityIndicator,
   Modal,
-  Alert,
   Share,
   Linking,
 } from 'react-native';
@@ -22,8 +21,9 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
 import { deliveriesApi, dropoffApi } from '@/services/api';
 import DeliveryTrackMap from '@/components/DeliveryTrackMap';
-import { StreetAutocomplete } from '@/components/StreetAutocomplete';
+import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { naira } from '@/utils/money';
+import { showDialog } from '@/components/SeirsDialog';
 
 // Labels looked up via t(`tracking.step${cap}`) at render so language
 // switches reflect live.
@@ -189,10 +189,10 @@ export default function TrackScreen() {
       if (res?.authorizationUrl) {
         await Linking.openURL(res.authorizationUrl);
       } else {
-        Alert.alert('Could not start payment', 'Please try again in a moment.');
+        showDialog({ title: 'Could not start payment', message: 'Please try again in a moment.' });
       }
     } catch (e: any) {
-      Alert.alert('Could not start payment', e?.message ?? 'Please try again.');
+      showDialog({ title: 'Could not start payment', message: e?.message ?? 'Please try again.' });
     } finally {
       setPayingFee(false);
     }
@@ -231,38 +231,40 @@ export default function TrackScreen() {
     if (!deliveryId) return;
     try {
       const q = await deliveriesApi.getReturnQuote(deliveryId);
-      Alert.alert(
-        'Return this package?',
-        `${q.note}\n\nBack to: ${q.returnTo}\n` +
-        `${q.km} km by road\n` +
-        `Transport: ${naira(q.transportNgn)}\n` +
-        (q.counterOwedNgn > 0
-          ? `Counter owed: ${naira(q.counterOwedNgn)}\n`
-          : '') +
-        `Total: ${naira(q.totalNgn)}` +
-        (q.needsSupport ? '\n\nSupport has to approve this before you can pay.' : ''),
-        [
-          { text: 'Not now', style: 'cancel' },
+      showDialog({
+        title: 'Return this package?',
+        message:
+          `${q.note}\n\nBack to: ${q.returnTo}\n` +
+          `${q.km} km by road\n` +
+          `Transport: ${naira(q.transportNgn)}\n` +
+          (q.counterOwedNgn > 0
+            ? `Counter owed: ${naira(q.counterOwedNgn)}\n`
+            : '') +
+          `Total: ${naira(q.totalNgn)}` +
+          (q.needsSupport ? '\n\nSupport has to approve this before you can pay.' : ''),
+        actions: [
           {
             text: q.needsSupport ? 'Ask support' : 'Request return',
+            style: 'primary',
             onPress: async () => {
               try {
                 const r = await deliveriesApi.requestReturn(deliveryId);
-                Alert.alert(
-                  r.status === 'pending' ? 'Sent to support' : 'Return approved',
-                  r.status === 'pending'
+                showDialog({
+                  title: r.status === 'pending' ? 'Sent to support' : 'Return approved',
+                  message: r.status === 'pending'
                     ? 'A rider is carrying this package, so support has to arrange it. We will let you know.'
                     : 'Pay in the app and we will bring it back to your pickup address.',
-                );
+                });
               } catch (e: any) {
-                Alert.alert('Could not request that', e?.message ?? 'Please try again.');
+                showDialog({ title: 'Could not request that', message: e?.message ?? 'Please try again.' });
               }
             },
           },
+          { text: 'Not now', style: 'cancel' },
         ],
-      );
+      });
     } catch (e: any) {
-      Alert.alert('Could not price a return', e?.message ?? 'Please try again.');
+      showDialog({ title: 'Could not price a return', message: e?.message ?? 'Please try again.' });
     }
   };
 
@@ -272,7 +274,7 @@ export default function TrackScreen() {
       const res = await deliveriesApi.payReturn(deliveryId);
       if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
     } catch (e: any) {
-      Alert.alert('Could not start payment', e?.message ?? 'Please try again.');
+      showDialog({ title: 'Could not start payment', message: e?.message ?? 'Please try again.' });
     }
   };
 
@@ -294,13 +296,14 @@ export default function TrackScreen() {
       setAddrOpen(false);
       setAddrText('');
       setAddrCoords(null);
-      Alert.alert(
-        'Sent to support',
-        `We quoted ${naira(res.quoteNgn)} for the ${Number(res.km).toFixed(1)} km ` +
-        `from where your rider is now. Support will approve or decline, and you only pay if they approve.`,
-      );
+      showDialog({
+        title: 'Sent to support',
+        message:
+          `We quoted ${naira(res.quoteNgn)} for the ${Number(res.km).toFixed(1)} km ` +
+          `from where your rider is now. Support will approve or decline, and you only pay if they approve.`,
+      });
     } catch (e: any) {
-      Alert.alert('Could not send that', e?.message ?? 'Please try again.');
+      showDialog({ title: 'Could not send that', message: e?.message ?? 'Please try again.' });
     } finally {
       setAddrBusy(false);
     }
@@ -320,31 +323,33 @@ export default function TrackScreen() {
   };
 
   const confirmRedirect = (store: any) => {
-    Alert.alert(
-      'Redirect to this store?',
-      `${store.storeName}\n${store.storeAddress}\n\nUse this only when the recipient cannot receive the package. ` +
-      `The driver will deliver to this store instead, and the recipient collects it with their code. ` +
-      `You can only redirect once per delivery.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showDialog({
+      title: 'Redirect to this store?',
+      message:
+        `${store.storeName}\n${store.storeAddress}\n\nUse this only when the recipient cannot receive the package. ` +
+        `The driver will deliver to this store instead, and the recipient collects it with their code. ` +
+        `You can only redirect once per delivery.`,
+      actions: [
         {
           text: 'Redirect',
+          style: 'primary',
           onPress: async () => {
             setRedirectBusy(true);
             try {
               await deliveriesApi.redirectToStore(deliveryData.id, store.id);
               setRedirectOpen(false);
-              Alert.alert('Redirected', `The driver now delivers to ${store.storeName}. The recipient collects with their code.`);
+              showDialog({ title: 'Redirected', message: `The driver now delivers to ${store.storeName}. The recipient collects with their code.` });
               handleSearch();
             } catch (e: any) {
-              Alert.alert('Could not redirect', e?.message ?? 'Please try again or contact support.');
+              showDialog({ title: 'Could not redirect', message: e?.message ?? 'Please try again or contact support.' });
             } finally {
               setRedirectBusy(false);
             }
           },
         },
+        { text: 'Cancel', style: 'cancel' },
       ],
-    );
+    });
   };
 
   const { driverLocation, deliveryStatus, assignedDriver, isConnected } =
@@ -508,6 +513,44 @@ export default function TrackScreen() {
               )}
             </View>
 
+            {/* Show package QR.
+                The driver app's scan screen has been telling riders to
+                "ask the customer to open their tracking screen and tap
+                Show package QR" while this button did not exist in the
+                customer app at all, so the rider was sent to ask for
+                something that could not be produced (found 2026-08-24).
+                Placed high because it is the strongest handover option:
+                the other two are self-attested, this one puts a code the
+                sender issued in the hand of the person at the door.
+                Rides carry no package, and a finished or cancelled run
+                has nothing left to hand over. */}
+            {(deliveryData as any)?.kind !== 'ride' && !!deliveryData.trackingCode &&
+              !['delivered', 'failed', 'cancelled'].includes(String(currentStatus)) && (
+              <Pressable
+                onPress={() => router.push({
+                  pathname: '/(customer)/package-qr',
+                  params: {
+                    code:        String(deliveryData.trackingCode),
+                    description: String(deliveryData.packageDescription ?? ''),
+                    receiver:    String(
+                      [deliveryData.receiverFirstName, deliveryData.receiverLastName]
+                        .filter(Boolean).join(' ') || deliveryData.recipientName || '',
+                    ),
+                  },
+                } as any)}
+                style={[styles.redirectBtn, { backgroundColor: theme.surface, borderColor: theme.primary }, Shadows.sm]}
+              >
+                <Ionicons name="qr-code-outline" size={18} color={theme.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.redirectTitle, { color: theme.text }]}>Show package QR</Text>
+                  <Text style={[styles.redirectSub, { color: theme.textSecond }]}>
+                    Screenshot it for whoever is receiving. The rider scans it at handover.
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.textThird} />
+              </Pressable>
+            )}
+
             {/* The journey, one line per step, each carrying its own
                 time. The old stepper was five tall rows with no times at
                 all, and its final node showed a bare number where every
@@ -618,12 +661,20 @@ export default function TrackScreen() {
                       <Text style={[styles.driverMetaText, { color: theme.textSecond }]}>
                         {assignedDriver?.vehicleType ?? deliveryData.driver?.vehicleType}
                       </Text>
-                      <View style={styles.ratingRow}>
-                        <Ionicons name="star" size={12} color="#FFBE0B" />
-                        <Text style={[styles.driverMetaText, { color: theme.textSecond }]}>
-                          {Number(assignedDriver?.rating ?? deliveryData.driver?.rating ?? 0).toFixed(1)}
-                        </Text>
-                      </View>
+                      {/* Shown whenever there is one. The public
+                          tracking payload carries name, rating, plate,
+                          vehicle and verifiedPro, and no trip count, so
+                          this screen cannot judge whether a rating was
+                          earned and must not invent an answer. The
+                          rider's own app is where that check belongs. */}
+                      {Number(assignedDriver?.rating ?? deliveryData.driver?.rating ?? 0) > 0 && (
+                        <View style={styles.ratingRow}>
+                          <Ionicons name="star" size={12} color="#FFBE0B" />
+                          <Text style={[styles.driverMetaText, { color: theme.textSecond }]}>
+                            {Number(assignedDriver?.rating ?? deliveryData.driver?.rating ?? 0).toFixed(1)}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -674,11 +725,37 @@ export default function TrackScreen() {
                 {driverLocation && (
                   <View style={[styles.liveLocationRow, { backgroundColor: theme.surfaceSecond }]}>
                     <Ionicons name="location" size={14} color={theme.primary} />
-                    <Text style={[styles.liveLocationText, { color: theme.textSecond }]}>
-                      Driver location updating live
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.liveLocationText, { color: theme.textSecond }]}>
+                        Rider location updating live
+                      </Text>
+                      {/* The actual position, not just a promise that one
+                          exists. A customer waiting at a gate can read
+                          these to whoever is receiving, and open them on
+                          a real map. Costs nothing: the position arrives
+                          on the socket we already hold and the native
+                          Maps SDK is not billed per view. */}
+                      <Text style={[styles.liveCoords, { color: theme.text }]}>
+                        {Number(driverLocation.lat).toFixed(5)}, {Number(driverLocation.lng).toFixed(5)}
+                      </Text>
+                    </View>
                     <View style={styles.liveDotSmall} />
                   </View>
+                )}
+                {driverLocation && (
+                  <Pressable
+                    style={({ pressed }) => [styles.liveMapsBtn, { opacity: pressed ? 0.6 : 1 }]}
+                    onPress={() => {
+                      Linking.openURL(
+                        `https://www.google.com/maps?q=${Number(driverLocation.lat)},${Number(driverLocation.lng)}`,
+                      ).catch(() => {});
+                    }}
+                  >
+                    <Ionicons name="open-outline" size={14} color={theme.primary} />
+                    <Text style={[styles.liveMapsText, { color: theme.primary }]}>
+                      See where your rider is on Google Maps
+                    </Text>
+                  </Pressable>
                 )}
               </View>
             )}
@@ -710,10 +787,10 @@ export default function TrackScreen() {
                         onPress={async () => {
                           try {
                             await deliveriesApi.arrivalResponse(deliveryData.id, o.key);
-                            Alert.alert('Driver notified', 'Your choice went straight to the driver\'s chat.');
+                            showDialog({ title: 'Driver notified', message: 'Your choice went straight to the driver\'s chat.' });
                             handleSearch();
                           } catch (e: any) {
-                            Alert.alert('Could not send', e?.message ?? 'Try again.');
+                            showDialog({ title: 'Could not send', message: e?.message ?? 'Try again.' });
                           }
                         }}
                       >
@@ -1074,6 +1151,9 @@ const styles = StyleSheet.create({
   ratingRow:       { flexDirection: 'row', alignItems: 'center', gap: 3 },
   liveLocationRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.md, padding: Spacing.sm, borderRadius: Radius.md },
   liveLocationText:{ flex: 1, fontSize: FontSize.xs },
+  liveCoords:      { fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontVariant: ['tabular-nums'], marginTop: 2 },
+  liveMapsBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: Spacing.sm, paddingVertical: 10 },
+  liveMapsText:    { fontSize: FontSize.xs, fontWeight: FontWeight.bold },
   liveDotSmall:    { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22C55E' },
 
   detailRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },

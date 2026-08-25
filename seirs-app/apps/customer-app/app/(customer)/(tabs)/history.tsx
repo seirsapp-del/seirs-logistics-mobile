@@ -1,6 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl,
-  ActivityIndicator, Alert, TextInput, ScrollView,
+  View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator, TextInput, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useState } from 'react';
@@ -13,6 +12,7 @@ import { HamburgerButton } from '@/components/HamburgerButton';
 import { deliveriesApi } from '@/services/api';
 import { naira, nairaAmount } from '@/utils/money';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // My Trips rebuilt as the business Deliveries screen, exactly (founder
 // 2026-08-22: "the exact same as deliveries on the business app, that's
 // what I wanted"). Layout, rail, card and style values are copied from
@@ -183,10 +183,10 @@ export default function HistoryScreen() {
     }
     setCancelling(null);
     if (!cancellable) {
-      Alert.alert('Too late to cancel', 'This delivery is already under way. Message your driver from the trip screen.');
+      alertDialog('Too late to cancel', 'This delivery is already under way. Message your driver from the trip screen.');
       return;
     }
-    Alert.alert(
+    alertDialog(
       'Cancel this booking?',
       feeNgn > 0
         ? `Tracking ${trip.trackingCode}. A cancellation fee of NGN ${nairaAmount(feeNgn)} applies and the rest is refunded.`
@@ -200,7 +200,7 @@ export default function HistoryScreen() {
               await deliveriesApi.cancel(trip.id);
               await load(1, false);
             } catch (e: any) {
-              Alert.alert('Could not cancel', e?.message ?? 'Please try again in a moment.');
+              alertDialog('Could not cancel', e?.message ?? 'Please try again in a moment.');
             }
           },
         },

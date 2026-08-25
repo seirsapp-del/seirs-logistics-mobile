@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator, Alert,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { loyaltyApi, deliveriesApi, type LoyaltyTier } from '@/services/api';
+import { showDialog } from '@/components/SeirsDialog';
 
 // Tier thresholds MUST mirror the backend (loyalty.service.ts:TIER_THRESHOLDS).
 // Keep in sync manually. The tier chip shown to the user is otherwise a lie.
@@ -120,14 +121,14 @@ export default function RewardsScreen() {
     // Rewards MUST be applied to a specific active delivery. If the user
     // has none, guide them to book one instead of silently deducting points.
     if (activeDeliveries.length === 0) {
-      Alert.alert(
-        'Book a delivery first',
-        `You don't have any active deliveries to apply this reward to. Book a delivery, then come back here to redeem.`,
-        [
+      showDialog({
+        title: 'Book a delivery first',
+        message: `You don't have any active deliveries to apply this reward to. Book a delivery, then come back here to redeem.`,
+        actions: [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Book delivery', onPress: () => router.push('/(customer)/send' as any) },
+          { text: 'Book delivery', style: 'primary', onPress: () => router.push('/(customer)/send' as any) },
         ],
-      );
+      });
       return;
     }
 
@@ -139,46 +140,57 @@ export default function RewardsScreen() {
       return;
     }
 
-    Alert.alert(
-      `Apply ${r.label} to which delivery?`,
-      'Pick the delivery you want this reward to apply to.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        ...activeDeliveries.slice(0, 3).map((d: any) => ({
-          text: `${d.trackingCode} (${d.status})`,
+    // BUG FIXED 2026-08-24: this was Cancel plus up to three deliveries,
+    // which is four Alert buttons. Android's AlertDialog has three slots
+    // and React Native drops the rest without a word, so a customer with
+    // three active deliveries could never pick the third one, and the
+    // slice(0, 3) that was meant to stay inside the limit was one over
+    // it because Cancel counts too. SeirsDialog renders the whole list
+    // and scrolls, so the cap is gone along with the bug.
+    showDialog({
+      title: `Apply ${r.label} to which delivery?`,
+      message: 'Pick the delivery you want this reward to apply to.',
+      actions: [
+        ...activeDeliveries.map((d: any) => ({
+          text: `${d.trackingCode} (${String(d.status).replace('_', ' ')})`,
           onPress: () => confirmAndRedeem(r, d),
         })),
+        { text: 'Cancel', style: 'cancel' as const },
       ],
-    );
+    });
   };
 
   const confirmAndRedeem = (r: Redemption, delivery: any) => {
-    Alert.alert(
-      `Redeem ${r.label}?`,
-      `This will deduct ${r.cost.toLocaleString()} points from your balance and apply the reward to delivery ${delivery.trackingCode}. Cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showDialog({
+      title: `Redeem ${r.label}?`,
+      // Points are a count, not money, so they stay whole here. The
+      // kobo rule applies to naira amounts, and customers hold points
+      // rather than naira on this account.
+      message: `This will deduct ${r.cost.toLocaleString()} points from your balance and apply the reward to delivery ${delivery.trackingCode}. Cannot be undone.`,
+      actions: [
         {
           text: 'Redeem',
+          style: 'primary',
           onPress: async () => {
             setRedeemingType(r.type);
             try {
               const res = await loyaltyApi.redeem(r.type, delivery.id);
               setPoints(res.newBalance ?? points - r.cost);
-              Alert.alert(
-                'Redeemed!',
-                `${r.label} applied to ${delivery.trackingCode}. New balance: ${(res.newBalance ?? points - r.cost).toLocaleString()} pts.`,
-              );
+              showDialog({
+                title: 'Redeemed',
+                message: `${r.label} applied to ${delivery.trackingCode}. New balance: ${(res.newBalance ?? points - r.cost).toLocaleString()} pts.`,
+              });
               load();
             } catch (e: any) {
-              Alert.alert('Redemption failed', e?.message ?? 'Please try again.');
+              showDialog({ title: 'Redemption failed', message: e?.message ?? 'Please try again.' });
             } finally {
               setRedeemingType(null);
             }
           },
         },
+        { text: 'Cancel', style: 'cancel' },
       ],
-    );
+    });
   };
 
   return (

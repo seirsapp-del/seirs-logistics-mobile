@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TextInput, Pressable, ActivityIndicator, Alert,
+  View, Text, StyleSheet, FlatList, TextInput, Pressable, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
+import { alertDialog } from '@/components/SeirsDialog';
 const STATUSES = ['all', 'in_store', 'awaiting_pickup', 'collected', 'returned'];
 
 const STATUS_COLOR: Record<string, string> = {
@@ -51,7 +52,7 @@ export default function InventoryScreen() {
   useEffect(() => { load(1); }, [status]);
 
   const handleCollect = (pkg: Package) => {
-    Alert.alert(
+    alertDialog(
       'Mark as Collected',
       `Confirm ${pkg.recipientName} has collected their package?`,
       [

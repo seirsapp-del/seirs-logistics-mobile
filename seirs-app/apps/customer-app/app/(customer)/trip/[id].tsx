@@ -18,10 +18,10 @@
  */
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Share, Alert,
-  Linking, StatusBar,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Share,
+  Linking, StatusBar, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +31,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
+import { showDialog } from '@/components/SeirsDialog';
 
 const STATUS_COLOR: Record<string, string> = {
   pending:    '#D97706',
@@ -59,6 +60,9 @@ const VEHICLE_LABEL: Record<string, string> = {
 
 export default function TripDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  // Bottom clearance for the system navigation bar. insets.bottom
+  // reports 0 on a 3-button Samsung, so the floor carries it.
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const cs     = useColorScheme();
   const isDark = cs === 'dark';
@@ -128,6 +132,10 @@ export default function TripDetailsScreen() {
     address:            d.dropoffAddress,
     status:             d.status,
     packageTrackingCode: d.trackingCode,
+    // Without these a single-package delivery has no photo to show at
+    // all, whatever the renderer does.
+    packagePhotoUrls:    d.packagePhotos ?? null,
+    proofPhotoUrls:      d.proofPhotoUrl ? [d.proofPhotoUrl] : null,
   }];
 
   const runColor  = STATUS_COLOR[String(d.status)] ?? colors.textThird;
@@ -161,9 +169,9 @@ export default function TripDetailsScreen() {
     try {
       const res = await deliveriesApi.payRedirectFee(String(id));
       if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
-      else Alert.alert('Could not start payment', 'Please try again in a moment.');
+      else showDialog({ title: 'Could not start payment', message: 'Please try again in a moment.' });
     } catch (e: any) {
-      Alert.alert('Could not start payment', e?.message ?? 'Please try again.');
+      showDialog({ title: 'Could not start payment', message: e?.message ?? 'Please try again.' });
     }
   };
 
@@ -183,39 +191,41 @@ export default function TripDetailsScreen() {
   const requestReturn = async () => {
     try {
       const q = await deliveriesApi.getReturnQuote(String(id));
-      Alert.alert(
-        'Return this package?',
-        `${q.note}\n\nBack to: ${q.returnTo}\n` +
-        `${q.km} km by road\n` +
-        `Transport: ${naira(q.transportNgn)}\n` +
-        (q.counterOwedNgn > 0
-          ? `Counter owed: ${naira(q.counterOwedNgn)}\n`
-          : '') +
-        `Total: ${naira(q.totalNgn)}` +
-        (q.needsSupport ? '\n\nSupport has to approve this before you can pay.' : ''),
-        [
-          { text: 'Not now', style: 'cancel' },
+      showDialog({
+        title: 'Return this package?',
+        message:
+          `${q.note}\n\nBack to: ${q.returnTo}\n` +
+          `${q.km} km by road\n` +
+          `Transport: ${naira(q.transportNgn)}\n` +
+          (q.counterOwedNgn > 0
+            ? `Counter owed: ${naira(q.counterOwedNgn)}\n`
+            : '') +
+          `Total: ${naira(q.totalNgn)}` +
+          (q.needsSupport ? '\n\nSupport has to approve this before you can pay.' : ''),
+        actions: [
           {
             text: q.needsSupport ? 'Ask support' : 'Request return',
+            style: 'primary',
             onPress: async () => {
               try {
                 const r = await deliveriesApi.requestReturn(String(id));
-                Alert.alert(
-                  r.status === 'pending' ? 'Sent to support' : 'Return approved',
-                  r.status === 'pending'
+                showDialog({
+                  title: r.status === 'pending' ? 'Sent to support' : 'Return approved',
+                  message: r.status === 'pending'
                     ? 'A rider is carrying this package, so support has to arrange it. We will let you know.'
                     : 'Pay in the app and we will bring it back to your pickup address.',
-                );
+                });
                 setD(await deliveriesApi.get(String(id)));
               } catch (e: any) {
-                Alert.alert('Could not request that', e?.message ?? 'Please try again.');
+                showDialog({ title: 'Could not request that', message: e?.message ?? 'Please try again.' });
               }
             },
           },
+          { text: 'Not now', style: 'cancel' },
         ],
-      );
+      });
     } catch (e: any) {
-      Alert.alert('Could not price a return', e?.message ?? 'Please try again.');
+      showDialog({ title: 'Could not price a return', message: e?.message ?? 'Please try again.' });
     }
   };
 
@@ -224,7 +234,7 @@ export default function TripDetailsScreen() {
       const res = await deliveriesApi.payReturn(String(id));
       if (res?.authorizationUrl) await Linking.openURL(res.authorizationUrl);
     } catch (e: any) {
-      Alert.alert('Could not start payment', e?.message ?? 'Please try again.');
+      showDialog({ title: 'Could not start payment', message: e?.message ?? 'Please try again.' });
     }
   };
 
@@ -248,7 +258,11 @@ export default function TripDetailsScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      {/* 40 put the last row against the system navigation bar. This
+          screen never read insets, and insets.bottom reports 0 on a
+          3-button Samsung, so the floor does the work (founder
+          2026-08-24). */}
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: Math.max(insets.bottom + 24, 56) }}>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.cardLabel, { color: colors.textThird }]}>COLLECTED FROM</Text>
           <Text style={[styles.cardValue, { color: colors.text }]}>{d.pickupAddress}</Text>
@@ -465,6 +479,34 @@ export default function TripDetailsScreen() {
                 </Text>
               )}
 
+              {/* The parcel, as photographed at booking. The rider has
+                  had this on their job card all along; the sender who
+                  took it could not see it anywhere (founder
+                  2026-08-24). */}
+              {Array.isArray(st.packagePhotoUrls) && st.packagePhotoUrls.length > 0 && (
+                <View style={styles.photoBlock}>
+                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>WHAT YOU SENT</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoStrip} contentContainerStyle={{ gap: 8 }}>
+                    {st.packagePhotoUrls.map((u: string, k: number) => (
+                      <Image key={k} source={{ uri: u }} style={styles.photoThumb} resizeMode="cover" />
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Proof of delivery exists for the sender's benefit, and
+                  the sender was the one person who could not see it. */}
+              {Array.isArray(st.proofPhotoUrls) && st.proofPhotoUrls.length > 0 && (
+                <View style={styles.photoBlock}>
+                  <Text style={[styles.photoLabel, { color: colors.textThird }]}>PROOF OF DELIVERY</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoStrip} contentContainerStyle={{ gap: 8 }}>
+                    {st.proofPhotoUrls.map((u: string, k: number) => (
+                      <Image key={k} source={{ uri: u }} style={styles.photoThumb} resizeMode="cover" />
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
               {!!st.packagePriceNgn && (
                 <Text style={[styles.pkgMeta, { color: colors.textThird }]}>{naira(st.packagePriceNgn)}</Text>
               )}
@@ -485,6 +527,32 @@ export default function TripDetailsScreen() {
                     <Text style={[styles.codeBtnText, { color: colors.primary }]}>Send</Text>
                   </Pressable>
                 </View>
+              )}
+
+              {/* Show package QR, PER PACKAGE rather than per run.
+                  Every package in a multi-package run carries its own
+                  public tracking code, so one QR for the whole run would
+                  hand every receiver the same code and let any of them
+                  claim any parcel. Added 2026-08-24 alongside the
+                  tracking-screen entry, because the driver's scan screen
+                  had been telling riders to ask for a button nobody had
+                  built. Rides have no package to hand over. */}
+              {!!code && d.kind !== 'ride' && !['delivered', 'failed', 'cancelled'].includes(String(st.status ?? status)) && (
+                <Pressable
+                  onPress={() => router.push({
+                    pathname: '/(customer)/package-qr',
+                    params: {
+                      code:        String(code),
+                      description: String(st.packageDescription ?? ''),
+                      receiver:    String(receiver ?? ''),
+                    },
+                  } as any)}
+                  hitSlop={6}
+                  style={[styles.qrRow, { borderColor: colors.primary }]}
+                >
+                  <Icon name="QrCode" size={16} color={colors.primary} />
+                  <Text style={[styles.codeBtnText, { color: colors.primary }]}>Show package QR</Text>
+                </Pressable>
               )}
             </View>
           );
@@ -560,10 +628,15 @@ const styles = StyleSheet.create({
   sectionTitle:{ fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 8, marginTop: 6 },
   pkgTitle: { fontSize: 15, fontWeight: '700', flex: 1 },
   pkgMeta:  { fontSize: 13 },
+  photoBlock: { marginTop: 12 },
+  photoLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.6, marginBottom: 6 },
+  photoStrip: { flexGrow: 0 },
+  photoThumb: { width: 96, height: 96, borderRadius: 10, backgroundColor: 'rgba(127,127,127,0.15)' },
   pkgRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   codeRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, paddingTop: 10, marginTop: 4 },
   code:     { flex: 1, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
   codeBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
   codeBtnText:{ fontSize: 13, fontWeight: '700' },
+  qrRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1, borderRadius: 12, paddingVertical: 11, marginTop: 10 },
   chatBtn:  { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
 });

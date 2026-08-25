@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, Vibration,
-  TextInput, ScrollView, KeyboardAvoidingView, Platform, Image, Keyboard,
+  View, Text, StyleSheet, Pressable, ActivityIndicator, Vibration, TextInput, ScrollView, KeyboardAvoidingView, Platform, Image, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -11,6 +10,7 @@ import { Icon } from '@/components/Icon';
 import { partnerApi, uploadApi } from '@/services/api';
 import { useColors } from '@/context/ThemeContext';
 
+import { alertDialog } from '@/components/SeirsDialog';
 // Spec V8 §3 / §4.7: partner staff scans incoming sender drop-off,
 // confirms details + photo + sender OTP, transitions to RECEIVED_AT_STORE.
 // Three steps: SCAN → DETAILS → CONFIRM.
@@ -70,6 +70,10 @@ export default function ReceiveDropoffScreen() {
   const [photoUri,        setPhotoUri]        = useState('');
   const [photoUploadedUrl, setPhotoUploadedUrl] = useState('');
   const [senderOtp,       setSenderOtp]       = useState('');
+  // Who is behind the counter. Typed by them, not picked from a list:
+  // the point is a person putting their own name to the receipt
+  // (founder 2026-08-25).
+  const [staffName,       setStaffName]       = useState('');
   const [otpSentTo,       setOtpSentTo]       = useState('');
   const [sendingOtp,      setSendingOtp]      = useState(false);
   const [resendIn,        setResendIn]        = useState(0);
@@ -127,7 +131,7 @@ export default function ReceiveDropoffScreen() {
   // ── Details: weight + photo ─────────────────────────────────────────────
 
   const pickPhoto = async () => {
-    Alert.alert('Package photo', 'How would you like to capture the package?', [
+    alertDialog('Package photo', 'How would you like to capture the package?', [
       { text: 'Camera', onPress: () => launchPicker('camera') },
       { text: 'Library', onPress: () => launchPicker('library') },
       { text: 'Cancel', style: 'cancel' },
@@ -137,12 +141,12 @@ export default function ReceiveDropoffScreen() {
   const launchPicker = async (source: 'camera' | 'library') => {
     if (source === 'camera') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Camera access required'); return; }
+      if (status !== 'granted') { alertDialog('Camera access required'); return; }
       const r = await ImagePicker.launchCameraAsync({ quality: 0.85 });
       if (!r.canceled) setPhotoUri(r.assets[0].uri);
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Library access required'); return; }
+      if (status !== 'granted') { alertDialog('Library access required'); return; }
       const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.85 });
       if (!r.canceled) setPhotoUri(r.assets[0].uri);
     }
@@ -173,8 +177,8 @@ export default function ReceiveDropoffScreen() {
   };
 
   const submitDetails = async () => {
-    if (!photoUri) { Alert.alert('Photo required', 'Take a picture of the package on your counter.'); return; }
-    if (!weightKg || Number.isNaN(Number(weightKg))) { Alert.alert('Weight required', 'Enter the measured weight in kg.'); return; }
+    if (!photoUri) { alertDialog('Photo required', 'Take a picture of the package on your counter.'); return; }
+    if (!weightKg || Number.isNaN(Number(weightKg))) { alertDialog('Weight required', 'Enter the measured weight in kg.'); return; }
     setLoading(true);
     setError('');
     try {
@@ -198,7 +202,14 @@ export default function ReceiveDropoffScreen() {
   // ── Confirm: sender OTP, finalize ───────────────────────────────────────
 
   const submitFinal = async () => {
-    if (!senderOtp.trim()) { Alert.alert('Sender OTP required', 'Ask sender to read the 6-digit code from their email.'); return; }
+    if (!senderOtp.trim()) { alertDialog('Sender OTP required', 'Ask sender to read the 6-digit code from their email.'); return; }
+    if (staffName.trim().length < 3) {
+      alertDialog(
+        'Type your name',
+        'The person accepting the package signs for it. It is what answers a later claim that this store never received it.',
+      );
+      return;
+    }
     if (!dropoff) return;
     setLoading(true);
     setError('');
@@ -208,8 +219,9 @@ export default function ReceiveDropoffScreen() {
         weightKg:         Number(weightKg),
         receivedPhotoUrl: photoUploadedUrl,
         senderOtp:        senderOtp.trim(),
+        staffName:        staffName.trim(),
       });
-      Alert.alert(
+      alertDialog(
         'Drop-off received',
         `Package from ${dropoff.recipientName} is now in your inventory and a driver will be dispatched within the SLA window.`,
         [
@@ -232,6 +244,7 @@ export default function ReceiveDropoffScreen() {
     setPhotoUri('');
     setPhotoUploadedUrl('');
     setSenderOtp('');
+    setStaffName('');
     setManualCode('');
     setScanning(true);
     lastScan.current = null;
@@ -462,6 +475,28 @@ export default function ReceiveDropoffScreen() {
             <Text style={[styles.helperText, { color: colors.textThird }]}>
               The code expires after 10 minutes. It goes to the email on the sender&apos;s SEIRS account.
             </Text>
+          </View>
+
+          {/* The counter signs for it (founder 2026-08-25). A scan names a
+              store; this names the person, which is what a store denying
+              it ever took the package in has to be answered with. */}
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardLabel, { color: colors.textSecond }]}>WHO IS ACCEPTING THIS</Text>
+            <Text style={[styles.cardSubtle, { color: colors.textSecond }]}>
+              Type your own full name. It is recorded as your signature on this package.
+            </Text>
+            <TextInput
+              value={staffName}
+              onChangeText={setStaffName}
+              placeholder="Amaka Okonkwo"
+              placeholderTextColor={colors.textThird}
+              autoCapitalize="words"
+              maxLength={80}
+              style={[
+                styles.input,
+                { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
+              ]}
+            />
           </View>
 
           {error !== '' && <Text style={styles.errorText}>{error}</Text>}

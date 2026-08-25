@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, StatusBar, Image, Alert,
+  View, Text, Pressable, StyleSheet, StatusBar, Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -15,19 +15,33 @@ import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { PACKAGE_VEHICLES, RIDE_VEHICLES, calcPackageFare, DEFAULT_MAP_REGION } from '@/constants/mockData';
 import { deliveriesApi , pricingApi } from '@/services/api';
 import { naira } from '@/utils/money';
+import { showDialog } from '@/components/SeirsDialog';
 
 // UI presentation for the rate-card package vehicles: keyed by the
 // canonical id calcPackageFare looks up. Keeping this here (not on the
 // rate-card) because icons/eta are UX concerns, not pricing concerns.
-const PACKAGE_UI: Record<string, { icon: string; eta: string; descKey: string; features: string[] }> = {
-  bicycle:    { icon: 'bicycle-outline', eta: '6 min',  descKey: 'vehBicycleNote',    features: ['Light', 'Cheap'] },
-  motorcycle: { icon: 'bicycle',         eta: '4 min',  descKey: 'vehMotorcycleNote', features: ['Fast', 'Up to 20kg'] },
-  keke:       { icon: 'car',             eta: '5 min',  descKey: 'vehKekeNote',       features: ['Shaded', 'Up to 100kg'] },
-  car:        { icon: 'car-sport',       eta: '4 min',  descKey: 'vehCarNote',        features: ['AC', 'Up to 200kg'] },
-  van:        { icon: 'bus',             eta: '8 min',  descKey: 'vehVanNote',        features: ['Covered', 'Up to 800kg'] },
-  truck_sm:   { icon: 'bus-outline',     eta: '12 min', descKey: 'vehTruckSmNote',    features: ['Heavy', 'Up to 3 tonnes'] },
-  truck_lg:   { icon: 'bus-outline',     eta: '18 min', descKey: 'vehTruckLgNote',    features: ['Heaviest', 'Bulk loads'] },
+// The eta field here held '4 min', '6 min', '18 min' and so on, invented
+// numbers rendered on the card beside a clock icon as if they were a
+// pickup time. SEIRS promises no arrival times anywhere (Lagos traffic,
+// NEPA and checkpoints make any such promise a refund magnet), and the
+// ride branch below had already been converted to capacity. Replaced
+// with the same thing the ride cards show: what the vehicle can carry
+// (2026-08-23 sweep, same class as driver D-2.1).
+const PACKAGE_UI: Record<string, { icon: string; descKey: string; features: string[] }> = {
+  bicycle:    { icon: 'bicycle-outline', descKey: 'vehBicycleNote',    features: ['Light', 'Cheap'] },
+  motorcycle: { icon: 'bicycle',         descKey: 'vehMotorcycleNote', features: ['Fast', 'Up to 20kg'] },
+  keke:       { icon: 'car',             descKey: 'vehKekeNote',       features: ['Shaded', 'Up to 100kg'] },
+  car:        { icon: 'car-sport',       descKey: 'vehCarNote',        features: ['AC', 'Up to 200kg'] },
+  van:        { icon: 'bus',             descKey: 'vehVanNote',        features: ['Covered', 'Up to 800kg'] },
+  truck_sm:   { icon: 'bus-outline',     descKey: 'vehTruckSmNote',    features: ['Heavy', 'Up to 3 tonnes'] },
+  truck_lg:   { icon: 'bus-outline',     descKey: 'vehTruckLgNote',    features: ['Heaviest', 'Bulk loads'] },
 };
+
+/** Payload headline for a cargo card: kg below a tonne, tonnes above. */
+function payloadLabel(maxKg: number): string {
+  if (!Number.isFinite(maxKg) || maxKg <= 0) return '';
+  return maxKg >= 1000 ? `Up to ${Math.floor(maxKg / 1000)}t` : `Up to ${maxKg}kg`;
+}
 
 export default function VehicleSelectScreen() {
   const router  = useRouter();
@@ -39,7 +53,7 @@ export default function VehicleSelectScreen() {
   const params  = useLocalSearchParams<{
     mode?: string; pickup: string; dropoff: string; preselect?: string;
     pickupLat?: string; pickupLng?: string; dropoffLat?: string; dropoffLng?: string;
-    distanceKm?: string; durationText?: string; riderName?: string;
+    distanceKm?: string; riderName?: string;
   }>();
 
   // 'ride' mode comes from /request (Okada/Keke/Car/Danfo, fare scales with km).
@@ -151,7 +165,7 @@ export default function VehicleSelectScreen() {
         metaText:    `${v.capacityCount} rider${v.capacityCount === 1 ? '' : 's'}`,
       }))
     : PACKAGE_VEHICLES.map(v => {
-        const ui = PACKAGE_UI[v.id] ?? { icon: 'cube-outline', eta: '-', descKey: v.noteKey, features: [] };
+        const ui = PACKAGE_UI[v.id] ?? { icon: 'cube-outline', descKey: v.noteKey, features: [] };
         // Cargo flow doesn't have a weight at this screen: the picker
         // shows base + km only. Final fare (with weight/category/COD)
         // resolves on the /send review step, which re-quotes the server.
@@ -163,9 +177,11 @@ export default function VehicleSelectScreen() {
           accentColor: theme.primary,
           photoUrl:    undefined as string | undefined,
           description: t(`send.${ui.descKey}`, { defaultValue: '' }),
-          eta:         ui.eta,
+          eta:         '',
           features:    ui.features,
           priceLabel:  naira(liveTotal(v.id, priced.total)),
+          // Capacity, not minutes: SEIRS makes no time promises.
+          metaText:    payloadLabel(Number((v as any).maxKg ?? 0)),
         };
       });
 
@@ -332,16 +348,19 @@ export default function VehicleSelectScreen() {
                         ['VAT', bd.vat],
                       ].filter(([, n]) => Number(n) > 0)
                         .map(([l, n]) => `${l}: ${naira(n)}`);
-                      Alert.alert(
-                        `${v.label} · ${naira((q as any).total)}`,
-                        lines.join('\n') + '\n\nThis exact number is what you pay: it is pinned.',
-                      );
+                      showDialog({
+                        title: `${v.label} · ${naira((q as any).total)}`,
+                        message: lines.join('\n') + '\n\nThis exact number is what you pay: it is pinned.',
+                      });
                     }}
                   >
                     <Text style={[styles.price, { color: isSelected ? theme.primary : theme.text }]}>{v.priceLabel}</Text>
                   </Pressable>
                   <View style={styles.etaRow}>
-                    <Ionicons name={isRide ? 'person-outline' : 'time-outline'} size={12} color={theme.textSecond} />
+                    {/* Was a clock for the cargo branch, next to an invented
+                        minutes figure. Both are gone: the row shows what the
+                        vehicle carries (2026-08-23 sweep). */}
+                    <Ionicons name={isRide ? 'person-outline' : 'cube-outline'} size={12} color={theme.textSecond} />
                     <Text style={[styles.eta, { color: theme.textSecond }]}>{(v as any).metaText ?? v.eta}</Text>
                   </View>
                   {isSelected && (
