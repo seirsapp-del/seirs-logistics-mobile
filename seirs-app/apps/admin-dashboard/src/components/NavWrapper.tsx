@@ -5,7 +5,8 @@ import AdminNav from './AdminNav';
 import TopBar from './TopBar';
 import { ConfirmProvider } from './ConfirmDialog';
 import SosBanner from './SosBanner';
-import { clearSession, isSessionExpired, touchActivity } from '@/lib/auth';
+import RouteGuard from './RouteGuard';
+import { clearSession, ensurePermsCookie, isSessionExpired, touchActivity } from '@/lib/auth';
 import { refreshAdminTokenIfPresent } from '@/lib/api';
 
 const IDLE_CHECK_MS    = 60_000;
@@ -70,6 +71,13 @@ export default function NavWrapper({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (isChromeless) return;
+    // Rebuild the permission cookie for a session that signed in before
+    // it existed. Middleware now gives an unresolvable role nothing at
+    // all, so without this an admin already signed in when this shipped
+    // would be pinned to the SOS desk until their token expired. No
+    // network call: the stored login response already holds the slug and
+    // the permission list.
+    ensurePermsCookie();
     const handleActivity = () => touchActivity();
     window.addEventListener('mousemove',  handleActivity);
     window.addEventListener('keydown',    handleActivity);
@@ -105,7 +113,9 @@ export default function NavWrapper({ children }: { children: React.ReactNode }) 
           <SosBanner />
           <TopBar />
           <main ref={mainRef} className="flex-1 overflow-y-auto bg-[#F5F5F0]">
-            {children}
+            {/* Wraps children, not the chrome: a denied admin keeps the
+                sidebar so they can navigate somewhere they do hold. */}
+            <RouteGuard>{children}</RouteGuard>
           </main>
         </div>
       </div>

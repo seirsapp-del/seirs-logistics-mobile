@@ -40,10 +40,17 @@ export const ROLE_COLORS: Record<AdminRoleType, string> = {
 // 'sos' is granted to EVERY role on purpose. The SOS banner renders on
 // every admin page for every admin with no permission check of its own
 // (NavWrapper mounts SosBanner unconditionally), so any role can be told
-// "open the SOS desk" and must be able to. Because PATH_PERMISSIONS in
-// middleware.ts is derived from NAV_SECTIONS, giving the nav item a
-// narrower key would gate /sos behind that key and bounce the very
-// people the banner just summoned. An open emergency is not role-scoped.
+// "open the SOS desk" and must be able to. /sos is a row in
+// ROUTE_PERMISSIONS like every other page, so giving it a narrower key
+// would gate the desk behind that key and bounce the very people the
+// banner just summoned. An open emergency is not role-scoped. The real
+// grant lives in ALWAYS_GRANTED below, which covers dynamic roles too:
+// the backend catalogue has no 'sos' slug to tick, so a custom role
+// could never be given it explicitly.
+//
+// This list is ALSO seeded, separately, in the backend at
+// seirs-backend/src/roles/roles.seed.ts SYSTEM_ROLES, and the two have
+// drifted. See the note on canAccessFromUser.
 export const PERMISSIONS: Record<AdminRoleType, string[]> = {
   super_admin:       ['*'],
   ops_manager:       ['sos','overview','ops-map','deliveries','drivers','users','partners','partner-redirects','specialists','analytics','tickets','support','pricing','fees','disputes','health','last-order-compliance','notify','interstate','dev-accounts','dev-usage','dev-docs'],
@@ -86,9 +93,33 @@ export function canAccess(role: AdminRoleType | undefined, page: string): boolea
   return perms.includes('*') || perms.includes(page);
 }
 
-// Spec V8. server-driven permission check. Call this when the user
-// object exposes `permissions` + `roleSlug` from the dynamic role
-// system. Falls back to the hardcoded enum check for legacy sessions.
+/**
+ * Spec V8. server-driven permission check. Call this when the user
+ * object exposes `permissions` + `roleSlug` from the dynamic role
+ * system. Falls back to the hardcoded enum check for legacy sessions.
+ *
+ * KNOWN DRIFT, needs a backend change to close (verified 2026-08-25).
+ * The eight built-in roles are defined TWICE: in PERMISSIONS above, and
+ * in seirs-backend/src/roles/roles.seed.ts SYSTEM_ROLES. When an admin
+ * is on the dynamic role table the server's copy wins here, and the two
+ * no longer agree:
+ *
+ *   support_agent     server is missing 'support', so Support Inbox,
+ *                     the page that role exists to work in, disappears
+ *                     from their sidebar.
+ *   driver_compliance server is missing 'identity' (the Customer ID
+ *                     queue) and still grants 'audit-log', which was
+ *                     deliberately revoked here on 2026-08-23.
+ *   every role        server is missing 'sos'. ALWAYS_GRANTED covers
+ *                     that one, which is why nobody has noticed.
+ *
+ * Worse, PERMISSION_CATALOGUE in the same backend file has no entry for
+ * 'support', 'identity' or 'sos' at all, so a super admin building a
+ * custom role cannot grant those three pages by any means. Do not
+ * "fix" this by preferring the local copy: that would silently ignore a
+ * super admin editing a role in the UI. The seed and the catalogue are
+ * what need updating.
+ */
 export function canAccessFromUser(
   user: { adminRole?: AdminRoleType; role?: string; permissions?: string[]; roleSlug?: string | null } | null,
   page: string,
@@ -147,10 +178,234 @@ export function canHardDeleteAccount(user: SessionUser): boolean {
   return !!slug && NDPR_DELETE_ROLES.includes(slug);
 }
 
+// ── Route permission table ──────────────────────────────────────────────
+/**
+ * The ONE map of route path to permission key. Exhaustive over every
+ * page.tsx under src/app, on purpose.
+ *
+ * Symptom this fixes: the middleware gate used to be DERIVED from
+ * NAV_SECTIONS, so "not in the sidebar" silently meant "not gated". The
+ * 2026-08-23 sweep found 17 pages reachable with no permission check at
+ * all, /roles among them. Deriving from the nav closed those, but left
+ * the same trapdoor open for the NEXT page anyone adds: a page with no
+ * nav entry still had no gate, and an unknown route was ALLOWED.
+ *
+ * So the dependency is now inverted. This table is the source of truth,
+ * NAV_SECTIONS reads its permission out of it, and middleware denies any
+ * route missing from here. A new page is therefore protected by default
+ * and has to be named here to become reachable, the same way the API
+ * redaction is a whitelist rather than a blacklist.
+ *
+ * Sub-paths inherit by longest-prefix match, so /drivers/[id] is covered
+ * by '/drivers' and does not need its own row.
+ */
+export const ROUTE_PERMISSIONS: Record<string, string> = {
+  '/':                        'overview',
+  '/ops-map':                 'ops-map',
+  '/sos':                     'sos',
+
+  '/deliveries':              'deliveries',
+  '/drivers':                 'drivers',
+  '/users':                   'users',
+  '/partners':                'partners',
+  '/partner-applications':    'partners',
+  '/partner-redirects':       'partner-redirects',
+  '/specialists':             'specialists',
+
+  '/wallet':                  'wallet',
+  '/pricing':                 'pricing',
+  '/service-catalog':         'pricing',
+  '/fees':                    'fees',
+  '/referrals':               'referrals',
+  '/insurance':               'insurance',
+
+  '/fraud':                   'fraud',
+  '/duplicates':              'duplicates',
+  '/recycle-bin':             'users',
+  '/kyc':                     'kyc',
+  '/identity':                'identity',
+  '/disputes':                'disputes',
+  '/last-order-compliance':   'last-order-compliance',
+  '/interstate':              'interstate',
+
+  '/health':                  'health',
+  '/notify':                  'notify',
+  '/email-templates':         'email-templates',
+
+  '/dev-accounts':            'dev-accounts',
+  '/dev-usage':               'dev-usage',
+  '/dev-docs':                'dev-docs',
+
+  '/support':                 'support',
+  // /tickets left the sidebar 2026-08-16 and now redirects to /support
+  // for old links. It is still a real route, so it still needs a row:
+  // this is exactly the "page without a nav entry" case that used to
+  // fall through the gate entirely.
+  '/tickets':                 'tickets',
+  '/suggestions':             'suggestions',
+
+  '/cms':                     'cms',
+  '/website':                 'cms',
+  '/promotions':              'promotions',
+
+  '/analytics':               'analytics',
+  '/reports':                 'reports',
+
+  '/admins':                  'super_admin_only',
+  '/roles':                   'roles',
+  '/audit-log':               'audit-log',
+  '/settings':                'super_admin_only',
+};
+
+/**
+ * Routes that must render with no session at all. Spec V8 §3 puts admin
+ * password recovery outside the wall. Anything NOT listed here and NOT
+ * in ROUTE_PERMISSIONS is denied, which is the point.
+ */
+export const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password'];
+
+export function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some((p) => pathname === p || pathname.startsWith(p + '/'));
+}
+
+/**
+ * Permission guarding a path, by longest-prefix match so detail routes
+ * inherit from their list route. Returns undefined for a route that is
+ * not in the table, and every caller must treat that as DENY.
+ */
+export function permissionForRoute(pathname: string): string | undefined {
+  let best: string | undefined;
+  let bestLen = -1;
+  for (const path in ROUTE_PERMISSIONS) {
+    // path + '/' rather than startsWith(path) so '/users' does not
+    // swallow a future '/users-export', and so '/' (which becomes '//')
+    // only ever matches itself exactly.
+    if ((pathname === path || pathname.startsWith(path + '/')) && path.length > bestLen) {
+      best    = ROUTE_PERMISSIONS[path];
+      bestLen = path.length;
+    }
+  }
+  return best;
+}
+
+/**
+ * Does this permission list satisfy `permission`?
+ *
+ * Shared by middleware and the client guard so the two cannot drift the
+ * way PATH_PERMISSIONS and PERMISSIONS did. `slug` is only consulted for
+ * 'super_admin_only', which is a role check rather than a grant.
+ */
+export function permsAllow(perms: string[], permission: string, slug?: string): boolean {
+  // Checked BEFORE the wildcard on purpose. 'super_admin_only' is not a
+  // page permission that a role can be granted, it is an assertion about
+  // who the account is, so holding '*' must not satisfy it. The backend
+  // agrees: SuperAdminGuard tests adminRole === 'super_admin' and
+  // nothing else, so anyone else opening /admins or /settings would get
+  // a fully enabled screen whose every save returns 403. That is the
+  // same defect already documented on the NDPR buttons above.
+  if (permission === 'super_admin_only') return slug === AdminRole.SUPER_ADMIN;
+  if (perms.includes('*')) return true;
+  if (ALWAYS_GRANTED.includes(permission)) return true;
+  return perms.includes(permission);
+}
+
+/**
+ * Where to send someone who asked for a page their role does not hold.
+ *
+ * Walks the sidebar in display order and returns the first page they can
+ * actually open, skipping ALWAYS_GRANTED entries so a content editor
+ * lands on the CMS rather than on the SOS desk. Falls back to /sos,
+ * which every signed-in admin holds, so this never returns a path the
+ * caller would bounce off again and never loops.
+ */
+export function firstAllowedRoute(perms: string[], slug?: string): string {
+  for (const section of NAV_SECTIONS) {
+    for (const item of section.items) {
+      if (ALWAYS_GRANTED.includes(item.permission)) continue;
+      if (permsAllow(perms, item.permission, slug)) return item.href;
+    }
+  }
+  return '/sos';
+}
+
+// ── Session permission cookie ───────────────────────────────────────────
+/**
+ * Middleware runs on the edge before any app code, so it can read
+ * cookies and nothing else. The admin JWT carries only
+ * { sub, email, role, adminRole, iat, exp } (decoded from a live
+ * production token, 2026-08-25): there is NO roleSlug and NO
+ * permissions claim.
+ *
+ * That is what makes a custom role LESS enforced than a built-in one. An
+ * admin on a role created through the backend catalogue has
+ * adminRole = null and role = 'admin', decodes as plain 'admin', and
+ * used to fall straight past the whole RBAC block.
+ *
+ * The login/refresh RESPONSE does carry roleSlug + permissions, it just
+ * never reaches the token. So the session writes them to this companion
+ * cookie at sign-in, and middleware reads the real permission set from
+ * there with no fetch and no added latency.
+ *
+ * This is UX-grade, not a security boundary: it is set from JS, so it is
+ * editable by whoever owns the browser. The backend guards remain the
+ * real wall. Its job is to stop a correctly-configured admin from being
+ * silently ungated, not to stop an attacker.
+ */
+export const PERMS_COOKIE = 'seirs_admin_perms';
+
+// '~' and '!' both survive encodeURIComponent untouched, so the cookie
+// stays readable and roughly 700 bytes for a wide role. JSON here would
+// percent-escape every quote and comma and triple the size against the
+// 4KB cookie limit.
+export function encodePermsCookie(slug: string, perms: string[]): string {
+  return slug + '~' + perms.join('!');
+}
+
+export function decodePermsCookie(raw: string | undefined): { slug: string; perms: string[] } | null {
+  if (!raw) return null;
+  const sep = raw.indexOf('~');
+  if (sep < 0) return null;
+  const slug  = raw.slice(0, sep);
+  const perms = raw.slice(sep + 1).split('!').filter(Boolean);
+  if (!slug) return null;
+  return { slug, perms };
+}
+
+/**
+ * The permission set a session actually holds, from the login response
+ * shape. Mirrors canAccessFromUser's precedence so the cookie cannot
+ * disagree with the sidebar.
+ */
+export function resolveSessionPerms(
+  user: { adminRole?: AdminRoleType; role?: string; permissions?: string[]; roleSlug?: string | null } | null,
+): { slug: string; perms: string[] } | null {
+  if (!user) return null;
+  if (user.roleSlug && Array.isArray(user.permissions)) {
+    return { slug: user.roleSlug, perms: user.permissions };
+  }
+  if (user.adminRole && user.adminRole in PERMISSIONS) {
+    return { slug: user.adminRole, perms: PERMISSIONS[user.adminRole] };
+  }
+  // Legacy admin: role='admin', no adminRole, no dynamic role. They
+  // pre-date granular roles and hold every PAGE, so the perms are '*'.
+  //
+  // The slug is deliberately NOT 'super_admin'. The backend's
+  // SuperAdminGuard tests adminRole === 'super_admin', which a legacy
+  // record does not have, so it refuses them on Staff Management and
+  // System Settings. AdminNav already hides both (isSuperAdminFromUser
+  // reads adminRole and answers false here), and the route gate used to
+  // disagree and let them in, onto a page whose every action 403s.
+  // Keeping the slug distinct makes permsAllow above refuse
+  // 'super_admin_only' while '*' still opens every ordinary page.
+  if (isLegacyAdmin(user.role)) return { slug: 'admin', perms: ['*'] };
+  return null;
+}
+
+// ── Sidebar ─────────────────────────────────────────────────────────────
 // Ship flags for nav entries whose feature is not live yet. The page
-// itself stays routable (and middleware-gated, since PATH_PERMISSIONS is
-// derived from NAV_SECTIONS) but it does not take a permanent sidebar
-// slot. /partner-redirects renders three preview rows against no backend.
+// itself stays routable and gated (ROUTE_PERMISSIONS covers it whether
+// or not it has a sidebar slot) but it does not take a permanent one.
+// /partner-redirects renders three preview rows against no backend.
 export const NAV_FEATURE_FLAGS: Record<string, boolean> = {
   '/partner-redirects': false,
 };
@@ -172,76 +427,89 @@ export interface NavItem {
   badge?:     'tickets' | 'fraud';
 }
 
-export const NAV_SECTIONS: NavSection[] = [
+// A nav entry carries no permission of its own any more. It is looked up
+// in ROUTE_PERMISSIONS below, so the sidebar and the gate physically
+// cannot disagree about a page. Adding an item here does NOT grant it a
+// route; adding it to ROUTE_PERMISSIONS does.
+interface NavItemDef {
+  href:   string;
+  label:  string;
+  icon:   string;
+  badge?: 'tickets' | 'fraud';
+}
+
+// A route missing from ROUTE_PERMISSIONS gets this sentinel, which no
+// role can ever hold, so a mis-typed href hides its own nav row instead
+// of rendering a link that middleware then bounces.
+const UNREGISTERED_ROUTE = '__unregistered_route__';
+
+const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
   {
     title: 'OVERVIEW',
     items: [
-      { href: '/',         label: 'Dashboard',        icon: 'LayoutDashboard', permission: 'overview'    },
-      { href: '/ops-map',  label: 'Real-Time Ops Map', icon: 'Map',            permission: 'ops-map'     },
+      { href: '/',         label: 'Dashboard',         icon: 'LayoutDashboard' },
+      { href: '/ops-map',  label: 'Real-Time Ops Map', icon: 'Map'             },
       // The SOS desk had NO nav entry at all: the page existed and the
       // only way in was clicking the red banner, so if that banner ever
       // failed to render the emergency queue was unreachable (founder
       // spotted it 2026-08-24: "i see sos alert and here i see no sos tab").
       // First in OVERVIEW because it outranks everything when it is live.
-      // Permission is its own 'sos' key, granted to every role above.
-      // It was first written as 'overview', but support_agent,
-      // driver_compliance and media_content do not hold 'overview': they
-      // would have seen the SOS banner on every page and had no SOS Desk
-      // in their sidebar, and middleware (which derives its path gate
-      // from this list) would have had /sos behind a key they lack.
-      { href: '/sos',      label: 'SOS Desk',          icon: 'Siren',          permission: 'sos'         },
+      // Its 'sos' key is in ALWAYS_GRANTED: the banner renders for every
+      // admin on every page, so bouncing someone off the desk they were
+      // just told to open is worse than a wide grant.
+      { href: '/sos',      label: 'SOS Desk',          icon: 'Siren'           },
     ],
   },
   {
     title: 'OPERATIONS',
     items: [
-      { href: '/deliveries',        label: 'Deliveries',          icon: 'Package',        permission: 'deliveries'        },
-      { href: '/drivers',           label: 'Drivers',             icon: 'Truck',          permission: 'drivers'           },
-      { href: '/users',             label: 'Customers',           icon: 'Users',          permission: 'users'             },
-      { href: '/partners',          label: 'Partner Accounts',    icon: 'Store',          permission: 'partners'          },
-      { href: '/partner-applications', label: 'Partner Applications', icon: 'FileText',    permission: 'partners'          },
-      { href: '/partner-redirects', label: 'Partner Redirects',   icon: 'ArrowRightLeft', permission: 'partner-redirects' },
-      { href: '/specialists',       label: 'Specialist Partners', icon: 'Briefcase',      permission: 'specialists'       },
+      { href: '/deliveries',           label: 'Deliveries',           icon: 'Package'        },
+      { href: '/drivers',              label: 'Drivers',              icon: 'Truck'          },
+      { href: '/users',                label: 'Customers',            icon: 'Users'          },
+      { href: '/partners',             label: 'Partner Accounts',     icon: 'Store'          },
+      { href: '/partner-applications', label: 'Partner Applications', icon: 'FileText'       },
+      { href: '/partner-redirects',    label: 'Partner Redirects',    icon: 'ArrowRightLeft' },
+      { href: '/specialists',          label: 'Specialist Partners',  icon: 'Briefcase'      },
     ],
   },
   {
     title: 'FINANCE',
     items: [
-      { href: '/wallet',          label: 'Wallet & Payouts',  icon: 'Wallet',     permission: 'wallet'    },
-      { href: '/pricing',         label: 'Pricing Engine',    icon: 'Tag',        permission: 'pricing'   },
-      { href: '/service-catalog', label: 'Service Catalog',   icon: 'List',       permission: 'pricing'   },
-      { href: '/fees',            label: 'Fee Catalogue',     icon: 'DollarSign', permission: 'fees'      },
-      { href: '/referrals', label: 'Referrals',          icon: 'Share2',     permission: 'referrals' },
-      { href: '/insurance', label: 'Insurance Partners', icon: 'Shield',     permission: 'insurance' },
+      { href: '/wallet',          label: 'Wallet & Payouts',   icon: 'Wallet'     },
+      { href: '/pricing',         label: 'Pricing Engine',     icon: 'Tag'        },
+      { href: '/service-catalog', label: 'Service Catalog',    icon: 'List'       },
+      { href: '/fees',            label: 'Fee Catalogue',      icon: 'DollarSign' },
+      { href: '/referrals',       label: 'Referrals',          icon: 'Share2'     },
+      { href: '/insurance',       label: 'Insurance Partners', icon: 'Shield'     },
     ],
   },
   {
     title: 'COMPLIANCE',
     items: [
-      { href: '/fraud',                  label: 'Fraud & Risk',        icon: 'ShieldAlert',    permission: 'fraud',                  badge: 'fraud' },
-      { href: '/duplicates',             label: 'Duplicate Accounts',  icon: 'Copy',           permission: 'duplicates'              },
-      { href: '/recycle-bin',            label: 'Recycle Bin',         icon: 'Trash2',         permission: 'users'                   },
-      { href: '/kyc',                    label: 'Driver KYC Queue',    icon: 'ClipboardCheck', permission: 'kyc'                     },
-      { href: '/identity',               label: 'Customer ID Queue',    icon: 'ShieldCheck',    permission: 'identity'                },
-      { href: '/disputes',               label: 'Liability Disputes',  icon: 'ShieldCheck',    permission: 'disputes'                },
-      { href: '/last-order-compliance',  label: 'Last-Order Compliance',icon: 'MoonStar',      permission: 'last-order-compliance'   },
-      { href: '/interstate',             label: 'Interstate Trips',     icon: 'Truck',         permission: 'interstate'              },
+      { href: '/fraud',                 label: 'Fraud & Risk',          icon: 'ShieldAlert',    badge: 'fraud' },
+      { href: '/duplicates',            label: 'Duplicate Accounts',    icon: 'Copy'           },
+      { href: '/recycle-bin',           label: 'Recycle Bin',           icon: 'Trash2'         },
+      { href: '/kyc',                   label: 'Driver KYC Queue',      icon: 'ClipboardCheck' },
+      { href: '/identity',              label: 'Customer ID Queue',     icon: 'ShieldCheck'    },
+      { href: '/disputes',              label: 'Liability Disputes',    icon: 'ShieldCheck'    },
+      { href: '/last-order-compliance', label: 'Last-Order Compliance', icon: 'MoonStar'       },
+      { href: '/interstate',            label: 'Interstate Trips',      icon: 'Truck'          },
     ],
   },
   {
     title: 'OPS',
     items: [
-      { href: '/health',           label: 'System Health',     icon: 'Activity', permission: 'health'           },
-      { href: '/notify',           label: 'Push Composer',     icon: 'Send',     permission: 'notify'           },
-      { href: '/email-templates',  label: 'Email Templates',   icon: 'Mail',     permission: 'email-templates'  },
+      { href: '/health',          label: 'System Health',   icon: 'Activity' },
+      { href: '/notify',          label: 'Push Composer',   icon: 'Send'     },
+      { href: '/email-templates', label: 'Email Templates', icon: 'Mail'     },
     ],
   },
   {
     title: 'DEVELOPER PLATFORM',
     items: [
-      { href: '/dev-accounts',  label: 'Developer Accounts', icon: 'Code2',    permission: 'dev-accounts' },
-      { href: '/dev-usage',     label: 'Platform Stats',     icon: 'BarChart3',permission: 'dev-usage'    },
-      { href: '/dev-docs',      label: 'Developer Docs',     icon: 'BookOpen', permission: 'dev-docs'     },
+      { href: '/dev-accounts', label: 'Developer Accounts', icon: 'Code2'     },
+      { href: '/dev-usage',    label: 'Platform Stats',     icon: 'BarChart3' },
+      { href: '/dev-docs',     label: 'Developer Docs',     icon: 'BookOpen'  },
     ],
   },
   {
@@ -250,32 +518,40 @@ export const NAV_SECTIONS: NavSection[] = [
       // Ticketing removed from the nav 2026-08-16: it was a second view
       // of the same support_tickets data that Support Inbox serves. The
       // route still redirects there for old links.
-      { href: '/support',     label: 'Support Inbox',    icon: 'Inbox',     permission: 'support',     badge: 'tickets' },
-      { href: '/suggestions', label: 'User Suggestions', icon: 'Lightbulb', permission: 'suggestions'  },
+      { href: '/support',     label: 'Support Inbox',    icon: 'Inbox',     badge: 'tickets' },
+      { href: '/suggestions', label: 'User Suggestions', icon: 'Lightbulb' },
     ],
   },
   {
     title: 'CONTENT',
     items: [
-      { href: '/cms',        label: 'In-App CMS', icon: 'FileText', permission: 'cms'        },
-      { href: '/website',    label: 'Website',    icon: 'Globe',    permission: 'cms'        },
-      { href: '/promotions', label: 'Promotions', icon: 'Percent',  permission: 'promotions' },
+      { href: '/cms',        label: 'In-App CMS', icon: 'FileText' },
+      { href: '/website',    label: 'Website',    icon: 'Globe'    },
+      { href: '/promotions', label: 'Promotions', icon: 'Percent'  },
     ],
   },
   {
     title: 'ANALYTICS',
     items: [
-      { href: '/analytics', label: 'Analytics', icon: 'BarChart2',    permission: 'analytics' },
-      { href: '/reports',   label: 'Reports',   icon: 'FileBarChart', permission: 'reports'   },
+      { href: '/analytics', label: 'Analytics', icon: 'BarChart2'    },
+      { href: '/reports',   label: 'Reports',   icon: 'FileBarChart' },
     ],
   },
   {
     title: 'SETTINGS',
     items: [
-      { href: '/admins',    label: 'Staff Management', icon: 'UserCog',     permission: 'super_admin_only' },
-      { href: '/roles',     label: 'Role Management',  icon: 'ShieldCheck', permission: 'roles'            },
-      { href: '/audit-log', label: 'Audit Log',        icon: 'ScrollText',  permission: 'audit-log'        },
-      { href: '/settings',  label: 'System Settings',  icon: 'Settings',    permission: 'super_admin_only' },
+      { href: '/admins',    label: 'Staff Management', icon: 'UserCog'     },
+      { href: '/roles',     label: 'Role Management',  icon: 'ShieldCheck' },
+      { href: '/audit-log', label: 'Audit Log',        icon: 'ScrollText'  },
+      { href: '/settings',  label: 'System Settings',  icon: 'Settings'    },
     ],
   },
 ];
+
+export const NAV_SECTIONS: NavSection[] = NAV_LAYOUT.map((section) => ({
+  title: section.title,
+  items: section.items.map((item) => ({
+    ...item,
+    permission: ROUTE_PERMISSIONS[item.href] ?? UNREGISTERED_ROUTE,
+  })),
+}));

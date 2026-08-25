@@ -39,10 +39,19 @@ export default function DashboardPage() {
    * useSearchParams so this page needs no Suspense boundary.
    */
   const [deniedFrom, setDeniedFrom] = useState<string | null>(null);
+  // 'unlisted' means the path is not in ROUTE_PERMISSIONS at all: a typo,
+  // or a page shipped without registering it. Blaming the admin's role
+  // for that would send them to a super admin who then finds nothing to
+  // grant, so the two cases get different wording.
+  const [deniedKind, setDeniedKind] = useState<'role' | 'unlisted'>('role');
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search);
-      if (q.get('denied') === '1') setDeniedFrom(q.get('from') ?? '');
+      const flag = q.get('denied');
+      if (flag === '1' || flag === 'unlisted') {
+        setDeniedKind(flag === 'unlisted' ? 'unlisted' : 'role');
+        setDeniedFrom(q.get('from') ?? '');
+      }
     } catch { /* no query string is the normal case */ }
   }, []);
 
@@ -164,10 +173,22 @@ export default function DashboardPage() {
           <div className="mb-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             <ShieldAlert size={16} className="mt-0.5 shrink-0" />
             <span className="flex-1">
-              {deniedFrom
-                ? <><span className="font-mono font-semibold">{deniedFrom}</span> is not part of your role, so you were brought back here.</>
-                : 'That page is not part of your role, so you were brought back here.'}
-              {' '}Ask a super admin if you need access.
+              {deniedKind === 'unlisted' ? (
+                <>
+                  {deniedFrom
+                    ? <><span className="font-mono font-semibold">{deniedFrom}</span> is not a page in this dashboard,</>
+                    : 'That is not a page in this dashboard,'}
+                  {' '}so you were brought back here. Check the link, and tell an
+                  engineer if the page is supposed to exist.
+                </>
+              ) : (
+                <>
+                  {deniedFrom
+                    ? <><span className="font-mono font-semibold">{deniedFrom}</span> is not part of your role, so you were brought back here.</>
+                    : 'That page is not part of your role, so you were brought back here.'}
+                  {' '}Ask a super admin if you need access.
+                </>
+              )}
             </span>
             <button
               onClick={() => setDeniedFrom(null)}
