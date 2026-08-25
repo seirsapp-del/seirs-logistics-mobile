@@ -22,7 +22,8 @@ import { FeesService } from '../fees/fees.service';
 import { Delivery, DeliveryStatus, DeliverySource } from '../deliveries/delivery.entity';
 import { DeliveriesService } from '../deliveries/deliveries.service';
 import { DeliveryStop, DeliveryStopStatus } from '../deliveries/delivery-stop.entity';
-import { secureCode } from '../common/utils/auth-codes';
+import { secureCode } from '../common/utils/auth-codes';
+import { redactDriverForCustomer } from '../common/redact-driver';
 
 /**
  * Fallback only. The live rate is partner_store_handling_ngn in the Fee
@@ -525,12 +526,16 @@ export class BusinessService {
     // customer ownership and allow if assigned driver matches userId.
     const delivery = await this.deliveriesRepo.findOne({
       where: { id: deliveryId },
-      relations: ['stops', 'customer', 'driver'],
+      relations: ['stops', 'customer', 'driver', 'driver.user'],
     });
     if (!delivery) throw new NotFoundException('Delivery not found.');
 
     const isCustomer = delivery.customer?.id === userId;
-    const isDriver   = delivery.driver?.id   === userId;
+    // delivery.driver.id is the DRIVER ROW id and userId is a USER id, so
+    // this comparison was never true and a driver was refused their own
+    // run even after the guard was passed. The stop transitions further
+    // down already compared driver.user.id correctly; this one did not.
+    const isDriver   = delivery.driver?.user?.id === userId;
     if (!isCustomer && !isDriver) {
       throw new ForbiddenException('Not authorised to view this delivery.');
     }
@@ -545,8 +550,16 @@ export class BusinessService {
     // timestamp separately, and every client would have to re-derive
     // the same rule and eventually disagree about it.
     const feeNgn = Number(delivery.redirectFeeNgn ?? 0);
+    /**
+     * Same leak the customer route had (found 2026-08-24): this loads
+     * 'driver' and 'driver.user' and spread the whole thing, so a
+     * business sender received their rider's bank account, home address
+     * and KYC document URLs. Redacted for the sender; a driver reading
+     * their own run still gets their own record untouched.
+     */
+    const shaped: any = isCustomer ? redactDriverForCustomer({ ...delivery } as any) : { ...delivery };
     return {
-      ...delivery,
+      ...shaped,
       redirectFeeOwedNgn:
         feeNgn > 0 && !delivery.redirectFeePaidAt ? feeNgn : null,
     };

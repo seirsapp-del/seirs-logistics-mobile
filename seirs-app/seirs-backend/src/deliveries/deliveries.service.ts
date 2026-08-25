@@ -16,6 +16,7 @@ import { RouteDistanceService } from './route-distance.service';
 import { PricingService as RateCardPricing } from '../pricing/pricing.service';
 import { detectStateFromCoords } from '../pricing/regions';
 import { User } from '../users/user.entity';
+import { redactDriverForCustomer } from '../common/redact-driver';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 // Vehicle-tuned average speeds for Lagos street conditions (km/h).
@@ -4084,7 +4085,16 @@ export class DeliveriesService {
     // Only redact when the viewer is NOT the customer: the sender must
     // keep seeing their own receiver details in full.
     const isCustomer = (delivery as any).customer?.id === userId;
-    return isCustomer ? delivery : this.redactCustomerForDriver(delivery as any);
+    /**
+     * The sender gets a whitelisted rider, not the raw entity. Verified
+     * against production 2026-08-24 with an ordinary customer token: the
+     * eager driver and user relations were shipping bank account, home
+     * address, date of birth, emergency contacts, FCM token and every KYC
+     * document URL to the customer's phone.
+     */
+    return isCustomer
+      ? redactDriverForCustomer(delivery as any)
+      : this.redactCustomerForDriver(delivery as any);
   }
 
   // Driver-initiated claim of an unassigned pending job. Used by the

@@ -497,12 +497,28 @@ export class AdminService {
       this.deliveriesRepo.count({ where: { status: DeliveryStatus.PENDING } }),
     ]);
 
-    // Revenue (sum of all successful delivery prices)
+    /**
+     * Revenue and the platform's actual cut, both from real columns.
+     *
+     * commission used to be total x PLATFORM_COMMISSION, a 0.30 constant.
+     * That is not what SEIRS earns: the margin is the spread between the
+     * customer price and the driver's share, and both sides of that spread
+     * are set by the active rate card. On the first live order (2026-08-24)
+     * price was 2,609.06 and driverEarnings 1,469.68, a real cut of
+     * 1,139.38, where the constant claimed 782.72. Reporting a policy
+     * number from a constant is exactly what the admin-tunable rule
+     * exists to prevent.
+     */
     const revenueResult = await this.deliveriesRepo
       .createQueryBuilder('d')
       .select('SUM(d.price)', 'total')
+      .addSelect('SUM(COALESCE(d.driverEarnings, 0))', 'driverTotal')
       .where('d.status = :status', { status: DeliveryStatus.DELIVERED })
       .getRawOne();
+
+    const revenueTotal = Number(revenueResult?.total ?? 0);
+    const driverTotal  = Number(revenueResult?.driverTotal ?? 0);
+    const commission   = +(revenueTotal - driverTotal).toFixed(2);
 
     return {
       users: { total: totalUsers },
@@ -517,9 +533,13 @@ export class AdminService {
         pending: pendingDeliveries,
       },
       revenue: {
-        total:          Number(revenueResult?.total ?? 0),
-        commission:     Number(revenueResult?.total ?? 0) * PLATFORM_COMMISSION,
-        commissionRate: PLATFORM_COMMISSION,   // exposed so admin UI never hardcodes the "30%" label
+        total:          +revenueTotal.toFixed(2),
+        driverShare:    +driverTotal.toFixed(2),
+        commission,
+        // The rate the books actually show, not a constant. Null rather
+        // than a fake zero when nothing has been delivered yet, so the UI
+        // can say "no data" instead of "0%".
+        commissionRate: revenueTotal > 0 ? +(commission / revenueTotal).toFixed(4) : null,
       },
     };
   }
@@ -1322,7 +1342,13 @@ export class AdminService {
         JOIN users u ON u.id = d."userId"
         LEFT JOIN LATERAL (
           SELECT COUNT(*) AS cnt FROM notifications n
-           WHERE n."userId" = d."userId" AND n.type = 'job_request'
+           -- Both sides cast to text on purpose. notifications."userId"
+           -- is varchar and drivers."userId" is uuid, and Postgres will
+           -- not compare them: this endpoint returned 500 on every call
+           -- until the cast went in (2026-08-24). n.type is cast for the
+           -- same class of reason, so an enum label the deployed type
+           -- does not carry can never take the whole query down.
+           WHERE n."userId" = d."userId"::text AND n.type::text = 'job_request'
              AND n."createdAt" >= date_trunc('day', NOW() AT TIME ZONE 'Africa/Lagos') AT TIME ZONE 'Africa/Lagos'
         ) offers ON true
         LEFT JOIN LATERAL (
@@ -1761,8 +1787,12 @@ export class AdminService {
     const get = (k: string) => rows.find((r: any) => r.kind === k) ?? { bookings: 0, grossNgn: 0 };
     return {
       windowDays: 7,
-      rides:    { bookings: Number(get('ride').bookings),    grossNgn: Math.round(Number(get('ride').grossNgn)) },
-      packages: { bookings: Number(get('package').bookings), grossNgn: Math.round(Number(get('package').grossNgn)) },
+      // Kobo kept. Math.round reported the first live order as 2609
+      // against a real price of 2,609.06, and the whole point of the
+      // kobo rule (founder 2026-08-24) is that these figures reconcile
+      // against the payment they came from.
+      rides:    { bookings: Number(get('ride').bookings),    grossNgn: +Number(get('ride').grossNgn).toFixed(2) },
+      packages: { bookings: Number(get('package').bookings), grossNgn: +Number(get('package').grossNgn).toFixed(2) },
     };
   }
 
