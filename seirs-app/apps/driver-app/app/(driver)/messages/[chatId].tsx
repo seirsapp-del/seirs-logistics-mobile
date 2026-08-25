@@ -21,6 +21,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/context/AuthContext';
@@ -40,6 +41,7 @@ const QUICK_REPLIES = [
 ];
 
 export default function DriverChatScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router  = useRouter();
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
@@ -136,15 +138,18 @@ export default function DriverChatScreen() {
 
   const handleAttach = () => {
     if (uploading || sending) return;
-    Alert.alert(
-      t('chat.attach.title',    { defaultValue: 'Attach photo' }),
-      t('chat.attach.subtitle', { defaultValue: 'Choose where to attach from.' }),
-      [
-        { text: t('chat.attach.camera',  { defaultValue: 'Take photo' }),   onPress: pickFromCamera },
-        { text: t('chat.attach.gallery', { defaultValue: 'From gallery' }), onPress: pickFromGallery },
-        { text: t('common.cancel',       { defaultValue: 'Cancel' }),       style: 'cancel' },
+    // At Android's three-button ceiling. Translations are preserved: the
+    // sheet takes the same t() strings the dialog did (2026-08-25 dialog
+    // sweep).
+    setSheet({
+      title:   t('chat.attach.title',    { defaultValue: 'Attach photo' }),
+      message: t('chat.attach.subtitle', { defaultValue: 'Choose where to attach from.' }),
+      options: [
+        { label: t('chat.attach.camera',  { defaultValue: 'Take photo' }),   variant: 'primary', icon: 'camera-outline', onPress: pickFromCamera },
+        { label: t('chat.attach.gallery', { defaultValue: 'From gallery' }), icon: 'images-outline', onPress: pickFromGallery },
       ],
-    );
+      cancelLabel: t('common.cancel', { defaultValue: 'Cancel' }),
+    });
   };
 
   const myUserId = user?.id ?? '';
@@ -272,6 +277,7 @@ export default function DriverChatScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.quickReplyStrip}
           contentContainerStyle={styles.quickReplyRow}
           keyboardShouldPersistTaps="handled"
         >
@@ -344,6 +350,7 @@ export default function DriverChatScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }
@@ -380,9 +387,16 @@ const styles = StyleSheet.create({
   systemPill:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
   systemText:  { fontSize: 11, fontWeight: FontWeight.medium },
 
-  quickReplyRow:  { paddingHorizontal: Spacing.md, paddingVertical: 8, gap: 8 },
-  quickReplyChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
-  quickReplyText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  // alignItems 'center' is load-bearing: a horizontal ScrollView's
+  // content container defaults to 'stretch', which grew every chip to
+  // the full height of the strip and turned the 999 radius into a giant
+  // oval (founder 2026-08-24).
+  quickReplyRow:  { paddingHorizontal: Spacing.md, paddingVertical: 8, gap: 8, alignItems: 'center' },
+  // flexGrow 0 stops the strip itself swallowing the space the message
+  // list leaves over.
+  quickReplyStrip:{ flexGrow: 0, flexShrink: 0 },
+  quickReplyChip: { paddingHorizontal: 16, paddingVertical: 11, borderRadius: 999, borderWidth: 1 },
+  quickReplyText: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
 
   inputBar:  { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderTopWidth: 1 },
   attachBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },

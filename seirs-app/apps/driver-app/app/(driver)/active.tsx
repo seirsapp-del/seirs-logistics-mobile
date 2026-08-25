@@ -3,7 +3,7 @@ import {
   ScrollView, ActivityIndicator, Alert, Image,
   Platform, Modal, TextInput, Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useRef } from 'react';
@@ -13,8 +13,9 @@ import * as ImagePicker from 'expo-image-picker';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { deliveriesApi, driversApi, uploadApi } from '@/services/api';
+import { deliveriesApi, driversApi, uploadApi, earningsApi } from '@/services/api';
 import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Avatar } from '@/components/ui/Avatar';
 import { naira } from '@/utils/money';
 
@@ -60,8 +61,108 @@ export default function ActiveDeliveryScreen() {
   const [receiverName,       setReceiverName]       = useState('');
   const [myPos,      setMyPos]      = useState<{ lat: number; lng: number } | null>(null);
 
+  /**
+   * Every dialog on this screen, in one themed sheet.
+   *
+   * Android's AlertDialog renders only the first three buttons and drops
+   * the rest without a word, which is how "Cancel this job?" lost half
+   * its reasons including "I feel unsafe" (founder found the same class
+   * of bug on Report a problem, 2026-08-24). It is also the one surface
+   * the SEIRS design system could not reach. Holding a single spec in
+   * state keeps every call site a setState rather than another dialog
+   * API, and keeps this screen from mixing two dialog looks.
+   */
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
+  /**
+   * How long earnings take to clear, from the server.
+   *
+   * The completion dialog hardcoded "2 business days" while
+   * GET /earnings/dashboard was reporting clearanceBusinessDays: 0, so a
+   * rider got two different answers to the one number they care about
+   * most (founder 2026-08-24). null means not loaded yet: the copy drops
+   * the promise entirely rather than guessing.
+   */
+  const [clearanceDays, setClearanceDays] = useState<number | null>(null);
+
+  // Holds the movement subscription and the stationary heartbeat.
+  const locationWatch    = useRef<{ remove: () => void } | null>(null);
   const locationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastSentAt       = useRef<number>(0);
+  const gpsFailures      = useRef<number>(0);
+  /**
+   * Bottom clearance for the floating footer. This screen never read
+   * insets, so the last row sat under the system navigation bar. The
+   * floor matters as much as the inset: on a 3-button Samsung the inset
+   * reports 0 and the bar is still there.
+   */
+  const insets = useSafeAreaInsets();
+  /**
+   * Real footer height, measured. The ScrollView used a hardcoded
+   * paddingBottom of 100 while the footer is absolutely positioned over
+   * it, so once the footer grew the Progress card sat permanently
+   * underneath and could not be read at all (founder, on device
+   * 2026-08-24). Measuring means this cannot drift again.
+   */
+  const [footerH, setFooterH] = useState(0);
+  // Full-screen map. The inline one has gestures disabled because it sits
+  // in a ScrollView; this is where a rider can actually pan and zoom.
+  const [mapExpanded, setMapExpanded] = useState(false);
+
+  /**
+   * What the status banner says besides the status. Facts only: the
+   * distance still to cover and how long this job has been running.
+   * Never a predicted arrival time.
+   */
+  const bannerWho = [delivery?.receiverFirstName, delivery?.receiverLastName]
+    .filter(Boolean).join(' ') || null;
+  const jobStartedAt = (delivery as any)?.pickedUpAt ?? (delivery as any)?.assignedAt ?? null;
+  const elapsedLabel = (() => {
+    if (!jobStartedAt) return null;
+    const t = new Date(jobStartedAt);
+    if (isNaN(t.getTime())) return null;
+    const mins = Math.floor((Date.now() - t.getTime()) / 60000);
+    if (mins < 1)  return 'Just started';
+    if (mins < 60) return `On this job ${mins} min`;
+    const h = Math.floor(mins / 60);
+    return `On this job ${h}h ${mins % 60}m`;
+  })();
+  /**
+   * Clear the system navigation bar with room to spare.
+   *
+   * 16 then 28 were both still too tight: the founder reported a rider
+   * could hit Home reaching for the last button. The 3-button bar on
+   * this Samsung is around 48px and insets.bottom reports 0, so this
+   * floor is the only thing keeping the button off it. Missing a
+   * delivery action and dropping to the home screen mid-job is a bad
+   * enough outcome to spend the pixels on.
+   */
+  const footerPad = Math.max(insets.bottom + 24, 56);
   const mapRef           = useRef<MapView>(null);
+
+  /**
+   * The whole run in one tap, same as the job card. Pickup as origin,
+   * dropoff as destination, so a rider mid-delivery gets turn-by-turn
+   * without retyping an address at the roadside.
+   *
+   * This screen had no Google Maps affordance at all until the founder
+   * found it on device (2026-08-24), even though the map comment below
+   * already claimed the driver would "get real navigation by opening
+   * Google Maps".
+   */
+  const openInGoogleMaps = () => {
+    if (!delivery?.pickupLat || !delivery?.dropoffLat) return;
+    const url =
+      `https://www.google.com/maps/dir/?api=1` +
+      `&origin=${Number(delivery.pickupLat)},${Number(delivery.pickupLng)}` +
+      `&destination=${Number(delivery.dropoffLat)},${Number(delivery.dropoffLng)}` +
+      `&travelmode=driving`;
+    Linking.openURL(url).catch(() => {
+      info(
+        'Could not open Google Maps',
+        'Google Maps did not open. Check that it is installed and enabled, then call the receiver for directions.',
+      );
+    });
+  };
 
   // Real road-following route from Google Directions. Distance only:
   // durationText is deliberately not read, SEIRS shows no arrival times.
@@ -101,6 +202,15 @@ export default function ActiveDeliveryScreen() {
       .then(setDelivery)
       .catch(() => {})
       .finally(() => setLoading(false));
+    // Read the clearance window instead of repeating a number from a
+    // comment. Same source the withdrawal screen uses, so the two
+    // screens cannot disagree about a rider's money again.
+    earningsApi.dashboard()
+      .then((d: any) => {
+        const n = Number(d?.clearanceBusinessDays);
+        setClearanceDays(Number.isFinite(n) && n >= 0 ? n : null);
+      })
+      .catch(() => setClearanceDays(null));
   }, [id]);
 
   useEffect(() => {
@@ -130,19 +240,24 @@ export default function ActiveDeliveryScreen() {
 
   const [reporting, setReporting] = useState(false);
 
-  const reportProblem = () => {
-    Alert.alert(
-      'Report a problem',
-      'What is wrong with this job?',
-      [
-        ...REPORT_REASONS.map((r) => ({
-          text: r.label,
-          onPress: () => captureAndReport(r.key, r.label),
-        })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ],
-    );
-  };
+  /** Single-action informational sheet: the old Alert.alert(title, body). */
+  const info = (title: string, message?: string, onDone?: () => void) =>
+    setSheet({
+      title,
+      message,
+      options: [{ label: 'Got it', variant: 'primary', onPress: onDone }],
+      cancelLabel: null,
+      onCancel: onDone,
+    });
+
+  const reportProblem = () => setSheet({
+    title: 'Report a problem',
+    message: 'What is wrong with this job? You will be asked for a photo.',
+    options: REPORT_REASONS.map(r => ({
+      label: r.label,
+      onPress: () => captureAndReport(r.key, r.label),
+    })),
+  });
 
   const captureAndReport = async (reason: string, label: string) => {
     try {
@@ -163,25 +278,25 @@ export default function ActiveDeliveryScreen() {
         photoUrl,
       });
 
-      Alert.alert(
-        'Reported',
-        photoUrl
+      setSheet({
+        title: 'Reported',
+        message: photoUrl
           ? `Support has your photo and the job is flagged. ${label}.`
           : `Support has been notified and the job is flagged. ${label}.\n\nNo photo was attached, which makes it harder to settle.`,
-        [
-          res?.ticketId
-            ? {
-                text: 'Open the ticket',
-                onPress: () => router.push({
-                  pathname: '/(driver)/support/[ticketId]',
-                  params: { ticketId: res.ticketId },
-                } as any),
-              }
-            : { text: 'OK' },
-        ],
-      );
+        options: res?.ticketId
+          ? [{
+              label: 'Open the ticket',
+              variant: 'primary' as const,
+              onPress: () => router.push({
+                pathname: '/(driver)/support/[ticketId]',
+                params: { ticketId: res.ticketId },
+              } as any),
+            }]
+          : [{ label: 'Got it', variant: 'primary' as const }],
+        cancelLabel: res?.ticketId ? 'Not now' : null,
+      });
     } catch (e: any) {
-      Alert.alert('Could not report', e?.message ?? 'Please try again.');
+      info('Could not report', e?.message ?? 'Please try again.');
     } finally {
       setReporting(false);
     }
@@ -195,16 +310,64 @@ export default function ActiveDeliveryScreen() {
       const first = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       setMyPos({ lat: first.coords.latitude, lng: first.coords.longitude });
     } catch { /* keep null */ }
+    /**
+     * Sample on movement, not on a clock.
+     *
+     * distanceInterval means a rider sitting in traffic or waiting at a
+     * gate costs nothing at all, while a moving rider still gives the
+     * customer a pin that tracks. 250m is roughly a street on an okada.
+     * timeInterval is the floor between updates, so a fast rider cannot
+     * flood the server either.
+     */
+    const push = async (lat: number, lng: number) => {
+      setMyPos({ lat, lng });
+      try {
+        await driversApi.updateLocation(lat, lng);
+        lastSentAt.current = Date.now();
+        gpsFailures.current = 0;
+      } catch {
+        gpsFailures.current += 1;
+        // Say something once, then stay quiet. A rider whose tracking
+        // has gone dark needs to know: the customer is watching a pin
+        // that has stopped moving and believes it.
+        if (gpsFailures.current === 3) {
+          info(
+            'Location not reaching SEIRS',
+            'Your position has not updated for a few minutes. Check your data connection: your customer is watching this.',
+          );
+        }
+      }
+    };
+
+    locationWatch.current = await Location.watchPositionAsync(
+      {
+        accuracy:         Location.Accuracy.Balanced,
+        distanceInterval: 250,    // metres moved before a new fix is sent
+        timeInterval:     30000,  // never more often than every 30s
+      },
+      (pos) => { void push(pos.coords.latitude, pos.coords.longitude); },
+    );
+
+    /**
+     * Heartbeat for a rider who is not moving. The founder's ten minutes
+     * is the ceiling, not the sampling rate: it only fires when movement
+     * has produced nothing in that window, so a stationary rider checks
+     * in occasionally and a moving one is handled above.
+     */
     locationInterval.current = setInterval(async () => {
+      if (Date.now() - lastSentAt.current < 10 * 60 * 1000) return;
       try {
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setMyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        await driversApi.updateLocation(pos.coords.latitude, pos.coords.longitude);
-      } catch { /* skip */ }
-    }, 5000);
+        await push(pos.coords.latitude, pos.coords.longitude);
+      } catch { /* no fix available, try again next tick */ }
+    }, 60 * 1000);
   };
 
   const stopBroadcast = () => {
+    if (locationWatch.current) {
+      locationWatch.current.remove();
+      locationWatch.current = null;
+    }
     if (locationInterval.current) {
       clearInterval(locationInterval.current);
       locationInterval.current = null;
@@ -214,7 +377,7 @@ export default function ActiveDeliveryScreen() {
   const takeProofPhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Camera access is needed to take a proof of delivery photo.');
+      info('Permission needed', 'Camera access is needed to take a proof of delivery photo. Grant it in Settings, then try again.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -238,25 +401,32 @@ export default function ActiveDeliveryScreen() {
       ['wrong_booking_type',   isRideJob ? 'This is actually a package' : 'This is actually a person'],
       ['customer_unreachable', 'Customer unreachable'],
     ];
-    Alert.alert(
-      'Cancel this job?',
-      'The customer is refunded in full and the job goes to another driver. Pick the reason: it is recorded. "I feel unsafe" never counts against your daily allowance.',
-      [
-        { text: 'Keep the job', style: 'cancel' },
-        ...reasons.map(([key, label]) => ({
-          text: label,
-          onPress: async () => {
-            try {
-              await deliveriesApi.driverCancel(delivery.id, key);
-              Alert.alert('Cancelled', 'The job has been released. Thanks for telling us why.');
-              router.back();
-            } catch (e: any) {
-              Alert.alert('Could not cancel', e?.message ?? 'Try again.');
-            }
-          },
-        })),
-      ],
-    );
+    /**
+     * Six buttons went into Android's three slots (audit 2026-08-24).
+     * React Native slices the array at three before the OS ever sees it,
+     * so a rider was shown "Keep the job", "Emergency" and "Vehicle
+     * problem" only. "I feel unsafe" was invisible, and it is the one
+     * reason that never counts against a rider's daily allowance: the
+     * cancellation a rider is most entitled to make was the one they
+     * could not make. A list has no slot limit.
+     */
+    setSheet({
+      title: 'Cancel this job?',
+      message: 'The customer is refunded in full and the job goes to another driver. Pick the reason: it is recorded. "I feel unsafe" never counts against your daily allowance.',
+      options: reasons.map(([key, label]) => ({
+        label,
+        variant: 'destructive' as const,
+        onPress: async () => {
+          try {
+            await deliveriesApi.driverCancel(delivery.id, key);
+            info('Cancelled', 'The job has been released. Thanks for telling us why.', () => router.back());
+          } catch (e: any) {
+            info('Could not cancel', e?.message ?? 'Try again.');
+          }
+        },
+      })),
+      cancelLabel: 'Keep the job',
+    });
   };
 
   const advanceStatus = async () => {
@@ -270,10 +440,11 @@ export default function ActiveDeliveryScreen() {
 
     if (nextStatus === 'delivered' && !isRideJob) {
       if (!proofReady) {
-        Alert.alert('Proof Required', 'Please take a photo before confirming delivery.', [
-          { text: 'Take Photo', onPress: takeProofPhoto },
-          { text: 'Cancel', style: 'cancel' },
-        ]);
+        setSheet({
+          title: 'Proof of delivery needed',
+          message: 'Take a photo of the package with the person who received it before confirming. It is what settles a dispute later.',
+          options: [{ label: 'Take photo', variant: 'primary', icon: 'camera-outline', onPress: takeProofPhoto }],
+        });
         return;
       }
       // High-value packages (founder policy 2026-08-10): recipient must
@@ -281,21 +452,27 @@ export default function ActiveDeliveryScreen() {
       // transition without a handoff record, so the "already verified"
       // path is safe to offer.
       if (delivery.requiresRecipientVerification) {
-        Alert.alert(
-          'High-value package',
-          'This delivery requires recipient verification: physical ID + email code, or SEIRS ID + typed name.',
-          [
-            { text: 'Cancel', style: 'cancel' },
+        setSheet({
+          title: 'High-value package',
+          message: 'This delivery requires recipient verification: physical ID plus email code, or SEIRS ID plus typed name.',
+          options: [
             {
-              text: 'Verify Recipient',
+              label: 'Verify the recipient',
+              sub: 'Opens the identity hand-off',
+              variant: 'primary',
+              icon: 'shield-checkmark-outline',
               onPress: () => router.push({
                 pathname: '/(driver)/signature',
                 params:   { deliveryId: delivery.id },
               } as any),
             },
-            { text: 'Already verified: Delivered', onPress: () => doUpdate(nextStatus) },
+            {
+              label: 'Already verified: mark delivered',
+              sub: 'The server refuses this without a hand-off record',
+              onPress: () => doUpdate(nextStatus),
+            },
           ],
-        );
+        });
         return;
       }
       // Who took it? Recorded on the delivery so a later dispute has an
@@ -303,25 +480,54 @@ export default function ActiveDeliveryScreen() {
       // 2026-08-12). Handing to somebody other than the recipient needs
       // their name, and the backend refuses it outright for high-value
       // packages: those go back to a partner store instead.
-      Alert.alert('Who received the package?', 'This is recorded on the delivery record.', [
-        { text: 'Cancel', style: 'cancel' },
-        // Gap 5 QR: verify the right package meets the right recipient
-        // before confirming. Customer shows their package QR; driver
-        // scans; wrong-code scans show a red banner in scan-package.
-        {
-          text: 'Scan package QR first',
-          onPress: () => router.push({
-            pathname: '/(driver)/scan-package',
-            params:   { code: delivery.trackingCode ?? '', deliveryId: delivery.id },
-          } as any),
-        },
-        { text: 'Someone else', onPress: promptReceiverName },
-        { text: 'The recipient', onPress: () => doUpdate(nextStatus, { relation: 'recipient' }) },
-      ]);
+      // A sheet, not Alert.alert: four options into Android's three slots
+      // meant "The recipient" was never drawn (founder 2026-08-24).
+      openHandoverSheet(nextStatus);
     } else {
       doUpdate(nextStatus);
     }
   };
+
+  /**
+   * Who took the parcel, ordered by evidential strength, strongest first
+   * (founder 2026-08-24).
+   *
+   * The three options are not equally trustworthy and the sheet used to
+   * pretend they were. "The recipient" and "Someone else" are both
+   * self-attested: the rider asks and a person says yes, and a name
+   * nobody checks is added to the second. Scanning the package QR is the
+   * only option in this sheet with a chain of custody, because the
+   * person at the door had to be holding a code the sender gave them.
+   * So it leads, as the recommended path, and the self-attested pair
+   * follow it. Nothing was removed: a rider at a dark gate with a
+   * receiver on a cheap phone still needs the other two.
+   */
+  const openHandoverSheet = (nextStatus: string) => setSheet({
+    title: 'Who received the package?',
+    message: 'This is recorded on the delivery record.',
+    options: [
+      {
+        label: 'Scan their package QR',
+        sub: 'Strongest proof: they hold a code from the sender. Scan, then confirm here',
+        variant: 'primary',
+        icon: 'qr-code-outline',
+        onPress: () => router.push({
+          pathname: '/(driver)/scan-package',
+          params:   { code: delivery.trackingCode ?? '', deliveryId: delivery.id },
+        } as any),
+      },
+      {
+        label: 'The recipient',
+        sub: 'You asked and they said yes',
+        onPress: () => doUpdate(nextStatus as any, { relation: 'recipient' }),
+      },
+      {
+        label: 'Someone else',
+        sub: 'A gateman, a neighbour, reception. Their name goes on the record',
+        onPress: () => promptReceiverName(),
+      },
+    ],
+  });
 
   /**
    * Someone other than the recipient accepted it: a gateman, a neighbour,
@@ -382,34 +588,60 @@ export default function ActiveDeliveryScreen() {
           ).length;
         } catch { /* fall through */ }
         if (remainingActive > 0) {
-          Alert.alert(
-            'Trunk check',
-            `Delivered ${delivery.trackingCode}. You still have ${remainingActive} package${remainingActive > 1 ? 's' : ''} on board: take a quick photo of the remaining cargo. It protects YOU in any dispute.`,
-            [
-              {
-                text: 'Take Trunk Photo',
-                onPress: () => router.replace({
-                  pathname: '/(driver)/trunk-check',
-                  params:   { deliveryId: delivery.id, remaining: String(remainingActive) },
-                } as any),
-              },
-              { text: 'Skip (not recommended)', style: 'cancel', onPress: () => router.replace('/(driver)' as any) },
-            ],
-          );
+          setSheet({
+            title: 'Trunk check',
+            message: `Delivered ${delivery.trackingCode}. You still have ${remainingActive} package${remainingActive > 1 ? 's' : ''} on board: take a quick photo of the remaining cargo. It protects YOU in any dispute.`,
+            options: [{
+              label: 'Take the trunk photo',
+              variant: 'primary',
+              icon: 'camera-outline',
+              onPress: () => router.replace({
+                pathname: '/(driver)/trunk-check',
+                params:   { deliveryId: delivery.id, remaining: String(remainingActive) },
+              } as any),
+            }],
+            cancelLabel: 'Skip, not recommended',
+            // Dismissing by backdrop has to land the rider somewhere.
+            // Leaving them on a delivered job with no route out was the
+            // old behaviour of the Cancel button anyway.
+            onCancel: () => router.replace('/(driver)' as any),
+          });
           return;
         }
-        // D-6.7: earnings do not land "shortly" and there is no driver
-        // wallet. State the real clearance, same as the withdrawal screen.
-        Alert.alert(
-          'Delivery Complete!',
-          `You've successfully delivered ${delivery.trackingCode}.\n\nYour earnings for this trip clear in 2 business days, then you can withdraw them.`,
-          [{ text: 'Back to Jobs', onPress: () => router.replace('/(driver)' as any) }],
-        );
+        /**
+         * D-6.7: earnings do not land "shortly" and there is no driver
+         * wallet, so this states the real clearance.
+         *
+         * It stated the WRONG one until 2026-08-24: hardcoded "2 business
+         * days" while GET /earnings/dashboard was reporting
+         * clearanceBusinessDays: 0. Two different answers to the number a
+         * rider cares about most, from the same app. The figure now comes
+         * off the server, 0 gets its own sentence because "clear in 0
+         * business days" is not English, and if the call failed the copy
+         * points at the Earnings tab rather than inventing a number.
+         */
+        const clearanceLine =
+          clearanceDays === null
+            ? 'Your earnings for this trip are on the way to your ledger. The Earnings tab shows when they clear.'
+            : clearanceDays === 0
+              ? 'Your earnings for this trip are already cleared and ready to withdraw.'
+              : `Your earnings for this trip clear in ${clearanceDays} business day${clearanceDays === 1 ? '' : 's'}, then you can withdraw them.`;
+        setSheet({
+          title: 'Delivery complete',
+          message: `You've successfully delivered ${delivery.trackingCode}.\n\n${clearanceLine}`,
+          options: [{
+            label: 'Back to jobs',
+            variant: 'primary',
+            onPress: () => router.replace('/(driver)' as any),
+          }],
+          cancelLabel: null,
+          onCancel: () => router.replace('/(driver)' as any),
+        });
       } else {
         setDelivery((prev: any) => ({ ...prev, status: nextStatus }));
       }
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Could not update delivery status.');
+      info('Could not update this job', e.message ?? 'The status did not save. Check your connection and try again.');
     } finally {
       setUpdating(false);
     }
@@ -449,6 +681,50 @@ export default function ActiveDeliveryScreen() {
   const needsProof  = delivery.status === 'in_transit' && !isRide;
   const statusIndex = steps.findIndex(s => s.key === delivery.status);
 
+  /**
+   * Is a partner counter one of the two ends of THIS leg, and is the
+   * rider at the end that still needs signing for?
+   *
+   * Collect: `pickupStoreId` is set, which means the sender dropped the
+   * parcel at a counter instead of a door, so pickupAddress already holds
+   * the store's address. Responsibility sits with the store until the
+   * rider scans, so the card is live while the job is still 'assigned'.
+   *
+   * Drop: the failed-delivery flow rerouted this to a counter
+   * (`arrivalResolution` is 'store' or 'auto_store'), and redirectToStore
+   * rewrote dropoffAddress to the store. Responsibility stays with the
+   * rider until the store scans, so the card is live right up to the
+   * moment the delivery is marked delivered.
+   *
+   * A ride has no parcel and therefore no custody to transfer.
+   */
+  const counterHandoff: {
+    direction: 'collect' | 'drop'; title: string; sub: string;
+    storeName: string; storeAddress: string;
+  } | null = (() => {
+    if (isRide || isDone) return null;
+    const resolution = (delivery as any).arrivalResolution;
+    if (resolution === 'store' || resolution === 'auto_store') {
+      return {
+        direction: 'drop',
+        title: 'Hand in at the partner counter',
+        sub:   'Scan the parcel, then the counter signs for it. Until they sign it is still on you.',
+        storeName:    'Partner counter',
+        storeAddress: delivery.dropoffAddress ?? '',
+      };
+    }
+    if ((delivery as any).pickupStoreId && delivery.status === 'assigned') {
+      return {
+        direction: 'collect',
+        title: 'Collect from the partner counter',
+        sub:   'Scan the parcel, then the counter signs it out. After that it is on you.',
+        storeName:    'Partner counter',
+        storeAddress: delivery.pickupAddress ?? '',
+      };
+    }
+    return null;
+  })();
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
       {/* Header */}
@@ -478,7 +754,10 @@ export default function ActiveDeliveryScreen() {
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: (footerH || 120) + Spacing.lg }}
+      >
 
         {/* Status banner */}
         <View style={[styles.bannerWrap, Shadows.md]}>
@@ -488,13 +767,18 @@ export default function ActiveDeliveryScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.statusBanner}
           >
-            <View style={styles.bannerIconWrap}>
-              <Ionicons name={stepConfig.icon as any} size={36} color="#fff" />
-            </View>
-            <Text style={styles.statusLabel}>{stepConfig.label}</Text>
-            <View style={styles.gpsPill}>
-              <View style={styles.gpsDot} />
-              <Text style={styles.gpsText}>GPS BROADCASTING</Text>
+            {/* Three facts, nothing else. The icon and the status word
+                were removed (founder 2026-08-24): a rider on the bike
+                does not need to be told they are riding. */}
+            <Text style={styles.bannerHeadline}>
+              {routeDistance ? `${routeDistance}${bannerWho ? ` to ${bannerWho}` : ''}` : (bannerWho ? `To ${bannerWho}` : stepConfig.label)}
+            </Text>
+            <View style={styles.bannerMetaRow}>
+              {!!elapsedLabel && <Text style={styles.bannerSub}>{elapsedLabel}</Text>}
+              <View style={styles.gpsPill}>
+                <View style={styles.gpsDot} />
+                <Text style={styles.gpsText}>GPS</Text>
+              </View>
             </View>
           </LinearGradient>
         </View>
@@ -532,10 +816,28 @@ export default function ActiveDeliveryScreen() {
                 longitudeDelta: 0.05,
               }}
               onMapReady={() => {
+                /**
+                 * The rider's pin only steers the camera when it is
+                 * plausibly on this trip. With the device in Berlin and
+                 * the job in Ibadan the fit zoomed out to the North
+                 * Atlantic and the route vanished (found on device
+                 * 2026-08-24). A stale fix or GPS drift does the same
+                 * thing, and the route is what this map is for.
+                 *
+                 * ~2 degrees is about 200km, far wider than any single
+                 * delivery, so a real position is never dropped. The
+                 * marker still draws wherever the device says it is.
+                 */
+                const pLat = Number(delivery.pickupLat);
+                const pLng = Number(delivery.pickupLng);
+                const nearTrip =
+                  !!myPos &&
+                  Math.abs(myPos.lat - pLat) < 2 &&
+                  Math.abs(myPos.lng - pLng) < 2;
                 const coords = [
-                  { latitude: Number(delivery.pickupLat),  longitude: Number(delivery.pickupLng) },
+                  { latitude: pLat,  longitude: pLng },
                   { latitude: Number(delivery.dropoffLat), longitude: Number(delivery.dropoffLng) },
-                  ...(myPos ? [{ latitude: myPos.lat, longitude: myPos.lng }] : []),
+                  ...(nearTrip && myPos ? [{ latitude: myPos.lat, longitude: myPos.lng }] : []),
                 ];
                 mapRef.current?.fitToCoordinates(coords, {
                   edgePadding: { top: 60, right: 50, bottom: 60, left: 50 },
@@ -580,6 +882,28 @@ export default function ActiveDeliveryScreen() {
                 </View>
               </View>
             )}
+            {/* Expand. Gestures are off on the inline map, so without
+                this a rider cannot look around their route at all. */}
+            <Pressable
+              style={({ pressed }) => [styles.expandBtn, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
+              onPress={() => setMapExpanded(true)}
+              accessibilityLabel="Expand map"
+            >
+              <Ionicons name="expand-outline" size={18} color={theme.text} />
+            </Pressable>
+            {/* Directions, on the screen the rider actually has open
+                while driving. Gestures are off on the map above, so this
+                is the only way out to real navigation from here. */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.mapsBtn,
+                { borderTopColor: theme.border, opacity: pressed ? 0.6 : 1 },
+              ]}
+              onPress={openInGoogleMaps}
+            >
+              <Ionicons name="open-outline" size={16} color={theme.primary} />
+              <Text style={[styles.mapsBtnText, { color: theme.primary }]}>Open directions in Google Maps</Text>
+            </Pressable>
           </View>
         )}
 
@@ -602,6 +926,41 @@ export default function ActiveDeliveryScreen() {
             </View>
           </View>
         </View>
+
+        {/* Partner counter hand-off.
+            The liability matrix moves responsibility on a scan ("Partner
+            store until driver scans", "Driver until store scans") and
+            there was no way for a rider to record either one, which is
+            why admin Liability Disputes showed "No handoff records yet"
+            on completed deliveries (2026-08-25). This is the way in. */}
+        {counterHandoff && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.counterCard,
+              { backgroundColor: theme.surface, borderColor: theme.primary, opacity: pressed ? 0.75 : 1 },
+              Shadows.sm,
+            ]}
+            onPress={() => router.push({
+              pathname: '/(driver)/store-handoff',
+              params: {
+                deliveryId: delivery.id,
+                code:       delivery.trackingCode ?? '',
+                direction:  counterHandoff.direction,
+                storeName:  counterHandoff.storeName,
+                storeAddress: counterHandoff.storeAddress,
+              },
+            } as any)}
+          >
+            <View style={[styles.counterIcon, { backgroundColor: theme.primary + '15' }]}>
+              <Ionicons name="storefront-outline" size={22} color={theme.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.counterTitle, { color: theme.text }]}>{counterHandoff.title}</Text>
+              <Text style={[styles.counterSub, { color: theme.textSecond }]}>{counterHandoff.sub}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textThird} />
+          </Pressable>
+        )}
 
         {/* D-6.8: a ride is not a package. The Size / Fragile / Description
             rows are meaningless on a ride and the card title was telling the
@@ -649,7 +1008,10 @@ export default function ActiveDeliveryScreen() {
             above the card that honours it (sweep 2026-08-23). */}
         {delivery.customer && (delivery as any).kind !== 'ride' && (
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Customer</Text>
+            <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 2 }]}>Customer</Text>
+          {/* The split is deliberate and was invisible, so it read as a
+              missing button (founder 2026-08-24). */}
+          <Text style={[styles.contactHint, { color: theme.textThird }]}>Not at the drop-off. Message them.</Text>
             <View style={styles.customerRow}>
               <Avatar name={delivery.customer.name ?? 'Customer'} uri={delivery.customer.profilePhoto} size={44} />
               <View style={{ flex: 1 }}>
@@ -705,7 +1067,8 @@ export default function ActiveDeliveryScreen() {
           </View>
         ) : (delivery.receiverFirstName || delivery.receiverPhone) && (
           <View style={[styles.card, { backgroundColor: theme.surface }, Shadows.sm]}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Receiver</Text>
+            <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 2 }]}>Receiver</Text>
+            <Text style={[styles.contactHint, { color: theme.textThird }]}>Call them when you arrive.</Text>
             <View style={styles.customerRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.customerName, { color: theme.text }]}>
@@ -800,6 +1163,25 @@ export default function ActiveDeliveryScreen() {
                     { color: !done && !active ? theme.textSecond : theme.text },
                     active && { fontWeight: FontWeight.bold },
                   ]}>{s.label}</Text>
+                  {/* When it happened, from the real column only.
+                      assignedAt / pickedUpAt / deliveredAt exist;
+                      in_transit has no column, so it shows nothing
+                      rather than repeating the pickup time and
+                      asserting something we did not record. */}
+                  {(() => {
+                    const raw =
+                      s.key === 'assigned'   ? (delivery as any).assignedAt  :
+                      s.key === 'picked_up'  ? (delivery as any).pickedUpAt  :
+                      s.key === 'delivered'  ? (delivery as any).deliveredAt : null;
+                    if (!raw) return null;
+                    const t = new Date(raw);
+                    if (isNaN(t.getTime())) return null;
+                    return (
+                      <Text style={[styles.stepTime, { color: theme.textSecond }]}>
+                        {t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    );
+                  })()}
                 </View>
                 {i < steps.length - 2 && (
                   <View style={[styles.stepLine, { backgroundColor: done ? '#22C55E' : theme.border }]} />
@@ -811,15 +1193,75 @@ export default function ActiveDeliveryScreen() {
 
       </ScrollView>
 
+      {/* One themed sheet for every decision on this screen. The two
+          hand-rolled modals that used to live here (the hand-off and
+          Report a problem) were the first two Alert.alert calls
+          converted on 2026-08-24; SeirsSheet is that pattern extracted
+          so the rest of the screen could follow it instead of growing a
+          third copy. */}
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
+
+      {/* Full-screen map: gestures ON, because nothing here competes for
+          the drag. Google Maps stays one tap away: reading a route and
+          navigating one are different jobs. */}
+      <Modal visible={mapExpanded} animationType="slide" onRequestClose={() => setMapExpanded(false)}>
+        <View style={{ flex: 1, backgroundColor: theme.background }}>
+          {!!delivery?.pickupLat && !!delivery?.dropoffLat && (
+            <MapView
+              provider={PROVIDER_GOOGLE}
+              style={{ flex: 1 }}
+              showsTraffic
+              showsUserLocation
+              initialRegion={{
+                latitude:  (Number(delivery.pickupLat) + Number(delivery.dropoffLat)) / 2,
+                longitude: (Number(delivery.pickupLng) + Number(delivery.dropoffLng)) / 2,
+                latitudeDelta:  Math.max(Math.abs(Number(delivery.pickupLat) - Number(delivery.dropoffLat)) * 2.5, 0.05),
+                longitudeDelta: Math.max(Math.abs(Number(delivery.pickupLng) - Number(delivery.dropoffLng)) * 2.5, 0.05),
+              }}
+            >
+              <Marker
+                coordinate={{ latitude: Number(delivery.pickupLat), longitude: Number(delivery.pickupLng) }}
+                title="Pickup" description={delivery.pickupAddress} pinColor="#22C55E"
+              />
+              <Marker
+                coordinate={{ latitude: Number(delivery.dropoffLat), longitude: Number(delivery.dropoffLng) }}
+                title="Dropoff" description={delivery.dropoffAddress} pinColor="#EF4444"
+              />
+              {routeCoords.length > 1 && (
+                <Polyline coordinates={routeCoords} strokeColor="#3A7BD5" strokeWidth={5} />
+              )}
+            </MapView>
+          )}
+          <Pressable
+            onPress={() => setMapExpanded(false)}
+            style={[styles.mapCloseBtn, { top: insets.top + 12, backgroundColor: theme.surface }]}
+            accessibilityLabel="Close map"
+          >
+            <Ionicons name="close" size={24} color={theme.text} />
+          </Pressable>
+          <View style={[styles.mapModalFooter, { backgroundColor: theme.surface, borderTopColor: theme.border, paddingBottom: footerPad }]}>
+            <Pressable
+              style={({ pressed }) => [styles.actionBtn, { backgroundColor: theme.primary, opacity: pressed ? 0.7 : 1 }]}
+              onPress={openInGoogleMaps}
+            >
+              <Ionicons name="open-outline" size={18} color="#fff" />
+              <Text style={styles.actionBtnText}>Open directions in Google Maps</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* Footer CTA */}
       {!isDone && stepConfig.action && (
-        <View style={[styles.footer, { borderTopColor: theme.border, backgroundColor: theme.surface }]}>
-          {needsProof && !proofReady && (
-            <View style={styles.proofWarningRow}>
-              <Ionicons name="camera-outline" size={15} color={theme.textSecond} />
-              <Text style={[styles.proofWarning, { color: theme.textSecond }]}>Take a proof photo first</Text>
-            </View>
-          )}
+        <View
+          style={[styles.footer, { borderTopColor: theme.border, backgroundColor: theme.surface, paddingBottom: footerPad }]}
+          onLayout={(e) => setFooterH(e.nativeEvent.layout.height)}
+        >
+          {/* The prompt that used to sit here is gone (founder
+              2026-08-24). It duplicated the large camera box in the Proof
+              of Delivery card, and two controls for one action is worse
+              than one obvious control. The disabled state of Confirm
+              Delivered already says the photo is required. */}
           <Pressable
             style={[
               styles.actionBtn,
@@ -837,27 +1279,27 @@ export default function ActiveDeliveryScreen() {
               5-minute window; instructions arrive as chat messages. */}
           {['picked_up', 'in_transit'].includes(String(delivery.status)) && (
             <Pressable
-              style={{ alignItems: 'center', paddingVertical: 10 }}
-              onPress={() => Alert.alert(
-                'Nobody available to receive?',
-                'The sender gets 5 minutes to respond: wait, neighbour, gate, or partner store. Their answer arrives in this delivery\'s chat. If they stay silent, follow the fallback message.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Notify sender',
-                    onPress: async () => {
-                      try {
-                        await deliveriesApi.arrivalIssue(delivery.id);
-                        Alert.alert('Sender notified', 'Watch the chat: their answer or the fallback instruction lands there within 5 minutes.');
-                      } catch (e: any) {
-                        Alert.alert('Could not notify', e?.message ?? 'Try again.');
-                      }
-                    },
+              style={({ pressed }) => [styles.nobodyBtn, { borderColor: theme.border, opacity: pressed ? 0.6 : 1 }]}
+              onPress={() => setSheet({
+                title: 'Nobody available to receive?',
+                message: 'The sender gets 5 minutes to respond: wait, neighbour, gate, or partner store. Their answer arrives in this delivery\'s chat. If they stay silent, follow the fallback message.',
+                options: [{
+                  label: 'Notify the sender',
+                  variant: 'primary',
+                  icon: 'chatbubble-ellipses-outline',
+                  onPress: async () => {
+                    try {
+                      await deliveriesApi.arrivalIssue(delivery.id);
+                      info('Sender notified', 'Watch the chat: their answer or the fallback instruction lands there within 5 minutes.');
+                    } catch (e: any) {
+                      info('Could not notify', e?.message ?? 'Try again.');
+                    }
                   },
-                ],
-              )}
+                }],
+              })}
             >
-              <Text style={{ color: theme.textSecond, fontSize: FontSize.sm, fontWeight: FontWeight.semibold as any }}>
+              <Ionicons name="alert-circle-outline" size={18} color={theme.text} />
+              <Text style={{ color: theme.text, fontSize: FontSize.base, fontWeight: FontWeight.bold as any }}>
                 Nobody available to receive?
               </Text>
             </Pressable>
@@ -928,15 +1370,22 @@ const styles = StyleSheet.create({
   headerTitle:  { fontSize: FontSize.md, fontWeight: FontWeight.bold },
   trackCode:    { fontSize: FontSize.xs, letterSpacing: 1 },
 
-  bannerWrap:     { marginHorizontal: Spacing.md, marginVertical: Spacing.md, borderRadius: Radius.xl, overflow: 'hidden' },
-  statusBanner:   { padding: Spacing.lg, alignItems: 'center', gap: Spacing.sm },
+  expandBtn:      { position: 'absolute', top: Spacing.sm, right: Spacing.sm, width: 38, height: 38, borderRadius: 19, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  mapCloseBtn:    { position: 'absolute', left: Spacing.md, width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  mapModalFooter: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1 },
+  bannerWrap:     { marginHorizontal: Spacing.md, marginTop: Spacing.md, marginBottom: Spacing.sm, borderRadius: Radius.xl, overflow: 'hidden' },
+  statusBanner:   { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, alignItems: 'center', gap: 4 },
   bannerIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
   statusLabel:    { color: '#fff', fontSize: FontSize.xl, fontWeight: FontWeight.bold },
+  bannerHeadline: { color: '#fff', fontSize: FontSize.xl, fontWeight: FontWeight.bold as any, textAlign: 'center' },
+  bannerMetaRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  bannerSub:      { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.xs },
   gpsPill:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: Spacing.md, paddingVertical: 5, borderRadius: Radius.full },
   gpsDot:         { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' },
   gpsText:        { color: 'rgba(255,255,255,0.9)', fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 1 },
 
   card:         { marginHorizontal: Spacing.md, borderRadius: Radius.xl, padding: Spacing.md, marginBottom: Spacing.md },
+  contactHint:  { fontSize: FontSize.xs, marginBottom: Spacing.md },
   cardTitle:    { fontSize: FontSize.base, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
 
   routeRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
@@ -944,6 +1393,13 @@ const styles = StyleSheet.create({
   routeLine:    { width: 1.5, height: 18, marginLeft: 4, marginVertical: 3 },
   routeLabel:   { fontSize: FontSize.xs, marginBottom: 2 },
   routeAddr:    { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+
+  // Bordered in brand colour rather than filled: it is an action, but it
+  // must not out-shout the status footer that drives the job forward.
+  counterCard:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5 },
+  counterIcon:  { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  counterTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  counterSub:   { fontSize: FontSize.xs, lineHeight: 17, marginTop: 2 },
 
   infoRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.xs },
   infoLabel:    { flex: 1, fontSize: FontSize.sm },
@@ -956,7 +1412,12 @@ const styles = StyleSheet.create({
   reportBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, borderWidth: 1, borderRadius: 999,
-    paddingVertical: 12, marginTop: 4, marginBottom: 4,
+    paddingVertical: 14,
+    // Lines up with the cards. Without this it was the only full-bleed
+    // element on a screen of inset cards and its ends ran past them
+    // (founder 2026-08-24).
+    marginHorizontal: Spacing.md,
+    marginTop: 4, marginBottom: Spacing.md,
   },
   reportBtnText: { color: '#DC2626', fontSize: 14, fontWeight: '700' },
   customerPhone: { fontSize: FontSize.sm, marginTop: 2 },
@@ -973,9 +1434,11 @@ const styles = StyleSheet.create({
   stepDot:    { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   stepNum:    { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
   stepLabel:  { flex: 1, fontSize: FontSize.base },
+  stepTime:   { fontSize: FontSize.xs, fontVariant: ['tabular-nums'] },
   stepLine:   { width: 1.5, height: 16, marginLeft: 13, marginBottom: 4 },
 
   footer:          { position: 'absolute', bottom: 0, left: 0, right: 0, padding: Spacing.md, borderTopWidth: 1 },
+  nobodyBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: Spacing.sm, paddingVertical: 14, borderRadius: Radius.lg, borderWidth: 1 },
   proofWarningRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
   proofWarning:    { fontSize: FontSize.xs, textAlign: 'center' },
   actionBtn:       { height: 56, borderRadius: Radius.xl, justifyContent: 'center', alignItems: 'center' },
@@ -985,6 +1448,8 @@ const styles = StyleSheet.create({
   emptyIconWrap:{ width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center' },
   emptyTitle:   { fontSize: FontSize.lg, fontWeight: FontWeight.semibold },
 
+  mapsBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderTopWidth: 1 },
+  mapsBtnText:    { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
   mapStatRow:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderTopWidth: 1 },
   mapStatItem:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   mapStatValue:   { fontSize: FontSize.sm, fontWeight: FontWeight.bold },

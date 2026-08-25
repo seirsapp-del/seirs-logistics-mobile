@@ -1,6 +1,5 @@
 import {
   View, Text, Pressable, StyleSheet, FlatList, StatusBar, RefreshControl, ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { notificationsApi } from '@/services/api';
 
@@ -66,6 +66,7 @@ export default function DriverNotificationsScreen() {
   const [notifs,     setNotifs]     = useState<Notif[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [sheet,      setSheet]      = useState<SeirsSheetSpec | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -105,24 +106,35 @@ export default function DriverNotificationsScreen() {
   // Mass clear (founder 2026-08-10): one action instead of a hundred
   // individual swipes.
   const clearAll = () => {
-    Alert.alert('Clear notifications', 'Which ones should go?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Clear read only',
-        onPress: async () => {
-          setNotifs(prev => prev.filter(n => !n.read));
-          try { await notificationsApi.removeAll(true); } catch {}
+    // Three buttons is Android's hard ceiling, so this dialog had no room
+    // to ever grow a fourth choice. A sheet has no ceiling and gives each
+    // option a subtitle saying what it actually removes.
+    setSheet({
+      title: 'Clear notifications',
+      message: 'Which ones should go?',
+      options: [
+        {
+          label: 'Clear read only',
+          sub: 'Keeps anything you have not opened yet',
+          icon: 'checkmark-done-outline',
+          onPress: async () => {
+            setNotifs(prev => prev.filter(n => !n.read));
+            try { await notificationsApi.removeAll(true); } catch {}
+          },
         },
-      },
-      {
-        text: 'Clear everything',
-        style: 'destructive',
-        onPress: async () => {
-          setNotifs([]);
-          try { await notificationsApi.removeAll(false); } catch {}
+        {
+          label: 'Clear everything',
+          sub: 'Unread ones go too, and this cannot be undone',
+          variant: 'destructive',
+          icon: 'trash-outline',
+          onPress: async () => {
+            setNotifs([]);
+            try { await notificationsApi.removeAll(false); } catch {}
+          },
         },
-      },
-    ]);
+      ],
+      cancelLabel: 'Keep them',
+    });
   };
 
   const markOneRead = async (id: string) => {
@@ -144,15 +156,24 @@ export default function DriverNotificationsScreen() {
 
     // Safety check-in: give real choices instead of a dead tap.
     if (n.title.startsWith('Are you OK')) {
-      Alert.alert(
-        'Are you OK?',
-        'We could not see your location for a while. If everything is fine just confirm; if not, get help now.',
-        [
-          { text: "I'm OK", style: 'default' },
-          { text: 'Contact support', onPress: () => router.push('/(driver)/support/new' as any) },
-          { text: 'SOS Emergency', style: 'destructive', onPress: () => router.push('/(driver)/sos' as any) },
+      /**
+       * A safety check-in sat at exactly Android's three-button ceiling,
+       * which is the same shape that silently swallowed "I feel unsafe"
+       * off the cancel-job dialog. One more option here and the SOS row
+       * would have vanished with no error and no warning. A sheet has no
+       * ceiling, and vertical rows give a rider a real target instead of
+       * three words crowded into a corner (2026-08-25 dialog sweep).
+       */
+      setSheet({
+        title: 'Are you OK?',
+        message: 'We could not see your location for a while. If everything is fine just confirm; if not, get help now.',
+        options: [
+          { label: "I'm OK", sub: 'Nothing is wrong, carry on', variant: 'primary', icon: 'checkmark-circle-outline' },
+          { label: 'Contact support', sub: 'Talk to a person about it', icon: 'chatbubble-ellipses-outline', onPress: () => router.push('/(driver)/support/new' as any) },
+          { label: 'SOS emergency', sub: 'Alert ops and share my live location now', variant: 'destructive', icon: 'warning-outline', onPress: () => router.push('/(driver)/sos' as any) },
         ],
-      );
+        cancelLabel: null,
+      });
       return;
     }
     if (n.rawType === 'sos_alert') { router.push('/(driver)/sos' as any); return; }
@@ -160,11 +181,32 @@ export default function DriverNotificationsScreen() {
     switch (n.type) {
       case 'payment': router.push('/(driver)/(tabs)/earnings' as any); break;
       case 'rating':  router.push('/(driver)/ratings' as any); break;
-      // D-1.4: deliveryId was checked and then thrown away, so the active
-      // screen opened with no id and rendered its not-found state.
+      /**
+       * D-1.4: deliveryId was checked and then thrown away, so the active
+       * screen opened with no id and rendered its not-found state.
+       *
+       * Then every job notification went to /active, which is the screen
+       * for a job the driver is ALREADY running: it offers "picked up"
+       * and "delivered" and has no Accept or Decline anywhere on it. But
+       * job_request is an OFFER, sent before the driver has agreed to
+       * anything, and it covers both an ordinary pool offer and a paid
+       * Travel Buddy seat booking whose own notification body reads
+       * "Accept or decline it in Jobs". Tapping it landed the driver on a
+       * screen that could do neither, and for the seat booking that is a
+       * passenger's money sitting in escrow until the 30-minute sweep
+       * refunds it (2026-08-25 interstate walk).
+       *
+       * Offers go to the job screen with offered=1, which is where Accept
+       * and the real decline live. Anything already assigned still goes
+       * to /active.
+       */
       case 'job':
-        if (n.deliveryId) router.push({ pathname: '/(driver)/active' as any, params: { id: n.deliveryId } });
-        else router.push('/(driver)/(tabs)' as any);
+        if (!n.deliveryId) { router.push('/(driver)/(tabs)' as any); break; }
+        if (n.rawType === 'job_request') {
+          router.push({ pathname: '/(driver)/job/[id]' as any, params: { id: n.deliveryId, offered: '1' } });
+        } else {
+          router.push({ pathname: '/(driver)/active' as any, params: { id: n.deliveryId } });
+        }
         break;
       default: break; // system/broadcast: nothing to open
     }
@@ -246,6 +288,7 @@ export default function DriverNotificationsScreen() {
           );
         }}
       />
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

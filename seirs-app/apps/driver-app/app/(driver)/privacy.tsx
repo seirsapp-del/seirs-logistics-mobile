@@ -8,10 +8,12 @@ import * as Location from 'expo-location';
 import { useFocusEffect } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { usersApi } from '@/services/api';
 
 export default function DriverPrivacyScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router  = useRouter();
   const cs      = useColorScheme();
   const theme   = Colors[cs ?? 'light'];
@@ -62,17 +64,18 @@ export default function DriverPrivacyScreen() {
   const onAnalyticsData = (v: boolean) => { setAnalyticsData(v); queueSave({ analytics_share: v }); };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This will permanently delete your driver account, vehicle info, earnings history, and all personal data. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Continue', style: 'destructive',
-          onPress: () => router.push('/(driver)/delete-account' as any),
-        },
-      ],
-    );
+    setSheet({
+      title: 'Delete account',
+      message: 'This will permanently delete your driver account, vehicle info, earnings history, and all personal data. This action cannot be undone.',
+      options: [{
+        label: 'Continue to delete',
+        sub: 'You confirm on the next screen',
+        variant: 'destructive',
+        icon: 'trash-outline',
+        onPress: () => router.push('/(driver)/delete-account' as any),
+      }],
+      cancelLabel: 'Keep my account',
+    });
   };
 
   const handleDownloadData = async () => {
@@ -228,6 +231,7 @@ export default function DriverPrivacyScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

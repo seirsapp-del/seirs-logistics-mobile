@@ -33,4 +33,12 @@ export type {
   TicketTopic,
   TicketStatus,
   UserDocumentDTO,
+  // Vehicle ownership + self-serve vehicle change (2026-08-25). These must
+  // be listed here or the import resolves to undefined at runtime: this
+  // barrel is a whitelist, not a re-export of everything.
+  OwnerRelationship,
+  VehicleOwnershipInput,
+  VehicleChangeRequest,
+  VehicleChangeDTO,
+  VehicleRecordDTO,
 } from '@seirs/shared/services/api';

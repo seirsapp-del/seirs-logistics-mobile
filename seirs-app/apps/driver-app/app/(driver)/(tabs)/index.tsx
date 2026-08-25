@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { io, Socket } from 'socket.io-client';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePoolCap } from '@/hooks/usePoolCap';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { driversApi, earningsApi } from '@/services/api';
@@ -32,6 +33,7 @@ const URGENCY_COLOR: Record<string, string> = {
 };
 
 export default function DriverHomeScreen() {
+  const poolCap = usePoolCap();
   const router      = useRouter();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
@@ -50,6 +52,18 @@ export default function DriverHomeScreen() {
   // The ledger's withdrawable figure, same source as the Earnings tab:
   // the hub used to show drivers.me().balance, a different number.
   const [withdrawable, setWithdrawable] = useState<number | null>(null);
+  /**
+   * Did the ledger call fail? (founder 2026-08-24: "Withdrawable shows a
+   * dash offline, NGN 0.00 online. Same card, same zero, two renderings.")
+   *
+   * A dash where money belongs reads as "your earnings vanished", and it
+   * was standing in for two different things: still loading, and the
+   * request failed. Money now always renders as money and the staleness
+   * moves to the sub-line, which is the only honest place for it: a rider
+   * with no signal sees their last known figure AND is told it is stale,
+   * instead of being shown a dash and left to guess.
+   */
+  const [earningsStale, setEarningsStale] = useState(false);
   // D-4.3: "Today" must come from the SAME place the Earnings tab reads it,
   // the ledger dashboard. driverData.todayEarnings sums delivery.driverEarnings
   // (the booked share, counted even before a ledger row exists), so the two
@@ -65,8 +79,11 @@ export default function DriverHomeScreen() {
       .then((d: any) => {
         setWithdrawable(Number(d?.available ?? 0));
         setTodayLedger(d?.today?.earned != null ? Number(d.today.earned) : null);
+        setEarningsStale(false);
       })
-      .catch(() => { setWithdrawable(null); setTodayLedger(null); });
+      // Deliberately does NOT clear the figures: a failed refresh should
+      // leave the last known numbers on screen, flagged as not current.
+      .catch(() => setEarningsStale(true));
     driversApi.me().then((d) => {
       setDriverData(d);
       // Hydrate the online switch from the server. Without this the toggle
@@ -204,7 +221,17 @@ export default function DriverHomeScreen() {
   const todayEarnings = todayLedger ?? Number(driverData?.todayEarnings ?? 0);
   // No fake defaults: a new driver has no rating, not a pretend 4.8.
   const rating        = Number(driverData?.rating        ?? 0);
-  const tripCount     = Number(driverData?.totalTrips    ?? 0);
+  /**
+   * The driver record exposes totalDeliveries. This read totalTrips,
+   * which does not exist on it, so tripCount was always 0 and every
+   * rider was told they were New with no trips: the founder's own demo
+   * rider shows 214 deliveries and a 4.87 rating on the API while their
+   * own hub said "New, 0 trips" (found 2026-08-24 by holding the
+   * customer app and the driver app side by side).
+   *
+   * totalTrips is kept as a fallback in case a future payload uses it.
+   */
+  const tripCount     = Number(driverData?.totalDeliveries ?? driverData?.totalTrips ?? 0);
 
   const activeJobs = activeDeliveries.filter(d => d.status === 'assigned' || d.status === 'picked_up' || d.status === 'in_transit');
   const activeJob  = activeJobs[0];
@@ -327,7 +354,7 @@ export default function DriverHomeScreen() {
           >
             <View style={styles.poolBannerLeft}>
               <View style={[styles.poolBadge, { backgroundColor: '#3A7BD5' }]}>
-                <Text style={styles.poolBadgeText}>{activeJobs.length}/4</Text>
+                <Text style={styles.poolBadgeText}>{activeJobs.length}/{poolCap}</Text>
               </View>
               <View>
                 <Text style={[styles.poolBannerTitle, { color: theme.text }]}>Pool trip active</Text>
@@ -343,7 +370,24 @@ export default function DriverHomeScreen() {
         {/* ── Active job card ───────────────────────────────────────────── */}
         {activeJob && (
           <Pressable
-            style={[styles.activeCard, { backgroundColor: '#16A34A15', borderColor: '#16A34A40' }, Shadows.md]}
+            /**
+             * Theme-aware on purpose. '#16A34A15' is green at ~8% alpha:
+             * a subtle glow over near-black, and grey-green sludge over
+             * the cream light background. It also made the elevation
+             * shadow show through the translucency as a second nested
+             * box (founder 2026-08-24, light mode).
+             *
+             * Light gets an opaque surface with a solid green border, so
+             * it stays obviously the active job while matching the other
+             * cards. Dark keeps the treatment that already worked.
+             */
+            style={[
+              styles.activeCard,
+              isDark
+                ? { backgroundColor: '#16A34A15', borderColor: '#16A34A40' }
+                : { backgroundColor: theme.surface, borderColor: '#16A34A' },
+              Shadows.md,
+            ]}
             onPress={() => router.push({ pathname: '/(driver)/job/[id]', params: { id: activeJob.id } })}
           >
             <View style={styles.activeTop}>
@@ -442,9 +486,11 @@ export default function DriverHomeScreen() {
             </View>
             <Text style={[styles.widgetLabel, { color: theme.textSecond }]}>Withdrawable</Text>
             <Text style={[styles.widgetValue, { color: theme.text }]}>
-              {withdrawable == null ? '-' : naira(withdrawable)}
+              {naira(withdrawable ?? 0)}
             </Text>
-            <Text style={[styles.widgetSub, { color: theme.textThird }]}>Today {naira(todayEarnings)}</Text>
+            <Text style={[styles.widgetSub, { color: earningsStale ? theme.warning : theme.textThird }]}>
+              {earningsStale ? 'Not updated, no connection' : `Today ${naira(todayEarnings)}`}
+            </Text>
           </Pressable>
 
           {/* Weekly Goal widget PARKED (founder deferred the weekly-goal

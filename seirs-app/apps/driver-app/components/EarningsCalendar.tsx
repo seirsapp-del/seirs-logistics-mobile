@@ -13,7 +13,7 @@ import { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react-native';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { naira } from '@/utils/money';
+import { naira, nairaAxis } from '@/utils/money';
 
 interface EarningRow {
   id:            string;
@@ -57,16 +57,6 @@ function rowDate(e: EarningRow): Date | null {
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
-// Compact labels for the day cells only: a full kobo amount cannot fit in
-// a calendar square. Every figure the driver acts on (the month total, the
-// day total, each ledger row) is rendered to the kobo by naira().
-function compactNaira(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 10_000)    return `${Math.round(n / 1000)}k`;
-  if (n >= 1_000)     return `${(n / 1000).toFixed(1)}k`;
-  return String(Math.round(n));
-}
-
 export function EarningsCalendar({ history, theme, currentMonthTotal }: Props) {
   const now = new Date();
   const [viewYear,  setViewYear]  = useState(now.getFullYear());
@@ -194,9 +184,15 @@ export function EarningsCalendar({ history, theme, currentMonthTotal }: Props) {
                 ]}>
                   {cell.day}
                 </Text>
+                {/* nairaAxis, not a local rounder. The old compactNaira
+                    rendered anything under a thousand as String(Math.round(n)),
+                    so a day that earned 850.75 read 851 and the month total
+                    above it did not add up from the squares (2026-08-23
+                    sweep, kobo rule). Abbreviation above a thousand stays:
+                    the exact figure is one tap away in the breakdown. */}
                 {amount > 0 ? (
                   <Text style={[styles.cellAmt, { color: isSelected ? '#fff' : '#16A34A' }]} numberOfLines={1}>
-                    ₦{compactNaira(amount)}
+                    {nairaAxis(amount)}
                   </Text>
                 ) : (
                   <Text style={[styles.cellAmt, { color: 'transparent' }]}>·</Text>

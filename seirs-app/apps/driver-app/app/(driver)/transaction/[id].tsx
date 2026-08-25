@@ -29,6 +29,15 @@ export default function DriverTransactionDetailScreen() {
   const [tx,      setTx]      = useState<DriverEarning | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * There is no GET /earnings/:id, so this pulls the recent list and
+   * picks the row out of it. /earnings/history is capped at 50 rows
+   * server-side, which means an older entry lands on the not-found
+   * state below (2026-08-23 sweep, D-4.6). Handed back to the backend:
+   * a single-earning route would make this one fetch and remove the
+   * cliff. Until then the empty state says which case it is rather than
+   * implying the entry does not exist.
+   */
   useEffect(() => {
     earningsApi.history()
       .then(rows => setTx((rows ?? []).find(e => e.id === id) ?? null))
@@ -47,7 +56,9 @@ export default function DriverTransactionDetailScreen() {
   if (!tx) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', gap: 12 }}>
-        <Text style={{ color: theme.textSecond }}>Transaction not found</Text>
+        <Text style={{ color: theme.textSecond, textAlign: 'center', paddingHorizontal: 32 }}>
+          This entry is not in your recent earnings. Older entries are not available on this screen yet.
+        </Text>
         <Pressable onPress={() => router.back()} style={{ backgroundColor: theme.primary, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10 }}>
           <Text style={{ color: '#fff', fontWeight: FontWeight.bold }}>Go back</Text>
         </Pressable>
@@ -58,7 +69,10 @@ export default function DriverTransactionDetailScreen() {
   const net       = Number(tx.driverNet);
   const gross     = Number(tx.grossAmount);
   const cut       = Number(tx.seirsCut);
-  const isCredit  = true;
+  // isCredit was a `const true` feeding a ternary on the hero card, so
+  // the debit branch below it could never render (2026-08-23 sweep,
+  // D-4.6). A driver_earning row is always a credit, so the branch is
+  // gone rather than made reachable.
   const amtColor  = '#16A34A';
   const amtSign   = '+';
   const iconName  = 'arrow-down-circle-outline';
@@ -94,7 +108,7 @@ export default function DriverTransactionDetailScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
         {/* Hero */}
-        <View style={[styles.heroCard, { backgroundColor: isCredit ? (isDark ? '#001800' : '#F0FDF4') : (isDark ? '#1A0000' : '#FEF2F2'), borderColor: amtColor + '25' }]}>
+        <View style={[styles.heroCard, { backgroundColor: isDark ? '#001800' : '#F0FDF4', borderColor: amtColor + '25' }]}>
           <View style={[styles.heroIcon, { backgroundColor: iconBg }]}>
             <Ionicons name={iconName as any} size={36} color={iconColor} />
           </View>

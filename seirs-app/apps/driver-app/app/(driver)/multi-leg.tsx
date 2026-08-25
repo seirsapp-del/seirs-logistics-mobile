@@ -8,6 +8,7 @@ import {
   ArrowLeft, MapPin, Package, Users, Check, Navigation, ChevronRight,
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePoolCap } from '@/hooks/usePoolCap';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 
@@ -37,6 +38,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 };
 
 export default function MultiLegScreen() {
+  const poolCap = usePoolCap();
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
@@ -74,7 +76,8 @@ export default function MultiLegScreen() {
 
   const active   = legs.filter(l => l.status !== 'completed');
   const slotsUsed = active.length;
-  const slotsFree = 4 - slotsUsed;
+  // D-2.4: the cap was written out here and again on the home screen.
+  const slotsFree = Math.max(0, poolCap - slotsUsed);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
@@ -92,7 +95,7 @@ export default function MultiLegScreen() {
         <View style={[styles.capacityCard, { backgroundColor: theme.primary }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.capacityLabel}>POOL CAPACITY</Text>
-            <Text style={styles.capacityValue}>{slotsUsed} <Text style={styles.capacitySecond}>/ 4 legs</Text></Text>
+            <Text style={styles.capacityValue}>{slotsUsed} <Text style={styles.capacitySecond}>/ {poolCap} legs</Text></Text>
             <Text style={styles.capacitySub}>
               {slotsFree > 0
                 ? `${slotsFree} slot${slotsFree === 1 ? '' : 's'} open: system can insert more legs along your corridor`

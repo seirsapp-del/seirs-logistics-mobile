@@ -8,37 +8,43 @@
  * engineers out of the flow.
  *
  * Route params: code (expected trackingCode), optional label.
- * On match: full-screen green confirmation, auto-pops back after 1.6s.
- * On mismatch: red banner + scanner re-arms after a cooldown.
+ * On match: green confirmation, auto-pops back after 1.6s.
+ * On mismatch: red banner + the scanner re-arms after a cooldown.
  *
- * Verification here is a trust aid for the driver and nothing more: the
- * comparison is local to this screen and no scan event is sent anywhere.
- * The authoritative chain-of-custody record is the identity hand-off flow
- * (signature.tsx).
+ * The comparison is local to this screen; the scan itself is logged
+ * server-side as a delivery_events SCAN row. The signed chain-of-custody
+ * record is a separate step: signature.tsx at a door, store-handoff.tsx
+ * at a partner counter.
+ *
+ * --- Rebuilt 2026-08-24, after the founder walked this live and it dead
+ * ended ---
+ *
+ * Two faults, both fixed:
+ *
+ * 1. Typing the code was a hidden fallback reachable only when the camera
+ *    module was absent. The code travels over WhatsApp and on paper, a QR
+ *    does not, and the receiver is usually NOT the sender: on SRS-9CJ7LJP2
+ *    the sender was in Berlin and the receiver was at a gate in Akobo. A
+ *    rider with a cracked lens, a dark doorway or a receiver holding a
+ *    cheap phone still has to complete the hand-off, so manual entry is
+ *    now a permanent control sitting beside the scanner in every state.
+ *
+ * 2. The fallback guard could never fire: the monorepo HOISTS expo-camera
+ *    to the root node_modules, so the require() always resolves and the
+ *    catch never runs even when the native module is genuinely missing.
+ *
+ * Both live in PackageCodeCapture now (2026-08-25), so the partner-counter
+ * hand-off inherits the fix instead of re-earning the bug.
  */
 import { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Vibration, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Vibration, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-
-// Guarded camera require (live find 2026-08-11): a top-level
-// `import from 'expo-camera'` crashes the ENTIRE app bundle with
-// "Cannot find native module 'ExpoCamera'" on any installed build that
-// predates the camera dependency: expo-router eagerly evaluates every
-// route file in dev. When the module is missing the screen falls back
-// to typing the code by hand; the next native rebuild restores scanning.
-let CameraView: any = null;
-let useCameraPermissions: any = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const cam = require('expo-camera');
-  CameraView = cam.CameraView;
-  useCameraPermissions = cam.useCameraPermissions;
-} catch { /* camera not compiled into this build */ }
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
 import { deliveriesApi } from '@/services/api';
+import { PackageCodeCapture } from '@/components/PackageCodeCapture';
 
 export default function ScanPackageScreen() {
   const router = useRouter();
@@ -48,27 +54,23 @@ export default function ScanPackageScreen() {
   const expected = (params.code ?? '').trim().toUpperCase();
   const deliveryId = params.deliveryId ?? '';
 
-  // Module presence never changes at runtime, so this conditional hook
-  // takes the same branch on every render.
-  const [permission, requestPermission] = useCameraPermissions
-    ? useCameraPermissions()
-    : [null as any, () => {}];
   const [result,   setResult]   = useState<'idle' | 'match' | 'mismatch'>('idle');
   const [lastSeen, setLastSeen] = useState('');
-  const [manualCode, setManualCode] = useState('');
   const cooldown = useRef(false);
 
-  const onBarcode = ({ data }: { data: string }) => {
+  const verify = (raw: string) => {
     if (cooldown.current || result === 'match') return;
     cooldown.current = true;
 
-    const scanned = (data ?? '').trim().toUpperCase();
+    const scanned = (raw ?? '').trim().toUpperCase();
     setLastSeen(scanned);
 
-    // Audit copy: log the scan server-side (delivery_events SCAN type)
-    // regardless of outcome. Fire-and-forget; the local verdict below
-    // never waits on the network.
-    if (deliveryId) {
+    // Audit copy: log the check server-side (delivery_events SCAN type)
+    // regardless of outcome or of how the code arrived. A typed code is
+    // the same evidence as a scanned one: the receiver still had to hold
+    // a code the sender gave them. Fire-and-forget; the local verdict
+    // below never waits on the network.
+    if (deliveryId && scanned) {
       deliveriesApi.scanVerify(deliveryId, scanned).catch(() => {});
     }
 
@@ -88,165 +90,70 @@ export default function ScanPackageScreen() {
     }
   };
 
-  // Manual fallback when the camera module is not in this build: same
-  // verification logic, driver types the code printed under the QR.
-  if (!CameraView) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
-        <View style={{ padding: Spacing.lg, gap: Spacing.md }}>
-          <Pressable onPress={() => router.back()} hitSlop={10} style={{ alignSelf: 'flex-start' }}>
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
-          </Pressable>
-          <Text style={[styles.permTitle, { color: theme.text, textAlign: 'left' }]}>Verify package code</Text>
-          <Text style={[styles.permBody, { color: theme.textSecond, textAlign: 'left' }]}>
-            Scanning is not available in this app build. Ask the customer for the code under their
-            package QR and type it here.
-          </Text>
-          <TextInput
-            style={{
-              borderWidth: 1.5, borderColor: theme.border, borderRadius: Radius.lg,
-              backgroundColor: theme.surfaceSecond, color: theme.text,
-              paddingHorizontal: 14, paddingVertical: 12, fontSize: FontSize.md,
-              letterSpacing: 2, fontWeight: FontWeight.bold as any,
-            }}
-            placeholder="SRS-XXXXXXXX"
-            placeholderTextColor={theme.textThird}
-            autoCapitalize="characters"
-            value={manualCode}
-            onChangeText={setManualCode}
-          />
-          <Pressable
-            style={[styles.permBtn, { backgroundColor: theme.primary, alignSelf: 'stretch', alignItems: 'center' }]}
-            onPress={() => onBarcode({ data: manualCode })}
-          >
-            <Text style={styles.permBtnText}>Verify code</Text>
-          </Pressable>
-          {result === 'match' && (
-            <Text style={{ color: '#16A34A', fontWeight: FontWeight.bold as any }}>
-              Package verified: {expected}. Hand it over and confirm delivery.
-            </Text>
-          )}
-          {result === 'mismatch' && (
-            <Text style={{ color: '#DC2626', fontWeight: FontWeight.bold as any }}>
-              Wrong package: typed {lastSeen || 'nothing'}, expected {expected}. Do not hand over.
-            </Text>
-          )}
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!permission) {
-    return (
-      <SafeAreaView style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator color={theme.primary} />
-      </SafeAreaView>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <SafeAreaView style={[styles.center, { backgroundColor: theme.background, gap: 14, paddingHorizontal: 40 }]}>
-        <Ionicons name="camera-outline" size={48} color={theme.textThird} />
-        <Text style={[styles.permTitle, { color: theme.text }]}>Camera access required</Text>
-        <Text style={[styles.permBody, { color: theme.textSecond }]}>
-          SEIRS needs the camera to scan the customer&apos;s package QR before hand-off.
-        </Text>
-        <Pressable style={[styles.permBtn, { backgroundColor: theme.primary }]} onPress={requestPermission}>
-          <Text style={styles.permBtnText}>Grant permission</Text>
-        </Pressable>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
-          <Text style={{ color: theme.textSecond, fontSize: FontSize.sm }}>Go back</Text>
-        </Pressable>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top', 'bottom']}>
-      <CameraView
-        style={StyleSheet.absoluteFill}
-        facing="back"
-        barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-        onBarcodeScanned={result === 'match' ? undefined : onBarcode}
-      />
-
-      {/* Header overlay */}
-      <View style={styles.headerOverlay}>
-        <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
-          <Ionicons name="close" size={24} color="#fff" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top', 'bottom']}>
+      {/* Header. Themed rather than floating over the preview, because
+          the preview is no longer the whole screen. */}
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <Pressable onPress={() => router.back()} hitSlop={12} style={[styles.backBtn, { backgroundColor: theme.surfaceSecond }]}>
+          <Ionicons name="arrow-back" size={20} color={theme.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Scan package QR</Text>
-          <Text style={styles.headerSub}>
-            Ask the customer to open their tracking screen and tap &quot;Show package QR&quot;.
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Verify the package</Text>
+          <Text style={[styles.headerSub, { color: theme.textSecond }]}>
+            Scan their QR, or type the code they were sent. Either one proves it.
           </Text>
         </View>
       </View>
 
-      {/* Scan frame */}
-      <View style={styles.frameWrap} pointerEvents="none">
-        <View style={[
-          styles.frame,
-          result === 'match'    && { borderColor: '#22C55E' },
-          result === 'mismatch' && { borderColor: '#EF4444' },
-        ]} />
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <PackageCodeCapture
+          expected={expected}
+          onCode={verify}
+          frozen={result === 'match'}
+          frameState={result === 'match' ? 'ok' : result === 'mismatch' ? 'bad' : null}
+        />
 
-      {/* Result banners */}
-      {result === 'match' && (
-        <View style={[styles.resultBanner, { backgroundColor: '#16A34A' }]}>
-          <Ionicons name="checkmark-circle" size={40} color="#fff" />
-          <Text style={styles.resultTitle}>Package verified</Text>
-          <Text style={styles.resultSub}>
-            {expected}{'\n'}Hand it over and confirm delivery.
-          </Text>
-        </View>
-      )}
-      {result === 'mismatch' && (
-        <View style={[styles.resultBanner, { backgroundColor: '#DC2626' }]}>
-          <Ionicons name="alert-circle" size={40} color="#fff" />
-          <Text style={styles.resultTitle}>Wrong package</Text>
-          <Text style={styles.resultSub}>
-            Scanned {lastSeen || 'an unknown code'}{'\n'}Expected {expected}. Do not hand over.
-          </Text>
-        </View>
-      )}
-      {result === 'idle' && expected !== '' && (
-        <View style={styles.expectWrap} pointerEvents="none">
-          <Text style={styles.expectText}>Expecting {expected}</Text>
-        </View>
-      )}
+        {/* Verdict. Same wording whichever way the code arrived. */}
+        {result === 'match' && (
+          <View style={[styles.verdict, { backgroundColor: '#16A34A' }]}>
+            <Ionicons name="checkmark-circle" size={36} color="#fff" />
+            <Text style={styles.verdictTitle}>Package verified</Text>
+            <Text style={styles.verdictSub}>
+              {expected}{'\n'}Hand it over and confirm delivery.
+            </Text>
+          </View>
+        )}
+        {result === 'mismatch' && (
+          <View style={[styles.verdict, { backgroundColor: '#DC2626' }]}>
+            <Ionicons name="alert-circle" size={36} color="#fff" />
+            <Text style={styles.verdictTitle}>Wrong package</Text>
+            <Text style={styles.verdictSub}>
+              Got {lastSeen || 'nothing'}{'\n'}Expected {expected}. Do not hand over.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  permTitle:   { fontSize: FontSize.lg, fontWeight: FontWeight.bold, textAlign: 'center' },
-  permBody:    { fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
-  permBtn:     { paddingHorizontal: 24, paddingVertical: 12, borderRadius: Radius.lg, marginTop: 6 },
-  permBtnText: { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
-
-  headerOverlay: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    paddingHorizontal: Spacing.md, paddingTop: Spacing.md,
+  header: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1,
   },
-  closeBtn:   { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  headerTitle:{ color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  headerSub:  { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.xs, marginTop: 4, lineHeight: 17 },
+  backBtn:     { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold as any },
+  headerSub:   { fontSize: FontSize.xs, lineHeight: 17, marginTop: 2 },
 
-  frameWrap: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
-  frame:     { width: 240, height: 240, borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', borderRadius: 24 },
+  body: { padding: Spacing.md, gap: Spacing.md, paddingBottom: Spacing.xxl },
 
-  resultBanner: {
-    position: 'absolute', left: 24, right: 24, bottom: 60,
-    borderRadius: Radius.xl, padding: 20, alignItems: 'center', gap: 6,
-  },
-  resultTitle: { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  resultSub:   { color: 'rgba(255,255,255,0.9)', fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
-
-  expectWrap: { position: 'absolute', left: 0, right: 0, bottom: 70, alignItems: 'center' },
-  expectText: { color: 'rgba(255,255,255,0.8)', fontSize: FontSize.sm, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, overflow: 'hidden' },
+  verdict:      { borderRadius: Radius.xl, padding: Spacing.md, alignItems: 'center', gap: 6 },
+  verdictTitle: { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold as any },
+  verdictSub:   { color: 'rgba(255,255,255,0.9)', fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
 });

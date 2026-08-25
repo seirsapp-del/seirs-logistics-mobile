@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { earningsApi, paymentsApi, type EarningsDashboard } from '@/services/api';
 import { naira } from '@/utils/money';
@@ -42,6 +43,7 @@ interface BankDetails {
 }
 
 export default function WithdrawalScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
   const cs      = useColorScheme();
@@ -111,15 +113,21 @@ export default function WithdrawalScreen() {
     const feeNote = instant && numericAmount > cleared
       ? `\n\nInstant fee: ${instantFeePct}% applies to the ${naira(Math.min(numericAmount - cleared, instantEligible))} not yet cleared.`
       : '';
-    Alert.alert(
-      'Confirm Withdrawal',
-      `Withdraw up to ${naira(numericAmount)} to ${bank?.bankName ?? 'your bank'} ` +
-      `(${bank?.bankAccountNumber})?\n\nAmounts are matched to your completed deliveries, ` +
-      `so the exact figure can be slightly lower. You will see the final amount sent.${feeNote}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
+    // Money out of the app. The destination account and the fee both go
+    // in front of the rider before the row that spends it, and the row
+    // itself names the amount rather than saying a bare "Withdraw"
+    // (2026-08-25 dialog sweep).
+    setSheet({
+      title: 'Confirm withdrawal',
+      message:
+        `Withdraw up to ${naira(numericAmount)} to ${bank?.bankName ?? 'your bank'} ` +
+        `(${bank?.bankAccountNumber}).\n\nAmounts are matched to your completed deliveries, ` +
+        `so the exact figure can be slightly lower. You will see the final amount sent.${feeNote}`,
+      options: [
         {
-          text: 'Withdraw',
+          label: `Withdraw ${naira(numericAmount)}`,
+          variant: 'primary',
+          icon: 'cash-outline',
           onPress: async () => {
             setSubmitting(true);
             try {
@@ -134,7 +142,8 @@ export default function WithdrawalScreen() {
           },
         },
       ],
-    );
+      cancelLabel: 'Not now',
+    });
   };
 
   if (paidAmount !== null) {
@@ -359,6 +368,7 @@ export default function WithdrawalScreen() {
           </Pressable>
         </View>
       )}
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

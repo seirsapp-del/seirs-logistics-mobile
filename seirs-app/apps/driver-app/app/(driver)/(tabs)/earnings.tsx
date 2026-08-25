@@ -16,7 +16,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { earningsApi } from '@/services/api';
 import { EarningsCalendar } from '@/components/EarningsCalendar';
-import { naira, nairaShort } from '@/utils/money';
+import { naira, nairaShort, nairaAxis } from '@/utils/money';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -302,8 +302,13 @@ export default function EarningsScreen() {
               const day   = dayLabels[i];
               return (
                 <View key={i} style={styles.barCol}>
+                  {/* Was `${(amount/1000).toFixed(0)}k` above a thousand and a
+                      bare unformatted number below it, so N1,500 printed "2k"
+                      and N850.75 printed "850.75" with no naira sign at all.
+                      nairaAxis is the house tick format and keeps the kobo
+                      under a thousand (2026-08-23 sweep, kobo rule). */}
                   <Text style={[styles.barAmt, { color: isMax ? theme.primary : theme.textThird }]}>
-                    {amount >= 1000 ? `${(amount / 1000).toFixed(0)}k` : amount}
+                    {nairaAxis(amount)}
                   </Text>
                   <View style={[styles.barTrack, { backgroundColor: theme.surfaceSecond }]}>
                     <View style={[styles.barFill, { height: `${Math.max(pct, 8)}%`, backgroundColor: isMax ? theme.primary : theme.primary + '45' }]} />

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, AlertCircle, Clock, CheckCircle, MoonStar } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 
@@ -22,6 +23,7 @@ import { driversApi } from '@/services/api';
 // D-1.11 (still open): todayAcceptanceRate is hardcoded null server-side,
 // so the 80% gate below is informational only.
 export default function LastOrderScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
@@ -43,7 +45,17 @@ export default function LastOrderScreen() {
     })();
   }, []);
 
-  const meetsThreshold = acceptanceRate == null || acceptanceRate >= 80;
+  /**
+   * drivers.service.ts still returns todayAcceptanceRate: null, so this
+   * card rendered a permanent dash under the sentence "Last Order
+   * requires 80%" and the gate below it always passed. Stating a rule
+   * nothing enforces is worse than not mentioning it, so the whole card
+   * is hidden until the backend actually computes the rate (2026-08-23
+   * sweep, D-1.11). Nothing else changes: the day the number arrives the
+   * card and the gate come back on their own.
+   */
+  const rateKnown      = acceptanceRate != null;
+  const meetsThreshold = !rateKnown || acceptanceRate >= 80;
 
   const commitToggle = async (next: boolean) => {
     try {
@@ -68,14 +80,20 @@ export default function LastOrderScreen() {
       return;
     }
     if (next) {
-      Alert.alert(
-        'Wind down for today?',
-        'No new jobs will be assigned to you. You\'ll still complete the ones you\'ve already accepted. Once enabled you can\'t turn it off until you fully sign off.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Wind down', onPress: () => commitToggle(true) },
-        ],
-      );
+      // One-way switch, so the row spells out the part a rider will
+      // otherwise discover only when they try to undo it.
+      setSheet({
+        title: 'Wind down for today?',
+        message: 'No new jobs will be assigned to you. You will still complete the ones you have already accepted.',
+        options: [{
+          label: 'Wind down',
+          sub: 'Cannot be turned off until you fully sign off',
+          variant: 'primary',
+          icon: 'moon-outline',
+          onPress: () => commitToggle(true),
+        }],
+        cancelLabel: 'Keep taking jobs',
+      });
     } else {
       // No-op: Spec V8 says one-way until full sign-off
       Alert.alert('Already winding down', 'You can\'t re-enable jobs without fully signing off first.');
@@ -144,26 +162,29 @@ export default function LastOrderScreen() {
               </View>
             </View>
 
-            {/* Acceptance threshold */}
-            <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <View style={styles.row}>
-                <View style={[styles.iconWrap, { backgroundColor: meetsThreshold ? '#16A34A18' : '#FEE2E2' }]}>
-                  {meetsThreshold
-                    ? <CheckCircle size={18} color="#16A34A" />
-                    : <AlertCircle size={18} color="#DC2626" />
-                  }
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardLabel, { color: theme.textSecond }]}>TODAY&apos;S ACCEPTANCE RATE</Text>
-                  <Text style={[styles.cardValue, { color: meetsThreshold ? '#16A34A' : '#DC2626' }]}>
-                    {acceptanceRate != null ? `${acceptanceRate}%` : '-'}
-                  </Text>
-                  <Text style={[styles.cardSub, { color: theme.textSecond }]}>
-                    Last Order requires ≥80%. This stops drivers from gaming the toggle to skip undesirable orders.
-                  </Text>
+            {/* Acceptance threshold. Only rendered once the server sends a
+                real rate: see the rateKnown comment above (D-1.11). */}
+            {rateKnown && (
+              <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <View style={styles.row}>
+                  <View style={[styles.iconWrap, { backgroundColor: meetsThreshold ? '#16A34A18' : '#FEE2E2' }]}>
+                    {meetsThreshold
+                      ? <CheckCircle size={18} color="#16A34A" />
+                      : <AlertCircle size={18} color="#DC2626" />
+                    }
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardLabel, { color: theme.textSecond }]}>TODAY&apos;S ACCEPTANCE RATE</Text>
+                    <Text style={[styles.cardValue, { color: meetsThreshold ? '#16A34A' : '#DC2626' }]}>
+                      {acceptanceRate}%
+                    </Text>
+                    <Text style={[styles.cardSub, { color: theme.textSecond }]}>
+                      Last Order requires ≥80%. This stops drivers from gaming the toggle to skip undesirable orders.
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            )}
 
             {/* How it works */}
             <View style={[styles.howCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -179,6 +200,7 @@ export default function LastOrderScreen() {
           </>
         )}
       </ScrollView>
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

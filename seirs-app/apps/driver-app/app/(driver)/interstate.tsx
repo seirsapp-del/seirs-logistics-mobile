@@ -9,6 +9,7 @@ import {
   ArrowLeft, MapPin, Calendar, Truck, ArrowRight,
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
 
@@ -25,6 +26,42 @@ const POPULAR_ROUTES = [
   { from: 'Abuja',   to: 'Kano',    km: 350 },
   { from: 'Lagos',   to: 'Port Harcourt', km: 620 },
 ];
+
+/**
+ * Mirrors PricingService.SEAT_CAPS. The server hard-rejects a passenger
+ * declaration above the vehicle's cap, and rejects outright for a class
+ * that is missing from the table (bicycle, truck_small, truck_large all
+ * resolve to 0).
+ *
+ * Held client-side because the driver only learned any of this AFTER
+ * filling the whole form and tapping Declare: an okada rider typing 3
+ * seats got "A motorcycle sells at most 1 seat" on the round trip, and
+ * a truck driver got "cannot carry marketplace passengers" having
+ * already entered a pickup point and a route distance. There is no
+ * endpoint that publishes the caps, so this table is the only way to
+ * fail before the driver does the work (2026-08-25 interstate walk).
+ */
+const SEAT_CAPS: Record<string, number> = {
+  motorcycle: 1, tricycle: 3, car: 4, van: 14,
+};
+
+/**
+ * Mirrors DeliveriesService.CITY_COORDS. A seat booking builds a real
+ * delivery row and needs coordinates for both ends, so a trip declared
+ * between cities outside this list is listed in Travel Buddy, browsed,
+ * chosen, and then fails at the payment step with "This route needs a
+ * mapped pickup point. Ask the driver to re-declare with a pickup
+ * location" - advice that cannot work, because re-declaring the same
+ * city name maps no better. The driver never sees that error: the
+ * passenger does. Packages are matched on address text and need no
+ * coordinates, so this gate applies to the passenger path only.
+ */
+const SEAT_MAPPED_CITIES = [
+  'lagos', 'ibadan', 'abuja', 'kano', 'port harcourt', 'benin',
+  'benin city', 'enugu', 'kaduna', 'ilorin', 'abeokuta', 'onitsha',
+];
+const isSeatMappedCity = (c: string) =>
+  SEAT_MAPPED_CITIES.includes(String(c ?? '').trim().toLowerCase());
 
 export default function InterstateScreen() {
   const router = useRouter();
@@ -44,6 +81,15 @@ export default function InterstateScreen() {
   const [pickupAddress,  setPickupAddress]  = useState('');
   const [routeKm,        setRouteKm]        = useState('');
   const [submitting,  setSubmitting]  = useState(false);
+  const [sheet,       setSheet]       = useState<SeirsSheetSpec | null>(null);
+
+  /**
+   * The vehicle class decides whether seats can be sold at all, and how
+   * many. Loaded once so the form can refuse before the driver invests
+   * the effort, instead of relaying a server rejection.
+   */
+  const [vehicleType, setVehicleType] = useState<string | null>(null);
+  const seatCap = vehicleType ? (SEAT_CAPS[vehicleType] ?? 0) : null;
 
   // The declared list + cancel existed as endpoints since spec 2.18;
   // the screen never showed them, so a driver could declare a trip and
@@ -51,34 +97,124 @@ export default function InterstateScreen() {
   const [myTrips, setMyTrips] = useState<any[]>([]);
   const loadTrips = () => {
     driversApi.myInterstateTrips()
-      .then((rows: any[]) => setMyTrips((rows ?? []).filter(r => r.status === 'active')))
+      .then((rows: any[]) => setMyTrips(
+        /**
+         * Also drop trips whose departure has passed. listMyInterstateTrips
+         * returns the last 50 rows with no date filter, and nothing ever
+         * flips a departed trip out of "active", so a run to Ibadan from
+         * three weeks ago sat in MY DECLARED TRIPS forever reading as
+         * live. It is dead to the rest of the system already: browseTrips
+         * requires departAt > NOW() and the matcher only looks +/-24h
+         * around departure (2026-08-25 interstate walk).
+         */
+        (rows ?? []).filter(r => r.status === 'active' && new Date(r.departAt).getTime() > Date.now()),
+      ))
       .catch(() => {});
   };
-  useEffect(() => { loadTrips(); }, []);
+  useEffect(() => {
+    loadTrips();
+    driversApi.me()
+      .then((d: any) => setVehicleType(d?.vehicleType ?? null))
+      .catch(() => {});
+  }, []);
 
   const cancelTrip = (trip: any) => {
-    Alert.alert(
-      'Cancel this trip?',
-      `${trip.fromCity} → ${trip.toCity}. You will stop receiving packages matched to this route.`,
-      [
-        { text: 'Keep', style: 'cancel' },
-        { text: 'Cancel trip', style: 'destructive',
+    const booked = Math.max(0, Number(trip.seatsBooked ?? 0));
+    /**
+     * The old copy said only "You will stop receiving packages matched
+     * to this route", which is the smaller half of what cancelling does
+     * and says nothing at all when people have paid for seats. Nothing
+     * server-side blocks the cancel or warns the driver, so this dialog
+     * is the only place a rider can learn that passengers are riding on
+     * this decision (2026-08-25 interstate walk).
+     */
+    const sells = [
+      trip.acceptsPackages ? 'packages' : null,
+      trip.acceptsPassengers ? 'passenger seats' : null,
+    ].filter(Boolean).join(' and ') || 'this route';
+    setSheet({
+      title: 'Cancel this trip?',
+      message: booked > 0
+        ? `${trip.fromCity} → ${trip.toCity}. ${booked} seat${booked === 1 ? '' : 's'} already booked and paid for on this trip. Cancelling delists it, and anyone still waiting on your answer gets refunded. If a passenger is counting on this run, tell them in chat first.`
+        : `${trip.fromCity} → ${trip.toCity}. You will be delisted and stop being matched for ${sells}.`,
+      options: [
+        {
+          label: 'Cancel this trip',
+          sub: booked > 0 ? `${booked} paid seat${booked === 1 ? '' : 's'} on it` : undefined,
+          variant: 'destructive',
+          icon: 'close-circle-outline',
           onPress: async () => {
             try { await driversApi.cancelInterstateTrip(trip.id); loadTrips(); }
             catch (e: any) { Alert.alert('Could not cancel', e?.message ?? 'Try again.'); }
-          } },
+          },
+        },
       ],
-    );
+      cancelLabel: 'Keep the trip',
+    });
   };
 
   const submit = async () => {
     if (!from.trim() || !to.trim()) { Alert.alert('Both cities required'); return; }
+    // The server rejects a same-city trip. Catch it here so the driver
+    // is not told after the round trip (2026-08-25 interstate walk).
+    if (from.trim().toLowerCase() === to.trim().toLowerCase()) {
+      Alert.alert('Same city twice', 'From and To must be different cities.');
+      return;
+    }
     if (!departAt) { Alert.alert('Departure time required'); return; }
     // Accept "YYYY-MM-DD HH:mm" form by normalizing to ISO before sending.
     const depart = departAt.includes('T') ? departAt : departAt.replace(' ', 'T');
     if (Number.isNaN(new Date(depart).getTime())) {
       Alert.alert('Invalid departure', 'Use the format YYYY-MM-DD HH:mm.');
       return;
+    }
+    // Same reason as the same-city check: the server refuses a departure
+    // in the past, and a driver declaring at the park types today's date
+    // with an hour that has already gone more often than any other slip.
+    if (new Date(depart).getTime() < Date.now() - 60_000) {
+      Alert.alert('Departure already passed', 'Pick a date and time still ahead of you.');
+      return;
+    }
+    // A trip that carries neither is inert: the server stores it, it is
+    // listed nowhere useful, and nothing will ever be offered against it.
+    if (!takePackages && !takePassengers) {
+      Alert.alert('Nothing to offer', 'Turn on packages, passengers, or both. A trip carrying neither is not listed.');
+      return;
+    }
+    if (takePassengers) {
+      if (seatCap === 0) {
+        Alert.alert(
+          'This vehicle cannot sell seats',
+          `A ${vehicleType ?? 'vehicle'} is not a marketplace passenger class. You can still carry packages on this run.`,
+        );
+        return;
+      }
+      if (seatCap != null && (Number(seats) || 0) > seatCap) {
+        Alert.alert(
+          'Too many seats',
+          `A ${vehicleType} sells at most ${seatCap} seat${seatCap === 1 ? '' : 's'}. No squeezing: that is the rule.`,
+        );
+        return;
+      }
+      // Seat pricing is per kilometre, so a trip with no route distance
+      // is browsable but every booking on it dies at payment with a
+      // message the PASSENGER sees and the driver never does.
+      if (!(Number(routeKm) > 0)) {
+        Alert.alert(
+          'Route distance needed',
+          'Seats are priced by distance. Without it nobody can book this trip. Tap a popular route to fill it, or type the km.',
+        );
+        return;
+      }
+      // Coordinates for both ends are required to build the booking.
+      if (!isSeatMappedCity(from) || !isSeatMappedCity(to)) {
+        const bad = !isSeatMappedCity(from) ? from.trim() : to.trim();
+        Alert.alert(
+          'Seats are not available on that city yet',
+          `We cannot place ${bad} on the map yet, and a seat booking needs both ends mapped. Carry packages on this run instead, or pick one of the cities we cover: ${SEAT_MAPPED_CITIES.filter(c => c !== 'benin city').map(c => c.replace(/\b\w/g, m => m.toUpperCase())).join(', ')}.`,
+        );
+        return;
+      }
     }
     setSubmitting(true);
     try {
@@ -94,11 +230,41 @@ export default function InterstateScreen() {
         pickupAddress:     pickupMode === 'fixed' ? pickupAddress.trim() || undefined : undefined,
         routeKm:           Number(routeKm) > 0 ? Number(routeKm) : undefined,
       });
-      Alert.alert(
-        'Trip declared',
-        `You're listed for ${from} → ${to} on ${new Date(depart).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Matching packages will appear in your available jobs.`,
-        [{ text: 'OK', onPress: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); } }],
-      );
+      /**
+       * The old line was "Matching packages will appear in your available
+       * jobs", which promises a queue that does not exist. What a declared
+       * trip actually buys on the package side is a ranking bonus in
+       * dispatch (matching.service.ts adds it when both declared cities
+       * appear in the booking's addresses, and only within 24 hours of
+       * departure). Nothing is reserved and no separate list is built, so
+       * a driver who reads "will appear" and waits is waiting for a screen
+       * that never fills.
+       *
+       * The passenger side is the opposite: a seat booking is a real,
+       * paid, personal offer that expires if unanswered, which is the part
+       * a driver most needs to be told about (2026-08-25 interstate walk).
+       */
+      const when = new Date(depart).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const lines = [
+        takePassengers
+          ? 'Passengers can now find and book your seats. A booking arrives as a job offer you accept or decline, and it expires if you leave it, so watch your notifications.'
+          : null,
+        takePackages
+          ? 'Packages running between these cities are ranked towards you around your departure. That is a better chance, not a reservation, so keep working the normal job list.'
+          : null,
+      ].filter(Boolean).join('\n\n');
+      setSheet({
+        title: 'Trip declared',
+        message: `You are listed for ${from.trim()} → ${to.trim()} on ${when}.\n\n${lines}`,
+        options: [{
+          label: 'Done',
+          variant: 'primary',
+          icon: 'checkmark-circle-outline',
+          onPress: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); },
+        }],
+        cancelLabel: null,
+        onCancel: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); },
+      });
     } catch (e: any) {
       Alert.alert('Could not declare trip', e?.message ?? 'Try again.');
     } finally {
@@ -124,23 +290,55 @@ export default function InterstateScreen() {
               <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, letterSpacing: 0.6, color: theme.textSecond }}>
                 MY DECLARED TRIPS
               </Text>
-              {myTrips.map((tr) => (
-                <View key={tr.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderRadius: Radius.lg, padding: 12 }}>
-                  <MapPin size={16} color={theme.primary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>
-                      {tr.fromCity} → {tr.toCity}
-                    </Text>
-                    <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginTop: 1 }}>
-                      Departs {new Date(tr.departAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      {Number(tr.spareCapacityKg) > 0 ? ` · ${Number(tr.spareCapacityKg)}kg spare` : ''}
-                    </Text>
+              {myTrips.map((tr) => {
+                /**
+                 * Seat bookings were completely invisible here. The card
+                 * printed cities, departure and spare kg only, so a driver
+                 * selling four seats with three already paid for saw the
+                 * exact same card as a driver nobody had booked. The
+                 * numbers were in the payload the whole time:
+                 * listMyInterstateTrips returns the trip entity, seatsTotal
+                 * and seatsBooked included. People turning up at a park to
+                 * meet a driver who does not know they exist is the worst
+                 * failure this screen can cause (2026-08-25 interstate walk).
+                 */
+                const total  = Math.max(0, Number(tr.seatsTotal ?? 0));
+                const booked = Math.max(0, Number(tr.seatsBooked ?? 0));
+                const left   = Math.max(0, total - booked);
+                const kg     = Number(tr.spareCapacityKg ?? 0);
+                return (
+                  <View key={tr.id} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: theme.surface, borderColor: booked > 0 ? theme.primary : theme.border, borderWidth: booked > 0 ? 1.5 : 1, borderRadius: Radius.lg, padding: 12 }}>
+                    <MapPin size={16} color={theme.primary} style={{ marginTop: 2 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>
+                        {tr.fromCity} → {tr.toCity}
+                      </Text>
+                      <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginTop: 1 }}>
+                        Departs {new Date(tr.departAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                      <Text style={{ color: theme.textThird, fontSize: FontSize.xs, marginTop: 2 }}>
+                        {tr.acceptsPackages
+                          ? `Packages${kg > 0 ? `, ${kg}kg spare` : ''}`
+                          : 'No packages'}
+                        {' · '}
+                        {tr.acceptsPassengers ? `${total} seat${total === 1 ? '' : 's'}` : 'No seats'}
+                        {tr.acceptsPassengers && tr.pickupMode === 'fixed' && tr.pickupAddress
+                          ? ` · meets at ${tr.pickupAddress}`
+                          : tr.acceptsPassengers ? ' · pickup along the route' : ''}
+                      </Text>
+                      {tr.acceptsPassengers && booked > 0 && (
+                        <Text style={{ color: theme.primary, fontSize: FontSize.xs, fontWeight: '700', marginTop: 4 }}>
+                          {booked} seat{booked === 1 ? '' : 's'} booked and paid
+                          {left > 0 ? `, ${left} still open` : ', full'}
+                        </Text>
+                      )}
+                    </View>
+                    <Pressable onPress={() => cancelTrip(tr)} hitSlop={8}>
+                      <Text style={{ color: '#DC2626', fontSize: FontSize.sm, fontWeight: '700' }}>Cancel</Text>
+                    </Pressable>
                   </View>
-                  <Pressable onPress={() => cancelTrip(tr)} hitSlop={8}>
-                    <Text style={{ color: '#DC2626', fontSize: FontSize.sm, fontWeight: '700' }}>Cancel</Text>
-                  </Pressable>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
 
@@ -148,8 +346,13 @@ export default function InterstateScreen() {
             <Truck size={20} color={theme.primary} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.introTitle, { color: theme.text }]}>Earn extra on long-haul trips</Text>
+              {/* Was "matching packages along your route will be auto-offered",
+                  which describes a feed that does not exist: packages get a
+                  ranking bonus, seats get a real booking. Passengers were not
+                  mentioned at all even though they are the half that pays up
+                  front (2026-08-25 interstate walk). */}
               <Text style={[styles.introSub, { color: theme.textSecond }]}>
-                Tell us you&apos;re going intercity and matching packages along your route will be auto-offered.
+                Tell us you&apos;re going intercity. Passengers can book your spare seats, and packages running the same way are ranked towards you.
               </Text>
             </View>
           </View>
@@ -225,7 +428,14 @@ export default function InterstateScreen() {
             <Truck size={18} color={takePackages ? theme.primary : theme.textSecond} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>Carry packages</Text>
-              <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>Uses your spare kg above</Text>
+              {/* Said "Uses your spare kg above", which reads as a capacity
+                  filter. Nothing filters on it: spareCapacityKg is shown to
+                  people browsing your trip and to ops, and the matcher never
+                  compares it against a package weight. Say what it really
+                  does (2026-08-25 interstate walk). */}
+              <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
+                Shows your spare kg to senders on this route
+              </Text>
             </View>
             {/* D-6.10: this was bound to (takePassengers || takePackages), so
                 turning packages off while passengers was on left the word OFF
@@ -233,29 +443,50 @@ export default function InterstateScreen() {
             <Text style={{ color: takePackages ? theme.primary : theme.textThird, fontWeight: '700' }}>{takePackages ? 'ON' : 'OFF'}</Text>
           </Pressable>
 
+          {/* seatCap null means the vehicle class has not loaded yet; 0 means
+              this class cannot sell seats at all and the server will refuse
+              the declaration outright, so the row is shown disabled with the
+              reason rather than letting the driver fill a form that cannot
+              be submitted (2026-08-25 interstate walk). */}
           <Pressable
-            onPress={() => setTakePassengers(v => !v)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.surface, borderColor: takePassengers ? theme.primary : theme.border, borderWidth: 1.5, borderRadius: Radius.lg, padding: 12 }}
+            onPress={() => { if (seatCap !== 0) setTakePassengers(v => !v); }}
+            disabled={seatCap === 0}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, opacity: seatCap === 0 ? 0.55 : 1, backgroundColor: theme.surface, borderColor: takePassengers ? theme.primary : theme.border, borderWidth: 1.5, borderRadius: Radius.lg, padding: 12 }}
           >
             <MapPin size={18} color={takePassengers ? theme.primary : theme.textSecond} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>Carry passengers</Text>
               <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
-                Real seats only: SEIRS blocks overloading. No doubling the front seat, ever.
+                {seatCap === 0
+                  ? `A ${vehicleType} is not a passenger class on SEIRS. Packages only on this run.`
+                  : 'Real seats only: SEIRS blocks overloading. No doubling the front seat, ever.'}
               </Text>
             </View>
-            <Text style={{ color: takePassengers ? theme.primary : theme.textThird, fontWeight: '700' }}>{takePassengers ? 'ON' : 'OFF'}</Text>
+            <Text style={{ color: takePassengers ? theme.primary : theme.textThird, fontWeight: '700' }}>
+              {seatCap === 0 ? 'N/A' : takePassengers ? 'ON' : 'OFF'}
+            </Text>
           </Pressable>
 
           {takePassengers && (
             <View style={{ gap: 10 }}>
               <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginBottom: 4 }}>Seats you're selling (your vehicle class caps this)</Text>
+                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginBottom: 4 }}>
+                  {seatCap != null && seatCap > 0
+                    ? `Seats you're selling (a ${vehicleType} sells up to ${seatCap})`
+                    : "Seats you're selling (your vehicle class caps this)"}
+                </Text>
                 <TextInput
                   value={seats}
-                  onChangeText={setSeats}
+                  // Clamped as typed. The server throws above the cap and the
+                  // driver used to find out only after tapping Declare.
+                  onChangeText={(v) => {
+                    const digits = v.replace(/[^0-9]/g, '');
+                    if (!digits) { setSeats(''); return; }
+                    const n = Number(digits);
+                    setSeats(String(seatCap != null && seatCap > 0 ? Math.min(n, seatCap) : n));
+                  }}
                   keyboardType="number-pad"
-                  placeholder="e.g. 3"
+                  placeholder={seatCap != null && seatCap > 0 ? `1 to ${seatCap}` : 'e.g. 3'}
                   placeholderTextColor={theme.textThird}
                   style={{ color: theme.text, fontSize: FontSize.base, padding: 0 }}
                 />
@@ -283,8 +514,13 @@ export default function InterstateScreen() {
                   />
                 </View>
               )}
-              <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginBottom: 4 }}>Route distance in km (popular routes fill this automatically)</Text>
+              {/* Required, not optional: computeSeatPrice prices per km and
+                  a trip with no distance is browsable but unbookable. It
+                  read as a nice-to-have here. */}
+              <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: Number(routeKm) > 0 ? theme.border : '#DC2626' }]}>
+                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginBottom: 4 }}>
+                  Route distance in km, required (popular routes fill this automatically)
+                </Text>
                 <TextInput
                   value={routeKm}
                   onChangeText={setRouteKm}
@@ -293,6 +529,9 @@ export default function InterstateScreen() {
                   placeholderTextColor={theme.textThird}
                   style={{ color: theme.text, fontSize: FontSize.base, padding: 0 }}
                 />
+                <Text style={{ color: theme.textThird, fontSize: FontSize.xs, marginTop: 4 }}>
+                  Seats are priced by distance. Without this nobody can book the trip.
+                </Text>
               </View>
             </View>
           )}
@@ -306,11 +545,18 @@ export default function InterstateScreen() {
             {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Declare trip</Text>}
           </Pressable>
 
+          {/* Said "You can decline any individual offer". A package boosted
+              along a declared route is an ordinary pool job and there is no
+              decline endpoint for one, so declining sent nothing anywhere
+              (2026-08-23 sweep, D-6.9, paired with D-1.5). Seat bookings on
+              the trip DO have a real decline; packages you simply skip. */}
           <Text style={[styles.footnote, { color: theme.textThird }]}>
-            Matching packages along your declared route are boosted to you automatically. You can decline any individual offer.
+            Packages running your declared route are ranked towards you around your departure. Nothing is forced on you: skip any package that does not suit the run. A seat booking is different, it is a paid offer made to you alone, so accept or decline it and it expires if you leave it unanswered.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

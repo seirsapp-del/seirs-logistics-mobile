@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert, Linking,
+  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Linking,
   ActivityIndicator, Image, Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,8 +11,9 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { deliveriesApi } from '@/services/api';
+import { deliveriesApi, feesApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { useAuth } from '@/context/AuthContext';
 
@@ -71,6 +72,21 @@ const toCoord = (lat: any, lng: any) => {
 export default function JobDetailScreen() {
   const { id }    = useLocalSearchParams<{ id: string }>();
   const router    = useRouter();
+  /**
+   * Every decision on this screen, in one themed sheet (item 4,
+   * 2026-08-24). Accept, skip and Navigate are the three dialogs a rider
+   * meets on literally every job, so they were the first ones outside
+   * the active-delivery screen worth taking off Android's AlertDialog.
+   */
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
+  const info = (title: string, message?: string, onDone?: () => void) =>
+    setSheet({
+      title,
+      message,
+      options: [{ label: 'Got it', variant: 'primary', onPress: onDone }],
+      cancelLabel: null,
+      onCancel: onDone,
+    });
   const cs        = useColorScheme();
   const theme     = Colors[cs ?? 'light'];
   const isDark    = cs === 'dark';
@@ -86,6 +102,22 @@ export default function JobDetailScreen() {
   const [job,       setJob]       = useState<any | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [claiming,  setClaiming]  = useState(false);
+  /**
+   * How long a Travel Buddy seat booking is really held, in minutes.
+   *
+   * The screen ran the same 45-second pool countdown on a seat booking
+   * and told the rider "Answer this seat booking in 45s". The server
+   * holds it for travel_buddy_offer_timeout_min, seeded at 30 MINUTES,
+   * and only releases it on a 5-minute cron. So the bar emptied, the
+   * screen bounced the rider out with router.back(), and the offer sat
+   * there live and answerable for another twenty-nine minutes with the
+   * passenger's money already taken. A rider who saw that concluded they
+   * had lost the job (2026-08-25 interstate walk).
+   *
+   * Read from the catalogue so an admin moving the knob moves this too,
+   * with the seeded value as the code fallback.
+   */
+  const [tripOfferMin, setTripOfferMin] = useState<number>(30);
 
   /**
    * Which job is this, from this driver's point of view?
@@ -141,6 +173,9 @@ export default function JobDetailScreen() {
           status:      String(d.status ?? 'pending'),
           driverUserId: (d as any).driver?.user?.id ?? null,
           tripId: (d as any).tripId ?? null,
+          // When the seat booking was actually offered. The real deadline
+          // is this plus travel_buddy_offer_timeout_min, not 45 seconds.
+          tripOfferedAt: (d as any).tripOfferedAt ?? null,
           customer: {
             // A ride passenger never gets a surname or a phone shown to a
             // driver. The server redacts already; this second cut means a
@@ -159,8 +194,49 @@ export default function JobDetailScreen() {
     })();
   }, [id]);
 
+  // The seat-booking hold window, from the Fee Catalogue. Failure keeps
+  // the seeded 30 so the screen never invents a shorter deadline than
+  // the server enforces.
+  useEffect(() => {
+    feesApi.get('travel_buddy_offer_timeout_min')
+      .then((r: any) => {
+        const n = Number(r?.value);
+        if (Number.isFinite(n) && n > 0) setTripOfferMin(n);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!job || !isOffered) return;
+    /**
+     * Two different clocks, and they must not be confused again.
+     *
+     * A pool offer has no server deadline at all: the 45 seconds is a
+     * local nudge and the job simply stays in the pool.
+     *
+     * A seat booking has a REAL one, tripOfferedAt + tripOfferMin, after
+     * which a cron refunds the passenger in full. Counting it down from
+     * the true offer time means reopening the screen shows the time that
+     * is genuinely left rather than restarting the clock.
+     */
+    const offeredAtMs = job.tripId && job.tripOfferedAt
+      ? new Date(job.tripOfferedAt).getTime()
+      : null;
+    const deadlineMs = offeredAtMs != null && Number.isFinite(offeredAtMs)
+      ? offeredAtMs + tripOfferMin * 60_000
+      : null;
+
+    if (deadlineMs != null) {
+      const tick = () => {
+        const left = Math.max(0, Math.round((deadlineMs - Date.now()) / 1000));
+        setCountdown(left);
+        if (left <= 0 && timerRef.current) { clearInterval(timerRef.current); router.back(); }
+      };
+      tick();
+      timerRef.current = setInterval(tick, 1000);
+      return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }
+
     timerRef.current = setInterval(() => {
       setCountdown(c => {
         if (c <= 1) {
@@ -172,7 +248,7 @@ export default function JobDetailScreen() {
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [job, isOffered]);
+  }, [job, isOffered, tripOfferMin]);
 
   if (loading) {
     return (
@@ -198,6 +274,15 @@ export default function JobDetailScreen() {
 
   const isRide = job.kind === 'ride';
 
+  /**
+   * A Travel Buddy seat booking is a PERSONAL offer: declining it refunds
+   * the passenger in full and the server has to be told. Everything else
+   * on this screen is an open pool job, and there is no decline endpoint
+   * for one, so saying no is really just walking away (2026-08-23 sweep,
+   * D-1.5). The two cases are worded differently below for that reason.
+   */
+  const isTripOffer = !!(job as any)?.tripId;
+
   const pick = toCoord(job.pickupLat,  job.pickupLng);
   const drop = toCoord(job.dropoffLat, job.dropoffLng);
   const pins = [pick, drop].filter(Boolean) as Array<{ latitude: number; longitude: number }>;
@@ -211,16 +296,32 @@ export default function JobDetailScreen() {
     .find((u: any) => typeof u === 'string' && /^https?:\/\//i.test(u)) ?? null;
   const hasCargoDetail = !!(job.packageDescription || categoryLabel || job.weightKg || job.isFragile || photo);
 
-  const countdownPct = (countdown / ACCEPT_TIMEOUT_SEC) * 100;
-  const countdownColor = countdown <= 10 ? '#EF4444' : countdown <= 20 ? '#D97706' : '#16A34A';
+  // The bar has to be scaled to whichever clock is running, or a 30
+  // minute hold renders permanently pegged full then snaps to empty.
+  const countdownSpan  = isTripOffer && (job as any)?.tripOfferedAt
+    ? tripOfferMin * 60
+    : ACCEPT_TIMEOUT_SEC;
+  const countdownPct   = Math.max(0, Math.min(100, (countdown / countdownSpan) * 100));
+  // Thresholds proportional to the window: 10s of warning is meaningless
+  // on a 45s clock and invisible on a 30 minute one.
+  const countdownColor = countdown <= countdownSpan * 0.22 ? '#EF4444'
+    : countdown <= countdownSpan * 0.45 ? '#D97706'
+    : '#16A34A';
+  // "9m 40s" reads; "580s" does not.
+  const countdownLabel = countdown >= 60
+    ? `${Math.floor(countdown / 60)}m ${String(countdown % 60).padStart(2, '0')}s`
+    : `${countdown}s`;
 
   const openMaps = (address: string) => {
     const query = encodeURIComponent(address);
-    Alert.alert('Navigate', 'Open with:', [
-      { text: 'Google Maps', onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query}`) },
-      { text: 'Waze',        onPress: () => Linking.openURL(`https://waze.com/ul?q=${query}`) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    setSheet({
+      title: 'Navigate there',
+      message: 'Which app should take you?',
+      options: [
+        { label: 'Google Maps', variant: 'primary', icon: 'navigate-outline', onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query}`) },
+        { label: 'Waze',        icon: 'car-outline',      onPress: () => Linking.openURL(`https://waze.com/ul?q=${query}`) },
+      ],
+    });
   };
 
   // The whole run in one tap: pickup as origin, dropoff as destination.
@@ -234,7 +335,7 @@ export default function JobDetailScreen() {
       `&destination=${drop.latitude},${drop.longitude}` +
       `&travelmode=driving`;
     Linking.openURL(url).catch(() => {
-      Alert.alert(
+      info(
         'Could not open Google Maps',
         'Google Maps did not open. Check that it is installed and enabled, then use the arrow beside an address instead.',
       );
@@ -253,56 +354,64 @@ export default function JobDetailScreen() {
 
   const handleAccept = () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    Alert.alert(
-      'Accept Job?',
-      isRide
+    setSheet({
+      title: isRide ? 'Accept this ride?' : 'Accept this job?',
+      message: isRide
         ? `You are accepting a ride for ${job.customer.name}. Head to the pickup point now.`
         : `You are accepting a delivery for ${job.customer.name}. Head to pickup immediately.`,
-      [
-        { text: 'Cancel', style: 'cancel', onPress: restartCountdown },
-        {
-          text: 'Accept',
-          onPress: async () => {
-            setClaiming(true);
-            try {
-              await deliveriesApi.claim(job.id);
-              router.replace({ pathname: '/(driver)/active', params: { id: job.id } });
-              const q = encodeURIComponent(job.pickupAddress);
-              Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${q}`).catch(() => {});
-            } catch (e: any) {
-              Alert.alert('Could not accept', e?.message ?? 'Another driver may have claimed this job.');
-              restartCountdown();
-            } finally {
-              setClaiming(false);
-            }
-          },
+      options: [{
+        label: isRide ? 'Accept the ride' : 'Accept the job',
+        variant: 'primary',
+        icon: 'checkmark-circle-outline',
+        onPress: async () => {
+          setClaiming(true);
+          try {
+            await deliveriesApi.claim(job.id);
+            router.replace({ pathname: '/(driver)/active', params: { id: job.id } });
+            const q = encodeURIComponent(job.pickupAddress);
+            Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${q}`).catch(() => {});
+          } catch (e: any) {
+            info('Could not accept', e?.message ?? 'Another driver may have claimed this job.', restartCountdown);
+          } finally {
+            setClaiming(false);
+          }
         },
-      ],
-    );
+      }],
+      // The offer clock stops while the sheet is open and restarts if the
+      // rider backs out, whichever way they dismiss it.
+      onCancel: restartCountdown,
+    });
   };
 
+  /**
+   * The pool branch used to say "This job will be offered to another
+   * driver" and then call router.back() and nothing else. There is no
+   * decline endpoint, so dispatch never learned the rider said no and
+   * the job simply stayed in Available Jobs (2026-08-23 sweep, D-1.5).
+   * The copy now says what actually happens. Restoring the promise means
+   * a real POST /deliveries/:id/decline first.
+   */
   const handleDecline = () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    // A Travel Buddy seat booking is a personal offer: declining it
-    // refunds the passenger in full and must be told to the server
-    // (founder 2026-08-23). Ordinary pool jobs just fall back.
-    const isTripOffer = !!(job as any)?.tripId;
-    Alert.alert(
-      isTripOffer ? 'Decline this seat booking?' : 'Decline Job?',
-      isTripOffer
+    setSheet({
+      title: isTripOffer ? 'Decline this seat booking?' : 'Skip this job?',
+      message: isTripOffer
         ? 'The passenger is refunded in full immediately and the seat reopens on your trip.'
-        : 'This job will be offered to another driver.',
-      [
-        { text: 'Keep Job', style: 'cancel', onPress: restartCountdown },
-        { text: 'Decline', style: 'destructive', onPress: async () => {
+        : 'It stays in Available Jobs. Another rider can take it before you come back.',
+      options: [{
+        label: isTripOffer ? 'Decline the booking' : 'Skip this job',
+        variant: 'destructive',
+        onPress: async () => {
           if (isTripOffer) {
             try { await deliveriesApi.declineTripOffer((job as any).id); }
-            catch (e: any) { Alert.alert('Could not decline', e?.message ?? 'Try again.'); return; }
+            catch (e: any) { info('Could not decline', e?.message ?? 'Try again.'); return; }
           }
           router.back();
-        } },
-      ],
-    );
+        },
+      }],
+      cancelLabel: isTripOffer ? 'Keep the booking' : 'Keep looking',
+      onCancel: restartCountdown,
+    });
   };
 
   return (
@@ -331,8 +440,15 @@ export default function JobDetailScreen() {
           <View style={[styles.countdownCard, { backgroundColor: countdownColor + '15', borderColor: countdownColor + '40' }]}>
             <View style={styles.countdownTop}>
               <Clock size={18} color={countdownColor} strokeWidth={1.75} />
+              {/* Said "or it auto-declines". It does not: the timer only
+                  calls router.back() and the job stays in the pool, since
+                  no decline endpoint exists (2026-08-23 sweep, D-1.5).
+                  The seat-booking branch now counts the SERVER's window
+                  rather than the local 45s nudge (2026-08-25). */}
               <Text style={[styles.countdownLabel, { color: countdownColor }]}>
-                Accept in {countdown}s or it auto-declines
+                {isTripOffer
+                  ? `Seat booking held for you: ${countdownLabel} left`
+                  : `This offer closes in ${countdownLabel}`}
               </Text>
             </View>
             <View style={[styles.countdownTrack, { backgroundColor: theme.surfaceSecond }]}>
@@ -354,7 +470,12 @@ export default function JobDetailScreen() {
 
         {/* A ride is a person: say so before the driver accepts. */}
         {isRide && (
-          <View style={styles.rideBanner}>
+          <View style={[
+            styles.rideBanner,
+            isDark
+              ? { backgroundColor: '#6366F118' }
+              : { backgroundColor: theme.surface, borderWidth: 1.5, borderColor: '#6366F1' },
+          ]}>
             <Zap size={16} color="#6366F1" strokeWidth={1.75} />
             <Text style={styles.rideBannerText}>
               This is a RIDE: you are picking up a passenger, not a package.
@@ -563,7 +684,9 @@ export default function JobDetailScreen() {
           <>
             <Pressable style={[styles.declineBtn, { borderColor: '#EF4444' }]} onPress={handleDecline} disabled={claiming}>
               <XCircle size={20} color="#EF4444" strokeWidth={1.75} />
-              <Text style={[styles.declineText, { color: '#EF4444' }]}>Decline</Text>
+              {/* "Skip" on a pool job: nothing is sent, so the button must
+                  not read like a decision dispatch acts on (D-1.5). */}
+              <Text style={[styles.declineText, { color: '#EF4444' }]}>{isTripOffer ? 'Decline' : 'Skip'}</Text>
             </Pressable>
             <Pressable
               style={[styles.acceptBtn, { backgroundColor: theme.primary, opacity: claiming ? 0.6 : 1 }]}
@@ -573,7 +696,12 @@ export default function JobDetailScreen() {
               {claiming
                 ? <ActivityIndicator color="#fff" />
                 : <CheckCircle size={20} color="#fff" strokeWidth={1.75} />}
-              <Text style={styles.acceptText}>{claiming ? 'Accepting...' : 'Accept Job'}</Text>
+              {/* A seat booking and a ride are not a "Job" in a rider's
+                  words, and the sheet behind this button already says
+                  "ride" (2026-08-25). */}
+              <Text style={styles.acceptText}>
+                {claiming ? 'Accepting...' : isTripOffer ? 'Accept Booking' : isRide ? 'Accept Ride' : 'Accept Job'}
+              </Text>
             </Pressable>
           </>
         ) : jobState === 'mine' ? (
@@ -613,6 +741,11 @@ export default function JobDetailScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      {/* Accept, skip and Navigate, themed. Android's AlertDialog was the
+          one surface the SEIRS design system could not reach, and this is
+          the screen a rider decides on. */}
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }
@@ -638,7 +771,14 @@ const styles = StyleSheet.create({
   fareAmount: { fontSize: 40, fontWeight: FontWeight.bold as any, letterSpacing: -1 },
   fareNote:   { fontSize: FontSize.xs },
 
-  rideBanner:     { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#6366F118', borderRadius: Radius.md, padding: 12 },
+  // Light-mode audit 2026-08-24: the background moved to the call site.
+  // '#6366F118' is indigo at ~9%, a readable glow over near-black and a
+  // grey-lavender smear over the cream light background. This is the one
+  // low-alpha colour in the app sitting straight on theme.background with
+  // no border and no shadow to give it an edge, and it carries the "this
+  // is a passenger, not a package" warning, so it cannot be the faintest
+  // thing on the screen.
+  rideBanner:     { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: Radius.md, padding: 12 },
   rideBannerText: { color: '#6366F1', fontWeight: FontWeight.bold as any, fontSize: FontSize.sm, flex: 1 },
 
   card:         { borderRadius: Radius.lg, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },

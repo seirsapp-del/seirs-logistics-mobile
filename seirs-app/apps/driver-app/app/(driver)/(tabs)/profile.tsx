@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar } from '@/components/ui/Avatar';
@@ -21,6 +22,7 @@ interface MenuSection {
 }
 
 export default function DriverProfileScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router           = useRouter();
   const cs               = useColorScheme();
   const theme            = Colors[cs ?? 'light'];
@@ -105,10 +107,12 @@ export default function DriverProfileScreen() {
   ];
 
   const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: logout },
-    ]);
+    setSheet({
+      title: 'Sign out?',
+      message: 'You will need your email and password to get back in.',
+      options: [{ label: 'Sign out', variant: 'destructive', icon: 'log-out-outline', onPress: logout }],
+      cancelLabel: 'Stay signed in',
+    });
   };
 
   const handleItemPress = (item: MenuSection['items'][0]) => {
@@ -360,6 +364,7 @@ export default function DriverProfileScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

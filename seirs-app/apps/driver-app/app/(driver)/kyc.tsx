@@ -6,12 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowLeft, CreditCard, Camera, FileText, Car, Shield,
   Users, CheckCircle, Clock, XCircle, UploadCloud, ChevronRight,
-  ExternalLink,
+  ExternalLink, KeyRound,
 } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { uploadApi, driversApi } from '@/services/api';
 
@@ -42,7 +43,7 @@ const INITIAL_DOCS: DocItem[] = [
   { id: 'selfie',            label: 'Selfie / Profile photo',   Icon: Camera,     desc: 'Clear photo of your face: used on your driver profile', status: 'not_uploaded', required: true  },
   { id: 'drivers_license',   label: "Driver's Licence",         Icon: Car,        desc: "Valid Nigerian driver's licence",                     status: 'not_uploaded', required: true  },
   { id: 'vehicle_photo',     label: 'Vehicle Photo',            Icon: Car,        desc: 'Full photo of your vehicle showing the plate',        status: 'not_uploaded', required: true  },
-  { id: 'ownership_proof',   label: 'Vehicle Ownership Proof',  Icon: FileText,   desc: 'Vehicle registration or ownership certificate',       status: 'not_uploaded', required: true  },
+  { id: 'ownership_proof',   label: 'Vehicle Ownership Proof',  Icon: FileText,   desc: "Registration papers, even if they are in the owner's name", status: 'not_uploaded', required: true  },
   { id: 'insurance_cert',    label: 'Insurance Certificate',    Icon: Shield,     desc: 'Valid vehicle insurance certificate',                 status: 'not_uploaded', required: true  },
   { id: 'guarantor',         label: 'Guarantor Letter',         Icon: Users,      desc: 'Letter from a guarantor (recommended, not required)', status: 'not_uploaded', required: false },
 ];
@@ -70,6 +71,7 @@ const INSURANCE_PARTNERS = [
 ];
 
 export default function KycScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router      = useRouter();
   const colorScheme = useColorScheme();
   const theme       = Colors[colorScheme ?? 'light'];
@@ -84,6 +86,11 @@ export default function KycScreen() {
   // upload anything. 'unknown' = haven't checked yet (no banner).
   const [cameraStatus, setCameraStatus] = useState<'ok' | 'denied' | 'unknown'>('unknown');
   const [loadingDocs, setLoadingDocs] = useState(true);
+  // 2026-08-25: KYC asked for a "Vehicle Ownership Proof" document and
+  // never asked whose name was on it, so a rider on a borrowed keke had
+  // nowhere to say so. This row is that question, and it counts towards
+  // the progress bar like every other requirement.
+  const [ownership, setOwnership] = useState<{ declared: boolean; kind: 'self' | 'third_party' } | null>(null);
 
   // D-10.2: hydrate from the driver record. /drivers/me spreads the whole
   // entity, so every uploaded document already has its URL there. A doc with
@@ -107,6 +114,17 @@ export default function KycScreen() {
       } finally {
         if (!cancelled) setLoadingDocs(false);
       }
+      try {
+        const rec: any = await driversApi.getVehicle();
+        if (!cancelled) {
+          setOwnership({
+            declared: !!rec?.ownership?.declared,
+            kind:     rec?.ownership?.ownership === 'third_party' ? 'third_party' : 'self',
+          });
+        }
+      } catch {
+        // Same rule: never block the screen on a failed read.
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -128,10 +146,15 @@ export default function KycScreen() {
 
   const requiredDocs = docs.filter(d => d.required);
   const verified     = requiredDocs.filter(d => d.status === 'verified').length;
-  const uploaded     = requiredDocs.filter(d => d.status === 'uploaded' || d.status === 'verified').length;
-  const progress     = requiredDocs.length > 0 ? (uploaded / requiredDocs.length) * 100 : 0;
+  // The ownership declaration is a requirement, not a nice-to-have, so it
+  // sits in both halves of the fraction. Otherwise a rider reads 100% and
+  // then finds out their application is not actually complete.
+  const totalRequired = requiredDocs.length + 1;
+  const uploaded     = requiredDocs.filter(d => d.status === 'uploaded' || d.status === 'verified').length
+                     + (ownership?.declared ? 1 : 0);
+  const progress     = totalRequired > 0 ? (uploaded / totalRequired) * 100 : 0;
 
-  const allSubmitted = requiredDocs.every(d => d.status !== 'not_uploaded');
+  const allSubmitted = requiredDocs.every(d => d.status !== 'not_uploaded') && !!ownership?.declared;
 
   const pickImage = async (source: 'camera' | 'library'): Promise<string | null> => {
     if (source === 'camera') {
@@ -148,11 +171,18 @@ export default function KycScreen() {
   };
 
   const handleUpload = async (docId: string) => {
-    Alert.alert('Upload Document', 'Choose how to provide the document', [
-      { text: 'Camera',        onPress: () => doUpload(docId, 'camera')  },
-      { text: 'Photo Library', onPress: () => doUpload(docId, 'library') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    // Sat at exactly Android's three-button ceiling, so a fourth source
+    // (a PDF, a re-take) could never have been added without silently
+    // dropping Cancel (2026-08-25 dialog sweep).
+    setSheet({
+      title: 'Upload document',
+      message: 'Choose how to provide the document.',
+      options: [
+        { label: 'Take a photo',      sub: 'Use the camera now', variant: 'primary', icon: 'camera-outline', onPress: () => doUpload(docId, 'camera') },
+        { label: 'Choose from phone', sub: 'Pick a photo you already have', icon: 'images-outline', onPress: () => doUpload(docId, 'library') },
+      ],
+      cancelLabel: 'Not now',
+    });
   };
 
   const doUpload = async (docId: string, source: 'camera' | 'library') => {
@@ -216,7 +246,7 @@ export default function KycScreen() {
               <Text style={[styles.progressSub, { color: theme.textSecond }]}>
                 {loadingDocs
                   ? 'Checking your submitted documents...'
-                  : `${uploaded} of ${requiredDocs.length} required documents submitted`}
+                  : `${uploaded} of ${totalRequired} requirements submitted`}
               </Text>
             </View>
             {loadingDocs
@@ -233,8 +263,44 @@ export default function KycScreen() {
           )}
         </View>
 
+        {/* Who owns the vehicle. Founder 2026-08-25: "this is Nigeria this
+            happens" - hire purchase, a relative's keke, or an owner who
+            fronts the bike for a daily return are all ordinary, and a KYC
+            that assumes rider equals owner either locks those riders out
+            or accepts a claim nobody checked. */}
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Vehicle Ownership</Text>
+        <Pressable
+          style={[styles.docCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.xs]}
+          onPress={() => router.push('/(driver)/vehicle-ownership')}
+        >
+          <View style={[styles.docIconWrap, { backgroundColor: theme.primary + '15' }]}>
+            <KeyRound size={22} color={theme.primary} strokeWidth={1.5} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.docLabel, { color: theme.text }]}>Is this vehicle yours?</Text>
+            <Text style={[styles.docDesc, { color: theme.textThird }]} numberOfLines={2}>
+              {!ownership?.declared
+                ? "If you ride someone else's vehicle, tell us here. It will not count against you."
+                : ownership.kind === 'third_party'
+                  ? 'Declared: owned by someone else, with their signed authorisation'
+                  : 'Declared: you own this vehicle'}
+            </Text>
+          </View>
+          {ownership?.declared ? (
+            <View style={[styles.statusChip, { backgroundColor: '#16A34A18' }]}>
+              <CheckCircle size={13} color="#16A34A" strokeWidth={1.75} />
+              <Text style={[styles.statusText, { color: '#16A34A' }]}>Declared</Text>
+            </View>
+          ) : (
+            <View style={[styles.statusChip, { backgroundColor: '#A1A1AA18' }]}>
+              <ChevronRight size={13} color="#A1A1AA" strokeWidth={1.75} />
+              <Text style={[styles.statusText, { color: '#A1A1AA' }]}>Answer</Text>
+            </View>
+          )}
+        </Pressable>
+
         {/* Document list */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Required Documents</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text, marginTop: Spacing.md }]}>Required Documents</Text>
         {docs.filter(d => d.required).map(doc => {
           const cfg        = STATUS_CONFIG[doc.status];
           const isUploading = uploading === doc.id;
@@ -340,6 +406,7 @@ export default function KycScreen() {
 
         <View style={{ height: Spacing.xl }} />
       </ScrollView>
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

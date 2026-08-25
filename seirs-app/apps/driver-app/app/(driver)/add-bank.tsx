@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { paymentsApi } from '@/services/api';
 
@@ -24,6 +25,7 @@ import { paymentsApi } from '@/services/api';
 interface Bank { id: string; name: string; code: string }
 
 export default function AddBankScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
   const cs      = useColorScheme();
@@ -106,16 +108,24 @@ export default function AddBankScreen() {
     // Replacing an existing account: explicit warning BEFORE submitting,
     // since it freezes withdrawals until support approves the change.
     if (current?.bankAccountNumber) {
-      Alert.alert(
-        'Replace payout account?',
-        `Your withdrawals will PAUSE until our team reviews and approves this change (up to 3 business days). ` +
-        `This protects your earnings if someone else gets into your account.\n\n` +
-        `New account: ${selectedBank.name} · ${accountName} · ${accountNumber}`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Submit for review', style: 'destructive', onPress: submitSave },
-        ],
-      );
+      // A rider's payout destination is the highest-stakes edit in the
+      // app. The consequence goes on the row itself, where it cannot be
+      // skimmed past (2026-08-25 dialog sweep).
+      setSheet({
+        title: 'Replace payout account?',
+        message:
+          'Your withdrawals will PAUSE until our team reviews and approves this change (up to 3 business days). ' +
+          'This protects your earnings if someone else gets into your account.\n\n' +
+          `New account: ${selectedBank.name} · ${accountName} · ${accountNumber}`,
+        options: [{
+          label: 'Submit for review',
+          sub: 'Withdrawals pause until it is approved',
+          variant: 'destructive',
+          icon: 'shield-checkmark-outline',
+          onPress: submitSave,
+        }],
+        cancelLabel: 'Keep my current account',
+      });
       return;
     }
     submitSave();
@@ -315,6 +325,7 @@ export default function AddBankScreen() {
           </View>
         </View>
       </Modal>
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

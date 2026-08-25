@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Alert,
+  View, Text, Pressable, StyleSheet, ScrollView,
   ActivityIndicator, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,12 +10,13 @@ import { ArrowLeft, Camera, Check, AlertTriangle } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { uploadApi } from '@/services/api';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 
 // Spec V8 §2.16: anti-theft trunk inventory check. Whenever a passenger
 // or recipient exits the vehicle while there are still other packages
 // in the trunk (multi-cargo pool ride), the driver MUST take a quick
-// photo confirming everything else is still present. Photo URL is
-// attached to the delivery record so disputes can reference it.
+// photo confirming everything else is still present. NOTE: the photo is
+// not yet attached to the delivery record, see the comment in submit().
 //
 // Triggered from the active delivery screen mid-trip when:
 //   - one of multiple legs completes (passenger drop or package drop)
@@ -29,30 +30,60 @@ export default function TrunkCheckScreen() {
 
   const [photoUri, setPhotoUri] = useState('');
   const [uploading, setUploading] = useState(false);
+  /**
+   * Themed dialogs (item 4, 2026-08-24). This screen is reached straight
+   * off the delivery-complete sheet, so leaving it on Android's
+   * AlertDialog put a designed sheet and a grey OS box back to back in
+   * the same twenty seconds of a rider's job.
+   */
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
+  const info = (title: string, message?: string, onDone?: () => void) =>
+    setSheet({
+      title,
+      message,
+      options: [{ label: 'Got it', variant: 'primary', onPress: onDone }],
+      cancelLabel: null,
+      onCancel: onDone,
+    });
 
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Camera access required'); return; }
+    if (status !== 'granted') { info('Camera access needed', 'SEIRS needs the camera for the trunk photo. Grant it in Settings, then try again.'); return; }
     const r = await ImagePicker.launchCameraAsync({ quality: 0.85 });
     if (!r.canceled) setPhotoUri(r.assets[0].uri);
   };
 
   const submit = async () => {
-    if (!photoUri) { Alert.alert('Photo required', 'Take a quick trunk photo to confirm remaining packages.'); return; }
+    if (!photoUri) { info('Photo required', 'Take a quick trunk photo to confirm remaining packages.'); return; }
     setUploading(true);
     try {
-      const uploaded = await uploadApi.uploadFile(photoUri, 'trunk-check');
-      // Server-side: backend will accept this URL via deliveriesApi
-      // updateStatus when the trip-progress wiring lands. For now the
-      // photo is uploaded to R2 and the URL would be persisted next.
-      Alert.alert(
-        'Trunk verified',
-        'Photo uploaded. You can continue with the next leg.',
-        [{ text: 'OK', onPress: () => router.back() }],
+      // uploadFile's second argument is a dead prefix that the backend
+      // ignores, so this photo used to land unsegregated. 'proof' is the
+      // folder it belongs in, same fix as the partner handover photos
+      // (2026-08-23 sweep, B-10.6 class).
+      await uploadApi.file(photoUri, 'image/jpeg', 'proof');
+      /**
+       * The uploaded URL used to be console.logged and nothing else,
+       * under a footnote telling the rider "Photos here become evidence
+       * in any dispute". It was evidence of nothing: no route attaches a
+       * photo to a delivery outside a status transition, so the file
+       * reached R2 and no record ever pointed at it (2026-08-23 sweep,
+       * D-1.6). The photo still goes up, because an unlinked file in
+       * cold storage beats no photo at all, and the copy no longer
+       * claims a link that does not exist.
+       *
+       * Handed back to the backend: POST /deliveries/:id/driver-note
+       * with { photoUrl }. DeliveryEventType.DRIVER_NOTE already exists
+       * for exactly this and has no controller. The day it lands, pass
+       * params.deliveryId and the URL here and restore the footnote.
+       */
+      info(
+        'Trunk photo taken',
+        'Keep going with the next leg. If anything looks wrong, stop and contact support before you drive on.',
+        () => router.back(),
       );
-      console.log('trunk check photo:', uploaded.url);
     } catch (e: any) {
-      Alert.alert('Upload failed', e?.message ?? 'Try again.');
+      info('Upload failed', e?.message ?? 'Try again.');
     } finally {
       setUploading(false);
     }
@@ -116,10 +147,16 @@ export default function TrunkCheckScreen() {
           }
         </Pressable>
 
+        {/* Dropped "Photos here become evidence in any dispute": nothing
+            links the photo to this delivery yet, so it was a promise the
+            platform could not keep at the exact moment a rider needs to
+            trust it (2026-08-23 sweep, D-1.6). */}
         <Text style={[styles.footnote, { color: theme.textThird }]}>
-          If anything is missing, do NOT continue. Pull over safely and contact support before driving further. Photos here become evidence in any dispute.
+          If anything is missing, do NOT continue. Pull over safely and contact support before driving further, and keep the photo on your phone.
         </Text>
       </ScrollView>
+
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

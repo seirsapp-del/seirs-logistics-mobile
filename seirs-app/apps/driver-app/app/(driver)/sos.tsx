@@ -9,6 +9,7 @@ import { Animated, Easing } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { sosApi } from '@/services/api';
 
@@ -25,6 +26,7 @@ const EMERGENCY_CONTACTS = [
 ];
 
 export default function DriverSosScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router  = useRouter();
   const cs      = useColorScheme();
   const isDark  = cs === 'dark';
@@ -139,14 +141,21 @@ export default function DriverSosScreen() {
   };
 
   const handleSOS = () => {
-    Alert.alert(
-      'Send SOS?',
-      'This alerts SEIRS ops, shares your live location, and notifies your assigned customer if you are on a trip.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Send SOS', style: 'destructive', onPress: fireSOS },
-      ],
-    );
+    // The one dialog on the app a rider may be reading one-handed, in the
+    // dark, in trouble. A full-width row beats a 40px uppercase word in a
+    // corner (2026-08-25 dialog sweep).
+    setSheet({
+      title: 'Send SOS?',
+      message: 'This alerts SEIRS ops, shares your live location, and notifies your assigned customer if you are on a trip.',
+      options: [{
+        label: 'Send SOS now',
+        sub: 'Ops are alerted immediately',
+        variant: 'destructive',
+        icon: 'warning-outline',
+        onPress: fireSOS,
+      }],
+      cancelLabel: 'Not now',
+    });
   };
 
   const cancelSOS = () => {
@@ -326,6 +335,7 @@ export default function DriverSosScreen() {
           </KeyboardAvoidingView>
         </Modal>
       </SafeAreaView>
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </View>
   );
 }

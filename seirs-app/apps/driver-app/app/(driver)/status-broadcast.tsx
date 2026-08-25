@@ -32,7 +32,10 @@ const WIRE: Record<Status, 'network_bad' | 'traffic' | 'need_help'> = {
 
 const OPTIONS: Array<{ key: Status; label: string; sub: string; color: string; Icon: any }> = [
   { key: 'network', label: 'Network is bad: still moving',     sub: 'GPS may be delayed but I&apos;m on the way',                color: '#3A7BD5', Icon: Wifi          },
-  { key: 'traffic', label: 'Stuck in traffic',                  sub: 'I&apos;m moving slowly: ETA may extend',                  color: '#D97706', Icon: AlertCircle   },
+  // No arrival times, ever (founder rule): Lagos traffic plus NEPA plus
+  // checkpoints make any ETA a refund magnet. This read "ETA may extend",
+  // which implies there was an ETA to extend (audit 2026-08-24).
+  { key: 'traffic', label: 'Stuck in traffic',                  sub: 'Held up on the road, still on my way',                    color: '#D97706', Icon: AlertCircle   },
   { key: 'help',    label: 'Need help: please contact support', sub: 'Trigger an alert to ops with my last known location',   color: '#DC2626', Icon: AlertTriangle },
 ];
 

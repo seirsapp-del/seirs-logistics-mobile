@@ -9,7 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
-import { driversApi } from '@/services/api';
+import { driversApi, earningsApi } from '@/services/api';
 import { naira } from '@/utils/money';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -20,8 +20,28 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string
   cancelled:  { label: 'Cancelled',   color: '#6B7280', icon: 'close-circle-outline' },
 };
 
-const TABS = ['All', 'Delivered', 'Cancelled'] as const;
+/**
+ * There was a "Cancelled" tab here and it could never hold anything.
+ * A cancelled delivery is not returned by /deliveries/driver (active
+ * statuses only) and never reaches the earnings ledger, so no
+ * driver-facing endpoint lists one. It is replaced by "Active", which
+ * both feeds below can actually fill (2026-08-23 sweep, D-10.1).
+ */
+const TABS = ['All', 'Delivered', 'Active'] as const;
 type Tab = typeof TABS[number];
+
+const ACTIVE_STATUSES = ['assigned', 'picked_up', 'in_transit'];
+
+type TripRow = {
+  id:             string;
+  status:         string;
+  date:           string;
+  pickupAddress:  string;
+  dropoffAddress: string;
+  distance:       string;
+  driverEarnings: number;
+  customer:       { name: string };
+};
 
 export default function DriverHistoryScreen() {
   const router  = useRouter();
@@ -30,32 +50,84 @@ export default function DriverHistoryScreen() {
   const isDark  = cs === 'dark';
 
   const [tab, setTab]               = useState<Tab>('All');
-  const [items, setItems]           = useState<any[]>([]);
+  const [items, setItems]           = useState<TripRow[]>([]);
+  const [lifetime, setLifetime]     = useState<number | null>(null);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  /**
+   * This screen used to load ONLY driversApi.myDeliveries(), which is
+   * GET /deliveries/driver and filters to ASSIGNED | PICKED_UP |
+   * IN_TRANSIT. A finished trip therefore fell straight out of the list
+   * the moment it was delivered: the Delivered tab was permanently
+   * empty and the header badge summed nothing, so a working driver read
+   * "N0.00 earned" forever (2026-08-23 sweep, D-10.1).
+   *
+   * Finished trips now come from the earnings ledger, which is the same
+   * table the Earnings tab reads, so the two screens cannot disagree.
+   * The ledger row is also the only honest source for what a trip PAID:
+   * delivery.driverEarnings is the booked share, driverNet is what was
+   * actually released.
+   *
+   * The badge reads allTime.earned off the dashboard rather than summing
+   * the rows, because /earnings/history is capped at 50 and a busy
+   * driver would otherwise see an understated lifetime total.
+   */
   const load = useCallback(async () => {
-    try {
-      const rows = await driversApi.myDeliveries();
-      setItems((rows ?? []).map((d: any) => ({
-        id:              d.id,
-        status:          String(d.status ?? 'pending'),
-        date:            d.deliveredAt ?? d.createdAt ?? new Date().toISOString(),
-        pickupAddress:   d.pickupAddress  ?? '-',
-        dropoffAddress:  d.dropoffAddress ?? '-',
-        distance:        d.distanceKm ? `${Number(d.distanceKm).toFixed(1)} km` : '',
-        price:           Number(d.price ?? 0),
-        driverEarnings:  Number(d.driverEarnings ?? 0),
-        // Rides keep a first name only, packages keep the sender's name.
-        customer:        d.customer
-          ? { name: String(d.kind) === 'ride'
-                ? (String(d.customer.name ?? 'Passenger').trim().split(/\s+/)[0] || 'Passenger')
-                : d.customer.name }
-          : { name: 'Customer' },
-      })));
-    } catch {
-      setItems([]);
-    }
+    const [active, ledger, dash] = await Promise.all([
+      driversApi.myDeliveries().catch(() => [] as any[]),
+      earningsApi.history().catch(() => []),
+      earningsApi.dashboard().catch(() => null),
+    ]);
+
+    // Rides keep a first name only, packages keep the sender's name.
+    const partyName = (d: any): string => {
+      if (!d?.customer) return 'Customer';
+      return String(d.kind) === 'ride'
+        ? (String(d.customer.name ?? 'Passenger').trim().split(/\s+/)[0] || 'Passenger')
+        : String(d.customer.name ?? 'Customer');
+    };
+    const km = (v: unknown) => (v != null && Number.isFinite(Number(v)) ? `${Number(v).toFixed(1)} km` : '');
+
+    const activeRows: TripRow[] = (active ?? []).map((d: any) => ({
+      id:             String(d.id),
+      status:         String(d.status ?? 'assigned'),
+      date:           d.assignedAt ?? d.createdAt ?? new Date().toISOString(),
+      pickupAddress:  d.pickupAddress  ?? '-',
+      dropoffAddress: d.dropoffAddress ?? '-',
+      distance:       km(d.distanceKm),
+      // An active trip has not paid yet. Showing the booked share as if
+      // it were banked is what the Earnings tab already refuses to do.
+      driverEarnings: 0,
+      customer:       { name: partyName(d) },
+    }));
+
+    // The ledger carries no customer relation, and it should not: a
+    // finished trip does not need the other party's identity attached to
+    // a money row.
+    const ledgerRows: TripRow[] = (ledger ?? []).map(e => ({
+      id:             String(e.delivery?.id ?? e.deliveryId),
+      status:         String(e.delivery?.status ?? 'delivered'),
+      date:           e.delivery?.deliveredAt ?? e.createdAt,
+      pickupAddress:  e.delivery?.pickupAddress  ?? '-',
+      dropoffAddress: e.delivery?.dropoffAddress ?? '-',
+      distance:       km(e.delivery?.distanceKm),
+      driverEarnings: Number(e.driverNet ?? 0),
+      customer:       { name: String(e.delivery?.kind) === 'ride' ? 'Passenger' : 'Customer' },
+    }));
+
+    // An active trip can also have a ledger row already (delivered this
+    // second, escrow released, still in the active window): keep one.
+    const seen = new Set<string>();
+    const merged = [...activeRows, ...ledgerRows].filter(r => {
+      if (seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    });
+    merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    setItems(merged);
+    setLifetime(dash ? Number(dash.allTime?.earned ?? 0) : null);
   }, []);
 
   useEffect(() => { (async () => { await load(); setLoading(false); })(); }, [load]);
@@ -65,15 +137,15 @@ export default function DriverHistoryScreen() {
   }, [load]);
 
   const filtered = items.filter(d => {
-    if (tab === 'All')       return true;
     if (tab === 'Delivered') return d.status === 'delivered';
-    if (tab === 'Cancelled') return d.status === 'cancelled' || d.status === 'failed';
+    if (tab === 'Active')    return ACTIVE_STATUSES.includes(d.status);
     return true;
   });
 
-  const totalEarned = items
-    .filter(d => d.status === 'delivered')
-    .reduce((s, d) => s + d.driverEarnings, 0);
+  // Server-computed over the whole ledger, so it does not go stale past
+  // the 50-row history cap. Falls back to the loaded rows only while the
+  // dashboard call is in flight or has failed.
+  const totalEarned = lifetime ?? items.reduce((s, d) => s + d.driverEarnings, 0);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>

@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, AlertTriangle, Trash2, Download, AlertCircle, CheckCircle } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { usersApi, driversApi } from '@/services/api';
@@ -26,6 +27,7 @@ const CONFIRM_PHRASE = 'delete my account';
 // before triggering this; backend currently doesn't enforce that and
 // will let a balance get orphaned. Better validation in a follow-up.
 export default function DeleteAccountScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
@@ -71,14 +73,18 @@ export default function DeleteAccountScreen() {
     !!readiness?.ready;
 
   const handleSubmit = () => {
-    Alert.alert(
-      'Delete account',
-      'Make sure you have withdrawn any wallet balance and have no active deliveries. You can sign in within 30 days to cancel.',
-      [
-        { text: 'Cancel', style: 'cancel' },
+    // "wallet balance" is the retired model: a driver holds an EARNINGS
+    // ledger, and that is the word every other money screen in this app
+    // uses (2026-08-25 dialog sweep).
+    setSheet({
+      title: 'Delete account',
+      message: 'Make sure you have withdrawn your cleared earnings and have no active deliveries. You can sign in within 30 days to cancel.',
+      options: [
         {
-          text: 'Delete',
-          style: 'destructive',
+          label: 'Delete my account',
+          sub: 'Recoverable for 30 days, permanent after that',
+          variant: 'destructive',
+          icon: 'trash-outline',
           onPress: async () => {
             setLoading(true);
             try {
@@ -99,7 +105,8 @@ export default function DeleteAccountScreen() {
           },
         },
       ],
-    );
+      cancelLabel: 'Keep my account',
+    });
   };
 
   return (
@@ -244,6 +251,7 @@ export default function DeleteAccountScreen() {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

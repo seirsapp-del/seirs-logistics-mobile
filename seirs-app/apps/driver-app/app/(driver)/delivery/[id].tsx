@@ -19,8 +19,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
-import { driversApi } from '@/services/api';
+import * as ImagePicker from 'expo-image-picker';
+import { driversApi, uploadApi } from '@/services/api';
+
 import { naira } from '@/utils/money';
 
 interface Stop {
@@ -84,6 +87,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 };
 
 export default function DeliveryDetailScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const { id }  = useLocalSearchParams<{ id: string }>();
   const router  = useRouter();
   const cs      = useColorScheme();
@@ -110,11 +114,17 @@ export default function DeliveryDetailScreen() {
 
   const openMaps = (lat: number, lng: number, addressFallback: string) => {
     const dest = lat && lng ? `${lat},${lng}` : encodeURIComponent(addressFallback);
-    Alert.alert('Navigate', 'Open with:', [
-      { text: 'Google Maps', onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}`) },
-      { text: 'Waze',        onPress: () => Linking.openURL(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    // job/[id].tsx already asks this as a sheet, so a rider met two
+    // different Navigate dialogs on the same run. This one also sat at
+    // Android's three-button ceiling (2026-08-25 dialog sweep).
+    setSheet({
+      title: 'Navigate there',
+      message: 'Which app should take you?',
+      options: [
+        { label: 'Google Maps', variant: 'primary', icon: 'navigate-outline', onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}`) },
+        { label: 'Waze',        icon: 'car-outline', onPress: () => Linking.openURL(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`) },
+      ],
+    });
   };
 
   /**
@@ -176,14 +186,44 @@ export default function DeliveryDetailScreen() {
     } finally { setActing(null); }
   };
 
+  /**
+   * Proof of delivery on a multi-drop stop.
+   *
+   * This carried a standing "TODO Phase 5b" and shipped the transition
+   * with no proof at all, so a business run with eight drops closed
+   * eight doors on the driver's word alone while the single-drop screen
+   * (active.tsx) had required a photo for months (2026-08-23 sweep,
+   * D-9.2). The backend was never the blocker: markStopDelivered has
+   * taken proofPhotoUrls since it was written and writes it onto the
+   * stop row. Only the client half was missing.
+   *
+   * The photo is required, exactly as it is on active.tsx, because a
+   * drop with no proof is the one a dispute turns on. The camera is
+   * opened directly rather than the library: proof means the parcel at
+   * the door now, not a picture chosen from the gallery afterwards.
+   */
   const handleDelivered = async (stop: Stop) => {
     if (!delivery || acting) return;
+
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (perm.status !== 'granted') {
+      Alert.alert(
+        'Camera access required',
+        'A proof photo is needed to close a stop. Enable camera access for SEIRS Driver and try again.',
+      );
+      return;
+    }
+    const shot = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      allowsEditing: false,
+    });
+    if (shot.canceled || !shot.assets?.[0]) return;   // driver backed out, stop stays open
+
     setActing(stop.id);
     try {
-      // TODO Phase 5b: tie into proof-of-delivery photo + signature
-      // (existing upload flow in receive-dropoff.tsx). For now we ship
-      // the action without proof: backend accepts null.
-      await driversApi.markStopDelivered(delivery.id, stop.id);
+      const uploaded = await uploadApi.file(shot.assets[0].uri, 'image/jpeg', 'proof');
+      await driversApi.markStopDelivered(delivery.id, stop.id, { proofPhotoUrls: [uploaded.url] });
       await load();
     } catch (e: any) {
       Alert.alert('Could not mark delivered', e?.message ?? 'Try again.');
@@ -416,8 +456,8 @@ export default function DeliveryDetailScreen() {
                     {acting === stop.id
                       ? <ActivityIndicator color="#fff" />
                       : <>
-                          <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                          <Text style={styles.primaryBtnText}>Mark delivered</Text>
+                          <Ionicons name="camera" size={16} color="#fff" />
+                          <Text style={styles.primaryBtnText}>Photo and deliver</Text>
                         </>}
                   </Pressable>
                 ) : (
@@ -473,6 +513,7 @@ export default function DeliveryDetailScreen() {
         )}
 
       </ScrollView>
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }

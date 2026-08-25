@@ -13,11 +13,13 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supportApi, uploadApi, type SupportThreadDTO } from '@/services/api';
 
 export default function DriverSupportThreadScreen() {
+  const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
@@ -90,11 +92,17 @@ export default function DriverSupportThreadScreen() {
   };
   const attach = () => {
     if (uploading || sending) return;
-    Alert.alert('Attach photo', 'Choose where to attach from.', [
-      { text: 'Take photo',   onPress: pickCamera  },
-      { text: 'From gallery', onPress: pickGallery },
-      { text: 'Cancel',       style: 'cancel'      },
-    ]);
+    // At Android's three-button ceiling, same as the KYC and chat
+    // pickers (2026-08-25 dialog sweep).
+    setSheet({
+      title: 'Attach photo',
+      message: 'Choose where to attach from.',
+      options: [
+        { label: 'Take photo',   sub: 'Use the camera now', variant: 'primary', icon: 'camera-outline', onPress: pickCamera },
+        { label: 'From gallery', sub: 'Pick a photo you already have', icon: 'images-outline', onPress: pickGallery },
+      ],
+      cancelLabel: 'Cancel',
+    });
   };
 
   const myUserId = user?.id ?? '';
@@ -232,6 +240,7 @@ export default function DriverSupportThreadScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      <SeirsSheet spec={sheet} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }
