@@ -174,6 +174,56 @@ export class Driver {
   @Column({ nullable: true })
   guarantorUrl: string;
 
+  // ── Who owns the vehicle (2026-08-25) ──────────────────────────────────
+  //
+  // Symptom this fixes: `ownershipProofUrl` above has existed since the
+  // first KYC build and the app asks for "Vehicle registration or
+  // ownership certificate", but nothing anywhere asked WHOSE name is on
+  // it. In Nigeria a very large share of okada and keke riders ride a
+  // machine they do not own: hire purchase, a relative's, or an owner who
+  // fronts it for a daily return. Those riders were either handing in a
+  // document with another person's name on it and being approved anyway,
+  // or being rejected for being honest.
+  //
+  // These columns hold the LIVE, approved answer. A pending answer lives
+  // on a driver_vehicle_changes row and is copied here only on approval,
+  // for the same reason vehicleType is: matching and pricing read the
+  // live row, so nothing here may move without a human saying yes.
+  //
+  // Deliberately NOT inside vehicleDetails: that jsonb goes to the
+  // customer app whole via redactDriverForCustomer, and an owner's name
+  // and phone number are not the sender's business.
+
+  @Column({ type: 'varchar', length: 16, default: 'self' })
+  vehicleOwnership: 'self' | 'third_party';
+
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  vehicleOwnerName: string | null;
+
+  @Column({ type: 'varchar', length: 24, nullable: true })
+  vehicleOwnerPhone: string | null;
+
+  @Column({ type: 'varchar', length: 24, nullable: true })
+  vehicleOwnerRelationship: string | null;
+
+  /** Photo of the paper authorisation the owner signed by hand. */
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  vehicleOwnerConsentUrl: string | null;
+
+  /** Optional owner ID photo, ties the paper signature to a person. */
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  vehicleOwnerIdUrl: string | null;
+
+  /**
+   * Owner's full name typed by the owner. Nigerian Evidence Act section
+   * 84 digital signature, the same standard the handoff records use.
+   */
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  vehicleOwnerSignatureName: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  vehicleOwnerConsentAt: Date | null;
+
   @OneToMany(() => Delivery, (d) => d.driver)
   deliveries: Delivery[];
 

@@ -7,7 +7,9 @@ import * as bcrypt from 'bcryptjs';
 import { User } from '../users/user.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { HandoffOtp } from './handoff-otp.entity';
-import { HandoffRecord, HandoffMethod, HandoffStage } from './handoff-record.entity';
+import {
+  HandoffRecord, HandoffMethod, HandoffStage, HandoffRole, SignatureSource,
+} from './handoff-record.entity';
 import { MailService } from '../mail/mail.service';
 import { FeesService } from '../fees/fees.service';
 import { generateOtp } from '../common/utils/auth-codes';
@@ -151,6 +153,35 @@ export class IdentityService {
       typedName?: string;
       // Both methods may attach a proof photo
       proofPhotoUrl?: string;
+
+      /**
+       * The name typed by whoever TAKES custody here (2026-08-25).
+       *
+       * The founder's Nigerian case: a partner store receives a package
+       * and later says it never did. A scan is a store id and a
+       * timestamp, which is not an answer. A named human at the counter
+       * signs for it, and that name is what the sender's receipt can
+       * show when they ask who collected their package.
+       *
+       * When the app in the field has not been updated to ask for it,
+       * the signed-in account's registered name is used instead and the
+       * record says so via signatureSource. A weaker name beats the
+       * empty chain this is replacing.
+       */
+      signatureName?: string;
+      /** Typed name of whoever HANDS OVER. Store staff releasing, mostly. */
+      releasedByName?: string;
+      /** Role of the taker, so a dispute does not have to join out to find it. */
+      signedByRole?: HandoffRole;
+      /** Store this transition happened at, denormalised against staff churn. */
+      partnerStoreId?: string;
+      /**
+       * Overrides who the record says took custody. On a store receipt
+       * the taker is the staff member, NOT the OTP owner: the OTP proves
+       * the sender authorised the release, it does not mean the sender
+       * ended up holding their own package.
+       */
+      toUserId?: string;
       /**
        * A handoff that has no delivery behind it yet.
        *
@@ -174,6 +205,21 @@ export class IdentityService {
     actorUserId?: string,
   ): Promise<{ recordId: string; recipientUserId: string }> {
     if (actorUserId) await this.assertDeliveryParty(payload.deliveryId, actorUserId);
+
+    /**
+     * Counter handovers dispatch BEFORE the subject lookup below.
+     *
+     * That lookup resolves the counterparty to the delivery's CUSTOMER
+     * for every stage, which is why a rider handing a parcel across a
+     * partner counter could not verify anything at all: the physical-ID
+     * path demanded an OTP emailed to the recipient, and the SEIRS-ID
+     * path refused with "This SEIRS ID does not belong to the package
+     * recipient". Both are the right answers to a question nobody asked
+     * here. The recipient is not in the room; a shop is.
+     */
+    if (payload.method === HandoffMethod.TYPED_SIGNATURE) {
+      return this.verifyTypedSignature(payload, actorUserId);
+    }
 
     let subject: HandoffSubject;
     if (payload.subjectUserId) {
@@ -209,6 +255,171 @@ export class IdentityService {
       return this.verifySeirsId(payload, subject);
     }
     throw new BadRequestException('Unknown verification method');
+  }
+
+  /**
+   * A counter handover, signed by a named human at the store.
+   *
+   * THE RULE, and it is worth stating plainly because a dispute months
+   * from now is read by someone who was not in this conversation:
+   *
+   *   signatureName is ALWAYS the party TAKING custody.
+   *   releasedByName is ALWAYS the party HANDING IT OVER.
+   *
+   * That invariant is the whole reason the chain settles anything. The
+   * liability matrix moves responsibility when the TAKER signs, so if the
+   * name meant "taker" on five stages and "giver" on one, reading a
+   * record would require knowing the stage before you knew what the name
+   * meant. Two fields, one meaning each, no exceptions.
+   *
+   * The apps send ONE typed name, because there is only one person at the
+   * counter to type it, and the server files it on whichever side the
+   * STORE is standing:
+   *
+   *   store_to_driver  the store hands over  -> releasedByName
+   *   driver_to_store  the store takes it in -> signatureName
+   *
+   * The rider's own name is not typed on either. Their identity is
+   * already established by the JWT this request arrived on, and it is the
+   * store's word that a dispute puts in doubt: the founder's case is a
+   * partner store that receives a package and later says it never did.
+   * So their side of the record is the account name, marked ACCOUNT
+   * rather than TYPED, and the store's side is a real signature.
+   */
+  private async verifyTypedSignature(
+    payload: any,
+    actorUserId?: string,
+  ): Promise<{ recordId: string; recipientUserId: string }> {
+    const stage: HandoffStage = payload.stage;
+    const COUNTER_STAGES: HandoffStage[] = [
+      HandoffStage.STORE_TO_DRIVER,
+      HandoffStage.DRIVER_TO_STORE,
+      HandoffStage.DRIVER_TO_DRIVER,
+    ];
+    if (!COUNTER_STAGES.includes(stage)) {
+      // Handing to a RECIPIENT is never settled by a signature the person
+      // handing over typed themselves. Those stages keep the ID + OTP and
+      // SEIRS ID paths, which is also what the high-value DELIVERED gate
+      // in DeliveriesService whitelists.
+      throw new BadRequestException(
+        'A typed signature only settles a handover between a store and a rider. ' +
+        'Verify a recipient with their ID and code, or their SEIRS ID.',
+      );
+    }
+
+    const typed = String(payload.signatureName ?? payload.typedName ?? '')
+      .trim().replace(/\s+/g, ' ').slice(0, 120);
+    if (typed.split(' ').filter(Boolean).length < 2) {
+      throw new BadRequestException(
+        'Type the full name, first and last, of the person signing for this package.',
+      );
+    }
+
+    if (!actorUserId) {
+      throw new ForbiddenException('Sign in to record a handover.');
+    }
+    const actor = await this.usersRepo.findOne({
+      where: { id: actorUserId },
+      select: ['id', 'name'],
+    });
+
+    // Which store this happened at. Denormalised onto the record because
+    // resolving it later through a staff member's current employer gives
+    // the wrong answer the moment that person changes shop.
+    const storeId = payload.partnerStoreId
+      ?? await this.resolveStoreForStage(payload.deliveryId, stage);
+
+    const storeTakesIt = stage === HandoffStage.DRIVER_TO_STORE;
+
+    /**
+     * Upgrade the auto-record instead of stacking a second one on top.
+     *
+     * DeliveriesService writes a store_to_driver link the moment a rider
+     * taps PICKED_UP, signed with their account name, so the chain is
+     * never empty. If the rider then completes the counter scan, this
+     * would otherwise INSERT a second row for the same handover, and two
+     * rows for one handover reads to whoever settles the dispute as the
+     * package changing hands twice.
+     *
+     * So a real typed signature replaces a fallback one on the same
+     * stage. Only ever in that direction: an ACCOUNT name may be upgraded
+     * to a TYPED one, never the reverse, so nothing here can weaken
+     * evidence that already exists.
+     */
+    const weak = await this.recordRepo.findOne({
+      where: {
+        deliveryId: payload.deliveryId,
+        stage,
+        signatureSource: SignatureSource.ACCOUNT,
+      },
+      order: { createdAt: 'DESC' },
+    });
+    if (weak) {
+      await this.recordRepo.update(weak.id, {
+        method:          HandoffMethod.TYPED_SIGNATURE,
+        signatureName:   storeTakesIt ? typed : (actor?.name ?? weak.signatureName),
+        signatureSource: storeTakesIt ? SignatureSource.TYPED : SignatureSource.ACCOUNT,
+        releasedByName:  storeTakesIt ? (actor?.name ?? null) : typed,
+        signedByRole:    storeTakesIt ? HandoffRole.STORE_STAFF : HandoffRole.DRIVER,
+        partnerStoreId:  storeId ?? weak.partnerStoreId,
+        proofPhotoUrl:   payload.proofPhotoUrl ?? payload.idPhotoUrl ?? weak.proofPhotoUrl,
+      });
+      this.logger.log(
+        `custody ${stage} upgraded to a typed signature for ${payload.deliveryId}, signed "${typed}"`,
+      );
+      return { recordId: weak.id, recipientUserId: actorUserId };
+    }
+
+    const record = await this.recordRepo.save(this.recordRepo.create({
+      deliveryId: payload.deliveryId,
+      stage,
+      method:     HandoffMethod.TYPED_SIGNATURE,
+      fromUserId: storeTakesIt ? actorUserId : (payload.fromUserId ?? null),
+      // Store staff are not the caller here, so there is no user id for
+      // them. The typed name is what identifies them, which is the point.
+      toUserId:   storeTakesIt ? null : actorUserId,
+      signatureName:   storeTakesIt ? typed : (actor?.name ?? null),
+      signatureSource: storeTakesIt ? SignatureSource.TYPED : SignatureSource.ACCOUNT,
+      releasedByName:  storeTakesIt ? (actor?.name ?? null) : typed,
+      signedByRole:    storeTakesIt ? HandoffRole.STORE_STAFF : HandoffRole.DRIVER,
+      partnerStoreId:  storeId,
+      proofPhotoUrl:   payload.proofPhotoUrl ?? payload.idPhotoUrl ?? null,
+    }));
+
+    this.logger.log(
+      `custody ${stage} recorded for ${payload.deliveryId}, signed "${typed}"`,
+    );
+    return { recordId: record.id, recipientUserId: actorUserId };
+  }
+
+  /**
+   * The store a counter handover happened at, read off the drop-off this
+   * delivery came from.
+   *
+   * Raw SQL for the same reason relatedCustodyIds uses it: this module
+   * does not own StoreDropoff and PartnerStoreModule already imports this
+   * service, so importing back would close a module loop.
+   */
+  private async resolveStoreForStage(
+    deliveryId: string,
+    stage: HandoffStage,
+  ): Promise<string | null> {
+    try {
+      const rows: any[] = await this.deliveriesRepo.manager.query(
+        `SELECT "pickupStoreId", "dropoffStoreId" FROM store_dropoffs
+          WHERE "deliveryId" = $1 OR id = $1 LIMIT 1`,
+        [deliveryId],
+      );
+      const row = rows?.[0];
+      if (!row) return null;
+      return stage === HandoffStage.DRIVER_TO_STORE
+        ? (row.dropoffStoreId ?? row.pickupStoreId ?? null)
+        : (row.pickupStoreId ?? null);
+    } catch {
+      // A door-to-door leg has no drop-off row at all. The signature is
+      // still the evidence that matters; the store id is context.
+      return null;
+    }
   }
 
   private async verifyPhysicalId(
@@ -247,15 +458,25 @@ export class IdentityService {
     await this.otpRepo.update(otpRow.id, { consumed: true, consumedAt: new Date() });
 
     const idStr = String(payload.idNumber);
+    // The taker defaults to the OTP owner, but a store receipt overrides
+    // it: the OTP proves the sender authorised the release, not that the
+    // sender walked out holding their own package.
+    const takerUserId = payload.toUserId ?? recipientUserId;
+    const signature = await this.resolveSignature(payload.signatureName, takerUserId);
     const record = await this.recordRepo.save(this.recordRepo.create({
       deliveryId:    subject.id,
       stage:         payload.stage,
       method:        HandoffMethod.PHYSICAL_ID,
       fromUserId:    payload.fromUserId ?? null,
-      toUserId:      recipientUserId,
+      toUserId:      takerUserId,
       idType:        String(payload.idType),
       idLast4:       idStr.slice(-4),
       proofPhotoUrl: payload.idPhotoUrl ?? payload.proofPhotoUrl ?? null,
+      signatureName:   signature.name,
+      signatureSource: signature.source,
+      releasedByName:  payload.releasedByName?.trim().slice(0, 120) || null,
+      signedByRole:    payload.signedByRole ?? null,
+      partnerStoreId:  payload.partnerStoreId ?? null,
     }));
 
     return { recordId: record.id, recipientUserId };
@@ -312,20 +533,225 @@ export class IdentityService {
       method:        HandoffMethod.SEIRS_ID,
       fromUserId:    payload.fromUserId ?? null,
       toUserId:      recipientUserId,
-      signatureName: recipient.name,
-      proofPhotoUrl: payload.proofPhotoUrl ?? null,
+      // The collector's own registered name, matched against the typed
+      // answer above. Not the caller's signatureName: on this path the
+      // taker is the person whose SEIRS ID was just verified.
+      signatureName:   recipient.name,
+      signatureSource: SignatureSource.TYPED,
+      proofPhotoUrl:   payload.proofPhotoUrl ?? null,
+      // Who released it. Founder asked specifically whether the sender's
+      // receipt can show who handed the package over, not just a photo.
+      releasedByName:  payload.releasedByName?.trim().slice(0, 120) || null,
+      signedByRole:    payload.signedByRole ?? HandoffRole.RECIPIENT,
+      partnerStoreId:  payload.partnerStoreId ?? null,
     }));
 
     return { recordId: record.id, recipientUserId };
   }
 
+  // ── Scan-based custody transitions ─────────────────────────────────────
+
+  /**
+   * Write a custody record for a transition that is settled by a scan and
+   * a signature rather than by an OTP challenge (2026-08-25).
+   *
+   * WHY this exists at all: handoff_records modelled six stages and
+   * essentially nothing called it. Only two of the seven rows in the
+   * liability matrix ever produced a record, both on the partner-store
+   * route, so the admin Liability Disputes page said "No handoff records
+   * yet for this delivery" on deliveries that had completed successfully.
+   * The company's central claim, that every person who touched the parcel
+   * signed for it, had nothing behind it.
+   *
+   * The matrix moves responsibility on scan events, and every one of its
+   * "until X scans" rows is the same rule: whoever last signed is holding
+   * it. That only works if the scans are actually written down.
+   *
+   * Deliberately does NOT verify anything. The strong paths above stay
+   * the strong paths, and the high-value DELIVERED gate still names them
+   * explicitly, so nothing recorded here can release a valuable package.
+   */
+  async recordHandoff(input: {
+    deliveryId:      string;
+    stage:           HandoffStage;
+    method:          HandoffMethod;
+    fromUserId?:     string | null;
+    toUserId?:       string | null;
+    /** Typed by the taker. Falls back to their account name. */
+    signatureName?:  string | null;
+    releasedByName?: string | null;
+    signedByRole?:   HandoffRole | null;
+    partnerStoreId?: string | null;
+    proofPhotoUrl?:  string | null;
+  }): Promise<HandoffRecord> {
+    const signature = await this.resolveSignature(
+      input.signatureName,
+      input.toUserId ?? undefined,
+    );
+    return this.recordRepo.save(this.recordRepo.create({
+      deliveryId:      input.deliveryId,
+      stage:           input.stage,
+      method:          input.method,
+      fromUserId:      input.fromUserId ?? null,
+      toUserId:        input.toUserId ?? null,
+      signatureName:   signature.name,
+      signatureSource: signature.source,
+      releasedByName:  input.releasedByName?.trim().slice(0, 120) || null,
+      signedByRole:    input.signedByRole ?? null,
+      partnerStoreId:  input.partnerStoreId ?? null,
+      proofPhotoUrl:   input.proofPhotoUrl ?? null,
+    }));
+  }
+
+  /**
+   * True when this stage already has a record, so a retry or a second
+   * code path does not stamp the same handover twice.
+   *
+   * A duplicated link reads, to anyone settling a dispute, as the package
+   * changing hands twice.
+   */
+  async hasHandoff(deliveryId: string, stage: HandoffStage): Promise<boolean> {
+    const found = await this.recordRepo.findOne({
+      where: { deliveryId, stage },
+      select: ['id'],
+    });
+    return !!found;
+  }
+
+  /**
+   * Put a name on the record, and be honest about where it came from.
+   *
+   * Typed wins. Falling back to the signed-in account's registered name
+   * keeps the chain unbroken while partner and driver builds catch up
+   * with the signature prompt, and signatureSource marks which it was so
+   * a dispute is never misled about the strength of the evidence.
+   */
+  private async resolveSignature(
+    typed: string | null | undefined,
+    userId?: string,
+  ): Promise<{ name: string | null; source: SignatureSource | null }> {
+    const clean = String(typed ?? '').trim().replace(/\s+/g, ' ').slice(0, 120);
+    if (clean) return { name: clean, source: SignatureSource.TYPED };
+    if (!userId) return { name: null, source: null };
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      select: ['id', 'name'],
+    });
+    return user?.name
+      ? { name: user.name.slice(0, 120), source: SignatureSource.ACCOUNT }
+      : { name: null, source: null };
+  }
+
   // ── Audit / chain of custody ───────────────────────────────────────────
+
+  /**
+   * Every custody record for a package, whichever id you have.
+   *
+   * A partner-store package lives under two ids: the counter receipt is
+   * filed against the store drop-off id (there is no Delivery row until a
+   * driver leg exists), and the road journey against the delivery id.
+   * Searching either one showed half a chain at best, which on the admin
+   * dispute page looked exactly like the records were missing.
+   *
+   * Raw SQL for the drop-off lookup on purpose: IdentityModule does not
+   * own StoreDropoff, and PartnerStoreModule already imports this service,
+   * so pulling the entity in the other direction to answer one id question
+   * is not worth the module-graph coupling.
+   */
   async getHandoffChain(deliveryId: string, actorUserId?: string) {
     if (actorUserId) await this.assertDeliveryParty(deliveryId, actorUserId);
-    return this.recordRepo.find({
-      where: { deliveryId },
-      order: { createdAt: 'ASC' },
-    });
+    const ids = await this.relatedCustodyIds(deliveryId);
+    return this.recordRepo
+      .createQueryBuilder('h')
+      .where('h."deliveryId" IN (:...ids)', { ids })
+      .orderBy('h."createdAt"', 'ASC')
+      .getMany();
+  }
+
+  /**
+   * The chain plus the answer the liability matrix exists to give: who is
+   * holding this package right now, and who carries the loss if it went
+   * missing at this moment.
+   *
+   * The matrix reduces to one rule. Whoever last signed for it holds it,
+   * and keeps holding it until the next party signs. Every "until X
+   * scans" row on the founder's slide is that rule stated for one leg,
+   * which is why an append-only chain answers all seven of them without
+   * a table of special cases.
+   */
+  async getCustodySummary(deliveryId: string, actorUserId?: string) {
+    const chain = await this.getHandoffChain(deliveryId, actorUserId);
+    const last = chain.length ? chain[chain.length - 1] : null;
+    return {
+      chain,
+      current: this.describeCustody(last),
+      // A chain is complete when the package reached a recipient. An
+      // incomplete chain on a delivery already marked delivered is the
+      // discrepancy a dispute is usually about.
+      complete: !!last && (
+        last.stage === HandoffStage.STORE_TO_RECIPIENT ||
+        last.stage === HandoffStage.DRIVER_TO_RECIPIENT
+      ),
+    };
+  }
+
+  private describeCustody(last: HandoffRecord | null) {
+    if (!last) {
+      return {
+        holder:         'sender',
+        liable:         'sender',
+        because:        'Nobody has signed for this package yet, so it has not left the sender.',
+        since:          null as Date | null,
+        signedBy:       null as string | null,
+        partnerStoreId: null as string | null,
+      };
+    }
+    const base = {
+      since:          last.createdAt,
+      signedBy:       last.signatureName ?? null,
+      partnerStoreId: last.partnerStoreId ?? null,
+    };
+    switch (last.stage) {
+      case HandoffStage.CUSTOMER_TO_STORE:
+        return { ...base, holder: 'partner_store', liable: 'partner_store',
+          because: 'The store signed for it and no rider has signed it out yet.' };
+      case HandoffStage.CUSTOMER_TO_DRIVER:
+      case HandoffStage.STORE_TO_DRIVER:
+      case HandoffStage.DRIVER_TO_DRIVER:
+        return { ...base, holder: 'driver', liable: 'driver',
+          because: 'The rider signed for it and has not signed it over to anyone.' };
+      case HandoffStage.DRIVER_TO_STORE:
+        return { ...base, holder: 'partner_store', liable: 'partner_store',
+          because: 'The destination store signed for it and the recipient has not collected.' };
+      case HandoffStage.STORE_TO_RECIPIENT:
+      case HandoffStage.DRIVER_TO_RECIPIENT:
+        return { ...base, holder: 'recipient', liable: 'none',
+          because: 'The recipient signed for it. The chain is closed.' };
+      default:
+        return { ...base, holder: 'unknown', liable: 'unknown',
+          because: 'Unrecognised custody stage.' };
+    }
+  }
+
+  /**
+   * Every id this package's records could be filed under: the id given,
+   * plus the delivery a drop-off spawned, or the drop-off a delivery came
+   * from.
+   */
+  private async relatedCustodyIds(id: string): Promise<string[]> {
+    const ids = new Set<string>([id]);
+    try {
+      const rows: any[] = await this.deliveriesRepo.manager.query(
+        `SELECT id, "deliveryId" FROM store_dropoffs
+          WHERE id = $1 OR "deliveryId" = $1`,
+        [id],
+      );
+      for (const r of rows ?? []) {
+        if (r?.id) ids.add(r.id);
+        if (r?.deliveryId) ids.add(r.deliveryId);
+      }
+    } catch { /* store_dropoffs absent on very old databases; the given id still works */ }
+    return [...ids];
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────
@@ -355,7 +781,11 @@ export class IdentityService {
       where: { id: deliveryId },
       relations: ['customer', 'driver', 'driver.user'],
     });
-    if (!delivery) throw new NotFoundException('Delivery not found');
+    // Not a delivery id. Before a driver leg exists a partner-store
+    // package only has a drop-off id, and every route here takes one
+    // interchangeably, so fall through to the drop-off's own party list
+    // rather than reporting the package missing.
+    if (!delivery) return this.assertDropoffParty(deliveryId, actorUserId);
 
     if (delivery.customer?.id === actorUserId) return delivery;
     if (delivery.driver?.user?.id === actorUserId) return delivery;
@@ -365,6 +795,47 @@ export class IdentityService {
       select: ['id', 'adminRole'],
     });
     if (actor?.adminRole) return delivery;
+
+    throw new ForbiddenException('You are not a party to this delivery.');
+  }
+
+  /**
+   * Same question for a store drop-off, which has no Delivery row until a
+   * driver leg exists.
+   *
+   * The delivery-only check above threw NotFound on a drop-off id, so the
+   * partner app could not read back the counter receipt it had just
+   * written, and the customer could not see who took their package in.
+   *
+   * Parties here are the sender, the named recipient if they have an
+   * account, staff at either store, and admins. Raw SQL for the same
+   * reason relatedCustodyIds uses it: this module does not own
+   * StoreDropoff and importing it back would close a module loop.
+   */
+  private async assertDropoffParty(dropoffId: string, actorUserId: string) {
+    const rows: any[] = await this.deliveriesRepo.manager.query(
+      `SELECT "senderUserId", "recipientUserId", "pickupStoreId", "dropoffStoreId"
+         FROM store_dropoffs WHERE id = $1 LIMIT 1`,
+      [dropoffId],
+    );
+    const dropoff = rows?.[0];
+    if (!dropoff) throw new NotFoundException('Delivery not found');
+
+    if (dropoff.senderUserId === actorUserId) return;
+    if (dropoff.recipientUserId && dropoff.recipientUserId === actorUserId) return;
+
+    const actor = await this.usersRepo.findOne({
+      where: { id: actorUserId },
+      select: ['id', 'adminRole', 'partnerStoreId'],
+    });
+    if (actor?.adminRole) return;
+    // Staff read the chain for a package sitting on their own counter,
+    // and nobody else's.
+    if (
+      actor?.partnerStoreId &&
+      (actor.partnerStoreId === dropoff.pickupStoreId ||
+       actor.partnerStoreId === dropoff.dropoffStoreId)
+    ) return;
 
     throw new ForbiddenException('You are not a party to this delivery.');
   }

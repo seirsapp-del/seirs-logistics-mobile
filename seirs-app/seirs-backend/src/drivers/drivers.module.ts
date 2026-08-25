@@ -9,6 +9,7 @@ import { DriverTrip } from './driver-trip.entity';
 import { DriverStatusBroadcast } from './driver-status-broadcast.entity';
 import { DriverSubscription } from './driver-subscription.entity';
 import { DriverLevelChange } from './driver-level-change.entity';
+import { DriverVehicleChange } from './driver-vehicle-change.entity';
 import { Delivery } from '../deliveries/delivery.entity';
 import { Wallet } from '../payments/wallet.entity';
 import { TrackingModule } from '../tracking/tracking.module';
@@ -19,7 +20,7 @@ import { FeesModule } from '../fees/fees.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Driver, DriverTrip, DriverStatusBroadcast, DriverSubscription, DriverLevelChange, Delivery, Wallet]),
+    TypeOrmModule.forFeature([Driver, DriverTrip, DriverStatusBroadcast, DriverSubscription, DriverLevelChange, DriverVehicleChange, Delivery, Wallet]),
     TrackingModule,
     FraudModule,
     NotificationsModule,
@@ -82,6 +83,62 @@ export class DriversModule implements OnModuleInit {
       `);
       await this.ds.query(`
         CREATE INDEX IF NOT EXISTS "idx_dlc_status" ON "driver_level_changes" ("status")
+      `);
+
+      // Vehicle ownership + self-serve vehicle change (2026-08-25).
+      // Additive, safe to re-run. Existing riders default to 'self',
+      // which is what the platform silently assumed about all of them
+      // until now: the declaration is only meaningful once a rider has
+      // actually been asked, so `vehicleOwnerConsentAt IS NULL` is the
+      // marker for "never asked", not "answered no".
+      await this.ds.query(`
+        ALTER TABLE "drivers"
+          ADD COLUMN IF NOT EXISTS "vehicleOwnership" varchar(16) NOT NULL DEFAULT 'self',
+          ADD COLUMN IF NOT EXISTS "vehicleOwnerName" varchar(120) NULL,
+          ADD COLUMN IF NOT EXISTS "vehicleOwnerPhone" varchar(24) NULL,
+          ADD COLUMN IF NOT EXISTS "vehicleOwnerRelationship" varchar(24) NULL,
+          ADD COLUMN IF NOT EXISTS "vehicleOwnerConsentUrl" varchar(500) NULL,
+          ADD COLUMN IF NOT EXISTS "vehicleOwnerIdUrl" varchar(500) NULL,
+          ADD COLUMN IF NOT EXISTS "vehicleOwnerSignatureName" varchar(120) NULL,
+          ADD COLUMN IF NOT EXISTS "vehicleOwnerConsentAt" timestamptz NULL
+      `);
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "driver_vehicle_changes" (
+          "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "driverId" uuid NOT NULL,
+          "status" varchar(12) NOT NULL DEFAULT 'pending',
+          "vehicleType" varchar(24) NOT NULL,
+          "vehiclePlate" varchar(16) NULL,
+          "make" varchar(64) NULL,
+          "model" varchar(64) NULL,
+          "year" varchar(8) NULL,
+          "color" varchar(32) NULL,
+          "photoExteriorUrl" varchar(500) NULL,
+          "photoInteriorUrl" varchar(500) NULL,
+          "photoPlateUrl" varchar(500) NULL,
+          "ownershipProofUrl" varchar(500) NULL,
+          "insuranceCertUrl" varchar(500) NULL,
+          "ownership" varchar(16) NOT NULL DEFAULT 'self',
+          "ownerName" varchar(120) NULL,
+          "ownerPhone" varchar(24) NULL,
+          "ownerRelationship" varchar(24) NULL,
+          "ownerConsentUrl" varchar(500) NULL,
+          "ownerIdUrl" varchar(500) NULL,
+          "ownerSignatureName" varchar(120) NULL,
+          "ownerConsentAt" timestamptz NULL,
+          "ticketId" uuid NULL,
+          "reason" text NULL,
+          "decidedByAdminId" uuid NULL,
+          "decidedAt" timestamptz NULL,
+          "decisionNote" text NULL,
+          "createdAt" timestamptz NOT NULL DEFAULT now()
+        )
+      `);
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "idx_dvc_driver" ON "driver_vehicle_changes" ("driverId")
+      `);
+      await this.ds.query(`
+        CREATE INDEX IF NOT EXISTS "idx_dvc_status" ON "driver_vehicle_changes" ("status")
       `);
     } catch (e) {
       // A failed migration must not stop boot; the entity sync path

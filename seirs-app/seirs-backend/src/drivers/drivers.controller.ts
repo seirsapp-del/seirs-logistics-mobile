@@ -6,6 +6,30 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
 
+/** Shared shape for the two vehicle-change entry points. */
+interface VehicleChangeBody {
+  vehicleType?:  string;
+  vehiclePlate?: string;
+  make?:  string;
+  model?: string;
+  year?:  string;
+  color?: string;
+  photoExteriorUrl?:  string;
+  photoInteriorUrl?:  string;
+  photoPlateUrl?:     string;
+  ownershipProofUrl?: string;
+  insuranceCertUrl?:  string;
+  reason?: string;
+  // Third-party ownership. Required when ownership is 'third_party'.
+  ownership?:          string;
+  ownerName?:          string;
+  ownerPhone?:         string;
+  ownerRelationship?:  string;
+  ownerConsentUrl?:    string;
+  ownerIdUrl?:         string;
+  ownerSignatureName?: string;
+}
+
 @UseGuards(JwtAuthGuard)
 @Controller('drivers')
 export class DriversController {
@@ -97,24 +121,64 @@ export class DriversController {
     return this.driversService.cancelSubscription(user.id);
   }
 
-  // PATCH /api/v1/drivers/me/vehicle  { vehicleType?, vehiclePlate?, make?, model?, year?, color? }
-  // Driver app's Vehicle Details screen saves here. vehicleType + plate
-  // route through the same column as registration; make/model/year/color
-  // are stored in jsonb for display only.
+  // ── Vehicle: live record, ownership declaration, change requests ───────
+  //
+  // 2026-08-25. Founder asked for "self-serve with admin approval ... just
+  // like change bank account", so these mirror the payout-bank routes:
+  // a GET that reports the live value AND anything pending, a submit that
+  // only ever parks a request, and a withdraw. Nothing here moves the live
+  // vehicleType: matching and pricing read it, so only an admin approval
+  // may change it.
+
+  // GET /api/v1/drivers/me/vehicle
+  @Get('me/vehicle')
+  getVehicle(@CurrentUser() user: User) {
+    return this.driversService.getVehicle(user.id);
+  }
+
+  // POST /api/v1/drivers/me/vehicle-change
+  @Post('me/vehicle-change')
+  submitVehicleChange(
+    @CurrentUser() user: User,
+    @Body() body: VehicleChangeBody,
+  ) {
+    return this.driversService.submitVehicleChange(user.id, body);
+  }
+
+  // DELETE /api/v1/drivers/me/vehicle-change - rider pulls it back.
+  @Delete('me/vehicle-change')
+  withdrawVehicleChange(@CurrentUser() user: User) {
+    return this.driversService.withdrawVehicleChange(user.id);
+  }
+
+  // PATCH /api/v1/drivers/me/vehicle-ownership
+  // Declare whether the rider owns the vehicle, and if not, who does and
+  // that they signed off. Initial KYC only: once approved, ownership moves
+  // through the change flow like everything else about the vehicle.
+  @Patch('me/vehicle-ownership')
+  declareVehicleOwnership(
+    @CurrentUser() user: User,
+    @Body() body: {
+      ownership?:          string;
+      ownerName?:          string;
+      ownerPhone?:         string;
+      ownerRelationship?:  string;
+      ownerConsentUrl?:    string;
+      ownerIdUrl?:         string;
+      ownerSignatureName?: string;
+    },
+  ) {
+    return this.driversService.declareVehicleOwnership(user.id, body);
+  }
+
+  // PATCH /api/v1/drivers/me/vehicle
+  // Kept for driver builds shipped before 2026-08-25, which call this.
+  // Forwards to the change flow, so an old build gets a clear list of
+  // what is still missing rather than registering an unproven vehicle.
   @Patch('me/vehicle')
   updateVehicle(
     @CurrentUser() user: User,
-    @Body() body: {
-      vehicleType?:  string;
-      vehiclePlate?: string;
-      make?:         string;
-      model?:        string;
-      year?:         string;
-      color?:        string;
-      photoExteriorUrl?: string;
-      photoInteriorUrl?: string;
-      photoPlateUrl?:    string;
-    },
+    @Body() body: VehicleChangeBody,
   ) {
     return this.driversService.updateVehicle(user.id, body);
   }

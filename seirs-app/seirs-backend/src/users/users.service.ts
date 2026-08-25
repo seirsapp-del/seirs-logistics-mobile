@@ -520,6 +520,16 @@ export class UsersService implements OnModuleInit {
       .from('handoff_records', 'h')
       .where('h.fromUserId = :uid OR h.toUserId = :uid', { uid: userId })
       .getRawMany().catch(() => []);
+    // SOS alerts are this person's data too and the export left them out
+    // (2026-08-25). An emergency they raised, where they were when they
+    // raised it, and what support wrote about it afterwards is squarely
+    // personal data under NDPR, and it was the one category a subject
+    // access request could not see.
+    const sosAlerts = await mgr
+      .createQueryBuilder()
+      .from('sos_alerts', 's')
+      .where('s.userId = :uid', { uid: userId })
+      .getRawMany().catch(() => []);
 
     return {
       generatedAt: new Date().toISOString(),
@@ -542,6 +552,7 @@ export class UsersService implements OnModuleInit {
       payments,
       storeDropoffs:   dropoffs,
       handoffRecords:  handoffs,
+      sosAlerts,
       notes: [
         'This export is yours per NDPR Article 24 (right to data portability).',
         'Free-text fields may contain PII of other parties (recipient names, addresses). handle accordingly.',

@@ -113,6 +113,7 @@ function publicSafeEventMeta(meta: any): Record<string, any> | null {
 function describeHandoffStage(stage: string): string {
   switch (stage) {
     case 'customer_to_store':   return 'Package handed to partner store';
+    case 'customer_to_driver':  return 'Rider collected from sender';
     case 'store_to_driver':     return 'Driver picked up from partner';
     case 'driver_to_store':     return 'Driver dropped at partner';
     case 'store_to_recipient':  return 'Recipient collected from partner';
@@ -3172,6 +3173,155 @@ export class DeliveriesService {
    * re-dispatch sweep mints a fresh driver leg. Terminal dropoff states
    * are never regressed.
    */
+  /**
+   * Put the driver's legs of the journey on the chain of custody.
+   *
+   * Symptom (founder, on the admin Liability Disputes page): a delivery
+   * that completed successfully showed "No handoff records yet for this
+   * delivery". The pitch deck opens on "every person who touched the
+   * parcel signed for it" and the product produced nothing at all on the
+   * commonest route we run. Only the two partner-store stages ever wrote
+   * a record, and the door-to-door journey wrote none of them.
+   *
+   * Raw SQL, and NOT a call into IdentityService, on purpose. This module
+   * does not import IdentityModule and this is not the deploy to start:
+   * the merge that renders these same rows onto the tracking timeline
+   * already reads handoff_records with raw SQL for exactly that reason.
+   * One coupling decision, applied consistently.
+   *
+   * Idempotent per stage. A retried status update, or a driver tapping
+   * twice on a bad connection, must not make the package look like it
+   * changed hands twice.
+   */
+  private async recordCustodyTransition(
+    delivery: Delivery,
+    status: DeliveryStatus,
+    receivedBy?: { relation?: string; name?: string },
+    // Passed in rather than read off `delivery`: that row was loaded
+    // before the update, so its proofPhotoUrl is the previous one.
+    proofPhotoUrl?: string,
+  ): Promise<void> {
+    if (status !== DeliveryStatus.PICKED_UP && status !== DeliveryStatus.DELIVERED) return;
+    // A passenger is not a parcel. Rides run through this same pipeline,
+    // but "who is holding this package right now" has no meaning for a
+    // person, and a liability record naming a passenger as custody
+    // transferred would be both wrong and unpleasant.
+    if (String(delivery.kind ?? 'package') === 'ride') return;
+
+    const driverUserId = delivery.driver?.user?.id ?? null;
+    const driverName   = delivery.driver?.user?.name ?? null;
+    const customerId   = delivery.customer?.id ?? null;
+    const customerName = delivery.customer?.name ?? null;
+
+    // Did this package come off a partner-store counter?
+    let dropoff: any = null;
+    if (this.storeDropoffsRepo) {
+      dropoff = await this.storeDropoffsRepo
+        .findOne({ where: { deliveryId: delivery.id } })
+        .catch(() => null);
+    }
+
+    if (status === DeliveryStatus.PICKED_UP) {
+      // "Partner store liable until the driver scans" is this row. Before
+      // it existed the store carried a package it had already handed over.
+      const fromStore = !!dropoff?.pickupStoreId;
+      await this.writeHandoffRow({
+        deliveryId:     delivery.id,
+        stage:          fromStore ? 'store_to_driver' : 'customer_to_driver',
+        method:         'typed_signature',
+        fromUserId:     fromStore ? null : customerId,
+        toUserId:       driverUserId,
+        signatureName:  driverName,
+        releasedByName: fromStore ? null : customerName,
+        signedByRole:   'driver',
+        partnerStoreId: fromStore ? dropoff.pickupStoreId : null,
+        proofPhotoUrl:  null,
+      });
+      return;
+    }
+
+    // DELIVERED into a partner store is NOT the end of the driver's
+    // custody. "Driver liable until the store scans": the store's own
+    // scan writes driver_to_store, and writing it here instead would
+    // discharge the rider on the rider's own word.
+    if (dropoff?.mode === 'store_to_store') return;
+
+    // A verified handoff (physical ID + OTP, or SEIRS ID + typed name)
+    // already wrote this link on high-value packages. Do not follow a
+    // strong record with a weak duplicate of the same handover.
+    const relation = receivedBy?.relation ?? delivery.receivedByRelation ?? null;
+    const typedName = receivedBy?.name?.trim()
+      || delivery.receivedByName
+      || (relation === 'recipient' ? customerName : null);
+
+    await this.writeHandoffRow({
+      deliveryId: delivery.id,
+      stage:      'driver_to_recipient',
+      // Nothing was verified on this path: the rider wrote down who took
+      // it. Labelled honestly so a dispute is not misled, and deliberately
+      // outside the method whitelist the high-value gate checks.
+      method:         'receiver_name',
+      fromUserId:     driverUserId,
+      toUserId:       relation === 'recipient' ? customerId : null,
+      signatureName:  typedName,
+      releasedByName: driverName,
+      signedByRole:   relation === 'recipient' ? 'recipient' : null,
+      partnerStoreId: null,
+      proofPhotoUrl:  proofPhotoUrl ?? delivery.proofPhotoUrl ?? null,
+    });
+  }
+
+  /**
+   * Insert one custody row, unless that stage is already on the chain.
+   *
+   * The guard is a read-then-write rather than a unique index because the
+   * chain is legitimately allowed to repeat a stage on a relay leg
+   * (driver_to_driver), so uniqueness is not a property of the table.
+   */
+  private async writeHandoffRow(row: {
+    deliveryId:      string;
+    stage:           string;
+    method:          string;
+    fromUserId:      string | null;
+    toUserId:        string | null;
+    signatureName:   string | null;
+    releasedByName:  string | null;
+    signedByRole:    string | null;
+    partnerStoreId:  string | null;
+    proofPhotoUrl:   string | null;
+  }): Promise<void> {
+    const existing = await this.repo.manager.query(
+      `SELECT id FROM "handoff_records"
+        WHERE "deliveryId" = $1 AND "stage" = $2 LIMIT 1`,
+      [row.deliveryId, row.stage],
+    );
+    if (existing?.length) return;
+
+    await this.repo.manager.query(
+      `INSERT INTO "handoff_records"
+         ("deliveryId", "stage", "method", "fromUserId", "toUserId",
+          "signatureName", "releasedByName", "signedByRole",
+          "partnerStoreId", "signatureSource", "proofPhotoUrl")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [
+        row.deliveryId,
+        row.stage,
+        row.method,
+        row.fromUserId,
+        row.toUserId,
+        row.signatureName,
+        row.releasedByName,
+        row.signedByRole,
+        row.partnerStoreId,
+        // The name came off the account, not out of anyone's fingers. The
+        // apps do not prompt for a signature on these two transitions yet
+        // and the record must not imply that they do.
+        row.signatureName ? 'account' : null,
+        row.proofPhotoUrl,
+      ],
+    );
+  }
+
   private async syncStoreDropoff(deliveryId: string, status: DeliveryStatus) {
     if (!this.storeDropoffsRepo) return;
     const dropoff = await this.storeDropoffsRepo.findOne({ where: { deliveryId } });
@@ -3276,7 +3426,29 @@ export class DeliveriesService {
      * connection does not force the driver to photograph a package they
      * have already handed over.
      */
-    if (status === DeliveryStatus.DELIVERED && !proofPhotoUrl && !delivery.proofPhotoUrl) {
+    /**
+     * Rides are exempt, and a ride was otherwise IMPOSSIBLE TO FINISH.
+     *
+     * This gate had no kind check, so it refused every run reaching
+     * delivered without a photo. The driver app never offers the camera on
+     * a ride (it guards on kind !== 'ride'), so a rider dropping a
+     * passenger hit a server rejection with nothing they could do to
+     * satisfy it. Found 2026-08-25.
+     *
+     * Exempting rides rather than making the app photograph passengers,
+     * because the entity already says so: `kind` is documented on
+     * Delivery as the thing that "gates the package-only surfaces
+     * (photos, per-package codes, category rules)". Photos were declared
+     * package-only when rides were built; this one call site missed it.
+     *
+     * It is also the right answer on its own merits. The photo exists to
+     * evidence a package handed over in a dispute. A passenger who got
+     * out of the car is not a handover, there is no custody to prove, and
+     * photographing a person at their destination to close a trip is a
+     * privacy problem rather than proof.
+     */
+    const isRide = String(delivery.kind ?? 'package') === 'ride';
+    if (status === DeliveryStatus.DELIVERED && !isRide && !proofPhotoUrl && !delivery.proofPhotoUrl) {
       throw new BadRequestException(
         'A delivery cannot be completed without a proof photo. Take one at the drop-off point.',
       );
@@ -3357,6 +3529,14 @@ export class DeliveriesService {
     // delivery transition already committed.
     this.syncStoreDropoff(id, status).catch((err) =>
       this.logger.warn(`store dropoff sync failed for ${id}: ${err?.message ?? err}`),
+    );
+
+    // Chain of custody. Same fire-and-forget discipline: a package that
+    // physically changed hands has changed hands whether or not we managed
+    // to write the paperwork, and failing the driver's status update over
+    // it would strand them mid-round.
+    this.recordCustodyTransition(delivery, status, receivedBy, proofPhotoUrl).catch((err) =>
+      this.logger.warn(`custody record failed for ${id}: ${err?.message ?? err}`),
     );
 
     // If the DELIVERED transition included a proof photo, log a

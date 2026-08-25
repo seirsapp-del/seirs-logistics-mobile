@@ -2,11 +2,12 @@ import { Injectable, BadRequestException, NotFoundException, ForbiddenException,
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { In, LessThan, Repository } from 'typeorm';
-import { Driver, DriverStatus } from './driver.entity';
+import { Driver, DriverStatus, VehicleType } from './driver.entity';
 import { DriverTrip, DriverTripStatus } from './driver-trip.entity';
 import { DriverStatusBroadcast, DriverStatusBroadcastType } from './driver-status-broadcast.entity';
 import { DriverSubscription, DriverSubscriptionStatus } from './driver-subscription.entity';
 import { DriverLevelChange, LevelChangeStatus } from './driver-level-change.entity';
+import { DriverVehicleChange, VehicleChangeStatus } from './driver-vehicle-change.entity';
 import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
 import { Wallet } from '../payments/wallet.entity';
 import { FraudService } from '../fraud/fraud.service';
@@ -43,6 +44,7 @@ export class DriversService {
     @InjectRepository(DriverStatusBroadcast)  private broadcastsRepo: Repository<DriverStatusBroadcast>,
     @InjectRepository(DriverSubscription)     private subsRepo:       Repository<DriverSubscription>,
     @InjectRepository(DriverLevelChange)      private levelChangesRepo: Repository<DriverLevelChange>,
+    @InjectRepository(DriverVehicleChange)    private vehicleChangesRepo: Repository<DriverVehicleChange>,
     private fraudService:    FraudService,
     private trackingGateway: TrackingGateway,
     private feesService:     FeesService,
@@ -697,13 +699,41 @@ export class DriversService {
       throw new BadRequestException('Unknown broadcast type.');
     }
 
-    // Bind to an active delivery if the driver is mid-trip and one was
-    // supplied - otherwise the broadcast is scoped to the admin room only.
+    /**
+     * Bind the broadcast to the trip it is about, and find that trip
+     * ourselves when the app did not say (2026-08-25).
+     *
+     * Symptom, verified live: the founder tapped a status broadcast from
+     * a rider on an active job and the customer's notification count did
+     * not move. Two reasons, and this is the first. The driver app sends
+     * no deliveryId, so `delivery` stayed null and the fan-out below was
+     * scoped to the admin room: the only person the message is FOR never
+     * had a room to receive it in.
+     *
+     * Resolving the rider's own active job server-side fixes it without
+     * waiting on an app release. Only when there is exactly one: a rider
+     * on a multi-drop round would otherwise have "stuck in traffic" sent
+     * to whichever customer sorted first, which is worse than sending it
+     * to nobody.
+     */
     let delivery: Delivery | null = null;
     if (body.deliveryId) {
       delivery = await this.deliveriesRepo.findOne({
         where: { id: body.deliveryId, driver: { id: driver.id } },
+        relations: ['customer'],
       });
+    }
+    if (!delivery) {
+      const active = await this.deliveriesRepo.find({
+        where: {
+          driver: { id: driver.id },
+          status: In([DeliveryStatus.ASSIGNED, DeliveryStatus.PICKED_UP, DeliveryStatus.IN_TRANSIT]),
+        },
+        relations: ['customer'],
+        order: { createdAt: 'DESC' },
+        take: 2,
+      }).catch(() => [] as Delivery[]);
+      if (active.length === 1) delivery = active[0];
     }
 
     const lat = body.lat ?? (driver.lastLat != null ? Number(driver.lastLat) : null);
@@ -729,6 +759,47 @@ export class DriversService {
       lng,
       createdAt:   saved.createdAt,
     });
+
+    /**
+     * Persist a Notification, which is the second half of the same bug.
+     *
+     * The websocket fan-out above is the whole of what this method used
+     * to do, so the message existed only for whoever happened to have the
+     * tracking screen open at that instant. Nothing was written to the
+     * notifications table, so there was nothing to raise the customer's
+     * unread count, nothing in their inbox afterwards, and no push.
+     *
+     * Wording deliberately promises no arrival time. These three taps are
+     * exactly the moments a rider is late, and "traffic, expect 20 more
+     * minutes" is a refund magnet in Lagos.
+     *
+     * Fire-and-forget: the broadcast row is already saved, and failing the
+     * rider's tap because an inbox write hiccuped would leave them tapping
+     * it again from the roadside.
+     */
+    const customerId = delivery?.customer?.id ?? null;
+    if (customerId && this.notificationsService) {
+      const COPY: Record<string, { title: string; body: string }> = {
+        [DriverStatusBroadcastType.NETWORK_BAD]: {
+          title: 'Your rider has a weak signal',
+          body:  'Live tracking may pause for a while. Your package is still with them and still moving.',
+        },
+        [DriverStatusBroadcastType.TRAFFIC]: {
+          title: 'Your rider is held up in traffic',
+          body:  'They are on the route and will keep moving as it clears.',
+        },
+        [DriverStatusBroadcastType.NEED_HELP]: {
+          title: 'We are checking in with your rider',
+          body:  'Your rider asked our team for help with this trip. Support has been alerted and will follow up.',
+        },
+      };
+      const copy = COPY[body.type];
+      if (copy) {
+        this.notificationsService
+          .create(customerId, copy.title, copy.body, 'status_update', delivery?.id)
+          .catch((e: any) => this.logger.warn(`status broadcast notification failed: ${e?.message ?? e}`));
+      }
+    }
 
     return saved;
   }
@@ -904,157 +975,563 @@ export class DriversService {
     };
   }
 
+  // ────────────────────────────────────────────────────────────────────────
+  // Vehicle ownership + self-serve vehicle change (2026-08-25)
+  //
+  // Founder: "self-serve with admin approval, because admin can't tell if
+  // someone bought a new car without them telling us, but they will need
+  // to go through the whole process for approval, with all the proof they
+  // need. They should be able to submit it in the app, just like change
+  // bank account."
+  //
+  // Shape is lifted from PaymentsService.updateBankDetails /
+  // resolveBankChange, which the founder named as the model: submit,
+  // park as pending, open a review ticket, keep the live value working
+  // until a human approves, then apply and close the ticket. That flow
+  // was a good model in every respect except one, noted below on
+  // `getVehicle`: it has a read endpoint that returns the pending state,
+  // and the vehicle flow did not, so the app had to dig a jsonb blob out
+  // of /drivers/me to know whether a request was in flight.
+  //
+  // The live vehicleType on the drivers row does NOT move here. Matching
+  // and pricing both read it, so a rider quietly switching an okada
+  // registration to a car would be charging car rates on a bike.
+  // ────────────────────────────────────────────────────────────────────────
+
+  private static readonly OWNER_RELATIONSHIPS: string[] = [
+    'family', 'employer', 'hire_purchase', 'daily_return', 'friend', 'other',
+  ];
+
+  /** Classes with an inside worth photographing. An okada has no cabin. */
+  private static readonly ENCLOSED_TYPES: string[] = [
+    'car', 'van', 'truck_small', 'truck_large',
+  ];
+
+  private safeUrl(u?: string | null): string | null {
+    return typeof u === 'string' && /^https?:\/\//.test(u) ? u.slice(0, 500) : null;
+  }
+
+  /** Loose structural check. Same rule the driver app's constants/phone.ts uses. */
+  private normaliseNgPhone(raw?: string | null): string | null {
+    const cleaned = String(raw ?? '').replace(/[\s()\-]/g, '').replace(/^\+?234/, '');
+    const local = /^[789]\d{9}$/.test(cleaned) ? `0${cleaned}` : cleaned;
+    return /^0[789]\d{9}$/.test(local) ? `+234${local.slice(1)}` : null;
+  }
+
+  /** "  Adeyemi   OLUWASEUN " and "adeyemi oluwaseun" are the same person. */
+  private nameKey(n?: string | null): string {
+    return String(n ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
   /**
-   * Vehicle change flow (founder policy 2026-08-10, mirrors the bank
-   * change flow): a driver ALWAYS has a vehicle (set at registration)
-   * and cannot swap it silently. Every change (including new photos)
-   * is parked as pendingChange inside vehicleDetails and a support
-   * ticket is opened for compliance review. The driver keeps working
-   * with the CURRENT vehicle until an admin approves.
+   * Validate and normalise a third-party ownership declaration.
+   *
+   * The owner is assumed NOT to have the app. Requiring them to register
+   * would exclude most of the people this exists for: the uncle who owns
+   * the keke, the man who fronts six bikes for a daily return. So the
+   * recorded consent is what a person without a smartphone can actually
+   * produce: their name, a phone number that reaches them, a photo of a
+   * paper authorisation they signed, and their name typed on the rider's
+   * phone as the section 84 signature.
    */
-  async updateVehicle(
-    userId: string,
-    body: {
-      vehicleType?:  string;
-      vehiclePlate?: string;
-      make?:         string;
-      model?:        string;
-      year?:         string;
-      color?:        string;
-      photoExteriorUrl?: string;
-      photoInteriorUrl?: string;
-      photoPlateUrl?:    string;
-    },
-  ) {
+  private buildOwnershipBlock(body: {
+    ownership?:          string;
+    ownerName?:          string;
+    ownerPhone?:         string;
+    ownerRelationship?:  string;
+    ownerConsentUrl?:    string;
+    ownerIdUrl?:         string;
+    ownerSignatureName?: string;
+  }, riderName?: string | null) {
+    const ownership = body.ownership === 'third_party' ? 'third_party' : 'self';
+
+    if (ownership === 'self') {
+      return {
+        ownership:          'self' as const,
+        ownerName:          null,
+        ownerPhone:         null,
+        ownerRelationship:  null,
+        ownerConsentUrl:    null,
+        ownerIdUrl:         null,
+        ownerSignatureName: null,
+        ownerConsentAt:     null,
+      };
+    }
+
+    const ownerName = String(body.ownerName ?? '').trim().slice(0, 120);
+    if (ownerName.split(/\s+/).filter(Boolean).length < 2) {
+      throw new BadRequestException(
+        "Enter the vehicle owner's full name, first and last.",
+      );
+    }
+
+    const ownerPhone = this.normaliseNgPhone(body.ownerPhone);
+    if (!ownerPhone) {
+      throw new BadRequestException(
+        "Enter a Nigerian mobile number that reaches the owner, so our team can call and confirm.",
+      );
+    }
+
+    const rel = String(body.ownerRelationship ?? '').trim();
+    if (!DriversService.OWNER_RELATIONSHIPS.includes(rel)) {
+      throw new BadRequestException('Tell us how you came to be riding this vehicle.');
+    }
+
+    const consentUrl = this.safeUrl(body.ownerConsentUrl);
+    if (!consentUrl) {
+      throw new BadRequestException(
+        'Upload a photo of the signed authorisation from the vehicle owner.',
+      );
+    }
+
+    const signature = String(body.ownerSignatureName ?? '').trim().slice(0, 120);
+    if (!signature) {
+      throw new BadRequestException(
+        "The owner must type their own full name to sign the authorisation.",
+      );
+    }
+    // The typed name IS the signature (Evidence Act section 84, the same
+    // standard the chain-of-custody handoff records use). A signature that
+    // does not match the name it claims to be signs nothing.
+    if (this.nameKey(signature) !== this.nameKey(ownerName)) {
+      throw new BadRequestException(
+        "The typed signature must match the owner's full name exactly.",
+      );
+    }
+    // A rider signing as their own "third party" owner is the one shortcut
+    // this whole declaration exists to close.
+    if (riderName && this.nameKey(signature) === this.nameKey(riderName)) {
+      throw new BadRequestException(
+        'The owner has to sign this themselves. If the vehicle is yours, choose "I own it".',
+      );
+    }
+
+    return {
+      ownership:          'third_party' as const,
+      ownerName,
+      ownerPhone,
+      ownerRelationship:  rel,
+      ownerConsentUrl:    consentUrl,
+      ownerIdUrl:         this.safeUrl(body.ownerIdUrl),
+      ownerSignatureName: signature,
+      ownerConsentAt:     new Date(),
+    };
+  }
+
+  /**
+   * Declare who owns the vehicle, during initial KYC only.
+   *
+   * While the rider is still `pending` the whole record is in front of an
+   * admin anyway, so this writes straight to the live columns: making a
+   * not-yet-approved applicant open a "change request" against a vehicle
+   * nobody has approved yet is nonsense.
+   *
+   * Once APPROVED, ownership is frozen and only moves through the change
+   * flow. Otherwise an approved rider could swap the declared owner of a
+   * vehicle after the fact, which is precisely the claim compliance
+   * relied on when they approved it.
+   */
+  async declareVehicleOwnership(userId: string, body: {
+    ownership?:          string;
+    ownerName?:          string;
+    ownerPhone?:         string;
+    ownerRelationship?:  string;
+    ownerConsentUrl?:    string;
+    ownerIdUrl?:         string;
+    ownerSignatureName?: string;
+  }) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+    if (driver.status === DriverStatus.APPROVED) {
+      throw new BadRequestException(
+        'VEHICLE_OWNERSHIP_LOCKED: your vehicle is already approved. Submit a vehicle change to update who owns it.',
+      );
+    }
+
+    const block = this.buildOwnershipBlock(body, driver.user?.name);
+    await this.repo.update(driver.id, {
+      vehicleOwnership:          block.ownership,
+      vehicleOwnerName:          block.ownerName,
+      vehicleOwnerPhone:         block.ownerPhone,
+      vehicleOwnerRelationship:  block.ownerRelationship,
+      vehicleOwnerConsentUrl:    block.ownerConsentUrl,
+      vehicleOwnerIdUrl:         block.ownerIdUrl,
+      vehicleOwnerSignatureName: block.ownerSignatureName,
+      vehicleOwnerConsentAt:     block.ownerConsentAt ?? new Date(),
+    } as Partial<Driver>);
+
+    return { saved: true, ownership: block.ownership };
+  }
+
+  /**
+   * Everything the driver app's vehicle screen needs in one call: the
+   * live vehicle, the live ownership declaration, and the pending change
+   * if there is one.
+   *
+   * The bank flow has exactly this (getBankDetails) and the vehicle flow
+   * did not, which is why the old screen was reaching into
+   * `/drivers/me` -> `vehicleDetails.pendingChange`. That jsonb blob is
+   * also what leaked photo URLs to customers, so nothing pending lives
+   * there any more.
+   */
+  async getVehicle(userId: string) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
 
-    const safeUrl = (u?: string) =>
-      typeof u === 'string' && /^https?:\/\//.test(u) ? u.slice(0, 500) : undefined;
+    const pending = await this.vehicleChangesRepo.findOne({
+      where:  { driverId: driver.id, status: VehicleChangeStatus.PENDING },
+      order:  { createdAt: 'DESC' },
+    });
 
-    const pending = {
-      ...(body.vehicleType  ? { vehicleType:  String(body.vehicleType).slice(0, 24) }  : {}),
-      ...(body.vehiclePlate ? { vehiclePlate: String(body.vehiclePlate).slice(0, 16) } : {}),
-      ...(body.make  !== undefined ? { make:  String(body.make).slice(0,  64) } : {}),
-      ...(body.model !== undefined ? { model: String(body.model).slice(0, 64) } : {}),
-      ...(body.year  !== undefined ? { year:  String(body.year).slice(0,  8)  } : {}),
-      ...(body.color !== undefined ? { color: String(body.color).slice(0, 32) } : {}),
-      ...(safeUrl(body.photoExteriorUrl) ? { photoExteriorUrl: safeUrl(body.photoExteriorUrl) } : {}),
-      ...(safeUrl(body.photoInteriorUrl) ? { photoInteriorUrl: safeUrl(body.photoInteriorUrl) } : {}),
-      ...(safeUrl(body.photoPlateUrl)    ? { photoPlateUrl:    safeUrl(body.photoPlateUrl)    } : {}),
+    const details = (driver.vehicleDetails ?? {}) as any;
+    return {
+      status:       driver.status,
+      vehicleType:  driver.vehicleType,
+      vehiclePlate: driver.vehiclePlate ?? null,
+      make:  details.make  ?? null,
+      model: details.model ?? null,
+      year:  details.year  ?? null,
+      color: details.color ?? null,
+      vehiclePhotoUrl:   driver.vehiclePhotoUrl   ?? null,
+      ownershipProofUrl: driver.ownershipProofUrl ?? null,
+      insuranceCertUrl:  driver.insuranceCertUrl  ?? null,
+      ownership: {
+        // `declared: false` is "we never asked", not "they said no". Every
+        // rider on the platform before 2026-08-25 is in that state.
+        declared:           !!driver.vehicleOwnerConsentAt || driver.vehicleOwnership === 'third_party',
+        ownership:          driver.vehicleOwnership ?? 'self',
+        ownerName:          driver.vehicleOwnerName ?? null,
+        ownerPhone:         driver.vehicleOwnerPhone ?? null,
+        ownerRelationship:  driver.vehicleOwnerRelationship ?? null,
+        ownerConsentUrl:    driver.vehicleOwnerConsentUrl ?? null,
+        ownerIdUrl:         driver.vehicleOwnerIdUrl ?? null,
+        ownerSignatureName: driver.vehicleOwnerSignatureName ?? null,
+        ownerConsentAt:     driver.vehicleOwnerConsentAt ?? null,
+      },
+      pendingChange: pending ?? null,
     };
-    if (Object.keys(pending).length === 0) {
-      throw new BadRequestException('Nothing to change.');
+  }
+
+  /**
+   * Submit a vehicle change for review.
+   *
+   * The rider re-submits the VEHICLE proofs and nothing else. Their NIN,
+   * licence and selfie are already verified and belong to the person, not
+   * the machine: founder was explicit that an approved rider must not be
+   * dragged through the whole thing again for buying a new bike.
+   *
+   * Which proofs are mandatory is class-aware, because a blanket list is
+   * how you end up demanding the interior photo of an okada and an
+   * insurance certificate for a bicycle.
+   */
+  async submitVehicleChange(userId: string, body: {
+    vehicleType?:  string;
+    vehiclePlate?: string;
+    make?:  string;
+    model?: string;
+    year?:  string;
+    color?: string;
+    photoExteriorUrl?:  string;
+    photoInteriorUrl?:  string;
+    photoPlateUrl?:     string;
+    ownershipProofUrl?: string;
+    insuranceCertUrl?:  string;
+    reason?: string;
+    ownership?:          string;
+    ownerName?:          string;
+    ownerPhone?:         string;
+    ownerRelationship?:  string;
+    ownerConsentUrl?:    string;
+    ownerIdUrl?:         string;
+    ownerSignatureName?: string;
+  }) {
+    const driver = await this.findByUserId(userId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    // One in flight at a time. Same rule the bank change enforces: two
+    // open requests against the same field means whichever an admin
+    // happens to open second silently wins.
+    const existing = await this.vehicleChangesRepo.findOne({
+      where: { driverId: driver.id, status: VehicleChangeStatus.PENDING },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        'VEHICLE_CHANGE_PENDING: you already have a vehicle change under review. Withdraw it first if you need to change the details.',
+      );
     }
 
-    // Review ticket (best-effort; the pending change stands even if
-    // ticket creation hiccups: admin can still act from the record).
-    let ticketId: string | null =
-      (driver.vehicleDetails as any)?.pendingChange?.ticketId ?? null;
+    const vehicleType = String(body.vehicleType ?? driver.vehicleType ?? '').trim().slice(0, 24);
+    if (!Object.values(VehicleType).includes(vehicleType as VehicleType)) {
+      throw new BadRequestException('Choose a valid vehicle type.');
+    }
+
+    const plate = String(body.vehiclePlate ?? '').trim().toUpperCase().slice(0, 16);
+    const isBicycle = vehicleType === VehicleType.BICYCLE;
+    if (!isBicycle && plate.length < 4) {
+      throw new BadRequestException('Enter the plate number exactly as it appears on the vehicle.');
+    }
+
+    const photoExteriorUrl  = this.safeUrl(body.photoExteriorUrl);
+    const photoInteriorUrl  = this.safeUrl(body.photoInteriorUrl);
+    const photoPlateUrl     = this.safeUrl(body.photoPlateUrl);
+    const ownershipProofUrl = this.safeUrl(body.ownershipProofUrl);
+    const insuranceCertUrl  = this.safeUrl(body.insuranceCertUrl);
+
+    const missing: string[] = [];
+    if (!photoExteriorUrl) missing.push('a photo of the whole vehicle');
+    if (!isBicycle && !photoPlateUrl) missing.push('a close-up of the plate number');
+    // Interior only where there is one to photograph.
+    if (DriversService.ENCLOSED_TYPES.includes(vehicleType) && !photoInteriorUrl) {
+      missing.push('a photo of the inside');
+    }
+    // The proofs that made the FIRST vehicle approvable, asked for again.
+    if (!ownershipProofUrl) missing.push('the ownership document for this vehicle');
+    if (!isBicycle && !insuranceCertUrl) missing.push('a current insurance certificate');
+    if (missing.length) {
+      throw new BadRequestException(`Still needed: ${missing.join(', ')}.`);
+    }
+
+    const ownerBlock = this.buildOwnershipBlock(body, driver.user?.name);
+
+    const saved = await this.vehicleChangesRepo.save(this.vehicleChangesRepo.create({
+      driverId: driver.id,
+      status:   VehicleChangeStatus.PENDING,
+      vehicleType,
+      vehiclePlate: plate || null,
+      make:  body.make  !== undefined ? String(body.make).trim().slice(0, 64)  : null,
+      model: body.model !== undefined ? String(body.model).trim().slice(0, 64) : null,
+      year:  body.year  !== undefined ? String(body.year).trim().slice(0, 8)   : null,
+      color: body.color !== undefined ? String(body.color).trim().slice(0, 32) : null,
+      photoExteriorUrl,
+      photoInteriorUrl,
+      photoPlateUrl,
+      ownershipProofUrl,
+      insuranceCertUrl,
+      ownership:          ownerBlock.ownership as any,
+      ownerName:          ownerBlock.ownerName,
+      ownerPhone:         ownerBlock.ownerPhone,
+      ownerRelationship:  ownerBlock.ownerRelationship as any,
+      ownerConsentUrl:    ownerBlock.ownerConsentUrl,
+      ownerIdUrl:         ownerBlock.ownerIdUrl,
+      ownerSignatureName: ownerBlock.ownerSignatureName,
+      ownerConsentAt:     ownerBlock.ownerConsentAt,
+      reason: body.reason ? String(body.reason).trim().slice(0, 500) : null,
+    }));
+
+    // Review ticket, best-effort: the request stands even if ticket
+    // creation hiccups, since an admin can act from the record either way.
     try {
-      if (!ticketId && driver.user) {
+      if (driver.user) {
         const ticketsRepo = this.repo.manager.getRepository(SupportTicket);
         const ticket = await ticketsRepo.save(ticketsRepo.create({
-          user:            driver.user,
-          userAccountType: 'driver',
-          topic:           TicketTopic.ACCOUNT,
-          status:          TicketStatus.OPEN,
-          subject:         'Vehicle change request',
+          user:             driver.user,
+          userAccountType:  'driver',
+          topic:            TicketTopic.ACCOUNT,
+          status:           TicketStatus.OPEN,
+          subject:          'Vehicle change request',
           linkedDeliveryId: null,
           assignedAgentId:  null,
           lastMessageAt:    new Date(),
         }));
-        ticketId = ticket.id;
         const summary = [
-          pending.vehicleType  ? `type: ${pending.vehicleType}`   : null,
-          pending.vehiclePlate ? `plate: ${pending.vehiclePlate}` : null,
-          pending.make || pending.model ? `vehicle: ${[pending.make, pending.model, pending.year].filter(Boolean).join(' ')}` : null,
-          (pending as any).photoExteriorUrl || (pending as any).photoInteriorUrl || (pending as any).photoPlateUrl
-            ? 'photos attached (exterior/interior/plate)' : null,
-        ].filter(Boolean).join(' · ');
+          `type: ${vehicleType}`,
+          plate ? `plate: ${plate}` : null,
+          [saved.make, saved.model, saved.year].filter(Boolean).join(' ') || null,
+          ownerBlock.ownership === 'third_party'
+            ? `NOT the rider's vehicle: owner ${ownerBlock.ownerName} (${ownerBlock.ownerRelationship}), ${ownerBlock.ownerPhone}, signed authorisation attached`
+            : 'rider declares they own it',
+        ].filter(Boolean).join(' | ');
         await this.repo.manager.query(
           `INSERT INTO chat_messages (body, "imageUrl", "systemType", "ticketId")
            VALUES ($1, NULL, 'vehicle_change_request', $2)`,
           [
-            `Driver requested a vehicle change (${summary}). Review the details and photos, then approve or reject. ` +
-            `The driver keeps working with the current vehicle until approved.`,
-            ticketId,
+            `Driver requested a vehicle change (${summary}). Open the driver record to see the photos and documents, ` +
+            `then approve or reject. The driver keeps working with the current vehicle until approved.` +
+            (ownerBlock.ownership === 'third_party'
+              ? ` Call the owner on ${ownerBlock.ownerPhone} and confirm they authorised this before approving.`
+              : ''),
+            ticket.id,
           ],
         );
+        await this.vehicleChangesRepo.update(saved.id, { ticketId: ticket.id });
+        saved.ticketId = ticket.id;
       }
     } catch (e: any) {
       this.logger.warn(`vehicle-change ticket creation failed: ${e?.message ?? e}`);
     }
 
-    await this.repo.update(driver.id, {
-      vehicleDetails: {
-        ...(driver.vehicleDetails ?? {}),
-        pendingChange: { ...pending, requestedAt: new Date().toISOString(), ticketId },
-      },
-    } as any);
-
     return {
       pending: true,
-      message: 'Vehicle change submitted for review. You keep driving with your current vehicle until it is approved.',
-      driver:  await this.findByUserId(userId),
+      message:
+        'Vehicle change submitted for review. You keep working with your current vehicle until our team approves it.',
+      change: saved,
     };
   }
 
-  /**
-   * Admin resolution of a pending vehicle change (called from
-   * AdminService). Approve applies the pending fields; reject discards
-   * them. Both clear the pending state and close the review ticket.
-   */
-  async resolveVehicleChange(targetUserId: string, approve: boolean) {
-    const driver = await this.findByUserId(targetUserId);
+  /** Rider pulls their own request back before a decision. */
+  async withdrawVehicleChange(userId: string) {
+    const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
-    const details = (driver.vehicleDetails ?? {}) as any;
-    const pending = details.pendingChange;
-    if (!pending) throw new NotFoundException('No pending vehicle change for this driver.');
+    const pending = await this.vehicleChangesRepo.findOne({
+      where: { driverId: driver.id, status: VehicleChangeStatus.PENDING },
+      order: { createdAt: 'DESC' },
+    });
+    if (!pending) throw new NotFoundException('No vehicle change under review.');
 
-    const { requestedAt: _r, ticketId, ...changes } = pending;
-    const patch: Partial<Driver> = {};
-
-    if (approve) {
-      if (changes.vehicleType)  patch.vehicleType  = changes.vehicleType;
-      if (changes.vehiclePlate) patch.vehiclePlate = changes.vehiclePlate;
-      const { vehicleType: _t, vehiclePlate: _p, ...detailFields } = changes;
-      patch.vehicleDetails = { ...details, ...detailFields, pendingChange: undefined } as any;
-    } else {
-      patch.vehicleDetails = { ...details, pendingChange: undefined } as any;
-    }
-    // Strip the undefined key so jsonb stays clean.
-    if (patch.vehicleDetails) {
-      const vd = { ...(patch.vehicleDetails as any) };
-      delete vd.pendingChange;
-      patch.vehicleDetails = vd;
-    }
-
-    await this.repo.update(driver.id, patch);
-
-    if (ticketId) {
+    await this.vehicleChangesRepo.update(pending.id, {
+      status:    VehicleChangeStatus.WITHDRAWN,
+      decidedAt: new Date(),
+    });
+    if (pending.ticketId) {
       try {
-        await this.repo.manager.query(
-          `INSERT INTO chat_messages (body, "imageUrl", "systemType", "ticketId")
-           VALUES ($1, NULL, 'vehicle_change_resolved', $2)`,
-          [
-            approve
-              ? 'Your vehicle change was approved. Your profile now shows the new vehicle.'
-              : 'Your vehicle change was rejected. Your registered vehicle is unchanged. Contact support if you did not expect this.',
-            ticketId,
-          ],
-        );
-        await this.repo.manager.getRepository(SupportTicket).update(ticketId, {
+        await this.repo.manager.getRepository(SupportTicket).update(pending.ticketId, {
           status:        TicketStatus.RESOLVED,
           resolvedAt:    new Date(),
           lastMessageAt: new Date(),
         });
-      } catch (e: any) {
-        this.logger.warn(`vehicle-change ticket close failed: ${e?.message ?? e}`);
-      }
+      } catch { /* the withdrawal stands even if the ticket will not close */ }
+    }
+    return { withdrawn: true };
+  }
+
+  /**
+   * Legacy shim. Older driver builds PATCH /drivers/me/vehicle with a
+   * partial body and no ownership block. Routing them through the same
+   * validator means an old build now gets a clear "still needed: ..."
+   * message instead of silently registering an unverified vehicle.
+   */
+  async updateVehicle(userId: string, body: any) {
+    return this.submitVehicleChange(userId, body ?? {});
+  }
+
+  /**
+   * Admin resolution of a pending vehicle change (called from
+   * AdminService, signature unchanged so no admin-side edit is needed).
+   *
+   * Approve copies the requested vehicle AND its proofs onto the live
+   * driver row, which is the only moment vehicleType is allowed to move.
+   * Reject leaves the live vehicle exactly as it was.
+   */
+  async resolveVehicleChange(
+    targetUserId: string,
+    approve: boolean,
+    opts?: { adminId?: string; note?: string },
+  ) {
+    const driver = await this.findByUserId(targetUserId);
+    if (!driver) throw new NotFoundException('Driver profile not found.');
+
+    const pending = await this.vehicleChangesRepo.findOne({
+      where: { driverId: driver.id, status: VehicleChangeStatus.PENDING },
+      order: { createdAt: 'DESC' },
+    });
+
+    // In-flight requests from the pre-2026-08-25 build sat in
+    // vehicleDetails.pendingChange. Drain those too rather than stranding
+    // whoever submitted one the day before this shipped.
+    const legacy = (driver.vehicleDetails as any)?.pendingChange ?? null;
+    if (!pending && !legacy) {
+      throw new NotFoundException('No pending vehicle change for this driver.');
     }
 
+    if (pending) {
+      const details = (driver.vehicleDetails ?? {}) as any;
+      const patch: Partial<Driver> = {};
+
+      if (approve) {
+        patch.vehicleType  = pending.vehicleType as VehicleType;
+        if (pending.vehiclePlate) patch.vehiclePlate = pending.vehiclePlate;
+        patch.vehicleDetails = {
+          ...details,
+          make:  pending.make  ?? details.make,
+          model: pending.model ?? details.model,
+          year:  pending.year  ?? details.year,
+          color: pending.color ?? details.color,
+        } as any;
+        // The exterior shot is what the sender and passenger see on the
+        // trust card, so it has to follow the vehicle it belongs to.
+        if (pending.photoExteriorUrl)  patch.vehiclePhotoUrl   = pending.photoExteriorUrl;
+        if (pending.ownershipProofUrl) patch.ownershipProofUrl = pending.ownershipProofUrl;
+        if (pending.insuranceCertUrl)  patch.insuranceCertUrl  = pending.insuranceCertUrl;
+
+        patch.vehicleOwnership          = pending.ownership as any;
+        patch.vehicleOwnerName          = pending.ownerName;
+        patch.vehicleOwnerPhone         = pending.ownerPhone;
+        patch.vehicleOwnerRelationship  = pending.ownerRelationship as any;
+        patch.vehicleOwnerConsentUrl    = pending.ownerConsentUrl;
+        patch.vehicleOwnerIdUrl         = pending.ownerIdUrl;
+        patch.vehicleOwnerSignatureName = pending.ownerSignatureName;
+        patch.vehicleOwnerConsentAt     = pending.ownerConsentAt ?? new Date();
+      }
+
+      // Whether approved or not, the old jsonb blob goes: it is the thing
+      // that was leaking photo URLs into customer payloads.
+      const vd = { ...(patch.vehicleDetails ?? details) } as any;
+      delete vd.pendingChange;
+      delete vd.photoExteriorUrl;
+      delete vd.photoInteriorUrl;
+      delete vd.photoPlateUrl;
+      patch.vehicleDetails = vd;
+
+      await this.repo.update(driver.id, patch);
+      await this.vehicleChangesRepo.update(pending.id, {
+        status:           approve ? VehicleChangeStatus.APPROVED : VehicleChangeStatus.REJECTED,
+        decidedAt:        new Date(),
+        decidedByAdminId: opts?.adminId ?? null,
+        decisionNote:     opts?.note ? String(opts.note).slice(0, 500) : null,
+      });
+
+      await this.closeVehicleChangeTicket(pending.ticketId, approve);
+      return { approved: approve };
+    }
+
+    // ── Legacy jsonb path ────────────────────────────────────────────────
+    const details = (driver.vehicleDetails ?? {}) as any;
+    const { requestedAt: _r, ticketId, ...changes } = legacy;
+    const patch: Partial<Driver> = {};
+    if (approve) {
+      if (changes.vehicleType)  patch.vehicleType  = changes.vehicleType;
+      if (changes.vehiclePlate) patch.vehiclePlate = changes.vehiclePlate;
+      if (changes.photoExteriorUrl) patch.vehiclePhotoUrl = changes.photoExteriorUrl;
+    }
+    const vd = { ...details };
+    if (approve) {
+      if (changes.make  !== undefined) vd.make  = changes.make;
+      if (changes.model !== undefined) vd.model = changes.model;
+      if (changes.year  !== undefined) vd.year  = changes.year;
+      if (changes.color !== undefined) vd.color = changes.color;
+    }
+    delete vd.pendingChange;
+    delete vd.photoExteriorUrl;
+    delete vd.photoInteriorUrl;
+    delete vd.photoPlateUrl;
+    patch.vehicleDetails = vd;
+
+    await this.repo.update(driver.id, patch);
+    await this.closeVehicleChangeTicket(ticketId ?? null, approve);
     return { approved: approve };
+  }
+
+  private async closeVehicleChangeTicket(ticketId: string | null, approve: boolean) {
+    if (!ticketId) return;
+    try {
+      await this.repo.manager.query(
+        `INSERT INTO chat_messages (body, "imageUrl", "systemType", "ticketId")
+         VALUES ($1, NULL, 'vehicle_change_resolved', $2)`,
+        [
+          approve
+            ? 'Your vehicle change was approved. Your profile now shows the new vehicle, and jobs will match it from now on.'
+            : 'Your vehicle change was rejected. Your registered vehicle is unchanged. Reply here if you did not expect this.',
+          ticketId,
+        ],
+      );
+      await this.repo.manager.getRepository(SupportTicket).update(ticketId, {
+        status:        TicketStatus.RESOLVED,
+        resolvedAt:    new Date(),
+        lastMessageAt: new Date(),
+      });
+    } catch (e: any) {
+      this.logger.warn(`vehicle-change ticket close failed: ${e?.message ?? e}`);
+    }
   }
 
   // Spec V8 §2.1 - record uploaded KYC document URL against the right column.

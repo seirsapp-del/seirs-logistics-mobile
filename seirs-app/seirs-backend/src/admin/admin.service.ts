@@ -164,7 +164,13 @@ export class AdminService {
    */
   async resolveVehicleChange(targetUserId: string, approve: boolean, admin: any, ip?: string) {
     this.ensureNdprAccess(admin, this.PII_VIEW_ROLES, 'vehicle_change_review');
-    const result = await this.driversService.resolveVehicleChange(targetUserId, approve);
+    // Name the reviewer on the change row itself, not only in the audit
+    // log. A compliance question a year later ("who accepted this
+    // ownership document?") is asked against the request, and
+    // driver_vehicle_changes.decidedByAdminId was sitting empty.
+    const result = await this.driversService.resolveVehicleChange(targetUserId, approve, {
+      adminId: admin?.id ?? admin?.sub ?? undefined,
+    });
     await this.logAudit(admin, approve ? 'vehicle_change_approved' : 'vehicle_change_rejected', `user:${targetUserId}`, {}, ip);
     return result;
   }
@@ -1051,6 +1057,52 @@ export class AdminService {
     return { users, total, page, limit };
   }
 
+  /**
+   * Every SOS this person ever raised, resolved ones included.
+   *
+   * Symptom (founder, 2026-08-24): he resolved a real alert from a rider,
+   * typed a resolution note, and it disappeared from every operator view.
+   * The data was in Postgres the whole time. `GET /sos/active` filters on
+   * `status = 'active'`, the admin module never touched the table, and
+   * the NDPR export left it out, so a resolved alert and the note about
+   * what was actually done were write-only in practice.
+   *
+   * A safety signal about a person that only exists in a queue nobody
+   * revisits is not a safety signal. The point of showing it here is the
+   * pattern: three alerts from the same rider in a month is the thing an
+   * operator needs to see before deciding anything about them.
+   *
+   * Raw SQL because AdminService does not hold a SosAlert repository and
+   * this is not the deploy to start rearranging the module graph. Names
+   * are joined in so the page does not need a second round trip to turn
+   * `resolvedById` into a human.
+   */
+  private async getSosHistoryForUser(userId: string | null) {
+    if (!userId) return [];
+    try {
+      return await this.dataSource.query(
+        `SELECT s.id, s.lat, s.lng, s.note, s.status,
+                s."resolvedAt", s."resolutionNote", s."createdAt",
+                s."deliveryId",
+                s."resolvedById"        AS "resolvedById",
+                ru.name                 AS "resolvedByName",
+                d."trackingCode"        AS "deliveryTrackingCode"
+           FROM sos_alerts s
+           LEFT JOIN users      ru ON ru.id = s."resolvedById"
+           LEFT JOIN deliveries d  ON d.id  = s."deliveryId"
+          WHERE s."userId" = $1
+          ORDER BY s."createdAt" DESC
+          LIMIT 50`,
+        [userId],
+      );
+    } catch (e: any) {
+      // Same discipline as every other branch on these detail pages: a
+      // sub-query that fails must not take the whole record down.
+      this.logger.warn(`sos history lookup failed for ${userId}: ${e?.message ?? e}`);
+      return [];
+    }
+  }
+
   async getUserDetail(id: string) {
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
@@ -1070,6 +1122,8 @@ export class AdminService {
       auditRows,
       driverRow,
       fraudFlags,
+      sosAlerts,
+      completedCount,
     ] = await Promise.all([
       this.deliveriesRepo.findAndCount({
         where: { customer: { id } as any },
@@ -1138,11 +1192,24 @@ export class AdminService {
         order: { createdAt: 'DESC' },
         take: 10,
       }).catch(() => []),
+      // Safety history, resolved alerts included. See getSosHistoryForUser.
+      this.getSosHistoryForUser(id),
+      /**
+       * Its own COUNT, not a filter over the page above.
+       *
+       * `deliveries` is the first 10 rows of a findAndCount, so counting
+       * DELIVERED inside it produced a number that could never exceed ten
+       * however many the customer had actually completed. It was computed
+       * and quietly never returned, which is the only reason nobody saw a
+       * customer with 400 deliveries credited with 7.
+       */
+      this.deliveriesRepo.count({
+        where: { customer: { id } as any, status: DeliveryStatus.DELIVERED },
+      }).catch(() => 0),
     ]);
 
     const [deliveries, deliveryCount] = deliveryPage as [any[], number];
     const totalSpent = Number((spentRow as any)?.total ?? 0);
-    const deliveredCount = deliveries.filter((d: any) => d.status === DeliveryStatus.DELIVERED).length;
 
     // Loyalty tier is a derived value from the tier-thresholds table. Keep
     // this cheap and inline instead of a config lookup; if the thresholds
@@ -1159,6 +1226,8 @@ export class AdminService {
       deliveryCount,
       totalSpent,
       cancelledCount,
+      completedCount,
+      sosAlerts,
       loyalty:    { balance: loyaltyBalance, tier },
       identity:   identityLatest ? {
         ...identityLatest,
@@ -1412,6 +1481,8 @@ export class AdminService {
       relatedAccounts,
       auditRows,
       fraudFlags,
+      sosAlerts,
+      completedCount,
     ] = await Promise.all([
       this.deliveriesRepo.findAndCount({
         where: { driver: { id } as any },
@@ -1476,6 +1547,23 @@ export class AdminService {
         order: { createdAt: 'DESC' },
         take: 10,
       }).catch(() => []) : Promise.resolve([]),
+      // Safety history, resolved alerts included. See getSosHistoryForUser.
+      // It matters most here: a rider raising SOS repeatedly is either in
+      // real danger on a route or gaming the button, and neither is
+      // visible from a queue that only shows what is open right now.
+      this.getSosHistoryForUser(userId),
+      /**
+       * Completed runs. The profile showed total and cancelled and simply
+       * had no completed figure, so the one number that says whether a
+       * rider actually works was missing from the page that decides
+       * whether to keep them.
+       *
+       * Its own COUNT rather than a filter over `deliveries`, which is
+       * capped at ten rows.
+       */
+      this.deliveriesRepo.count({
+        where: { driver: { id } as any, status: DeliveryStatus.DELIVERED },
+      }).catch(() => 0),
     ]);
 
     const [deliveries, deliveryCount] = deliveryPage as [any[], number];
@@ -1504,6 +1592,8 @@ export class AdminService {
       deliveryCount,
       totalEarned,
       cancelledCount,
+      completedCount,
+      sosAlerts,
       loyalty:    { balance: loyaltyBalance, tier },
       identity,
       referrer,

@@ -42,7 +42,15 @@ export class BusinessController {
     return this.svc.getDeliveries(user.id, page, status, search);
   }
 
-  @UseGuards(BusinessAccountGuard)
+  /**
+   * NOT BusinessAccountGuard. A driver has no businessAccountId, so this
+   * threw "Business account required." at the one person who has to walk
+   * the route, and the whole multi-drop feature was dead on the driver
+   * side (founder hit it on the phone 2026-08-24: Trips, then the active
+   * delivery). JwtAuthGuard is class-level, and the service checks the
+   * actor against the delivery's own customer or assigned driver, which
+   * is the check that actually matters here.
+   */
   @Get('business/deliveries/:id')
   getDeliveryById(@CurrentUser() user: User, @Param('id') id: string) {
     return this.svc.getDeliveryById(id, user.id);
@@ -58,7 +66,15 @@ export class BusinessController {
   // driver walks through the multi-stop route. The actor is checked in
   // the service against the parent delivery's assigned driver: the old
   // comment here claimed dispatch had already done that, and it had not.
-  @UseGuards(BusinessAccountGuard)
+  /**
+   * NOT BusinessAccountGuard. A driver has no businessAccountId, so this
+   * threw "Business account required." at the one person who has to walk
+   * the route, and the whole multi-drop feature was dead on the driver
+   * side (founder hit it on the phone 2026-08-24: Trips, then the active
+   * delivery). JwtAuthGuard is class-level, and the service checks the
+   * actor against the delivery's own customer or assigned driver, which
+   * is the check that actually matters here.
+   */
   @Post('business/deliveries/:deliveryId/stops/:stopId/arrived')
   markStopArrived(
     @Param('deliveryId') deliveryId: string,
@@ -68,7 +84,15 @@ export class BusinessController {
     return this.svc.markStopArrived(deliveryId, stopId, user.id);
   }
 
-  @UseGuards(BusinessAccountGuard)
+  /**
+   * NOT BusinessAccountGuard. A driver has no businessAccountId, so this
+   * threw "Business account required." at the one person who has to walk
+   * the route, and the whole multi-drop feature was dead on the driver
+   * side (founder hit it on the phone 2026-08-24: Trips, then the active
+   * delivery). JwtAuthGuard is class-level, and the service checks the
+   * actor against the delivery's own customer or assigned driver, which
+   * is the check that actually matters here.
+   */
   @Post('business/deliveries/:deliveryId/stops/:stopId/delivered')
   markStopDelivered(
     @Param('deliveryId') deliveryId: string,

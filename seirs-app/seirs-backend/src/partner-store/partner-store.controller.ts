@@ -164,6 +164,13 @@ export class PartnerStoreController {
   }
 
   // POST /api/v1/partner-store/receive
+  //
+  // The counter takes a package in from a SENDER. staffSignatureName is
+  // the name the staff member types after the scan: a store that later
+  // denies receiving a package is answered by a named human, not by a
+  // store id and a timestamp (founder 2026-08-25). Optional on the wire
+  // so partner builds already in the field keep working; the server falls
+  // back to the signed-in staff account's name and records that it did.
   @Post('receive')
   receive(
     @CurrentUser() staff: any,
@@ -172,9 +179,29 @@ export class PartnerStoreController {
       weightKg:         number;
       receivedPhotoUrl: string;
       senderOtp:        string;
+      staffSignatureName?: string;
     },
   ) {
     return this.svc.receiveAtStore(staff.id, body);
+  }
+
+  // POST /api/v1/partner-store/receive-from-driver
+  //
+  // The destination counter takes a package in from a RIDER. This is the
+  // scan the liability matrix hangs "driver liable until the store scans"
+  // on, and until now nothing performed it: the drop-off advanced purely
+  // because the rider marked their own leg delivered. The rider stays on
+  // the hook in the custody chain until a named human here signs.
+  @Post('receive-from-driver')
+  receiveFromDriver(
+    @CurrentUser() staff: any,
+    @Body() body: {
+      code:                string;
+      receivedPhotoUrl?:   string;
+      staffSignatureName?: string;
+    },
+  ) {
+    return this.svc.receiveFromDriver(staff.id, body);
   }
 
   // POST /api/v1/partner-store/release
@@ -191,6 +218,10 @@ export class PartnerStoreController {
       idPhotoUrl?:        string;
       seirsCode?:         string;
       typedName?:         string;
+      // The staff member handing it over, typed by them. The founder asked
+      // whether the sender's receipt can show who collected the package:
+      // it shows who released it too, so neither end is anonymous.
+      staffSignatureName?: string;
     },
   ) {
     return this.svc.releaseToRecipient(staff.id, body);

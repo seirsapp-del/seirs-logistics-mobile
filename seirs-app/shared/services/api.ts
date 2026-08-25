@@ -493,6 +493,24 @@ export interface DriverEarning {
   availableAt: string;
   paidAt:      string | null;
   createdAt:   string;
+  /**
+   * GET /earnings/history eager-loads the parent delivery, and it always
+   * has: the type simply never said so, so the driver app could not read
+   * the addresses off a paid trip without an any-cast. Declared during
+   * the 2026-08-23 sweep so "My Trips" can render finished trips from
+   * the ledger (D-10.1). Optional because payout responses reuse this
+   * shape without the relation.
+   */
+  delivery?: {
+    id:              string;
+    status?:         string;
+    kind?:           string;
+    pickupAddress?:  string | null;
+    dropoffAddress?: string | null;
+    distanceKm?:     number | string | null;
+    deliveredAt?:    string | null;
+    createdAt?:      string;
+  } | null;
 }
 
 // ─── Documents hub (official docs: statements, contracts, letters) ──────────
@@ -537,6 +555,80 @@ export interface SavedCard {
 }
 
 // ─── Drivers ─────────────────────────────────────────────────────────────────
+/**
+ * A vehicle owned by someone other than the rider.
+ *
+ * Founder, 2026-08-25: "this is Nigeria this happens." Hire purchase, a
+ * relative's keke, or an owner who fronts the bike for a daily return are
+ * all ordinary. The owner is assumed not to have the app: what is asked
+ * for is what someone without a smartphone can produce, which is their
+ * name, a number that reaches them, a photo of the paper authorisation
+ * they signed, and their name typed on the rider's phone as the Evidence
+ * Act section 84 signature.
+ */
+export type OwnerRelationship =
+  | 'family' | 'employer' | 'hire_purchase' | 'daily_return' | 'friend' | 'other';
+
+export interface VehicleOwnershipInput {
+  ownership:           'self' | 'third_party';
+  ownerName?:          string;
+  ownerPhone?:         string;
+  ownerRelationship?:  OwnerRelationship;
+  ownerConsentUrl?:    string;
+  ownerIdUrl?:         string;
+  /** Typed by the OWNER, and must match ownerName exactly. */
+  ownerSignatureName?: string;
+}
+
+export interface VehicleChangeRequest extends VehicleOwnershipInput {
+  vehicleType:   string;
+  vehiclePlate?: string;
+  make?:  string;
+  model?: string;
+  year?:  string;
+  color?: string;
+  photoExteriorUrl?:  string;
+  photoInteriorUrl?:  string;
+  photoPlateUrl?:     string;
+  ownershipProofUrl?: string;
+  insuranceCertUrl?:  string;
+  reason?: string;
+}
+
+export interface VehicleChangeDTO extends VehicleChangeRequest {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
+  createdAt: string;
+  decidedAt?: string | null;
+  decisionNote?: string | null;
+}
+
+export interface VehicleRecordDTO {
+  status:       string;
+  vehicleType:  string;
+  vehiclePlate: string | null;
+  make:  string | null;
+  model: string | null;
+  year:  string | null;
+  color: string | null;
+  vehiclePhotoUrl:   string | null;
+  ownershipProofUrl: string | null;
+  insuranceCertUrl:  string | null;
+  ownership: {
+    /** false means nobody ever asked this rider, not that they said no. */
+    declared:           boolean;
+    ownership:          'self' | 'third_party';
+    ownerName:          string | null;
+    ownerPhone:         string | null;
+    ownerRelationship:  OwnerRelationship | null;
+    ownerConsentUrl:    string | null;
+    ownerIdUrl:         string | null;
+    ownerSignatureName: string | null;
+    ownerConsentAt:     string | null;
+  };
+  pendingChange: VehicleChangeDTO | null;
+}
+
 export const driversApi = {
   me:             () => request<any>('GET', '/drivers/me'),
   toggleOnline:   (isOnline: boolean) => request<any>('PATCH', '/drivers/online', { isOnline }),
@@ -569,19 +661,40 @@ export const driversApi = {
   },
   updateKycDoc:   (docId: string, url: string) =>
     request<{ docId: string; saved: boolean }>('PATCH', '/drivers/me/kyc', { docId, url }),
-  // Vehicle changes go to admin review (2026-08-10 policy); the response
-  // carries pending:true + the unchanged live driver record.
-  updateVehicle: (body: {
-    vehicleType?:  string;
-    vehiclePlate?: string;
-    make?:         string;
-    model?:        string;
-    year?:         string;
-    color?:        string;
-    photoExteriorUrl?: string;
-    photoInteriorUrl?: string;
-    photoPlateUrl?:    string;
-  }) => request<{ pending: boolean; message: string; driver: any }>('PATCH', '/drivers/me/vehicle', body),
+  // ── Vehicle: live record, ownership, change requests (2026-08-25) ──────
+  //
+  // Shaped like the payout-bank calls on purpose (founder: "just like
+  // change bank account"). Nothing here changes the live vehicle: a
+  // submission only ever creates a pending request, because matching and
+  // pricing read vehicleType and a silent okada-to-car switch would be a
+  // pricing hole.
+
+  /** Live vehicle + ownership declaration + the pending change, if any. */
+  getVehicle: () => request<VehicleRecordDTO>('GET', '/drivers/me/vehicle'),
+
+  /** Submit a new vehicle for review. Live vehicle is untouched. */
+  submitVehicleChange: (body: VehicleChangeRequest) =>
+    request<{ pending: boolean; message: string; change: VehicleChangeDTO }>(
+      'POST', '/drivers/me/vehicle-change', body,
+    ),
+
+  /** Pull a request back before an admin decides. */
+  withdrawVehicleChange: () =>
+    request<{ withdrawn: boolean }>('DELETE', '/drivers/me/vehicle-change'),
+
+  /**
+   * Declare who owns the vehicle, during initial KYC. Rejected with
+   * VEHICLE_OWNERSHIP_LOCKED once the rider is approved: from then on it
+   * moves through submitVehicleChange like the rest of the vehicle.
+   */
+  declareVehicleOwnership: (body: VehicleOwnershipInput) =>
+    request<{ saved: boolean; ownership: 'self' | 'third_party' }>(
+      'PATCH', '/drivers/me/vehicle-ownership', body,
+    ),
+
+  /** Older shape, kept so nothing that still calls it breaks. */
+  updateVehicle: (body: VehicleChangeRequest) =>
+    request<any>('PATCH', '/drivers/me/vehicle', body),
   demandZones:    () =>
     request<{ zones: Array<{ latitude: number; longitude: number; radiusM: number; intensity: number; orderCount: number }> }>(
       'GET', '/drivers/demand-zones',
@@ -1113,7 +1226,10 @@ export const partnerApi = {
   storeIssueOtp: (code: string, purpose: 'receive' | 'release' = 'receive') =>
     request<{ sent: boolean; sentTo: string; expiresInMinutes: number }>(
       'POST', '/partner-store/issue-otp', { code, purpose }),
-  storeReceive: (body: { code: string; weightKg: number; receivedPhotoUrl: string; senderOtp: string }) =>
+  // staffName (2026-08-25): the counter types their own name, so a store
+  // that later denies ever receiving the package is answered by a human.
+  // The server refuses the handoff without it.
+  storeReceive: (body: { code: string; weightKg: number; receivedPhotoUrl: string; senderOtp: string; staffName: string }) =>
     request<any>('POST', '/partner-store/receive', body),
   storeRelease: (body: {
     code: string;
@@ -1377,6 +1493,12 @@ export const identityApi = {
     idPhotoUrl?:  string;
     seirsCode?:   string;
     typedName?:   string;
+    // The human who signed for it. A store can deny receiving a
+    // parcel, so the scan alone cannot settle a dispute: a named
+    // person at the counter types their name and it goes on the
+    // record (founder 2026-08-25). The controller has always
+    // accepted this; the type just never said so.
+    signatureName?: string;
     proofPhotoUrl?: string;
   }) =>
     request<{ recordId: string; recipientUserId: string }>(

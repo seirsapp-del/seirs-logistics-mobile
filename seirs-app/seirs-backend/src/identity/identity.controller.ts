@@ -54,6 +54,30 @@ export class IdentityController {
       seirsCode?:   string;
       typedName?:   string;
       proofPhotoUrl?: string;
+      /**
+       * The typed full name of the human signing for this handover
+       * (2026-08-25). A store denying a package ever arrived is answered
+       * by a named human, not by a store id and a timestamp.
+       *
+       * On method 'typed_signature' the server files this on whichever
+       * side of the handover the STORE is standing, because the counter
+       * is the party whose word is in doubt and the rider is already
+       * identified by this request's JWT:
+       *
+       *   store_to_driver  store hands over  -> stored as releasedByName
+       *   driver_to_store  store takes it in -> stored as signatureName
+       *
+       * Send a first and last name. The server rejects a single word.
+       */
+      signatureName?: string;
+      /**
+       * Explicit override for the HANDING-OVER side. Only needed by
+       * callers that know both names, such as the partner counter
+       * releasing to a recipient it has just verified.
+       */
+      releasedByName?: string;
+      /** Store this happened at. Resolved from the drop-off when omitted. */
+      partnerStoreId?: string;
     },
   ) {
     return this.identityService.verifyHandoff({ deliveryId, ...body }, user.id);
@@ -64,8 +88,29 @@ export class IdentityController {
   // and the customer trip-detail screen. Parties to the delivery and
   // admins only: the records carry typed legal names, government ID type
   // and last four, and doorstep photos.
+  //
+  // Accepts a drop-off id as well as a delivery id (2026-08-25), and
+  // returns the records filed under BOTH: a counter receipt is written
+  // against the drop-off, the road journey against the delivery, so
+  // searching either one used to show half a chain at best.
   @Get('handoff/:deliveryId/chain')
   chain(@Param('deliveryId') deliveryId: string, @CurrentUser() user: User) {
     return this.identityService.getHandoffChain(deliveryId, user.id);
+  }
+
+  // GET /api/v1/identity/handoff/:deliveryId/custody
+  //
+  // The chain plus the question the Liability Disputes page is actually
+  // asking: who is holding this package right now, and who carries the
+  // loss if it went missing at this moment. Spec V8's matrix reduces to
+  // one rule (whoever last signed holds it until the next party signs),
+  // so the answer is derived from the chain rather than kept as a second
+  // source of truth that can disagree with it.
+  //
+  // Separate from /chain, which still returns a bare array: changing that
+  // shape would break the tracking screens already reading it.
+  @Get('handoff/:deliveryId/custody')
+  custody(@Param('deliveryId') deliveryId: string, @CurrentUser() user: User) {
+    return this.identityService.getCustodySummary(deliveryId, user.id);
   }
 }

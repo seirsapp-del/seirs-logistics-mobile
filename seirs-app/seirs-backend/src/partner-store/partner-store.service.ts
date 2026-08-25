@@ -14,7 +14,9 @@ import { PricingService } from '../pricing/pricing.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PartnerPayout } from '../business/partner-payout.entity';
 import { IdentityService } from '../identity/identity.service';
-import { HandoffMethod, HandoffStage } from '../identity/handoff-record.entity';
+import {
+  HandoffMethod, HandoffStage, HandoffRole,
+} from '../identity/handoff-record.entity';
 import { MailService } from '../mail/mail.service';
 import { secureCode } from '../common/utils/auth-codes';
 
@@ -796,11 +798,24 @@ export class PartnerStoreService {
   // Partner staff scans the QR (or types the backup code) and confirms
   // the package details + photo + sender identity. After this, the
   // package is officially in their custody.
+  /**
+   * The counter takes a package in.
+   *
+   * `staffSignatureName` (2026-08-25): the founder's Nigerian case is a
+   * partner store that receives a package and later says it never did.
+   * The scan alone cannot settle that, so the staff member types their
+   * own full name and it goes on the custody record as an Evidence Act
+   * section 84 signature. Older partner builds that do not send one fall
+   * back to the signed-in staff account's registered name, and the record
+   * marks which it was.
+   */
   async receiveAtStore(staffUserId: string, body: {
     code:             string;       // either dropCode or backupCode
     weightKg:         number;       // partner's actual weight measurement
     receivedPhotoUrl: string;       // proof photo of package on partner counter
     senderOtp:        string;       // sender shows OTP from email
+    /** Full name of the staff member taking it in, typed by them. */
+    staffSignatureName?: string;
   }) {
     const dropoff = await this.findByCode(body.code);
     if (dropoff.status !== DropoffStatus.SCHEDULED) {
@@ -851,7 +866,7 @@ export class PartnerStoreService {
     }
 
     // Verify sender via identity module - uses the same OTP path drivers
-    // use to verify recipients. Stage = CUSTOMER_TO_STORE (sender → store).
+    // use to verify recipients. Stage = CUSTOMER_TO_STORE (sender to store).
     await this.identityService.verifyHandoff({
       deliveryId: dropoff.id, // we use dropoff id as the delivery id for handoff records pre-driver
       stage:      HandoffStage.CUSTOMER_TO_STORE,
@@ -865,6 +880,19 @@ export class PartnerStoreService {
       // the OTP owner outright instead of letting identity look for one.
       subjectUserId:   dropoff.senderUserId,
       subjectValueNgn: Number(dropoff.declaredValueNgn ?? 0),
+      /**
+       * The package ends up behind THIS counter, held by THIS person.
+       *
+       * The record used to name the sender as both the giver and the
+       * taker, which said the sender handed their package to themselves
+       * and left the store nowhere on the chain. A store denying receipt
+       * was unanswerable from our own records, which is the exact
+       * scenario the chain of custody exists for.
+       */
+      toUserId:       staffUserId,
+      signatureName:  body.staffSignatureName,
+      signedByRole:   HandoffRole.STORE_STAFF,
+      partnerStoreId: dropoff.pickupStoreId,
     } as any);
 
     // The counter has earned its handling fee the moment it takes
@@ -893,6 +921,116 @@ export class PartnerStoreService {
     return this.findById(dropoff.id);
   }
 
+  /**
+   * The destination store scans a package in off a rider (2026-08-25).
+   *
+   * WHY this route did not exist and had to: the liability matrix says
+   * "Driver to Final Partner store: DRIVER liable until the store scans".
+   * Nothing at the destination store scanned anything. The drop-off moved
+   * to at_dropoff_store purely because the RIDER marked their leg
+   * delivered, which discharges the rider on the rider's own word and
+   * leaves the store holding a package it never signed for. Both ends of
+   * that handover were unevidenced.
+   *
+   * So the rider marking DELIVERED no longer closes this link. It stays
+   * open, and the chain keeps naming the rider as the holder, until a
+   * named human at the counter signs for it here.
+   *
+   * Also the only place that has ever set AWAITING_COLLECTION: the status
+   * existed and nothing wrote it, so recipients were never told their
+   * package had landed and was waiting.
+   */
+  async receiveFromDriver(staffUserId: string, body: {
+    code:                string;
+    receivedPhotoUrl?:   string;
+    /** Full name of the staff member taking it in, typed by them. */
+    staffSignatureName?: string;
+  }) {
+    const dropoff = await this.findByCode(body.code);
+
+    const releaseStoreId = dropoff.dropoffStoreId ?? dropoff.pickupStoreId;
+    const staff = await this.usersRepo.findOne({ where: { id: staffUserId } });
+    if (!staff || staff.partnerStoreId !== releaseStoreId) {
+      throw new ForbiddenException('You are not registered as staff for this store');
+    }
+
+    // Accepts the package while it is still on the road as well as after
+    // the rider closed their leg: a counter that scans before the rider
+    // taps "delivered" is the normal order of events at a real shop, and
+    // refusing it would push staff to skip the scan.
+    const receivable: DropoffStatus[] = [
+      DropoffStatus.IN_TRANSIT,
+      DropoffStatus.DRIVER_EN_ROUTE,
+      DropoffStatus.AT_DROPOFF_STORE,
+    ];
+    if (!receivable.includes(dropoff.status)) {
+      throw new BadRequestException(`Cannot receive from a rider - current status is ${dropoff.status}`);
+    }
+
+    // Who is handing it over, for the record. Best-effort: an unmatched
+    // leg still gets a signed receipt naming the store, which is the half
+    // of this that settles a store denying receipt.
+    let driverUserId: string | null = null;
+    let driverName:   string | null = null;
+    if (dropoff.deliveryId) {
+      try {
+        const rows = await this.deliveriesRepo.query(
+          `SELECT u.id AS "userId", u.name AS "name"
+             FROM deliveries d
+             JOIN drivers dr ON dr.id = d."driverId"
+             JOIN users   u  ON u.id  = dr."userId"
+            WHERE d.id = $1 LIMIT 1`,
+          [dropoff.deliveryId],
+        );
+        driverUserId = rows?.[0]?.userId ?? null;
+        driverName   = rows?.[0]?.name   ?? null;
+      } catch { /* the store's signature stands with or without the rider's name */ }
+    }
+
+    await this.identityService.recordHandoff({
+      // Filed against the driver leg where there is one, so the road
+      // journey and the counter receipt sit on the same id. getHandoffChain
+      // unions the two ids either way.
+      deliveryId:     dropoff.deliveryId ?? dropoff.id,
+      stage:          HandoffStage.DRIVER_TO_STORE,
+      method:         HandoffMethod.TYPED_SIGNATURE,
+      fromUserId:     driverUserId,
+      toUserId:       staffUserId,
+      signatureName:  body.staffSignatureName,
+      releasedByName: driverName,
+      signedByRole:   HandoffRole.STORE_STAFF,
+      partnerStoreId: releaseStoreId,
+      proofPhotoUrl:  body.receivedPhotoUrl ?? null,
+    });
+
+    await this.dropoffRepo.update(dropoff.id, {
+      status:                  DropoffStatus.AWAITING_COLLECTION,
+      arrivedAtDropoffStoreAt: dropoff.arrivedAtDropoffStoreAt ?? new Date(),
+    } as any);
+
+    // The counter earns its handling fee for taking the package in, the
+    // same as the pickup store did. Releasing it later is paid separately.
+    await this.creditPartner(
+      releaseStoreId,
+      await this.feesService.getValueOr('partner_store_handling_ngn', 500),
+      `Received from rider ${dropoff.dropCode}`,
+    );
+
+    // Nothing ever told the recipient their package had landed. No arrival
+    // time is promised here, and none should be: it is already there.
+    const notifyUserId = dropoff.recipientUserId ?? dropoff.senderUserId;
+    if (notifyUserId) {
+      this.notifySender(
+        notifyUserId,
+        `Your package ${dropoff.dropCode} is ready to collect`,
+        `Package ${dropoff.dropCode} has arrived at the partner store and is waiting behind the counter. ` +
+        `Bring the collection code and a means of identification.`,
+      );
+    }
+
+    return this.findById(dropoff.id);
+  }
+
   // ── Recipient flow ─────────────────────────────────────────────────────
 
   // Partner staff at the dropoff store releases package to recipient
@@ -910,6 +1048,15 @@ export class PartnerStoreService {
     // SEIRS ID args
     seirsCode?:         string;
     typedName?:         string;
+    /**
+     * The staff member releasing it, typed by them (2026-08-25).
+     *
+     * Founder asked whether the sender's receipt can show WHO collected
+     * the package, not just a proof photo. It shows both ends: the
+     * collector is verified above, and this is the named human who
+     * handed it over.
+     */
+    staffSignatureName?: string;
   }) {
     const dropoff = await this.findByCode(body.code);
     if (![DropoffStatus.AT_DROPOFF_STORE, DropoffStatus.AWAITING_COLLECTION].includes(dropoff.status)) {
@@ -985,6 +1132,12 @@ export class PartnerStoreService {
       subjectValueNgn:   Number(dropoff.declaredValueNgn ?? 0),
       receiverFirstName: dropoff.recipientName?.split(' ')[0] ?? null,
       receiverLastName:  dropoff.recipientName?.split(' ').slice(1).join(' ') || null,
+      // Both ends of the counter, by name. The store cannot later say it
+      // never released the package, and the sender's receipt can answer
+      // "who gave it to whom" without either party's word for it.
+      releasedByName:    body.staffSignatureName?.trim() || staff.name || null,
+      signedByRole:      HandoffRole.RECIPIENT,
+      partnerStoreId:    releaseStoreId,
     } as any);
 
     // Second counter touch: handing the package to the recipient is
