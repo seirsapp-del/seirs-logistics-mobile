@@ -177,7 +177,7 @@ export default function SosDeskPage() {
                       {copied === a.id ? 'Copied!' : 'Copy'}
                     </button>
                     <Link
-                      href={`/ops-map?lat=${a.lat}&lng=${a.lng}&label=${encodeURIComponent('SOS · ' + (a.user?.name ?? ''))}`}
+                      href={`/ops-map?lat=${a.lat}&lng=${a.lng}&label=${encodeURIComponent('SOS · ' + (a.user?.name ?? ''))}&from=${encodeURIComponent('/sos')}&fromLabel=${encodeURIComponent('Back to the SOS desk')}`}
                       className="rounded-lg bg-[#0F2B4C] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#163B66]"
                     >
                       View on ops map

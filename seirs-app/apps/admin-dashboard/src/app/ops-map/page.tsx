@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   Map as MapIcon, Radio, AlertTriangle, Truck, CircleDot, Store, Flame, Route,
-  Search, Ruler, X,
+  Search, Ruler, X, ArrowLeft,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
@@ -85,6 +86,30 @@ export default function OpsMapPage() {
   const [measure,    setMeasure]    = useState<{
     straightKm: number; roadKm: number | null; roadMin: number | null; pending: boolean;
   } | null>(null);
+
+  /**
+   * Return path for a deep link.
+   *
+   * A driver profile, a partner store and the SOS desk all send an
+   * operator here to centre on one coordinate, and none of them left a
+   * route back to the record that sent them: the sidebar only offers
+   * lists (founder 2026-08-25, same complaint as /disputes). `from`
+   * carries the origin path and `fromLabel` names it.
+   */
+  const [backTo, setBackTo] = useState<{ href: string; label: string } | null>(null);
+  useEffect(() => {
+    try {
+      const q    = new URLSearchParams(window.location.search);
+      const href = q.get('from') ?? '';
+      /* Internal paths only. This value arrives off a query string that
+         anybody can write, and an admin screen that will follow an
+         arbitrary URL is a phishing gift. "//evil.example" is a
+         protocol-relative absolute, so leading-slash alone is not
+         enough of a test. */
+      if (!href.startsWith('/') || href.startsWith('//')) return;
+      setBackTo({ href, label: (q.get('fromLabel') ?? '').slice(0, 60) || 'Back' });
+    } catch { /* no params, no back link */ }
+  }, []);
 
   // Restore layer prefs
   useEffect(() => {
@@ -505,7 +530,13 @@ export default function OpsMapPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-[#0F2B4C]">Real-Time Ops Map</h1>
-            <p className="text-xs text-gray-500">Click a chip to toggle its layer · click any pin for details</p>
+            {backTo ? (
+              <Link href={backTo.href} className="inline-flex items-center gap-1 text-xs text-[#3A7BD5] hover:underline">
+                <ArrowLeft size={12} /> {backTo.label}
+              </Link>
+            ) : (
+              <p className="text-xs text-gray-500">Click a chip to toggle its layer · click any pin for details</p>
+            )}
           </div>
           <div className="ml-auto flex items-center gap-2">
             {missingCoords > 0 && (

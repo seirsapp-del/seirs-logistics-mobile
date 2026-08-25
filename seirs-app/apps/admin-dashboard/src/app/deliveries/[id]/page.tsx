@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, Navigation, Package, User, Bike, Store, Receipt, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Package, User, Bike, Store, Receipt, AlertTriangle, Camera } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { naira } from "@/lib/money";
 
@@ -40,6 +40,136 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="flex justify-between gap-4 py-1.5 border-b border-[#F5F5F0] last:border-0">
       <span className="text-xs text-[#0F2B4C]/50">{label}</span>
       <span className="text-xs font-medium text-[#0F2B4C] text-right">{value}</span>
+    </div>
+  );
+}
+
+/**
+ * Photo columns arrive in three shapes and one of them is a lie.
+ *
+ * `packagePhotos` and the stops' `packagePhotoUrls` / `proofPhotoUrls`
+ * are jsonb, so they come back as a real array. `proofPhotoUrl` is a
+ * single varchar. And a jsonb column written by an older client can
+ * still hand back a bare string. Normalise all three to an array here
+ * so nothing downstream has to guess, and drop empties so a column
+ * holding "" does not render a broken image tile.
+ */
+function photoList(v: unknown): string[] {
+  if (Array.isArray(v)) {
+    return v.filter((x): x is string => typeof x === 'string' && x.trim() !== '');
+  }
+  if (typeof v === 'string' && v.trim() !== '') return [v];
+  return [];
+}
+
+/**
+ * One image tile, which says so when it cannot load.
+ *
+ * A dead URL renders as the browser's broken-image glyph, and on this
+ * page that glyph is indistinguishable from "no photo was ever taken":
+ * the exact confusion this section exists to end. It is not a rare
+ * case either. UploadService hands back a placeholder.seirs.co URL
+ * whenever R2 credentials are unset, and a real R2 object can be
+ * deleted, or its bucket made private, long after the URL was written
+ * to the row. So a failure gets its own labelled tile, and keeps the
+ * URL in the tooltip for whoever has to go and find the file.
+ */
+function Shot({ url, alt, size }: { url: string; alt: string; size: 'card' | 'mini' }) {
+  const [broken, setBroken] = useState(false);
+  const box = size === 'card' ? 'h-36 w-36' : 'h-12 w-12';
+
+  if (broken) {
+    return (
+      <span
+        className={`${box} flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-1 text-center text-[9px] font-semibold leading-tight text-amber-800`}
+        title={`A photo URL is on the record but the image did not load: ${url}`}
+      >
+        <AlertTriangle size={size === 'card' ? 18 : 12} />
+        {size === 'card' ? 'On the record, did not load' : 'no load'}
+      </span>
+    );
+  }
+
+  return (
+    <a href={url} target="_blank" rel="noreferrer" title="Open the full-size image in a new tab">
+      <img
+        src={url}
+        alt={alt}
+        onError={() => setBroken(true)}
+        className={`${box} rounded-lg border border-[#E5E7EB] object-cover transition-colors hover:border-[#3A7BD5]`}
+      />
+    </a>
+  );
+}
+
+/**
+ * One side of the evidence pair.
+ *
+ * Deliberately renders its empty state rather than hiding: on a disputed
+ * run "the rider filed no proof photo" is itself the finding, and a
+ * section that silently disappears reads as if the admin simply has not
+ * scrolled far enough.
+ *
+ * Capture time is shown from whatever timestamp the record actually has.
+ * Neither photo column carries a per-image timestamp, so the caller
+ * passes the event these photos belong to (booking, handover) and the
+ * label says which event it is rather than implying the shutter time.
+ */
+function EvidenceShots({
+  title, note, urls, capturedAt, capturedLabel, empty,
+}: {
+  title:         string;
+  note:          string;
+  urls:          string[];
+  capturedAt?:   string | null;
+  capturedLabel: string;
+  empty:         string;
+}) {
+  return (
+    <div>
+      <h3 className="text-[11px] font-bold uppercase tracking-wide text-[#0F2B4C]/40">{title}</h3>
+      <p className="mt-0.5 text-xs text-[#0F2B4C]/50">{note}</p>
+      {urls.length === 0 ? (
+        <div className="mt-2 rounded-lg border border-dashed border-[#0F2B4C]/15 bg-[#F5F5F0] px-3 py-4 text-xs text-[#0F2B4C]/50">
+          {empty}
+        </div>
+      ) : (
+        <>
+          <p className="mt-1 text-xs font-medium text-[#0F2B4C]/70">
+            {capturedAt
+              ? `${capturedLabel} ${new Date(capturedAt).toLocaleString()}`
+              : `${capturedLabel} not recorded`}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {urls.map((u, i) => (
+              <Shot
+                key={`${u}-${i}`}
+                url={u}
+                alt={`${title}, image ${i + 1} of ${urls.length}`}
+                size="card"
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Per-package thumbnails, sized for a table cell rather than a card. */
+function MiniShots({ label, urls, at }: { label: string; urls: string[]; at?: string | null }) {
+  if (urls.length === 0) return null;
+  return (
+    <div className="flex items-center gap-1.5">
+      <span
+        className="w-12 shrink-0 text-[10px] font-bold uppercase tracking-wide text-[#0F2B4C]/40"
+        title={at ? new Date(at).toLocaleString() : undefined}
+      >
+        {label}
+      </span>
+      {urls.map((u, i) => (
+        <Shot key={`${u}-${i}`} url={u} alt={`${label} ${i + 1}`} size="mini" />
+      ))}
     </div>
   );
 }
@@ -189,6 +319,15 @@ export default function DeliveryDetailPage() {
   }
 
   const stops: any[] = d.stops ?? [];
+
+  /* Evidence, gathered once so the section below and the packages table
+     agree about what exists. Run-level columns hold the single-package
+     case; the stop columns hold a multi-package run, where each parcel
+     carries its own pair. */
+  const sentPhotos  = photoList(d.packagePhotos);
+  const proofPhotos = photoList(d.proofPhotoUrl);
+  const stopSent    = stops.flatMap((st: any) => photoList(st.packagePhotoUrls));
+  const stopProof   = stops.flatMap((st: any) => photoList(st.proofPhotoUrls));
 
   return (
     <div className="p-6 max-w-5xl">
@@ -500,6 +639,81 @@ export default function DeliveryDetailPage() {
         </div>
       )}
 
+      {/* Photo evidence.
+          The page showed sender, rider, route, money and a full receipt
+          and not one image, on the only screen whose job is settling an
+          argument between two people about a parcel neither the admin
+          nor SEIRS ever saw (founder 2026-08-25: "no way for the admin
+          to see or verify whatever package was sent and delivered, how
+          do we solve a dispute of things we can't see"). The customer
+          app renders both sides already. The adjudicator saw neither.
+
+          Placed above the sender and rider cards on purpose: during a
+          dispute this is the first thing wanted, not the last.
+
+          No reveal gate here, unlike identity documents. These are
+          photographs of a parcel, and an admin looking at them is the
+          entire point. The redaction shipped today protects riders from
+          CUSTOMERS, never from staff. */}
+      <section className="mt-4 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
+        <h2 className="flex items-center gap-1.5 border-b border-[#E5E7EB] bg-[#F5F5F0] px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-[#0F2B4C]/40">
+          <Camera size={12} /> Photo evidence
+          {d.kind !== 'ride' && sentPhotos.length + proofPhotos.length + stopSent.length + stopProof.length === 0 && (
+            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+              nothing on file
+            </span>
+          )}
+        </h2>
+        <div className="grid gap-6 p-4 md:grid-cols-2">
+          <EvidenceShots
+            title="What the sender sent"
+            note="Photographed by the sender at booking, before anyone had a reason to argue."
+            urls={sentPhotos}
+            capturedAt={d.createdAt}
+            capturedLabel="Uploaded with the booking on"
+            empty={
+              stopSent.length > 0
+                ? `Nothing on the run itself. Each package carries its own photo instead: see the ${stops.length} rows under Packages below.`
+                : d.kind === 'ride'
+                  ? 'A ride carries a passenger, not a parcel. No booking photo is asked for and none is missing.'
+                  : 'The sender filed no booking photo. On a damage claim there is no before-picture to compare against.'
+            }
+          />
+          <EvidenceShots
+            title="Proof of delivery"
+            note="Photographed by the rider at handover. Required by the server before a run can flip to delivered."
+            urls={proofPhotos}
+            capturedAt={d.deliveredAt}
+            capturedLabel="Handover recorded at"
+            empty={
+              stopProof.length > 0
+                ? `Nothing on the run itself. Each package carries its own proof instead: see the ${stops.length} rows under Packages below.`
+                : String(d.status) !== 'delivered'
+                  ? 'Not handed over yet, so there is nothing to show.'
+                  : d.kind === 'ride'
+                    /* Do not tell the adjudicator a ride is exempt. The
+                       driver app skips the camera on a ride (active.tsx
+                       guards on kind !== 'ride'), while the server
+                       refuses ANY run reaching delivered without a
+                       photo, rides included. The two rules disagree, so
+                       the only honest reading of a missing ride photo is
+                       that it is unexplained. */
+                    ? 'This ride was closed with no photo on the record. The driver app does not ask for one on a ride while the server refuses any run without one, so treat this as unexplained rather than as normal.'
+                    : 'Marked delivered with no proof photo on the record. Worth asking how that transition was made.'
+            }
+          />
+        </div>
+        {(d.recipientSignature || d.deliveredAt) && (
+          <div className="border-t border-[#E5E7EB] px-4 py-3">
+            <Row label="Recipient signature" value={d.recipientSignature} />
+            <Row
+              label="Delivered at"
+              value={d.deliveredAt ? new Date(d.deliveredAt).toLocaleString() : null}
+            />
+          </div>
+        )}
+      </section>
+
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <section className="rounded-xl border border-[#E5E7EB] bg-white p-4">
           <h2 className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#0F2B4C]/40">
@@ -725,6 +939,20 @@ export default function DeliveryDetailPage() {
                     </div>
                     {st.packageDescription && (
                       <div className="mt-0.5 text-xs text-[#0F2B4C]/60">{st.packageDescription}</div>
+                    )}
+                    {/* Per-package evidence. On a multi-drop run the
+                        photos live on the stop, not the delivery, so the
+                        card above is empty and the only place an admin
+                        can tell parcel three from parcel four is right
+                        here on its own row (founder 2026-08-25). */}
+                    <div className="mt-2 space-y-1.5">
+                      <MiniShots label="Sent"  urls={photoList(st.packagePhotoUrls)} at={d.createdAt} />
+                      <MiniShots label="Proof" urls={photoList(st.proofPhotoUrls)}   at={st.deliveredAt} />
+                    </div>
+                    {st.status === 'delivered' && photoList(st.proofPhotoUrls).length === 0 && (
+                      <div className="mt-1 text-[10px] font-semibold text-amber-700">
+                        Delivered with no proof photo
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs text-[#0F2B4C]/70">

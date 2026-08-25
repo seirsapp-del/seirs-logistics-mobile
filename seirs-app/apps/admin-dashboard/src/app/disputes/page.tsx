@@ -1,8 +1,9 @@
 'use client';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { adminApi } from '@/lib/api';
-import { Search, Package, Camera, FileText, ChevronRight, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Search, Package, Camera, FileText, ChevronRight, AlertCircle, ShieldCheck, ArrowLeft } from 'lucide-react';
 
 // Spec V8 §3.10 - disputes review surface. Reads the chain-of-custody
 // records emitted by the Identity module and lays them out as a
@@ -42,6 +43,11 @@ const STAGE_COLOR: Record<string, string> = {
 function DisputesContent() {
   const searchParams = useSearchParams();
   const [deliveryId, setDeliveryId] = useState(searchParams.get('deliveryId') ?? '');
+  /* Where the operator came from, if they came from anywhere.
+     Read off the URL rather than off the input box: the box is typed
+     into, and a back link that follows the typing would send the admin
+     to whatever half-finished UUID is in it. */
+  const cameFromDelivery = (searchParams.get('deliveryId') ?? '').trim();
   const [chain,      setChain]      = useState<Handoff[]>([]);
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState('');
@@ -80,6 +86,19 @@ function DisputesContent() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Return path. Arriving here from a delivery's "Open chain of
+          custody" link left the operator stranded: the sidebar goes to
+          lists, and nothing on this page named the run they had been
+          reading a second earlier (founder 2026-08-25). */}
+      {cameFromDelivery && (
+        <Link
+          href={`/deliveries/${encodeURIComponent(cameFromDelivery)}`}
+          className="inline-flex items-center gap-1 text-sm text-[#3A7BD5] hover:underline"
+        >
+          <ArrowLeft size={14} /> Back to the delivery
+        </Link>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
@@ -199,17 +218,36 @@ function DisputesContent() {
                     )}
                   </div>
 
+                  {/* Show the handoff photo, do not just link to it.
+                      This screen decides who pays for a lost or damaged
+                      parcel, and the picture of the parcel changing
+                      hands was a blue text link an adjudicator had to
+                      guess was worth clicking, once per row (founder
+                      2026-08-25: "no way for the admin to see or verify
+                      whatever package was sent and delivered"). The link
+                      stays, on the thumbnail, for the full-size view. */}
                   {h.proofPhotoUrl && (
-                    <a
-                      href={h.proofPhotoUrl}
-                      target="_blank"
-                      rel="noopener"
-                      className="mt-3 inline-flex items-center gap-1.5 text-xs text-[#3A7BD5] font-semibold hover:underline"
-                    >
-                      <Camera size={12} />
-                      View proof photo
-                      <ChevronRight size={12} />
-                    </a>
+                    <div className="mt-3">
+                      <p className="text-[10px] font-semibold uppercase text-gray-500">Handoff photo</p>
+                      <a
+                        href={h.proofPhotoUrl}
+                        target="_blank"
+                        rel="noopener"
+                        title="Open the full-size image in a new tab"
+                        className="mt-1 inline-flex items-center gap-2"
+                      >
+                        <img
+                          src={h.proofPhotoUrl}
+                          alt={`Proof photo for the ${stageLabel} handoff`}
+                          className="h-28 w-28 rounded-lg border border-[#E5E7EB] object-cover transition-colors hover:border-[#3A7BD5]"
+                        />
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#3A7BD5] hover:underline">
+                          <Camera size={12} />
+                          Full size
+                          <ChevronRight size={12} />
+                        </span>
+                      </a>
+                    </div>
                   )}
                 </div>
               </div>

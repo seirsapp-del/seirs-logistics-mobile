@@ -205,7 +205,7 @@ export default function PartnerDetailPage() {
                 <Copy size={12} /> {coordsCopied ? 'Copied!' : 'Copy'}
               </button>
               <Link
-                href={`/ops-map?lat=${Number(store.storeLat)}&lng=${Number(store.storeLng)}&label=${encodeURIComponent(store.storeName)}`}
+                href={`/ops-map?lat=${Number(store.storeLat)}&lng=${Number(store.storeLng)}&label=${encodeURIComponent(store.storeName)}&from=${encodeURIComponent(`/partners/${id}`)}&fromLabel=${encodeURIComponent(`Back to ${store.storeName}`)}`}
                 className="text-xs bg-[#0F2B4C] text-white px-3 py-1.5 rounded-lg hover:bg-[#163B66] font-medium flex items-center gap-1.5">
                 <MapPin size={12} /> View on ops map
               </Link>

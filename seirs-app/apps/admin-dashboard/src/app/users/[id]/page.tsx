@@ -6,6 +6,7 @@ import { adminApi } from '@/lib/api';
 import { naira } from "@/lib/money";
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
+import { SosHistory } from '@/components/SosHistory';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
 import { SendDocumentModal } from '@/components/SendDocumentModal';
 import { canExportNdprData, canHardDeleteAccount } from '@/lib/rbac';
@@ -146,6 +147,22 @@ export default function UserDetailPage() {
     user, deliveries, deliveryCount, totalSpent, cancelledCount,
     loyalty, identity, referrer, referredUsers, relatedAccounts,
     auditLog, driverRecord, fraudFlags,
+    /* Neither is in the payload today. Both names are read because the
+       server already computes one of them (deliveredCount, discarded
+       before the return) and completedCount is the name the driver
+       profile is waiting on, so whichever gets wired lands here.
+
+       A warning for whoever wires it: that existing deliveredCount is
+       NOT the number to return. getUserDetail filters it out of the
+       deliveries array, which findAndCount capped at take: 10, so it
+       can never exceed ten however many runs the customer has made. It
+       needs its own count() on status = delivered, the way
+       cancelledCount already does it. */
+    completedCount, deliveredCount,
+    /* Every SOS this person has raised. Nothing sends it yet: see the
+       long note in components/SosHistory.tsx for why, and for the one
+       server change that would light this up. */
+    sosAlerts,
   } = data;
 
   const fmtDate = (d: any) => d ? new Date(d).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -280,20 +297,59 @@ export default function UserDetailPage() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        {/* Stats.
+            Same correction as the driver profile (founder 2026-08-25):
+            "Total Deliveries" counted every booking row whatever became
+            of it, sat next to a cancelled count, and left the reader to
+            assume the difference was completed work. It is not: pending,
+            assigned, in transit and failed all live in that gap.
+
+            completedCount is read but not derived. AdminService already
+            computes a deliveredCount inside getUserDetail and drops it
+            on the floor without returning it, so both names are accepted
+            here and whichever one the server starts sending will land. */}
+        <div className="grid grid-cols-5 gap-4 mb-2">
           {[
-            { label: 'Total Deliveries',   value: deliveryCount },
-            { label: 'Total Spent',        value: naira(totalSpent) },
-            { label: 'Cancelled',          value: cancelledCount ?? 0 },
-            { label: `Rewards (${loyalty?.tier ?? 'Bronze'})`, value: (loyalty?.balance ?? 0).toLocaleString() },
+            {
+              label: 'Completed',
+              value: completedCount ?? deliveredCount ?? <span className="text-base font-semibold text-gray-300">not counted</span>,
+              hint:  'Bookings that reached delivered.',
+            },
+            {
+              label: 'Cancelled',
+              value: cancelledCount ?? 0,
+              hint:  'Bookings that ended cancelled.',
+            },
+            {
+              label: 'Bookings, all outcomes',
+              value: deliveryCount,
+              hint:  'Every booking this account has ever made, whatever became of it.',
+            },
+            {
+              label: 'Total Spent',
+              value: naira(totalSpent),
+              hint:  'Sum of the fare on bookings that reached delivered.',
+            },
+            {
+              label: `Rewards (${loyalty?.tier ?? 'Bronze'})`,
+              value: (loyalty?.balance ?? 0).toLocaleString(),
+              hint:  'Points, not naira. Customers never hold a naira balance.',
+            },
           ].map((s) => (
-            <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+            <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center" title={s.hint}>
               <div className="text-2xl font-bold text-gray-900">{s.value}</div>
               <div className="text-xs text-gray-500 mt-1">{s.label}</div>
             </div>
           ))}
         </div>
+
+        {completedCount == null && deliveredCount == null && (
+          <p className="mb-6 text-xs text-gray-500">
+            The completed count is not in the user API response yet, so it is left
+            blank. Bookings minus cancelled would count pending, in-transit and
+            failed runs as completed, which is worse than saying nothing.
+          </p>
+        )}
 
         {/* Profile details */}
         <Section title="Profile">
@@ -320,6 +376,8 @@ export default function UserDetailPage() {
           </Section>
         )}
 
+        <SosHistory userId={id} personLabel={user.name ?? 'this account'} alerts={sosAlerts} />
+
         {/* Financial - bank fields only for drivers. Customers pay via
             Flutterwave Inline (card/USSD), never direct debit, so a bank
             row on a customer is meaningless and leaks unnecessary PII. */}
@@ -340,7 +398,12 @@ export default function UserDetailPage() {
             <Field label="Vehicle" value={`${driverRecord.vehicleType ?? '-'} · ${driverRecord.vehiclePlate ?? 'no plate'}`} />
             <Field label="Online" value={driverRecord.isOnline ? 'Yes' : 'No'} />
             <Field label="Rating" value={driverRecord.rating != null ? `${Number(driverRecord.rating).toFixed(1)} ★` : null} />
-            <Field label="Total deliveries" value={driverRecord.totalDeliveries?.toLocaleString?.() ?? '-'} />
+            {/* Not a delivery count, whatever the column is called.
+                DeliveriesService increments drivers.totalDeliveries inside
+                rateDelivery, so it only ever moves when a CUSTOMER leaves
+                a star. An unrated delivered run never reaches it. Named
+                for what it actually counts (founder 2026-08-25). */}
+            <Field label="Runs rated by customers" value={driverRecord.totalDeliveries?.toLocaleString?.() ?? '-'} />
             <Field label="Last location update" value={fmtDate(driverRecord.locationUpdatedAt)} />
           </Section>
         )}

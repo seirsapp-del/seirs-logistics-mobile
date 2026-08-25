@@ -7,6 +7,7 @@ import { adminApi } from '@/lib/api';
 import { naira } from "@/lib/money";
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Section, Field, IdentityDocsReveal } from '@/components/DetailSections';
+import { SosHistory } from '@/components/SosHistory';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
 import { SendDocumentModal } from '@/components/SendDocumentModal';
 import { canExportNdprData, canHardDeleteAccount } from '@/lib/rbac';
@@ -190,6 +191,15 @@ export default function DriverDetailPage() {
     driver, deliveries, deliveryCount, totalEarned, cancelledCount,
     loyalty, identity, referrer, referredUsers, relatedAccounts,
     auditLog, fraudFlags,
+    /* Not in the payload today. Destructured anyway so the tiles below
+       light up the day AdminService.getDriverDetail counts them, with no
+       second edit here. See the tile comment for why they are not
+       derived from the two counts that do arrive. */
+    completedCount, inProgressCount,
+    /* Every SOS this rider has raised. Nothing sends it yet: see the
+       long note in components/SosHistory.tsx for why, and for the one
+       server change that would light this up. */
+    sosAlerts,
   } = data;
 
   const fmtDate = (d: any) => d ? new Date(d).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -337,19 +347,103 @@ export default function DriverDetailPage() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        {/* Work record.
+            The row used to read Deliveries / Total Earned / Rating /
+            Wallet, with "2 Cancelled deliveries" stranded in its own card
+            much further down, and the single number that actually
+            describes a rider appeared nowhere at all (founder 2026-08-25:
+            "in the driver's profile I see the number of cancelled
+            deliveries, total deliveries, I don't see the number of
+            completed deliveries why").
+
+            "Deliveries: 9" was every delivery row ever assigned to this
+            rider whatever became of it: AdminService.getDriverDetail
+            builds it with findAndCount and no status filter. It is
+            relabelled here to say so.
+
+            Completed is shown only when the server sends it. Deriving it
+            as total minus cancelled would be a lie with a number
+            attached: it would silently count pending, assigned,
+            picked_up, in_transit and failed runs as completed work. */}
+        <div className="grid grid-cols-4 gap-4 mb-2">
           {[
-            { label: 'Deliveries',    value: deliveryCount },
-            { label: 'Total Earned',  value: naira(totalEarned) },
-            { label: 'Rating',        value: <span className="inline-flex items-center justify-center gap-1"><Star size={16} className="fill-amber-400 text-amber-400" /> {Number(driver.rating).toFixed(1)}</span> },
-            { label: 'Wallet Balance',value: naira(driver.walletBalance) },
+            {
+              label: 'Completed',
+              value: completedCount ?? <span className="text-base font-semibold text-gray-300">not counted</span>,
+              hint:  'Runs that reached delivered.',
+            },
+            {
+              label: 'Cancelled',
+              value: cancelledCount ?? 0,
+              hint:  'Runs that ended cancelled.',
+            },
+            {
+              label: 'In progress',
+              value: inProgressCount ?? <span className="text-base font-semibold text-gray-300">not counted</span>,
+              hint:  'Assigned, picked up or in transit right now.',
+            },
+            {
+              label: 'Jobs assigned, all outcomes',
+              value: deliveryCount,
+              hint:  'Every row ever handed to this rider, whatever became of it.',
+            },
           ].map((s) => (
-            <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+            <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center" title={s.hint}>
               <div className="text-xl font-bold text-gray-900">{s.value}</div>
               <div className="text-xs text-gray-500 mt-1">{s.label}</div>
             </div>
           ))}
+        </div>
+
+        {(completedCount == null || inProgressCount == null) && (
+          <p className="mb-6 text-xs text-gray-500">
+            Completed and in-progress counts are not in the driver API response yet.
+            It returns a total across every status and a cancelled count, and nothing
+            else. Subtracting one from the other would fold pending, in-transit and
+            failed runs into &quot;completed&quot;, so this page leaves them blank rather
+            than showing a number that is wrong.
+          </p>
+        )}
+
+        {/* Money. Split off the work tiles because the two answer
+            different questions and sat side by side implying they
+            reconciled (founder 2026-08-25: Wallet reads 0.00 while Total
+            Earned reads 10,359.68, why do these not agree). They never
+            did agree and were never going to: see each caption. */}
+        <div className="grid gap-4 mb-6 md:grid-cols-2">
+          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <div className="text-xl font-bold text-gray-900">{naira(totalEarned)}</div>
+            <div className="text-xs font-semibold text-gray-600 mt-1">Earned on delivered runs</div>
+            <p className="mt-1.5 text-xs text-gray-500">
+              Lifetime sum of this rider&apos;s cut across every run that reached
+              delivered. A record of work done, not a balance owed: most of it has
+              already been paid out.
+            </p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <div className="text-xl font-bold text-gray-400">{naira(driver.walletBalance)}</div>
+            <div className="text-xs font-semibold text-gray-600 mt-1">Wallet column (legacy, not a payable)</div>
+            <p className="mt-1.5 text-xs text-gray-500">
+              A column on the driver row that no earnings code path ever credits. It
+              is set to zero at registration and left there, so it reads 0.00 for
+              every real rider and always will. What SEIRS actually owes lives in the
+              earnings ledger, one row per delivered run, moving pending to available
+              to paid.
+            </p>
+            <Link href="/wallet" className="mt-2 inline-block text-xs font-semibold text-[#3A7BD5] hover:underline">
+              Open Wallet and Payouts
+            </Link>
+          </div>
+        </div>
+
+        {/* Rating kept on its own line: it is neither a count of work nor
+            a sum of money, and it was crowding the tiles above. */}
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6 flex items-center gap-3">
+          <Star size={20} className="fill-amber-400 text-amber-400 shrink-0" />
+          <div>
+            <div className="text-sm font-bold text-gray-900">{Number(driver.rating ?? 0).toFixed(1)} out of 5</div>
+            <div className="text-xs text-gray-500">Average of every star a customer has left on this rider&apos;s runs.</div>
+          </div>
         </div>
 
         {/* Profile details from the underlying user account */}
@@ -379,11 +473,15 @@ export default function DriverDetailPage() {
           </Section>
         )}
 
+        <SosHistory userId={driver.user?.id} personLabel={driver.user?.name ?? 'this rider'} alerts={sosAlerts} />
+
         {/* Financial. Driver payout bank details visible here since drivers
             actually use direct debit for withdrawals. */}
         <Section title="Financial">
           <Field label="Loyalty balance" value={`${(loyalty?.balance ?? 0).toLocaleString()} pts (${loyalty?.tier ?? 'Bronze'})`} />
-          <Field label="Wallet balance" value={naira(driver.walletBalance ?? 0)} />
+          {/* Same legacy column as the tile above. Named the same way in
+              both places so nobody reads one as a correction of the other. */}
+          <Field label="Wallet column (legacy)" value={naira(driver.walletBalance ?? 0)} />
           <Field label="Bank" value={driver.user?.bankAccountName ? `${driver.user.bankAccountName} · ${driver.user.bankAccountNumber?.slice(-4) ?? '****'} · ${driver.user.bankCode ?? ''}` : null} />
           <Field label="Bank verified" value={driver.user?.bankVerifiedAt ? fmtDate(driver.user.bankVerifiedAt) : null} />
         </Section>
@@ -457,12 +555,6 @@ export default function DriverDetailPage() {
           </Section>
         )}
 
-        {/* Cancelled deliveries stat */}
-        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6 text-center">
-          <div className="text-2xl font-bold text-gray-900">{cancelledCount ?? 0}</div>
-          <div className="text-xs text-gray-500 mt-1">Cancelled deliveries</div>
-        </div>
-
         {/* Last known location */}
         {driver.lastLat && driver.lastLng && (
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6 flex items-center gap-3 flex-wrap">
@@ -477,7 +569,7 @@ export default function DriverDetailPage() {
               <Copy size={12} /> {coordsCopied ? 'Copied!' : 'Copy'}
             </button>
             <Link
-              href={`/ops-map?lat=${Number(driver.lastLat)}&lng=${Number(driver.lastLng)}&label=${encodeURIComponent((driver.user?.name ?? 'Driver') + ' · last known')}`}
+              href={`/ops-map?lat=${Number(driver.lastLat)}&lng=${Number(driver.lastLng)}&label=${encodeURIComponent((driver.user?.name ?? 'Driver') + ' · last known')}&from=${encodeURIComponent(`/drivers/${id}`)}&fromLabel=${encodeURIComponent(`Back to ${driver.user?.name ?? 'this driver'}`)}`}
               className="text-xs bg-[#0F2B4C] text-white px-3 py-1.5 rounded-lg hover:bg-[#163B66] font-medium flex items-center gap-1.5">
               <MapPin size={12} /> View on ops map
             </Link>
