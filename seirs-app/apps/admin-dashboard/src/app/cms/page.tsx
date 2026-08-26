@@ -5,7 +5,7 @@ import { getUser } from '@/lib/auth';
 import { isSuperAdminFromUser } from '@/lib/rbac';
 import { useConfirm } from '@/components/ConfirmDialog';
 import {
-  Plus, Eye, CheckCircle, Send, Trash2, ImageIcon, Megaphone, Star, Filter, AlertCircle, Pencil,
+  Plus, EyeOff, CheckCircle, Send, Trash2, ImageIcon, Megaphone, Star, Filter, AlertCircle, Pencil,
 } from 'lucide-react';
 
 type ContentType = 'banner' | 'story' | 'promotion';
@@ -150,7 +150,7 @@ export default function CmsPage() {
   const remove = async (id: string) => {
     const ok = await confirm({
       title:        'Delete this content item?',
-      message:      'Removes the item from the app immediately. If it was published, any user currently viewing it may see a gap until they refresh. Consider unpublishing first if you might want it back.',
+      message:      'Deletes the row for good. No app or website reads this table, so nothing changes for any user either way. This cannot be undone.',
       confirmLabel: 'Delete',
       danger:       true,
     });
@@ -165,8 +165,8 @@ export default function CmsPage() {
 
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-[#0F2B4C]">Content Management</h1>
-            <p className="text-sm text-[#0F2B4C]/40 mt-1">Banners · Stories · Promotions</p>
+            <h1 className="text-2xl font-bold text-[#0F2B4C]">In-App CMS (inactive)</h1>
+            <p className="text-sm text-[#0F2B4C]/40 mt-1">Banners · Stories · Promotions · not wired to any app yet</p>
           </div>
           <button
             onClick={() => setCreating(true)}
@@ -174,6 +174,52 @@ export default function CmsPage() {
           >
             <Plus size={15} /> New Content
           </button>
+        </div>
+
+        {/* ── THE DEAD END ────────────────────────────────────────────
+            Founder 2026-08-26: "the content management did not work".
+            He wrote a story here, published it, and it never reached a
+            phone. Nothing was broken in the sense of throwing an error.
+
+            This page writes to the `cms_items` table. Every route that
+            touches that table lives on the admin controller behind
+            JwtAuthGuard + AdminGuard, and there is not one @Public read
+            of it anywhere in the backend. No app fetches it, the website
+            does not fetch it, so publishing here moves a row from one
+            admin-only status to another admin-only status.
+
+            The surface he wanted, the home carousel, is served by
+            listFeaturedCards over the `website_content` table, which the
+            Website editor writes. So the page named "In-App CMS" reaches
+            no app, and the page named "Website" is the one that reaches
+            both apps and the website. That naming is the trap.
+
+            Saying so out loud beats leaving a convincing form that goes
+            nowhere. Removing the page is not this app's call: the table
+            holds whatever has already been typed into it, and wiring a
+            public read is backend work. Until then it says what it is.
+        */}
+        <div className="bg-[#B45309]/8 border border-[#B45309]/30 rounded-xl px-4 py-4 mb-6">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle size={17} className="mt-0.5 shrink-0 text-[#B45309]" />
+            <div className="text-sm text-[#0F2B4C]/80">
+              <p className="font-bold text-[#B45309]">Content saved here does not reach the apps yet.</p>
+              <p className="mt-1.5 leading-relaxed">
+                These banners, stories and promotions are stored, but no customer, driver or business app
+                reads them, and neither does the website. Publishing here only changes the status on this
+                screen. Nothing about it fails loudly, which is exactly why this notice is here.
+              </p>
+              <p className="mt-2 leading-relaxed">
+                To put a story on the app home carousel, or an article in the app Stories list, use{' '}
+                <a href="/website" className="font-semibold text-[#3A7BD5] underline hover:no-underline">
+                  Website Content
+                </a>{' '}
+                and tick <span className="font-semibold">Feature on the app home carousel</span>. That editor
+                feeds the customer app, the business app and seirs.app from one story, and it now shows the
+                real card before you publish.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Workflow notice */}
@@ -201,12 +247,19 @@ export default function CmsPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">Body / Description</label>
+                  {/* rows=12 and resizable: an editor proof-reading a
+                      story through a 3-line window with resize-none was
+                      the founder's complaint on 2026-08-26, and stories
+                      are the longest thing this app publishes. */}
                   <textarea
                     value={editDraft.body}
                     onChange={(e) => setEditDraft((d) => ({ ...d, body: e.target.value }))}
-                    rows={3}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5] resize-none"
+                    rows={12}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#3A7BD5] resize-y min-h-[9rem]"
                   />
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    {(editDraft.body ?? '').length} characters. Drag the corner to make this taller.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">Image</label>
@@ -240,8 +293,13 @@ export default function CmsPage() {
                   {uploading && <p className="mt-1 text-xs text-gray-400">Uploading…</p>}
                 </div>
                 {editing.status === 'published' && (
+                  // Used to read "This item is live. Saving changes what
+                  // users see on their next app open." No user sees it:
+                  // cms_items has no public read route. Overstating reach
+                  // is how the founder came to trust this page.
                   <p className="text-xs text-amber-700">
-                    This item is live. Saving changes what users see on their next app open.
+                    Marked published, but nothing reads this table yet, so no user sees this item. Use
+                    Website Content for anything that has to reach a phone.
                   </p>
                 )}
                 <div className="flex gap-3 pt-2">
@@ -302,10 +360,13 @@ export default function CmsPage() {
                   <textarea
                     value={newItem.body}
                     onChange={(e) => setNewItem((n) => ({ ...n, body: e.target.value }))}
-                    rows={3}
-                    placeholder="Optional description or markdown content…"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A7BD5] resize-none"
+                    rows={12}
+                    placeholder="Description or markdown content. Paste a full story here: this box grows."
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#3A7BD5] resize-y min-h-[9rem]"
                   />
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    {(newItem.body ?? '').length} characters. Drag the corner to make this taller.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">Image</label>
@@ -459,8 +520,13 @@ export default function CmsPage() {
                     </button>
                   )}
                   {item.status === 'published' && (
-                    <span className="flex items-center gap-1 text-xs text-emerald-600">
-                      <Eye size={13} /> Live
+                    // Said "Live" with a green eye. It is not live
+                    // anywhere: nothing consumes cms_items.
+                    <span
+                      title="Published in this table only. No app or website reads it."
+                      className="flex items-center gap-1 text-xs text-gray-400"
+                    >
+                      <EyeOff size={13} /> Not shown anywhere
                     </span>
                   )}
                   {isSuper && (

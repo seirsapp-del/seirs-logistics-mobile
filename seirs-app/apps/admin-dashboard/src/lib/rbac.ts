@@ -525,9 +525,16 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
   {
     title: 'CONTENT',
     items: [
-      { href: '/cms',        label: 'In-App CMS', icon: 'FileText' },
-      { href: '/website',    label: 'Website',    icon: 'Globe'    },
-      { href: '/promotions', label: 'Promotions', icon: 'Percent'  },
+      // Labels swapped round 2026-08-26. They were exactly backwards.
+      // "In-App CMS" writes to cms_items, which no app or website reads:
+      // it has no public route at all. "Website" writes to
+      // website_content, which feeds the customer app carousel, the
+      // business app carousel, the in-app Stories list AND seirs.app.
+      // The founder went looking for the app carousel, clicked the one
+      // that said In-App, published, and nothing happened.
+      { href: '/website',    label: 'App & Website Content', icon: 'Globe'    },
+      { href: '/cms',        label: 'In-App CMS (inactive)',  icon: 'FileText' },
+      { href: '/promotions', label: 'Promotions',             icon: 'Percent'  },
     ],
   },
   {

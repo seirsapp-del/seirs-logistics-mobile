@@ -2,12 +2,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Globe, Plus, Search, Loader2, AlertCircle, RefreshCw, X, Trash2,
-  ImageIcon, Eye, Save, Calendar, Smartphone,
+  ImageIcon, Eye, Save, Calendar, Smartphone, EyeOff, Info,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { isSuperAdminFromUser } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
+import { HeroCardPreview, heroCardWarnings } from '@/components/HeroCardPreview';
 
 // Spec V8 §3.13. admin editor for the public marketing website.
 // Manages four content types under tabs: articles (news/blog/press),
@@ -69,7 +70,9 @@ export default function WebsiteCmsPage() {
   const [search,   setSearch]   = useState('');
   const [editing,  setEditing]  = useState<Row | 'new' | null>(null);
   const [sweeping, setSweeping] = useState(false);
+  const [offliningId, setOffliningId] = useState<string | null>(null);
   const confirmSweep            = useConfirm();
+  const confirmOffline          = useConfirm();
   const superAdmin              = isSuperAdminFromUser(getUser());
 
   // Founder 2026-08-15: removing an image from an article only removed the
@@ -115,6 +118,39 @@ export default function WebsiteCmsPage() {
 
   useEffect(() => { load(); }, [tab]);
 
+  /**
+   * Take a live item down without deleting it (founder 2026-08-26).
+   *
+   * Status goes back to DRAFT, not ARCHIVED: draft is the state the
+   * editor can save over and re-publish, which is what "I need to fix
+   * this" means. Archived reads as retired.
+   *
+   * One action covers both surfaces on purpose. listFeaturedCards
+   * filters on status = published, so dropping to draft empties the
+   * carousel slot at the same moment it pulls the web page, and the
+   * apps fall back to their built-in cards. No second step to forget.
+   */
+  const takeOffline = async (r: Row) => {
+    const ok = await confirmOffline({
+      title:   `Take "${r.title}" offline?`,
+      message: r.featureInApp
+        ? 'Returns it to Draft. It comes off the public website and off the app home carousel straight away, and customers see the built-in slides instead. Nothing is deleted: edit it and publish again when it is ready.'
+        : 'Returns it to Draft. The public page starts returning 404 within about a minute (the website caches for 60 seconds). Nothing is deleted: edit it and publish again when it is ready.',
+      confirmLabel: 'Take offline',
+    });
+    if (!ok) return;
+    setOffliningId(r.id);
+    setError(null);
+    try {
+      await adminApi.websiteContent.update(r.id, { status: 'draft' });
+      load();
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not take this item offline');
+    } finally {
+      setOffliningId(null);
+    }
+  };
+
   const filtered = useMemo(() => {
     if (!search.trim()) return rows;
     const q = search.toLowerCase();
@@ -128,8 +164,14 @@ export default function WebsiteCmsPage() {
           <Globe size={18} className="text-white" />
         </div>
         <div className="flex-1">
-          <h1 className="text-lg font-bold text-[#0F2B4C]">Website Content</h1>
-          <p className="text-sm text-gray-500">Manage the public marketing site at seirs.app. Changes go live within 1 minute (ISR cached).</p>
+          <h1 className="text-lg font-bold text-[#0F2B4C]">App &amp; Website Content</h1>
+          {/* The old subtitle said "the public marketing site" and
+              nothing else, so nobody reading it would guess this is also
+              the only editor that reaches a phone. Founder 2026-08-26. */}
+          <p className="text-sm text-gray-500">
+            One story feeds three places: the app home carousel, the in-app Stories list, and seirs.app.
+            Website changes go live within 1 minute (ISR cached); the apps pick up new cards on next launch.
+          </p>
         </div>
         <button
           onClick={load}
@@ -207,40 +249,65 @@ export default function WebsiteCmsPage() {
       ) : (
         <div className="bg-white rounded-xl border border-[#E5E7EB] divide-y divide-[#E5E7EB]">
           {filtered.map(r => (
-            <button
+            // Was a single full-row <button>. It now has to carry the
+            // Take offline action, and a button inside a button is
+            // invalid HTML that React will not render, so the row is a
+            // div and only the identifying part of it is the button.
+            <div
               key={r.id}
-              onClick={() => setEditing(r)}
-              className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
             >
-              {r.coverImageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={r.coverImageUrl} alt="" className="w-12 h-12 rounded object-cover bg-gray-100" />
-              ) : (
-                <div className="w-12 h-12 rounded bg-gray-100 flex items-center justify-center text-gray-400">
-                  <ImageIcon size={18} />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-[#0F2B4C] truncate">{r.title}</p>
-                  <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded font-bold ${STATUS_STYLES[r.status] ?? 'bg-gray-100'}`}>
-                    {STATUS_LABEL[r.status] ?? r.status}
-                  </span>
-                  {r.category && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#3A7BD5]/10 text-[#3A7BD5] font-medium">{r.category}</span>
-                  )}
-                  {r.featureInApp && (
-                    <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-[#C2410C]/10 text-[#C2410C] font-bold flex items-center gap-1">
-                      <Smartphone size={10} /> In app
+              <button
+                onClick={() => setEditing(r)}
+                className="flex-1 min-w-0 text-left flex items-center gap-3"
+              >
+                {r.coverImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={r.coverImageUrl} alt="" className="w-12 h-12 rounded object-cover bg-gray-100" />
+                ) : (
+                  <div className="w-12 h-12 rounded bg-gray-100 flex items-center justify-center text-gray-400">
+                    <ImageIcon size={18} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-[#0F2B4C] truncate">{r.title}</p>
+                    <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded font-bold ${STATUS_STYLES[r.status] ?? 'bg-gray-100'}`}>
+                      {STATUS_LABEL[r.status] ?? r.status}
                     </span>
-                  )}
+                    {r.category && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#3A7BD5]/10 text-[#3A7BD5] font-medium">{r.category}</span>
+                    )}
+                    {r.featureInApp && (
+                      <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-[#C2410C]/10 text-[#C2410C] font-bold flex items-center gap-1">
+                        <Smartphone size={10} /> In app
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs font-mono text-gray-400 mt-0.5">/{r.slug}</p>
                 </div>
-                <p className="text-xs font-mono text-gray-400 mt-0.5">/{r.slug}</p>
-              </div>
+              </button>
               <span className="text-xs text-gray-400 shrink-0">
                 {new Date(r.updatedAt).toLocaleDateString('en-NG', { day: '2-digit', month: 'short' })}
               </span>
-            </button>
+              {/* Founder 2026-08-26: "we cant turn it offline when we
+                  edit". Correcting a live banner meant editing it in
+                  front of every customer, or opening the editor and
+                  hunting for a status dropdown. One click pulls it back
+                  to draft: off the website AND off the app carousel,
+                  since listFeaturedCards only serves published rows. */}
+              {(r.status === 'published' || r.status === 'scheduled') && (
+                <button
+                  onClick={() => takeOffline(r)}
+                  disabled={offliningId === r.id}
+                  title="Pull this back to draft: removes it from the public website and from the app carousel"
+                  className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-[#B45309] border border-[#B45309]/25 bg-[#B45309]/5 rounded-lg hover:bg-[#B45309]/10 disabled:opacity-50"
+                >
+                  <EyeOff size={13} />
+                  {offliningId === r.id ? 'Taking offline…' : 'Take offline'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -249,7 +316,11 @@ export default function WebsiteCmsPage() {
         <EditorModal
           row={editing === 'new' ? null : editing}
           defaultType={tab}
-          onClose={() => setEditing(null)}
+          // Reload on plain close too. The editor can now change status
+          // without going through Save (Take offline patches straight
+          // away, on purpose: pulling a wrong banner is urgent). Without
+          // this the list would still say "published" behind the modal.
+          onClose={() => { setEditing(null); load(); }}
           onSaved={() => { setEditing(null); load(); }}
         />
       )}
@@ -297,11 +368,27 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   const [uploading, setUploading] = useState(false);
   const [saving,    setSaving]    = useState(false);
   const [err,       setErr]       = useState<string | null>(null);
+  const [notice,    setNotice]    = useState<string | null>(null);
   const [showPrev,  setShowPrev]  = useState(false);
   const confirm                   = useConfirm();
   // Only a super admin can turn website content live. Everyone else
   // submits for review; the button label changes to say so.
   const superAdmin                = isSuperAdminFromUser(getUser());
+
+  // Everything that would stop this exact card reaching a phone, worked
+  // out from the same rules the server query applies. Recomputed as the
+  // fields change so the answer is never stale.
+  const cardWarnings = useMemo(
+    () => heroCardWarnings({
+      coverImageUrl: cover,
+      title,
+      excerpt,
+      status,
+      featureFrom,
+      featureUntil,
+    }),
+    [cover, title, excerpt, status, featureFrom, featureUntil],
+  );
 
   const autoSlug = () => {
     if (!title) return;
@@ -373,6 +460,47 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
     finally { setSaving(false); }
   };
 
+  /**
+   * Pull a live item down to draft from inside its own editor.
+   *
+   * Patches only `status`, and does NOT send the rest of the form: the
+   * admin may have half-finished edits typed in, and taking a wrong
+   * banner off the carousel must not publish those by accident. The
+   * modal stays open with the local status switched to draft, so the
+   * correction can carry on in private and then be saved normally.
+   */
+  const takeOffline = async () => {
+    if (!row) return;
+    setSaving(true); setErr(null); setNotice(null);
+    try {
+      await adminApi.websiteContent.update(row.id, { status: 'draft' });
+      setStatus('draft');
+      setNotice(
+        featureInApp
+          ? 'Taken offline. It is off the app carousel and off the website now. Fix it here, then set Status back to Published.'
+          : 'Taken offline. The public page stops serving within about a minute. Fix it here, then set Status back to Published.',
+      );
+    } catch (e: any) { setErr(e?.message ?? 'Could not take this offline'); }
+    finally { setSaving(false); }
+  };
+
+  /**
+   * Free the carousel slot while leaving the article published and
+   * readable on the website. This is the promo-is-over case: the story
+   * is still true, it just should not occupy one of six slides in front
+   * of every customer any more.
+   */
+  const removeFromCarousel = async () => {
+    if (!row) return;
+    setSaving(true); setErr(null); setNotice(null);
+    try {
+      await adminApi.websiteContent.update(row.id, { featureInApp: false });
+      setFeatureInApp(false);
+      setNotice('Removed from the app carousel. The story stays published and readable on the website.');
+    } catch (e: any) { setErr(e?.message ?? 'Could not remove this from the carousel'); }
+    finally { setSaving(false); }
+  };
+
   const remove = async () => {
     if (!row) return;
     const ok = await confirm({
@@ -410,10 +538,64 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
             </div>
           )}
 
+          {notice && (
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded px-3 py-2 text-xs text-emerald-800">
+              <EyeOff size={14} /> {notice}
+            </div>
+          )}
+
+          {/* Founder 2026-08-26: "we cant turn it offline when we edit".
+              A live item now says so at the top of its own editor, with
+              the two ways down: all the way to draft, or just out of the
+              carousel while the web page stays readable. Both patch
+              immediately rather than waiting for Save, because the
+              reason you are here is that something wrong is showing. */}
+          {!isNew && status === 'published' && (
+            <div className="rounded-lg border border-[#B45309]/25 bg-[#B45309]/5 px-3 py-3">
+              <p className="text-xs font-bold text-[#B45309] uppercase tracking-wide">This is live right now</p>
+              <p className="text-xs text-gray-600 mt-1">
+                Every edit you save below changes what customers see on their next app open. Take it down
+                first if you would rather correct it in private.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2.5">
+                <button
+                  onClick={takeOffline}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white border border-[#B45309]/30 text-[#B45309] rounded-lg hover:bg-[#B45309]/10 disabled:opacity-50"
+                >
+                  <EyeOff size={13} /> Take offline (back to draft)
+                </button>
+                {featureInApp && (
+                  <button
+                    onClick={removeFromCarousel}
+                    disabled={saving}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white border border-[#E5E7EB] text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <Smartphone size={13} /> Remove from app carousel only
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-1">
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Type</label>
-              <select value={type} onChange={e => setType(e.target.value as WebType)} disabled={!isNew}
+              {/* Changing type has to reset the category. The three
+                  types that use this column use completely different
+                  vocabularies (news/press vs getting_started/payments vs
+                  Engineering/Operations), so a category carried over
+                  from the previous type is stored against a row whose
+                  surface never asked for it: it survives the save,
+                  matches no <option>, and renders the select blank. */}
+              <select
+                value={type}
+                onChange={e => {
+                  const next = e.target.value as WebType;
+                  setType(next);
+                  setCategory(next === 'article' ? 'news' : '');
+                }}
+                disabled={!isNew}
                 className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg disabled:bg-gray-50 focus:outline-none focus:border-[#3A7BD5]">
                 {TABS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
               </select>
@@ -435,6 +617,9 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
             </div>
             {type === 'page_block' && (
               <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
+                Save needs something in the Body box even on an image-only slot, because the API requires
+                it. No page-block renderer displays body, so a word like &ldquo;image slot&rdquo; is enough.
+                <span className="block mt-1">
                 Reserved slugs that render on the marketing site:{' '}
                 <code className="bg-gray-100 px-1 rounded">home_hero</code>,{' '}
                 <code className="bg-gray-100 px-1 rounded">hero_for_business</code>,{' '}
@@ -442,6 +627,7 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
                 <code className="bg-gray-100 px-1 rounded">hero_for_partner_stores</code>,{' '}
                 <code className="bg-gray-100 px-1 rounded">hero_how_it_works</code>.
                 Upload a hero image on any of these to change the corresponding page&apos;s hero backdrop.
+                </span>
                 <span className="block mt-1">
                   Rows starting with <code className="bg-gray-100 px-1 rounded">img_</code> are the site&apos;s
                   IMAGE SLOTS: each one&apos;s description tells you exactly what goes where (section, aspect
@@ -452,11 +638,36 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
             )}
           </div>
 
-          {(type === 'article' || type === 'changelog') && (
+          {/* job_listing added 2026-08-26: careers/[slug] falls back to
+              the excerpt for its meta description, so a role posted
+              without one shipped with no description at all and there
+              was no box in which to write one. */}
+          {/* page_block joins the list because the homepage hero renders
+              this block's excerpt as its subheading (app/page.tsx reads
+              hero?.excerpt on the home_hero block). It had no input, so
+              that line could only ever be the hardcoded fallback. */}
+          {type !== 'faq' && (
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Excerpt</label>
-              <input value={excerpt} onChange={e => setExcerpt(e.target.value)} placeholder="One-line teaser for cards + SEO description"
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                {type === 'page_block' ? 'Sub-heading' : 'Excerpt'}
+              </label>
+              <input value={excerpt} onChange={e => setExcerpt(e.target.value)}
+                placeholder={type === 'page_block'
+                  ? 'The line under the heading. Blank keeps the built-in copy.'
+                  : 'One-line teaser for cards + SEO description'}
                 className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+              {type === 'article' && (
+                <p className="mt-1 text-[11px] text-gray-400">
+                  This is also the description under the title on the app carousel card. Around 110
+                  characters before it is clipped to two lines.
+                </p>
+              )}
+              {type === 'page_block' && (
+                <p className="mt-1 text-[11px] text-gray-400">
+                  Only the <code className="bg-gray-100 px-1 rounded">home_hero</code> block renders a
+                  heading and sub-heading. The other hero blocks use their image alone.
+                </p>
+              )}
             </div>
           )}
 
@@ -577,21 +788,66 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
             </div>
           )}
 
-          {type === 'article' && (
+          {/* Category, per type (2026-08-26).
+              article: filter chip on /news, and the colour of the pill on
+                       the app carousel card. "impact" was missing here
+                       even though both the website labels and the app
+                       badge colours already knew it.
+              faq:     the website groups the FAQ page by this column.
+                       With no input, every question landed under
+                       "General" and the grouping looked broken.
+              job_listing: printed as the department chip on /careers.
+              changelog and page_block genuinely do not use it. */}
+          {(type === 'article' || type === 'faq' || type === 'job_listing') && (
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Category</label>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                {type === 'faq' ? 'Section' : type === 'job_listing' ? 'Team' : 'Category'}
+              </label>
               <select value={category ?? ''} onChange={e => setCategory(e.target.value)}
                 className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]">
-                <option value="news">News</option>
-                <option value="press">Press release</option>
-                <option value="product_update">Product update</option>
-                <option value="guide">Guide / how-to</option>
-                <option value="story">Customer story</option>
+                {type === 'article' && (
+                  <>
+                    <option value="news">News</option>
+                    <option value="press">Press release</option>
+                    <option value="product_update">Product update</option>
+                    <option value="guide">Guide / how-to</option>
+                    <option value="story">Customer story</option>
+                    <option value="impact">Impact</option>
+                  </>
+                )}
+                {/* These five keys are the ones the FAQ page has labels
+                    for. Anything else shows up under "General". */}
+                {type === 'faq' && (
+                  <>
+                    <option value="">General</option>
+                    <option value="getting_started">Getting started</option>
+                    <option value="payments">Payments</option>
+                    <option value="pickup">Pickup and delivery</option>
+                    <option value="drivers">For drivers</option>
+                    <option value="partner">Partner stores</option>
+                  </>
+                )}
+                {type === 'job_listing' && (
+                  <>
+                    <option value="">No team</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="Operations">Operations</option>
+                    <option value="Growth">Growth</option>
+                    <option value="Support">Support</option>
+                    <option value="Finance">Finance</option>
+                  </>
+                )}
               </select>
+              {type === 'faq' && (
+                <p className="mt-1 text-[11px] text-gray-400">
+                  The FAQ page puts each question under this heading. Leave it on General and it sits in the
+                  ungrouped section at the top.
+                </p>
+              )}
             </div>
           )}
 
-          {(type === 'article') && (
+          {(type === 'article' || type === 'job_listing') && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-bold uppercase tracking-wide text-gray-500">SEO title</label>
@@ -606,13 +862,24 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
             </div>
           )}
 
-          {(type === 'faq' || type === 'changelog' || type === 'page_block') && (
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Sort order (lower shows first)</label>
-              <input value={sortOrder} onChange={e => setSortOrder(e.target.value)} type="number"
-                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
-            </div>
-          )}
+          {/* Articles were the one type without this control, yet
+              sortOrder is load-bearing for them twice over: listPublished
+              orders /news by sortOrder ASC then publishedAt DESC, and
+              listFeaturedCards picks the carousel stories the same way.
+              Every article therefore sat on the default 0 with no way to
+              change it. Founder 2026-08-26. */}
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Sort order (lower shows first)</label>
+            <input value={sortOrder} onChange={e => setSortOrder(e.target.value)} type="number"
+              className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+            {type === 'article' && (
+              <p className="mt-1 text-[11px] text-gray-400">
+                Orders the news list on the website, and decides which stories make the six sent to the app
+                carousel. It does not fix the slide order inside the app: the apps shuffle what they receive.
+                Leave at 0 unless a story must come ahead of the others.
+              </p>
+            )}
+          </div>
 
           {/* Home-carousel curation. Publishing puts a story on the
               website; this puts it on the slides every customer sees
@@ -638,6 +905,56 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
 
               {featureInApp && (
                 <div className="mt-3 pl-6">
+                  {/* THE PREVIEW (founder 2026-08-26: "i will like to see
+                      a full preview before publishing, not just text
+                      preview"). Drawn at the phone's true 328x200 from
+                      the real HeroCardImage numbers, so a title that
+                      will be cut off after two lines is cut off here
+                      too. It updates as the fields above change. */}
+                  <div className="mb-4">
+                    <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                      How this looks in the app
+                    </label>
+                    <div className="mt-2 flex flex-wrap items-start gap-4">
+                      <div className="rounded-2xl bg-[#F3F4F6] p-3 border border-[#E5E7EB]">
+                        <HeroCardPreview
+                          coverImageUrl={cover || null}
+                          featureBadge={featureBadge}
+                          category={category}
+                          title={title}
+                          excerpt={excerpt}
+                        />
+                        <p className="mt-2 text-center text-[10px] text-gray-400">
+                          Actual size on a 360dp phone. Customer app and business app draw the same card.
+                        </p>
+                      </div>
+                      <div className="flex-1 min-w-[210px] space-y-2">
+                        {cardWarnings.length === 0 ? (
+                          <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                            Nothing looks wrong with this card. It will go to the carousel once saved.
+                          </p>
+                        ) : (
+                          cardWarnings.map(w => (
+                            <p key={w} className="flex items-start gap-1.5 text-xs text-[#B45309] bg-[#B45309]/5 border border-[#B45309]/20 rounded-lg px-3 py-2">
+                              <AlertCircle size={13} className="mt-px shrink-0" /> <span>{w}</span>
+                            </p>
+                          ))
+                        )}
+                        {/* Said out loud because the preview cannot show
+                            it: the apps shuffle the featured stories on
+                            every launch, so nobody should promise a
+                            client their story is "the first slide". */}
+                        <p className="flex items-start gap-1.5 text-xs text-gray-500 bg-gray-50 border border-[#E5E7EB] rounded-lg px-3 py-2">
+                          <Info size={13} className="mt-px shrink-0" />
+                          <span>
+                            The apps shuffle the featured stories on every launch, so this card will not
+                            always be the first slide. The animated SEIRS okada is always slide one.
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Card label (optional)</label>
                   <input
                     value={featureBadge}
@@ -645,11 +962,19 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
                     placeholder="e.g. NEW OUTLET, PROMO. Blank uses the category."
                     className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]"
                   />
-                  {!cover && (
-                    <p className="text-xs text-[#B45309] mt-2">
-                      No cover image yet. Featured cards without one render as a plain navy slide.
-                    </p>
-                  )}
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    {featureBadge.length}/24 characters. The pill colour comes from the Category above, not
+                    from this text.
+                  </p>
+
+                  {/* Not a second input. One sortOrder field above does
+                      both jobs; duplicating it here would be two controls
+                      writing one column, which is its own kind of lie. */}
+                  <p className="mt-2 text-[11px] text-gray-400">
+                    Only six featured stories are sent to each app. If more than six are ticked, the ones
+                    with the lowest <span className="font-semibold">Sort order</span> above win, then the
+                    most recently published.
+                  </p>
 
                   {/* Special-offer window. A promo that ends on Sunday
                       should leave the carousel on Sunday, not whenever
@@ -688,11 +1013,21 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Status</label>
               <select value={status} onChange={e => setStatus(e.target.value as any)}
                 className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]">
-                <option value="draft">Draft</option>
+                <option value="draft">Draft (offline, nobody sees it)</option>
                 <option value="scheduled">Scheduled</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
+                <option value="published">Published (live)</option>
+                <option value="archived">Archived (offline, retired)</option>
+                {/* Set by the review workflow, never chosen by hand. Kept
+                    as a disabled option so a submitted item does not
+                    render this select blank, which read as "no status". */}
+                {status === 'pending_approval' && (
+                  <option value="pending_approval" disabled>Awaiting approval</option>
+                )}
               </select>
+              <p className="mt-1 text-[11px] text-gray-400">
+                Only Published reaches the public website and the app carousel. Draft and Archived both take
+                it offline; Draft is the one to use when you plan to publish it again.
+              </p>
             </div>
             <div>
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500 flex items-center gap-1">
