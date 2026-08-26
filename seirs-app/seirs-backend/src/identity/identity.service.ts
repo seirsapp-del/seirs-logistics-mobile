@@ -233,7 +233,10 @@ export class IdentityService {
     } else {
       const delivery = await this.deliveriesRepo.findOne({
         where: { id: payload.deliveryId },
-        relations: ['customer'],
+        // 'stops' matters: on a multi-package run the declared value of
+        // the goods lives per stop, so without it the high-value check
+        // below reads nothing and passes everything.
+        relations: ['customer', 'stops'],
       });
       if (!delivery) throw new NotFoundException('Delivery not found');
       // For Spec V8 the recipient is the customer who placed the order.
@@ -242,7 +245,29 @@ export class IdentityService {
       subject = {
         id:                delivery.id,
         recipientUserId:   delivery.customer.id,
-        valueNgn:          Number(delivery.price ?? 0),
+        /**
+         * The declared value of the GOODS, never the fare.
+         *
+         * This read delivery.price, so a laptop worth NGN 500,000 sent on
+         * an NGN 2,500 delivery was compared as 2,500 against the
+         * high-value threshold, no ID was demanded, and the sender had
+         * been told the handover would be ID-verified (founder
+         * 2026-08-26).
+         *
+         * On a multi-package run the highest single declared value wins:
+         * per-stop values never reached this check before, and one
+         * valuable parcel among cheap ones is still valuable at the door.
+         * Falls back to the fare only when nothing was declared, so
+         * bookings that never carried a value behave as they always did.
+         */
+        valueNgn: (() => {
+          const stops: any[] = Array.isArray((delivery as any).stops) ? (delivery as any).stops : [];
+          const stopMax = stops.reduce(
+            (max, st) => Math.max(max, Number(st?.declaredValueNgn ?? 0) || 0), 0,
+          );
+          const declared = Math.max(Number((delivery as any).declaredValueNgn ?? 0) || 0, stopMax);
+          return declared > 0 ? declared : Number(delivery.price ?? 0);
+        })(),
         receiverFirstName: (delivery as any).receiverFirstName ?? null,
         receiverLastName:  (delivery as any).receiverLastName ?? null,
       };

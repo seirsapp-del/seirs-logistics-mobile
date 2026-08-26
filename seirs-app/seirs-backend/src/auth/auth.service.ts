@@ -757,16 +757,24 @@ export class AuthService {
   }
 
   private async buildAuthResponse(user: User) {
-    const payload = { sub: user.id, email: user.email, role: user.role, adminRole: user.adminRole };
-    // Spec V8 §3.6 - admin sessions must time out at 30min. Other
-    // user roles keep the platform default (7d) so customers don't
-    // get bounced to login every time they reopen the app.
-    const isAdmin = user.role === UserRole.ADMIN;
-    const token   = this.jwtService.sign(payload, isAdmin ? { expiresIn: '30m' } : {});
-
     // Spec V8 - resolve dynamic role permissions if assigned. The
     // admin client uses this to render the sidebar + gate page access
     // without hardcoding the permission map.
+    //
+    // This lookup MUST stay above the sign() call below. It used to sit
+    // underneath it, so roleSlug and permissions reached the response
+    // body but never the token. roles.service.ts assignToUser writes
+    // roleId and never adminRole, so a custom-role admin's token read
+    // {role:'admin', adminRole:null}, which the dashboard could not tell
+    // apart from a legacy super admin: it decoded both as plain 'admin'
+    // and applied no page gating at all. The more carefully a role was
+    // configured, the less of it was enforced.
+    //
+    // Login, admin TOTP verify and /auth/refresh all funnel through this
+    // method, so minting the claims here covers every way a session is
+    // issued. The dashboard middleware already branches on
+    // (roleSlug && permissions) first, so it starts gating correctly the
+    // moment these claims appear, with no client change.
     let roleSlug:    string | null = null;
     let roleName:    string | null = null;
     let permissions: string[]      = [];
@@ -783,6 +791,23 @@ export class AuthService {
         permissions = Array.isArray(role.permissions) ? role.permissions : [];
       }
     }
+
+    // roleSlug stays null for an account with no dynamic role, which is
+    // what keeps the dashboard's older adminRole branch in charge of
+    // legacy sessions rather than handing them an empty permission list.
+    const payload = {
+      sub:       user.id,
+      email:     user.email,
+      role:      user.role,
+      adminRole: user.adminRole,
+      roleSlug,
+      permissions,
+    };
+    // Spec V8 §3.6 - admin sessions must time out at 30min. Other
+    // user roles keep the platform default (7d) so customers don't
+    // get bounced to login every time they reopen the app.
+    const isAdmin = user.role === UserRole.ADMIN;
+    const token   = this.jwtService.sign(payload, isAdmin ? { expiresIn: '30m' } : {});
 
     return {
       token,

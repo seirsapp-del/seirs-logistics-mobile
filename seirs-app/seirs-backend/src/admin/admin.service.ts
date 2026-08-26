@@ -1282,8 +1282,16 @@ export class AdminService {
       ?? [data.firstName?.trim(), data.lastName?.trim()].filter(Boolean).join(' ');
     if (!fullName) throw new ConflictException('Name (or firstName + lastName) required.');
 
-    // If no password provided, generate a secure random one. they'll
-    // reset via the email-link flow on first login.
+    /**
+     * A placeholder password so the row is never created without one.
+     * Nobody is ever told what it is: when the creating admin does not
+     * set an explicit password, this value exists only to be replaced by
+     * whatever the invitee chooses through the set-password link below.
+     *
+     * The old comment claimed "they'll reset via the email-link flow on
+     * first login" and nothing sent that email, so the honest onboarding
+     * route was reading a password off a screen into WhatsApp.
+     */
     const rawPassword = data.password?.trim()
       || crypto.randomBytes(16).toString('base64url');
 
@@ -1311,23 +1319,51 @@ export class AdminService {
     });
     await this.usersRepo.save(user);
 
-    // If a roleId was passed, also email the new admin a password reset
-    // link so they can set their own password on first sign-in.
-    if (data.roleId || !data.password) {
-      // 1 hour, not 24 (founder 2026-08-13). A staff invite is a key to
-      // an account with dashboard access, and it sits in an inbox until
-      // used. A day of validity is a day for it to be forwarded, synced
-      // to a shared machine, or found. An hour covers "I am adding you
-      // now, check your email"; anything longer is convenience bought
-      // with the most privileged accounts we issue.
-      this.usersRepo.update(user.id, {
-        passwordResetToken:  crypto.randomBytes(32).toString('hex'),
-        passwordResetExpiry: new Date(Date.now() + 3600_000),
-      }).catch(() => {});
+    /**
+     * Send the invite. This is the whole onboarding path, so it runs for
+     * EVERY new admin, not only the ones created with a roleId.
+     *
+     * The token used to be minted here and never sent anywhere, and the
+     * write was fire-and-forget (`.catch(() => {})` on an un-awaited
+     * update), so it could also lose a race with the response. It is
+     * awaited now: an invite nobody can use is the same as no invite.
+     *
+     * 1 hour, not 24 (founder 2026-08-13). A staff invite is a key to an
+     * account with dashboard access, and it sits in an inbox until used.
+     * A day of validity is a day for it to be forwarded, synced to a
+     * shared machine, or found. An hour covers "I am adding you now,
+     * check your email"; anything longer is convenience bought with the
+     * most privileged accounts we issue.
+     */
+    const inviteToken = crypto.randomBytes(32).toString('hex');
+    await this.usersRepo.update(user.id, {
+      passwordResetToken:  inviteToken,
+      passwordResetExpiry: new Date(Date.now() + 3600_000),
+    });
+
+    /**
+     * A failed send does not fail the creation: the account already
+     * exists at this point, and throwing would leave an orphan that the
+     * next attempt cannot recreate because the email is taken. The
+     * creating admin is told instead, through inviteSent, so they know
+     * to resend rather than assuming the new hire got an email.
+     */
+    let inviteSent = false;
+    try {
+      await this.mailService.sendAdminInvite(email, fullName, inviteToken, user.accountId);
+      inviteSent = true;
+    } catch (e: any) {
+      this.logger.error(
+        `Admin invite email failed for ${email}: ${e?.message ?? e}. ` +
+        'Account exists but nobody can sign in until an invite reaches them.',
+      );
     }
 
-    const { password: _pw, ...safe } = user as any;
-    return safe;
+    // passwordResetToken is stripped alongside the hash: it is a live
+    // credential for this account, and an API response is not where a
+    // credential belongs.
+    const { password: _pw, passwordResetToken: _tok, ...safe } = user as any;
+    return { ...safe, inviteSent };
   }
 
   // Role allow-list for role-mutation ops. Promotion to admin and any change

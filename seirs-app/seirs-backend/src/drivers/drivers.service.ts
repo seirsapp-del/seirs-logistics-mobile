@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { In, LessThan, Repository } from 'typeorm';
@@ -528,6 +528,26 @@ export class DriversService {
     return qb.getMany();
   }
 
+  /**
+   * Cancel a declared trip.
+   *
+   * This used to flip the status and return, with no thought for anyone
+   * who had booked a seat on it. A Travel Buddy seat is a real Delivery
+   * row carrying this tripId, so the passengers were left holding live
+   * bookings, some of them already paid for, against a trip that no
+   * longer existed. Nobody was told. The first they would learn of it is
+   * standing at the pickup point.
+   *
+   * Paid seats therefore BLOCK the cancellation rather than silently
+   * stranding someone. Refunding is a money decision with a policy
+   * attached (cancellation fee, who absorbs it) and the refund path
+   * lives in DeliveriesService with the payments ref, not here, so this
+   * routes the driver to support instead of inventing an answer.
+   *
+   * Unpaid holds do not block: nobody is out of pocket, so the trip
+   * cancels and every holder is told immediately and by name, with the
+   * reason, so they can go and book another trip.
+   */
   async cancelInterstateTrip(userId: string, tripId: string) {
     const trip = await this.tripsRepo
       .createQueryBuilder('t')
@@ -539,8 +559,59 @@ export class DriversService {
     if (trip.driver.user.id !== userId) {
       throw new ForbiddenException('Not your trip.');
     }
+    if (trip.status === DriverTripStatus.CANCELLED) return trip;
+
+    // Seat bookings that are still live. A delivered or already-cancelled
+    // seat has nothing left to strand.
+    const seatBookings = await this.deliveriesRepo.find({
+      where: {
+        tripId,
+        status: In([
+          DeliveryStatus.PENDING,
+          DeliveryStatus.ASSIGNED,
+          DeliveryStatus.PICKED_UP,
+          DeliveryStatus.IN_TRANSIT,
+        ]),
+      },
+      relations: ['customer'],
+    });
+
+    const paid = seatBookings.filter((b: any) => b.paymentHeldAt != null);
+    if (paid.length > 0) {
+      throw new ConflictException({
+        code: 'TRIP_HAS_PAID_SEATS',
+        message:
+          `${paid.length} passenger${paid.length === 1 ? ' has' : 's have'} already paid for a seat on this trip. ` +
+          'We cannot cancel it from here without settling their refunds. Contact support and we will sort it out with you.',
+      });
+    }
+
     trip.status = DriverTripStatus.CANCELLED;
-    return this.tripsRepo.save(trip);
+    const saved = await this.tripsRepo.save(trip);
+
+    // Tell the unpaid holders. No arrival promise and no refund promise:
+    // there is nothing to refund, and the only honest thing to offer is
+    // the rest of the Travel Buddy list.
+    for (const booking of seatBookings) {
+      const passengerId = (booking as any).customer?.id;
+      if (!passengerId || !this.notificationsService) continue;
+      this.notificationsService.create(
+        passengerId,
+        'Your trip was called off',
+        `The driver cancelled the ${trip.fromCity} to ${trip.toCity} trip. You were not charged. ` +
+        'Other trips on this route are on the Travel Buddy list.',
+        'general',
+        (booking as any).id,
+        (booking as any).trackingCode,
+      ).catch(() => {});
+    }
+    if (seatBookings.length) {
+      this.logger.log(
+        `Trip ${tripId} cancelled by driver; notified ${seatBookings.length} unpaid seat holder(s)`,
+      );
+    }
+
+    return saved;
   }
 
   // ── Spec V8 §2.13 - Auto check-in cron ────────────────────────────────────

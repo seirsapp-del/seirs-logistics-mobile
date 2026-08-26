@@ -122,6 +122,103 @@ export class DemoDataService {
     };
   }
 
+  /**
+   * A whole cast for end-to-end scenario testing: 10 customers, 5 riders,
+   * 5 businesses of which 3 hold packages as partner stores.
+   *
+   * Why this exists rather than registering them through the app: the
+   * signup OTP is bcrypt-hashed the moment it is generated, so nobody,
+   * including an admin with full database access, can read a code back
+   * out and hand it to a tester. These accounts are never emailed, so
+   * emailVerified is simply true: there is no verification to skip when
+   * no message was ever sent.
+   *
+   * Everything created here carries isDemo, which every money and
+   * dispatch guard already checks, so a scenario account cannot take real
+   * money, be dispatched a real job, or be paid out.
+   *
+   * Idempotent: re-running rotates the password and refreshes the cast
+   * rather than duplicating it.
+   */
+  async seedScenarioCohort() {
+    const password     = generateDemoPassword();
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const CUSTOMERS = [
+      ['Chiamaka', 'Okonkwo', '08030000101'], ['Bolanle',  'Adeyemi',  '08030000102'],
+      ['Ibrahim',  'Suleiman','08030000103'], ['Ngozi',    'Eze',      '08030000104'],
+      ['Tunde',    'Bakare',  '08030000105'], ['Halima',   'Yusuf',    '08030000106'],
+      ['Emeka',    'Obi',     '08030000107'], ['Folasade', 'Ogunleye', '08030000108'],
+      ['Musa',     'Danjuma', '08030000109'], ['Adaeze',   'Nwosu',    '08030000110'],
+    ] as const;
+
+    const DRIVERS = [
+      ['Segun',   'Afolabi',  '08090000201'], ['Chidi',   'Anyanwu', '08090000202'],
+      ['Aliyu',   'Mohammed', '08090000203'], ['Kunle',   'Oyelaran','08090000204'],
+      ['Obinna',  'Chukwu',   '08090000205'],
+    ] as const;
+
+    // The first three also hold packages as partner stores. Partner is a
+    // CAPABILITY on a business account, not a separate account, so the
+    // SEIRS ID never mutates when they are approved: it is printed on
+    // receipts and package labels.
+    const BUSINESSES = [
+      ['Amaka',   'Ilochi',   '08070000301', true ], ['Sadiq',  'Bello',   '08070000302', true ],
+      ['Yewande', 'Coker',    '08070000303', true ], ['Ifeanyi','Madu',    '08070000304', false],
+      ['Zainab',  'Abdullahi','08070000305', false],
+    ] as const;
+
+    const customers: any[] = [];
+    for (const [first, last, phone] of CUSTOMERS) {
+      customers.push(await this.upsertUser({
+        email: `scn.cust.${first.toLowerCase()}@seirs.co`,
+        firstName: first, lastName: last, phone,
+        role: UserRole.CUSTOMER, passwordHash,
+      }));
+    }
+
+    const drivers: any[] = [];
+    for (const [first, last, phone] of DRIVERS) {
+      const u = await this.upsertUser({
+        email: `scn.drv.${first.toLowerCase()}@seirs.co`,
+        firstName: first, lastName: last, phone,
+        role: UserRole.DRIVER, passwordHash,
+      });
+      drivers.push({ user: u, driver: await this.upsertDriver(u) });
+    }
+
+    const businesses: any[] = [];
+    for (const [first, last, phone, isPartner] of BUSINESSES) {
+      const owner = await this.upsertUser({
+        email: `scn.biz.${first.toLowerCase()}@seirs.co`,
+        firstName: first, lastName: last, phone,
+        role: UserRole.CUSTOMER, passwordHash,
+        accountIdPrefix: AccountIdPrefix.BUSINESS,
+        businessRole: 'owner',
+      });
+      const biz = await this.upsertBusinessAccount(owner);
+      const store = isPartner ? await this.upsertPartnerStore(owner, biz) : null;
+      businesses.push({ owner, biz, store, isPartner });
+    }
+
+    this.logger.warn(
+      `Scenario cohort seeded: ${customers.length} customers, ${drivers.length} drivers, ` +
+      `${businesses.length} businesses (${businesses.filter(b => b.isPartner).length} partner stores). ` +
+      `Password rotated.`,
+    );
+
+    return {
+      password,
+      note: 'One password for the whole cohort. It rotates on every seed and is returned once. Every account is isDemo and cannot touch real money.',
+      customers: customers.map(u => ({ email: u.email, name: u.name, seirsId: u.accountId })),
+      drivers:   drivers.map(d => ({ email: d.user.email, name: d.user.name, seirsId: d.user.accountId, driverId: d.driver?.id ?? null })),
+      businesses: businesses.map(b => ({
+        email: b.owner.email, name: b.owner.name, seirsId: b.owner.accountId,
+        businessId: b.biz?.id ?? null, partnerStoreId: b.store?.id ?? null, isPartner: b.isPartner,
+      })),
+    };
+  }
+
   // ── Users ────────────────────────────────────────────────────────────────
 
   private async upsertUser(opts: {

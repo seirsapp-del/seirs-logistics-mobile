@@ -647,12 +647,56 @@ export class BusinessService {
       });
     }
 
+    /**
+     * Declared value for the whole run: the sum of the per-package
+     * declarations, which is exactly what send-package.tsx sends to
+     * /pricing/quote. Anything else and the review screen and the
+     * booking would price two different runs.
+     */
+    const declaredTotalNgn = dto.stops.reduce(
+      (sum, st) => sum + (Number(st.declaredValueNgn) || 0),
+      0,
+    );
+
     const breakdown = await this.pricing.computePrice({
       vehicleType:    dto.vehicleType,
       categoryCode:   dto.categoryCode,
       km:             dto.km,
       stopCount:      dto.stops.length,
       weightKg:       runWeightKg,
+      /**
+       * declaredValueNgn and pickupCoords were both missing here, and
+       * the omission cost the RIDER rather than the sender (the pinned
+       * quote wins for the sender, so nobody saw it on an invoice).
+       *
+       * Without pickupCoords the engine cannot detect the pickup state,
+       * so resolveRegion falls back to the national rate multiplier and
+       * every Lagos business run priced driverEarnings at up-country
+       * rates. Without declaredValueNgn there is no high-value premium,
+       * so the driver's card-set share of it was zero on exactly the
+       * runs that carry the most risk. The stored priceBreakdown also
+       * stopped summing to the stored price, and any booking that
+       * arrived without a pin was charged the lower recomputed number.
+       *
+       * The customer path had the identical bug and was fixed on
+       * 2026-08-21 (screen 2,134, charge 1,668). This is the same fix on
+       * the business path, which was missed at the time.
+       *
+       * latitude/longitude, NOT lat/lng: the engine reads
+       * pickupCoords.latitude, and the mismatch is silent because the
+       * field is optional.
+       */
+      declaredValueNgn: declaredTotalNgn > 0 ? declaredTotalNgn : undefined,
+      pickupCoords: { latitude: dto.pickupLat, longitude: dto.pickupLng },
+      /**
+       * dropoffCoords is deliberately NOT passed. A run has N stops and
+       * no single dropoff, and send-package.tsx does not send one when
+       * it quotes, so inventing one here would apply a zone-surcharge
+       * tier the sender was never quoted and re-open the same
+       * quote-versus-charge gap in the other direction. Zone tiering for
+       * multi-stop runs needs a decision about which stop defines the
+       * corridor before either side can send it.
+       */
       estimatedDwellMinutes: totalDwellMin,
       scheduledAt:    dto.scheduledAt ? new Date(dto.scheduledAt) : (quotePin?.pricedAt ?? undefined),
       isInterState:   dto.isInterState,

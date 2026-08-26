@@ -246,6 +246,61 @@ export class MailService {
     await this.send(to, 'Reset your SEIRS password', html);
   }
 
+  // ── Staff invite ────────────────────────────────────────────────────────────
+
+  /**
+   * Onboarding email for a newly created admin.
+   *
+   * createAdmin used to mint a password-reset token, note in a comment
+   * that the new staff member would "reset via the email-link flow on
+   * first login", and then send nothing. The token was written and
+   * thrown away, so the only way to actually onboard someone was for the
+   * creating admin to read a generated password off their screen and
+   * send it over WhatsApp: a dashboard credential, in plain text, in a
+   * chat history, for the most privileged accounts we issue.
+   *
+   * Deliberately NOT sendPasswordReset. That template opens with "we
+   * received a request to reset the password on your account", which a
+   * new hire never made, and it states 30 minutes while a staff invite
+   * is minted for an hour. An invite that misdescribes itself gets read
+   * as phishing and ignored, which is the same outcome as sending
+   * nothing.
+   *
+   * The link carries the credential, so no password is ever put in the
+   * body: the recipient sets their own and we never know it.
+   */
+  async sendAdminInvite(to: string, name: string, token: string, accountId?: string | null) {
+    const setUrl = `${this.cfg.get<string>('ADMIN_WEB_URL', 'https://seirs-admin.vercel.app')}/reset-password?token=${token}`;
+
+    const html = baseTemplate(`
+      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">You've been added to the SEIRS team</h2>
+      <p>Hi ${name},</p>
+      <p>An administrator has created a SEIRS staff account for you. Choose your password below and you're in.</p>
+      ${primaryButton(setUrl, 'Set My Password')}
+      <p style="font-size:13px;color:#6B7280;margin:4px 0 20px">
+        This link works once and expires in <strong>1 hour</strong>.
+        If it has expired, ask the administrator who added you to send a new invite.
+        If the button doesn't open, copy this link into your browser:<br/>
+        <a href="${setUrl}" style="color:${BRAND_BLUE};font-size:12px;word-break:break-all">${setUrl}</a>
+      </p>
+      ${accountId ? `<p style="font-size:13px;color:#6B7280;margin:0 0 20px">
+        Your SEIRS staff ID is <strong style="color:#111827">${accountId}</strong>.
+        It identifies you on every action you take in the dashboard.
+      </p>` : ''}
+      <table width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:14px 16px">
+          <p style="margin:0;font-size:13px;color:#6B7280;line-height:1.5">
+            <strong style="color:#111827">Weren't expecting this?</strong>
+            Do not open the link, and tell us at once so we can close the account.
+            Never share this link. SEIRS staff will never ask you for it, or for your password.
+          </p>
+        </td>
+      </tr></table>
+    `);
+
+    await this.send(to, 'Your SEIRS staff account', html);
+  }
+
   // ── Welcome ─────────────────────────────────────────────────────────────────
 
   async sendWelcome(to: string, name: string) {

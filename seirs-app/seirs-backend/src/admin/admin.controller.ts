@@ -50,6 +50,20 @@ export class AdminController {
   @Post('demo-data/seed')
   seedDemoData() { return this.demoDataService.seedDemoAccounts(); }
 
+  // POST /api/v1/admin/demo-data/seed-cohort
+  // A full cast for end-to-end scenario testing: 10 customers, 5 riders,
+  // 5 businesses of which 3 hold packages as partner stores.
+  //
+  // Registering them through the app is impossible without a person at a
+  // mailbox: the signup OTP is bcrypt-hashed the instant it is generated,
+  // so no route and no query can read a code back out. These accounts are
+  // never emailed, so there is no verification to skip.
+  //
+  // Every account carries isDemo, the flag every money and dispatch guard
+  // checks. Returns one rotating password, once. Never runs automatically.
+  @Post('demo-data/seed-cohort')
+  seedScenarioCohort() { return this.demoDataService.seedScenarioCohort(); }
+
   /**
    * Set a user's payout bank account on their behalf.
    *

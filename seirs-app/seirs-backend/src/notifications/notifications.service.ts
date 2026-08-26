@@ -235,11 +235,30 @@ export class NotificationsService {
     );
   }
 
+  /**
+   * Earnings credit for a DRIVER. Drivers and partner stores are the only
+   * accounts on the platform that hold a withdrawable balance.
+   *
+   * This said "credited to your wallet", which is wrong twice. SEIRS is
+   * not a bank and senders never hold naira balances, so "wallet" is a
+   * word the customer side must never see, and the same helper firing at
+   * a sender would have told them they had money with us. On the driver
+   * side it is still the wrong name: their money lives in the earnings
+   * ledger they withdraw from, which is what the driver app calls it.
+   *
+   * Two decimals, not rounded naira: the notification has to reconcile
+   * against the earnings ledger line it refers to, and whole naira makes
+   * the two disagree by up to 99 kobo.
+   */
   notifyPaymentReceived(driverId: string, amount: number) {
+    const naira = Number(amount ?? 0).toLocaleString('en-NG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
     return this.create(
       driverId,
-      'Payment Received!',
-      `₦${Math.round(amount).toLocaleString()} has been credited to your wallet.`,
+      'Earnings Added',
+      `₦${naira} has been added to your earnings. You can withdraw it from your Earnings tab.`,
       NotificationType.PAYMENT_RECEIVED,
     );
   }

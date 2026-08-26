@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from './role.entity';
 import { User, UserRole } from '../users/user.entity';
-import { SYSTEM_ROLES, PERMISSION_CATALOGUE } from './roles.seed';
+import { SYSTEM_ROLES, PERMISSION_CATALOGUE, SYSTEM_ROLE_RECONCILE } from './roles.seed';
 
 @Injectable()
 export class RolesService implements OnModuleInit {
@@ -23,12 +23,55 @@ export class RolesService implements OnModuleInit {
     const existing  = await this.rolesRepo.find({ select: ['slug'] });
     const existingSlugs = new Set(existing.map(r => r.slug));
     const toInsert = SYSTEM_ROLES.filter(r => !existingSlugs.has(r.slug!));
-    if (toInsert.length === 0) {
+    if (toInsert.length > 0) {
+      await this.rolesRepo.save(toInsert.map(r => this.rolesRepo.create(r)));
+      this.logger.log(`Seeded ${toInsert.length} system roles`);
+    } else {
       this.logger.log(`Roles already seeded (${existing.length} present)`);
-      return;
     }
-    await this.rolesRepo.save(toInsert.map(r => this.rolesRepo.create(r)));
-    this.logger.log(`Seeded ${toInsert.length} system roles`);
+    await this.reconcileSystemRoles();
+  }
+
+  /**
+   * Apply SYSTEM_ROLE_RECONCILE to system roles that already exist.
+   *
+   * This used to be impossible: the seeder returned early the moment it
+   * found any role row, so editing SYSTEM_ROLES only ever affected a
+   * database that had never booted. Every deployed environment kept the
+   * permission list it was first seeded with, which is why the founder's
+   * Role Management screen still shows Support Agent without the Support
+   * Inbox, the one page that role exists to work in.
+   *
+   * Not a blanket overwrite: see the note on SYSTEM_ROLE_RECONCILE for
+   * why each grant and the single revoke are safe to apply without
+   * asking. Custom roles and wildcard holders are left alone, and a role
+   * that already matches is not written at all, so this is a no-op on
+   * every boot after the first.
+   */
+  private async reconcileSystemRoles() {
+    let changed = 0;
+    for (const entry of SYSTEM_ROLE_RECONCILE) {
+      const role = await this.rolesRepo.findOne({ where: { slug: entry.slug } });
+      // Only system roles. A custom role that happens to share a slug is
+      // somebody's own configuration and is not ours to edit.
+      if (!role || !role.isSystemRole) continue;
+
+      const perms = new Set(Array.isArray(role.permissions) ? role.permissions : []);
+      // A wildcard already covers every page, present and future.
+      if (perms.has('*')) continue;
+
+      const before = perms.size;
+      let removed = 0;
+      for (const slug of entry.grant  ?? []) perms.add(slug);
+      for (const slug of entry.revoke ?? []) { if (perms.delete(slug)) removed++; }
+      if (perms.size === before && removed === 0) continue;
+
+      await this.rolesRepo.update(role.id, { permissions: Array.from(perms).sort() });
+      changed++;
+    }
+    if (changed > 0) {
+      this.logger.log(`Reconciled permissions on ${changed} system role(s)`);
+    }
   }
 
   // ── Reads ──────────────────────────────────────────────────────────────

@@ -126,7 +126,7 @@ export class MatchingService {
         const scored = this.scoreDriver(driver, delivery, premiumSet.has(driver.id), corridorCfg);
         // Declared-trip route match: both cities named in the booking.
         const trip = interTrips.find((tr: any) => String(tr.driverId ?? tr.driver?.id) === driver.id);
-        if (trip) {
+        if (trip && this.tripCanCarry(trip, delivery)) {
           const up = String(delivery.pickupAddress ?? '').toLowerCase();
           const dn = String(delivery.dropoffAddress ?? '').toLowerCase();
           if (up.includes(String(trip.fromCity).toLowerCase()) && dn.includes(String(trip.toCity).toLowerCase())) {
@@ -144,6 +144,46 @@ export class MatchingService {
     );
 
     return scored[0] ?? null;
+  }
+
+  /**
+   * Can this declared trip actually take this package?
+   *
+   * The route-match bonus used to be handed out on the city names alone,
+   * so the two switches the driver app puts in front of the rider both
+   * did nothing:
+   *
+   *   acceptsPackages  a rider who set "Carry packages: OFF" was still
+   *                    boosted to the top of the pool for package jobs.
+   *                    The setting prevented nothing, which is worse
+   *                    than not offering it: they declined and we
+   *                    prioritised them anyway.
+   *   spareCapacityKg  the number was collected at declaration and then
+   *                    never compared to anything, so a trip with 5kg
+   *                    free outranked everyone for a 40kg load.
+   *
+   * A failed check only withholds the bonus. The driver stays in the
+   * pool on their ordinary score, because a trip that cannot take THIS
+   * package may still be a perfectly good match on proximity alone, and
+   * spareCapacityKg is a rider's own estimate rather than a certified
+   * payload rating. The vehicle payload cap is enforced elsewhere, at
+   * booking.
+   *
+   * Unknown weight is treated as fitting: refusing to boost because a
+   * field is null would quietly disable the corridor feature on every
+   * booking that predates the column.
+   */
+  private tripCanCarry(trip: any, delivery: any): boolean {
+    if (trip.acceptsPackages === false) return false;
+
+    const spareKg = Number(trip.spareCapacityKg ?? 0);
+    const loadKg  = Number(delivery.weightKg ?? 0);
+    // A trip that declared no spare capacity is not refusing packages,
+    // it simply never filled the field in. Only compare when the rider
+    // gave us a real number to compare against.
+    if (spareKg > 0 && loadKg > spareKg) return false;
+
+    return true;
   }
 
   /**
