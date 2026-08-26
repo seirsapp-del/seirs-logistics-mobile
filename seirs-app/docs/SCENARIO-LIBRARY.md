@@ -1010,3 +1010,92 @@ Needs bank details and a real transfer.
 **Status: FAILED** - findings E-M14, C-M3
 
 The partner directory and public tracking PASSED. The rate card leaks the founder's full legal name, internal pricing commentary, and the complete driver cost basis for all seven vehicles: the unit economics, free to any competitor.
+
+---
+
+## Cohort run, 26 August 2026
+
+The first multi-actor run against production. Twenty accounts were seeded
+server-side rather than registered through the app, because the signup
+OTP is bcrypt-hashed the instant it is generated: the plaintext exists
+for one function call and is then unreadable by any route, query or
+amount of database access. Seeded accounts are never emailed, so
+`emailVerified` is true because there was no verification to skip.
+
+**The cast:** 10 customers, 5 riders, 5 businesses of which 3 hold
+packages as partner stores. Names span all three tribes. Every account
+carries `isDemo`, the flag every money and dispatch guard checks, so the
+cohort cannot take real money or be dispatched real work.
+
+**The ceiling this creates, and it is deliberate:** the payment path
+cannot be exercised. Everything downstream of funding (dispatch, custody
+records, the driver side, chat, disputes) sits behind an escrow gate that
+`isDemo` correctly refuses to open. Those need one real watched booking.
+
+### X1 Three account types sign in
+*The whole cast* - Customer, rider and business owner each authenticate
+with the cohort password. Proves seeding produced usable accounts with
+correct SEIRS ID prefixes.
+**Result: pass.** CUST-, DRV- and BIZ- prefixes all correct.
+
+### X2 Price a Lagos package
+*Chiamaka, customer* - Ikeja to Victoria Island, 28.8 km. Every vehicle
+class should return a price with a pinned quote.
+**Result: pass.**
+
+### X3 Book it unfunded
+*Chiamaka* - A booking with no payment should persist as pending with
+`paymentHeldAt` null, not as a live job.
+**Result: pass.**
+
+### X4 Is an unfunded job offered to riders?
+*Segun, rider* - The available-jobs feed must not contain a booking
+nobody has paid for. This is the escrow gate, and it is the single most
+important guard in dispatch.
+**Result: pass.** The unfunded booking is invisible to every rider.
+
+### X5 Read another customer's delivery
+*Bolanle, customer* - Fetching a delivery belonging to Chiamaka must fail
+in a way that does not confirm the record exists.
+**Result: pass.** 404 rather than 403, so the response does not leak
+existence.
+
+### X6 What a rider learns about a customer
+*Segun, rider* - Inconclusive: no rider was assigned, because assignment
+requires funding. Re-run after a real booking.
+
+### X7 High-value premium is disclosed
+*Ibrahim, customer* - A parcel declared at NGN 500,000 should carry the
+premium visibly, not silently.
+**Result: pass.** NGN 4,367.94 becomes NGN 7,491.53.
+
+### X8 High-value gate without leaking the amount
+*Ibrahim* - The recipient must be ID-verified, and the public tracking
+page must never reveal what a parcel is worth.
+**Result: pass.** The flag is exposed, the amount never is. NGN 2 of
+documents correctly does not trigger it.
+
+### X9 A customer raises a support ticket
+*Ngozi, customer* - A ticket linked to a delivery, with a first message.
+**Result: pass.** Created open, `userAccountType` customer, linked
+correctly.
+
+### X10 Does it reach the support queue?
+*Support agent* - Blocked on an expired admin token. Worth recording how
+it failed: the expired token returned 401, and the parser rendered that
+as "0 rows", which is indistinguishable from an empty queue. A false
+negative manufactured by the test harness rather than the product.
+
+### X11 Business multi-package run
+*Amaka, partner store owner* - Two parcels, one payment, each with its
+own receiver and its own public tracking code.
+**Result: pass.** `SEIRS-9FPYY3MWP` carrying `SRS-S8FUCZMS` for Tunde and
+`SRS-A3HF4EQG` for Ngozi, correct sequence, run priced NGN 3,614.87 with
+NGN 2,677.67 to the rider, `dropoffLat` correctly null because a run has
+no single dropoff.
+
+### Still unreachable without a real payment
+Dispatch and rider assignment, handoff records, the scan-then-sign
+custody flow, proof of delivery, chat between rider and sender, the
+failed-delivery exception paths, refunds at each cancellation stage, and
+payout. All sit behind funding.
