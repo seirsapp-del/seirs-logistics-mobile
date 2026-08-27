@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Resend } from 'resend';
+import { EmailTemplatesService } from './email-templates.service';
 
 // Brand colors per Master Spec V7 §G1 (Navy + Sky Blue, no orange).
 const BRAND_BLUE = '#3A7BD5';
@@ -102,7 +103,10 @@ export class MailService {
   private resend: Resend | null = null;
   private smtpTransporter: nodemailer.Transporter | null = null;
 
-  constructor(private readonly cfg: ConfigService) {
+  constructor(
+    private readonly cfg: ConfigService,
+    private readonly templates: EmailTemplatesService,
+  ) {
     // ── Resend HTTP API (preferred - works on Railway/Heroku/etc) ────────────
     // Cloud platforms commonly block outbound SMTP (port 465/587), so we use
     // Resend's HTTPS API directly. No domain verification needed if you keep
@@ -151,6 +155,75 @@ export class MailService {
       <pre style="white-space:pre-wrap;font-family:inherit;line-height:1.5">${escaped}</pre>
     </div>`;
     return this.send(to, subject, html);
+  }
+
+  /**
+   * Send an admin-editable email, falling back to the version compiled
+   * into this file.
+   *
+   * The platform already had the whole editing surface: an
+   * email_templates table, a service with render(), an admin API and a
+   * working editor page at /email-templates with a preview pane. None of
+   * it was connected to sending. MailService never imported
+   * EmailTemplatesService, so an admin could edit the welcome email,
+   * save it, watch it persist, and every welcome email still went out
+   * as the hardcoded string here (2026-08-27). The page's own subtitle
+   * promised edits "take effect immediately", which was not true.
+   *
+   * A stored row wins; if there is no row, no active row, or the lookup
+   * throws, the built-in copy sends instead. So editing is additive and
+   * an empty table behaves exactly as before.
+   *
+   * The stored bodyHtml is an inner fragment, matching SEED_TEMPLATES,
+   * so it gets the same branded shell as everything else and an admin
+   * cannot accidentally break the header, the logo or the footer.
+   */
+  /**
+   * Send one template to one address, exactly as a customer would get it.
+   *
+   * The founder's ask was to SEE what lands in an inbox. The admin page
+   * had a preview pane, but it was a client-side string substitution
+   * dropped into a div, which shows neither the branded shell nor what
+   * Gmail actually does to the markup. The only honest preview of an
+   * email is a delivered email, so this sends a real one, through the
+   * real transport, using the real template path.
+   */
+  async sendTemplateTest(
+    key: string,
+    to: string,
+    vars: Record<string, string | number>,
+  ): Promise<{ delivered: boolean; usedOverride: boolean; subject: string }> {
+    const row = await this.templates.render(key, vars);
+    if (row) {
+      await this.send(to, `[TEST] ${row.subject}`, baseTemplate(row.html));
+      return { delivered: true, usedOverride: true, subject: row.subject };
+    }
+    // No stored row: show what the built-in copy looks like, so a test
+    // on an unedited template is still a true preview of what sends.
+    const seeded = await this.templates.seedBodyFor(key);
+    if (!seeded) {
+      throw new BadRequestException(`No template named '${key}'.`);
+    }
+    await this.send(to, `[TEST] ${seeded.subject}`, baseTemplate(seeded.bodyHtml));
+    return { delivered: true, usedOverride: false, subject: seeded.subject };
+  }
+
+  private async deliverWithOverride(
+    key: string,
+    vars: Record<string, string | number>,
+    to: string,
+    fallbackSubject: string,
+    fallbackHtml: string,
+  ) {
+    try {
+      const row = await this.templates.render(key, vars);
+      if (row) return this.send(to, row.subject, baseTemplate(row.html));
+    } catch (e: any) {
+      this.logger.warn(
+        `Template '${key}' lookup failed (${e?.message}); sending the built-in copy.`,
+      );
+    }
+    return this.send(to, fallbackSubject, fallbackHtml);
   }
 
   private async send(to: string, subject: string, html: string) {
@@ -203,7 +276,7 @@ export class MailService {
       <p style="font-size:13px;color:#9CA3AF">If you didn't create a Seirs account, you can safely ignore this email.</p>
     `);
 
-    await this.send(to, 'Your Seirs verification code', html);
+    await this.deliverWithOverride('email_verification', { name, otp }, to, 'Your Seirs verification code', html);
   }
 
   // ── Password reset ──────────────────────────────────────────────────────────
@@ -243,7 +316,7 @@ export class MailService {
       </tr></table>
     `);
 
-    await this.send(to, 'Reset your SEIRS password', html);
+    await this.deliverWithOverride('password_reset', { name, resetUrl }, to, 'Reset your SEIRS password', html);
   }
 
   // ── Staff invite ────────────────────────────────────────────────────────────
@@ -298,7 +371,7 @@ export class MailService {
       </tr></table>
     `);
 
-    await this.send(to, 'Your SEIRS staff account', html);
+    await this.deliverWithOverride('admin_invite', { name }, to, 'Your SEIRS staff account', html);
   }
 
   // ── Welcome ─────────────────────────────────────────────────────────────────
@@ -317,7 +390,7 @@ export class MailService {
       <p style="font-size:13px;color:#6B7280">Download the Seirs app to get started.</p>
     `);
 
-    await this.send(to, 'Welcome to Seirs Logistics!', html);
+    await this.deliverWithOverride('welcome', { name }, to, 'Welcome to Seirs Logistics!', html);
   }
 
   // ── Delivery assigned ────────────────────────────────────────────────────────
@@ -344,7 +417,7 @@ export class MailService {
       <p style="font-size:13px;color:#6B7280">Open the Seirs app to track your delivery in real time.</p>
     `);
 
-    await this.send(to, `Driver assigned for ${trackingCode}`, html);
+    await this.deliverWithOverride('delivery_assigned', { name, trackingCode, driverName, vehicleType }, to, `Driver assigned for ${trackingCode}`, html);
   }
 
   // ── Delivery picked up ───────────────────────────────────────────────────────
@@ -357,7 +430,7 @@ export class MailService {
       <p style="font-size:13px;color:#6B7280">Track your delivery in the Seirs app for live updates.</p>
     `);
 
-    await this.send(to, `Package picked up - ${trackingCode}`, html);
+    await this.deliverWithOverride('delivery_picked_up', { name, trackingCode }, to, `Package picked up - ${trackingCode}`, html);
   }
 
   // ── Delivery completed ───────────────────────────────────────────────────────
@@ -371,7 +444,7 @@ export class MailService {
       <p style="font-size:13px;color:#9CA3AF;margin-top:24px">Thank you for choosing Seirs Logistics.</p>
     `);
 
-    await this.send(to, `Delivered - ${trackingCode}`, html);
+    await this.deliverWithOverride('delivery_complete', { name, trackingCode }, to, `Delivered - ${trackingCode}`, html);
   }
 
   // Receipt resend - triggered by the customer tapping "Email receipt" on
@@ -401,7 +474,7 @@ export class MailService {
       <p style="font-size:13px;color:#9CA3AF">Keep this email for your records. Contact us from the Help centre if anything looks wrong.</p>
     `);
 
-    await this.send(to, `Receipt - ${trackingCode}`, html);
+    await this.deliverWithOverride('delivery_receipt', { name, trackingCode, totalNaira, paymentMethod }, to, `Receipt - ${trackingCode}`, html);
   }
 
   // ── Delivery failed ──────────────────────────────────────────────────────────
@@ -415,7 +488,7 @@ export class MailService {
       <p>Please <a href="${WEB}/contact" style="color:${BRAND_BLUE}">contact support</a> if you need help.</p>
     `);
 
-    await this.send(to, `Delivery failed - ${trackingCode}`, html);
+    await this.deliverWithOverride('delivery_failed', { name, trackingCode }, to, `Delivery failed - ${trackingCode}`, html);
   }
 
   // ── Driver approved ──────────────────────────────────────────────────────────
@@ -434,7 +507,7 @@ export class MailService {
       <p style="font-size:13px;color:#9CA3AF">Earn more with Seirs - fast payouts, real-time support.</p>
     `);
 
-    await this.send(to, 'Your Seirs driver account is approved!', html);
+    await this.deliverWithOverride('driver_approved', { name }, to, 'Your Seirs driver account is approved!', html);
   }
 
   // ── Driver rejected ──────────────────────────────────────────────────────────
@@ -449,7 +522,7 @@ export class MailService {
       <p>If you think this is a mistake, <a href="${WEB}/contact" style="color:${BRAND_BLUE}">contact support</a>.</p>
     `);
 
-    await this.send(to, 'Update on your Seirs driver application', html);
+    await this.deliverWithOverride('driver_rejected', { name, reason: reason ?? '' }, to, 'Update on your Seirs driver application', html);
   }
 
   // ── Handoff OTP (Spec V8 §1.17 - recipient verification at pickup) ──────────
@@ -468,6 +541,6 @@ export class MailService {
       <p style="font-size:13px;color:#9CA3AF">Never share this code over the phone with anyone claiming to be Seirs support - we will never ask for it.</p>
     `);
 
-    await this.send(to, 'Your Seirs pickup verification code', html);
+    await this.deliverWithOverride('handoff_otp', { name, otp, deliveryRef }, to, 'Your Seirs pickup verification code', html);
   }
 }

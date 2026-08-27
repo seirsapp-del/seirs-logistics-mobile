@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Mail, Save, Eye, AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
+import { Mail, Save, Eye, AlertCircle, CheckCircle2, Loader2, RefreshCw, Send } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 // Spec V8 §3.13 - admin-editable transactional email templates.
@@ -27,6 +27,8 @@ export default function EmailTemplatesPage() {
   const [saved,     setSaved]     = useState(false);
   const [error,     setError]     = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -72,6 +74,28 @@ export default function EmailTemplatesPage() {
 
   // Cheap preview: substitute the first sample value for each var so
   // admins can see what the email roughly looks like.
+  /**
+   * The only honest preview of an email is a delivered email. The pane
+   * below shows the fragment in a div, which is not what Gmail renders:
+   * it has none of the branded shell and none of the client's own
+   * rewriting. This sends the real thing through the real transport.
+   */
+  const sendTest = async () => {
+    if (!activeKey) return;
+    setTesting(true);
+    setTestMsg(null);
+    try {
+      const r = await adminApi.emailTemplates.testSend(activeKey);
+      setTestMsg(
+        `Sent to your inbox using the ${r.usedOverride ? 'saved override' : 'built-in default'}.`,
+      );
+    } catch (e: any) {
+      setTestMsg(e?.message || 'Could not send. Check the mail transport is configured.');
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const renderedPreview = () => {
     if (!active_t) return '';
     let out = bodyHtml;
@@ -201,6 +225,14 @@ export default function EmailTemplatesPage() {
                     {saving ? 'Saving…' : saved ? 'Saved' : 'Save override'}
                   </button>
                   <button
+                    onClick={sendTest}
+                    disabled={testing}
+                    className="flex items-center gap-2 border border-[#E5E7EB] text-[#0F2B4C] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {testing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                    {testing ? 'Sending…' : 'Send test to my inbox'}
+                  </button>
+                  <button
                     onClick={() => setShowPreview(p => !p)}
                     className="flex items-center gap-2 border border-[#E5E7EB] text-[#0F2B4C] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50"
                   >
@@ -208,6 +240,10 @@ export default function EmailTemplatesPage() {
                     {showPreview ? 'Hide preview' : 'Preview'}
                   </button>
                 </div>
+
+                {testMsg && (
+                  <p className="text-xs text-[#6B7280] mt-2">{testMsg}</p>
+                )}
 
                 {showPreview && (
                   <div className="border border-[#E5E7EB] rounded-lg overflow-hidden">

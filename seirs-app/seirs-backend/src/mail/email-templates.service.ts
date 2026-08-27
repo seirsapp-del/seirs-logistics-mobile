@@ -21,6 +21,25 @@ export interface TemplateSeed {
   vars:     string[];
 }
 
+
+/**
+ * Stand-in values for a test send. Real Nigerian names across the three
+ * major groups, because a preview full of "John Doe" tells the founder
+ * nothing about how a real name sits in the layout.
+ */
+const SAMPLE_VARS: Record<string, string> = {
+  name:         'Chinelo Okafor',
+  driverName:   'Ibrahim Musa',
+  otp:          '284915',
+  trackingCode: 'SRS-9CJ7LJP2',
+  deliveryRef:  'SRS-9CJ7LJP2',
+  resetUrl:     'https://seirs.co/reset-password?token=sample',
+  vehicleType:  'motorcycle',
+  totalNaira:   '2,609.06',
+  paymentMethod:'Card',
+  reason:       'Your vehicle documents had expired.',
+};
+
 export const SEED_TEMPLATES: TemplateSeed[] = [
   {
     key:      'email_verification',
@@ -129,6 +148,22 @@ export class EmailTemplatesService implements OnModuleInit {
     return {
       subject: this.interpolate(row.subject,  vars),
       html:    this.interpolate(row.bodyHtml, vars),
+    };
+  }
+
+  /**
+   * The built-in copy for a key, interpolated with sample values, so a
+   * test send on a template nobody has edited still shows what really
+   * goes out rather than an empty result.
+   */
+  async seedBodyFor(key: string): Promise<{ subject: string; bodyHtml: string } | null> {
+    const seed = SEED_TEMPLATES.find(t => t.key === key);
+    if (!seed) return null;
+    const sample: Record<string, string> = {};
+    for (const v of seed.vars ?? []) sample[v] = SAMPLE_VARS[v] ?? `{{${v}}}`;
+    return {
+      subject:  this.interpolate(seed.subject,  sample),
+      bodyHtml: this.interpolate(seed.bodyHtml, sample),
     };
   }
 

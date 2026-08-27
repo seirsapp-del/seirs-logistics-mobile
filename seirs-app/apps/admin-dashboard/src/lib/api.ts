@@ -357,6 +357,11 @@ export const adminApi = {
       defaults: { subject: string; bodyHtml: string };
       override: { subject: string; bodyHtml: string; active: boolean; updatedAt: string } | null;
     }>>('/admin/email-templates'),
+    testSend: (key: string, to?: string) =>
+      req<{ delivered: boolean; usedOverride: boolean; subject: string }>(
+        `/admin/email-templates/${key}/test-send`,
+        { method: 'POST', body: JSON.stringify({ to }) },
+      ),
     update: (key: string, body: { subject?: string; bodyHtml?: string; active?: boolean }) =>
       req<any>(`/admin/email-templates/${key}`, { method: 'PATCH', body: JSON.stringify(body) }),
   },
