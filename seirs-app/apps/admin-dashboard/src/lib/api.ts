@@ -355,14 +355,20 @@ export const adminApi = {
       name:     string;
       vars:     string[];
       defaults: { subject: string; bodyHtml: string };
-      override: { subject: string; bodyHtml: string; active: boolean; updatedAt: string } | null;
+      override: {
+        subject: string; bodyHtml: string; active: boolean; updatedAt: string;
+        bannerImageUrl?: string | null; accentColor?: string | null;
+      } | null;
     }>>('/admin/email-templates'),
     testSend: (key: string, to?: string) =>
       req<{ delivered: boolean; usedOverride: boolean; subject: string }>(
         `/admin/email-templates/${key}/test-send`,
         { method: 'POST', body: JSON.stringify({ to }) },
       ),
-    update: (key: string, body: { subject?: string; bodyHtml?: string; active?: boolean }) =>
+    update: (key: string, body: {
+      subject?: string; bodyHtml?: string; active?: boolean;
+      bannerImageUrl?: string | null; accentColor?: string | null;
+    }) =>
       req<any>(`/admin/email-templates/${key}`, { method: 'PATCH', body: JSON.stringify(body) }),
   },
 

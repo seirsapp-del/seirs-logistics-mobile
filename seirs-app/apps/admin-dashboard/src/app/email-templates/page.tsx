@@ -13,7 +13,10 @@ interface TemplateRow {
   name:     string;
   vars:     string[];
   defaults: { subject: string; bodyHtml: string };
-  override: { subject: string; bodyHtml: string; active: boolean; updatedAt: string } | null;
+  override: {
+    subject: string; bodyHtml: string; active: boolean; updatedAt: string;
+    bannerImageUrl?: string | null; accentColor?: string | null;
+  } | null;
 }
 
 export default function EmailTemplatesPage() {
@@ -22,6 +25,8 @@ export default function EmailTemplatesPage() {
   const [subject,   setSubject]   = useState('');
   const [bodyHtml,  setBodyHtml]  = useState('');
   const [active,    setActive]    = useState(true);
+  const [bannerUrl, setBannerUrl] = useState('');
+  const [accent,    setAccent]    = useState('');
   const [loading,   setLoading]   = useState(true);
   const [saving,    setSaving]    = useState(false);
   const [saved,     setSaved]     = useState(false);
@@ -45,6 +50,8 @@ export default function EmailTemplatesPage() {
 
   const selectTemplate = (t: TemplateRow) => {
     setActiveKey(t.key);
+    setBannerUrl(t.override?.bannerImageUrl ?? '');
+    setAccent(t.override?.accentColor ?? '');
     setSubject(t.override?.subject  ?? t.defaults.subject);
     setBodyHtml(t.override?.bodyHtml ?? t.defaults.bodyHtml);
     setActive(t.override?.active ?? true);
@@ -61,7 +68,11 @@ export default function EmailTemplatesPage() {
     setSaving(true);
     setError(null);
     try {
-      await adminApi.emailTemplates.update(activeKey, { subject, bodyHtml, active });
+      await adminApi.emailTemplates.update(activeKey, {
+        subject, bodyHtml, active,
+        bannerImageUrl: bannerUrl.trim() || null,
+        accentColor:    accent.trim()    || null,
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
       load();
@@ -214,6 +225,55 @@ export default function EmailTemplatesPage() {
                   />
                   Override is <b>active</b> - uncheck to revert to in-code default without losing this draft
                 </label>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#6B7280] mb-1">
+                      Banner image URL
+                    </label>
+                    <input
+                      value={bannerUrl}
+                      onChange={(e) => setBannerUrl(e.target.value)}
+                      placeholder="https://seirs.co/banners/christmas.png"
+                      className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm"
+                    />
+                    <p className="text-[11px] text-[#9CA3AF] mt-1">
+                      Shown under the header. Must be a hosted https image: Gmail
+                      strips inline SVG and data URIs.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#6B7280] mb-1">
+                      Header colour
+                    </label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={accent || '#0F2B4C'}
+                        onChange={(e) => setAccent(e.target.value)}
+                        className="h-9 w-12 border border-[#E5E7EB] rounded cursor-pointer"
+                      />
+                      <input
+                        value={accent}
+                        onChange={(e) => setAccent(e.target.value)}
+                        placeholder="#0F2B4C"
+                        className="flex-1 border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm font-mono"
+                      />
+                      {accent && (
+                        <button
+                          onClick={() => setAccent('')}
+                          className="text-xs text-[#6B7280] underline"
+                        >
+                          reset
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-[#9CA3AF] mt-1">
+                      Leave empty for SEIRS navy. Use it so a Christmas or
+                      promotional send does not arrive looking like a receipt.
+                    </p>
+                  </div>
+                </div>
 
                 <div className="flex gap-2">
                   <button

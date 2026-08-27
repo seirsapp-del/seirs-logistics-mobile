@@ -26,7 +26,10 @@ export class EmailTemplatesController {
   @Patch(':key')
   upsert(
     @Param('key') key: string,
-    @Body() body: { subject?: string; bodyHtml?: string; active?: boolean },
+    @Body() body: {
+      subject?: string; bodyHtml?: string; active?: boolean;
+      bannerImageUrl?: string | null; accentColor?: string | null;
+    },
     @CurrentUser() user: User,
   ) {
     return this.svc.upsertOverride(key, { ...body, editedByUserId: user.id });

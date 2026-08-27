@@ -27,7 +27,15 @@ const LOGO_WHITE_URL = `${WEB}/seirs-logo-white.png`;
  * not have an account: telling them they do is both wrong and the sort
  * of thing that makes a real email look like a phish.
  */
-function baseTemplate(content: string, footerNote?: string): string {
+function baseTemplate(
+  content: string,
+  footerNote?: string,
+  opts?: { bannerImageUrl?: string | null; accentColor?: string | null },
+): string {
+  const headerBg = opts?.accentColor || BRAND_NAVY;
+  const banner = opts?.bannerImageUrl
+    ? `<tr><td style="padding:0"><img src="${opts.bannerImageUrl}" alt="" width="560" style="display:block;border:0;width:100%;max-width:560px;height:auto"/></td></tr>`
+    : '';
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -38,7 +46,7 @@ function baseTemplate(content: string, footerNote?: string): string {
           <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;max-width:560px;width:100%">
             <!-- Header: okada mark + wordmark lockup (founder 2026-08-10) -->
             <tr>
-              <td style="background:${BRAND_NAVY};padding:20px 32px">
+              <td style="background:${headerBg};padding:20px 32px">
                 <table cellpadding="0" cellspacing="0"><tr>
                   <td style="vertical-align:middle;padding-right:12px">
                     <img src="${LOGO_WHITE_URL}" width="38" height="38" alt="SEIRS" style="display:block;border:0"/>
@@ -50,6 +58,7 @@ function baseTemplate(content: string, footerNote?: string): string {
                 </tr></table>
               </td>
             </tr>
+            ${banner}
             <!-- Body -->
             <tr>
               <td style="padding:32px;color:#111827;font-size:15px;line-height:1.6">
@@ -195,7 +204,10 @@ export class MailService {
   ): Promise<{ delivered: boolean; usedOverride: boolean; subject: string }> {
     const row = await this.templates.render(key, vars);
     if (row) {
-      await this.send(to, `[TEST] ${row.subject}`, baseTemplate(row.html));
+      await this.send(to, `[TEST] ${row.subject}`, baseTemplate(row.html, undefined, {
+        bannerImageUrl: row.bannerImageUrl,
+        accentColor:    row.accentColor,
+      }));
       return { delivered: true, usedOverride: true, subject: row.subject };
     }
     // No stored row: show what the built-in copy looks like, so a test
@@ -217,7 +229,12 @@ export class MailService {
   ) {
     try {
       const row = await this.templates.render(key, vars);
-      if (row) return this.send(to, row.subject, baseTemplate(row.html));
+      if (row) {
+        return this.send(to, row.subject, baseTemplate(row.html, undefined, {
+          bannerImageUrl: row.bannerImageUrl,
+          accentColor:    row.accentColor,
+        }));
+      }
     } catch (e: any) {
       this.logger.warn(
         `Template '${key}' lookup failed (${e?.message}); sending the built-in copy.`,

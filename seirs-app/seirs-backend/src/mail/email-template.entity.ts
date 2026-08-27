@@ -35,6 +35,25 @@ export class EmailTemplate {
   @Column({ default: true })
   active: boolean;
 
+  /**
+   * A hosted image shown above the message body. Founder 2026-08-27:
+   * "i will like if we can edit the images or a banners".
+   *
+   * Must be an https URL to a real file, not a data URI: Gmail strips
+   * inline SVG and data-URI images, which is the same reason the header
+   * logo is a hosted PNG rather than embedded.
+   */
+  @Column({ type: 'text', nullable: true })
+  bannerImageUrl: string | null;
+
+  /**
+   * Header colour for this one template, so a Christmas or promotional
+   * send can look different from a receipt without a second codebase.
+   * Null keeps the standard SEIRS navy.
+   */
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  accentColor: string | null;
+
   @Column({ nullable: true })
   lastEditedByUserId: string;
 
