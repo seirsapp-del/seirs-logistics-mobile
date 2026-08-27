@@ -190,7 +190,57 @@ with them mixed into real data is not recoverable.
 
 ---
 
-## 5. Shared address field, with coordinates on every surface
+## 5. The admin dashboard needs its own sweep
+
+Founder, 27 Aug: *"as we design the apps let's make sure we don't forget
+the admin dashboard."*
+
+He is right, and one day of looking proves it. Every one of these was
+found by accident while doing something else, which means nobody has
+ever swept the dashboard on purpose:
+
+- **A collapsed sidebar could not be expanded.** The 60px rail rendered
+  a 28px mark AND a 24px toggle inside it with `overflow-hidden`, so the
+  expand button was clipped off the edge. The state persists in
+  localStorage, so once collapsed it stayed collapsed on every page,
+  every reload, with no way back.
+- **The In-App CMS wrote to a table nothing reads.** Cost the founder a
+  day before anyone noticed.
+- **A legacy wallet tile** held prime position on the driver page,
+  explaining at length a number that is zero for every rider and always
+  will be.
+- **A stale note** claimed completed and in-progress counts were missing
+  from the API. Two of the three had been added and nobody updated it.
+- **Three pricing knobs do nothing.** Hotspots, restricted sub-zones and
+  zone overrides all write into `regions`, which is null.
+- **No exports at all** except the NDPR one.
+- **No account or security notifications** exist as a category.
+
+The pattern is the same each time: a surface that LOOKS finished, does
+not throw, and quietly does nothing. That is worse than a visible gap,
+because nobody goes looking.
+
+### The sweep
+
+Page by page, every route in `apps/admin-dashboard/src/app/`, asking
+four questions of each:
+
+1. **Does it read live data, or render constants?** Name every page
+   still showing hardcoded rows.
+2. **Does every control do what it says?** Every button, filter, toggle
+   and form: does the write land, and does the page prove it landed?
+3. **Does it say anything untrue?** Stale notes, labels that promise
+   behaviour that was never wired, "coming soon" on shipped features.
+4. **Is anything unreachable?** Clipped controls, nav entries pointing
+   at nothing, states with no way out.
+
+Deliverable: one table of page, finding, severity, and whether it is a
+fix or a deletion. Deleting a decorative page beats leaving it: the CMS
+proved that.
+
+---
+
+## 6. Shared address field, with coordinates on every surface
 
 Founder: Nigerian addresses are unreliable, so every address field
 should carry coordinates.
@@ -216,7 +266,7 @@ a rider typed the number that set the seat price.
 
 ---
 
-## 6. Coordinate survival audit
+## 7. Coordinate survival audit
 
 Separate from the input work and worth doing regardless.
 
@@ -228,7 +278,7 @@ time this exact mistake has shipped, so every call site needs checking.
 
 ---
 
-## 7. Email template design system
+## 8. Email template design system
 
 Founder: multiple real designs visible in the dashboard with colours
 and images, the ability to create new ones, seasonal cases like
@@ -246,7 +296,7 @@ admin until the founder explicitly enables real bulk sending.
 
 ---
 
-## 8. Cancellation-pay wiring
+## 9. Cancellation-pay wiring
 
 Lost to the laptop crash on 25 Aug and never rebuilt. The only piece of
 that night's work still missing.
