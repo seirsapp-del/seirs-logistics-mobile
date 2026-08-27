@@ -64,9 +64,7 @@ export default function WithdrawalScreen() {
   const [bank,       setBank]       = useState<BankDetails | null>(null);
   const [loading,    setLoading]    = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [instant,    setInstant]    = useState(false);
   const [paidAmount, setPaidAmount] = useState<number | null>(null);
-  const [paidFee,    setPaidFee]    = useState(0);
 
   // Reload on focus so returning from /add-bank shows the new account.
   useFocusEffect(useCallback(() => {
@@ -87,8 +85,6 @@ export default function WithdrawalScreen() {
 
   const cleared         = Number(dashboard?.available ?? 0);
   const pending         = Number(dashboard?.pending ?? 0);
-  const instantEligible = Number(dashboard?.instantEligible ?? 0);
-  const instantFeePct   = Number(dashboard?.instantFeePct ?? 5);
   const clearanceDays   = Number(dashboard?.clearanceBusinessDays ?? 2);
   // Cast: the shared EarningsDashboard type has no minPayoutNgn yet. The
   // server owns this number (Fee Catalogue driver_min_payout_ngn); once it
@@ -100,7 +96,7 @@ export default function WithdrawalScreen() {
   const MIN_WITHDRAWAL  = Number.isFinite(minWithdrawalRaw) && minWithdrawalRaw > 0
     ? minWithdrawalRaw
     : MIN_WITHDRAWAL_FALLBACK;
-  const available       = instant ? cleared + instantEligible : cleared;
+  const available       = cleared;
   const numericAmount   = Math.round((parseFloat(amount.replace(/,/g, '')) || 0) * 100) / 100;
   const hasBank         = !!(bank?.bankCode && bank?.bankAccountNumber);
   // Fraud guard: a pending bank change freezes withdrawals until support
@@ -138,9 +134,6 @@ export default function WithdrawalScreen() {
 
   const handleWithdraw = () => {
     if (!canWithdraw) return;
-    const feeNote = instant && numericAmount > cleared
-      ? `\n\nInstant fee: ${instantFeePct}% applies to the ${naira(Math.min(numericAmount - cleared, instantEligible))} not yet cleared.`
-      : '';
     // Money out of the app. The destination account and the fee both go
     // in front of the rider before the row that spends it, and the row
     // itself names the amount rather than saying a bare "Withdraw"
@@ -150,7 +143,7 @@ export default function WithdrawalScreen() {
       message:
         `Withdraw up to ${naira(numericAmount)} to ${bank?.bankName ?? 'your bank'} ` +
         `(${bank?.bankAccountNumber}).\n\nAmounts are matched to your completed deliveries, ` +
-        `so the exact figure can be slightly lower. You will see the final amount sent.${feeNote}`,
+        `so the exact figure can be slightly lower. You will see the final amount sent.`,
       options: [
         {
           label: `Withdraw ${naira(numericAmount)}`,
@@ -159,8 +152,7 @@ export default function WithdrawalScreen() {
           onPress: async () => {
             setSubmitting(true);
             try {
-              const res = await earningsApi.payout(numericAmount, instant);
-              setPaidFee(Number(res.feeNgn ?? 0));
+              const res = await earningsApi.payout(numericAmount);
               setPaidAmount(res.paidAmount);
             } catch (err: any) {
               alertDialog('Withdrawal failed', err?.message ?? 'Please try again later.');
@@ -185,11 +177,6 @@ export default function WithdrawalScreen() {
           {naira(paidAmount)} is on its way to {bank?.bankName ?? 'your bank'} ({bank?.bankAccountNumber}).
           Arrival time depends on your bank.
         </Text>
-        {paidFee > 0 && (
-          <Text style={[styles.successNote, { color: theme.textThird }]}>
-            Includes an instant withdrawal fee of {naira(paidFee)} ({instantFeePct}% of the not-yet-cleared portion).
-          </Text>
-        )}
         {paidAmount < numericAmount && (
           <Text style={[styles.successNote, { color: theme.textThird }]}>
             You asked for {naira(numericAmount)}; {naira(paidAmount)} was paid because
@@ -257,32 +244,6 @@ export default function WithdrawalScreen() {
             )}
           </View>
 
-          {/* Instant withdrawal toggle. Always visible so drivers learn
-              the feature; disabled with an explanation when nothing is
-              eligible yet (founder feedback 2026-08-09). */}
-          <Pressable
-            onPress={() => instantEligible > 0 && setInstant(v => !v)}
-            disabled={instantEligible <= 0}
-            style={[
-              styles.instantCard,
-              { backgroundColor: theme.surface, borderColor: instant ? theme.primary : theme.border },
-              instantEligible <= 0 && { opacity: 0.6 },
-              Shadows.xs,
-            ]}
-          >
-            <Ionicons name="flash-outline" size={20} color={instant ? theme.primary : theme.textSecond} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.instantTitle, { color: theme.text }]}>Instant withdrawal · {instantFeePct}% fee</Text>
-              <Text style={[styles.instantSub, { color: theme.textSecond }]}>
-                {instantEligible > 0
-                  ? `Unlock ${naira(instantEligible)} of earnings still clearing (24h+ old) without waiting the ${clearanceDays} business days.`
-                  : `Earnings older than 24h that have not finished the ${clearanceDays} business day clearance can be unlocked here for a ${instantFeePct}% fee. Nothing is eligible right now.`}
-              </Text>
-            </View>
-            <View style={[styles.checkbox, { borderColor: instant ? theme.primary : theme.border, backgroundColor: instant ? theme.primary : 'transparent' }]}>
-              {instant && <Ionicons name="checkmark" size={14} color="#fff" />}
-            </View>
-          </Pressable>
 
           {/* Amount input */}
           <View style={[styles.amountCard, { backgroundColor: theme.surface, borderColor: theme.border }, Shadows.sm]}>
@@ -413,9 +374,6 @@ const styles = StyleSheet.create({
   frozenText:  { fontSize: FontSize.xs, lineHeight: 17, marginTop: 2 },
 
   balCard:    { alignItems: 'center', padding: Spacing.lg, borderRadius: Radius.xl, borderWidth: 1, gap: 4 },
-  instantCard:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.xl, borderWidth: 1.5 },
-  instantTitle: { fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-  instantSub:   { fontSize: FontSize.xs, lineHeight: 17, marginTop: 2 },
   checkbox:     { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
   balLabel:   { fontSize: FontSize.sm },
   balAmount:  { fontSize: FontSize['3xl'], fontWeight: FontWeight.bold },

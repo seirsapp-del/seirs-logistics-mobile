@@ -21,13 +21,30 @@ import { PLATFORM_COMMISSION } from '../common/constants/pricing';
  * See docs/payments-spec.md §⑥.
  */
 
-// Founder decision 2026-08-09: earnings clear in BUSINESS days after
-// delivery (compliance + dispute window), replacing the old 24 clock
-// hours. Instant withdrawal unlocks earnings once they are 24h old,
-// for a fee (Fee Catalogue key 'instant_payout_fee_pct').
+/**
+ * Earnings clear in BUSINESS days after delivery: the dispute window
+ * (founder decision 2026-08-09, replacing an older 24 clock-hour rule).
+ *
+ * Instant withdrawal, which sold riders a way past this window for 5%,
+ * was deleted on 2026-08-27. It could never have worked as sold: the
+ * eligible set is earnings still in `pending`, and production has
+ * driver_clearance_business_days set to 0, so rows reach `available`
+ * immediately and nothing was ever eligible. The screen said so itself,
+ * under a heading advertising the fee. Charging to skip a wait that does
+ * not exist is a promise we cannot keep, and creating the wait in order
+ * to sell the way out of it would be worse: SEIRS does not front this
+ * money, Flutterwave already holds it, so the fee prices no real cost.
+ *
+ * The live value is 0 on purpose: the money test needs a payout, a
+ * failed payout and a pay-in inside one sitting rather than across a
+ * weekend, which is exactly why this moved out of code and into the
+ * catalogue (see the note beside the seed row). It is not an open
+ * policy question. The only real risk is shipping with it still at 0,
+ * because 0 means no dispute buffer: a rider can withdraw the moment a
+ * trip completes, and a later chargeback lands on SEIRS with the money
+ * already gone. Raise it before launch.
+ */
 const STANDARD_CLEARANCE_BUSINESS_DAYS = 2;
-const INSTANT_MIN_AGE_HOURS        = 24;
-const INSTANT_FEE_PCT_FALLBACK     = 5;
 // Single source of truth for the cut: common/constants/pricing.ts
 // (30%). This used to be a hardcoded 0.75 fallback (25% cut) that
 // silently disagreed with the payment path's 30%.
@@ -87,16 +104,15 @@ export class EarningsService {
    * so behaviour is unchanged until somebody deliberately changes it.
    */
   private async payoutPolicy() {
-    const [minPayout, capNew, capEstablished, newDriverDays, holdbackPct, instantAgeHours] =
+    const [minPayout, capNew, capEstablished, newDriverDays, holdbackPct] =
       await Promise.all([
         this.fees.getValueOr('driver_min_payout_ngn',        MIN_PAYOUT_NAIRA),
         this.fees.getValueOr('driver_daily_cap_new_ngn',     MAX_DAILY_PAYOUT_NEW_DRIVER),
         this.fees.getValueOr('driver_daily_cap_ngn',         MAX_DAILY_PAYOUT_ESTABLISHED),
         this.fees.getValueOr('driver_new_period_days',       NEW_DRIVER_HOLDBACK_DAYS),
         this.fees.getValueOr('driver_new_holdback_pct',      NEW_DRIVER_HOLDBACK_PERCENT * 100),
-        this.fees.getValueOr('instant_payout_min_age_hours', INSTANT_MIN_AGE_HOURS),
       ]);
-    return { minPayout, capNew, capEstablished, newDriverDays, holdbackPct, instantAgeHours };
+    return { minPayout, capNew, capEstablished, newDriverDays, holdbackPct };
   }
 
   // ── Recording earnings (called from delivery-completion handler) ─────────
@@ -227,29 +243,15 @@ export class EarningsService {
     return { processed };
   }
 
-  /** Instant-payout fee percent from the admin Fee Catalogue (cached fallback). */
-  private async getInstantFeePct(): Promise<number> {
-    try {
-      const rows: Array<{ value: string }> = await this.repo.manager.query(
-        `SELECT value FROM fees WHERE key = 'instant_payout_fee_pct' AND active = true LIMIT 1`,
-      );
-      const v = Number(rows?.[0]?.value);
-      return Number.isFinite(v) && v >= 0 ? v : INSTANT_FEE_PCT_FALLBACK;
-    } catch {
-      return INSTANT_FEE_PCT_FALLBACK;
-    }
-  }
-
   /**
    * Pay out a single driver's available earnings (also exposed for "request payout now").
    * `requestedNaira` (optional) caps the payout below the daily cap: earnings
    * rows are matched FIFO and never split, so the paid amount is the largest
    * whole-delivery total not exceeding the request.
-   * `instant` additionally unlocks earnings still inside the business-day
-   * clearance window, provided they are at least 24h old; the instant fee
-   * applies ONLY to that not-yet-cleared portion.
+   * Paid-early-for-a-fee was removed on 2026-08-27. See the note on
+   * clearanceBusinessDays below for why it could never have worked.
    */
-  async payoutDriver(driverId: string, requestedNaira?: number, instant?: boolean): Promise<{ paidAmount: number; feeNgn: number; transferId?: string; payoutEarningIds: string[] }> {
+  async payoutDriver(driverId: string, requestedNaira?: number): Promise<{ paidAmount: number; feeNgn: number; transferId?: string; payoutEarningIds: string[] }> {
     const driver = await this.userRepo.findOneBy({ id: driverId });
 
     /**
@@ -314,34 +316,20 @@ export class EarningsService {
       ? Math.min(dailyCap, Number(requestedNaira))
       : dailyCap;
 
-    // Cleared earnings first (FIFO); instant mode appends pending rows
-    // that are 24h+ old but still inside the business-day clearance
-    // window. Held rows are never eligible either way.
-    const available = await this.repo.find({
+    // Cleared earnings only, FIFO. Pending and held rows are never
+    // eligible: waiting out the clearance window is the only way past it.
+    const eligible = await this.repo.find({
       where: { driverId, status: 'available' },
       order: { availableAt: 'ASC' },
     });
-    const clearedIds = new Set(available.map(e => e.id));
-
-    let eligible = available;
-    if (instant) {
-      const instantCutoff = new Date(Date.now() - policy.instantAgeHours * 3600 * 1000);
-      const instantRows = await this.repo.find({
-        where: { driverId, status: 'pending', createdAt: LessThanOrEqual(instantCutoff) },
-        order: { createdAt: 'ASC' },
-      });
-      eligible = [...available, ...instantRows];
-    }
 
     let runningTotal = 0;
-    let instantPortion = 0;
     const toPayoutIds: string[] = [];
     for (const e of eligible) {
       const next = runningTotal + Number(e.driverNet);
       if (next > effectiveCap) break;  // stop at cap
       toPayoutIds.push(e.id);
       runningTotal = next;
-      if (!clearedIds.has(e.id)) instantPortion += Number(e.driverNet);
     }
 
     if (runningTotal < policy.minPayout) {
@@ -354,13 +342,8 @@ export class EarningsService {
       payoutAmount = +(runningTotal * (1 - policy.holdbackPct / 100)).toFixed(2);
     }
 
-    // Instant fee on the not-yet-cleared portion only.
-    let feeNgn = 0;
-    if (instant && instantPortion > 0) {
-      const feePct = await this.getInstantFeePct();
-      feeNgn = +((instantPortion * feePct) / 100).toFixed(2);
-      payoutAmount = +(payoutAmount - feeNgn).toFixed(2);
-    }
+    // No fee is taken from a payout. A rider's earnings reach them whole.
+    const feeNgn = 0;
     if (payoutAmount <= 0) {
       throw new BadRequestException('Nothing to pay out after fees.');
     }
@@ -402,8 +385,6 @@ export class EarningsService {
     allTime:   { earned: number; deliveries: number };
     pending:   number;
     available: number;
-    instantEligible: number;
-    instantFeePct:   number;
     clearanceBusinessDays: number;
     nextPayoutEta: string;
   }> {
@@ -411,18 +392,13 @@ export class EarningsService {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart  = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const instantAgeHours = await this.fees.getValueOr('instant_payout_min_age_hours', INSTANT_MIN_AGE_HOURS);
-    const instantCutoff = new Date(Date.now() - instantAgeHours * 3600 * 1000);
-
-    const [todayRows, weekRows, monthRows, allTimeRows, pendingRow, availableRow, instantRow, feePct] = await Promise.all([
+    const [todayRows, weekRows, monthRows, allTimeRows, pendingRow, availableRow] = await Promise.all([
       this.sumByPeriod(driverId, todayStart),
       this.sumByPeriod(driverId, weekStart),
       this.sumByPeriod(driverId, monthStart),
       this.sumByPeriod(driverId, new Date(0)),
       this.sumByStatus(driverId, 'pending'),
       this.sumByStatus(driverId, 'available'),
-      this.sumInstantEligible(driverId, instantCutoff),
-      this.getInstantFeePct(),
     ]);
 
     return {
@@ -432,8 +408,6 @@ export class EarningsService {
       allTime:   allTimeRows,
       pending:   pendingRow,
       available: availableRow,
-      instantEligible: instantRow,
-      instantFeePct:   feePct,
       clearanceBusinessDays: await this.clearanceBusinessDays(),
       nextPayoutEta: 'Automatic payout daily at 2 PM (Lagos time)',
     };
@@ -462,17 +436,6 @@ export class EarningsService {
     return { earned: Number(row?.earned ?? 0), deliveries: Number(row?.deliveries ?? 0) };
   }
 
-  /** Pending earnings old enough (24h+) to unlock via instant withdrawal. */
-  private async sumInstantEligible(driverId: string, cutoff: Date): Promise<number> {
-    const row = await this.repo
-      .createQueryBuilder('e')
-      .select('COALESCE(SUM(e.driver_net), 0)', 'sum')
-      .where('e.driver_id = :driverId', { driverId })
-      .andWhere('e.status = :status', { status: 'pending' })
-      .andWhere('e.created_at <= :cutoff', { cutoff })
-      .getRawOne<{ sum: string }>();
-    return Number(row?.sum ?? 0);
-  }
 
   private async sumByStatus(driverId: string, status: DriverEarningStatus): Promise<number> {
     const row = await this.repo

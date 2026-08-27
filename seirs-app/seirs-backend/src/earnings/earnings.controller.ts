@@ -29,10 +29,8 @@ export class EarningsController {
   // Optional amountNaira caps the withdrawal: earnings entries are
   // matched FIFO up to that amount, so the actual paid figure can be
   // slightly below the request (whole deliveries only, no row splits).
-  // instant=true also unlocks 24h+ old earnings still inside the
-  // business-day clearance window, for the catalogue fee.
   @Post('payout')
-  payout(@CurrentUser() user: User, @Body() body?: { amountNaira?: number; instant?: boolean }) {
-    return this.earnings.payoutDriver(user.id, body?.amountNaira, body?.instant === true);
+  payout(@CurrentUser() user: User, @Body() body?: { amountNaira?: number }) {
+    return this.earnings.payoutDriver(user.id, body?.amountNaira);
   }
 }
