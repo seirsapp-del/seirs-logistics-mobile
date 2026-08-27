@@ -79,24 +79,6 @@ export default function UserDetailPage() {
 
   // Change role between customer and driver. Admin promotion still lives
   // in the dedicated promoteToAdmin flow above so the extra warning shows.
-  const changeRole = async (newRole: 'customer' | 'driver') => {
-    if (data.user.role === newRole) return;
-    const ok = await confirm({
-      title:        `Change role from ${data.user.role} to ${newRole}?`,
-      message:      newRole === 'driver'
-        ? `${data.user.name} will be treated as a driver. They still need driver KYC (licence, vehicle photos) approved before they can accept trips. The SEIRS ID prefix stays at ${data.user.accountId?.split('-')[0] ?? 'original'} for compliance tracking.`
-        : `${data.user.name} will be treated as a customer. Any driver dispatch privileges are removed immediately. The SEIRS ID prefix stays at ${data.user.accountId?.split('-')[0] ?? 'original'} for compliance tracking.`,
-      confirmLabel: `Change to ${newRole}`,
-      danger:       true,
-    });
-    if (!ok) return;
-    setSaving(true);
-    try {
-      await adminApi.changeRole(id, newRole);
-      setData(await adminApi.user(id));
-    } catch (e: any) { alert(e?.message ?? 'Role change failed'); }
-    finally { setSaving(false); }
-  };
 
   // Spec V8 §3.13 - NDPR admin tools (A32 + A33)
   const exportData = async () => {
@@ -249,17 +231,19 @@ export default function UserDetailPage() {
             >
               {saving ? '...' : user.isActive !== false ? 'Ban User' : 'Unban User'}
             </button>
-            {/* Customer ↔ Driver toggle. Explicit demote/promote buttons so
-                admin knows exactly which transition they are triggering. */}
-            {user.role !== 'admin' && (
-              <button
-                onClick={() => changeRole(user.role === 'driver' ? 'customer' : 'driver')}
-                disabled={saving}
-                className="text-sm px-4 py-2 rounded-lg font-medium bg-blue-100 text-blue-700 hover:bg-blue-200"
-              >
-                {user.role === 'driver' ? 'Change to Customer' : 'Change to Driver'}
-              </button>
-            )}
+            {/* The Customer/Driver toggle was removed (founder 2026-08-27:
+                "this change to customer or change to driver button i told
+                you to delete it").
+
+                It contradicted the account model: one email is one
+                account is one SEIRS ID, and customer and driver are
+                SEPARATE accounts by design, for fraud, liability and
+                financial separation. A button that flips a role in place
+                mutates an identity that is supposed to be fixed, and it
+                leaves a DRV- prefix on someone the system now calls a
+                customer. That is exactly what this screen was showing.
+
+                Someone who wants to drive registers as a driver. */}
             {/* Promote to Admin was removed outright (founder
                 2026-08-21): staff become admins through the Admins page
                 with a proper invitation, never by escalating a customer

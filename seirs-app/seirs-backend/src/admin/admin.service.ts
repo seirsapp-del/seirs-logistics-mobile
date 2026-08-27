@@ -1518,6 +1518,7 @@ export class AdminService {
       sosAlerts,
       completedCount,
       inProgressCount,
+      earningsSplit,
     ] = await Promise.all([
       this.deliveriesRepo.findAndCount({
         where: { driver: { id } as any },
@@ -1623,6 +1624,32 @@ export class AdminService {
           ]),
         },
       }).catch(() => 0),
+      /**
+       * What this rider can actually draw, and what is still cooling off.
+       *
+       * The driver page had a money tile with no money on it: it named
+       * the earnings ledger and linked to another screen rather than
+       * answering the question (founder 2026-08-27: "why is this not
+       * showing his available to withdraw"). Directions are not an
+       * answer when the answer is a number.
+       *
+       * driverId on the ledger is the USER id, which is why this reads
+       * from the relation rather than the driver row's own id.
+       */
+      (async () => {
+        if (!userId) return { available: 0, pending: 0 };
+        const rows = await this.earningsRepo
+          .createQueryBuilder('e')
+          .select('e.status', 'status')
+          .addSelect('SUM(e."driverNet")', 'total')
+          .where('e."driverId" = :uid', { uid: userId })
+          .groupBy('e.status')
+          .getRawMany()
+          .catch(() => [] as any[]);
+        const by = (st: string) =>
+          Number(rows.find((r: any) => r.status === st)?.total ?? 0) || 0;
+        return { available: by('available'), pending: by('pending') };
+      })().catch(() => ({ available: 0, pending: 0 })),
     ]);
 
     const [deliveries, deliveryCount] = deliveryPage as [any[], number];
@@ -1653,6 +1680,8 @@ export class AdminService {
       cancelledCount,
       completedCount,
       inProgressCount,
+      availableNgn: earningsSplit?.available ?? 0,
+      pendingNgn:   earningsSplit?.pending   ?? 0,
       sosAlerts,
       loyalty:    { balance: loyaltyBalance, tier },
       identity,

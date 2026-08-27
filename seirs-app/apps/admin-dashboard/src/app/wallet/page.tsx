@@ -4,6 +4,7 @@ import { Wallet, Clock, ArrowDownCircle, TrendingUp, AlertCircle, RefreshCw } fr
 import { adminApi } from '@/lib/api';
 import { naira } from '@/lib/money';
 import { useConfirm } from '@/components/ConfirmDialog';
+import Link from 'next/link';
 
 interface PendingPayout {
   id: string;
@@ -38,6 +39,29 @@ interface Summary {
   pendingTotal: number; pendingCount: number;
   heldTotal: number;    heldCount: number;
   paidMtdTotal: number; paidMtdCount: number;
+}
+
+/**
+ * A person named on a screen is a link to that person.
+ *
+ * Founder's standing rule (2026-08-27: "why can't i click on the driver
+ * and it takes me to his profile"). A payouts table that names a rider
+ * and makes you go and search for them separately is a table you use
+ * once and then work around.
+ *
+ * driverId on the earnings ledger is the USER id, not the driver row
+ * id, which is why this points at /users rather than /drivers.
+ */
+function DriverLink({ id, name }: { id: string; name: string }) {
+  if (!id) return <span className="font-medium text-[#0F2B4C]">{name}</span>;
+  return (
+    <Link
+      href={`/users/${id}`}
+      className="font-medium text-[#0F2B4C] hover:text-[#3A7BD5] hover:underline"
+    >
+      {name}
+    </Link>
+  );
 }
 
 export default function WalletPage() {
@@ -156,7 +180,7 @@ export default function WalletPage() {
               <tbody className="divide-y divide-gray-100">
                 {held.map(h => (
                   <tr key={h.id}>
-                    <td className="px-4 py-3 font-medium text-[#0F2B4C]">{h.driverName}</td>
+                    <td className="px-4 py-3"><DriverLink id={h.driverId} name={h.driverName} /></td>
                     <td className="px-4 py-3 font-semibold text-gray-800">{naira(h.driverNet)}</td>
                     <td className="px-4 py-3 text-gray-600 text-xs">{h.holdReason ?? '-'}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(h.updatedAt)}</td>
@@ -200,7 +224,7 @@ export default function WalletPage() {
               <tbody className="divide-y divide-gray-100">
                 {pending.map(p => (
                   <tr key={p.id}>
-                    <td className="px-4 py-3 font-medium text-[#0F2B4C]">{p.driverName}</td>
+                    <td className="px-4 py-3"><DriverLink id={p.driverId} name={p.driverName} /></td>
                     <td className="px-4 py-3 font-semibold text-gray-800">{naira(p.driverNet)}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(p.availableAt)}</td>
                     <td className="px-4 py-3 text-gray-500 font-mono text-xs">{p.deliveryId.slice(0, 8)}…</td>
@@ -235,7 +259,7 @@ export default function WalletPage() {
               <tbody className="divide-y divide-gray-100">
                 {paid.map(w => (
                   <tr key={w.id}>
-                    <td className="px-4 py-3 font-medium text-[#0F2B4C]">{w.driverName}</td>
+                    <td className="px-4 py-3"><DriverLink id={w.driverId} name={w.driverName} /></td>
                     <td className="px-4 py-3 font-semibold text-gray-800">{naira(w.driverNet)}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(w.paidAt)}</td>
                     <td className="px-4 py-3 text-gray-500 font-mono text-xs">{w.flutterwaveTransferId ?? '-'}</td>

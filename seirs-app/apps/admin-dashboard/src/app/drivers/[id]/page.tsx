@@ -196,6 +196,10 @@ export default function DriverDetailPage() {
        second edit here. See the tile comment for why they are not
        derived from the two counts that do arrive. */
     completedCount, inProgressCount,
+    /* What the rider can draw today, and what is still cooling off.
+       Added 27 Aug because the money tile named the ledger and linked
+       away rather than answering the question. */
+    availableNgn, pendingNgn,
     /* Every SOS this rider has raised. Nothing sends it yet: see the
        long note in components/SosHistory.tsx for why, and for the one
        server change that would light this up. */
@@ -417,11 +421,18 @@ export default function DriverDetailPage() {
               already been paid out.
             </p>
           </div>
+          {/* Founder 2026-08-27: "why is this not showing his available to
+              withdraw". Fair. I removed the dead legacy tile this morning
+              and replaced it with prose pointing at another page, which
+              answers a question with directions instead of an answer.
+              A money tile with no money on it is not an improvement. */}
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-            <div className="text-xs font-semibold text-gray-600">Owed right now</div>
+            <div className="text-xl font-bold text-gray-900">{naira(availableNgn ?? 0)}</div>
+            <div className="text-xs font-semibold text-gray-600 mt-1">Available to withdraw</div>
             <p className="mt-1.5 text-xs text-gray-500">
-              Pending, available and paid all live in the earnings ledger, one row
-              per delivered run. That is the only place a payable exists.
+              Cleared earnings this rider can draw today. Pending runs are not
+              counted until their dispute window closes.
+              {pendingNgn ? ` ${naira(pendingNgn)} still pending.` : ''}
             </p>
             <Link href="/wallet" className="mt-2 inline-block text-xs font-semibold text-[#3A7BD5] hover:underline">
               Open Wallet and Payouts
