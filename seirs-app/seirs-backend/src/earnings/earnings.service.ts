@@ -349,20 +349,90 @@ export class EarningsService {
     }
 
     const reference = `seirs_payout_${driverId}_${Date.now()}`;
-    const result = await this.flutterwave.transferToBank({
-      amountNaira:   payoutAmount,
-      bankCode:      driver.bankCode,
-      accountNumber: driver.bankAccountNumber,
-      accountName:   driver.bankAccountName,
-      reference,
-      narration:     `SEIRS payout for ${toPayoutIds.length} deliveries`,
-    });
+
+    /**
+     * Claim the rows BEFORE the money moves.
+     *
+     * This used to transfer first and mark the rows paid afterwards. If
+     * Flutterwave succeeded and that second write did not, because the
+     * connection dropped or Railway recycled the container mid-request,
+     * the money had left and the rows were still `available`: the same
+     * balance could be withdrawn again. The window is small and the loss
+     * is total, which is the worst pair of properties a money bug can
+     * have.
+     *
+     * The claim is conditional on the rows still being `available`, so
+     * two concurrent payout requests cannot both take the same earnings:
+     * the second claims zero rows and stops here. If the count does not
+     * match what we intended to pay, something else moved underneath us
+     * and we abort without calling Flutterwave at all.
+     */
+    const claim = await this.repo
+      .createQueryBuilder()
+      .update(DriverEarning)
+      .set({ status: 'paying' })
+      .where('id IN (:...ids)', { ids: toPayoutIds })
+      .andWhere('status = :expected', { expected: 'available' })
+      .execute();
+
+    if ((claim.affected ?? 0) !== toPayoutIds.length) {
+      // Put back whatever we did claim, then refuse. Better a failed
+      // withdrawal the rider can retry than a partial one nobody can
+      // reconstruct.
+      await this.repo
+        .createQueryBuilder()
+        .update(DriverEarning)
+        .set({ status: 'available' })
+        .where('id IN (:...ids)', { ids: toPayoutIds })
+        .andWhere('status = :paying', { paying: 'paying' })
+        .execute()
+        .catch(() => undefined);
+      throw new BadRequestException(
+        'Your earnings changed while this withdrawal was being prepared. Please try again.',
+      );
+    }
+
+    let result: { success: boolean; transferId?: string };
+    try {
+      result = await this.flutterwave.transferToBank({
+        amountNaira:   payoutAmount,
+        bankCode:      driver.bankCode,
+        accountNumber: driver.bankAccountNumber,
+        accountName:   driver.bankAccountName,
+        reference,
+        narration:     `SEIRS payout for ${toPayoutIds.length} deliveries`,
+      });
+    } catch (e: any) {
+      /**
+       * A thrown transfer is ambiguous: the request may never have
+       * reached Flutterwave, or it may have succeeded and the response
+       * been lost. Releasing the claim here would risk paying twice, so
+       * the rows stay `paying` and out of the withdrawable balance until
+       * someone checks the reference against Flutterwave.
+       */
+      this.logger.error(
+        `Payout ${reference} threw after claiming ${toPayoutIds.length} earning(s). ` +
+        `Rows left in 'paying' pending manual reconciliation: ${e?.message}`,
+      );
+      throw new BadRequestException(
+        'We could not confirm the transfer. Your earnings are safe and on hold while we check. ' +
+        'Contact support if this is not resolved shortly.',
+      );
+    }
 
     if (!result.success) {
+      // A clean "no" from Flutterwave: nothing left, so release the claim.
+      await this.repo
+        .createQueryBuilder()
+        .update(DriverEarning)
+        .set({ status: 'available' })
+        .where('id IN (:...ids)', { ids: toPayoutIds })
+        .execute()
+        .catch(() => undefined);
       throw new BadRequestException('Flutterwave transfer failed');
     }
 
-    // Mark earnings as paid.
+    // Confirm the claim.
     await this.repo
       .createQueryBuilder()
       .update(DriverEarning)

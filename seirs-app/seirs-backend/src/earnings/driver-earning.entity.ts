@@ -24,7 +24,18 @@ import { Delivery } from '../deliveries/delivery.entity';
  *
  * See docs/payments-spec.md §⑥.
  */
-export type DriverEarningStatus = 'pending' | 'available' | 'paid' | 'held';
+/**
+ * `paying` is a claim held across the Flutterwave call.
+ *
+ * The payout used to transfer first and mark rows paid afterwards, so a
+ * crash between the two left the money gone and the rows still
+ * `available`, ready to be withdrawn a second time. Rows are now claimed
+ * out of `available` before the transfer and only reach `paid` once it
+ * succeeds, so an interrupted payout fails closed: the balance is
+ * withheld rather than paid twice, and a stuck `paying` row is a visible
+ * thing to reconcile instead of a silent double.
+ */
+export type DriverEarningStatus = 'pending' | 'available' | 'paying' | 'paid' | 'held';
 
 @Entity('driver_earnings')
 export class DriverEarning {

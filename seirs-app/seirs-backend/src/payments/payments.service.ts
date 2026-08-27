@@ -1434,19 +1434,53 @@ export class PaymentsService {
     const user     = await usersRepo.findOne({ where: { id: userId } });
     const hasExisting = !!(user?.bankAccountNumber || wallet.bankAccountNumber);
 
+    /**
+     * Resolve the name server-side. Never trust the one in the body.
+     *
+     * The apps call POST /payments/verify-bank first and send the
+     * resolved name along, which is why the founder saw the correct name
+     * appear as they typed. But this endpoint stored whatever arrived,
+     * so anything calling the API directly could file an arbitrary name
+     * against an arbitrary account number, and bankVerifiedAt, declared
+     * on the User entity with a comment promising payouts check it, was
+     * never written by any code path at all.
+     *
+     * That mattered most in the review queue. Replacing a payout account
+     * parks as pending so a human can look at it, and the name that
+     * human reads is the strongest signal they have. An attacker with a
+     * hijacked session could supply their own account number under the
+     * account holder's real name, and the reviewer would see exactly
+     * what they expected to see.
+     *
+     * Flutterwave is the authority here, so ask it, and store its answer
+     * rather than the caller's.
+     */
+    const resolved = await this.flutterwaveService.verifyBankAccount({
+      bankCode:      data.bankCode,
+      accountNumber: data.bankAccountNumber,
+    });
+    if (!resolved?.accountName) {
+      throw new BadRequestException(
+        'We could not confirm that account with your bank. Check the bank and account number and try again.',
+      );
+    }
+    const verifiedData = { ...data, bankAccountName: resolved.accountName };
+    const verifiedAt   = new Date();
+
     if (!hasExisting || force) {
       // First-time setup: apply immediately to BOTH rows. Payouts
       // (EarningsService.payoutDriver) read from the USER row; writing
       // only to the wallet used to leave payouts permanently failing
       // with "bank account not configured".
-      await this.walletsRepo.update(wallet.id, data);
+      await this.walletsRepo.update(wallet.id, verifiedData);
       await usersRepo.update(userId, {
-        bankCode:          data.bankCode,
-        bankAccountNumber: data.bankAccountNumber,
-        bankAccountName:   data.bankAccountName,
+        bankCode:          verifiedData.bankCode,
+        bankAccountNumber: verifiedData.bankAccountNumber,
+        bankAccountName:   verifiedData.bankAccountName,
+        bankVerifiedAt:    verifiedAt,
       });
-      await this.notifyBankChange(userId, data.bankAccountNumber, data.bankName, false);
-      return { message: 'Bank details updated.', pending: false };
+      await this.notifyBankChange(userId, verifiedData.bankAccountNumber, verifiedData.bankName, false);
+      return { message: 'Bank details updated.', pending: false, accountName: verifiedData.bankAccountName };
     }
 
     // Same account re-submitted: nothing to review.
@@ -1479,8 +1513,8 @@ export class PaymentsService {
           `INSERT INTO chat_messages (body, "imageUrl", "systemType", "ticketId")
            VALUES ($1, NULL, 'bank_change_request', $2)`,
           [
-            `Driver requested a payout account change to ${data.bankName} ` +
-            `(account ending ${data.bankAccountNumber.slice(-4)}, name: ${data.bankAccountName}). ` +
+            `Driver requested a payout account change to ${verifiedData.bankName} ` +
+            `(account ending ${verifiedData.bankAccountNumber.slice(-4)}, name: ${verifiedData.bankAccountName}). ` +
             `Review and approve or reject within 3 business days. ` +
             `Approving applies the new account; payouts continue to the old account until then.`,
             ticketId,
@@ -1492,10 +1526,10 @@ export class PaymentsService {
     }
 
     await this.walletsRepo.update(wallet.id, {
-      pendingBankName:          data.bankName,
-      pendingBankCode:          data.bankCode,
-      pendingBankAccountNumber: data.bankAccountNumber,
-      pendingBankAccountName:   data.bankAccountName,
+      pendingBankName:          verifiedData.bankName,
+      pendingBankCode:          verifiedData.bankCode,
+      pendingBankAccountNumber: verifiedData.bankAccountNumber,
+      pendingBankAccountName:   verifiedData.bankAccountName,
       pendingBankRequestedAt:   new Date(),
       pendingBankTicketId:      ticketId,
     });
