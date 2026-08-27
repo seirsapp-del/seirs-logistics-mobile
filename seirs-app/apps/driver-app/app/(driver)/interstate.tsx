@@ -796,13 +796,25 @@ export default function InterstateScreen() {
               ) : (
                 <Text
                   numberOfLines={1}
+                  // Shrinks rather than truncating. The city box is half
+                  // width by design, and a long name is the whole point of
+                  // the field, so "Ibadan" must never render as "Ibad...".
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
                   style={{
                     fontSize: FontSize.md,
                     color: stop.city ? theme.text : theme.textThird,
                     fontWeight: stop.city ? FontWeight.semibold : FontWeight.regular,
                   }}
                 >
-                  {stop.city || 'From address'}
+                  {/*
+                    The empty state said "From address", which did not fit
+                    the box and rendered as "From a..." on device. A
+                    truncated hint is worse than a short one: it reads as a
+                    bug rather than an instruction. One word, and the label
+                    above already says CITY.
+                  */}
+                  {stop.city || 'Auto'}
                 </Text>
               )}
             </View>
