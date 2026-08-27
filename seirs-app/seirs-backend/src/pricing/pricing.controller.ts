@@ -11,6 +11,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { SuperAdminGuard } from '../common/guards/super-admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { redactRateCardForPublic } from './redact-rate-card';
 
 /**
  * Pricing system surface area.
@@ -55,7 +56,9 @@ export class PricingController {
   @Public()
   @Get('config/rate-card')
   async getActiveRateCard() {
-    return this.pricing.getActiveRateCard();
+    // Redacted: this route has no token, so it must not carry the driver
+    // cost basis or the founder's name. See redact-rate-card.ts.
+    return redactRateCardForPublic(await this.pricing.getActiveRateCard() as any);
   }
 
   @Public()

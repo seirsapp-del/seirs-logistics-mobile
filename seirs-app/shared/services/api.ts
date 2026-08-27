@@ -1537,20 +1537,22 @@ export interface RateCard {
   version:      number;
   isActive:     boolean;
   fuelPrices: { petrolPerLitreNgn: number; dieselPerLitreNgn: number };
+  /**
+   * Customer side only. GET /config/rate-card is public and stopped
+   * carrying driver economics on 2026-08-27; declaring them here invited
+   * a client to read a field the server no longer sends.
+   */
   vehicleRates: Record<string, {
     baseFareCustomer:    number;
-    baseFareDriver:      number;
     labourPerKmCustomer: number;
-    labourPerKmDriver:   number;
     kmPerLitre:          number;
     fuelType:            'petrol' | 'diesel' | 'none';
     maxPayloadKg:        number;
+    maxPackages?:        number;
   }>;
   stopAndDwell: {
     perStopBonusCustomer:      number;
-    perStopBonusDriver:        number;
     perDwellMinuteCustomer:    number;
-    perDwellMinuteDriver:      number;
     freeDwellThresholdMinutes: number;
     dwellCapMinutes:           number;
   };

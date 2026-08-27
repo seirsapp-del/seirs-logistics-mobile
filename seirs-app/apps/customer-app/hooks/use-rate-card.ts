@@ -185,7 +185,10 @@ function mergeFromBackend(remote: any): RateCard {
       freeMinutes:        num(remote.stopAndDwell.freeDwellThresholdMinutes, d.dwell.freeMinutes),
       perMinuteNgn:       num(remote.stopAndDwell.perDwellMinuteCustomer,    d.dwell.perMinuteNgn),
       capMinutes:         num(remote.stopAndDwell.dwellCapMinutes,           d.dwell.capMinutes),
-      driverPerMinuteNgn: num(remote.stopAndDwell.perDwellMinuteDriver,      d.dwell.driverPerMinuteNgn),
+      // Bundled default on purpose. The public rate card stopped
+      // carrying driver pay on 2026-08-27: a customer's phone never
+      // needed to know what we pay a rider, and the route has no token.
+      driverPerMinuteNgn: d.dwell.driverPerMinuteNgn,
     } : d.dwell,
     /**
      * Cancellation and no-show. Same problem as dwell above: this read
