@@ -852,12 +852,27 @@ export class DeliveriesService {
     await (this.driversService as any).reserveSeats(tripId, seats);
     try {
       const fromC = this.cityCoords(trip.fromCity);
-      const toC   = this.cityCoords(trip.toCity);
+      /**
+       * The destination the rider actually picked, falling back to the
+       * old city lookup only for trips declared before destLat existed.
+       *
+       * CITY_COORDS used to be the ONLY way to resolve a destination,
+       * which meant twelve cities defined the whole product: a trip to
+       * Jos declared fine and then no passenger could ever book it. The
+       * message they got, "this route needs a mapped pickup point", was
+       * wrong on top of that, because the pickup was never the problem,
+       * so a rider could re-declare forever and never fix it.
+       */
+      const toC = (Number.isFinite(Number(trip.destLat)) && Number.isFinite(Number(trip.destLng)))
+        ? { lat: Number(trip.destLat), lng: Number(trip.destLng) }
+        : this.cityCoords(trip.toCity);
       const pLat = Number(trip.pickupLat) || fromC?.lat;
       const pLng = Number(trip.pickupLng) || fromC?.lng;
       if (pLat == null || pLng == null || !toC) {
+        // Say which END is unmapped, so the rider fixes the right thing.
+        const missing = !toC ? `destination (${trip.toCity})` : `pickup (${trip.fromCity})`;
         throw new BadRequestException(
-          'This route needs a mapped pickup point. Ask the driver to re-declare with a pickup location.',
+          `This trip has no mapped ${missing}. Ask the driver to re-declare it, choosing the location from the address suggestions.`,
         );
       }
       const dto: any = {

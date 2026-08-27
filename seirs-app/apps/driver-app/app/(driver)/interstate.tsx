@@ -1,3 +1,4 @@
+import { Calendar as RNCalendar } from 'react-native-calendars';
 import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
@@ -17,6 +18,32 @@ import { driversApi } from '@/services/api';
 // (Lagos → Ibadan, etc.). System surfaces matching packages along
 // that corridor. Customer chose at booking whether to drop at
 // destination address or destination partner store.
+
+/**
+ * Departure times a rider can actually leave at.
+ *
+ * Half-hour steps from 04:00, because intercity runs leave at first
+ * light and a park at 05:30 is a real departure, through to 22:00.
+ * Anything outside that is a night run nobody is declaring in advance.
+ */
+const DEPART_SLOTS: string[] = (() => {
+  const out: string[] = [];
+  for (let h = 4; h <= 22; h++) {
+    out.push(`${String(h).padStart(2, '0')}:00`);
+    if (h < 22) out.push(`${String(h).padStart(2, '0')}:30`);
+  }
+  return out;
+})();
+
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
+
+/** "2026-08-27" + "05:30" formatted the way a rider reads it back. */
+function prettyDepart(dateISO: string, time: string): string {
+  if (!dateISO || !time) return '';
+  const d = new Date(`${dateISO}T${time}:00`);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) + `, ${time}`;
+}
 
 const POPULAR_ROUTES = [
   { from: 'Lagos',   to: 'Ibadan',  km: 145 },
@@ -71,6 +98,19 @@ export default function InterstateScreen() {
   const [from,        setFrom]        = useState('');
   const [to,          setTo]          = useState('');
   const [departAt,    setDepartAt]    = useState('');
+  // Split so the rider picks a day and a time, never types either.
+  const [departDate,  setDepartDate]  = useState('');
+  const [departTime,  setDepartTime]  = useState('');
+  const [pickerOpen,  setPickerOpen]  = useState(false);
+
+  /**
+   * departAt stays the single source the submit path reads, so nothing
+   * downstream had to change: the two pickers just write into it in the
+   * exact shape the old text field produced.
+   */
+  useEffect(() => {
+    setDepartAt(departDate && departTime ? `${departDate} ${departTime}` : '');
+  }, [departDate, departTime]);
   const [vehicleSpace,setVehicleSpace]= useState('1');
 
   // Travel Buddy (founder 23 Aug): sell what the vehicle truly has.
@@ -260,10 +300,10 @@ export default function InterstateScreen() {
           label: 'Done',
           variant: 'primary',
           icon: 'checkmark-circle-outline',
-          onPress: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); },
+          onPress: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); },
         }],
         cancelLabel: null,
-        onCancel: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); },
+        onCancel: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); },
       });
     } catch (e: any) {
       Alert.alert('Could not declare trip', e?.message ?? 'Try again.');
@@ -389,18 +429,86 @@ export default function InterstateScreen() {
 
           <View style={{ gap: 6, marginTop: Spacing.sm }}>
             <Text style={[styles.label, { color: theme.textSecond }]}>DEPARTURE</Text>
-            <TextInput
-              value={departAt}
-              onChangeText={setDepartAt}
-              placeholder="YYYY-MM-DD HH:mm"
-              keyboardType="numbers-and-punctuation"
-              autoCorrect={false}
-              autoCapitalize="none"
-              maxLength={16}
-              placeholderTextColor={theme.textThird}
-              style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
-            />
-            <Text style={[styles.helper, { color: theme.textThird }]}>Use 24-hour time. e.g. 2026-05-12 09:00</Text>
+            {/**
+              * Picked, never typed (founder 2026-08-27).
+              *
+              * This was a text box wanting "YYYY-MM-DD HH:mm" in 24-hour
+              * time. A rider standing at a park with one hand on the
+              * bike will get that wrong, and a wrong departure means the
+              * matcher, which only looks at plus or minus 24 hours, never
+              * sees the trip at all. Nothing tells them why.
+              */}
+            <Pressable
+              onPress={() => setPickerOpen(o => !o)}
+              style={[styles.input, {
+                borderColor: pickerOpen ? theme.primary : theme.border,
+                backgroundColor: theme.surface,
+                justifyContent: 'center',
+              }]}
+            >
+              <Text style={{
+                color: departAt ? theme.text : theme.textThird,
+                fontSize: FontSize.md,
+              }}>
+                {departAt ? prettyDepart(departDate, departTime) : 'Choose a day and time'}
+              </Text>
+            </Pressable>
+
+            {pickerOpen && (
+              <View style={{
+                borderWidth: 1, borderColor: theme.border, borderRadius: Radius.md,
+                backgroundColor: theme.surface, overflow: 'hidden', marginTop: 4,
+              }}>
+                <RNCalendar
+                  current={departDate || TODAY_ISO}
+                  minDate={TODAY_ISO}
+                  onDayPress={(day: any) => setDepartDate(day.dateString)}
+                  markedDates={departDate ? { [departDate]: { selected: true, selectedColor: theme.primary } } : {}}
+                  theme={{
+                    calendarBackground: theme.surface,
+                    dayTextColor: theme.text,
+                    monthTextColor: theme.text,
+                    textDisabledColor: theme.textThird,
+                    arrowColor: theme.primary,
+                    todayTextColor: theme.primary,
+                    selectedDayTextColor: '#FFFFFF',
+                  }}
+                />
+                <View style={{ padding: Spacing.md, borderTopWidth: 1, borderTopColor: theme.border }}>
+                  <Text style={[styles.label, { color: theme.textSecond, marginBottom: 8 }]}>
+                    DEPARTURE TIME
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {DEPART_SLOTS.map(slot => {
+                      const active = departTime === slot;
+                      // A time already gone today cannot be a departure.
+                      const past = departDate === TODAY_ISO
+                        && slot <= new Date().toTimeString().slice(0, 5);
+                      return (
+                        <Pressable
+                          key={slot}
+                          disabled={past}
+                          onPress={() => { setDepartTime(slot); setPickerOpen(false); }}
+                          style={{
+                            paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.full,
+                            borderWidth: 1,
+                            borderColor: active ? theme.primary : theme.border,
+                            backgroundColor: active ? theme.primary : 'transparent',
+                            opacity: past ? 0.35 : 1,
+                          }}
+                        >
+                          <Text style={{
+                            fontSize: FontSize.sm,
+                            fontWeight: active ? FontWeight.semibold : FontWeight.regular,
+                            color: active ? '#FFFFFF' : theme.text,
+                          }}>{slot}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
 
           <View style={{ gap: 6, marginTop: Spacing.sm }}>

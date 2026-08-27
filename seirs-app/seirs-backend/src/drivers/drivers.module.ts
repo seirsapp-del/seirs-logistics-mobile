@@ -140,6 +140,21 @@ export class DriversModule implements OnModuleInit {
       await this.ds.query(`
         CREATE INDEX IF NOT EXISTS "idx_dvc_status" ON "driver_vehicle_changes" ("status")
       `);
+      /**
+       * Destination coordinates on a declared trip.
+       *
+       * Without these the server could only resolve a destination
+       * through a hardcoded twelve-city list, so a trip to anywhere
+       * else declared successfully and could never be booked. Production
+       * runs with synchronize off, so the columns have to be added here
+       * or the entity has fields Postgres does not (2026-08-27).
+       */
+      await this.ds.query(`
+        ALTER TABLE "driver_trips"
+          ADD COLUMN IF NOT EXISTS "destLat" double precision NULL,
+          ADD COLUMN IF NOT EXISTS "destLng" double precision NULL,
+          ADD COLUMN IF NOT EXISTS "destAddress" varchar(240) NULL
+      `);
     } catch (e) {
       // A failed migration must not stop boot; the entity sync path
       // covers dev, and the next boot retries.

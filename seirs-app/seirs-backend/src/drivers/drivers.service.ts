@@ -318,6 +318,7 @@ export class DriversService {
     acceptsPassengers?: boolean; seatsTotal?: number; acceptsPackages?: boolean;
     pickupMode?: 'fixed' | 'along_route'; pickupAddress?: string;
     pickupLat?: number; pickupLng?: number; routeKm?: number;
+    destLat?: number; destLng?: number; destAddress?: string;
   }) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
@@ -379,6 +380,9 @@ export class DriversService {
       pickupLat:       Number.isFinite(Number(body.pickupLat)) ? Number(body.pickupLat) : null,
       pickupLng:       Number.isFinite(Number(body.pickupLng)) ? Number(body.pickupLng) : null,
       routeKm:         Number.isFinite(Number(body.routeKm)) && Number(body.routeKm) > 0 ? Number(body.routeKm) : null,
+      destLat:         Number.isFinite(Number(body.destLat)) ? Number(body.destLat) : null,
+      destLng:         Number.isFinite(Number(body.destLng)) ? Number(body.destLng) : null,
+      destAddress:     body.destAddress?.trim() || null,
     } as any);
     return this.tripsRepo.save(trip);
   }
@@ -427,6 +431,9 @@ export class DriversService {
       fromCity: t.fromCity, toCity: t.toCity, departAt: t.departAt,
       pickupMode: t.pickupMode, pickupAddress: t.pickupAddress,
       routeKm: t.routeKm != null ? Number(t.routeKm) : null,
+      destLat: t.destLat != null ? Number(t.destLat) : null,
+      destLng: t.destLng != null ? Number(t.destLng) : null,
+      destAddress: t.destAddress ?? null,
       acceptsPassengers: !!t.acceptsPassengers,
       acceptsPackages: !!t.acceptsPackages,
       seatsLeft: Math.max(0, Number(t.seatsTotal) - Number(t.seatsBooked)),

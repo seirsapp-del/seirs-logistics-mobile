@@ -72,6 +72,35 @@ export class DriverTrip {
 
   /** Road km between the two cities, measured once at declaration. */
   @Column({ type: 'numeric', precision: 8, scale: 1, nullable: true })
+  /**
+   * Where the trip actually ends, in coordinates.
+   *
+   * The trip carried pickupLat/pickupLng for the origin and NOTHING for
+   * the destination: toCity was a bare string. So the server could not
+   * know where a trip went, and bookTripSeats resolved it through a
+   * hardcoded twelve-city lookup, CITY_COORDS.
+   *
+   * That list quietly defined the entire business. A rider declaring
+   * Ibadan to Jos saved a trip nobody could ever book, and the error a
+   * passenger got said "this route needs a mapped pickup point", which
+   * sent the rider off to re-declare a pickup that was never the
+   * problem. Twelve cities is not a country (founder 2026-08-27: "this
+   * business model you design will be limited and i dont want that").
+   *
+   * With real coordinates from the address picker, any destination in
+   * Nigeria works and CITY_COORDS becomes a fallback for rows that
+   * predate this column rather than the rule.
+   */
+  @Column({ type: 'double precision', nullable: true })
+  destLat: number | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  destLng: number | null;
+
+  /** Human-readable destination from the picker, e.g. "Jos, Plateau". */
+  @Column({ type: 'varchar', length: 240, nullable: true })
+  destAddress: string | null;
+
   routeKm: number | null;
 
   @Column({ type: 'enum', enum: DriverTripStatus, default: DriverTripStatus.ACTIVE })
