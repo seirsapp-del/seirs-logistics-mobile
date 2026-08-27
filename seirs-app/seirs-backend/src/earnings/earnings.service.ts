@@ -56,6 +56,11 @@ const MAX_DAILY_PAYOUT_ESTABLISHED = 200_000;
 const NEW_DRIVER_HOLDBACK_DAYS     = 30;
 const NEW_DRIVER_HOLDBACK_PERCENT  = 0.10;
 
+/** Money rounds to the kobo, never to whole naira. */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 /** Advance `days` business days (Mon-Fri) from `from`, keeping the time of day. */
 function addBusinessDays(from: Date, days: number): Date {
   const d = new Date(from);
@@ -493,6 +498,53 @@ export class EarningsService {
       .set({ status: 'paid', paidAt: new Date(), flutterwaveTransferId: result.transferId ?? null })
       .where('id IN (:...ids)', { ids: toPayoutIds })
       .execute();
+
+    /**
+     * Give the holdback back.
+     *
+     * The line that applies it says "kept as available for next round".
+     * It was not kept. Every claimed row was marked paid while only
+     * (100 - holdback)% was transferred, so the difference left the
+     * rider's balance and went nowhere: not to them, not back to the
+     * ledger. Rows are never split, so a 1,469.68 earning paid out
+     * 1,322.71 and the remaining 146.97 was recorded as paid and never
+     * sent. Every new rider lost that percentage of their first 30 days,
+     * permanently and silently.
+     *
+     * Found the moment the platform's first successful payout landed
+     * (2026-08-27): the transfer said 1,322.71, the ledger said zero.
+     *
+     * The withheld amount is written back as a fresh available row so it
+     * is genuinely there for the next withdrawal, which is what the
+     * rider was promised.
+     */
+    const withheld = round2(runningTotal - payoutAmount);
+    if (withheld > 0) {
+      try {
+        const lastRow = eligible.find((e) => e.id === toPayoutIds[toPayoutIds.length - 1]);
+        await this.repo.save(this.repo.create({
+          driverId,
+          deliveryId:  lastRow?.deliveryId as string,
+          grossAmount: '0',
+          seirsCut:    '0',
+          driverNet:   withheld.toFixed(2),
+          status:      'available',
+          availableAt: new Date(),
+          holdReason:  `New-rider holdback carried forward from payout ${reference}`,
+        } as any));
+      } catch (e: any) {
+        // The rider is owed this. If it cannot be written, say so loudly:
+        // a silent failure here is the exact bug this block exists to fix.
+        this.logger.error(
+          `HOLDBACK NOT RETURNED for ${driverId} on ${reference}: ` +
+          `NGN ${withheld.toFixed(2)} owed. ${e?.message}`,
+        );
+        await this.recordPayoutFailure(
+          driverId, driver.name ?? '', reference, withheld,
+          `Holdback of NGN ${withheld.toFixed(2)} could not be returned to the balance. Owed to rider.`,
+        );
+      }
+    }
 
     return { paidAmount: payoutAmount, feeNgn, transferId: result.transferId, payoutEarningIds: toPayoutIds };
   }
