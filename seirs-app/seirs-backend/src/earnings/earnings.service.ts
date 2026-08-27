@@ -109,7 +109,9 @@ export class EarningsService {
         adminId:   'system',
         adminName: 'Payout engine',
         action:    'payout.declined',
-        target:    driverUserId,
+        // The `user:` prefix is what the admin driver-detail query filters
+        // on. A bare id writes a row nobody ever sees.
+        target:    `user:${driverUserId}`,
         meta:      { driverName, reference, amountNaira, reason },
         ip:        '',
       }));
@@ -509,11 +511,38 @@ export class EarningsService {
     available: number;
     clearanceBusinessDays: number;
     nextPayoutEta: string;
+    /**
+     * The new-rider holdback, surfaced so the withdraw screen can say it
+     * out loud BEFORE the rider confirms.
+     *
+     * A 10% holdback applies for the first 30 days and the screen never
+     * mentioned it. The founder withdrew 1,469.68 on 2026-08-27 and the
+     * payout came to 1,322.71, with the confirm sheet explaining the gap
+     * as "amounts are matched to your completed deliveries", which is a
+     * different mechanism and was simply wrong here. A rider reads that
+     * as being shorted, and they would be right to.
+     */
+    holdbackPct: number;
+    holdbackNgn: number;
+    payoutPreviewNgn: number;
+    holdbackEndsAt: string | null;
   }> {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart  = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    // New-rider holdback, computed here so the screen can disclose it.
+    const policyForView = await this.payoutPolicy();
+    const driverForView = await this.userRepo.findOneBy({ id: driverId });
+    const ageDays = driverForView
+      ? Math.floor((Date.now() - new Date(driverForView.createdAt).getTime()) / 86_400_000)
+      : 999;
+    const isNew = ageDays < policyForView.newDriverDays;
+    const heldPct = isNew ? policyForView.holdbackPct : 0;
+    const holdbackEndsAt = isNew && driverForView
+      ? new Date(new Date(driverForView.createdAt).getTime() + policyForView.newDriverDays * 86_400_000)
+      : null;
+
     const [todayRows, weekRows, monthRows, allTimeRows, pendingRow, availableRow] = await Promise.all([
       this.sumByPeriod(driverId, todayStart),
       this.sumByPeriod(driverId, weekStart),
@@ -522,6 +551,8 @@ export class EarningsService {
       this.sumByStatus(driverId, 'pending'),
       this.sumByStatus(driverId, 'available'),
     ]);
+
+    const heldNgn = +((availableRow * heldPct) / 100).toFixed(2);
 
     return {
       today:     todayRows,
@@ -532,6 +563,10 @@ export class EarningsService {
       available: availableRow,
       clearanceBusinessDays: await this.clearanceBusinessDays(),
       nextPayoutEta: 'Automatic payout daily at 2 PM (Lagos time)',
+      holdbackPct:      heldPct,
+      holdbackNgn:      heldNgn,
+      payoutPreviewNgn: +(availableRow - heldNgn).toFixed(2),
+      holdbackEndsAt:   holdbackEndsAt ? holdbackEndsAt.toISOString() : null,
     };
   }
 

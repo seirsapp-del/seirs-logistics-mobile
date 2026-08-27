@@ -477,8 +477,14 @@ export interface EarningsDashboard {
   pending:   number;
   available: number;
   // Instant withdrawal: pending earnings 24h+ old, unlockable for a fee.
-  instantEligible?: number;
-  instantFeePct?:   number;
+  /**
+   * New-rider holdback, so the withdraw screen can disclose it before
+   * the rider confirms rather than after the money lands short.
+   */
+  holdbackPct?:      number;
+  holdbackNgn?:      number;
+  payoutPreviewNgn?: number;
+  holdbackEndsAt?:   string | null;
   clearanceBusinessDays?: number;
   nextPayoutEta: string;
 }

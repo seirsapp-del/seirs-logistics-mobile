@@ -97,7 +97,24 @@ export default function WithdrawalScreen() {
     ? minWithdrawalRaw
     : MIN_WITHDRAWAL_FALLBACK;
   const available       = cleared;
+
+  /**
+   * The new-rider holdback, shown BEFORE the rider confirms.
+   *
+   * 10% is held back for the first 30 days and this screen never said
+   * so. Withdrawing 1,469.68 paid out 1,322.71, and the confirm sheet
+   * explained the gap as delivery-matching, which is a different
+   * mechanism and was wrong here. Money arriving short with the wrong
+   * reason attached is how a rider concludes they were cheated
+   * (founder, 2026-08-27: "why is it 1322.71 naira").
+   */
+  const round2          = (n: number) => Math.round(n * 100) / 100;
+  const holdbackPct     = Number(dashboard?.holdbackPct ?? 0);
+  const holdbackApplies = holdbackPct > 0;
   const numericAmount   = Math.round((parseFloat(amount.replace(/,/g, '')) || 0) * 100) / 100;
+  // What actually lands, once the new-rider holdback is taken off.
+  const expectedPayout  = round2(numericAmount - (numericAmount * holdbackPct) / 100);
+  const heldBack        = round2(numericAmount - expectedPayout);
   const hasBank         = !!(bank?.bankCode && bank?.bankAccountNumber);
   // Fraud guard: a pending bank change freezes withdrawals until support
   // resolves the review ticket (backend enforces this too).
@@ -142,7 +159,13 @@ export default function WithdrawalScreen() {
       title: 'Confirm withdrawal',
       message:
         `Withdraw up to ${naira(numericAmount)} to ${bank?.bankName ?? 'your bank'} ` +
-        `(${bank?.bankAccountNumber}).\n\nAmounts are matched to your completed deliveries, ` +
+        `(${bank?.bankAccountNumber}).\n\n` +
+        (holdbackApplies
+          ? `New riders keep ${holdbackPct}% back for the first few weeks, so ` +
+            `${naira(expectedPayout)} is sent now and ${naira(heldBack)} stays in ` +
+            `your balance.\n\n`
+          : '') +
+        `Amounts are matched to your completed deliveries, ` +
         `so the exact figure can be slightly lower. You will see the final amount sent.`,
       options: [
         {

@@ -1282,7 +1282,8 @@ export class AdminService {
       adminId:   actor.id,
       adminName: actor.name ?? 'unknown',
       action:    isDemo ? 'user.demo_flag.set' : 'user.demo_flag.cleared',
-      target:    id,
+      // Prefixed so it shows on the user's own admin timeline.
+      target:    `user:${id}`,
       meta:      { email: user.email, name: user.name, previous, next: isDemo },
       ip:        ip ?? '',
     }));
