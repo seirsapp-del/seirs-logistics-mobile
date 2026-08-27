@@ -244,7 +244,6 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/tickets':                 'tickets',
   '/suggestions':             'suggestions',
 
-  '/cms':                     'cms',
   '/website':                 'cms',
   '/promotions':              'promotions',
 
@@ -533,7 +532,6 @@ const NAV_LAYOUT: Array<{ title: string; items: NavItemDef[] }> = [
       // The founder went looking for the app carousel, clicked the one
       // that said In-App, published, and nothing happened.
       { href: '/website',    label: 'App & Website Content', icon: 'Globe'    },
-      { href: '/cms',        label: 'In-App CMS (inactive)',  icon: 'FileText' },
       { href: '/promotions', label: 'Promotions',             icon: 'Percent'  },
     ],
   },

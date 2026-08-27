@@ -17,7 +17,6 @@ import { AdminGuard } from '../common/guards/admin.guard';
 import { SuperAdminGuard } from '../common/guards/super-admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { FraudFlagStatus } from '../fraud/fraud-flag.entity';
-import { ContentType, ContentStatus } from './cms-item.entity';
 import { TicketStatus } from '../support/support-ticket.entity';
 
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -615,47 +614,6 @@ export class AdminController {
     @Body('reason') reason?: string,
   ) {
     return this.adminService.updateDriverStatus(id, 'rejected', reason);
-  }
-
-  // ── CMS ───────────────────────────────────────────────────────────────────
-
-  // GET /api/v1/admin/cms?type=banner&status=published
-  @Get('cms')
-  getCmsItems(@Query() q: { type?: ContentType; status?: ContentStatus }) {
-    return this.adminService.getCmsItems(q.type, q.status);
-  }
-
-  // POST /api/v1/admin/cms
-  @Post('cms')
-  createCmsItem(
-    @Body() body: { type: ContentType; title: string; body?: string; imageUrl?: string },
-    @CurrentUser() admin: any,
-  ) {
-    return this.adminService.createCmsItem(body, admin.id);
-  }
-
-  // PATCH /api/v1/admin/cms/:id
-  @Patch('cms/:id')
-  updateCmsItem(@Param('id') id: string, @Body() body: any) {
-    return this.adminService.updateCmsItem(id, body);
-  }
-
-  // PATCH /api/v1/admin/cms/:id/approve
-  @Patch('cms/:id/approve')
-  approveCmsItem(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
-    return this.adminService.approveCmsItem(id, admin, req.ip);
-  }
-
-  // PATCH /api/v1/admin/cms/:id/publish
-  @Patch('cms/:id/publish')
-  publishCmsItem(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
-    return this.adminService.publishCmsItem(id, admin, req.ip);
-  }
-
-  // DELETE /api/v1/admin/cms/:id
-  @Delete('cms/:id')
-  deleteCmsItem(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
-    return this.adminService.deleteCmsItem(id, admin, req.ip);
   }
 
   // ── Support Tickets ───────────────────────────────────────────────────────

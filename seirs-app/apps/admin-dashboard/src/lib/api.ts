@@ -565,17 +565,6 @@ export const adminApi = {
       req<any>(`/admin/fraud/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   },
 
-  cms: {
-    list:    (type?: string, status?: string) =>
-      req<any>(`/admin/cms?${type ? `type=${type}&` : ''}${status ? `status=${status}` : ''}`),
-    create:  (data: any) => req<any>('/admin/cms', { method: 'POST', body: JSON.stringify(data) }),
-    update:  (id: string, data: any) =>
-      req<any>(`/admin/cms/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    approve: (id: string) => req<any>(`/admin/cms/${id}/approve`, { method: 'PATCH' }),
-    publish: (id: string) => req<any>(`/admin/cms/${id}/publish`, { method: 'PATCH' }),
-    delete:  (id: string) => req<any>(`/admin/cms/${id}`, { method: 'DELETE' }),
-  },
-
   tickets: {
     list:    (page = 1, status?: string) =>
       req<any>(`/admin/tickets?page=${page}${status ? `&status=${status}` : ''}`),

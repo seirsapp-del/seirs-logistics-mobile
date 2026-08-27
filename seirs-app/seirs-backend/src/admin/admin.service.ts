@@ -14,7 +14,6 @@ import { UsersService } from '../users/users.service';
 import { PaymentsService } from '../payments/payments.service';
 import { FeesService } from '../fees/fees.service';
 import { DriversService } from '../drivers/drivers.service';
-import { CmsItem, ContentType, ContentStatus } from './cms-item.entity';
 import { SupportTicket, TicketStatus } from '../support/support-ticket.entity';
 import { SupportService } from '../support/support.service';
 import { AuditLogEntry } from './audit-log.entity';
@@ -51,7 +50,6 @@ export class AdminService {
     @InjectRepository(Driver)                     private driversRepo:    Repository<Driver>,
     @InjectRepository(Delivery)                   private deliveriesRepo: Repository<Delivery>,
     @InjectRepository(FraudFlag)                  private flagsRepo:      Repository<FraudFlag>,
-    @InjectRepository(CmsItem)                    private cmsRepo:        Repository<CmsItem>,
     @InjectRepository(SupportTicket)              private ticketsRepo:    Repository<SupportTicket>,
     private readonly supportService: SupportService,
     @InjectRepository(AuditLogEntry)              private auditRepo:      Repository<AuditLogEntry>,
@@ -2067,16 +2065,11 @@ export class AdminService {
   async getAdminFootprint(adminUserId: string) {
     const mgr = this.usersRepo.manager;
 
-    const [openTickets, draftCms, apiKeys, openFraudFlags, auditEntries] = await Promise.all([
+    const [openTickets, apiKeys, openFraudFlags, auditEntries] = await Promise.all([
       mgr.createQueryBuilder()
         .from('support_tickets', 't')
         .where('t."assignedToId" = :uid', { uid: adminUserId })
         .andWhere('t.status IN (:...s)', { s: ['open', 'in_progress'] })
-        .getCount().catch(() => 0),
-      mgr.createQueryBuilder()
-        .from('cms_items', 'c')
-        .where('c."createdById" = :uid', { uid: adminUserId })
-        .andWhere('c.status = :s', { s: 'draft' })
         .getCount().catch(() => 0),
       mgr.createQueryBuilder()
         .from('api_keys', 'k')
@@ -2098,10 +2091,6 @@ export class AdminService {
     if (openTickets > 0) blockers.push({
       type: 'open_tickets', count: openTickets,
       action: `Reassign ${openTickets} open ticket${openTickets === 1 ? '' : 's'} to another support agent first.`,
-    });
-    if (draftCms > 0) blockers.push({
-      type: 'draft_cms', count: draftCms,
-      action: `${draftCms} draft CMS item${draftCms === 1 ? '' : 's'} will be orphaned. Publish, delete, or transfer ownership.`,
     });
     if (apiKeys > 0) blockers.push({
       type: 'api_keys', count: apiKeys,
@@ -2189,46 +2178,6 @@ export class AdminService {
 
   async confirmTOTP(_id: string, _code: string) {
     return { message: 'TOTP confirmed.' };
-  }
-
-  // ── CMS ───────────────────────────────────────────────────────────────────
-
-  async getCmsItems(type?: ContentType, status?: ContentStatus) {
-    const qb = this.cmsRepo.createQueryBuilder('c').orderBy('c.updatedAt', 'DESC');
-    if (type)   qb.andWhere('c.type = :type', { type });
-    if (status) qb.andWhere('c.status = :status', { status });
-    return qb.getMany();
-  }
-
-  async createCmsItem(
-    data: { type: ContentType; title: string; body?: string; imageUrl?: string },
-    createdById: string,
-  ) {
-    const item = this.cmsRepo.create({ ...data, createdById, status: ContentStatus.DRAFT });
-    return this.cmsRepo.save(item);
-  }
-
-  async updateCmsItem(id: string, data: Partial<CmsItem>) {
-    await this.cmsRepo.update(id, data);
-    return this.cmsRepo.findOne({ where: { id } });
-  }
-
-  async approveCmsItem(id: string, requester: any, ip?: string) {
-    await this.cmsRepo.update(id, { status: ContentStatus.PENDING, approvedById: requester.id });
-    await this.logAudit(requester, 'approve', `cms:${id}`, {}, ip);
-    return this.cmsRepo.findOne({ where: { id } });
-  }
-
-  async publishCmsItem(id: string, requester: any, ip?: string) {
-    await this.cmsRepo.update(id, { status: ContentStatus.PUBLISHED, publishedAt: new Date() });
-    await this.logAudit(requester, 'publish', `cms:${id}`, {}, ip);
-    return this.cmsRepo.findOne({ where: { id } });
-  }
-
-  async deleteCmsItem(id: string, requester: any, ip?: string) {
-    await this.cmsRepo.delete(id);
-    await this.logAudit(requester, 'delete', `cms:${id}`, {}, ip);
-    return { message: 'Content deleted.' };
   }
 
   // ── Support Tickets ───────────────────────────────────────────────────────

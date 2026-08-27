@@ -18,7 +18,6 @@ import { PartnerStoreModule } from '../partner-store/partner-store.module';
 import { DriversModule } from '../drivers/drivers.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { FraudFlag } from '../fraud/fraud-flag.entity';
-import { CmsItem } from './cms-item.entity';
 import { SupportTicket } from '../support/support-ticket.entity';
 import { SupportModule } from '../support/support.module';
 import { AuditLogEntry } from './audit-log.entity';
@@ -39,7 +38,7 @@ import { StoreDropoff } from '../partner-store/store-dropoff.entity';
     SupportModule,
     TypeOrmModule.forFeature([
       User, ArchivedUser, Driver, Delivery, FraudFlag,
-      CmsItem, SupportTicket, AuditLogEntry, PricingConfig,
+      SupportTicket, AuditLogEntry, PricingConfig,
       DuplicateAccountCandidate, ExternalPartner,
       PlatformConfig, DriverEarning, LoyaltyPoint, IdentityVerification,
       BusinessAccount, PartnerStore, Wallet, StoreDropoff,
