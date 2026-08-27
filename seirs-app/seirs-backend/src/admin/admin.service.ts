@@ -1638,18 +1638,37 @@ export class AdminService {
        */
       (async () => {
         if (!userId) return { available: 0, pending: 0 };
-        const rows = await this.earningsRepo
-          .createQueryBuilder('e')
-          .select('e.status', 'status')
-          .addSelect('SUM(e."driverNet")', 'total')
-          .where('e."driverId" = :uid', { uid: userId })
-          .groupBy('e.status')
-          .getRawMany()
-          .catch(() => [] as any[]);
-        const by = (st: string) =>
-          Number(rows.find((r: any) => r.status === st)?.total ?? 0) || 0;
-        return { available: by('available'), pending: by('pending') };
-      })().catch(() => ({ available: 0, pending: 0 })),
+        /**
+         * Entity PROPERTY names, not quoted column names.
+         *
+         * The first version wrote e."driverId" and SUM(e."driverNet"),
+         * which are the TypeScript names. The actual columns are
+         * driver_id and driver_net, so Postgres threw, the .catch
+         * swallowed it, and the tile read 0.00 next to a Wallet page
+         * showing 1,469.68 (founder: "it still shows he has nothing to
+         * withdraw, that's false"). A catch that turns a broken query
+         * into a plausible number is worse than a crash.
+         *
+         * Unquoted property paths let TypeORM do the mapping, which is
+         * the whole point of using the QueryBuilder over raw SQL.
+         */
+        try {
+          const rows = await this.earningsRepo
+            .createQueryBuilder('e')
+            .select('e.status', 'status')
+            .addSelect('SUM(e.driverNet)', 'total')
+            .where('e.driverId = :uid', { uid: userId })
+            .groupBy('e.status')
+            .getRawMany();
+          const by = (st: string) =>
+            Number(rows.find((r: any) => r.status === st)?.total ?? 0) || 0;
+          return { available: by('available'), pending: by('pending') };
+        } catch (e: any) {
+          // Say so rather than returning a number that looks real.
+          this.logger?.warn?.(`Earnings split failed for ${userId}: ${e?.message}`);
+          return { available: 0, pending: 0 };
+        }
+      })(),
     ]);
 
     const [deliveries, deliveryCount] = deliveryPage as [any[], number];
