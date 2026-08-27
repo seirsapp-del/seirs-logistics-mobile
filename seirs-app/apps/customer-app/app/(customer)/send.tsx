@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, Pressable, StyleSheet, StatusBar, TextInput,
   ActivityIndicator, Image, Keyboard, ScrollView, Linking, Modal, Dimensions,
@@ -565,6 +565,27 @@ export default function SendScreen() {
       : [],
   );
 
+  // The drop furthest from pickup. The server uses it to detect the
+  // destination state and to floor the priced distance, neither of which
+  // it could do when this was undefined on every multi-package run.
+  const farthestDropCoords = useMemo(() => {
+    if (!pickup) return undefined;
+    let best: { latitude: number; longitude: number } | undefined;
+    let bestD = -1;
+    for (const pk of packages) {
+      const dp = pk.dropoff;
+      if (!dp) continue;
+      const dLat = ((dp.lat - pickup.lat) * Math.PI) / 180;
+      const dLng = ((dp.lng - pickup.lng) * Math.PI) / 180;
+      const a = Math.sin(dLat / 2) ** 2
+        + Math.cos((pickup.lat * Math.PI) / 180) * Math.cos((dp.lat * Math.PI) / 180)
+        * Math.sin(dLng / 2) ** 2;
+      const d = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (d > bestD) { bestD = d; best = { latitude: dp.lat, longitude: dp.lng }; }
+    }
+    return best;
+  }, [pickup, packages]);
+
   const distKmRoute = packages.length > 1
     ? (multi.distanceMeters != null ? multi.distanceMeters / 1000 : 0)
     : (distanceMeters != null ? distanceMeters / 1000 : 0);
@@ -620,14 +641,21 @@ export default function SendScreen() {
       weightKg:     pkgs.reduce((a, b) => a + b.weightKg, 0),
       // Mirror create(): a single package books with zero dwell, so the
       // quote must price with zero dwell or the two drift again.
-      estimatedDwellMinutes: packages.length > 1 ? packages.length * 4 : 0,
+      // Deliberately not sent. The engine derives waiting from the run's
+      // own shape (stops, weight, category setup, per-stop buffer), which
+      // is the same figure the booking charges. Sending a flat four
+      // minutes a stop from here made the quote disagree with the charge
+      // and let the weight ladder on the card go unread (2026-08-27).
       declaredValueNgn: packages.reduce((sum, pk) => sum + (Number(pk.declaredValue) || 0), 0) || undefined,
       // The blended per-package path is for real runs only.
       packages:     packages.length > 1 ? pkgs : undefined,
       pickupCoords:  pickup  ? { latitude: pickup.lat,  longitude: pickup.lng  } : undefined,
-      dropoffCoords: packages.length === 1 && packages[0].dropoff
-        ? { latitude: packages[0].dropoff.lat, longitude: packages[0].dropoff.lng }
-        : undefined,
+      // Was single-package only, so a multi-package run sent no dropoff at
+      // all and the engine could not detect the destination state: its
+      // zone tier needs BOTH ends and silently charged nothing without
+      // them (2026-08-27). Furthest drop, because that is the leg that
+      // decides the zone on a multi-drop run.
+      dropoffCoords: farthestDropCoords,
       // Price the booking for WHEN it happens, not for when the sender
       // is looking at the screen (2026-08-25). The rate card prices
       // night, peak and weekend surcharges off scheduledAt, and

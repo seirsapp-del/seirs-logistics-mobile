@@ -590,7 +590,7 @@ export class PricingService implements OnModuleInit {
     const r = (card as any).rideRates?.[input.vehicleType]
       ?? PricingService.DEFAULT_RIDE_RATES[input.vehicleType];
 
-    const km = Math.max(0, Number(input.km) || 0);
+    const km = await this.flooredKm(input.km, input.pickupCoords, input.dropoffCoords);
     const pickupState  = input.pickupCoords  ? detectStateFromCoords(input.pickupCoords.latitude,  input.pickupCoords.longitude)  : null;
     const dropoffState = input.dropoffCoords ? detectStateFromCoords(input.dropoffCoords.latitude, input.dropoffCoords.longitude) : null;
     const region = this.resolveRegion(card, pickupState, input.pickupCoords ?? null);
@@ -753,9 +753,52 @@ export class PricingService implements OnModuleInit {
     }
   }
 
+  /**
+   * A floor under the priced distance, never a price.
+   *
+   * The engine took the client's km at face value. Found 2026-08-27:
+   * when Google Directions fails the customer app falls back to 0
+   * (send.tsx, the distKmRoute ternary) and the business app falls back
+   * to straight-line. A zero arrived here as a real distance, so the
+   * sender paid base fare alone and the rider's distance pay, which is
+   * the larger half of it, was zero too. A modified client could send
+   * that same zero on purpose.
+   *
+   * A straight line is the shortest path between two points, so road km
+   * can never be below the great-circle km from pickup to the final
+   * drop. Taking the max can only lift a distance that is physically
+   * impossible; an honest road quote passes through untouched, which is
+   * why this cannot overcharge anyone.
+   *
+   * roadFactor is admin-tunable and defaults to 1.0, pure geometry. Set
+   * it above 1 only with real road-vs-straight data for the corridor.
+   */
+  private async flooredKm(
+    clientKm: number,
+    pickup?:  { latitude: number; longitude: number } | null,
+    dropoff?: { latitude: number; longitude: number } | null,
+  ): Promise<number> {
+    const km = Math.max(0, Number(clientKm) || 0);
+    if (!pickup || !dropoff) return km;
+    const straight = haversineKmLocal(
+      pickup.latitude, pickup.longitude, dropoff.latitude, dropoff.longitude,
+    );
+    if (!Number.isFinite(straight) || straight <= 0) return km;
+    const raw    = Number(await this.fees.getValueOr('pricing_road_factor', 1));
+    const factor = Number.isFinite(raw) && raw >= 1 ? raw : 1;
+    return Math.max(km, round2(straight * factor));
+  }
+
   async computePrice(input: PricingInput): Promise<PriceBreakdown> {
     const card = await this.getActiveRateCard();
     const category = await this.getCategoryByCode(input.categoryCode);
+
+    // Floor the distance before anything reads it, so the leg allowance,
+    // the surcharges and the driver's pay all build on the same number.
+    input = {
+      ...input,
+      km: await this.flooredKm(input.km, input.pickupCoords, input.dropoffCoords),
+    };
 
     /**
      * Charged leg allowance for runs (founder 2026-08-21: charged, not
@@ -858,9 +901,53 @@ export class PricingService implements OnModuleInit {
      * is watching.
      */
     const sd = card.stopAndDwell;
+    /**
+     * Waiting, and why it can never be earned by loitering.
+     *
+     * Two defects, both found 2026-08-27 while modelling a 50-package run.
+     *
+     * FIRST, the cap was applied once to the WHOLE run. Its own comment
+     * describes protecting a customer "simply a bit slow to come down",
+     * which is one person at one door, but a fifty-drop run met the same
+     * thirty-minute ceiling as a single delivery. The rider waited an
+     * estimated two hundred minutes and was paid for thirty. The sender
+     * was not charged for the rest either, so the rider absorbed all of
+     * it. The cap is now per stop, which keeps the original protection
+     * (no open-ended charge at any one door) and removes the punishment
+     * for scale.
+     *
+     * SECOND, this number must never become something a rider can grow
+     * by standing still. It is not measured time and must not become
+     * measured time: it is derived from the SHAPE of the booking, the
+     * stops it has, the weight at each, the category setup, so it is
+     * fully determined before the rider is even assigned. The ceiling
+     * below re-derives that here rather than trusting what the caller
+     * passed, so neither an app, an integrator, nor a rider sitting on a
+     * kerb can bill a minute the booking does not justify.
+     *
+     * If measured dwell is ever wired, it has to arrive as its own field
+     * with its own evidence, and it must not flow through this line.
+     */
+    const stopsForDwell = Math.max(1, Number(input.stopCount) || 1);
+    const perStopCeiling = this.computeStopDwellMinutes(
+      card, category, input.weightKg / stopsForDwell,
+    );
+    const ceilingTotal = perStopCeiling * stopsForDwell;
+    const claimedDwell = Math.max(0, Number(input.estimatedDwellMinutes ?? 0) || 0);
+    /**
+     * A caller that says nothing gets the engine's own figure, which is
+     * what makes the quote and the charge agree without either app
+     * having to know the formula. A caller that does supply one (the
+     * business API sums real per-package categories, which is finer than
+     * the average this ceiling uses) is honoured up to the ceiling and
+     * never past it.
+     */
+    const justifiedDwell = claimedDwell > 0
+      ? Math.min(claimedDwell, ceilingTotal)
+      : (stopsForDwell > 1 ? ceilingTotal : 0);
     const billableDwell = Math.min(
-      Math.max(0, (input.estimatedDwellMinutes ?? 0) - sd.freeDwellThresholdMinutes),
-      sd.dwellCapMinutes,
+      Math.max(0, justifiedDwell - sd.freeDwellThresholdMinutes),
+      sd.dwellCapMinutes * stopsForDwell,
     );
     const dwellOver      = round2(billableDwell * sd.perDwellMinuteCustomer);
 

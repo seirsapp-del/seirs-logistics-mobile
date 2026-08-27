@@ -361,6 +361,59 @@ export class DeliveriesService {
       ? dto.stops.reduce((sum, st) => sum + (Number(st?.declaredValueNgn ?? 0) || 0), 0)
       : Number(dto.declaredValueNgn ?? 0) || 0;
 
+    /**
+     * The drop that decides the zone, derived here rather than trusted
+     * from the client.
+     *
+     * A stops[] booking carries no dropoffLat at all: the business app
+     * has never sent one, so this call site was handing the engine
+     * { latitude: undefined }, state detection returned null, and the
+     * whole state-aware zone tier was skipped on every multi-stop
+     * booking. An inter-state run was charged as a local one, at both
+     * quote and charge (2026-08-27).
+     *
+     * Furthest from pickup, because that is the leg that determines the
+     * zone; nearest would let a run start with a drop down the road and
+     * price a cross-country second leg as local.
+     */
+    const finalDropCoords = (() => {
+      const stops: any[] = Array.isArray(dto.stops) ? dto.stops : [];
+      const pLat = Number(dto.pickupLat), pLng = Number(dto.pickupLng);
+      if (stops.length && Number.isFinite(pLat) && Number.isFinite(pLng)) {
+        let best: { latitude: number; longitude: number } | null = null;
+        let bestD = -1;
+        for (const st of stops) {
+          const la = Number(st?.lat ?? st?.dropoffLat);
+          const ln = Number(st?.lng ?? st?.dropoffLng);
+          if (!Number.isFinite(la) || !Number.isFinite(ln)) continue;
+          const d = PricingService.haversineKm(pLat, pLng, la, ln);
+          if (d > bestD) { bestD = d; best = { latitude: la, longitude: ln }; }
+        }
+        if (best) return best;
+      }
+      return { latitude: dto.dropoffLat, longitude: dto.dropoffLng };
+    })();
+
+    /**
+     * Waiting, from the same estimator the business API has always used.
+     *
+     * This path assumed a flat four minutes a stop while business.service
+     * called computeStopDwellMinutes, which reads the category setup time,
+     * the weight ladder and the per-stop buffer off the card. So the same
+     * run, booked through two doors, dwelled differently and the weight
+     * tiers the card configures were dead on this path (2026-08-27).
+     *
+     * Single drops stay at zero, exactly as before: this changes what a
+     * multi-stop run bills, and nothing else.
+     */
+    const dwellCategory = await this.rateCardPricing.getCategoryByCode(
+      toCategoryCode(dto.packageCategory),
+    );
+    const dwellCard = await this.rateCardPricing.getActiveRateCard();
+    const perStopDwellMinutes = this.rateCardPricing.computeStopDwellMinutes(
+      dwellCard, dwellCategory, stopCount > 0 ? weight / stopCount : weight,
+    );
+
     // A ride prices through the ride engine: no categories, no weight,
     // no stops, the passenger is the payload (founder 2026-08-22).
     const isRideBooking = (dto as any).mode === 'ride';
@@ -381,9 +434,7 @@ export class DeliveriesService {
       stopCount,
       weightKg: weight,
       declaredValueNgn: declaredTotalNgn > 0 ? declaredTotalNgn : undefined,
-      // Mirrors the app's quote inputs: ~4 minutes of dwell per stop on
-      // a run, zero for a single drop.
-      estimatedDwellMinutes: stopCount > 1 ? stopCount * 4 : 0,
+      estimatedDwellMinutes: stopCount > 1 ? perStopDwellMinutes * stopCount : 0,
       // A pinned send-now booking re-evaluates time surcharges at the
       // instant the quote was priced, which is what makes it match.
       scheduledAt: dto.scheduledFor
@@ -396,7 +447,7 @@ export class DeliveriesService {
       // while the review screen showed Lagos rates. Caught live on the
       // first real booking: screen 2,134, charge 1,668 (2026-08-21).
       pickupCoords:  { latitude: dto.pickupLat,  longitude: dto.pickupLng },
-      dropoffCoords: { latitude: dto.dropoffLat, longitude: dto.dropoffLng },
+      dropoffCoords: finalDropCoords,
     } as any);
     // Consent lands as a timestamp on the row, provable later.
     const termsAcceptedAt = (dto as any).termsAccepted ? new Date() : null;

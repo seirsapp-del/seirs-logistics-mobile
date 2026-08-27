@@ -596,6 +596,35 @@ export default function SendPackageScreen() {
   const pickupPoint = draft.pickupLat != null && draft.pickupLng != null
     ? { latitude: draft.pickupLat, longitude: draft.pickupLng }
     : null;
+  /**
+   * The drop furthest from pickup, which the server needs for two things
+   * it could not do before (2026-08-27): detect the destination STATE,
+   * and floor the priced distance.
+   *
+   * This app never sent dropoffCoords at all, so the engine's state-aware
+   * zone tier was skipped on every business booking and it fell back to
+   * the v1 branch, where the hardcoded isInterState: false below actively
+   * suppressed the surcharge. A Lagos to Abuja run was priced as a local
+   * one. Furthest rather than last, because on a multi-drop run it is the
+   * leg that decides the zone and it gives the tightest honest floor.
+   */
+  const farthestDrop = useMemo(() => {
+    if (draft.pickupLat == null || draft.pickupLng == null) return undefined;
+    let best: { latitude: number; longitude: number } | undefined;
+    let bestD = -1;
+    for (const s of draft.stops) {
+      if (s.lat == null || s.lng == null) continue;
+      const dLat = ((s.lat - draft.pickupLat!) * Math.PI) / 180;
+      const dLng = ((s.lng - draft.pickupLng!) * Math.PI) / 180;
+      const a = Math.sin(dLat / 2) ** 2
+        + Math.cos((draft.pickupLat! * Math.PI) / 180) * Math.cos((s.lat * Math.PI) / 180)
+        * Math.sin(dLng / 2) ** 2;
+      const d = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (d > bestD) { bestD = d; best = { latitude: s.lat, longitude: s.lng }; }
+    }
+    return best;
+  }, [draft.pickupLat, draft.pickupLng, draft.stops]);
+
   const dropPoints = draft.stops
     .filter((st) => st.lat != null && st.lng != null)
     .map((st) => ({ latitude: st.lat as number, longitude: st.lng as number }));
@@ -633,7 +662,11 @@ export default function SendPackageScreen() {
       km: routeKm,
       stopCount: draft.stops.length,
       weightKg: totalWeight,
-      estimatedDwellMinutes: draft.stops.length * 4,
+      // Deliberately not sent. The engine derives waiting from the run's
+      // own shape (stops, weight, category setup, per-stop buffer), which
+      // is the same figure the booking charges. Sending a flat four
+      // minutes a stop from here made the quote disagree with the charge
+      // and let the weight ladder on the card go unread (2026-08-27).
       packages,
       declaredValueNgn: draft.stops.reduce((sum, s) => sum + (Number(s.declaredValueNgn) || 0), 0) || undefined,
       // Counters are paid per parcel they touch, so the quote has to know
@@ -642,6 +675,7 @@ export default function SendPackageScreen() {
         (draft.pickupStoreId ? draft.stops.length : 0) +
         draft.stops.filter((s) => s.destinationStoreId).length,
       pickupCoords: draft.pickupLat != null ? { latitude: draft.pickupLat, longitude: draft.pickupLng } : undefined,
+      dropoffCoords: farthestDrop,
       // Price the run for WHEN it happens, not for when the sender is
       // looking at the screen. Undefined means Send now, which the
       // engine already treats as this instant.
@@ -879,7 +913,10 @@ export default function SendPackageScreen() {
         km: routeKm,
         estimatedDriveMinutes: route.durationSeconds != null ? Math.round(route.durationSeconds / 60) : Math.round(routeKm * 3),
         scheduledAt,
-        isInterState: false,
+        // isInterState was hardcoded false here. This payload already
+        // carries pickupLat/Lng and every stop coordinate, so the server
+        // derives the states itself; the flag was not merely redundant,
+        // it was the thing suppressing the surcharge on the v1 fallback.
         isLongDistance: routeKm > 100,
         isRecurring: false,
       });
