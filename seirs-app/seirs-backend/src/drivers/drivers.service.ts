@@ -635,8 +635,19 @@ export class DriversService {
     ).catch(() => {});
   }
 
-  listMyInterstateTrips(userId: string) {
-    return this.tripsRepo
+  /**
+   * The rider's own declared trips, each carrying its stops.
+   *
+   * The stops are attached here rather than left to a second call: the
+   * declared-trips card is where a rider checks what they committed to,
+   * and a route that shows two city names when it actually has four
+   * stops on it is the same two-city fiction this work exists to remove.
+   *
+   * TripStop has no inverse relation on DriverTrip, so the join is done
+   * by hand rather than by leftJoinAndSelect.
+   */
+  async listMyInterstateTrips(userId: string) {
+    const trips = await this.tripsRepo
       .createQueryBuilder('t')
       .leftJoinAndSelect('t.driver', 'd')
       .leftJoinAndSelect('d.user', 'u')
@@ -644,6 +655,20 @@ export class DriversService {
       .orderBy('t.departAt', 'DESC')
       .limit(50)
       .getMany();
+    if (!trips.length) return trips;
+
+    const stops = await this.tripStopsRepo.find({
+      where: { tripId: In(trips.map((t) => t.id)) } as any,
+      order: { sequence: 'ASC' },
+    }).catch(() => []);
+
+    const byTrip = new Map<string, any[]>();
+    for (const st of stops) {
+      const list = byTrip.get(st.tripId) ?? [];
+      list.push(st);
+      byTrip.set(st.tripId, list);
+    }
+    return trips.map((t) => ({ ...t, stops: byTrip.get(t.id) ?? [] })) as any;
   }
 
   // Admin board - Spec V8 §3.12. Returns trips with driver + user joined

@@ -1,7 +1,7 @@
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { PlacePicker, type PickedPlace } from '@seirs/shared/components/PlacePicker';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,12 +16,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft, MapPin, Calendar, Truck, ArrowRight,
+  ArrowLeft, MapPin, Truck, Plus, Trash2,
 } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { driversApi, configApi } from '@/services/api';
+import { driversApi, configApi, mapsApi } from '@/services/api';
 import { naira } from '@/utils/money';
 import { alertDialog } from '@/components/SeirsDialog';
 
@@ -57,12 +57,12 @@ function prettyDepart(dateISO: string, time: string): string {
 }
 
 const POPULAR_ROUTES = [
-  { from: 'Lagos',   to: 'Ibadan',  km: 145 },
-  { from: 'Lagos',   to: 'Abuja',   km: 760 },
-  { from: 'Ibadan',  to: 'Abuja',   km: 605 },
-  { from: 'Lagos',   to: 'Benin',   km: 320 },
-  { from: 'Abuja',   to: 'Kano',    km: 350 },
-  { from: 'Lagos',   to: 'Port Harcourt', km: 620 },
+  { from: 'Lagos',   to: 'Ibadan' },
+  { from: 'Lagos',   to: 'Abuja' },
+  { from: 'Ibadan',  to: 'Abuja' },
+  { from: 'Lagos',   to: 'Benin' },
+  { from: 'Abuja',   to: 'Kano' },
+  { from: 'Lagos',   to: 'Port Harcourt' },
 ];
 
 /**
@@ -84,46 +84,189 @@ const SEAT_CAPS: Record<string, number> = {
 };
 
 /**
- * Mirrors DeliveriesService.CITY_COORDS. A seat booking builds a real
- * delivery row and needs coordinates for both ends, so a trip declared
- * between cities outside this list is listed in Travel Buddy, browsed,
- * chosen, and then fails at the payment step with "This route needs a
- * mapped pickup point. Ask the driver to re-declare with a pickup
- * location" - advice that cannot work, because re-declaring the same
- * city name maps no better. The driver never sees that error: the
- * passenger does. Packages are matched on address text and need no
- * coordinates, so this gate applies to the passenger path only.
+ * Straight line to road distance. Mirrors the server's default for the
+ * admin-tunable pricing_road_factor, which is what drivers.service uses
+ * when it measures the declared stops and writes kmFromOrigin.
+ *
+ * Held at the same value on purpose: this screen quotes the rider an
+ * earnings estimate off its own arithmetic, and if the two factors
+ * disagree the rider is shown a number the passenger is never charged.
+ * The server's stored figure is still the one that prices a seat.
  */
-const SEAT_MAPPED_CITIES = [
-  'lagos', 'ibadan', 'abuja', 'kano', 'port harcourt', 'benin',
-  'benin city', 'enugu', 'kaduna', 'ilorin', 'abeokuta', 'onitsha',
-];
-const isSeatMappedCity = (c: string) =>
-  SEAT_MAPPED_CITIES.includes(String(c ?? '').trim().toLowerCase());
+const ROAD_FACTOR = 1.3;
+
+/**
+ * How many places one declared run may name.
+ *
+ * Not a database limit: a rider has to actually stop at every one of
+ * these, and a trip advertising a dozen boarding points is a trip
+ * nobody can hold them to.
+ */
+const MAX_STOPS = 8;
+
+/** Nigerian states come back from Google as "Oyo State". Riders say "Oyo". */
+const STATE_SUFFIX = /\s+state$/i;
+
+function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371;
+  const dLat = ((bLat - aLat) * Math.PI) / 180;
+  const dLng = ((bLng - aLng) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos((aLat * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180)
+    * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Last resort when the reverse geocode cannot be reached.
+ *
+ * Reads the city off the formatted address by dropping the country and
+ * the state, which is right for a street address ("Iwo Road, Ibadan,
+ * Nigeria") and can land on the state for a bare city pick. It is
+ * flagged to the rider when it fires, because a guessed city is exactly
+ * the drift the derived field exists to prevent.
+ */
+function cityFromDescription(description: string): string {
+  const parts = String(description ?? '')
+    .split(',')
+    .map(p => p.trim())
+    .filter(Boolean)
+    .filter(p => !/^nigeria$/i.test(p))
+    .filter(p => !STATE_SUFFIX.test(p));
+  return parts.length ? parts[parts.length - 1] : '';
+}
+
+/**
+ * The city a picked address actually sits in.
+ *
+ * WHY this is derived and never typed. Two free-text boxes drift: one
+ * rider files an Ibadan address under a Lagos label and the trip
+ * advertises a route it does not drive. The city is what the browse
+ * list shows and what matching reads, so it has to agree with the
+ * coordinates underneath it.
+ *
+ * Google labels the Nigerian town as locality, falling back to the LGA
+ * when a place has no locality of its own. Same order the customer and
+ * business address pickers already use, so all three apps name a place
+ * the same way.
+ */
+async function deriveCity(place: PickedPlace): Promise<{ city: string; guessed: boolean }> {
+  try {
+    const json: any = await mapsApi.geocode({ latlng: `${place.lat},${place.lng}` });
+    const parts: any[] = json?.results?.[0]?.address_components ?? [];
+    const pick = (type: string) =>
+      parts.find((c: any) => Array.isArray(c.types) && c.types.includes(type))?.long_name;
+    const found = pick('locality')
+      ?? pick('administrative_area_level_2')
+      ?? pick('sublocality')
+      ?? pick('administrative_area_level_1');
+    if (found) {
+      return { city: String(found).replace(STATE_SUFFIX, '').trim(), guessed: false };
+    }
+  } catch {
+    // Offline or a refused key. Fall through to the text reading rather
+    // than leaving the rider with an empty city and no way forward.
+  }
+  return { city: cityFromDescription(place.description), guessed: true };
+}
+
+/**
+ * One point on the declared route, as the form holds it.
+ *
+ * Index 0 is the origin and the last is the destination, which is the
+ * same ordering the server stores as TripStop.sequence.
+ */
+type StopDraft = {
+  key:         string;
+  /** What is typed in the address box, picked or not. */
+  query:       string;
+  /** Set only once a suggestion is tapped, so it carries coordinates. */
+  place:       PickedPlace | null;
+  /** Derived from place, never typed. */
+  city:        string;
+  cityLoading: boolean;
+  cityGuessed: boolean;
+  /** The rider's own words: "the filling station before the toll gate". */
+  description: string;
+};
+
+let stopKeySeq = 0;
+const blankStop = (): StopDraft => ({
+  key: `stop-${stopKeySeq++}`,
+  query: '',
+  place: null,
+  city: '',
+  cityLoading: false,
+  cityGuessed: false,
+  description: '',
+});
 
 export default function InterstateScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
   const theme  = Colors[cs ?? 'light'];
 
-  const [from,        setFrom]        = useState('');
-  const [to,          setTo]          = useState('');
+  /**
+   * The whole route, declared before departure.
+   *
+   * A trip used to be two city names plus one free-text pickup note.
+   * That measured every distance city centre to city centre, so a
+   * passenger boarding 20km outside Ibadan paid from the middle of
+   * Ibadan. And "pick up along my route" told them nothing about where
+   * to stand, which the founder called out directly: a rider can wait
+   * somewhere else and blame the passenger, and nobody can settle it
+   * because no exact place was ever agreed.
+   *
+   * Every stop is set BEFORE the run, deliberately. Most people book
+   * days ahead, and a rider who only names the next pickup after each
+   * drop cannot plan the trip they are selling.
+   */
+  const [stops, setStops] = useState<StopDraft[]>(() => [blankStop(), blankStop()]);
+
   const [departAt,    setDepartAt]    = useState('');
   // Split so the rider picks a day and a time, never types either.
   const [departDate,  setDepartDate]  = useState('');
   const [departTime,  setDepartTime]  = useState('');
   const [pickerOpen,  setPickerOpen]  = useState(false);
 
+  const origin      = stops[0];
+  const destination = stops[stops.length - 1];
+  const from        = origin.city.trim();
+  const to          = destination.city.trim();
+
+  const patchStop = useCallback((key: string, patch: Partial<StopDraft>) => {
+    setStops(list => list.map(s => (s.key === key ? { ...s, ...patch } : s)));
+  }, []);
+
   /**
-   * Coordinates for both ends, from the picker rather than from typing.
-   *
-   * The trip row used to carry a bare city STRING and the server
-   * resolved it through a hardcoded twelve-city list, so a rider
-   * declaring anywhere else saved a trip nobody could book. With real
-   * coordinates any destination in Nigeria works.
+   * A suggestion was tapped, so this stop now has real coordinates and
+   * the city can be read off them instead of trusted to typing.
    */
-  const [fromPlace, setFromPlace] = useState<PickedPlace | null>(null);
-  const [toPlace,   setToPlace]   = useState<PickedPlace | null>(null);
+  const onStopPicked = useCallback((key: string, pl: PickedPlace) => {
+    patchStop(key, {
+      query: pl.primary, place: pl, city: '', cityGuessed: false, cityLoading: true,
+    });
+    deriveCity(pl).then(({ city, guessed }) => {
+      patchStop(key, { city, cityGuessed: guessed, cityLoading: false });
+    });
+  }, [patchStop]);
+
+  /**
+   * A new stop always lands BEFORE the destination, because the
+   * destination is the end of the line by definition and a stop added
+   * after it is not a stop, it is a different trip.
+   */
+  const addStop = useCallback(() => {
+    setStops(list => (list.length >= MAX_STOPS
+      ? list
+      : [...list.slice(0, -1), blankStop(), list[list.length - 1]]));
+  }, []);
+
+  const removeStop = useCallback((key: string) => {
+    setStops(list => (list.length <= 2 ? list : list.filter(s => s.key !== key)));
+  }, []);
+
+  const resetStops = useCallback(() => setStops([blankStop(), blankStop()]), []);
 
   /**
    * departAt stays the single source the submit path reads, so nothing
@@ -135,48 +278,85 @@ export default function InterstateScreen() {
   }, [departDate, departTime]);
 
   /**
-   * Distance from the two picked points, not from a text box.
+   * Distance measured along the stops, not typed and not city to city.
    *
    * routeKm was a free-text field, and seat price is literally
-   * seats x rate x routeKm, so whatever a rider typed set what
-   * passengers paid. The only validation was that it was above zero.
+   * seats x rate x km, so whatever a rider typed set what passengers
+   * paid. Then it became a straight line between two city centres,
+   * which charged a passenger boarding outside Ibadan from the middle
+   * of Ibadan. Running the line through every declared stop is both
+   * honest and longer, which is the rider's side of the same fix.
    *
-   * Straight line understates road distance, so this is a floor rather
-   * than a quote: the rider can raise it if they know the road is
-   * longer, and the server floors it again on its own geometry. What it
-   * removes is the empty box and the typo.
+   * Entry i holds the km from the origin to stop i, which is exactly
+   * what the server stores as TripStop.kmFromOrigin. Null from the
+   * first unplaced stop onwards, because a cumulative total with a hole
+   * in it is a wrong number rather than a partial one.
    */
-  useEffect(() => {
-    if (!fromPlace || !toPlace) return;
-    const R = 6371;
-    const dLat = ((toPlace.lat - fromPlace.lat) * Math.PI) / 180;
-    const dLng = ((toPlace.lng - fromPlace.lng) * Math.PI) / 180;
-    const a = Math.sin(dLat / 2) ** 2
-      + Math.cos((fromPlace.lat * Math.PI) / 180) * Math.cos((toPlace.lat * Math.PI) / 180)
-      * Math.sin(dLng / 2) ** 2;
-    const straight = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    // Nigerian intercity roads run roughly 1.25x the straight line.
-    setRouteKm(String(Math.round(straight * 1.25)));
-  }, [fromPlace, toPlace]);
+  const legKm = useMemo<(number | null)[]>(() => {
+    const out: (number | null)[] = [];
+    let total  = 0;
+    let broken = false;
+    stops.forEach((s, i) => {
+      if (!s.place) broken = true;
+      if (broken) { out.push(null); return; }
+      if (i > 0) {
+        const prev = stops[i - 1].place!;
+        total += haversineKm(prev.lat, prev.lng, s.place!.lat, s.place!.lng) * ROAD_FACTOR;
+      }
+      out.push(Math.round(total * 10) / 10);
+    });
+    return out;
+  }, [stops]);
+
+  const lastLeg = legKm[legKm.length - 1];
+  const km      = lastLeg != null ? Math.round(lastLeg) : 0;
+
+  /** Stops that carry coordinates, in travel order, for the map. */
+  const placedStops = useMemo(
+    () => stops.filter((s): s is StopDraft & { place: PickedPlace } => !!s.place),
+    [stops],
+  );
+
+  /**
+   * Re-fit as stops are added, rather than initialRegion once on mount.
+   * A rider who adds Sagamu to a Lagos to Ibadan run should see it, not
+   * a frame set before the stop existed.
+   *
+   * Keyed on the coordinates alone and nothing else. The stop list is
+   * new on every keystroke, so a memo over the list itself would hand
+   * MapView a fresh region while the rider is still typing a landmark
+   * and pan the map out from under their thumb.
+   */
+  const routeKey = placedStops.map(s => `${s.place.lat},${s.place.lng}`).join('|');
+  const routeCoords = useMemo(() => (
+    routeKey
+      ? routeKey.split('|').map((p) => {
+          const [lat, lng] = p.split(',').map(Number);
+          return { latitude: lat, longitude: lng };
+        })
+      : []
+  ), [routeKey]);
+
+  const region = useMemo(() => {
+    if (routeCoords.length < 2) return null;
+    const lats = routeCoords.map(c => c.latitude);
+    const lngs = routeCoords.map(c => c.longitude);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    return {
+      latitude:       (minLat + maxLat) / 2,
+      longitude:      (minLng + maxLng) / 2,
+      latitudeDelta:  Math.max((maxLat - minLat) * 1.8, 0.6),
+      longitudeDelta: Math.max((maxLng - minLng) * 1.8, 0.6),
+    };
+  }, [routeCoords]);
+
   const [vehicleSpace,setVehicleSpace]= useState('1');
 
   // Travel Buddy (founder 23 Aug): sell what the vehicle truly has.
   const [takePassengers, setTakePassengers] = useState(false);
   const [seats,          setSeats]          = useState('1');
   const [takePackages,   setTakePackages]   = useState(true);
-  const [pickupMode,     setPickupMode]     = useState<'along_route' | 'fixed'>('along_route');
-  const [pickupAddress,  setPickupAddress]  = useState('');
-  /**
-   * The meeting point's OWN coordinates.
-   *
-   * "One fixed pickup point" was a text box, and the trip sent the CITY
-   * coordinates alongside it. So a rider typing "Ojo Junction" produced
-   * a trip that told passengers "meets at Ojo Junction" and pointed
-   * their map at the middle of the city (founder spotted it on screen,
-   * 2026-08-27). The words were right and the pin was wrong, which is
-   * worse than having no pin: a passenger trusts the map.
-   */
-  const [pickupPlace, setPickupPlace] = useState<PickedPlace | null>(null);
 
   /**
    * Lift a picker clear of the keyboard when its suggestions arrive.
@@ -191,16 +371,18 @@ export default function InterstateScreen() {
    * The picker now measures how much of its OWN list the keyboard is
    * covering and hands back the number, so this just scrolls by that
    * much from wherever the form currently is. Correct for any field at
-   * any depth, and it needs no layout bookkeeping at all.
+   * any depth, and it needs no layout bookkeeping at all. Memoised
+   * because the picker keys a debounce effect off this prop, and a stop
+   * list that re-renders on every keystroke would otherwise reset the
+   * timer forever and never search.
    */
   const scrollRef = useRef<ScrollView>(null);
   const scrollY   = useRef(0);
-  const liftBy = (hiddenPx: number) => {
+  const liftBy = useCallback((hiddenPx: number) => {
     if (!(hiddenPx > 0)) return;
     scrollRef.current?.scrollTo({ y: scrollY.current + hiddenPx, animated: true });
-  };
+  }, []);
 
-  const [routeKm,        setRouteKm]        = useState('');
   const [submitting,  setSubmitting]  = useState(false);
   const [sheet,       setSheet]       = useState<SeirsSheetSpec | null>(null);
 
@@ -237,7 +419,6 @@ export default function InterstateScreen() {
       .catch(() => setSeatRateNgn(null));
   }, [vehicleType]);
 
-  const km = Number(routeKm) || 0;
   const perSeatNgn   = seatRateNgn != null ? seatRateNgn * km : null;
   const riderPerSeat = perSeatNgn != null ? perSeatNgn * 0.75 : null;
   const riderAllSeats = riderPerSeat != null
@@ -308,25 +489,43 @@ export default function InterstateScreen() {
   };
 
   const submit = async () => {
-    if (!from.trim() || !to.trim()) { alertDialog('Both cities required'); return; }
-    // The server rejects a same-city trip. Catch it here so the driver
-    // is not told after the round trip (2026-08-25 interstate walk).
-    if (from.trim().toLowerCase() === to.trim().toLowerCase()) {
-      alertDialog('Same city twice', 'From and To must be different cities.');
+    /**
+     * Every stop must be PICKED, not typed.
+     *
+     * Without coordinates a stop is words, and words are what let a
+     * rider wait somewhere else and blame the passenger. Refusing here,
+     * naming the stop, beats saving a route nobody can be held to.
+     */
+    const unpicked = stops.findIndex(s => !s.place);
+    if (unpicked >= 0) {
+      const which = unpicked === 0
+        ? 'Choose your starting point'
+        : unpicked === stops.length - 1
+          ? 'Choose your destination'
+          : `Stop ${unpicked} has no place yet`;
+      alertDialog(
+        which,
+        'Tap a suggestion as you type so the stop gets real coordinates. A place we cannot pin is a place a passenger cannot find, and the distance is measured from it.',
+      );
       return;
     }
-    /**
-     * Both ends must be PICKED, not typed.
-     *
-     * Without coordinates the server falls back to its twelve-city
-     * lookup, and a trip to anywhere else is saved successfully and is
-     * unbookable forever. Refusing here, with the reason, beats letting
-     * a rider wait a week for a booking that could never arrive.
-     */
-    if (!fromPlace || !toPlace) {
+    // The city comes off the address, so an empty one means the lookup
+    // never landed. Sending a blank city would put the trip in the
+    // browse list under no city at all.
+    const cityless = stops.findIndex(s => !s.city.trim());
+    if (cityless >= 0) {
       alertDialog(
-        'Choose both cities from the list',
-        'Tap a suggestion as you type so we get the exact location. A typed name we cannot place means no passenger can book this trip.',
+        'We could not read the city for one of your stops',
+        'Tap that address again so we can place it. The city is read off the address on purpose: it is what stops an Ibadan address being filed under a Lagos label.',
+      );
+      return;
+    }
+    // The server rejects a same-city trip. Catch it here so the driver
+    // is not told after the round trip (2026-08-25 interstate walk).
+    if (from.toLowerCase() === to.toLowerCase()) {
+      alertDialog(
+        'Same city twice',
+        `Your first and last stop are both in ${from}. An intercity trip has to end somewhere else.`,
       );
       return;
     }
@@ -368,48 +567,103 @@ export default function InterstateScreen() {
       // Seat pricing is per kilometre, so a trip with no route distance
       // is browsable but every booking on it dies at payment with a
       // message the PASSENGER sees and the driver never does.
-      if (!(Number(routeKm) > 0)) {
+      if (!(km > 0)) {
         alertDialog(
           'Route distance needed',
-          'Seats are priced by distance. Without it nobody can book this trip. Tap a popular route to fill it, or type the km.',
+          'Seats are priced by distance, and we measure it along the stops you picked. Check every stop has a place on the map.',
         );
         return;
       }
-      // Coordinates for both ends are required to build the booking.
-      if (!isSeatMappedCity(from) || !isSeatMappedCity(to)) {
-        const bad = !isSeatMappedCity(from) ? from.trim() : to.trim();
-        alertDialog(
-          'Seats are not available on that city yet',
-          `We cannot place ${bad} on the map yet, and a seat booking needs both ends mapped. Carry packages on this run instead, or pick one of the cities we cover: ${SEAT_MAPPED_CITIES.filter(c => c !== 'benin city').map(c => c.replace(/\b\w/g, m => m.toUpperCase())).join(', ')}.`,
-        );
-        return;
-      }
+      /**
+       * The twelve-city gate that used to sit here is gone. It refused
+       * any city outside DeliveriesService.CITY_COORDS, because a seat
+       * booking needed coordinates for both ends and the server could
+       * only look them up by name. Both ends now travel with the
+       * declaration as real coordinates from the picker, so bookTripSeats
+       * reads them directly and Jos books exactly like Ibadan.
+       */
     }
     setSubmitting(true);
     try {
-      await driversApi.declareInterstateTrip({
-        fromCity:        from.trim(),
-        toCity:          to.trim(),
-        // The half the server was missing entirely.
+      /**
+       * The origin stop IS the boarding point, so pickupAddress carries
+       * the rider's own words when they gave any: "Berger Bus Stop (the
+       * filling station before the toll gate)" is what a passenger
+       * needs, and the pin underneath it is what settles an argument.
+       * Sliced to the column's 255.
+       */
+      const pickupLabel = (origin.description.trim()
+        ? `${origin.place!.description} (${origin.description.trim()})`
+        : origin.place!.description).slice(0, 255);
+
+      const body = {
+        fromCity:        from,
+        toCity:          to,
         /**
-         * The meeting point wins over the city when one was picked.
          * bookTripSeats reads trip.pickupLat for the passenger's map, so
-         * sending the city here made a fixed pickup point decorative.
+         * this is the origin STOP and never the city centre. The two
+         * used to be the same value, which pointed a passenger's map at
+         * the middle of the city under a pickup label that named a
+         * junction (founder spotted it on screen, 2026-08-27).
          */
-        pickupLat:       (pickupMode === 'fixed' && pickupPlace) ? pickupPlace.lat : fromPlace.lat,
-        pickupLng:       (pickupMode === 'fixed' && pickupPlace) ? pickupPlace.lng : fromPlace.lng,
-        destLat:         toPlace.lat,
-        destLng:         toPlace.lng,
-        destAddress:     toPlace.description,
+        pickupLat:       origin.place!.lat,
+        pickupLng:       origin.place!.lng,
+        destLat:         destination.place!.lat,
+        destLng:         destination.place!.lng,
+        destAddress:     destination.place!.description.slice(0, 240),
         departAt:        new Date(depart).toISOString(),
         spareCapacityKg: Number(vehicleSpace) || 0,
         acceptsPassengers: takePassengers,
         seatsTotal:        takePassengers ? (Number(seats) || 1) : 0,
         acceptsPackages:   takePackages,
-        pickupMode,
-        pickupAddress:     pickupMode === 'fixed' ? pickupAddress.trim() || undefined : undefined,
-        routeKm:           Number(routeKm) > 0 ? Number(routeKm) : undefined,
-      });
+        /**
+         * Always 'fixed' now. 'along_route' meant no label, no pin and
+         * no window, which is the exact hole the founder named: a rider
+         * can wait somewhere else and blame the passenger, and nobody
+         * can settle it because no exact place was ever agreed. Every
+         * declared trip names a boarding place, so the vague mode has
+         * nothing left to describe.
+         */
+        pickupMode:      'fixed' as const,
+        pickupAddress:   pickupLabel,
+        routeKm:         km > 0 ? km : undefined,
+        /**
+         * kmFromOrigin is deliberately absent: the server measures it
+         * off these coordinates and stores it, so a seat quoted today
+         * cannot reprice tomorrow because the app rounded differently.
+         */
+        stops: stops.map(s => ({
+          city:        s.city.trim(),
+          address:     s.place!.description,
+          latitude:    s.place!.lat,
+          longitude:   s.place!.lng,
+          description: s.description.trim() || undefined,
+        })),
+      };
+
+      /**
+       * Declare with the route, fall back to the two cities.
+       *
+       * stops rides on the same endpoint as an optional field, so a
+       * server that has not shipped it yet simply ignores it. The one
+       * case that needs handling is a server that REFUSES a body key it
+       * does not know, which would take the whole declaration down with
+       * it. Retried without stops only for that specific shape of
+       * failure: a genuine rejection (same city, seat cap, past
+       * departure) must not be retried, or a partial save becomes two
+       * declared trips.
+       */
+      let degraded = false;
+      try {
+        await driversApi.declareInterstateTrip(body);
+      } catch (e: any) {
+        const msg = String(e?.message ?? '');
+        if (!/cannot post|should not exist|unexpected (property|field)/i.test(msg)) throw e;
+        const fallback: any = { ...body };
+        delete fallback.stops;
+        await driversApi.declareInterstateTrip(fallback);
+        degraded = true;
+      }
       /**
        * The old line was "Matching packages will appear in your available
        * jobs", which promises a queue that does not exist. What a declared
@@ -432,20 +686,20 @@ export default function InterstateScreen() {
         takePackages
           ? 'Packages running between these cities are ranked towards you around your departure. That is a better chance, not a reservation, so keep working the normal job list.'
           : null,
+        degraded && stops.length > 2
+          ? 'One thing to know: this server saved your start and finish but not the stops in between yet. The trip is live, the route is the two ends.'
+          : null,
       ].filter(Boolean).join('\n\n');
       /**
-       * "Pick up along my route" now MEANS something.
+       * The corridor, set on every declared trip.
        *
-       * It used to write pickupMode: 'along_route' and nothing else: no
-       * label, no coordinates, no window. A passenger read "pick up along
-       * my route" and got no pin, no place and no way to know where they
-       * would actually meet (founder 2026-08-27).
-       *
-       * The corridor was already designed and already fed into matching:
-       * driver.corridorDestLat/Lng/Label/ExpiresAt, from 21 Aug, scoring
-       * up jobs whose pickup AND drop hug the line the courier is already
-       * driving. This screen simply never set it. So the fix is wiring,
-       * not a new design.
+       * It was wired only to the old "pick up along my route" mode, and
+       * that mode is gone. The corridor is a PACKAGE ranking device, not
+       * a passenger promise: driver.corridorDestLat/Lng/Label/ExpiresAt,
+       * from 21 Aug, scoring up jobs whose pickup AND drop hug the line
+       * the courier is already driving. A rider who has declared Lagos to
+       * Ibadan is driving that line whatever the boarding arrangement, so
+       * gating it on a pickup mode only ever cost them work.
        *
        * The window runs from now until the trip should be over: the hours
        * until departure, plus the drive at a deliberately generous 45km/h
@@ -453,41 +707,152 @@ export default function InterstateScreen() {
        * mid-journey stops matching exactly when the rider is most able to
        * pick something up.
        */
-      if (pickupMode === 'along_route' && toPlace) {
-        try {
-          const departsInH = Math.max(0, (new Date(depart).getTime() - Date.now()) / 3600000);
-          const driveH     = (Number(routeKm) || 0) / 45;
-          const hours      = Math.ceil(departsInH + driveH + 2);
-          await driversApi.setCorridor(
-            toPlace.lat,
-            toPlace.lng,
-            `${from.trim()} to ${to.trim()}`,
-            Math.min(hours, 48),
-          );
-        } catch {
-          // The trip is declared either way. A corridor that failed to
-          // set costs matching quality, not the booking, so it must not
-          // surface as a failure the rider has to act on.
-        }
+      try {
+        const departsInH = Math.max(0, (new Date(depart).getTime() - Date.now()) / 3600000);
+        const driveH     = km / 45;
+        const hours      = Math.ceil(departsInH + driveH + 2);
+        await driversApi.setCorridor(
+          destination.place!.lat,
+          destination.place!.lng,
+          `${from} to ${to}`,
+          Math.min(hours, 48),
+        );
+      } catch {
+        // The trip is declared either way. A corridor that failed to
+        // set costs matching quality, not the booking, so it must not
+        // surface as a failure the rider has to act on.
       }
 
+      const routeLine = stops.map(s => s.city.trim()).filter(Boolean).join(' → ');
+      const clear = () => {
+        loadTrips();
+        resetStops();
+        setDepartAt(''); setDepartDate(''); setDepartTime('');
+      };
       setSheet({
         title: 'Trip declared',
-        message: `You are listed for ${from.trim()} → ${to.trim()} on ${when}.\n\n${lines}`,
+        message: `You are listed for ${routeLine} on ${when}.\n\n${lines}`,
         options: [{
           label: 'Done',
           variant: 'primary',
           icon: 'checkmark-circle-outline',
-          onPress: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); setFromPlace(null); setToPlace(null); setPickupPlace(null); },
+          onPress: clear,
         }],
         cancelLabel: null,
-        onCancel: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); setFromPlace(null); setToPlace(null); setPickupPlace(null); },
+        onCancel: clear,
       });
     } catch (e: any) {
       alertDialog('Could not declare trip', e?.message ?? 'Try again.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  /**
+   * One point on the route: city and exact address side by side, with
+   * room underneath for how to find it.
+   *
+   * The two boxes are not two inputs. Only the address is typed; the
+   * city reads back what that address resolved to, so the label and the
+   * pin can never disagree (founder: "two boxes next to each other city
+   * from/to, and the start/finish with exact location and coordinate").
+   */
+  const renderStop = (stop: StopDraft, index: number) => {
+    const isOrigin = index === 0;
+    const isDest   = index === stops.length - 1;
+    const dot      = isOrigin ? '#2F6F4E' : isDest ? '#A8342A' : '#B8790C';
+    const role     = isOrigin ? 'STARTING POINT' : isDest ? 'DESTINATION' : `STOP ${index}`;
+    const fromOrigin = legKm[index];
+
+    return (
+      <View
+        key={stop.key}
+        style={[styles.stopCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      >
+        <View style={styles.stopHead}>
+          <View style={[styles.stopDot, { backgroundColor: dot }]} />
+          <Text style={[styles.stopRole, { color: theme.textSecond }]}>{role}</Text>
+          {!isOrigin && !isDest && (
+            <Pressable onPress={() => removeStop(stop.key)} hitSlop={10}>
+              <Trash2 size={16} color="#DC2626" />
+            </Pressable>
+          )}
+          {!isOrigin && fromOrigin != null && fromOrigin > 0 && (
+            <Text style={[styles.stopKm, { color: theme.textThird }]}>
+              {fromOrigin} km in
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.stopRow}>
+          <View style={{ width: 104 }}>
+            <Text style={[styles.miniLabel, { color: theme.textSecond }]}>CITY</Text>
+            <View style={[styles.cityBox, {
+              borderColor: theme.border,
+              backgroundColor: theme.surfaceSecond,
+            }]}>
+              {stop.cityLoading ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontSize: FontSize.md,
+                    color: stop.city ? theme.text : theme.textThird,
+                    fontWeight: stop.city ? FontWeight.semibold : FontWeight.regular,
+                  }}
+                >
+                  {stop.city || 'From address'}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <PlacePicker
+              label="EXACT ADDRESS"
+              onSuggestionsShown={liftBy}
+              value={stop.query}
+              onChangeText={(t) => patchStop(stop.key, {
+                query: t, place: null, city: '', cityGuessed: false, cityLoading: false,
+              })}
+              onPicked={(pl) => onStopPicked(stop.key, pl)}
+              placeholder={isOrigin ? 'e.g. Berger Bus Stop' : isDest ? 'Where you finish' : 'Where you stop'}
+              theme={theme as any}
+            />
+          </View>
+        </View>
+
+        {!!stop.query.trim() && !stop.place && (
+          <Text style={[styles.warn, { color: '#B26A00' }]}>
+            Tap a suggestion so this stop gets a real pin. Typed on its own it is
+            only words, and words cannot settle where you actually waited.
+          </Text>
+        )}
+        {stop.cityGuessed && !!stop.city && (
+          <Text style={[styles.warn, { color: '#B26A00' }]}>
+            We read {stop.city} off the address text because the map lookup did not
+            answer. Check that reads right before you declare.
+          </Text>
+        )}
+
+        <View style={{ gap: 6 }}>
+          <Text style={[styles.miniLabel, { color: theme.textSecond }]}>
+            HOW TO FIND THIS SPOT (OPTIONAL)
+          </Text>
+          <TextInput
+            value={stop.description}
+            onChangeText={(t) => patchStop(stop.key, { description: t })}
+            maxLength={300}
+            placeholder="e.g. the filling station before the toll gate"
+            placeholderTextColor={theme.textThird}
+            style={[styles.input, {
+              color: theme.text, borderColor: theme.border, backgroundColor: theme.surfaceSecond,
+            }]}
+          />
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -530,6 +895,14 @@ export default function InterstateScreen() {
                 const booked = Math.max(0, Number(tr.seatsBooked ?? 0));
                 const left   = Math.max(0, total - booked);
                 const kg     = Number(tr.spareCapacityKg ?? 0);
+                /**
+                 * listMyInterstateTrips does not join the stops yet, so
+                 * this reads whatever the row happens to carry rather
+                 * than assuming. It lights up on its own the day the
+                 * list starts returning them.
+                 */
+                const rowStops = Array.isArray(tr.stops) ? tr.stops : [];
+                const midStops = Math.max(0, rowStops.length - 2);
                 return (
                   <View key={tr.id} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: theme.surface, borderColor: booked > 0 ? theme.primary : theme.border, borderWidth: booked > 0 ? 1.5 : 1, borderRadius: Radius.lg, padding: 12 }}>
                     <MapPin size={16} color={theme.primary} style={{ marginTop: 2 }} />
@@ -546,9 +919,8 @@ export default function InterstateScreen() {
                           : 'No packages'}
                         {' · '}
                         {tr.acceptsPassengers ? `${total} seat${total === 1 ? '' : 's'}` : 'No seats'}
-                        {tr.acceptsPassengers && tr.pickupMode === 'fixed' && tr.pickupAddress
-                          ? ` · meets at ${tr.pickupAddress}`
-                          : tr.acceptsPassengers ? ' · pickup along the route' : ''}
+                        {midStops > 0 ? ` · ${midStops} stop${midStops === 1 ? '' : 's'} on the way` : ''}
+                        {tr.pickupAddress ? ` · boards at ${tr.pickupAddress}` : ''}
                       </Text>
                       {tr.acceptsPassengers && booked > 0 && (
                         <Text style={{ color: theme.primary, fontSize: FontSize.xs, fontWeight: '700', marginTop: 4 }}>
@@ -576,63 +948,74 @@ export default function InterstateScreen() {
                   mentioned at all even though they are the half that pays up
                   front (2026-08-25 interstate walk). */}
               <Text style={[styles.introSub, { color: theme.textSecond }]}>
-                Tell us you&apos;re going intercity. Passengers can book your spare seats, and packages running the same way are ranked towards you.
+                Set out the whole run before you leave: where you start, anywhere you
+                stop, where you finish. Passengers can book your spare seats, and
+                packages going the same way are ranked towards you.
               </Text>
             </View>
           </View>
 
-          {/* Popular routes */}
+          {/* Popular routes. These seed the two address boxes and nothing
+              more: the rider still taps a suggestion in each, because a
+              corridor name is not a place and the distance is measured from
+              places. Adding a stop from a different corridor makes no sense,
+              so this starts the route over. */}
           <Text style={[styles.label, { color: theme.textSecond }]}>POPULAR ROUTES</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {POPULAR_ROUTES.map(r => (
               <Pressable
                 key={`${r.from}-${r.to}`}
-                onPress={() => { setFrom(r.from); setTo(r.to); setRouteKm(String(r.km)); }}
+                onPress={() => setStops([
+                  { ...blankStop(), query: r.from },
+                  { ...blankStop(), query: r.to },
+                ])}
                 style={[styles.routeChip, { borderColor: theme.border, backgroundColor: theme.surface }]}
               >
                 <Text style={{ color: theme.text, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>{r.from} → {r.to}</Text>
-                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs }}>~{r.km}km</Text>
+                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs }}>tap to start</Text>
               </Pressable>
             ))}
           </ScrollView>
 
-          {/* Fields */}
-          <View style={{ gap: 6, marginTop: Spacing.md }}>
-            {/**
-              * Picked, not typed. A free-text city produced a trip the
-              * server could not map and no passenger could book, and
-              * the rider was told the PICKUP was the problem.
-              */}
-            <View>
-            <PlacePicker
-              label="FROM"
-              onSuggestionsShown={liftBy}
-              value={from}
-              onChangeText={(t) => { setFrom(t); setFromPlace(null); }}
-              onPicked={(pl) => { setFrom(pl.primary); setFromPlace(pl); }}
-              placeholder="Start typing a city"
-              types="(cities)"
-              theme={theme as any}
-            />
+          {/* ── The route, stop by stop ──────────────────────────────── */}
+          <Text style={[styles.label, { color: theme.textSecond, marginTop: Spacing.md }]}>
+            YOUR ROUTE
+          </Text>
+          <Text style={[styles.helper, { color: theme.textThird, marginBottom: 4 }]}>
+            Name every place you will stop, in order, before you set off. Passengers
+            book days ahead and plan around the route you sell them.
+          </Text>
+
+          {stops.slice(0, -1).map((stop, i) => (
+            <View key={stop.key} style={{ gap: 4 }}>
+              {renderStop(stop, i)}
+              <View style={styles.connector}>
+                <View style={{ width: 2, height: 12, backgroundColor: theme.border }} />
+              </View>
             </View>
-          </View>
+          ))}
 
-          <View style={{ alignItems: 'center', marginVertical: -8 }}>
-            <ArrowRight size={20} color={theme.textThird} />
-          </View>
+          {stops.length < MAX_STOPS ? (
+            <Pressable
+              onPress={addStop}
+              style={[styles.addStop, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
+            >
+              <Plus size={16} color={theme.primary} />
+              <Text style={{ color: theme.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>
+                Add a stop on the way
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={[styles.helper, { color: theme.textThird, textAlign: 'center' }]}>
+              {MAX_STOPS} stops is the limit on one run. You have to stop at every one
+              of these, and a route nobody can hold you to is worth nothing.
+            </Text>
+          )}
 
-          <View style={{ gap: 6 }}>
-            <PlacePicker
-              label="TO"
-              onSuggestionsShown={liftBy}
-              value={to}
-              onChangeText={(t) => { setTo(t); setToPlace(null); }}
-              onPicked={(pl) => { setTo(pl.primary); setToPlace(pl); }}
-              placeholder="Start typing a city"
-              types="(cities)"
-              theme={theme as any}
-            />
+          <View style={styles.connector}>
+            <View style={{ width: 2, height: 12, backgroundColor: theme.border }} />
           </View>
+          {renderStop(destination, stops.length - 1)}
 
           {/**
             * Route, map and money, together and near the top.
@@ -642,10 +1025,10 @@ export default function InterstateScreen() {
             * (founder 2026-08-27: "not a single physical map in sight on
             * this screen and why is the route distance at the bottom").
             *
-            * It belongs here because it is the CONSEQUENCE of the two
-            * cities above it: pick both, and this is what the trip is.
+            * It belongs here because it is the CONSEQUENCE of the stops
+            * above it: name the places, and this is what the trip is.
             */}
-          {fromPlace && toPlace && (
+          {region && (
             <View style={{
               marginTop: Spacing.md,
               borderRadius: Radius.lg,
@@ -656,61 +1039,42 @@ export default function InterstateScreen() {
             }}>
               <MapView
                 provider={PROVIDER_GOOGLE}
-                style={{ height: 160, width: '100%' }}
+                style={{ height: 180, width: '100%' }}
                 pointerEvents="none"
-                initialRegion={{
-                  latitude:  (fromPlace.lat + toPlace.lat) / 2,
-                  longitude: (fromPlace.lng + toPlace.lng) / 2,
-                  latitudeDelta:  Math.max(Math.abs(fromPlace.lat - toPlace.lat) * 1.8, 0.6),
-                  longitudeDelta: Math.max(Math.abs(fromPlace.lng - toPlace.lng) * 1.8, 0.6),
-                }}
+                region={region}
               >
-                <Marker
-                  coordinate={{ latitude: fromPlace.lat, longitude: fromPlace.lng }}
-                  pinColor="#2F6F4E"
-                  title={from.trim() || 'Start'}
-                />
-                <Marker
-                  coordinate={{ latitude: toPlace.lat, longitude: toPlace.lng }}
-                  pinColor="#A8342A"
-                  title={to.trim() || 'Destination'}
-                />
-                {/**
-                  * The meeting point, shown rather than described.
-                  *
-                  * Founder: "shouldn't we be able to see the exact pickup
-                  * point instead of a text that says this and that." A
-                  * passenger is going to stand somewhere on the strength
-                  * of this, so the rider should be able to see where they
-                  * have just sent them before they commit to it.
-                  */}
-                {pickupMode === 'fixed' && pickupPlace && (
-                  <Marker
-                    coordinate={{ latitude: pickupPlace.lat, longitude: pickupPlace.lng }}
-                    pinColor="#B8790C"
-                    title={pickupAddress.trim() || 'Pickup point'}
-                    description="Where passengers meet you"
-                  />
-                )}
+                {placedStops.map((s, i) => {
+                  const isOrigin = stops[0].key === s.key;
+                  const isDest   = stops[stops.length - 1].key === s.key;
+                  return (
+                    <Marker
+                      key={s.key}
+                      coordinate={{ latitude: s.place.lat, longitude: s.place.lng }}
+                      pinColor={isOrigin ? '#2F6F4E' : isDest ? '#A8342A' : '#B8790C'}
+                      title={s.city || s.place.primary}
+                      /**
+                       * The rider's own words on the pin, because that is
+                       * what the passenger is navigating by. Seeing where
+                       * you have just sent someone before you commit to it
+                       * is the point of the map (founder: "shouldn't we be
+                       * able to see the exact pickup point instead of a
+                       * text that says this and that").
+                       */
+                      description={s.description.trim() || s.place.description}
+                    />
+                  );
+                })}
                 <Polyline
-                  coordinates={[
-                    { latitude: fromPlace.lat, longitude: fromPlace.lng },
-                    { latitude: toPlace.lat,   longitude: toPlace.lng },
-                  ]}
+                  coordinates={routeCoords}
                   strokeColor={theme.primary}
                   strokeWidth={3}
                 />
               </MapView>
 
               <View style={{ padding: Spacing.md, gap: 10 }}>
-                {pickupMode === 'fixed' && pickupPlace && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#B8790C' }} />
-                    <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
-                      Passengers meet you at {pickupAddress.trim()}
-                    </Text>
-                  </View>
-                )}
+                <Text style={{ color: theme.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>
+                  {placedStops.map(s => s.city || s.place.primary).join('  →  ')}
+                </Text>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 0.6 }}>
                     ROUTE DISTANCE
@@ -727,8 +1091,9 @@ export default function InterstateScreen() {
                   * They would, and nothing stopped them.
                   */}
                 <Text style={{ color: theme.textThird, fontSize: FontSize.xs, lineHeight: 16 }}>
-                  Measured from the two cities you picked. SEIRS sets this, not the
-                  driver, because it is what passengers are charged per kilometre.
+                  Measured along the stops you picked, not between city centres.
+                  SEIRS sets this, not the driver, because it is what passengers
+                  are charged per kilometre.
                 </Text>
 
                 {riderPerSeat != null && km > 0 && (
@@ -933,58 +1298,25 @@ export default function InterstateScreen() {
                   style={{ color: theme.text, fontSize: FontSize.base, padding: 0 }}
                 />
               </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {([['along_route', 'Pick up along my route'], ['fixed', 'One fixed pickup point']] as const).map(([k, label]) => (
-                  <Pressable
-                    key={k}
-                    onPress={() => setPickupMode(k)}
-                    style={{ flex: 1, padding: 10, borderRadius: Radius.md, borderWidth: 1.5, borderColor: pickupMode === k ? theme.primary : theme.border, backgroundColor: pickupMode === k ? theme.primary + '12' : 'transparent' }}
-                  >
-                    <Text style={{ color: pickupMode === k ? theme.primary : theme.textSecond, fontSize: FontSize.xs, fontWeight: '600', textAlign: 'center' }}>{label}</Text>
-                  </Pressable>
-                ))}
-              </View>
 
               {/**
-                * Say what the passenger actually gets.
+                * The "pick up along my route" / "one fixed pickup point"
+                * toggle is gone.
                 *
-                * Both options were bare labels, and "along my route" gave
-                * a passenger no pin, no place and no way to know where
-                * they would meet. It now declares the corridor, so this
-                * explains what that means rather than leaving them to
-                * guess (founder 2026-08-27).
+                * Along-route wrote a mode and nothing else: no label, no
+                * coordinates, no window. A passenger read "pick up along my
+                * route" and got no pin, no place and no way to know where
+                * they would meet, which is the hole the founder named: a
+                * rider can wait somewhere else and blame the passenger, and
+                * nobody can settle it because no exact place was ever
+                * agreed. The route above now names every place, so there is
+                * no vague option left to choose.
                 */}
               <Text style={{ color: theme.textThird, fontSize: FontSize.xs, lineHeight: 17 }}>
-                {pickupMode === 'along_route'
-                  ? (toPlace
-                      ? `Passengers and senders on the ${from.trim() || 'this'} to ${to.trim()} line are ranked towards you, and you agree the exact spot in chat. Nobody is shown a pin, so only choose this if you are happy to be flexible.`
-                      : 'Pick both cities first. Along-route matching needs to know the line you are driving.')
-                  : 'Passengers get a map pin and directions to this exact spot. Better for a busy park where "somewhere in Ibadan" helps nobody.'}
+                {origin.place
+                  ? `Passengers board at ${origin.city || origin.place.primary} and get a map pin on ${origin.place.primary}${origin.description.trim() ? `, plus your note: ${origin.description.trim()}` : ''}. The stops in between are what your route really is, and the fare is measured along them rather than city centre to city centre.`
+                  : 'Set your starting point above. Passengers get a map pin on it, so it has to be a place you will really be standing.'}
               </Text>
-              {pickupMode === 'fixed' && (
-                <View style={{ gap: 6 }}>
-                  <PlacePicker
-                    label="PICKUP POINT"
-                    onSuggestionsShown={liftBy}
-                    value={pickupAddress}
-                    onChangeText={(t) => { setPickupAddress(t); setPickupPlace(null); }}
-                    onPicked={(pl) => { setPickupAddress(pl.primary); setPickupPlace(pl); }}
-                    placeholder="e.g. Iwo Road roundabout"
-                    theme={theme as any}
-                  />
-                  {!!pickupAddress.trim() && !pickupPlace && (
-                    <Text style={{ color: '#B26A00', fontSize: FontSize.xs }}>
-                      Tap a suggestion so passengers get a map pin. Typed on its own,
-                      they only get the words and their map points at the city centre.
-                    </Text>
-                  )}
-                </View>
-              )}
-              {/* The distance box used to live here, editable, at the very
-                  bottom of the form. It is now measured from the two cities
-                  and shown in the route summary near the top, because a
-                  rider setting the number that prices a passenger's seat
-                  was never a form field, it was an open till. */}
             </View>
           )}
 
@@ -1026,9 +1358,26 @@ const styles = StyleSheet.create({
 
   label:     { fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 0.5 },
   input:     { borderWidth: 1, borderRadius: Radius.lg, paddingHorizontal: 12, paddingVertical: 12, fontSize: FontSize.base },
-  helper:    { fontSize: FontSize.xs },
+  helper:    { fontSize: FontSize.xs, lineHeight: 16 },
 
   routeChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1, alignItems: 'center', gap: 2 },
+
+  // One stop on the line. City and exact address sit in stopRow side by
+  // side, which is the founder's shape: the label and the pin belong to
+  // each other and are read together.
+  stopCard:  { borderWidth: 1, borderRadius: Radius.lg, padding: 12, gap: 10 },
+  stopHead:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stopDot:   { width: 10, height: 10, borderRadius: 5 },
+  stopRole:  { fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 0.6, flex: 1 },
+  stopKm:    { fontSize: FontSize.xs },
+  stopRow:   { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  // Matches PlacePicker's own label and input metrics so the two boxes
+  // in stopRow line up exactly.
+  miniLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginBottom: 6 },
+  cityBox:   { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, minHeight: 44, justifyContent: 'center' },
+  warn:      { fontSize: FontSize.xs, lineHeight: 16 },
+  connector: { alignItems: 'flex-start', paddingLeft: 16 },
+  addStop:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1.5, borderStyle: 'dashed', borderRadius: Radius.lg, paddingVertical: 12 },
 
   primaryBtn:    { paddingVertical: 14, borderRadius: Radius.lg, alignItems: 'center', marginTop: Spacing.lg },
   primaryBtnText:{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold },

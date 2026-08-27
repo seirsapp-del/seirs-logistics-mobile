@@ -225,6 +225,19 @@ export class DriversController {
     return this.driversService.listMyInterstateTrips(user.id);
   }
 
+  /**
+   * GET /api/v1/drivers/interstate-trips/:id/stops
+   *
+   * The declared route as a line, in travel order. A passenger picks
+   * their board and alight stops from this, which is what makes a
+   * segment priceable and what fixes the exact place two people are
+   * meant to meet.
+   */
+  @Get('interstate-trips/:id/stops')
+  interstateTripStops(@Param('id') id: string) {
+    return this.driversService.tripStops(id);
+  }
+
   @Patch('interstate-trips/:id/cancel')
   cancelInterstateTrip(@CurrentUser() user: User, @Param('id') id: string) {
     return this.driversService.cancelInterstateTrip(user.id, id);

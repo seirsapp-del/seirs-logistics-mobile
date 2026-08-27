@@ -70,8 +70,20 @@ export class DriverTrip {
   @Column({ type: 'numeric', precision: 10, scale: 7, nullable: true })
   pickupLng: number | null;
 
-  /** Road km between the two cities, measured once at declaration. */
+  /**
+   * Road km for the whole declared route, measured once at declaration.
+   *
+   * Keep this decorator ATTACHED to the property below it. A comment
+   * block was once inserted between the two, which silently moved the
+   * decorator onto destLat and left routeKm as a plain unpersisted
+   * field. TypeScript is perfectly happy with that, and the damage only
+   * shows at runtime: every seat booking reads trip.routeKm and threw
+   * "that trip has no measured route yet", and any write to it threw
+   * EntityPropertyNotFoundError after the trip had already been saved.
+   */
   @Column({ type: 'numeric', precision: 8, scale: 1, nullable: true })
+  routeKm: number | null;
+
   /**
    * Where the trip actually ends, in coordinates.
    *
@@ -100,8 +112,6 @@ export class DriverTrip {
   /** Human-readable destination from the picker, e.g. "Jos, Plateau". */
   @Column({ type: 'varchar', length: 240, nullable: true })
   destAddress: string | null;
-
-  routeKm: number | null;
 
   @Column({ type: 'enum', enum: DriverTripStatus, default: DriverTripStatus.ACTIVE })
   status: DriverTripStatus;

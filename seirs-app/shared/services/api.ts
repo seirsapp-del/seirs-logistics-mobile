@@ -734,6 +734,32 @@ export const driversApi = {
      * successfully and no passenger could ever book it (2026-08-27).
      */
     destLat?: number; destLng?: number; destAddress?: string;
+    /**
+     * The route as a LINE, origin first and destination last, with every
+     * intermediate stop already on it.
+     *
+     * Two city names put every distance between city centres, so a
+     * passenger boarding 20km outside Ibadan paid from the middle of
+     * Ibadan. And "pick up along my route" told them nothing about where
+     * to stand, which the founder called out directly: a rider can wait
+     * somewhere else and blame the passenger, and nobody can settle it
+     * because no exact place was ever agreed.
+     *
+     * kmFromOrigin is deliberately NOT sent. The server measures it off
+     * these coordinates and stores it, so a seat quoted today cannot
+     * reprice tomorrow because the app rounded differently.
+     *
+     * Optional, so an older server that ignores the field still accepts
+     * the declaration on the two-city fields above and the screen keeps
+     * working.
+     */
+    stops?: Array<{
+      city: string;
+      address: string;
+      latitude: number;
+      longitude: number;
+      description?: string;
+    }>;
   }) => request<any>('POST', '/drivers/interstate-trips', body),
   myInterstateTrips: () => request<any[]>('GET', '/drivers/interstate-trips/me'),
   cancelInterstateTrip: (id: string) =>
