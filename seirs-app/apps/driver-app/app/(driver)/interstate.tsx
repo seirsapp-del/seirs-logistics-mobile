@@ -419,6 +419,44 @@ export default function InterstateScreen() {
           ? 'Packages running between these cities are ranked towards you around your departure. That is a better chance, not a reservation, so keep working the normal job list.'
           : null,
       ].filter(Boolean).join('\n\n');
+      /**
+       * "Pick up along my route" now MEANS something.
+       *
+       * It used to write pickupMode: 'along_route' and nothing else: no
+       * label, no coordinates, no window. A passenger read "pick up along
+       * my route" and got no pin, no place and no way to know where they
+       * would actually meet (founder 2026-08-27).
+       *
+       * The corridor was already designed and already fed into matching:
+       * driver.corridorDestLat/Lng/Label/ExpiresAt, from 21 Aug, scoring
+       * up jobs whose pickup AND drop hug the line the courier is already
+       * driving. This screen simply never set it. So the fix is wiring,
+       * not a new design.
+       *
+       * The window runs from now until the trip should be over: the hours
+       * until departure, plus the drive at a deliberately generous 45km/h
+       * average, plus two hours of Nigerian road. A corridor that expires
+       * mid-journey stops matching exactly when the rider is most able to
+       * pick something up.
+       */
+      if (pickupMode === 'along_route' && toPlace) {
+        try {
+          const departsInH = Math.max(0, (new Date(depart).getTime() - Date.now()) / 3600000);
+          const driveH     = (Number(routeKm) || 0) / 45;
+          const hours      = Math.ceil(departsInH + driveH + 2);
+          await driversApi.setCorridor(
+            toPlace.lat,
+            toPlace.lng,
+            `${from.trim()} to ${to.trim()}`,
+            Math.min(hours, 48),
+          );
+        } catch {
+          // The trip is declared either way. A corridor that failed to
+          // set costs matching quality, not the booking, so it must not
+          // surface as a failure the rider has to act on.
+        }
+      }
+
       setSheet({
         title: 'Trip declared',
         message: `You are listed for ${from.trim()} → ${to.trim()} on ${when}.\n\n${lines}`,
@@ -853,6 +891,23 @@ export default function InterstateScreen() {
                   </Pressable>
                 ))}
               </View>
+
+              {/**
+                * Say what the passenger actually gets.
+                *
+                * Both options were bare labels, and "along my route" gave
+                * a passenger no pin, no place and no way to know where
+                * they would meet. It now declares the corridor, so this
+                * explains what that means rather than leaving them to
+                * guess (founder 2026-08-27).
+                */}
+              <Text style={{ color: theme.textThird, fontSize: FontSize.xs, lineHeight: 17 }}>
+                {pickupMode === 'along_route'
+                  ? (toPlace
+                      ? `Passengers and senders on the ${from.trim() || 'this'} to ${to.trim()} line are ranked towards you, and you agree the exact spot in chat. Nobody is shown a pin, so only choose this if you are happy to be flexible.`
+                      : 'Pick both cities first. Along-route matching needs to know the line you are driving.')
+                  : 'Passengers get a map pin and directions to this exact spot. Better for a busy park where "somewhere in Ibadan" helps nobody.'}
+              </Text>
               {pickupMode === 'fixed' && (
                 <View style={{ gap: 6 }} onLayout={(e) => { fieldY.current.pickup = e.nativeEvent.layout.y; }}>
                   <PlacePicker
