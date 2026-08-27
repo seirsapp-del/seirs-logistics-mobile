@@ -202,8 +202,22 @@ export default function WithdrawalScreen() {
         </Text>
         {paidAmount < numericAmount && (
           <Text style={[styles.successNote, { color: theme.textThird }]}>
-            You asked for {naira(numericAmount)}; {naira(paidAmount)} was paid because
-            withdrawals match whole deliveries. The rest stays available.
+            {/*
+              Name the actual reason.
+
+              This said "withdrawals match whole deliveries. The rest
+              stays available" for every shortfall. On the platform's
+              first real payout both halves were untrue at once: the gap
+              was the new-rider holdback, not delivery matching, and the
+              rest did not stay available because the holdback was never
+              returned (fixed server-side the same night). Two false
+              statements on the screen a rider reads at the exact moment
+              their money moves.
+            */}
+            You asked for {naira(numericAmount)} and {naira(paidAmount)} was sent.
+            {holdbackApplies
+              ? ` New riders keep ${holdbackPct}% back for the first few weeks, so ${naira(round2(numericAmount - paidAmount))} stays in your balance for next time.`
+              : ' Withdrawals match whole deliveries, so the rest stays available.'}
           </Text>
         )}
         <Pressable style={[styles.doneBtn, { backgroundColor: theme.primary }]} onPress={() => router.back()}>
