@@ -111,6 +111,24 @@ export class EarningsService {
     grossNaira:  number;
     seirsCutPercent?: number;  // default 25%
   }): Promise<DriverEarning> {
+    /**
+     * One delivery, one earning row.
+     *
+     * This created a fresh row on every call with no check on
+     * deliveryId, so any second call, a retry, a replayed webhook, a
+     * redelivered status event, paid the rider for the same job twice
+     * (2026-08-27). releaseEscrow guards on escrowStatus, which made it
+     * unlikely rather than impossible, and "unlikely" is not a control
+     * to have on the path that moves money.
+     */
+    const already = await this.repo.findOne({ where: { deliveryId: params.deliveryId } });
+    if (already) {
+      this.logger?.warn?.(
+        `Earning already recorded for delivery ${params.deliveryId}; returning the existing row.`,
+      );
+      return already;
+    }
+
     const cutPct = params.seirsCutPercent ?? (1 - DEFAULT_DRIVER_SHARE);
     const grossAmount = params.grossNaira;
     const seirsCut    = +(grossAmount * cutPct).toFixed(2);

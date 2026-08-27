@@ -1062,44 +1062,76 @@ export class PaymentsService {
         ? Math.min(Math.round(bookedNaira * 100), payment.amountKobo)
         : Math.round(payment.amountKobo * (1 - commission));
 
+    /**
+     * One delivery's pay lives in ONE place.
+     *
+     * This credited the driver's Wallet AND wrote a DriverEarning row
+     * for the same money, described as running "alongside the existing
+     * wallet credit until the wallet model is fully retired". Both of
+     * those balances have a live payout route wired to Flutterwave:
+     *
+     *   POST /payments/withdraw  drains Wallet.balanceKobo
+     *   POST /earnings/payout    drains driver_earnings
+     *
+     * and neither one looks at the other. So a rider who earned
+     * 1,469.68 on a delivery could withdraw 1,469.68 twice and SEIRS
+     * would pay both, out of a single customer payment (2026-08-27).
+     * Nothing about it required bad faith: two routes, two balances,
+     * one job.
+     *
+     * The ledger is the pipeline that pays riders now, so it takes the
+     * money and the wallet credit becomes what it should always have
+     * been: a fallback for when the ledger write fails, so a rider is
+     * never left unpaid by an outage. Recording first, and crediting
+     * only on failure, means the money can never be in both.
+     *
+     * Wallet balances that already exist are untouched and still
+     * withdrawable: they are real money from past releases. Deliveries
+     * released BEFORE this change carry both records and need
+     * reconciling by hand. Query in the night report.
+     */
+    let ledgerTookIt = false;
+    try {
+      await this.earningsService.recordForDelivery({
+        driverId:        driverUserId,
+        deliveryId,
+        grossNaira:      toNaira(payment.amountKobo),
+        // Effective cut, derived from the booked figure, so the ledger
+        // pays exactly what the job card offered on night trips where
+        // driverEarnings carries the night fee in full.
+        seirsCutPercent: 1 - driverShareKobo / Math.max(payment.amountKobo, 1),
+      });
+      ledgerTookIt = true;
+    } catch (e: any) {
+      this.logger.error(
+        `DriverEarning record failed for ${deliveryId}: ${e.message}. ` +
+        `Falling back to a wallet credit so the rider is still paid.`,
+      );
+    }
+
     await this.dataSource.transaction(async (manager) => {
-      let driverWallet = await manager.findOne(Wallet, {
-        where: { user: { id: driverUserId } },
-        lock: { mode: 'pessimistic_write' },
-      });
+      if (!ledgerTookIt) {
+        let driverWallet = await manager.findOne(Wallet, {
+          where: { user: { id: driverUserId } },
+          lock: { mode: 'pessimistic_write' },
+        });
 
-      if (!driverWallet) {
-        const driverUser = { id: driverUserId } as User;
-        driverWallet = manager.create(Wallet, { user: driverUser, balanceKobo: 0 });
-        await manager.save(Wallet, driverWallet);
+        if (!driverWallet) {
+          const driverUser = { id: driverUserId } as User;
+          driverWallet = manager.create(Wallet, { user: driverUser, balanceKobo: 0 });
+          await manager.save(Wallet, driverWallet);
+        }
+
+        await manager.update(Wallet, driverWallet.id, {
+          balanceKobo: driverWallet.balanceKobo + driverShareKobo,
+        });
       }
-
-      await manager.update(Wallet, driverWallet.id, {
-        balanceKobo: driverWallet.balanceKobo + driverShareKobo,
-      });
 
       await manager.update(Payment, payment.id, {
         escrowStatus: EscrowStatus.RELEASED,
         releasedAt:   new Date(),
       });
     });
-
-    // Per V8 payments spec: also record a DriverEarning ledger entry for
-    // the new payouts pipeline. This runs alongside the existing wallet
-    // credit until the wallet model is fully retired.
-    try {
-      await this.earningsService.recordForDelivery({
-        driverId:        driverUserId,
-        deliveryId,
-        grossNaira:      toNaira(payment.amountKobo),
-        // Effective cut, derived from what was actually credited above, so
-        // the ledger and the wallet agree on night trips where the booked
-        // driverEarnings carries the night fee in full.
-        seirsCutPercent: 1 - driverShareKobo / Math.max(payment.amountKobo, 1),
-      });
-    } catch (e: any) {
-      this.logger.warn(`DriverEarning record failed for ${deliveryId}: ${e.message}`);
-    }
 
     this.logger.log(
       `Escrow released for delivery ${deliveryId}. ` +
