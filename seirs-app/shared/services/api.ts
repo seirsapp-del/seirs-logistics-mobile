@@ -722,6 +722,12 @@ export const driversApi = {
     acceptsPassengers?: boolean; seatsTotal?: number; acceptsPackages?: boolean;
     pickupMode?: 'fixed' | 'along_route'; pickupAddress?: string;
     pickupLat?: number; pickupLng?: number; routeKm?: number;
+    /**
+     * Where the trip actually ends. Without these the server falls back
+     * to a hardcoded twelve-city lookup, so a trip anywhere else saved
+     * successfully and no passenger could ever book it (2026-08-27).
+     */
+    destLat?: number; destLng?: number; destAddress?: string;
   }) => request<any>('POST', '/drivers/interstate-trips', body),
   myInterstateTrips: () => request<any[]>('GET', '/drivers/interstate-trips/me'),
   cancelInterstateTrip: (id: string) =>

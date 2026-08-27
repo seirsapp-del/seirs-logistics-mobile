@@ -1,4 +1,5 @@
 import { Calendar as RNCalendar } from 'react-native-calendars';
+import { PlacePicker, type PickedPlace } from '@seirs/shared/components/PlacePicker';
 import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
@@ -104,6 +105,17 @@ export default function InterstateScreen() {
   const [pickerOpen,  setPickerOpen]  = useState(false);
 
   /**
+   * Coordinates for both ends, from the picker rather than from typing.
+   *
+   * The trip row used to carry a bare city STRING and the server
+   * resolved it through a hardcoded twelve-city list, so a rider
+   * declaring anywhere else saved a trip nobody could book. With real
+   * coordinates any destination in Nigeria works.
+   */
+  const [fromPlace, setFromPlace] = useState<PickedPlace | null>(null);
+  const [toPlace,   setToPlace]   = useState<PickedPlace | null>(null);
+
+  /**
    * departAt stays the single source the submit path reads, so nothing
    * downstream had to change: the two pickers just write into it in the
    * exact shape the old text field produced.
@@ -111,6 +123,31 @@ export default function InterstateScreen() {
   useEffect(() => {
     setDepartAt(departDate && departTime ? `${departDate} ${departTime}` : '');
   }, [departDate, departTime]);
+
+  /**
+   * Distance from the two picked points, not from a text box.
+   *
+   * routeKm was a free-text field, and seat price is literally
+   * seats x rate x routeKm, so whatever a rider typed set what
+   * passengers paid. The only validation was that it was above zero.
+   *
+   * Straight line understates road distance, so this is a floor rather
+   * than a quote: the rider can raise it if they know the road is
+   * longer, and the server floors it again on its own geometry. What it
+   * removes is the empty box and the typo.
+   */
+  useEffect(() => {
+    if (!fromPlace || !toPlace) return;
+    const R = 6371;
+    const dLat = ((toPlace.lat - fromPlace.lat) * Math.PI) / 180;
+    const dLng = ((toPlace.lng - fromPlace.lng) * Math.PI) / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos((fromPlace.lat * Math.PI) / 180) * Math.cos((toPlace.lat * Math.PI) / 180)
+      * Math.sin(dLng / 2) ** 2;
+    const straight = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    // Nigerian intercity roads run roughly 1.25x the straight line.
+    setRouteKm(String(Math.round(straight * 1.25)));
+  }, [fromPlace, toPlace]);
   const [vehicleSpace,setVehicleSpace]= useState('1');
 
   // Travel Buddy (founder 23 Aug): sell what the vehicle truly has.
@@ -201,6 +238,21 @@ export default function InterstateScreen() {
       Alert.alert('Same city twice', 'From and To must be different cities.');
       return;
     }
+    /**
+     * Both ends must be PICKED, not typed.
+     *
+     * Without coordinates the server falls back to its twelve-city
+     * lookup, and a trip to anywhere else is saved successfully and is
+     * unbookable forever. Refusing here, with the reason, beats letting
+     * a rider wait a week for a booking that could never arrive.
+     */
+    if (!fromPlace || !toPlace) {
+      Alert.alert(
+        'Choose both cities from the list',
+        'Tap a suggestion as you type so we get the exact location. A typed name we cannot place means no passenger can book this trip.',
+      );
+      return;
+    }
     if (!departAt) { Alert.alert('Departure time required'); return; }
     // Accept "YYYY-MM-DD HH:mm" form by normalizing to ISO before sending.
     const depart = departAt.includes('T') ? departAt : departAt.replace(' ', 'T');
@@ -261,6 +313,12 @@ export default function InterstateScreen() {
       await driversApi.declareInterstateTrip({
         fromCity:        from.trim(),
         toCity:          to.trim(),
+        // The half the server was missing entirely.
+        pickupLat:       fromPlace.lat,
+        pickupLng:       fromPlace.lng,
+        destLat:         toPlace.lat,
+        destLng:         toPlace.lng,
+        destAddress:     toPlace.description,
         departAt:        new Date(depart).toISOString(),
         spareCapacityKg: Number(vehicleSpace) || 0,
         acceptsPassengers: takePassengers,
@@ -300,10 +358,10 @@ export default function InterstateScreen() {
           label: 'Done',
           variant: 'primary',
           icon: 'checkmark-circle-outline',
-          onPress: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); },
+          onPress: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); setFromPlace(null); setToPlace(null); },
         }],
         cancelLabel: null,
-        onCancel: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); },
+        onCancel: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); setFromPlace(null); setToPlace(null); },
       });
     } catch (e: any) {
       Alert.alert('Could not declare trip', e?.message ?? 'Try again.');
@@ -414,8 +472,20 @@ export default function InterstateScreen() {
 
           {/* Fields */}
           <View style={{ gap: 6, marginTop: Spacing.md }}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>FROM</Text>
-            <TextInput value={from} onChangeText={setFrom} placeholder="e.g. Lagos" placeholderTextColor={theme.textThird} style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]} />
+            {/**
+              * Picked, not typed. A free-text city produced a trip the
+              * server could not map and no passenger could book, and
+              * the rider was told the PICKUP was the problem.
+              */}
+            <PlacePicker
+              label="FROM"
+              value={from}
+              onChangeText={(t) => { setFrom(t); setFromPlace(null); }}
+              onPicked={(pl) => { setFrom(pl.primary); setFromPlace(pl); }}
+              placeholder="Start typing a city"
+              types="(cities)"
+              theme={theme as any}
+            />
           </View>
 
           <View style={{ alignItems: 'center', marginVertical: -8 }}>
@@ -423,8 +493,15 @@ export default function InterstateScreen() {
           </View>
 
           <View style={{ gap: 6 }}>
-            <Text style={[styles.label, { color: theme.textSecond }]}>TO</Text>
-            <TextInput value={to} onChangeText={setTo} placeholder="e.g. Ibadan" placeholderTextColor={theme.textThird} style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]} />
+            <PlacePicker
+              label="TO"
+              value={to}
+              onChangeText={(t) => { setTo(t); setToPlace(null); }}
+              onPicked={(pl) => { setTo(pl.primary); setToPlace(pl); }}
+              placeholder="Start typing a city"
+              types="(cities)"
+              theme={theme as any}
+            />
           </View>
 
           <View style={{ gap: 6, marginTop: Spacing.sm }}>
