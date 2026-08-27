@@ -1250,6 +1250,52 @@ export class PaymentsService {
 
   // ── Driver withdrawal via Flutterwave transfer ───────────────────────────
 
+  /**
+   * Pay a rider for a trip that died.
+   *
+   * computeFailedTripPay has always calculated this and deliveries.service
+   * has always stored it on driverFailedTripNgn, and nothing anywhere read
+   * the stored field, so the rider was never actually paid it (found
+   * 2026-08-27). The rider made the journey whoever was at fault, and
+   * reporting a bad parcel is the behaviour we want to encourage rather
+   * than tax.
+   *
+   * FOUNDER RULE, 27 Aug: the compensation is a FLOOR for a run that
+   * dies, not a bonus that stacks. If the delivery is later redirected
+   * and completes, the rider is paid the full delivery pay and this is
+   * absorbed. That is enforced structurally rather than by a flag:
+   * recordForDelivery is idempotent on deliveryId, and this is only
+   * called once a delivery is terminally failed or cancelled, so
+   * releaseEscrow can never also run for the same job.
+   *
+   * SEIRS carries the whole amount. It is not a share of customer
+   * revenue: on a failed trip the customer is refunded, so there is no
+   * revenue to share. Hence a zero cut.
+   */
+  async payFailedTripCompensation(
+    deliveryId: string,
+    driverUserId: string,
+    amountNgn: number,
+  ): Promise<void> {
+    const amount = Number(amountNgn);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    try {
+      await this.earningsService.recordForDelivery({
+        driverId:        driverUserId,
+        deliveryId,
+        grossNaira:      amount,
+        seirsCutPercent: 0,
+      });
+      this.logger.log(
+        `Failed-trip compensation of ${amount.toFixed(2)} recorded for delivery ${deliveryId}.`,
+      );
+    } catch (e: any) {
+      this.logger.error(
+        `Failed-trip compensation could not be recorded for ${deliveryId}: ${e.message}`,
+      );
+    }
+  }
+
   async requestWithdrawal(userId: string, amountNaira: number): Promise<{ message: string }> {
     const amountKobo = toKobo(amountNaira);
     const MIN_WITHDRAWAL_KOBO = toKobo(1000); // ₦1,000 minimum

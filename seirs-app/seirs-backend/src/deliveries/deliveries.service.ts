@@ -3777,6 +3777,37 @@ export class DeliveriesService {
       }
     }
 
+    /**
+     * Pay the rider their floor on a run that died.
+     *
+     * driverFailedTripNgn was written when the rider reported the
+     * problem and read by nothing, so the money was calculated,
+     * displayed nowhere, and never paid (2026-08-27).
+     *
+     * Only on a TERMINAL state. Founder rule of 27 Aug: if the run is
+     * later redirected and completes, the rider gets the full delivery
+     * pay and this floor is absorbed rather than stacked on top. Since
+     * a delivery cannot be both failed and delivered, and the earnings
+     * ledger is idempotent per delivery, the two can never both land.
+     */
+    if (
+      (status === DeliveryStatus.FAILED || status === DeliveryStatus.CANCELLED) &&
+      this.paymentsService
+    ) {
+      const forPay = await this.repo.findOne({
+        where: { id },
+        relations: ['driver', 'driver.user'],
+        select: undefined,
+      });
+      const floorNgn = Number((forPay as any)?.driverFailedTripNgn ?? 0) || 0;
+      const riderUserId = forPay?.driver?.user?.id;
+      if (floorNgn > 0 && riderUserId) {
+        await (this.paymentsService as any)
+          .payFailedTripCompensation(id, riderUserId, floorNgn)
+          .catch((e: any) => this.logger.error(`Failed-trip pay failed for ${id}: ${e.message}`));
+      }
+    }
+
     // Refund escrow if delivery failed or cancelled
     if (
       (status === DeliveryStatus.FAILED || status === DeliveryStatus.CANCELLED) &&
