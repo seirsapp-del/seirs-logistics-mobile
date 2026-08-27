@@ -2653,6 +2653,96 @@ export class AdminService {
     }));
   }
 
+  /**
+   * Credit a rider's earnings balance to correct a settlement error.
+   *
+   * There was no way to put money back. Earnings could be held and
+   * released, but nothing could restore an amount the platform had taken
+   * and failed to send, so the first such case had no remedy inside the
+   * product at all: the new-rider holdback was marked paid and never
+   * transferred, and Emeka Nwachukwu was left owed 146.97 with the only
+   * options being a hand-written SQL statement or nothing.
+   *
+   * Deliberately narrow, because an endpoint that mints rider earnings
+   * is a way to move real money:
+   *   - super admin only
+   *   - a reason is required and stored, so no correction is anonymous
+   *   - capped, so a typo cannot create a fortune
+   *   - lands as `available`, never `paid`, so it flows through the
+   *     normal payout path and its own guards
+   *   - writes an audit row naming the actor, the rider and the reason
+   *
+   * This is a correction tool, not a bonus tool. Anything promotional
+   * belongs in the loyalty ledger where it can be capped and expired.
+   */
+  async creditEarningCorrection(
+    driverUserId: string,
+    amountNgn: number,
+    reason: string,
+    admin: any,
+    ip?: string,
+  ) {
+    const MAX_CORRECTION_NGN = 100_000;
+
+    const amount = Number(amountNgn);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('Amount must be a positive number.');
+    }
+    if (amount > MAX_CORRECTION_NGN) {
+      throw new BadRequestException(
+        `Corrections are capped at ₦${MAX_CORRECTION_NGN.toLocaleString()}. Raise this deliberately in code if a larger one is ever genuinely needed.`,
+      );
+    }
+    const cleanReason = (reason ?? '').trim();
+    if (cleanReason.length < 10) {
+      throw new BadRequestException('Give a reason of at least 10 characters. It is stored on the row.');
+    }
+
+    const user = await this.usersRepo.findOne({ where: { id: driverUserId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    // Reuse the rider's most recent earning for the delivery link, which
+    // the column requires. The correction belongs to that settlement.
+    const [recent] = await this.earningsRepo.find({
+      where: { driverId: driverUserId } as any,
+      order: { createdAt: 'DESC' },
+      take: 1,
+    });
+    if (!recent) {
+      throw new BadRequestException('This rider has no earnings history to attach a correction to.');
+    }
+
+    const rounded = Math.round(amount * 100) / 100;
+    const draft = this.earningsRepo.create({
+      driverId:    driverUserId,
+      deliveryId:  recent.deliveryId,
+      grossAmount: '0',
+      seirsCut:    '0',
+      driverNet:   rounded.toFixed(2),
+      status:      'available' as const,
+      availableAt: new Date(),
+      holdReason:  `Correction by ${admin?.name ?? 'admin'}: ${cleanReason}`,
+    });
+    const row = await this.earningsRepo.save(draft as DriverEarning);
+
+    await this.logAudit(
+      admin,
+      'earning.correction',
+      `user:${driverUserId}`,
+      { amountNgn: rounded, reason: cleanReason, earningId: row.id, riderName: user.name },
+      ip,
+    );
+
+    return {
+      ok: true,
+      earningId: row.id,
+      driverUserId,
+      riderName: user.name,
+      amountNgn: rounded,
+      reason: cleanReason,
+    };
+  }
+
   async walletSummary() {
     const [pending, held, mtdPaid] = await Promise.all([
       this.earningsRepo.createQueryBuilder('e')

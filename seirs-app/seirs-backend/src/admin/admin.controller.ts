@@ -982,6 +982,34 @@ export class AdminController {
     return this.adminService.releaseHeldEarning(id, admin);
   }
 
+  /**
+   * POST /api/v1/admin/wallet/earnings/correction
+   * { "driverUserId": "...", "amountNgn": 146.97, "reason": "..." }
+   *
+   * Put money back into a rider's balance after a settlement error.
+   * Nothing could do this: earnings could be held and released, but an
+   * amount the platform took and failed to send had no remedy in the
+   * product. Super admin only, capped, and every call is audited with
+   * the reason, because this mints a withdrawable balance.
+   */
+  @UseGuards(SuperAdminGuard)
+  @Post('wallet/earnings/correction')
+  creditEarningCorrection(
+    @Body() body: { driverUserId?: string; amountNgn?: number; reason?: string },
+    @CurrentUser() admin: User,
+    @Req() req: Request,
+  ) {
+    if (!body?.driverUserId) throw new BadRequestException('driverUserId is required');
+    const ip = (req.headers['x-forwarded-for'] as string) ?? req.ip ?? '';
+    return this.adminService.creditEarningCorrection(
+      body.driverUserId,
+      Number(body.amountNgn),
+      body.reason ?? '',
+      admin,
+      ip,
+    );
+  }
+
   // ── Referrals ─────────────────────────────────────────────────────────────
 
   @Get('referrals')
