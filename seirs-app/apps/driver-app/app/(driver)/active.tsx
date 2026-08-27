@@ -10,6 +10,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import {
+  startBackgroundLocation,
+  stopBackgroundLocation,
+  requestBackgroundPermission,
+  hasBackgroundPermission,
+  flushPendingFix,
+} from '@/lib/backgroundLocation';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
@@ -55,6 +62,8 @@ export default function ActiveDeliveryScreen() {
   const [updating,   setUpdating]   = useState(false);
   const [proofUri,   setProofUri]   = useState<string | null>(null);
   const [proofReady, setProofReady] = useState(false);
+  // Whether locked-screen reporting is actually running, not merely permitted.
+  const [bgTracking, setBgTracking] = useState(false);
   // Android has no Alert.prompt, so third-party acceptance collects the
   // name in a small modal instead.
   const [showReceiverPrompt, setShowReceiverPrompt] = useState(false);
@@ -215,7 +224,32 @@ export default function ActiveDeliveryScreen() {
 
   useEffect(() => {
     startBroadcast();
-    return () => stopBroadcast();
+    /**
+     * Keep reporting when the screen locks.
+     *
+     * The foreground watcher above dies the moment Android suspends the
+     * activity, which is every time the rider pockets the phone. Without
+     * this the customer's pin freezes on whatever street the rider was
+     * on when the screen went dark, and they have no way to tell that
+     * from a rider who has stopped.
+     *
+     * Nothing is prompted here. A permission dialog thrown at someone
+     * mid-delivery gets dismissed; the ask lives on the banner below,
+     * where it can explain itself. If the grant is already there, this
+     * simply starts.
+     */
+    void (async () => {
+      if (await hasBackgroundPermission()) {
+        const ok = await startBackgroundLocation();
+        setBgTracking(ok);
+      }
+      // Anything the task could not deliver while offline.
+      void flushPendingFix();
+    })();
+    return () => {
+      stopBroadcast();
+      void stopBackgroundLocation();
+    };
   }, []);
 
   /**
@@ -361,6 +395,32 @@ export default function ActiveDeliveryScreen() {
         await push(pos.coords.latitude, pos.coords.longitude);
       } catch { /* no fix available, try again next tick */ }
     }, 60 * 1000);
+  };
+
+  /**
+   * Turn on locked-screen reporting.
+   *
+   * Android 10 treats "Allow all the time" as a separate grant from
+   * foreground, and refuses the background prompt outright unless
+   * foreground was granted first, which reads to a rider as the dialog
+   * simply never appearing. requestBackgroundPermission asks in that
+   * order. If they decline, we say what it costs them and move on: the
+   * job still works, the customer just sees a stale pin.
+   */
+  const enableBackgroundTracking = async () => {
+    const granted = await requestBackgroundPermission();
+    if (!granted) {
+      info(
+        'Location sharing stays on-screen only',
+        'Without "Allow all the time", your customer\'s map stops updating whenever your screen locks. You can change it later in Settings, under Permissions.',
+      );
+      return;
+    }
+    const ok = await startBackgroundLocation();
+    setBgTracking(ok);
+    if (!ok) {
+      info('Could not start', 'Location sharing could not start in the background. Your on-screen tracking is still working.');
+    }
   };
 
   const stopBroadcast = () => {
@@ -777,11 +837,28 @@ export default function ActiveDeliveryScreen() {
               {!!elapsedLabel && <Text style={styles.bannerSub}>{elapsedLabel}</Text>}
               <View style={styles.gpsPill}>
                 <View style={styles.gpsDot} />
-                <Text style={styles.gpsText}>GPS</Text>
+                <Text style={styles.gpsText}>{bgTracking ? 'GPS ALWAYS' : 'GPS'}</Text>
               </View>
             </View>
           </LinearGradient>
         </View>
+
+        {/* Locked-screen tracking. Shown only while it is OFF, because a
+            rider does not need a permanent banner telling them a thing
+            is working. The wording says what the CUSTOMER loses, which
+            is the part a rider can act on. */}
+        {!bgTracking && (
+          <Pressable onPress={enableBackgroundTracking} style={styles.bgPrompt}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bgPromptTitle}>Your map stops when your screen locks</Text>
+              <Text style={styles.bgPromptBody}>
+                Tap to keep sharing while your phone is in your pocket. Choose
+                "Allow all the time". It stops on its own when the job ends.
+              </Text>
+            </View>
+            <Text style={styles.bgPromptCta}>Turn on</Text>
+          </Pressable>
+        )}
 
         {/* Live map: pickup pin (green), dropoff pin (red), driver pin (blue) */}
         {delivery.pickupLat && delivery.dropoffLat && (
@@ -1380,6 +1457,21 @@ const styles = StyleSheet.create({
   bannerHeadline: { color: '#fff', fontSize: FontSize.xl, fontWeight: FontWeight.bold as any, textAlign: 'center' },
   bannerMetaRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   bannerSub:      { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.xs },
+  bgPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,176,32,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,176,32,0.35)',
+  },
+  bgPromptTitle: { fontSize: 13, fontWeight: '700', color: '#B26A00', marginBottom: 2 },
+  bgPromptBody:  { fontSize: 12, lineHeight: 17, color: '#8A5A08' },
+  bgPromptCta:   { fontSize: 13, fontWeight: '800', color: '#B26A00' },
   gpsPill:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: Spacing.md, paddingVertical: 5, borderRadius: Radius.full },
   gpsDot:         { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' },
   gpsText:        { color: 'rgba(255,255,255,0.9)', fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 1 },
