@@ -20,6 +20,7 @@ export {
   supportApi,
   documentsApi,
   dropoffApi,
+  configApi,
 } from '@seirs/shared/services/api';
 
 export type {

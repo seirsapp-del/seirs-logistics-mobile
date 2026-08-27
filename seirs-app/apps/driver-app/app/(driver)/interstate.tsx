@@ -1,6 +1,7 @@
 import { Calendar as RNCalendar } from 'react-native-calendars';
 import { PlacePicker, type PickedPlace } from '@seirs/shared/components/PlacePicker';
-import { useEffect, useState } from 'react';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
   KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -13,7 +14,8 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
-import { driversApi } from '@/services/api';
+import { driversApi, configApi } from '@/services/api';
+import { naira } from '@/utils/money';
 
 // Spec V8 §2.18: driver declares an upcoming intercity trip
 // (Lagos → Ibadan, etc.). System surfaces matching packages along
@@ -156,6 +158,34 @@ export default function InterstateScreen() {
   const [takePackages,   setTakePackages]   = useState(true);
   const [pickupMode,     setPickupMode]     = useState<'along_route' | 'fixed'>('along_route');
   const [pickupAddress,  setPickupAddress]  = useState('');
+  /**
+   * The meeting point's OWN coordinates.
+   *
+   * "One fixed pickup point" was a text box, and the trip sent the CITY
+   * coordinates alongside it. So a rider typing "Ojo Junction" produced
+   * a trip that told passengers "meets at Ojo Junction" and pointed
+   * their map at the middle of the city (founder spotted it on screen,
+   * 2026-08-27). The words were right and the pin was wrong, which is
+   * worse than having no pin: a passenger trusts the map.
+   */
+  const [pickupPlace, setPickupPlace] = useState<PickedPlace | null>(null);
+
+  /**
+   * Lift a picker clear of the keyboard when its suggestions arrive.
+   *
+   * keyboardShouldPersistTaps already lets a tap land on a suggestion,
+   * but nothing scrolled, so on this screen the TO field sits right at
+   * the fold and its list rendered underneath the keyboard entirely.
+   */
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldY    = useRef<Record<string, number>>({});
+  const liftField = (key: string) => {
+    const y = fieldY.current[key];
+    if (y == null) return;
+    // 90px of headroom so the label stays readable above the list.
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - 90), animated: true });
+  };
+
   const [routeKm,        setRouteKm]        = useState('');
   const [submitting,  setSubmitting]  = useState(false);
   const [sheet,       setSheet]       = useState<SeirsSheetSpec | null>(null);
@@ -167,6 +197,39 @@ export default function InterstateScreen() {
    */
   const [vehicleType, setVehicleType] = useState<string | null>(null);
   const seatCap = vehicleType ? (SEAT_CAPS[vehicleType] ?? 0) : null;
+
+  /**
+   * What a seat on this trip is worth, and what the rider keeps.
+   *
+   * The declare screen showed no money at all. A rider committed a trip
+   * across the country with no idea what it paid, while the passenger
+   * browsing it saw the price plainly (founder 2026-08-27: "does the
+   * driver see the price, also whats seirs share").
+   *
+   * There is no seat-quote endpoint, so this uses the same arithmetic
+   * the server uses, off the same public rate card: seats x rate x km,
+   * and the rider keeps 75% of that. Labelled an estimate because the
+   * server prices the booking for real and time surcharges can move it.
+   */
+  const [seatRateNgn, setSeatRateNgn] = useState<number | null>(null);
+
+  useEffect(() => {
+    configApi.rateCard()
+      .then((card: any) => {
+        const rates = card?.seatRates ?? {};
+        const r = Number(rates?.[vehicleType ?? '']);
+        setSeatRateNgn(Number.isFinite(r) && r > 0 ? r : null);
+      })
+      .catch(() => setSeatRateNgn(null));
+  }, [vehicleType]);
+
+  const km = Number(routeKm) || 0;
+  const perSeatNgn   = seatRateNgn != null ? seatRateNgn * km : null;
+  const riderPerSeat = perSeatNgn != null ? perSeatNgn * 0.75 : null;
+  const riderAllSeats = riderPerSeat != null
+    ? riderPerSeat * Math.max(1, Number(seats) || 1)
+    : null;
+
 
   // The declared list + cancel existed as endpoints since spec 2.18;
   // the screen never showed them, so a driver could declare a trip and
@@ -314,8 +377,13 @@ export default function InterstateScreen() {
         fromCity:        from.trim(),
         toCity:          to.trim(),
         // The half the server was missing entirely.
-        pickupLat:       fromPlace.lat,
-        pickupLng:       fromPlace.lng,
+        /**
+         * The meeting point wins over the city when one was picked.
+         * bookTripSeats reads trip.pickupLat for the passenger's map, so
+         * sending the city here made a fixed pickup point decorative.
+         */
+        pickupLat:       (pickupMode === 'fixed' && pickupPlace) ? pickupPlace.lat : fromPlace.lat,
+        pickupLng:       (pickupMode === 'fixed' && pickupPlace) ? pickupPlace.lng : fromPlace.lng,
         destLat:         toPlace.lat,
         destLng:         toPlace.lng,
         destAddress:     toPlace.description,
@@ -358,10 +426,10 @@ export default function InterstateScreen() {
           label: 'Done',
           variant: 'primary',
           icon: 'checkmark-circle-outline',
-          onPress: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); setFromPlace(null); setToPlace(null); },
+          onPress: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); setFromPlace(null); setToPlace(null); setPickupPlace(null); },
         }],
         cancelLabel: null,
-        onCancel: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); setFromPlace(null); setToPlace(null); },
+        onCancel: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); setFromPlace(null); setToPlace(null); setPickupPlace(null); },
       });
     } catch (e: any) {
       Alert.alert('Could not declare trip', e?.message ?? 'Try again.');
@@ -381,7 +449,7 @@ export default function InterstateScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
           {myTrips.length > 0 && (
             <View style={{ gap: 8, marginBottom: 4 }}>
@@ -477,8 +545,10 @@ export default function InterstateScreen() {
               * server could not map and no passenger could book, and
               * the rider was told the PICKUP was the problem.
               */}
+            <View onLayout={(e) => { fieldY.current.from = e.nativeEvent.layout.y; }}>
             <PlacePicker
               label="FROM"
+              onSuggestionsShown={() => liftField('from')}
               value={from}
               onChangeText={(t) => { setFrom(t); setFromPlace(null); }}
               onPicked={(pl) => { setFrom(pl.primary); setFromPlace(pl); }}
@@ -486,15 +556,17 @@ export default function InterstateScreen() {
               types="(cities)"
               theme={theme as any}
             />
+            </View>
           </View>
 
           <View style={{ alignItems: 'center', marginVertical: -8 }}>
             <ArrowRight size={20} color={theme.textThird} />
           </View>
 
-          <View style={{ gap: 6 }}>
+          <View style={{ gap: 6 }} onLayout={(e) => { fieldY.current.to = e.nativeEvent.layout.y; }}>
             <PlacePicker
               label="TO"
+              onSuggestionsShown={() => liftField('to')}
               value={to}
               onChangeText={(t) => { setTo(t); setToPlace(null); }}
               onPicked={(pl) => { setTo(pl.primary); setToPlace(pl); }}
@@ -503,6 +575,100 @@ export default function InterstateScreen() {
               theme={theme as any}
             />
           </View>
+
+          {/**
+            * Route, map and money, together and near the top.
+            *
+            * Route distance used to sit at the very BOTTOM of the form as
+            * an editable box, and there was no map anywhere on the screen
+            * (founder 2026-08-27: "not a single physical map in sight on
+            * this screen and why is the route distance at the bottom").
+            *
+            * It belongs here because it is the CONSEQUENCE of the two
+            * cities above it: pick both, and this is what the trip is.
+            */}
+          {fromPlace && toPlace && (
+            <View style={{
+              marginTop: Spacing.md,
+              borderRadius: Radius.lg,
+              borderWidth: 1,
+              borderColor: theme.border,
+              backgroundColor: theme.surface,
+              overflow: 'hidden',
+            }}>
+              <MapView
+                provider={PROVIDER_GOOGLE}
+                style={{ height: 160, width: '100%' }}
+                pointerEvents="none"
+                initialRegion={{
+                  latitude:  (fromPlace.lat + toPlace.lat) / 2,
+                  longitude: (fromPlace.lng + toPlace.lng) / 2,
+                  latitudeDelta:  Math.max(Math.abs(fromPlace.lat - toPlace.lat) * 1.8, 0.6),
+                  longitudeDelta: Math.max(Math.abs(fromPlace.lng - toPlace.lng) * 1.8, 0.6),
+                }}
+              >
+                <Marker coordinate={{ latitude: fromPlace.lat, longitude: fromPlace.lng }} pinColor="#2F6F4E" />
+                <Marker coordinate={{ latitude: toPlace.lat,   longitude: toPlace.lng }}   pinColor="#A8342A" />
+                <Polyline
+                  coordinates={[
+                    { latitude: fromPlace.lat, longitude: fromPlace.lng },
+                    { latitude: toPlace.lat,   longitude: toPlace.lng },
+                  ]}
+                  strokeColor={theme.primary}
+                  strokeWidth={3}
+                />
+              </MapView>
+
+              <View style={{ padding: Spacing.md, gap: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 0.6 }}>
+                    ROUTE DISTANCE
+                  </Text>
+                  <Text style={{ color: theme.text, fontSize: FontSize.lg, fontWeight: '800' }}>
+                    {km > 0 ? `${km} km` : '--'}
+                  </Text>
+                </View>
+                {/**
+                  * Read-only. It used to be a text box, and seat price is
+                  * literally seats x rate x km, so whatever a rider typed
+                  * set what passengers paid (founder: "the route is
+                  * editable, why wont a driver increase the distance").
+                  * They would, and nothing stopped them.
+                  */}
+                <Text style={{ color: theme.textThird, fontSize: FontSize.xs, lineHeight: 16 }}>
+                  Measured from the two cities you picked. SEIRS sets this, not the
+                  driver, because it is what passengers are charged per kilometre.
+                </Text>
+
+                {riderPerSeat != null && km > 0 && (
+                  <View style={{
+                    borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 10, gap: 4,
+                  }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ color: theme.textSecond, fontSize: FontSize.sm }}>You earn per seat</Text>
+                      <Text style={{ color: theme.text, fontSize: FontSize.base, fontWeight: '700' }}>
+                        {naira(riderPerSeat)}
+                      </Text>
+                    </View>
+                    {takePassengers && (Number(seats) || 0) > 1 && riderAllSeats != null && (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ color: theme.textSecond, fontSize: FontSize.sm }}>
+                          If all {Number(seats)} seats sell
+                        </Text>
+                        <Text style={{ color: theme.primary, fontSize: FontSize.base, fontWeight: '800' }}>
+                          {naira(riderAllSeats)}
+                        </Text>
+                      </View>
+                    )}
+                    <Text style={{ color: theme.textThird, fontSize: FontSize.xs, marginTop: 2 }}>
+                      Estimate. The exact figure is priced when a passenger books, and
+                      a night or weekend departure pays more.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
 
           <View style={{ gap: 6, marginTop: Spacing.sm }}>
             <Text style={[styles.label, { color: theme.textSecond }]}>DEPARTURE</Text>
@@ -688,36 +854,29 @@ export default function InterstateScreen() {
                 ))}
               </View>
               {pickupMode === 'fixed' && (
-                <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                  <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginBottom: 4 }}>Pickup point (e.g. Iwo Road roundabout)</Text>
-                  <TextInput
+                <View style={{ gap: 6 }} onLayout={(e) => { fieldY.current.pickup = e.nativeEvent.layout.y; }}>
+                  <PlacePicker
+                    label="PICKUP POINT"
+                    onSuggestionsShown={() => liftField('pickup')}
                     value={pickupAddress}
-                    onChangeText={setPickupAddress}
-                    placeholder="Where passengers meet you"
-                    placeholderTextColor={theme.textThird}
-                    style={{ color: theme.text, fontSize: FontSize.base, padding: 0 }}
+                    onChangeText={(t) => { setPickupAddress(t); setPickupPlace(null); }}
+                    onPicked={(pl) => { setPickupAddress(pl.primary); setPickupPlace(pl); }}
+                    placeholder="e.g. Iwo Road roundabout"
+                    theme={theme as any}
                   />
+                  {!!pickupAddress.trim() && !pickupPlace && (
+                    <Text style={{ color: '#B26A00', fontSize: FontSize.xs }}>
+                      Tap a suggestion so passengers get a map pin. Typed on its own,
+                      they only get the words and their map points at the city centre.
+                    </Text>
+                  )}
                 </View>
               )}
-              {/* Required, not optional: computeSeatPrice prices per km and
-                  a trip with no distance is browsable but unbookable. It
-                  read as a nice-to-have here. */}
-              <View style={[styles.inputWrap, { backgroundColor: theme.surface, borderColor: Number(routeKm) > 0 ? theme.border : '#DC2626' }]}>
-                <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, marginBottom: 4 }}>
-                  Route distance in km, required (popular routes fill this automatically)
-                </Text>
-                <TextInput
-                  value={routeKm}
-                  onChangeText={setRouteKm}
-                  keyboardType="number-pad"
-                  placeholder="e.g. 145"
-                  placeholderTextColor={theme.textThird}
-                  style={{ color: theme.text, fontSize: FontSize.base, padding: 0 }}
-                />
-                <Text style={{ color: theme.textThird, fontSize: FontSize.xs, marginTop: 4 }}>
-                  Seats are priced by distance. Without this nobody can book the trip.
-                </Text>
-              </View>
+              {/* The distance box used to live here, editable, at the very
+                  bottom of the form. It is now measured from the two cities
+                  and shown in the route summary near the top, because a
+                  rider setting the number that prices a passenger's seat
+                  was never a form field, it was an open till. */}
             </View>
           )}
 

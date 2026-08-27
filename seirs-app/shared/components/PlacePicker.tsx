@@ -61,10 +61,22 @@ interface Props {
     background?: string;
   };
   onFocus?: () => void;
+  /**
+   * Fires when the suggestion list appears.
+   *
+   * The host lifts a field on FOCUS, but the list only arrives about
+   * 350ms later once the fetch returns, so by then nothing re-scrolls
+   * and the suggestions sit behind the keyboard: present in the tree,
+   * invisible on the phone. Found by driving the declare screen on a
+   * real handset, 2026-08-27, and it is the same failure the customer
+   * app's StreetAutocomplete already documents hitting.
+   */
+  onSuggestionsShown?: () => void;
 }
 
 export function PlacePicker({
   label, value, onChangeText, onPicked, placeholder, types, theme, onFocus,
+  onSuggestionsShown,
 }: Props) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading]         = useState(false);
@@ -100,6 +112,7 @@ export function PlacePicker({
         const list = Array.isArray(res?.predictions) ? res.predictions : [];
         setSuggestions(list.slice(0, 5));
         setOpen(list.length > 0);
+        if (list.length > 0) onSuggestionsShown?.();
       } catch {
         // Offline or a refused key. Say nothing and let them keep
         // typing: the field still works, it just stops suggesting.
@@ -111,7 +124,7 @@ export function PlacePicker({
     }, 350);
 
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [value, types]);
+  }, [value, types, onSuggestionsShown]);
 
   const pick = async (p: any) => {
     justPicked.current = true;
