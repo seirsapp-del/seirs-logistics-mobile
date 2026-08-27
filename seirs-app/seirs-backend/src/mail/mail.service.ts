@@ -542,6 +542,71 @@ export class MailService {
     await this.deliverWithOverride('driver_rejected', { name, reason: reason ?? '' }, to, 'Update on your Seirs driver application', html);
   }
 
+  // ── Payouts ─────────────────────────────────────────────────────────────────
+
+  /**
+   * The rider's receipt for money leaving the platform.
+   *
+   * Riders were emailed when they earned and never when they were paid.
+   * This is the record they will reach for if their bank is slow, and
+   * the one an ops conversation starts from, so it leads with the
+   * amount, names the masked destination, and carries the reference that
+   * ties it to the Flutterwave dashboard.
+   *
+   * No arrival time is promised anywhere in it. Nigerian settlement is
+   * not something SEIRS can commit to on a rider's behalf.
+   */
+  async sendPayoutSent(
+    to: string,
+    name: string,
+    amount: string,
+    bank: string,
+    reference: string,
+  ) {
+    const html = baseTemplate(`
+      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Withdrawal sent ${statusBadge('Sent', '#16A34A')}</h2>
+      <p>Hi ${name},</p>
+      <p style="font-size:24px;font-weight:700;color:${BRAND_NAVY};margin:16px 0 4px">${amount}</p>
+      <p style="margin:0 0 16px;color:#4B5563">is on its way to ${bank}.</p>
+      <p>Arrival depends on your bank. Nothing further is needed from you.</p>
+      <p style="font-size:13px;color:#6B7280">Reference <strong>${reference}</strong>. Quote it if you contact support about this payout.</p>
+    `);
+    await this.deliverWithOverride(
+      'payout_sent',
+      { name, amount, bank, reference },
+      to,
+      'Your SEIRS withdrawal is on its way',
+      html,
+    );
+  }
+
+  /**
+   * A payout was refused.
+   *
+   * Leads with the money being safe, because that is the rider's first
+   * fear when a withdrawal fails. Carries no provider detail: why a
+   * transfer was declined describes the SEIRS merchant account, not
+   * their withdrawal, and is neither theirs to fix nor theirs to know.
+   */
+  async sendPayoutFailed(to: string, name: string, amount: string) {
+    const html = baseTemplate(`
+      <h2 style="margin:0 0 8px;color:${BRAND_NAVY}">Withdrawal did not go through</h2>
+      <p>Hi ${name},</p>
+      <p>We could not send <strong>${amount}</strong>.</p>
+      <p style="padding:12px 16px;background:#F0FDF4;border-left:3px solid #16A34A;color:#166534">
+        Your earnings are safe and still in your balance. Nothing has been lost.
+      </p>
+      <p>Please try the withdrawal again from your Earnings tab. If it keeps failing, contact support and we will look into it.</p>
+    `);
+    await this.deliverWithOverride(
+      'payout_failed',
+      { name, amount },
+      to,
+      'Your SEIRS withdrawal did not go through',
+      html,
+    );
+  }
+
   // ── Handoff OTP (Spec V8 §1.17 - recipient verification at pickup) ──────────
 
   async sendHandoffOtp(to: string, name: string, otp: string, deliveryRef: string) {

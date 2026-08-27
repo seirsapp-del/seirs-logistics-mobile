@@ -10,6 +10,7 @@ import { EarningsController } from './earnings.controller';
 import { FlutterwaveModule } from '../payments/flutterwave.module';
 import { FeesModule } from '../fees/fees.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports:     [
@@ -17,6 +18,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     FlutterwaveModule,
     FeesModule,
     NotificationsModule,
+    MailModule,
   ],
   providers:   [EarningsService],
   controllers: [EarningsController],

@@ -9,6 +9,7 @@ import { FeesService } from '../fees/fees.service';
 import { User } from '../users/user.entity';
 import { AuditLogEntry } from '../admin/audit-log.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MailService } from '../mail/mail.service';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 /**
@@ -91,6 +92,7 @@ export class EarningsService {
     @InjectRepository(DriverPayout)
     private readonly payoutsRepo: Repository<DriverPayout>,
     private readonly notifications: NotificationsService,
+    private readonly mail: MailService,
   ) {}
 
   /**
@@ -487,6 +489,13 @@ export class EarningsService {
       );
       try {
         await this.notifications.notifyPayoutFailed(driverId, payoutAmount);
+        if (driver.email) {
+          await this.mail.sendPayoutFailed(
+            driver.email,
+            driver.name ?? 'there',
+            `₦${payoutAmount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          );
+        }
       } catch { /* the dialog already told them; this is the durable copy */ }
       /**
        * The rider gets a plain, honest sentence they can act on. They do
@@ -566,6 +575,15 @@ export class EarningsService {
       await this.notifications.notifyPayoutSent(
         driverId, payoutAmount, bankLabel, reference,
       );
+      if (driver.email) {
+        await this.mail.sendPayoutSent(
+          driver.email,
+          driver.name ?? 'there',
+          `₦${payoutAmount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          bankLabel,
+          reference,
+        );
+      }
     } catch (e: any) {
       this.logger.warn(`Payout ${reference} sent but the rider was not notified: ${e?.message}`);
     }

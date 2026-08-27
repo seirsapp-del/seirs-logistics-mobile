@@ -152,6 +152,35 @@ export const SEED_TEMPLATES: TemplateSeed[] = [
     bodyHtml: `<p>Hi {{name}},</p><p>We were unable to approve your application. Reason: {{reason}}.</p>`,
     vars:     ['name', 'reason'],
   },
+  /**
+   * A rider was paid, or was not.
+   *
+   * There was a template for earnings being ADDED and none for money
+   * being SENT. The one moment most deserving of a written record, the
+   * one a rider will reach for if their bank is slow, had no email at
+   * all (founder, 2026-08-27, after the first real payout: "do they get
+   * an auto email").
+   *
+   * Neither promises an arrival time: Nigerian settlement is not
+   * something SEIRS can commit to for a rider. The failure template
+   * leads with the money being safe, because that is the first fear, and
+   * carries no provider detail, because why a transfer was declined
+   * describes the SEIRS merchant account rather than their withdrawal.
+   */
+  {
+    key:      'payout_sent',
+    name:     'Payout - Sent',
+    subject:  'Your SEIRS withdrawal is on its way',
+    bodyHtml: `<p>Hi {{name}},</p><p><b>{{amount}}</b> is on its way to {{bank}}.</p><p>Arrival depends on your bank. Your reference is <b>{{reference}}</b>, quote it if you contact support.</p>`,
+    vars:     ['name', 'amount', 'bank', 'reference'],
+  },
+  {
+    key:      'payout_failed',
+    name:     'Payout - Failed',
+    subject:  'Your SEIRS withdrawal did not go through',
+    bodyHtml: `<p>Hi {{name}},</p><p>We could not send <b>{{amount}}</b>.</p><p><b>Your earnings are safe and still in your balance.</b> Please try the withdrawal again from the Earnings tab, and contact support if it keeps failing.</p>`,
+    vars:     ['name', 'amount'],
+  },
   {
     key:      'handoff_otp',
     name:     'Handoff Pickup OTP',
