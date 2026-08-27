@@ -392,7 +392,7 @@ export class EarningsService {
       );
     }
 
-    let result: { success: boolean; transferId?: string };
+    let result: { success: boolean; transferId?: string; reason?: string };
     try {
       result = await this.flutterwave.transferToBank({
         amountNaira:   payoutAmount,
@@ -429,7 +429,14 @@ export class EarningsService {
         .where('id IN (:...ids)', { ids: toPayoutIds })
         .execute()
         .catch(() => undefined);
-      throw new BadRequestException('Flutterwave transfer failed');
+      this.logger.error(
+        `Payout ${reference} refused by Flutterwave: ${result.reason ?? 'no reason given'}`,
+      );
+      throw new BadRequestException(
+        result.reason
+          ? `Your bank transfer was declined: ${result.reason}`
+          : 'Your bank transfer was declined. Please try again, or contact support if it keeps failing.',
+      );
     }
 
     // Confirm the claim.

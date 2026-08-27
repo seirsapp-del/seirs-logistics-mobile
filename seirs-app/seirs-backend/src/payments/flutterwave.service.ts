@@ -125,7 +125,7 @@ export class FlutterwaveService {
     accountName:   string;
     reference:     string;
     narration:     string;
-  }): Promise<{ success: boolean; transferId?: string }> {
+  }): Promise<{ success: boolean; transferId?: string; reason?: string }> {
     try {
       const data = await this.request<any>('POST', '/transfers', {
         account_bank:      params.bankCode,
@@ -138,8 +138,26 @@ export class FlutterwaveService {
       });
       return { success: true, transferId: data.data?.id?.toString() };
     } catch (e) {
-      this.logger.error(`Transfer failed: ${e.message}`);
-      return { success: false };
+      /**
+       * Return the reason, do not just log it.
+       *
+       * This used to swallow Flutterwave's message and hand back a bare
+       * false, so the rider saw "Flutterwave transfer failed" and so did
+       * support. The actual cause, an unfunded balance, transfers not
+       * enabled, a bank code the transfer API does not accept, was
+       * visible only to whoever could read the Railway log at the time.
+       * The platform's first real payout attempt failed on 2026-08-27
+       * and the screen could not say why.
+       *
+       * Flutterwave's messages are operator-facing and safe to pass on:
+       * they describe the merchant account or the destination, and carry
+       * no card or credential data.
+       */
+      this.logger.error(
+        `Transfer failed (ref ${params.reference}, bank ${params.bankCode}, ` +
+        `NGN ${params.amountNaira}): ${e.message}`,
+      );
+      return { success: false, reason: e?.message ?? 'Unknown transfer error' };
     }
   }
 
