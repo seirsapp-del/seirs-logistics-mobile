@@ -82,15 +82,25 @@ export function PlacePicker({
   const [loading, setLoading]         = useState(false);
   const [open, setOpen]               = useState(false);
   /**
-   * Set the moment a suggestion is tapped, cleared on the next edit.
-   * Without it the debounce below fires one last time after the pick and
-   * reopens the list over the answer the rider just chose.
+   * The exact text last accepted from the list.
+   *
+   * A one-shot boolean was not enough: it guards the NEXT effect run,
+   * but a re-render, a scroll or a re-focus fires another, and the list
+   * reopened over the answer the rider had just chosen and covered the
+   * rest of the form (seen on the handset, 2026-08-27).
+   *
+   * Comparing the value instead is stable: while the box still reads
+   * exactly what was picked, there is nothing to search for.
    */
-  const justPicked = useRef(false);
+  const pickedValue = useRef<string | null>(null);
   const timer      = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (justPicked.current) { justPicked.current = false; return; }
+    if (pickedValue.current !== null && value.trim() === pickedValue.current) {
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
     if (timer.current) clearTimeout(timer.current);
 
     const q = value.trim();
@@ -127,9 +137,9 @@ export function PlacePicker({
   }, [value, types, onSuggestionsShown]);
 
   const pick = async (p: any) => {
-    justPicked.current = true;
     const description = p?.description ?? '';
     const primary     = p?.structured_formatting?.main_text ?? description;
+    pickedValue.current = primary.trim();
     onChangeText(primary);
     setOpen(false);
     setSuggestions([]);
