@@ -82,9 +82,29 @@ export class RoutingService {
       };
     }
 
-    // Nearest-neighbour ordering - uses haversine for the comparison
-    // (still our best option without paying for the Distance Matrix API).
-    const order = this.nearestNeighbourOrder(stops);
+    /**
+     * Order the stops by ROAD distance, not by straight line.
+     *
+     * This used to sequence with haversine and then call Directions to
+     * measure whatever order it had already chosen, so the distance was
+     * accurate and the ORDER was not. Straight line says a drop in
+     * Ikoyi is 2km from Victoria Island; the road goes over Falomo and
+     * back. On a run crossing the lagoon the optimiser confidently
+     * picked the wrong stop first and the rider paid for it in fuel and
+     * an hour of Lagos traffic (founder decision, 27 Aug 2026).
+     *
+     * One Distance Matrix call covers every pair. Google bills per
+     * element, so a pickup and three drops is sixteen elements in a
+     * single request, and a single-drop booking never reaches this code
+     * at all because optimizeRoute returns early above.
+     *
+     * Falls back to the old haversine ordering when the matrix is
+     * unavailable: no key, a routing failure, or a run large enough to
+     * exceed Google's hundred-element cap. A worse order beats no
+     * booking.
+     */
+    let order = await this.roadOrder(stops);
+    if (!order) order = this.nearestNeighbourOrder(stops);
 
     // Build the ordered stop list
     const orderedStops = order.map(i => stops[i]);
@@ -186,6 +206,78 @@ export class RoutingService {
    * Returns the `legs` array (one leg per consecutive pair of stops).
    * `waypoints=` is used so we don't pay per-leg.
    */
+  /**
+   * Nearest-neighbour over a real road-distance matrix.
+   *
+   * Same greedy heuristic as nearestNeighbourOrder, which is fine for
+   * the stop counts a vehicle can physically carry; the improvement is
+   * entirely in what "nearest" means. Returns null when the matrix
+   * cannot be built, so the caller can fall back.
+   */
+  private async roadOrder(stops: LatLng[]): Promise<number[] | null> {
+    if (!this.apiKey || stops.length < 3) return null;
+    // Google caps one Distance Matrix request at 100 elements.
+    if (stops.length * stops.length > 100) return null;
+
+    let matrix: (number | null)[][] | null = null;
+    try {
+      const coords = stops.map(s => `${s.lat},${s.lng}`).join('|');
+      const params = new URLSearchParams({
+        origins:      coords,
+        destinations: coords,
+        mode:         'driving',
+        key:          this.apiKey,
+      });
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/distancematrix/json?${params.toString()}`,
+      );
+      if (!res.ok) throw new Error(`Distance Matrix HTTP ${res.status}`);
+      const data: any = await res.json();
+      if (data.status !== 'OK' || !Array.isArray(data.rows)) {
+        throw new Error(`Distance Matrix status ${data.status}`);
+      }
+      matrix = data.rows.map((row: any) =>
+        (row?.elements ?? []).map((el: any) =>
+          el?.status === 'OK' && typeof el?.distance?.value === 'number'
+            ? el.distance.value
+            : null,
+        ),
+      );
+      if (!matrix || matrix.length !== stops.length) return null;
+    } catch (err) {
+      this.logger.warn(`Distance Matrix failed, ordering by straight line: ${(err as Error).message}`);
+      return null;
+    }
+    if (!matrix) return null;
+
+    const n = stops.length;
+    const visited = new Array<boolean>(n).fill(false);
+    // Index 0 is the pickup and is always the start of the run.
+    const order: number[] = [0];
+    visited[0] = true;
+    let cursor = 0;
+
+    for (let step = 1; step < n; step++) {
+      let best = -1;
+      let bestMetres = Infinity;
+      for (let i = 0; i < n; i++) {
+        if (visited[i]) continue;
+        const m = matrix[cursor]?.[i];
+        // A pair Google could not route falls back to straight line for
+        // that comparison alone, rather than discarding the whole matrix.
+        const metres = typeof m === 'number'
+          ? m
+          : this.haversine(stops[cursor].lat, stops[cursor].lng, stops[i].lat, stops[i].lng) * 1000;
+        if (metres < bestMetres) { bestMetres = metres; best = i; }
+      }
+      if (best === -1) return null;
+      visited[best] = true;
+      order.push(best);
+      cursor = best;
+    }
+    return order;
+  }
+
   private async fetchDirectionsLegs(orderedStops: LatLng[]): Promise<DirectionsLeg[] | null> {
     const origin       = `${orderedStops[0].lat},${orderedStops[0].lng}`;
     const destination  = `${orderedStops[orderedStops.length - 1].lat},${orderedStops[orderedStops.length - 1].lng}`;

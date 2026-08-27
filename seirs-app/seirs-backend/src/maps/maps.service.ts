@@ -137,6 +137,48 @@ export class MapsService {
     });
   }
 
+  /**
+   * Road distance between every pair of points, in one request.
+   *
+   * Needed because ordering multi-drop runs by straight line picks stops
+   * that are near on the map and far by road, which across the Lagos
+   * lagoon is exactly backwards: a drop in Ikoyi looks 2km from Victoria
+   * Island while the road goes over Falomo and back (founder decision,
+   * 27 Aug 2026).
+   *
+   * One call covers the whole matrix. Google bills per ELEMENT, so a
+   * pickup plus three drops is 4x4 = 16 elements, not 16 requests. The
+   * caller is responsible for only reaching for this on runs with more
+   * than one drop; a single delivery never needs it.
+   *
+   * Returns metres, with null where Google could not route a pair, so
+   * the caller can fall back per-pair rather than throwing the whole
+   * matrix away.
+   */
+  async distanceMatrix(points: Array<{ lat: number; lng: number }>): Promise<(number | null)[][] | null> {
+    if (!Array.isArray(points) || points.length < 2) return null;
+    // Google caps a single Distance Matrix request at 100 elements.
+    if (points.length * points.length > 100) return null;
+
+    const coords = points.map(p => `${p.lat},${p.lng}`).join('|');
+    const json = await this.call('distancematrix/json', {
+      origins:      coords,
+      destinations: coords,
+      mode:         'driving',
+    });
+    if (json?.status !== 'OK' || !Array.isArray(json.rows)) return null;
+
+    const matrix: (number | null)[][] = json.rows.map((row: any) =>
+      (row?.elements ?? []).map((el: any) =>
+        el?.status === 'OK' && typeof el?.distance?.value === 'number'
+          ? el.distance.value
+          : null,
+      ),
+    );
+    if (matrix.length !== points.length) return null;
+    return matrix;
+  }
+
   /** Address suggestions as the user types. */
   placesAutocomplete(params: {
     input: string; components?: string; location?: string; radius?: string; types?: string;
