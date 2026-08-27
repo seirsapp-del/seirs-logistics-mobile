@@ -2843,13 +2843,31 @@ export class DeliveriesService {
         ),
         Number(delivery.weightKg ?? 0),
       ),
-      pickupLat:  fromLat,
-      pickupLng:  fromLng,
-      dropoffLat: lat,
-      dropoffLng: lng,
+      // latitude/longitude, NOT lat/lng. The engine reads
+      // pickupCoords.latitude; flat lat/lng fields are simply ignored,
+      // and the `as any` hid it here exactly as it did on the booking
+      // path in August. Without these the region multiplier and the
+      // whole zone tier were skipped on every redirect quote.
+      pickupCoords:  { latitude: fromLat, longitude: fromLng },
+      dropoffCoords: { latitude: lat,     longitude: lng },
     } as any);
 
-    const quoteNgn = Math.round(Number((breakdown as any)?.total ?? 0));
+    /**
+     * customer.total, not total.
+     *
+     * computePrice returns { customer: {...}, driver: {...}, seirsNet }.
+     * There is no flat `total` on it, so this read undefined, fell
+     * through the `?? 0`, and every mid-route address change in the
+     * platform's history quoted 0.00 (2026-08-27). The sender moved the
+     * destination and was charged nothing for the detour. The `as any`
+     * is what let it compile.
+     */
+    const quoteNgn = Math.round(Number((breakdown as any)?.customer?.total ?? 0));
+    if (!(quoteNgn > 0)) {
+      throw new BadRequestException(
+        'Could not price that address change. Try again, or contact support.',
+      );
+    }
     if (!(quoteNgn > 0)) {
       throw new BadRequestException('We could not price that change. Contact support.');
     }
