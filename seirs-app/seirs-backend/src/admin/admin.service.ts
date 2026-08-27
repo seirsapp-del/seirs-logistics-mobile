@@ -2743,6 +2743,59 @@ export class AdminService {
     };
   }
 
+  /**
+   * Refunds that were owed and never issued.
+   *
+   * refundEscrow used to swallow a Flutterwave failure and stamp
+   * REFUNDED anyway, so a declined refund left the customer out of
+   * pocket while the row said their money was back. That now leaves the
+   * escrow HELD instead, which is truthful and retryable, but only
+   * helps if somebody can see it: both callers catch the error and log,
+   * so nothing surfaces on its own.
+   *
+   * A payment still HELD against a delivery that is cancelled or failed
+   * is money SEIRS is sitting on that belongs to a customer. That is the
+   * query, and it should be empty.
+   */
+  async stuckRefunds(limit = 100) {
+    const rows: Array<any> = await this.usersRepo.manager.query(
+      `SELECT p.id,
+              p."amountKobo",
+              p."escrowStatus",
+              p."providerReference",
+              p."flutterwaveTransactionId",
+              p."createdAt",
+              d.id            AS "deliveryId",
+              d."trackingCode",
+              d.status        AS "deliveryStatus",
+              u.id            AS "customerId",
+              u.name          AS "customerName",
+              u.email         AS "customerEmail"
+         FROM "payments" p
+         JOIN "deliveries" d ON d.id = p."deliveryId"
+         LEFT JOIN "users" u ON u.id = d."customerId"
+        WHERE p."escrowStatus" = 'held'
+          AND d.status IN ('cancelled', 'failed')
+        ORDER BY p."createdAt" DESC
+        LIMIT $1`,
+      [limit],
+    ).catch(() => []);
+
+    return rows.map((r) => ({
+      paymentId:      r.id,
+      amountNgn:      Number(r.amountKobo ?? 0) / 100,
+      deliveryId:     r.deliveryId,
+      trackingCode:   r.trackingCode,
+      deliveryStatus: r.deliveryStatus,
+      customerId:     r.customerId,
+      customerName:   r.customerName ?? '-',
+      customerEmail:  r.customerEmail ?? null,
+      providerReference:        r.providerReference,
+      flutterwaveTransactionId: r.flutterwaveTransactionId,
+      heldSince:      r.createdAt,
+    }));
+  }
+
   async walletSummary() {
     const [pending, held, mtdPaid] = await Promise.all([
       this.earningsRepo.createQueryBuilder('e')

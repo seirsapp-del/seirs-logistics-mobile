@@ -1206,6 +1206,26 @@ export class PaymentsService {
       );
     }
 
+    /**
+     * A refund that did not happen must never be recorded as one.
+     *
+     * This caught the Flutterwave error, logged it, and carried straight
+     * on to stamp status=REFUNDED and escrowStatus=REFUNDED. So a
+     * declined refund left the customer out of pocket while the platform
+     * recorded their money as returned: no balance for them to notice it
+     * in, no retry, and a payments row that actively says the opposite of
+     * the truth. It is the same shape as the rider holdback found on
+     * 2026-08-27, aimed at a customer instead.
+     *
+     * That is not hypothetical. Flutterwave refused four transfers that
+     * same night over IP whitelisting, and refunds go through the same
+     * provider from the same rotating egress address, so the very next
+     * IP change would have produced silently-lost customer refunds.
+     *
+     * The escrow now stays HELD when the provider refuses, which is the
+     * truthful state and leaves the refund retryable.
+     */
+    let providerRefundOk = true;
     if (refundKobo > 0 && payment.method === PaymentMethod.CARD && payment.flutterwaveTransactionId) {
       try {
         await this.flutterwaveService.refundTransaction(
@@ -1214,8 +1234,22 @@ export class PaymentsService {
         );
         this.logger.log(`Card refund issued via Flutterwave for delivery ${deliveryId}`);
       } catch (e) {
-        this.logger.error(`Card refund failed for ${payment.providerReference}: ${e.message}`);
+        providerRefundOk = false;
+        this.logger.error(
+          `REFUND NOT ISSUED for delivery ${deliveryId} (${payment.providerReference}): ` +
+          `₦${toNaira(refundKobo)} still owed to the customer. Escrow left HELD for retry. ${e.message}`,
+        );
       }
+    }
+
+    if (!providerRefundOk) {
+      // Leave every other side effect alone: no status change, no loyalty
+      // clawback. The customer keeps their points until they keep their
+      // money.
+      throw new BadRequestException(
+        'We could not return this payment to your card. Nothing has been taken from you and ' +
+        'our team has been alerted. Please contact support if it is not resolved shortly.',
+      );
     }
 
     if (refundKobo > 0 && payment.method === PaymentMethod.WALLET) {

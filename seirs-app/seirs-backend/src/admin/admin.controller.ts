@@ -977,6 +977,18 @@ export class AdminController {
     return this.adminService.listRecentWithdrawals(Number(limit ?? 50));
   }
 
+  /**
+   * GET /api/v1/admin/wallet/stuck-refunds
+   *
+   * Money SEIRS is holding that belongs to a customer: a payment still
+   * in escrow against a delivery that is cancelled or failed. Should be
+   * empty. Anything here is a refund that was owed and never issued.
+   */
+  @Get('wallet/stuck-refunds')
+  stuckRefunds(@Query('limit') limit?: string) {
+    return this.adminService.stuckRefunds(Number(limit ?? 100));
+  }
+
   @Patch('wallet/earnings/:id/release')
   releaseHeldEarning(@Param('id') id: string, @CurrentUser() admin: any) {
     return this.adminService.releaseHeldEarning(id, admin);
