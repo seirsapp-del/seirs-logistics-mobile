@@ -6,6 +6,7 @@ import { DriverEarning, DriverEarningStatus } from './driver-earning.entity';
 import { FlutterwaveService } from '../payments/flutterwave.service';
 import { FeesService } from '../fees/fees.service';
 import { User } from '../users/user.entity';
+import { AuditLogEntry } from '../admin/audit-log.entity';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 /**
@@ -78,7 +79,45 @@ export class EarningsService {
     private readonly userRepo: Repository<User>,
     private readonly flutterwave: FlutterwaveService,
     private readonly fees: FeesService,
+    @InjectRepository(AuditLogEntry)
+    private readonly auditRepo: Repository<AuditLogEntry>,
   ) {}
+
+  /**
+   * Record a payout failure where an admin will actually find it.
+   *
+   * The reason a transfer was declined is operational: an unfunded
+   * balance, transfers switched off for the API, an address missing from
+   * a whitelist. None of it is the rider's to read or act on, and the
+   * first version of this put "Please enable IP Whitelisting to access
+   * this service" straight on a rider's phone (founder, 2026-08-27:
+   * "i dont think a user should be seeing enable ip whitelising").
+   *
+   * The audit log already renders on the admin driver-detail page, so a
+   * failed payout now appears against the rider it belongs to, next to
+   * everything else that happened to that account.
+   */
+  private async recordPayoutFailure(
+    driverUserId: string,
+    driverName: string,
+    reference: string,
+    amountNaira: number,
+    reason: string,
+  ): Promise<void> {
+    try {
+      await this.auditRepo.save(this.auditRepo.create({
+        adminId:   'system',
+        adminName: 'Payout engine',
+        action:    'payout.declined',
+        target:    driverUserId,
+        meta:      { driverName, reference, amountNaira, reason },
+        ip:        '',
+      }));
+    } catch (e: any) {
+      // Never let bookkeeping break the payout's own error path.
+      this.logger.warn(`Could not record payout failure for ${reference}: ${e?.message}`);
+    }
+  }
 
   /**
    * How long a driver's earning sits before it can be withdrawn.
@@ -429,13 +468,19 @@ export class EarningsService {
         .where('id IN (:...ids)', { ids: toPayoutIds })
         .execute()
         .catch(() => undefined);
-      this.logger.error(
-        `Payout ${reference} refused by Flutterwave: ${result.reason ?? 'no reason given'}`,
+      const reason = result.reason ?? 'no reason given';
+      this.logger.error(`Payout ${reference} refused by Flutterwave: ${reason}`);
+      await this.recordPayoutFailure(
+        driverId, driver.name ?? '', reference, payoutAmount, reason,
       );
+      /**
+       * The rider gets a plain, honest sentence they can act on. They do
+       * not get the provider's reason: it describes OUR merchant account,
+       * so it is neither theirs to fix nor theirs to know.
+       */
       throw new BadRequestException(
-        result.reason
-          ? `Your bank transfer was declined: ${result.reason}`
-          : 'Your bank transfer was declined. Please try again, or contact support if it keeps failing.',
+        'We could not complete this transfer. Your earnings are safe and still available. ' +
+        'Please try again shortly, and contact support if it keeps failing.',
       );
     }
 

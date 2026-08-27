@@ -38,6 +38,41 @@ export class AdminController {
   @Get('stats')
   getStats() { return this.adminService.getDashboardStats(); }
 
+  /**
+   * GET /api/v1/admin/egress-ip
+   *
+   * The address this server appears to come from, which is the one that
+   * has to sit on Flutterwave's whitelist before any payout will run.
+   * Nobody could read it: Railway does not surface egress in the
+   * dashboard, and the first real withdrawal failed on 2026-08-27 with
+   * "Please enable IP Whitelisting to access this service" and no way to
+   * learn which address to allow.
+   *
+   * Worth re-checking after a redeploy. Railway egress is dynamic unless
+   * a static egress add-on is enabled, so a whitelist entry that works
+   * today can silently stop matching, and payouts fail with an error
+   * that points at Flutterwave rather than at the move.
+   */
+  @Get('egress-ip')
+  async egressIp() {
+    const sources = ['https://api.ipify.org', 'https://ifconfig.me/ip'];
+    for (const url of sources) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        if (!res.ok) continue;
+        const ip = (await res.text()).trim();
+        if (/^[0-9.]+$|^[0-9a-f:]+$/i.test(ip)) {
+          return {
+            ip,
+            source: url,
+            note: 'Add this to Flutterwave > Settings > Whitelisted IP addresses. Re-check after each redeploy unless static egress is enabled.',
+          };
+        }
+      } catch { /* try the next source */ }
+    }
+    throw new BadRequestException('Could not determine the egress IP from any source.');
+  }
+
   // POST /api/v1/admin/demo-data/seed
   // Stages 3 permanent, fully-populated fake accounts (customer/driver/
   // partner store, one per major ethnic group per the sample-data rule)
