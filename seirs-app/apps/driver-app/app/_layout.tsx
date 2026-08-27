@@ -14,6 +14,11 @@ import Constants from 'expo-constants';
 import { initI18n } from '@/i18n';
 import { usePushRegistration } from '@seirs/shared/hooks/usePushRegistration';
 import { ErrorBoundary } from '@seirs/shared/components/ErrorBoundary';
+// Themed replacement for the Android system AlertDialog. Sits inside
+// ThemeProvider because it reads the palette, and outside AuthProvider so
+// a dialog can be raised from any screen including the signed-out ones.
+// Driver was the last app to get this (2026-08-27).
+import { SeirsDialogProvider } from '@/components/SeirsDialog';
 import {
   configureErrorReporter,
   installGlobalErrorHandler,
@@ -152,9 +157,11 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <ThemeProvider>
-            <AuthProvider>
-              <AppContent />
-            </AuthProvider>
+            <SeirsDialogProvider>
+              <AuthProvider>
+                <AppContent />
+              </AuthProvider>
+            </SeirsDialogProvider>
           </ThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

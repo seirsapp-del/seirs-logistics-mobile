@@ -2,8 +2,16 @@
  * Business + partner new-ticket form (Chat 5).
  */
 import {
-  View, Text, StyleSheet, Pressable, TextInput, ScrollView,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, StatusBar,
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
@@ -12,6 +20,7 @@ import { useState } from 'react';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { supportApi, type TicketTopic } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 const TOPICS: { key: TicketTopic; label: string; icon: any }[] = [
   { key: 'delivery', label: 'Delivery',      icon: 'Package' },
@@ -42,7 +51,7 @@ export default function BusinessNewTicketScreen() {
       });
       router.replace(`/(business)/support/${ticket.id}` as any);
     } catch (e: any) {
-      Alert.alert('Could not open ticket', e?.message ?? String(e));
+      alertDialog('Could not open ticket', e?.message ?? String(e));
     } finally { setSubmitting(false); }
   };
 

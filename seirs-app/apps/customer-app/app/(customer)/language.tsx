@@ -1,5 +1,10 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import i18n, { changeLanguage, type LanguageCode } from '@/i18n';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Only show languages we actually have translations for.
 const LANGUAGES: { code: LanguageCode; label: string; sub: string; flag: string }[] = [
@@ -43,7 +49,7 @@ export default function LanguageScreen() {
     // changeLanguage() ran. Force the new language explicitly via
     // i18n.t(..., { lng: code }) so the Alert renders correctly.
     if (code !== 'en') {
-      Alert.alert(
+      alertDialog(
         i18n.t('languageNotice.title', { lng: code }),
         i18n.t('languageNotice.body',  { lng: code }),
         [{ text: i18n.t('languageNotice.ok', { lng: code }), style: 'default' }],

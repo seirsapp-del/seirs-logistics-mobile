@@ -25,6 +25,7 @@ import { useDirectionsPolyline } from '@/components/useDirectionsPolyline';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Avatar } from '@/components/ui/Avatar';
 import { naira } from '@/utils/money';
+import { alertDialog } from '@/components/SeirsDialog';
 
 const STATUS_STEPS: {
   key: string; label: string; icon: string;
@@ -274,7 +275,7 @@ export default function ActiveDeliveryScreen() {
 
   const [reporting, setReporting] = useState(false);
 
-  /** Single-action informational sheet: the old Alert.alert(title, body). */
+  /** Single-action informational sheet: the old alertDialog(title, body). */
   const info = (title: string, message?: string, onDone?: () => void) =>
     setSheet({
       title,
@@ -607,7 +608,7 @@ export default function ActiveDeliveryScreen() {
             onPress: (name?: string) => {
               const clean = (name ?? '').trim();
               if (!clean) {
-                Alert.alert('Name needed', 'Record who took the package. It is what settles a dispute later.');
+                alertDialog('Name needed', 'Record who took the package. It is what settles a dispute later.');
                 return;
               }
               doUpdate('delivered', { relation: 'other', name: clean });

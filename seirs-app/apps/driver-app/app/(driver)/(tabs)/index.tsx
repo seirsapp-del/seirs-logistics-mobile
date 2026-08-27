@@ -1,6 +1,12 @@
 import {
-  View, Text, Pressable, StyleSheet,
-  ScrollView, Switch, RefreshControl, ActivityIndicator, Alert,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  Switch,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +31,7 @@ import { driversApi, earningsApi } from '@/services/api';
 import { NotificationBell } from '@/components/NotificationBell';
 import { SOCKET_URL } from '@/constants/config';
 import { naira } from '@/utils/money';
+import { alertDialog } from '@/components/SeirsDialog';
 
 const URGENCY_COLOR: Record<string, string> = {
   economy:  '#16A34A',
@@ -202,7 +209,7 @@ export default function DriverHomeScreen() {
       const isActiveJobs  = raw.includes('ACTIVE_JOBS_PRESENT');
       const isUnderReview = raw.includes('ACCOUNT_UNDER_REVIEW');
       const friendly = raw.replace(/^[A-Z_]+:\s*/, '');
-      Alert.alert(
+      alertDialog(
         isUnderReview ? 'Account under review'
           : isActiveJobs ? 'Finish your active jobs first'
           : 'Could not change status',

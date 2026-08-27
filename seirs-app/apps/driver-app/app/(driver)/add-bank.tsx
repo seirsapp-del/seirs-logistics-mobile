@@ -1,6 +1,15 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, TextInput,
-  KeyboardAvoidingView, Platform, StatusBar, Modal, FlatList, Alert,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  Modal,
+  FlatList,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +20,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { paymentsApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 /**
  * Payout bank account setup: fully live.
@@ -73,10 +83,10 @@ export default function AddBankScreen() {
         setAccountName(res.accountName);
         setVerified(true);
       } else {
-        Alert.alert('Could not verify', res.message ?? 'Check the bank and account number, then try again.');
+        alertDialog('Could not verify', res.message ?? 'Check the bank and account number, then try again.');
       }
     } catch (e: any) {
-      Alert.alert('Could not verify', e?.message ?? 'Check your connection and try again.');
+      alertDialog('Could not verify', e?.message ?? 'Check your connection and try again.');
     } finally {
       setVerifying(false);
     }
@@ -97,7 +107,7 @@ export default function AddBankScreen() {
       setSavedAsPending(!!(res as any)?.pending);
       setDone(true);
     } catch (e: any) {
-      Alert.alert('Save failed', e?.message ?? 'Please try again.');
+      alertDialog('Save failed', e?.message ?? 'Please try again.');
     } finally {
       setSubmitting(false);
     }

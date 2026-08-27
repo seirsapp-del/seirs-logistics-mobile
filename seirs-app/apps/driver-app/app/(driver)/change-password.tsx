@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, Alert, ActivityIndicator,
-  KeyboardAvoidingView, Platform, ScrollView,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,6 +17,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { authApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import { validatePassword } from '@seirs/shared';
+import { alertDialog } from '@/components/SeirsDialog';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -23,21 +30,21 @@ export default function ChangePasswordScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!current) { Alert.alert('Current password required'); return; }
+    if (!current) { alertDialog('Current password required'); return; }
     const pwErr = validatePassword(next);
     if (pwErr) {
-      Alert.alert('Weak password', pwErr);
+      alertDialog('Weak password', pwErr);
       return;
     }
-    if (next !== confirm) { Alert.alert('Passwords do not match'); return; }
+    if (next !== confirm) { alertDialog('Passwords do not match'); return; }
     setLoading(true);
     try {
       await authApi.changePassword(current, next);
-      Alert.alert('Password changed', 'Use your new password next time you sign in.', [
+      alertDialog('Password changed', 'Use your new password next time you sign in.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (e: any) {
-      Alert.alert('Could not change password', e?.message ?? 'Try again.');
+      alertDialog('Could not change password', e?.message ?? 'Try again.');
     } finally {
       setLoading(false);
     }

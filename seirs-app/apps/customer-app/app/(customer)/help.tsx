@@ -1,5 +1,12 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, TextInput, StatusBar, Alert, Linking,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  StatusBar,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { HELP_FAQS } from '@/constants/mockData';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Labels resolved via t() at render so language switches reflect live.
 // Chips map to the FAQ topic tags directly (audit 2026-08-10: the old
@@ -78,9 +86,9 @@ export default function HelpScreen() {
             { icon: 'chatbubble-ellipses-outline', label: 'Live Chat',  sub: '6am–10pm WAT reply', color: '#3A7BD5',
               onPress: () => router.push('/(customer)/support/new' as any) },
             { icon: 'call-outline',                label: 'Call Us',    sub: '0700-SEIRS-01',    color: '#16A34A',
-              onPress: () => Linking.openURL('tel:07007347701').catch(() => Alert.alert('Could not open dialer')) },
+              onPress: () => Linking.openURL('tel:07007347701').catch(() => alertDialog('Could not open dialer')) },
             { icon: 'mail-outline',                label: 'Email',      sub: 'support@seirs.app', color: '#0F2B4C',
-              onPress: () => Linking.openURL('mailto:support@seirs.app').catch(() => Alert.alert('Could not open email')) },
+              onPress: () => Linking.openURL('mailto:support@seirs.app').catch(() => alertDialog('Could not open email')) },
           ].map(c => (
             <Pressable
               key={c.label}

@@ -1,6 +1,14 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, TextInput,
-  KeyboardAvoidingView, Platform, StatusBar, Alert, ActivityIndicator,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +19,7 @@ import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { earningsApi, paymentsApi, type EarningsDashboard } from '@/services/api';
 import { naira } from '@/utils/money';
+import { alertDialog } from '@/components/SeirsDialog';
 
 /**
  * Withdraw screen: THE single real money-out path for drivers.
@@ -92,21 +101,40 @@ export default function WithdrawalScreen() {
     ? minWithdrawalRaw
     : MIN_WITHDRAWAL_FALLBACK;
   const available       = instant ? cleared + instantEligible : cleared;
-  const numericAmount   = parseInt(amount.replace(/,/g, ''), 10) || 0;
+  const numericAmount   = Math.round((parseFloat(amount.replace(/,/g, '')) || 0) * 100) / 100;
   const hasBank         = !!(bank?.bankCode && bank?.bankAccountNumber);
   // Fraud guard: a pending bank change freezes withdrawals until support
   // resolves the review ticket (backend enforces this too).
   const frozen          = !!bank?.pendingBankAccountNumber;
   const canWithdraw     = hasBank && !frozen && numericAmount >= MIN_WITHDRAWAL && numericAmount <= available;
 
-  // The payout field itself stays whole-naira entry: this masks what the
-  // driver TYPES, it is not a rendering of a server figure. Every amount
-  // this screen reports back (balance, fee, what was actually paid) goes
-  // through naira() and carries its kobo.
+  /**
+   * The field accepts kobo.
+   *
+   * It used to be whole-naira only, on the reasoning that this masks what
+   * the driver TYPES rather than rendering a server figure. That reasoning
+   * had a hole: "All" filled Math.floor(available), so a balance of
+   * 1,469.68 offered 1,469 and the 68 kobo could never be withdrawn by
+   * any input the field would accept. It was not rounding, it was money
+   * stranded in the ledger permanently, and it compounds on every payout.
+   * Found on device 2026-08-27.
+   */
   const formatAmount = (raw: string) => {
-    const digits = raw.replace(/\D/g, '');
-    return digits ? parseInt(digits, 10).toLocaleString() : '';
+    // One decimal point, at most two digits after it.
+    const cleaned = raw.replace(/[^0-9.]/g, '');
+    const firstDot = cleaned.indexOf('.');
+    const whole = firstDot === -1 ? cleaned : cleaned.slice(0, firstDot);
+    const frac  = firstDot === -1
+      ? null
+      : cleaned.slice(firstDot + 1).replace(/\./g, '').slice(0, 2);
+    const wholeNum = whole.replace(/^0+(?=\d)/, '');
+    const grouped = wholeNum ? parseInt(wholeNum, 10).toLocaleString() : (frac !== null ? '0' : '');
+    return frac === null ? grouped : `${grouped}.${frac}`;
   };
+
+  /** Exactly what is available, kobo included, formatted for the field. */
+  const allAmountText = () =>
+    available.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const handleWithdraw = () => {
     if (!canWithdraw) return;
@@ -135,7 +163,7 @@ export default function WithdrawalScreen() {
               setPaidFee(Number(res.feeNgn ?? 0));
               setPaidAmount(res.paidAmount);
             } catch (err: any) {
-              Alert.alert('Withdrawal failed', err?.message ?? 'Please try again later.');
+              alertDialog('Withdrawal failed', err?.message ?? 'Please try again later.');
             } finally {
               setSubmitting(false);
             }
@@ -265,7 +293,7 @@ export default function WithdrawalScreen() {
                 style={[styles.amountInput, { color: theme.text }]}
                 placeholder="0"
                 placeholderTextColor={theme.textThird}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={amount}
                 onChangeText={v => setAmount(formatAmount(v))}
               />
@@ -278,8 +306,8 @@ export default function WithdrawalScreen() {
                 hidden (founder feedback 2026-08-09). */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRow}>
               <Pressable
-                style={[styles.quickChip, { borderColor: numericAmount === Math.floor(available) && available >= MIN_WITHDRAWAL ? theme.primary : theme.border, backgroundColor: numericAmount === Math.floor(available) && available >= MIN_WITHDRAWAL ? theme.primary + '12' : 'transparent' }]}
-                onPress={() => setAmount(Math.floor(available).toLocaleString())}
+                style={[styles.quickChip, { borderColor: numericAmount === available && available >= MIN_WITHDRAWAL ? theme.primary : theme.border, backgroundColor: numericAmount === available && available >= MIN_WITHDRAWAL ? theme.primary + '12' : 'transparent' }]}
+                onPress={() => setAmount(allAmountText())}
                 disabled={available < MIN_WITHDRAWAL}
               >
                 <Text style={[styles.quickText, { color: available >= MIN_WITHDRAWAL ? theme.primary : theme.textThird, fontWeight: FontWeight.bold }]}>All</Text>

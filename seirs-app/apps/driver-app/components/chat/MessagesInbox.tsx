@@ -87,7 +87,7 @@ export function MessagesInbox({ threadRoutePrefix, supportRoutePrefix, emptyBody
       kind: 'chat',    id: `chat:${c.deliveryId}`, sortKey: new Date(c.lastMessageAt).getTime(), unread: c.unread ?? 0, data: c,
     })),
     ...tickets.map((tk): InboxRow => ({
-      kind: 'support', id: `support:${tk.id}`,     sortKey: new Date(tk.lastMessageAt).getTime(), unread: tk.status === 'awaiting_user' ? 1 : 0, data: tk,
+      kind: 'support', id: `support:${tk.id}`,     sortKey: new Date(tk.lastMessageAt).getTime(), unread: tk.unread ?? (tk.status === 'awaiting_user' ? 1 : 0), data: tk,
     })),
   ].sort((a, b) => b.sortKey - a.sortKey);
 

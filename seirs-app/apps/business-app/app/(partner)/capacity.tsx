@@ -1,7 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator,
-  RefreshControl, Switch, Alert,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  RefreshControl,
+  Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,6 +15,7 @@ import { Icon } from '@/components/Icon';
 import { partnerApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Spec V8 §4.9: partner staff sees real-time store load + can pause
 // incoming bookings when overwhelmed. Backend enforces capacity preflight,
@@ -93,7 +100,7 @@ export default function PartnerCapacityScreen() {
       await partnerApi.storeSetStatus(storeId, target);
     } catch (e: any) {
       setStoreStatus(target === 'active' ? 'paused' : 'active');
-      Alert.alert('Could not update', e?.message ?? 'Try again.');
+      alertDialog('Could not update', e?.message ?? 'Try again.');
     } finally {
       setToggling(false);
     }

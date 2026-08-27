@@ -10,9 +10,19 @@
  * proof-of-delivery photo remains a separate step on the delivery card).
  */
 import {
-  View, Text, Pressable, StyleSheet, FlatList, TextInput,
-  KeyboardAvoidingView, Platform, StatusBar, ActivityIndicator, ScrollView,
-  Image, Modal, Alert,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  FlatList,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  ActivityIndicator,
+  ScrollView,
+  Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +38,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useChat } from '@seirs/shared/hooks/useChat';
 import { chatApi, uploadApi } from '@/services/api';
 import { SOCKET_URL } from '@/constants/config';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Driver-side canned messages. Different from customer's, these are
 // what a driver on an okada/keke actually needs to say on the road,
@@ -89,7 +100,7 @@ export default function DriverChatScreen() {
       await send('', url);
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
-      Alert.alert(
+      alertDialog(
         t('chat.attach.errorTitle', { defaultValue: 'Could not send photo' }),
         e?.message ?? String(e),
       );
@@ -101,7 +112,7 @@ export default function DriverChatScreen() {
   const pickFromCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
+      alertDialog(
         t('chat.attach.permTitle', { defaultValue: 'Camera permission needed' }),
         t('chat.attach.permBody',  { defaultValue: 'Enable camera access in your phone settings to take a photo.' }),
       );
@@ -120,7 +131,7 @@ export default function DriverChatScreen() {
   const pickFromGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
+      alertDialog(
         t('chat.attach.permTitle', { defaultValue: 'Photo permission needed' }),
         t('chat.attach.permBody',  { defaultValue: 'Enable photo access in your phone settings to attach a picture.' }),
       );

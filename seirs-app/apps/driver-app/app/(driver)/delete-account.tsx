@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator,
-  KeyboardAvoidingView, Platform, ScrollView,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,6 +21,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usersApi, driversApi } from '@/services/api';
 import { PasswordInput } from '@/components/PasswordInput';
 import { naira } from '@/utils/money';
+import { alertDialog } from '@/components/SeirsDialog';
 
 interface Readiness {
   ready:    boolean;
@@ -56,12 +64,12 @@ export default function DeleteAccountScreen() {
       const data = await usersApi.exportData();
       const json = JSON.stringify(data, null, 2);
       await Clipboard.setStringAsync(json);
-      Alert.alert(
+      alertDialog(
         'Copied to clipboard',
         `Your data export (${(json.length / 1024).toFixed(1)} KB) has been copied. Paste into a notes app or email it to yourself, then save the file somewhere safe.`,
       );
     } catch (e: any) {
-      Alert.alert('Export failed', e?.message ?? 'Try again.');
+      alertDialog('Export failed', e?.message ?? 'Try again.');
     } finally {
       setExporting(false);
     }
@@ -89,7 +97,7 @@ export default function DeleteAccountScreen() {
             setLoading(true);
             try {
               await usersApi.deleteAccount(password);
-              Alert.alert(
+              alertDialog(
                 'Account deleted',
                 'Your driver account is scheduled for deletion. Sign in within 30 days to cancel.',
                 [{ text: 'OK', onPress: async () => {
@@ -98,7 +106,7 @@ export default function DeleteAccountScreen() {
                 }}],
               );
             } catch (e: any) {
-              Alert.alert('Could not delete', e?.message ?? 'Try again.');
+              alertDialog('Could not delete', e?.message ?? 'Try again.');
             } finally {
               setLoading(false);
             }

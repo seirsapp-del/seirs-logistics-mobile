@@ -1,5 +1,12 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator, Alert, Share,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  ActivityIndicator,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +17,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/consta
 import { Avatar } from '@/components/ui/Avatar';
 import { deliveriesApi } from '@/services/api';
 import { naira } from '@/utils/money';
+import { alertDialog } from '@/components/SeirsDialog';
 
 export default function ReceiptScreen() {
   const router = useRouter();
@@ -104,9 +112,9 @@ export default function ReceiptScreen() {
   const onEmailReceipt = async () => {
     try {
       await deliveriesApi.emailReceipt(trip.id);
-      Alert.alert('Sent', 'A copy of this receipt has been emailed to you.');
+      alertDialog('Sent', 'A copy of this receipt has been emailed to you.');
     } catch {
-      Alert.alert('Send failed', 'Please try again later.');
+      alertDialog('Send failed', 'Please try again later.');
     }
   };
 

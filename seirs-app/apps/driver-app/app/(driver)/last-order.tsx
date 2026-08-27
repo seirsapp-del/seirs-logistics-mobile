@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Alert,
-  ActivityIndicator, Switch,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -10,6 +15,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Spec V8 §2.11: driver wind-down toggle. When enabled, the matching
 // service stops auto-assigning new jobs while the driver finishes the
@@ -64,7 +70,7 @@ export default function LastOrderScreen() {
     } catch (e: any) {
       const raw = e?.message ?? 'Try again.';
       const locked = raw.includes('LAST_ORDER_LOCKED');
-      Alert.alert(
+      alertDialog(
         locked ? 'Already winding down' : 'Could not update',
         locked ? 'Sign off completely before re-enabling job acceptance.' : raw.replace(/^[A-Z_]+:\s*/, ''),
       );
@@ -73,7 +79,7 @@ export default function LastOrderScreen() {
 
   const handleToggle = (next: boolean) => {
     if (next && !meetsThreshold) {
-      Alert.alert(
+      alertDialog(
         'Threshold not met',
         `Last Order mode requires today's acceptance rate to be at least 80%. You're currently at ${acceptanceRate}%. Accept a few more jobs and try again.`,
       );
@@ -96,7 +102,7 @@ export default function LastOrderScreen() {
       });
     } else {
       // No-op: Spec V8 says one-way until full sign-off
-      Alert.alert('Already winding down', 'You can\'t re-enable jobs without fully signing off first.');
+      alertDialog('Already winding down', 'You can\'t re-enable jobs without fully signing off first.');
     }
   };
 

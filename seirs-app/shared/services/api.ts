@@ -958,6 +958,13 @@ export interface SupportTicketDTO {
   autoClosedAt:        string | null;
   lastMessageAt:       string;
   createdAt:           string;
+  /**
+   * Messages on this ticket the viewer has not read. Server-computed
+   * from readAt, the same column the Messages tab badge counts, so the
+   * row and the tab can no longer disagree. Optional because an older
+   * server build does not send it.
+   */
+  unread?:             number;
 }
 
 export interface SupportThreadDTO {

@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,6 +18,7 @@ import { ArrowLeft, Camera, Mail, ScanLine, AlertCircle } from 'lucide-react-nat
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { identityApi, uploadApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Spec V8 §1.17: driver door-to-door handoff signature. Two methods:
 // physical ID + email OTP, or SEIRS ID + typed-name signature. Mirrors
@@ -55,14 +64,14 @@ export default function DriverSignatureScreen() {
       // neighbours and security collect packages all the time).
       const res = await identityApi.issueHandoffOtp(deliveryId, recipientUserId || undefined);
       setOtpSent(true);
-      Alert.alert(
+      alertDialog(
         'Code sent',
         recipientUserId
           ? `Recipient will receive a 6-digit code by email. Expires in ${res.expiresInMinutes} minutes.`
           : `A 6-digit code was emailed to the SENDER: they forward it to whoever is collecting. Expires in ${res.expiresInMinutes} minutes.`,
       );
     } catch (e: any) {
-      Alert.alert('Could not send code', e?.message ?? 'Try again.');
+      alertDialog('Could not send code', e?.message ?? 'Try again.');
     } finally {
       setLoading(false);
     }
@@ -84,17 +93,17 @@ export default function DriverSignatureScreen() {
 
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Camera access required'); return; }
+    if (status !== 'granted') { alertDialog('Camera access required'); return; }
     const r = await ImagePicker.launchCameraAsync({ quality: 0.85 });
     if (!r.canceled) setPhotoUri(r.assets[0].uri);
   };
 
   const submit = async () => {
-    if (!photoUri) { Alert.alert('Photo required', 'Take a photo of the handoff before completing.'); return; }
+    if (!photoUri) { alertDialog('Photo required', 'Take a photo of the handoff before completing.'); return; }
     if (method === 'physical_id') {
-      if (!idType || !idNumber.trim() || !otp.trim()) { Alert.alert('Missing fields', 'ID type, number, and OTP all required.'); return; }
+      if (!idType || !idNumber.trim() || !otp.trim()) { alertDialog('Missing fields', 'ID type, number, and OTP all required.'); return; }
     } else {
-      if (!seirsCode.trim() || !typedName.trim()) { Alert.alert('Missing fields', 'SEIRS ID and typed name both required.'); return; }
+      if (!seirsCode.trim() || !typedName.trim()) { alertDialog('Missing fields', 'SEIRS ID and typed name both required.'); return; }
     }
 
     setLoading(true);
@@ -110,7 +119,7 @@ export default function DriverSignatureScreen() {
           ? { idType, idNumber: idNumber.trim(), otp: otp.trim() }
           : { seirsCode: seirsCode.trim().toUpperCase(), typedName: typedName.trim() }),
       });
-      Alert.alert(
+      alertDialog(
         'Handoff complete',
         'Recipient verified: chain of custody record saved. You can mark the delivery as delivered.',
         [{ text: 'OK', onPress: () => router.back() }],

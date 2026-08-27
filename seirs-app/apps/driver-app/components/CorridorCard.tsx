@@ -9,12 +9,18 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { Navigation, X } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { driversApi, mapsApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 interface Props {
   driver: any;
@@ -60,7 +66,7 @@ export function CorridorCard({ driver, onChanged }: Props) {
       setQuery('');
       onChanged?.();
     } catch (e: any) {
-      Alert.alert('Could not set your route', e?.message ?? 'Try again.');
+      alertDialog('Could not set your route', e?.message ?? 'Try again.');
     } finally {
       setBusy(false);
     }
@@ -72,7 +78,7 @@ export function CorridorCard({ driver, onChanged }: Props) {
       await driversApi.clearCorridor();
       onChanged?.();
     } catch (e: any) {
-      Alert.alert('Could not end the route', e?.message ?? 'Try again.');
+      alertDialog('Could not end the route', e?.message ?? 'Try again.');
     } finally {
       setBusy(false);
     }

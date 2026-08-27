@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Alert,
-  KeyboardAvoidingView, Platform, StatusBar,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { driversApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 import {
   VehicleOwnershipForm, ownershipProblems, EMPTY_OWNERSHIP, OwnershipValue,
 } from '@/components/VehicleOwnershipForm';
@@ -92,7 +100,7 @@ export default function VehicleOwnershipScreen() {
         ownerSignatureName: value.ownerSignatureName || undefined,
       });
       setSavedOk(true);
-      Alert.alert(
+      alertDialog(
         'Saved',
         value.ownership === 'self'
           ? 'Noted: the vehicle is yours.'
@@ -103,13 +111,13 @@ export default function VehicleOwnershipScreen() {
       const msg = String(e?.message ?? '');
       if (msg.includes('VEHICLE_OWNERSHIP_LOCKED')) {
         setLocked(true);
-        Alert.alert(
+        alertDialog(
           'Already approved',
           'Your vehicle is approved, so who owns it can only change through a vehicle change review.',
         );
         return;
       }
-      Alert.alert('Could not save', msg || 'Please try again.');
+      alertDialog('Could not save', msg || 'Please try again.');
     } finally {
       setSaving(false);
     }

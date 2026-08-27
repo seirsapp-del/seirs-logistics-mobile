@@ -3,8 +3,15 @@ import { PlacePicker, type PickedPlace } from '@seirs/shared/components/PlacePic
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useEffect, useState, useRef } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,6 +23,7 @@ import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi, configApi } from '@/services/api';
 import { naira } from '@/utils/money';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Spec V8 §2.18: driver declares an upcoming intercity trip
 // (Lagos → Ibadan, etc.). System surfaces matching packages along
@@ -291,7 +299,7 @@ export default function InterstateScreen() {
           icon: 'close-circle-outline',
           onPress: async () => {
             try { await driversApi.cancelInterstateTrip(trip.id); loadTrips(); }
-            catch (e: any) { Alert.alert('Could not cancel', e?.message ?? 'Try again.'); }
+            catch (e: any) { alertDialog('Could not cancel', e?.message ?? 'Try again.'); }
           },
         },
       ],
@@ -300,11 +308,11 @@ export default function InterstateScreen() {
   };
 
   const submit = async () => {
-    if (!from.trim() || !to.trim()) { Alert.alert('Both cities required'); return; }
+    if (!from.trim() || !to.trim()) { alertDialog('Both cities required'); return; }
     // The server rejects a same-city trip. Catch it here so the driver
     // is not told after the round trip (2026-08-25 interstate walk).
     if (from.trim().toLowerCase() === to.trim().toLowerCase()) {
-      Alert.alert('Same city twice', 'From and To must be different cities.');
+      alertDialog('Same city twice', 'From and To must be different cities.');
       return;
     }
     /**
@@ -316,42 +324,42 @@ export default function InterstateScreen() {
      * a rider wait a week for a booking that could never arrive.
      */
     if (!fromPlace || !toPlace) {
-      Alert.alert(
+      alertDialog(
         'Choose both cities from the list',
         'Tap a suggestion as you type so we get the exact location. A typed name we cannot place means no passenger can book this trip.',
       );
       return;
     }
-    if (!departAt) { Alert.alert('Departure time required'); return; }
+    if (!departAt) { alertDialog('Departure time required'); return; }
     // Accept "YYYY-MM-DD HH:mm" form by normalizing to ISO before sending.
     const depart = departAt.includes('T') ? departAt : departAt.replace(' ', 'T');
     if (Number.isNaN(new Date(depart).getTime())) {
-      Alert.alert('Invalid departure', 'Use the format YYYY-MM-DD HH:mm.');
+      alertDialog('Invalid departure', 'Use the format YYYY-MM-DD HH:mm.');
       return;
     }
     // Same reason as the same-city check: the server refuses a departure
     // in the past, and a driver declaring at the park types today's date
     // with an hour that has already gone more often than any other slip.
     if (new Date(depart).getTime() < Date.now() - 60_000) {
-      Alert.alert('Departure already passed', 'Pick a date and time still ahead of you.');
+      alertDialog('Departure already passed', 'Pick a date and time still ahead of you.');
       return;
     }
     // A trip that carries neither is inert: the server stores it, it is
     // listed nowhere useful, and nothing will ever be offered against it.
     if (!takePackages && !takePassengers) {
-      Alert.alert('Nothing to offer', 'Turn on packages, passengers, or both. A trip carrying neither is not listed.');
+      alertDialog('Nothing to offer', 'Turn on packages, passengers, or both. A trip carrying neither is not listed.');
       return;
     }
     if (takePassengers) {
       if (seatCap === 0) {
-        Alert.alert(
+        alertDialog(
           'This vehicle cannot sell seats',
           `A ${vehicleType ?? 'vehicle'} is not a marketplace passenger class. You can still carry packages on this run.`,
         );
         return;
       }
       if (seatCap != null && (Number(seats) || 0) > seatCap) {
-        Alert.alert(
+        alertDialog(
           'Too many seats',
           `A ${vehicleType} sells at most ${seatCap} seat${seatCap === 1 ? '' : 's'}. No squeezing: that is the rule.`,
         );
@@ -361,7 +369,7 @@ export default function InterstateScreen() {
       // is browsable but every booking on it dies at payment with a
       // message the PASSENGER sees and the driver never does.
       if (!(Number(routeKm) > 0)) {
-        Alert.alert(
+        alertDialog(
           'Route distance needed',
           'Seats are priced by distance. Without it nobody can book this trip. Tap a popular route to fill it, or type the km.',
         );
@@ -370,7 +378,7 @@ export default function InterstateScreen() {
       // Coordinates for both ends are required to build the booking.
       if (!isSeatMappedCity(from) || !isSeatMappedCity(to)) {
         const bad = !isSeatMappedCity(from) ? from.trim() : to.trim();
-        Alert.alert(
+        alertDialog(
           'Seats are not available on that city yet',
           `We cannot place ${bad} on the map yet, and a seat booking needs both ends mapped. Carry packages on this run instead, or pick one of the cities we cover: ${SEAT_MAPPED_CITIES.filter(c => c !== 'benin city').map(c => c.replace(/\b\w/g, m => m.toUpperCase())).join(', ')}.`,
         );
@@ -476,7 +484,7 @@ export default function InterstateScreen() {
         onCancel: () => { loadTrips(); setFrom(''); setTo(''); setDepartAt(''); setDepartDate(''); setDepartTime(''); setFromPlace(null); setToPlace(null); setPickupPlace(null); },
       });
     } catch (e: any) {
-      Alert.alert('Could not declare trip', e?.message ?? 'Try again.');
+      alertDialog('Could not declare trip', e?.message ?? 'Try again.');
     } finally {
       setSubmitting(false);
     }

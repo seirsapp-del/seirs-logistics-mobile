@@ -4,7 +4,7 @@
  * reference). One identity page, explained for the two hats a business
  * account can wear: sending, and running a partner counter.
  */
-import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
@@ -14,6 +14,7 @@ import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { alertDialog } from '@/components/SeirsDialog';
 
 export default function BusinessSeirsIdScreen() {
   const router     = useRouter();
@@ -134,7 +135,7 @@ export default function BusinessSeirsIdScreen() {
             backgroundColor: isDark ? '#D9770622' : '#FEF9C3',
             borderColor:     isDark ? '#D9770655' : '#FDE68A',
           }]}
-          onPress={() => Alert.alert(
+          onPress={() => alertDialog(
             'Keep this code private',
             'Anyone with your SEIRS ID and your registered name could pass themselves off as your business at a handoff. Show it at the moment of use, never post it publicly.',
           )}

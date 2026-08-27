@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, TextInput, Alert,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,6 +14,7 @@ import { isValidNigerianMobile, NG_MOBILE_HINT } from '@/constants/phone';
 import { uploadApi } from '@/services/api';
 import { DocUploadTile } from '@/components/DocUploadTile';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
+import { alertDialog } from '@/components/SeirsDialog';
 
 /**
  * "Is this vehicle yours?" and, when it is not, the owner's recorded
@@ -139,7 +144,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
       if (source === 'camera') {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (perm.status !== 'granted') {
-          Alert.alert('Permission required', 'Camera access is needed to photograph the document.');
+          alertDialog('Permission required', 'Camera access is needed to photograph the document.');
           return;
         }
         const r = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false });
@@ -147,7 +152,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
       } else {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (perm.status !== 'granted') {
-          Alert.alert('Permission required', 'Photo library access is needed.');
+          alertDialog('Permission required', 'Photo library access is needed.');
           return;
         }
         const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false });
@@ -158,7 +163,7 @@ export function VehicleOwnershipForm({ value, onChange, riderName, locked = fals
       const up = await uploadApi.file(uri, 'image/jpeg', 'kyc');
       set(slot === 'consent' ? { ownerConsentUrl: up.url } : { ownerIdUrl: up.url });
     } catch (e: any) {
-      Alert.alert('Upload failed', e?.message ?? 'Check your connection and try again.');
+      alertDialog('Upload failed', e?.message ?? 'Check your connection and try again.');
     } finally {
       setUploading(null);
     }

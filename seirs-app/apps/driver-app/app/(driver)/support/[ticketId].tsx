@@ -3,8 +3,19 @@
  * thread. 15s poll while open, paperclip attach for screenshots.
  */
 import {
-  View, Text, StyleSheet, FlatList, Pressable, TextInput, StatusBar,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Alert, Linking,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  TextInput,
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Image,
+  Modal,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +28,7 @@ import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supportApi, uploadApi, type SupportThreadDTO } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 export default function DriverSupportThreadScreen() {
   const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
@@ -59,7 +71,7 @@ export default function DriverSupportThreadScreen() {
       await load();
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
-      Alert.alert('Could not send', e?.message ?? String(e));
+      alertDialog('Could not send', e?.message ?? String(e));
       setInput(body);
     } finally { setSending(false); }
   };
@@ -74,19 +86,19 @@ export default function DriverSupportThreadScreen() {
       await load();
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
-      Alert.alert('Could not upload photo', e?.message ?? String(e));
+      alertDialog('Could not upload photo', e?.message ?? String(e));
     } finally { setUploading(false); }
   };
 
   const pickCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Camera permission needed'); return; }
+    if (!perm.granted) { alertDialog('Camera permission needed'); return; }
     const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
     if (!r.canceled && r.assets?.[0]?.uri) await sendImage(r.assets[0].uri);
   };
   const pickGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Photo permission needed'); return; }
+    if (!perm.granted) { alertDialog('Photo permission needed'); return; }
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
     if (!r.canceled && r.assets?.[0]?.uri) await sendImage(r.assets[0].uri);
   };

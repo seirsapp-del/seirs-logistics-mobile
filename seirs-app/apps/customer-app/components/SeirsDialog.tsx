@@ -25,7 +25,7 @@
  * can no longer disappear because of a platform limit nobody at the
  * call site knew about.
  *
- * ── WHY THIS FILE IS THE SAME IN TWO APPS (2026-08-25) ──────────────
+ * ── WHY THIS FILE IS THE SAME IN ALL THREE APPS (2026-08-27) ───────
  *
  * It was written twice on 2026-08-24, once in customer-app and once in
  * business-app, at the same relative path, because three agents were
@@ -50,9 +50,17 @@
  * that is not whitelisted resolves to undefined and red-screens at
  * runtime. Copying the file is the cheaper correctness.
  *
- * IF YOU EDIT THIS FILE, COPY IT TO THE OTHER APP IN THE SAME PASS.
- * The two paths are:
+ * Driver-app was left out of that pass and only got this file on
+ * 2026-08-27, so for three days every confirm, error and warning in the
+ * app a rider uses all day was still the Android grey box. The founder
+ * found it on the withdraw screen: "didn't you say you will fix the grey
+ * background stuff on screens like this did you fix them?" The component
+ * was never the gap; propagating it was.
+ *
+ * IF YOU EDIT THIS FILE, COPY IT TO THE OTHER TWO APPS IN THE SAME PASS.
+ * The three paths are:
  *   apps/customer-app/components/SeirsDialog.tsx
+ *   apps/driver-app/components/SeirsDialog.tsx
  *   apps/business-app/components/SeirsDialog.tsx
  *
  * ────────────────────────────────────────────────────────────────────

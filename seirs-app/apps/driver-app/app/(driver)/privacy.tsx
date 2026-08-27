@@ -1,5 +1,12 @@
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Switch, StatusBar, Alert, Linking,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  Switch,
+  StatusBar,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +18,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { usersApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 export default function DriverPrivacyScreen() {
   const [sheet, setSheet] = useState<SeirsSheetSpec | null>(null);
@@ -81,9 +89,9 @@ export default function DriverPrivacyScreen() {
   const handleDownloadData = async () => {
     try {
       await usersApi.exportData();
-      Alert.alert('Export queued', 'Your data export has been requested. You will receive an email with the download link within 24 hours.');
+      alertDialog('Export queued', 'Your data export has been requested. You will receive an email with the download link within 24 hours.');
     } catch {
-      Alert.alert('Export failed', 'Please try again later or contact support@seirs.app');
+      alertDialog('Export failed', 'Please try again later or contact support@seirs.app');
     }
   };
 

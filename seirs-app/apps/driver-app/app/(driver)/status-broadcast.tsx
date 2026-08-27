@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Alert, ActivityIndicator,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,6 +13,7 @@ import { ArrowLeft, Wifi, AlertCircle, AlertTriangle, ChevronRight, CheckCircle 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { driversApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Spec V8 §2.14: quick three-button status broadcast. One tap posts a
 // status the customer sees on their tracking screen.
@@ -54,10 +60,10 @@ export default function StatusBroadcastScreen() {
       await driversApi.sendStatusBroadcast({ type: WIRE[key] });
       setSent(key);
       const msg = OPTIONS.find(o => o.key === key)?.label ?? '';
-      Alert.alert('Status sent', `Customer will see: "${msg}".`);
+      alertDialog('Status sent', `Customer will see: "${msg}".`);
     } catch (e: any) {
       // No queue exists, so a failed send is simply not sent. Say so.
-      Alert.alert(
+      alertDialog(
         'Not sent',
         `${e?.message ?? 'The status could not be sent.'}
 

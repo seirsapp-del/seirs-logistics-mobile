@@ -1,6 +1,11 @@
 import {
-  View, Text, Pressable, StyleSheet,
-  ScrollView, ActivityIndicator, Alert, Image,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -15,6 +20,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { uploadApi, driversApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 type DocStatus = 'not_uploaded' | 'uploaded' | 'verified' | 'rejected';
 
@@ -159,12 +165,12 @@ export default function KycScreen() {
   const pickImage = async (source: 'camera' | 'library'): Promise<string | null> => {
     if (source === 'camera') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission required', 'Camera access is needed.'); return null; }
+      if (status !== 'granted') { alertDialog('Permission required', 'Camera access is needed.'); return null; }
       const r = await ImagePicker.launchCameraAsync({ quality: 0.85, allowsEditing: true });
       return r.canceled ? null : r.assets[0].uri;
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission required', 'Photo library access is needed.'); return null; }
+      if (status !== 'granted') { alertDialog('Permission required', 'Photo library access is needed.'); return null; }
       const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: true });
       return r.canceled ? null : r.assets[0].uri;
     }
@@ -197,7 +203,7 @@ export default function KycScreen() {
         d.id === docId ? { ...d, status: 'uploaded' as DocStatus, url: uploaded.url } : d,
       ));
     } catch {
-      Alert.alert('Upload failed', 'Please try again.');
+      alertDialog('Upload failed', 'Please try again.');
     } finally {
       setUploading(null);
     }

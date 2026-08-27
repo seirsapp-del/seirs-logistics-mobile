@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Spec V8 §1.17: driver presents this screen at handoff so the partner
 // staff or recipient can scan the QR (or read the alphanumeric backup
@@ -128,7 +129,7 @@ export default function SeirsIdScreen() {
 
         <Pressable
           style={[styles.alert, { backgroundColor: '#FEF9C3', borderColor: '#FDE68A' }]}
-          onPress={() => Alert.alert(
+          onPress={() => alertDialog(
             'Keep this code safe',
             'Anyone with your SEIRS ID + your full name could verify a handoff in your name. Treat it like a debit-card PIN: only show it at the moment of pickup.',
           )}

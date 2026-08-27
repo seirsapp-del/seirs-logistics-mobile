@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -14,6 +22,7 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme
 import { useAuth } from '@/context/AuthContext';
 import { usersApi, uploadApi } from '@/services/api';
 import { isValidNigerianMobile, toE164Ng } from '@/constants/phone';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Spec V8: driver standalone profile editor. Mirrors the customer version.
 // Vehicle fields are NOT exposed here; those live on the KYC re-submission
@@ -93,7 +102,7 @@ export default function EditProfileScreen() {
 
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission required'); return; }
+    if (status !== 'granted') { alertDialog('Permission required'); return; }
     const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: true, aspect: [1, 1] });
     if (r.canceled) return;
     setUploading(true);
@@ -101,7 +110,7 @@ export default function EditProfileScreen() {
       const uploaded = await uploadApi.uploadFile(r.assets[0].uri, 'profile-photos');
       setProfilePhoto(uploaded.url);
     } catch (e: any) {
-      Alert.alert('Upload failed', e?.message ?? 'Try again.');
+      alertDialog('Upload failed', e?.message ?? 'Try again.');
     } finally { setUploading(false); }
   };
 
@@ -138,9 +147,9 @@ export default function EditProfileScreen() {
 
       await usersApi.updateProfile(payload);
       try { await refresh?.(); } catch { /* best-effort */ }
-      Alert.alert('Saved', 'Profile updated.', [{ text: 'OK', onPress: () => router.back() }]);
+      alertDialog('Saved', 'Profile updated.', [{ text: 'OK', onPress: () => router.back() }]);
     } catch (e: any) {
-      Alert.alert('Save failed', e?.message ?? 'Try again.');
+      alertDialog('Save failed', e?.message ?? 'Try again.');
     } finally { setSaving(false); }
   };
 

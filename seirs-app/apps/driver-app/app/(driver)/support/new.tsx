@@ -3,8 +3,16 @@
  * with driver-tuned topic defaults.
  */
 import {
-  View, Text, StyleSheet, Pressable, TextInput, ScrollView,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, StatusBar,
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { supportApi, type TicketTopic } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 const TOPICS: { key: TicketTopic; label: string; icon: any }[] = [
   { key: 'delivery', label: 'Delivery issue', icon: 'cube-outline' },
@@ -48,7 +57,7 @@ export default function DriverNewSupportTicketScreen() {
       });
       router.replace(`/(driver)/support/${ticket.id}` as any);
     } catch (e: any) {
-      Alert.alert('Could not open ticket', e?.message ?? String(e));
+      alertDialog('Could not open ticket', e?.message ?? String(e));
     } finally { setSubmitting(false); }
   };
 

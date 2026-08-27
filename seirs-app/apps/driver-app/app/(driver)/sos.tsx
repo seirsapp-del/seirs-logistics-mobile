@@ -12,6 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SeirsSheet, type SeirsSheetSpec } from '@/components/SeirsSheet';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { sosApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Spec V8: driver-side SOS. Mirrors customer SOS using the same
 // /sos/trigger backend endpoint. Optional ?deliveryId= when fired
@@ -100,7 +101,7 @@ export default function DriverSosScreen() {
     } catch (e: any) {
       // Stay open so the text is not lost: ops already has the alert and
       // the location, this is only the detail failing to attach.
-      Alert.alert('Could not send that detail',
+      alertDialog('Could not send that detail',
         e?.message ?? 'Ops already has your alert and your location. Try again, or call 199.');
     } finally {
       setNoteSaving(false);
@@ -133,7 +134,7 @@ export default function DriverSosScreen() {
       });
       setAlertId(created.id);
     } catch (e: any) {
-      Alert.alert('Could not reach SEIRS support',
+      alertDialog('Could not reach SEIRS support',
         e?.message ?? 'Network error. Try again or call 199 directly.');
     } finally {
       setSubmitting(false);

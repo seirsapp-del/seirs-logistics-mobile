@@ -130,15 +130,41 @@ export class SupportService {
   }
 
   /** Ticket list for the ticket owner. Recent first. */
+  /**
+   * The user's tickets, each carrying a real unread count.
+   *
+   * The inbox used to derive a row's unread badge from the ticket's
+   * STATUS (`awaiting_user ? 1 : 0`), while the tab badge came from
+   * unreadCount(), which counts messages with readAt IS NULL. Two
+   * different rules over the same inbox, so they disagreed by
+   * construction: a support notice on a ticket in any other status put
+   * a number on the tab and nothing on the row it came from. Same
+   * number, same screen, computed two ways. Now the row and the tab
+   * both read readAt.
+   */
   async listMine(userId: string, opts: { status?: TicketStatus; limit?: number } = {}) {
     const where: any = { user: { id: userId } };
     if (opts.status) where.status = opts.status;
     const limit = Math.min(Math.max(opts.limit ?? 30, 1), 100);
-    return this.tickets.find({
+    const tickets = await this.tickets.find({
       where,
       order: { lastMessageAt: 'DESC' },
       take:  limit,
     });
+    if (!tickets.length) return tickets;
+
+    const rows: Array<{ ticketId: string; c: string }> = await this.messages.query(
+      `SELECT "ticketId", COUNT(*) AS c
+         FROM "chat_messages"
+        WHERE "ticketId" = ANY($1::uuid[])
+          AND "readAt" IS NULL
+          AND ("senderId" IS NULL OR "senderId" != $2)
+        GROUP BY "ticketId"`,
+      [tickets.map((t) => t.id), userId],
+    ).catch(() => [] as Array<{ ticketId: string; c: string }>);
+
+    const byTicket = new Map(rows.map((r) => [r.ticketId, Number(r.c) || 0]));
+    return tickets.map((t) => ({ ...t, unread: byTicket.get(t.id) ?? 0 })) as any;
   }
 
   /** Full thread (ticket + messages). Only the owner or an agent can read. */
@@ -159,6 +185,32 @@ export class SupportService {
       .where('m."ticketId" = :id', { id: ticket.id })
       .orderBy('m."createdAt"', 'ASC')
       .getMany();
+
+    /**
+     * Mark the thread read for whoever just opened it.
+     *
+     * Nothing did this before. Both readAt writers in ChatService key on
+     * deliveryId, and a ticket message has ticketId instead, so no code
+     * path in the platform had ever set readAt on one. unreadCount()
+     * counts ticket messages with readAt IS NULL, so a single support
+     * message badged the Messages tab permanently: opening the thread,
+     * reading it, and replying all left the badge exactly where it was,
+     * and there was no action in any of the three apps that could clear
+     * it. That is the "99+ even after i clear all notification" and the
+     * red badge over an inbox with nothing unread in it (founder,
+     * 2026-08-27, on the bank-change notice).
+     *
+     * senderId IS NULL is admitted deliberately: system notices have no
+     * sender, and they are the messages this most needs to clear.
+     */
+    await this.messages
+      .createQueryBuilder()
+      .update()
+      .set({ readAt: new Date() })
+      .where('"ticketId" = :id', { id: ticket.id })
+      .andWhere('("senderId" IS NULL OR "senderId" != :uid)', { uid: requester.id })
+      .andWhere('"readAt" IS NULL')
+      .execute();
 
     // Same scoping as the queue: the ticket owner's bank details are not
     // support's business, and messages carry an eager sender too.

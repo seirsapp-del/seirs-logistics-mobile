@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -14,6 +22,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { usersApi, uploadApi } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // ─── Validation (must stay in sync with backend UpdateProfileDto) ───────────
 
@@ -100,7 +109,7 @@ export default function EditProfileScreen() {
 
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert(t('editProfile.permissionRequired')); return; }
+    if (status !== 'granted') { alertDialog(t('editProfile.permissionRequired')); return; }
     const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: true, aspect: [1, 1] });
     if (r.canceled) return;
     setUploading(true);
@@ -108,7 +117,7 @@ export default function EditProfileScreen() {
       const uploaded = await uploadApi.file(r.assets[0].uri);
       setProfilePhoto(uploaded.url);
     } catch (e: any) {
-      Alert.alert(t('editProfile.uploadFailed'), e?.message ?? t('editProfile.tryAgain'));
+      alertDialog(t('editProfile.uploadFailed'), e?.message ?? t('editProfile.tryAgain'));
     } finally { setUploading(false); }
   };
 
@@ -152,9 +161,9 @@ export default function EditProfileScreen() {
 
       await usersApi.updateProfile(payload);
       try { await refresh?.(); } catch { /* refresh is best-effort */ }
-      Alert.alert('Saved', 'Your profile has been updated.', [{ text: 'OK', onPress: () => router.back() }]);
+      alertDialog('Saved', 'Your profile has been updated.', [{ text: 'OK', onPress: () => router.back() }]);
     } catch (e: any) {
-      Alert.alert('Save failed', e?.message ?? 'Please try again.');
+      alertDialog('Save failed', e?.message ?? 'Please try again.');
     } finally { setSaving(false); }
   };
 

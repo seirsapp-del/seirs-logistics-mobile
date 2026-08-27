@@ -1,6 +1,13 @@
 import { useCallback, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, Alert, ScrollView, StatusBar, Platform, Modal,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  Platform,
+  Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
@@ -15,6 +22,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { HamburgerButton } from '@/components/HamburgerButton';
 import { driversApi, earningsApi, notificationsApi } from '@/services/api';
 import { naira, nairaShort } from '@/utils/money';
+import { alertDialog } from '@/components/SeirsDialog';
 
 interface MenuSection {
   title: string;
@@ -347,7 +355,7 @@ export default function DriverProfileScreen() {
               <Pressable
                 onPress={async () => {
                   await Clipboard.setStringAsync((user as any).accountId);
-                  Alert.alert('Copied', 'Your SEIRS ID has been copied.');
+                  alertDialog('Copied', 'Your SEIRS ID has been copied.');
                 }}
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.border, borderRadius: Radius.lg, paddingVertical: 12 }}
               >

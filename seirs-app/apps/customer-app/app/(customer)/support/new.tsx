@@ -13,8 +13,16 @@
  * gesture-nav phones (Pixel, newer Samsung) never overlap the CTA.
  */
 import {
-  View, Text, StyleSheet, Pressable, TextInput, ScrollView,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, StatusBar,
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +37,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from '@/constants/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { supportApi, deliveriesApi, type TicketTopic } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 const TOPICS: { key: TicketTopic; label: string; icon: any; hint: string }[] = [
   { key: 'delivery', label: 'Delivery issue',      icon: Package,         hint: 'Package late, missing, damaged, wrong address' },
@@ -109,7 +118,7 @@ export default function NewSupportTicketScreen() {
       });
       router.replace(`/(customer)/support/${ticket.id}` as any);
     } catch (e: any) {
-      Alert.alert(
+      alertDialog(
         t('support.error.title', { defaultValue: 'Could not open ticket' }),
         e?.message ?? String(e),
       );

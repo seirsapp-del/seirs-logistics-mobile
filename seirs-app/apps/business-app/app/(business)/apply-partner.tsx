@@ -9,8 +9,16 @@
  */
 import { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView,
-  ActivityIndicator, Alert, Image, Platform, KeyboardAvoidingView,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Image,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +28,7 @@ import { uploadApi, partnerApi } from '@/services/api';
 import { StatePicker } from '@/components/StatePicker';
 import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 import { useColors, useTheme } from '@/context/ThemeContext';
+import { alertDialog } from '@/components/SeirsDialog';
 
 interface ApplicationStatus {
   storeId:    string;
@@ -65,7 +74,7 @@ export default function ApplyPartnerScreen() {
   const pickImage = async (setter: (uri: string | null) => void) => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow photo access to upload documents.');
+      alertDialog('Permission needed', 'Allow photo access to upload documents.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
@@ -85,7 +94,7 @@ export default function ApplyPartnerScreen() {
 
   const handleSubmit = async () => {
     if (!formValid) {
-      Alert.alert('Incomplete', 'Please fill all required fields and upload required photos.');
+      alertDialog('Incomplete', 'Please fill all required fields and upload required photos.');
       return;
     }
     setSubmitting(true);
@@ -122,13 +131,13 @@ export default function ApplyPartnerScreen() {
         storeLat:           coords?.lat,
         storeLng:           coords?.lng,
       });
-      Alert.alert(
+      alertDialog(
         'Application submitted',
         res.message,
         [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch (e: any) {
-      Alert.alert('Could not submit', e?.message ?? 'Please try again.');
+      alertDialog('Could not submit', e?.message ?? 'Please try again.');
     } finally {
       setSubmitting(false);
     }

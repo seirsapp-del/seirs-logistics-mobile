@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image, TextInput,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Image,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -13,6 +21,7 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { userVerificationApi, uploadApi, type IdentityDocType } from '@/services/api';
+import { alertDialog } from '@/components/SeirsDialog';
 
 /**
  * Customer identity verification. Optional trust-tier upgrade.
@@ -93,7 +102,7 @@ export default function VerifyIdentityScreen() {
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== 'granted') {
-      Alert.alert('Permission required', 'Please allow access to your camera/photos in Settings.');
+      alertDialog('Permission required', 'Please allow access to your camera/photos in Settings.');
       return;
     }
     const r = useCamera
@@ -105,7 +114,7 @@ export default function VerifyIdentityScreen() {
       const uploaded = await uploadApi.file(r.assets[0].uri);
       setter(uploaded.url);
     } catch (e: any) {
-      Alert.alert('Upload failed', e?.message ?? 'Please try again with a smaller photo.');
+      alertDialog('Upload failed', e?.message ?? 'Please try again with a smaller photo.');
     } finally {
       setBusy(false);
     }
@@ -144,13 +153,13 @@ export default function VerifyIdentityScreen() {
         submitterNote:        note.trim() || undefined,
         documentExpiryDate:   expiryPayload,
       });
-      Alert.alert(
+      alertDialog(
         'Submitted',
         'Thanks, your ID is with our review team. You will get a notification within 24 hours to 3 business days.',
         [{ text: 'OK', onPress: () => { setStep('pick'); setDocType(null); setDocUrl(''); setDocBackUrl(''); setSelfieUrl(''); setNote(''); setDocExpiryDate(''); setExpiryError(null); loadStatus(); } }],
       );
     } catch (e: any) {
-      Alert.alert('Submission failed', e?.message ?? 'Please try again.');
+      alertDialog('Submission failed', e?.message ?? 'Please try again.');
     } finally {
       setSubmitting(false);
     }

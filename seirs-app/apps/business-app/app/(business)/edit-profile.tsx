@@ -1,8 +1,16 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
-  Keyboard, Dimensions,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  Keyboard,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -12,6 +20,7 @@ import { StatePicker } from '@/components/StatePicker';
 import { usersApi, businessApi } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/context/ThemeContext';
+import { alertDialog } from '@/components/SeirsDialog';
 
 // Spec V8 §4. business / partner profile editor. Edits both the User
 // row (name, phone) AND the BusinessAccount row (companyName, RC,
@@ -180,9 +189,9 @@ export default function BusinessEditProfileScreen() {
         }
       }
       try { await refresh?.(); } catch { /* best-effort */ }
-      Alert.alert('Saved', 'Profile updated.', [{ text: 'OK', onPress: () => router.back() }]);
+      alertDialog('Saved', 'Profile updated.', [{ text: 'OK', onPress: () => router.back() }]);
     } catch (e: any) {
-      Alert.alert('Save failed', e?.message ?? 'Try again.');
+      alertDialog('Save failed', e?.message ?? 'Try again.');
     } finally { setSaving(false); }
   };
 

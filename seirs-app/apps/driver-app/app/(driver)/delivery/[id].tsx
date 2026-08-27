@@ -10,9 +10,16 @@
  * When the last stop flips to delivered, the parent Delivery auto-
  * closes server-side (see business.service.markStopDelivered).
  */
-import { Image,
-  View, Text, Pressable, StyleSheet, ScrollView, StatusBar, ActivityIndicator,
-  Alert, Linking,
+import {
+  Image,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +32,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { driversApi, uploadApi } from '@/services/api';
 
 import { naira } from '@/utils/money';
+import { alertDialog } from '@/components/SeirsDialog';
 
 interface Stop {
   id:             string;
@@ -156,7 +164,7 @@ export default function DeliveryDetailScreen() {
       legs.push({ lat: st.lat, lng: st.lng });
     }
     if (legs.length < 2) {
-      Alert.alert('Nothing left to route', 'Use Navigate on the stop itself.');
+      alertDialog('Nothing left to route', 'Use Navigate on the stop itself.');
       return;
     }
 
@@ -172,7 +180,7 @@ export default function DeliveryDetailScreen() {
       + `&waypoints=${encodeURIComponent(mid)}`;
 
     Linking.openURL(url).catch(() =>
-      Alert.alert('Could not open Maps', 'Navigate to each stop instead.'));
+      alertDialog('Could not open Maps', 'Navigate to each stop instead.'));
   };
 
   const handleArrived = async (stop: Stop) => {
@@ -182,7 +190,7 @@ export default function DeliveryDetailScreen() {
       await driversApi.markStopArrived(delivery.id, stop.id);
       await load();
     } catch (e: any) {
-      Alert.alert('Could not mark arrived', e?.message ?? 'Try again.');
+      alertDialog('Could not mark arrived', e?.message ?? 'Try again.');
     } finally { setActing(null); }
   };
 
@@ -207,7 +215,7 @@ export default function DeliveryDetailScreen() {
 
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (perm.status !== 'granted') {
-      Alert.alert(
+      alertDialog(
         'Camera access required',
         'A proof photo is needed to close a stop. Enable camera access for SEIRS Driver and try again.',
       );
@@ -226,7 +234,7 @@ export default function DeliveryDetailScreen() {
       await driversApi.markStopDelivered(delivery.id, stop.id, { proofPhotoUrls: [uploaded.url] });
       await load();
     } catch (e: any) {
-      Alert.alert('Could not mark delivered', e?.message ?? 'Try again.');
+      alertDialog('Could not mark delivered', e?.message ?? 'Try again.');
     } finally { setActing(null); }
   };
 
