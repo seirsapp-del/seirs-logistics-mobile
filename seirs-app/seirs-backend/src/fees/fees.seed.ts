@@ -53,6 +53,31 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'travel_buddy_offer_timeout_min', name: 'Travel Buddy offer timeout (min)',
     description: 'How long a declared driver has to accept a paid seat booking before it auto-refunds in full.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.MINUTES, value: 30 },
+
+  // ── Travel Buddy: seats sold by the SEGMENT (founder 2026-08-28) ──────
+  // A seat used to be priced on the driver's WHOLE route, so a passenger
+  // riding Ibadan to Osogbo paid for Ibadan to Abuja, and their empty
+  // seat could not be resold once they got out. Seats are now sold per
+  // segment, requested before they are paid for, and every threshold in
+  // that flow is a row here rather than a literal in a service.
+  { key: 'travel_buddy_min_segment_fare_ngn', name: 'Travel Buddy minimum segment fare',
+    description: 'Floor under a single seat on one segment, per seat. Stops somebody booking a four-kilometre hop on a cross-country run and occupying a seat that could have carried a passenger the length of the country.',
+    category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.FLAT_NGN, value: 1500 },
+  { key: 'travel_buddy_unpaid_hold_min', name: 'Travel Buddy unpaid hold (min)',
+    description: 'Minutes an accepted seat request stays honoured before payment. The segment stays SELLABLE throughout, so this is how long the quoted fare lasts, not a reservation.',
+    category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.MINUTES, value: 30 },
+  { key: 'travel_buddy_no_show_wait_min', name: 'Travel Buddy no-show wait (min)',
+    description: 'Minutes a rider must wait at the boarding stop, visible to both sides, before the fare may be forfeited and the vehicle may leave. The wait, the rider position and every contact attempt are recorded for the dispute.',
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.MINUTES, value: 15 },
+  { key: 'travel_buddy_free_cancel_hours', name: 'Travel Buddy free-cancel window (hours)',
+    description: 'Hours before departure inside which a passenger cancellation stops being refunded in full. Outside it the fare returns less the sunk card processing (cancel_processing_pct).',
+    category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.HOURS, value: 24 },
+  { key: 'travel_buddy_late_cancel_refund_pct', name: 'Travel Buddy late-cancel refund (%)',
+    description: 'Share of a paid seat fare returned when the passenger cancels INSIDE the free window. Zero mirrors the no-show rule, since the vehicle has already committed to carrying the space. Raise it here, never in code.',
+    category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.PERCENT, value: 0 },
+  { key: 'travel_buddy_drop_geofence_m', name: 'Travel Buddy drop geofence (m)',
+    description: 'Metres from the declared alight stop beyond which a drop is FLAGGED, never refused: roads close and plans change, so the distance is recorded for review rather than used to strand a rider mid-journey.',
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 1000 },
   { key: 'driver_cancel_free_per_day', name: 'Driver cancels: free per day',
     description: 'Accepted-job cancels a driver may make per 24h before offers pause. Safety ("felt unsafe") never counts.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 2 },

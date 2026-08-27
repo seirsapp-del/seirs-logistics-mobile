@@ -186,6 +186,17 @@ export class DeliveriesService {
   // Fee Catalogue (admin-tunable per founder rule 2026-08-11).
   feesServiceRef?:       any;
 
+  /**
+   * Travel Buddy segment bookings, wired lazily by TravelBuddyModule.
+   *
+   * A seat sold by the segment agrees its fare with the driver BEFORE
+   * any money moves, so when that money lands it must not be re-offered
+   * through the generic trip path below: the driver would get a second
+   * chance to walk away from an agreement the passenger has now paid
+   * against. Lazy, so neither module has to import the other.
+   */
+  seatBookingsService?:  any;
+
   constructor(
     @InjectRepository(Delivery) private repo: Repository<Delivery>,
     private pricingService: PricingService,
@@ -772,6 +783,30 @@ export class DeliveriesService {
     }
 
     const tripId = (delivery as any).tripId;
+
+    /**
+     * Segment seat bookings settle themselves.
+     *
+     * The driver already accepted THIS segment at THIS fare before the
+     * passenger was charged, so the money landing is the last step, not
+     * the first. confirmPaidByDelivery re-checks per-segment capacity
+     * under a lock (two passengers can legitimately be paying for the
+     * last seat at once, because an unpaid request never blocks
+     * capacity), holds the seat, and assigns the rider directly.
+     *
+     * It returns true when it owned this delivery, which keeps the
+     * legacy whole-route offer path below untouched for bookings made
+     * the old way.
+     */
+    if (tripId && this.seatBookingsService) {
+      try {
+        const handled = await this.seatBookingsService.confirmPaidByDelivery(deliveryId);
+        if (handled) return;
+      } catch (e: any) {
+        this.logger.error(`seat booking settle failed for ${deliveryId}: ${e?.message ?? e}`);
+      }
+    }
+
     if (tripId && this.driversService) {
       // The TRUE offer step (founder 2026-08-23): the declared driver
       // is asked, not conscripted. tripOfferedAt starts the expiry

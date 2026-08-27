@@ -49,6 +49,7 @@ import { WebsiteContentModule } from './website-content/website-content.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
+import { TravelBuddyModule } from './travel-buddy/travel-buddy.module';
 
 @Module({
   imports: [
@@ -136,6 +137,7 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
     TelemetryModule,
     AddressesModule,
     MaintenanceModule,
+    TravelBuddyModule,
   ],
   providers: [
     /**

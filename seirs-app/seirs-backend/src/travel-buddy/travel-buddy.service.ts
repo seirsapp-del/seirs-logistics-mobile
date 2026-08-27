@@ -1,0 +1,1511 @@
+import {
+  Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException,
+} from '@nestjs/common';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { DataSource, IsNull, Repository } from 'typeorm';
+import { SeatBooking, SeatBookingStatus, SEAT_HOLDING_STATUSES } from './seat-booking.entity';
+import { SeatBookingEvent, SeatBookingEventType } from './seat-booking-event.entity';
+import { DriverTrip, DriverTripStatus } from '../drivers/driver-trip.entity';
+import { TripStop } from '../drivers/trip-stop.entity';
+import { Delivery, DeliveryStatus } from '../deliveries/delivery.entity';
+import { FeesService } from '../fees/fees.service';
+import { PricingService as RateCardPricing } from '../pricing/pricing.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/notification.entity';
+import { vehicleIdentityForPassenger } from '../common/redact-driver';
+import { secureCode } from '../common/utils/auth-codes';
+
+/**
+ * Fee Catalogue keys this flow reads, with the fallback used when the
+ * row is missing or disabled.
+ *
+ * Every threshold here is a row an admin can move, per the house rule
+ * that policy knobs are data and not literals. The fallbacks exist so a
+ * database that has not seeded yet still behaves, never so that anybody
+ * has to ship code to change a number.
+ */
+const FEE = {
+  /** Floor under a segment fare, per seat. Kills the trivially short hop. */
+  MIN_SEGMENT_FARE: 'travel_buddy_min_segment_fare_ngn',
+  /** Minutes the rider waits at the stop before a no-show may be called. */
+  NO_SHOW_WAIT_MIN: 'travel_buddy_no_show_wait_min',
+  /** Minutes an accepted-but-unpaid request stays honoured. */
+  UNPAID_HOLD_MIN:  'travel_buddy_unpaid_hold_min',
+  /** Hours before departure inside which a cancel stops being free. */
+  FREE_CANCEL_HOURS: 'travel_buddy_free_cancel_hours',
+  /** Share of a paid fare returned on a cancel inside that window. */
+  LATE_CANCEL_REFUND_PCT: 'travel_buddy_late_cancel_refund_pct',
+  /** Metres from the alight stop beyond which a drop is flagged. */
+  DROP_GEOFENCE_M: 'travel_buddy_drop_geofence_m',
+  /** Processing already sunk on a card charge, withheld from a refund. */
+  CANCEL_PROCESSING_PCT: 'cancel_processing_pct',
+} as const;
+
+const FEE_FALLBACK = {
+  [FEE.MIN_SEGMENT_FARE]:       1500,
+  [FEE.NO_SHOW_WAIT_MIN]:       15,
+  [FEE.UNPAID_HOLD_MIN]:        30,
+  [FEE.FREE_CANCEL_HOURS]:      24,
+  [FEE.LATE_CANCEL_REFUND_PCT]: 0,
+  [FEE.DROP_GEOFENCE_M]:        1000,
+  [FEE.CANCEL_PROCESSING_PCT]:  1.4,
+};
+
+/** Great-circle metres, for the drop geofence. */
+function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/** Money, to the kobo. Never whole naira: the maths has to reconcile. */
+function kobo(n: number): number {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+/**
+ * What a rider may know about the passenger they are picking up.
+ *
+ * Whitelist, never blacklist, for the same reason redact-driver.ts is
+ * one: the User row also carries the wallet balance, the referral chain,
+ * the push token, the lockout state and every verification document, and
+ * a blacklist ships whichever of those somebody adds next.
+ *
+ * The phone is here on purpose. The rider has to reach a person standing
+ * at a roadside stop, and the alternative to a number is a rider driving
+ * off with someone's paid seat because nobody could find anybody.
+ */
+function passengerIdentityForDriver(u: any) {
+  return {
+    id:           u?.id ?? null,
+    name:         u?.name ?? null,
+    firstName:    u?.firstName ?? null,
+    profilePhoto: u?.profilePhoto ?? null,
+    phone:        u?.phone ?? null,
+  };
+}
+
+@Injectable()
+export class TravelBuddyService {
+  private readonly logger = new Logger(TravelBuddyService.name);
+
+  constructor(
+    @InjectRepository(SeatBooking)      private bookingsRepo:   Repository<SeatBooking>,
+    @InjectRepository(SeatBookingEvent) private eventsRepo:     Repository<SeatBookingEvent>,
+    @InjectRepository(DriverTrip)       private tripsRepo:      Repository<DriverTrip>,
+    @InjectRepository(TripStop)         private stopsRepo:      Repository<TripStop>,
+    @InjectRepository(Delivery)         private deliveriesRepo: Repository<Delivery>,
+    @InjectDataSource()                 private readonly ds:    DataSource,
+    private readonly fees:          FeesService,
+    private readonly rateCard:      RateCardPricing,
+    private readonly notifications: NotificationsService,
+  ) {}
+
+  /**
+   * Set by TravelBuddyModule on boot so a refund can be issued without
+   * this module importing PaymentsModule, which would close a cycle
+   * through DeliveriesModule. Same lazy-reference pattern the deliveries
+   * and drivers services already use.
+   */
+  paymentsServiceRef?: any;
+
+  /**
+   * Also set on boot, for the same reason.
+   *
+   * Delivery status changes go THROUGH DeliveriesService.updateStatus and
+   * never straight into the table. That method is where escrow is
+   * released to the rider on DELIVERED, where the customer and the
+   * partner webhooks are told, and where the timeline the two parties
+   * read is written. An UPDATE issued behind its back would move the row
+   * and leave the rider's money sitting in escrow with nobody left to
+   * release it.
+   */
+  deliveriesServiceRef?: any;
+
+  /** Move a seat's delivery through the path that owns escrow and events. */
+  private async setDeliveryStatus(deliveryId: string | null, status: DeliveryStatus) {
+    if (!deliveryId) return;
+    if (!this.deliveriesServiceRef?.updateStatus) {
+      this.logger.error(`deliveries service not wired: ${deliveryId} left at its old status`);
+      return;
+    }
+    try {
+      // No actor id: the authorization already happened above, against
+      // the trip and the booking. updateStatus treats internal callers as
+      // trusted precisely so a service that has done its own check does
+      // not have to impersonate a user to pass a second one.
+      await this.deliveriesServiceRef.updateStatus(deliveryId, status);
+    } catch (e: any) {
+      this.logger.error(`could not move delivery ${deliveryId} to ${status}: ${e?.message ?? e}`);
+    }
+  }
+
+  // ── Fee Catalogue reads ──────────────────────────────────────────────
+
+  private async fee(key: string): Promise<number> {
+    const v = await this.fees.getValueOr(key, (FEE_FALLBACK as any)[key] ?? 0);
+    return Number.isFinite(Number(v)) ? Number(v) : (FEE_FALLBACK as any)[key] ?? 0;
+  }
+
+  // ── Evidence ─────────────────────────────────────────────────────────
+
+  /**
+   * Write one line of the trail.
+   *
+   * Never throws into the caller. A booking must not fail because the
+   * audit insert did, but a missing line matters, so the failure is
+   * logged loudly rather than swallowed in silence.
+   */
+  private async record(
+    bookingId: string,
+    type: SeatBookingEventType,
+    actorRole: 'driver' | 'passenger' | 'system',
+    actorUserId: string | null,
+    opts: { lat?: number | null; lng?: number | null; note?: string | null; meta?: Record<string, any> | null } = {},
+  ) {
+    try {
+      await this.eventsRepo.save(this.eventsRepo.create({
+        bookingId,
+        type,
+        actorRole,
+        actorUserId: actorUserId ?? null,
+        lat:  Number.isFinite(Number(opts.lat)) ? Number(opts.lat) : null,
+        lng:  Number.isFinite(Number(opts.lng)) ? Number(opts.lng) : null,
+        note: opts.note ?? null,
+        meta: opts.meta ?? null,
+      } as any));
+    } catch (e: any) {
+      this.logger.error(`seat booking evidence NOT written (${type} on ${bookingId}): ${e?.message ?? e}`);
+    }
+  }
+
+  private push(userId: string | null | undefined, title: string, body: string, type: NotificationType, deliveryId?: string) {
+    if (!userId) return;
+    // Push and in-trip chat only. SMS is a standing deferred decision at
+    // SEIRS and there is deliberately no fallback channel here.
+    //
+    // A push is never load-bearing: the booking, the seat and the money
+    // are all already settled by the time this runs, so a failure to
+    // notify must never roll any of that back.
+    try {
+      const sent: any = this.notifications?.create?.(userId, title, body, type, deliveryId);
+      if (sent?.catch) sent.catch(() => {});
+    } catch (e: any) {
+      this.logger.warn(`seat booking push failed: ${e?.message ?? e}`);
+    }
+  }
+
+  // ── Per-segment capacity: the whole point of this rebuild ────────────
+
+  /**
+   * The busiest single segment inside a stretch of the route.
+   *
+   * A trip is a line of stops. The gap between stop N and stop N+1 is a
+   * SEGMENT, and a seat is a thing that exists once per segment, not
+   * once per trip. A passenger riding from stop 2 to stop 5 occupies
+   * segments 2, 3 and 4, and occupies nothing before or after.
+   *
+   * So the question a new booking asks is not "how many seats are sold
+   * on this trip" but "across every segment I would cross, is one still
+   * free everywhere". That is a peak, not a sum: three bookings can each
+   * overlap my stretch without overlapping each other, in which case the
+   * busiest segment holds one passenger and summing would refuse me for
+   * no reason.
+   *
+   * The overlap test is the plain range one. A booking [b, a) crosses
+   * segment s exactly when b <= s and a > s.
+   *
+   * Only SEAT_HOLDING_STATUSES count. A dropped passenger has physically
+   * left, which is what frees an Osogbo seat for somebody waiting in
+   * Lokoja, and an unpaid request holds nothing at all.
+   *
+   * Legacy whole-route bookings are added on top. Those predate segments
+   * and live as driver_trips.seatsBooked, and a whole-route booking is
+   * by definition one that crosses EVERY segment, so counting it against
+   * all of them is exactly right rather than a fudge. It is the only use
+   * of that counter here: it is not the capacity model, it is a second
+   * population being migrated away from.
+   */
+  private async peakSeatsTaken(
+    tripId: string,
+    fromSequence: number,
+    toSequence: number,
+    excludeBookingId?: string | null,
+    manager?: any,
+  ): Promise<number> {
+    const runner = manager ?? this.ds;
+    const rows = await runner.query(
+      `SELECT COALESCE(MAX(t.taken), 0)::int AS peak
+         FROM (
+           SELECT s."sequence" AS seg,
+                  COALESCE(SUM(sb."seats"), 0)::int AS taken
+             FROM "trip_stops" s
+             LEFT JOIN "seat_bookings" sb
+                    ON sb."trip_id" = s."trip_id"
+                   AND sb."status" = ANY($4::text[])
+                   AND sb."board_sequence"  <= s."sequence"
+                   AND sb."alight_sequence" >  s."sequence"
+                   AND ($5::uuid IS NULL OR sb."id" <> $5::uuid)
+            WHERE s."trip_id" = $1
+              AND s."sequence" >= $2
+              AND s."sequence" <  $3
+            GROUP BY s."sequence"
+         ) t`,
+      [tripId, fromSequence, toSequence, SEAT_HOLDING_STATUSES as string[], excludeBookingId ?? null],
+    );
+    return Number(rows?.[0]?.peak ?? 0);
+  }
+
+  /** Seats free across every segment of a stretch, legacy holds included. */
+  private async seatsFreeAcross(
+    trip: any,
+    fromSequence: number,
+    toSequence: number,
+    excludeBookingId?: string | null,
+    manager?: any,
+  ): Promise<number> {
+    const peak   = await this.peakSeatsTaken(trip.id, fromSequence, toSequence, excludeBookingId, manager);
+    const legacy = Math.max(0, Number(trip.seatsBooked ?? 0));
+    return Math.max(0, Number(trip.seatsTotal ?? 0) - legacy - peak);
+  }
+
+  /**
+   * Seats free on EVERY segment of a trip, for the browse and detail
+   * screens.
+   *
+   * The old browse card showed one number for the whole route, which was
+   * a lie the moment anybody got out halfway: it said full while a seat
+   * sat empty from Osogbo onwards.
+   */
+  async tripAvailability(tripId: string) {
+    const trip = await this.loadTrip(tripId);
+    const stops = await this.stopsRepo.find({ where: { tripId } as any, order: { sequence: 'ASC' } });
+    if (stops.length < 2) {
+      throw new BadRequestException('That trip has no declared stops yet, so seats cannot be priced by segment.');
+    }
+    const rows = await this.ds.query(
+      `SELECT s."sequence" AS seg,
+              COALESCE(SUM(sb."seats"), 0)::int AS taken
+         FROM "trip_stops" s
+         LEFT JOIN "seat_bookings" sb
+                ON sb."trip_id" = s."trip_id"
+               AND sb."status" = ANY($2::text[])
+               AND sb."board_sequence"  <= s."sequence"
+               AND sb."alight_sequence" >  s."sequence"
+        WHERE s."trip_id" = $1
+          AND s."sequence" < (SELECT MAX(x."sequence") FROM "trip_stops" x WHERE x."trip_id" = $1)
+        GROUP BY s."sequence"
+        ORDER BY s."sequence" ASC`,
+      [tripId, SEAT_HOLDING_STATUSES as string[]],
+    );
+    const legacy = Math.max(0, Number((trip as any).seatsBooked ?? 0));
+    const total  = Number((trip as any).seatsTotal ?? 0);
+    const takenBySeq = new Map<number, number>(
+      (rows ?? []).map((r: any) => [Number(r.seg), Number(r.taken)]),
+    );
+
+    return {
+      tripId,
+      seatsTotal: total,
+      departAt: (trip as any).departAt,
+      // No arrival time is quoted anywhere in this payload, deliberately:
+      // Lagos traffic, fuel queues and checkpoints make any promise of
+      // one a refund magnet.
+      stops: stops.map((s) => ({
+        id: s.id, sequence: s.sequence, city: s.city, address: s.address,
+        latitude: Number(s.latitude), longitude: Number(s.longitude),
+        description: s.description, kmFromOrigin: Number(s.kmFromOrigin),
+        arrivedAt: s.arrivedAt,
+      })),
+      segments: stops.slice(0, -1).map((s, i) => ({
+        fromStopId: s.id,
+        toStopId:   stops[i + 1].id,
+        fromSequence: s.sequence,
+        toSequence:   stops[i + 1].sequence,
+        fromCity: s.city,
+        toCity:   stops[i + 1].city,
+        km: kobo(Number(stops[i + 1].kmFromOrigin) - Number(s.kmFromOrigin)),
+        seatsLeft: Math.max(0, total - legacy - (takenBySeq.get(Number(s.sequence)) ?? 0)),
+      })),
+      driver: {
+        name:   (trip as any).driver?.user?.name ?? 'Driver',
+        rating: (trip as any).driver?.rating ?? null,
+        ...vehicleIdentityForPassenger((trip as any).driver),
+      },
+    };
+  }
+
+  // ── Pricing a segment ────────────────────────────────────────────────
+
+  /**
+   * What one segment costs, priced off the segment and NOT off the
+   * driver's whole route.
+   *
+   * The old engine charged trip.routeKm, so an Ibadan to Abuja run
+   * billed a passenger going to Osogbo for all 605km. This charges the
+   * 90 they actually ride.
+   *
+   * A floor then applies per seat, because a route sold by the segment
+   * invites somebody to book two stops that are four kilometres apart on
+   * a cross-country run and occupy a seat that could have been sold to
+   * someone riding the length of the country. The floor is a Fee
+   * Catalogue row, so ops set what "too short to be worth a stop" means.
+   */
+  private async priceSegment(trip: any, segmentKm: number, seats: number, luggage?: string | null) {
+    const priced = await this.rateCard.computeSeatPrice({
+      vehicleType: trip.driver?.vehicleType,
+      routeKm: segmentKm,
+      seats,
+      luggage: luggage ?? undefined,
+    });
+
+    let total  = kobo(Number(priced.customer.total));
+    let driver = kobo(Number(priced.driver.total));
+
+    const minPerSeat = await this.fee(FEE.MIN_SEGMENT_FARE);
+    const floor = kobo(minPerSeat * seats);
+    let flooredTo: number | null = null;
+    if (floor > 0 && total < floor) {
+      /**
+       * Lift the rider's share by the same ratio, not just the fare.
+       *
+       * Leaving driverEarnings where it was would hand the entire
+       * minimum-fare uplift to the platform, which turns a rule meant to
+       * protect the rider's seat into a tax on the rider.
+       */
+      const ratio = total > 0 ? floor / total : 1;
+      driver = kobo(driver * ratio);
+      flooredTo = floor;
+      total = floor;
+    }
+
+    return {
+      totalNgn: total,
+      driverNgn: driver,
+      breakdown: priced.customer,
+      ratePerSeatKm: priced.ratePerSeatKm,
+      minimumApplied: flooredTo,
+    };
+  }
+
+  // ── Loaders and authorization ────────────────────────────────────────
+
+  private async loadTrip(tripId: string) {
+    const trip = await this.tripsRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.driver', 'd')
+      .leftJoinAndSelect('d.user', 'u')
+      .where('t.id = :tripId', { tripId })
+      .getOne();
+    if (!trip) throw new NotFoundException('That trip is no longer listed.');
+    return trip;
+  }
+
+  private async loadBooking(bookingId: string) {
+    const booking = await this.bookingsRepo.findOne({ where: { id: bookingId } as any });
+    if (!booking) throw new NotFoundException('Booking not found.');
+    return booking;
+  }
+
+  /**
+   * The actor must be the driver of THIS trip.
+   *
+   * A guard proves who someone is, not what they own. JwtAuthGuard says
+   * a valid driver is calling; it says nothing about whether the trip in
+   * the URL is theirs, and without this check any driver on the platform
+   * could accept, decline or mark a no-show on a stranger's passenger.
+   */
+  private async assertTripDriver(tripId: string, userId: string) {
+    const trip = await this.loadTrip(tripId);
+    if ((trip as any).driver?.user?.id !== userId) {
+      throw new ForbiddenException('That trip belongs to another driver.');
+    }
+    return trip;
+  }
+
+  /** The actor must be the passenger who made THIS booking. */
+  private assertPassenger(booking: SeatBooking, userId: string) {
+    if (booking.passengerId !== userId) {
+      throw new ForbiddenException('That booking belongs to another passenger.');
+    }
+  }
+
+  // ── 1. Request: nothing is charged ───────────────────────────────────
+
+  /**
+   * A passenger asks for a segment.
+   *
+   * NOTHING is charged here, which is the point of the whole rebuild. A
+   * passenger used to pay the instant they tapped Book, so a driver who
+   * simply said no turned their money into a refund they had to chase
+   * through support. A decline now costs the passenger nothing and
+   * produces no refund to chase, because there was never a charge.
+   */
+  async requestSegment(passengerUserId: string, tripId: string, body: {
+    boardStopId?: string; alightStopId?: string; seats?: number;
+    luggage?: string; note?: string;
+  }) {
+    const trip: any = await this.loadTrip(tripId);
+
+    if (trip.driver?.user?.id === passengerUserId) {
+      throw new BadRequestException('You cannot book a seat on your own trip.');
+    }
+    if (trip.status !== DriverTripStatus.ACTIVE || new Date(trip.departAt) < new Date()) {
+      throw new BadRequestException('That trip has departed or was cancelled.');
+    }
+    if (!trip.acceptsPassengers || Number(trip.seatsTotal) < 1) {
+      throw new BadRequestException('That trip does not take passengers.');
+    }
+
+    const board  = await this.stopsRepo.findOne({ where: { id: body.boardStopId, tripId } as any });
+    const alight = await this.stopsRepo.findOne({ where: { id: body.alightStopId, tripId } as any });
+    if (!board || !alight) {
+      throw new BadRequestException('Pick your boarding and drop-off points from the stops this driver declared.');
+    }
+    if (alight.sequence <= board.sequence) {
+      throw new BadRequestException('Your drop-off has to be further along the route than where you board.');
+    }
+
+    const seats = Math.max(1, Math.min(Math.round(Number(body.seats ?? 1)), Number(trip.seatsTotal)));
+    const segmentKm = kobo(Number(alight.kmFromOrigin) - Number(board.kmFromOrigin));
+    if (!(segmentKm > 0)) {
+      throw new BadRequestException('That stretch has no measured distance yet. Ask the driver to re-declare the trip stops.');
+    }
+
+    const free = await this.seatsFreeAcross(trip, board.sequence, alight.sequence);
+    if (seats > free) {
+      throw new BadRequestException(free === 0
+        ? `Every seat is taken on at least one stretch between ${board.city} and ${alight.city}.`
+        : `Only ${free} seat${free === 1 ? '' : 's'} run the whole way from ${board.city} to ${alight.city}.`);
+    }
+
+    const quote = await this.priceSegment(trip, segmentKm, seats, body.luggage);
+
+    const booking = (await this.bookingsRepo.save(this.bookingsRepo.create({
+      tripId,
+      passengerId:    passengerUserId,
+      boardStopId:    board.id,
+      alightStopId:   alight.id,
+      boardSequence:  board.sequence,
+      alightSequence: alight.sequence,
+      seats,
+      segmentKm,
+      priceNgn:          quote.totalNgn,
+      driverEarningsNgn: quote.driverNgn,
+      luggage: body.luggage === 'large' ? 'large' : body.luggage === 'small' ? 'small' : null,
+      status:  SeatBookingStatus.REQUESTED,
+      passengerNote: (body.note ?? '').trim().slice(0, 300) || null,
+      requestedAt:   new Date(),
+    } as any))) as unknown as SeatBooking;
+
+    await this.record(booking.id, 'requested', 'passenger', passengerUserId, {
+      meta: { seats, segmentKm, quotedNgn: quote.totalNgn, boardStopId: board.id, alightStopId: alight.id },
+    });
+
+    this.push(
+      trip.driver?.user?.id,
+      'Seat request on your trip',
+      `${seats} seat${seats === 1 ? '' : 's'} from ${board.city} to ${alight.city}, ${segmentKm.toFixed(2)}km. Accept it and the passenger pays; decline and nobody is charged.`,
+      NotificationType.JOB_REQUEST,
+    );
+
+    return this.viewForPassenger(booking, trip, board, alight);
+  }
+
+  // ── 2. Accept or decline ─────────────────────────────────────────────
+
+  /**
+   * The driver agrees to carry this segment.
+   *
+   * The fare is re-priced here rather than trusted from the request row.
+   * A rate card can change between the ask and the answer, and the
+   * number the passenger is about to be charged has to be the number the
+   * catalogue says today.
+   */
+  async acceptRequest(driverUserId: string, bookingId: string, body: { note?: string } = {}) {
+    const booking = await this.loadBooking(bookingId);
+    const trip: any = await this.assertTripDriver(booking.tripId, driverUserId);
+
+    if (booking.status !== SeatBookingStatus.REQUESTED) {
+      throw new BadRequestException('That request is no longer waiting on you.');
+    }
+    if (trip.status !== DriverTripStatus.ACTIVE) {
+      throw new BadRequestException('That trip is no longer active.');
+    }
+
+    /**
+     * Capacity is checked again at acceptance even though acceptance
+     * holds no seat. Accepting into a stretch that filled up while the
+     * request sat there would produce a fare the passenger can never
+     * successfully pay, and a "your payment failed" screen is a worse
+     * answer than an honest "that stretch filled up".
+     */
+    const free = await this.seatsFreeAcross(trip, booking.boardSequence, booking.alightSequence);
+    if (booking.seats > free) {
+      throw new BadRequestException('That stretch filled up while this request was waiting. Decline it so the passenger can look elsewhere.');
+    }
+
+    const quote = await this.priceSegment(trip, Number(booking.segmentKm), booking.seats, booking.luggage);
+    const holdMin = await this.fee(FEE.UNPAID_HOLD_MIN);
+    const dueAt = new Date(Date.now() + Math.max(1, holdMin) * 60_000);
+
+    await this.bookingsRepo.update(booking.id, {
+      status:            SeatBookingStatus.PENDING_PAYMENT,
+      acceptedAt:        new Date(),
+      paymentDueAt:      dueAt,
+      priceNgn:          quote.totalNgn,
+      driverEarningsNgn: quote.driverNgn,
+      driverNote:        (body.note ?? '').trim().slice(0, 300) || null,
+    } as any);
+
+    await this.record(booking.id, 'accepted', 'driver', driverUserId, {
+      meta: { fareNgn: quote.totalNgn, paymentDueAt: dueAt.toISOString(), holdMinutes: holdMin },
+    });
+
+    const board  = await this.stopsRepo.findOne({ where: { id: booking.boardStopId } as any });
+    const alight = await this.stopsRepo.findOne({ where: { id: booking.alightStopId } as any });
+
+    this.push(
+      booking.passengerId,
+      'Your seat was accepted',
+      `${board?.city ?? 'Your stop'} to ${alight?.city ?? 'your drop-off'} is NGN ${quote.totalNgn.toFixed(2)} for ${booking.seats} seat${booking.seats === 1 ? '' : 's'}. Pay within ${Math.round(holdMin)} minutes to hold it: until then the seat stays open to others.`,
+      NotificationType.STATUS_UPDATE,
+    );
+
+    return this.detail(booking.id, driverUserId);
+  }
+
+  /** The driver says no. Costs the passenger nothing, refunds nothing. */
+  async declineRequest(driverUserId: string, bookingId: string, body: { reason?: string } = {}) {
+    const booking = await this.loadBooking(bookingId);
+    await this.assertTripDriver(booking.tripId, driverUserId);
+
+    if (![SeatBookingStatus.REQUESTED, SeatBookingStatus.PENDING_PAYMENT].includes(booking.status)) {
+      throw new BadRequestException('That request is no longer waiting on you.');
+    }
+    if (booking.paidAt) {
+      throw new BadRequestException('That seat is already paid for. Cancelling it is a refund decision, so raise it with support.');
+    }
+
+    const reason = (body.reason ?? '').trim().slice(0, 200) || 'The driver declined this seat request.';
+    await this.bookingsRepo.update(booking.id, {
+      status:             SeatBookingStatus.CANCELLED,
+      declinedAt:         new Date(),
+      cancelledAt:        new Date(),
+      cancellationReason: reason,
+      refundNgn:          0,
+    } as any);
+    await this.record(booking.id, 'declined', 'driver', driverUserId, { note: reason });
+
+    this.push(
+      booking.passengerId,
+      'Seat request declined',
+      `${reason} You were never charged, so there is nothing to refund. Other trips are listed on the same route.`,
+      NotificationType.STATUS_UPDATE,
+    );
+    return { ok: true };
+  }
+
+  // ── 3. Pay: the seat is held only when the money lands ───────────────
+
+  /**
+   * Mint the delivery row this fare will be charged against.
+   *
+   * Escrow, the rider's job list, tracking and the in-trip chat all hang
+   * off a Delivery, so the passenger pays through the same Flutterwave
+   * rail as everything else on the platform. It is created HERE and not
+   * at request time because there is no reason to mint a payable row for
+   * a request the driver may decline.
+   *
+   * The seat is still NOT held. The booking stays pending_payment until
+   * the webhook confirms the money, which is what keeps the segment
+   * sellable in the meantime: an unpaid request must never quietly block
+   * capacity while somebody thinks about their card.
+   */
+  async startPayment(passengerUserId: string, bookingId: string) {
+    const booking = await this.loadBooking(bookingId);
+    this.assertPassenger(booking, passengerUserId);
+
+    if (booking.status !== SeatBookingStatus.PENDING_PAYMENT) {
+      throw new BadRequestException(booking.status === SeatBookingStatus.REQUESTED
+        ? 'The driver has not accepted this request yet.'
+        : 'This booking is not waiting on payment.');
+    }
+    if (booking.paymentDueAt && new Date(booking.paymentDueAt).getTime() < Date.now()) {
+      throw new BadRequestException('This accepted request expired. Ask again and the driver can re-accept it.');
+    }
+    if (booking.deliveryId) {
+      return { bookingId: booking.id, deliveryId: booking.deliveryId, amountNgn: kobo(Number(booking.priceNgn)) };
+    }
+
+    const trip: any = await this.loadTrip(booking.tripId);
+    const board  = await this.stopsRepo.findOne({ where: { id: booking.boardStopId } as any });
+    const alight = await this.stopsRepo.findOne({ where: { id: booking.alightStopId } as any });
+    if (!board || !alight) throw new BadRequestException('The stops on this trip changed. Ask for the segment again.');
+
+    const free = await this.seatsFreeAcross(trip, booking.boardSequence, booking.alightSequence, booking.id);
+    if (booking.seats > free) {
+      throw new BadRequestException('That stretch filled up before this was paid for. Nothing was charged.');
+    }
+
+    let trackingCode = 'SRS-' + secureCode(8);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const exists = await this.deliveriesRepo.exist({ where: { trackingCode } });
+      if (!exists) break;
+      trackingCode = 'SRS-' + secureCode(8);
+    }
+
+    const luggageLabel = booking.luggage === 'large'
+      ? ' · large luggage'
+      : booking.luggage === 'small' ? ' · small bag' : '';
+
+    const delivery: any = await this.deliveriesRepo.save(this.deliveriesRepo.create({
+      trackingCode,
+      customer: { id: passengerUserId } as any,
+      kind: 'ride',
+      tripId: booking.tripId,
+      // Board and alight, not the trip's endpoints: the passenger is
+      // buying this stretch and the map has to show the stretch.
+      pickupAddress:  board.address,
+      pickupLat:      Number(board.latitude),
+      pickupLng:      Number(board.longitude),
+      dropoffAddress: alight.address,
+      dropoffLat:     Number(alight.latitude),
+      dropoffLng:     Number(alight.longitude),
+      packageDescription: `Seat x${booking.seats} · ${board.city} → ${alight.city}${luggageLabel}`,
+      categoryCode: null,
+      weightKg:     null,
+      distanceKm:   Number(booking.segmentKm),
+      price:          kobo(Number(booking.priceNgn)),
+      driverEarnings: kobo(Number(booking.driverEarningsNgn)),
+      paymentMethod:  'card',
+      status: DeliveryStatus.PENDING,
+      termsAcceptedAt: new Date(),
+    } as any));
+
+    await this.bookingsRepo.update(booking.id, { deliveryId: delivery.id } as any);
+
+    return {
+      bookingId:  booking.id,
+      deliveryId: delivery.id,
+      trackingCode: delivery.trackingCode,
+      amountNgn:  kobo(Number(booking.priceNgn)),
+      payWith:    'POST /api/v1/payments/initiate with this deliveryId',
+    };
+  }
+
+  /**
+   * The money landed. Only NOW is the seat held.
+   *
+   * Called from DeliveriesService.kickDispatch, which the payments
+   * webhook fires once escrow is confirmed.
+   *
+   * The capacity check runs again inside a transaction that locks the
+   * trip row, because "the segment stays sellable until payment lands"
+   * has a consequence somebody has to own: two passengers CAN both be
+   * paying for the last seat at the same time. The lock serialises them,
+   * the first one to land keeps the seat, and the second is refunded in
+   * full rather than discovering on the road that they have no seat.
+   */
+  async confirmPaidByDelivery(deliveryId: string): Promise<boolean> {
+    const booking = await this.bookingsRepo.findOne({ where: { deliveryId } as any });
+    if (!booking) return false;
+
+    /**
+     * Money that landed on a booking already closed.
+     *
+     * The unpaid window can expire, or the passenger can cancel, in the
+     * seconds while a card is authorising. Without this the payment is
+     * swallowed: escrow holds a fare against a booking that will never
+     * hold a seat, and nobody is watching that row. Full refund, no fee,
+     * because the passenger did nothing wrong.
+     */
+    if (booking.status === SeatBookingStatus.CANCELLED && !booking.paidAt) {
+      this.logger.warn(`Seat booking ${booking.id} was already closed when its payment landed; refunding in full`);
+      await this.record(booking.id, 'capacity_lost', 'system', null, {
+        note: 'Payment landed after this booking had already closed.',
+        meta: { refundNgn: kobo(Number(booking.priceNgn)), deliveryId },
+      });
+      await this.bookingsRepo.update(booking.id, { refundNgn: kobo(Number(booking.priceNgn)) } as any);
+      try {
+        await this.paymentsServiceRef?.refundEscrow?.(deliveryId, booking.passengerId, 0);
+      } catch (e: any) {
+        this.logger.error(`CRITICAL: late payment on closed seat booking ${booking.id} not refunded: ${e?.message ?? e}`);
+      }
+      this.push(booking.passengerId, 'Refunded in full',
+        'Your payment arrived after this seat request had already closed, so every naira is on its way back to your card with no fee.',
+        NotificationType.STATUS_UPDATE, deliveryId);
+      return true;
+    }
+
+    if (booking.status !== SeatBookingStatus.PENDING_PAYMENT) return true;
+
+    const trip: any = await this.loadTrip(booking.tripId);
+    let won = false;
+    // A concurrent call got there first. Not a loss, but not ours to
+    // announce either: notifying again would push the passenger twice
+    // and write a second 'paid' line into an evidence trail whose whole
+    // value is that it reads as what actually happened, once.
+    let settledElsewhere = false;
+
+    await this.ds.transaction(async (manager) => {
+      // Serialise every concurrent payment on this trip. Without it two
+      // webhooks can both read "one seat free" and both take it.
+      await manager.query(`SELECT "id" FROM "driver_trips" WHERE "id" = $1 FOR UPDATE`, [booking.tripId]);
+
+      const fresh = await manager.query(
+        `SELECT "status" FROM "seat_bookings" WHERE "id" = $1`, [booking.id],
+      );
+      if (String(fresh?.[0]?.status) !== SeatBookingStatus.PENDING_PAYMENT) {
+        settledElsewhere = true;
+        return;
+      }
+
+      const peak   = await this.peakSeatsTaken(booking.tripId, booking.boardSequence, booking.alightSequence, booking.id, manager);
+      const legacy = Math.max(0, Number(trip.seatsBooked ?? 0));
+      const free   = Math.max(0, Number(trip.seatsTotal ?? 0) - legacy - peak);
+
+      if (booking.seats > free) return;
+
+      await manager.query(
+        `UPDATE "seat_bookings"
+            SET "status" = $2, "paid_at" = NOW(), "updated_at" = NOW()
+          WHERE "id" = $1`,
+        [booking.id, SeatBookingStatus.BOOKED],
+      );
+      won = true;
+    });
+
+    if (settledElsewhere) return true;
+    if (!won) {
+      await this.loseCapacityRace(booking, trip);
+      return true;
+    }
+
+    await this.record(booking.id, 'paid', 'system', null, {
+      meta: { deliveryId, amountNgn: kobo(Number(booking.priceNgn)) },
+    });
+
+    /**
+     * Assign the rider straight away rather than re-offering the job.
+     *
+     * The offer already happened, in the open, before any money moved:
+     * this driver accepted this exact segment at this exact fare. Asking
+     * them again through the generic dispatch path would let them walk
+     * away from an agreement the passenger has now paid against.
+     */
+    const driverId = trip.driver?.id;
+    if (driverId) {
+      // Guarded on driver IS NULL so a retried webhook cannot reassign a
+      // delivery somebody else has already picked up.
+      await this.deliveriesRepo.update(
+        { id: deliveryId, driver: IsNull() } as any,
+        { driver: { id: driverId }, status: DeliveryStatus.ASSIGNED, assignedAt: new Date() } as any,
+      ).catch((e: any) => this.logger.error(`seat booking ${booking.id} paid but not assigned: ${e?.message ?? e}`));
+    }
+
+    const board  = await this.stopsRepo.findOne({ where: { id: booking.boardStopId } as any });
+    const alight = await this.stopsRepo.findOne({ where: { id: booking.alightStopId } as any });
+
+    this.push(booking.passengerId, 'Your seat is held',
+      `${board?.city ?? 'Your stop'} to ${alight?.city ?? 'your drop-off'} is paid and the seat is yours. Watch for the driver marking they have arrived at your stop.`,
+      NotificationType.PAYMENT_RECEIVED, deliveryId);
+    this.push(trip.driver?.user?.id, 'Seat paid for',
+      `${booking.seats} seat${booking.seats === 1 ? '' : 's'} from ${board?.city ?? 'the pickup'} to ${alight?.city ?? 'the drop-off'} is paid. It is on your job list.`,
+      NotificationType.DELIVERY_ASSIGNED, deliveryId);
+
+    return true;
+  }
+
+  /**
+   * Two people paid for the last seat and this one lost the race.
+   *
+   * A full refund, no fee, because the passenger did nothing wrong: they
+   * were told the seat was open and it was, right up until somebody
+   * else's webhook landed first.
+   */
+  private async loseCapacityRace(booking: SeatBooking, trip: any) {
+    const reason = 'That stretch sold out while your payment was going through.';
+    await this.bookingsRepo.update(booking.id, {
+      status:             SeatBookingStatus.CANCELLED,
+      cancelledAt:        new Date(),
+      cancellationReason: reason,
+      refundNgn:          kobo(Number(booking.priceNgn)),
+    } as any);
+    await this.record(booking.id, 'capacity_lost', 'system', null, {
+      note: reason,
+      meta: { refundNgn: kobo(Number(booking.priceNgn)) },
+    });
+
+    if (booking.deliveryId) {
+      await this.deliveriesRepo.update(booking.deliveryId, {
+        cancelledAt:        new Date(),
+        cancellationFeeNgn: 0,
+        cancellationReason: reason,
+      } as any).catch(() => {});
+      await this.setDeliveryStatus(booking.deliveryId, DeliveryStatus.CANCELLED);
+      try {
+        await this.paymentsServiceRef?.refundEscrow?.(booking.deliveryId, booking.passengerId, 0);
+      } catch (e: any) {
+        this.logger.error(`CRITICAL: seat booking ${booking.id} lost its seat and the refund failed: ${e?.message ?? e}`);
+      }
+    }
+
+    this.push(booking.passengerId, 'Seat sold out, refunded in full',
+      `${reason} Every naira is on its way back to your card, with no fee. Other trips run the same route.`,
+      NotificationType.STATUS_UPDATE, booking.deliveryId ?? undefined);
+    this.logger.warn(`Seat booking ${booking.id} lost the capacity race on trip ${trip?.id}; refunded in full`);
+  }
+
+  /**
+   * Accepted, never paid, window gone.
+   *
+   * Both sides are told. The passenger, so they know the seat is open
+   * again and can pay for another; the driver, so a seat they mentally
+   * counted as sold goes back on the market rather than travelling empty
+   * because nobody said anything.
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async expireUnpaidSeatHolds() {
+    try {
+      const stale = await this.bookingsRepo
+        .createQueryBuilder('b')
+        .where('b.status = :status', { status: SeatBookingStatus.PENDING_PAYMENT })
+        .andWhere('b.paymentDueAt IS NOT NULL')
+        .andWhere('b.paymentDueAt < NOW()')
+        .andWhere('b.paidAt IS NULL')
+        .take(100)
+        .getMany();
+
+      for (const booking of stale) {
+        const reason = 'This accepted seat request expired before it was paid for.';
+        await this.bookingsRepo.update(booking.id, {
+          status:             SeatBookingStatus.CANCELLED,
+          cancelledAt:        new Date(),
+          cancellationReason: reason,
+          refundNgn:          0,
+        } as any);
+        await this.record(booking.id, 'payment_expired', 'system', null, { note: reason });
+
+        if (booking.deliveryId) {
+          await this.deliveriesRepo.update(booking.deliveryId, {
+            cancelledAt:        new Date(),
+            cancellationFeeNgn: 0,
+            cancellationReason: reason,
+          } as any).catch(() => {});
+          await this.setDeliveryStatus(booking.deliveryId, DeliveryStatus.CANCELLED);
+        }
+
+        const trip: any = await this.loadTrip(booking.tripId).catch(() => null);
+        this.push(booking.passengerId, 'Seat request expired',
+          'The payment window on your accepted seat ran out, so the seat went back on the market. You were not charged. Ask again and the driver can accept it afresh.',
+          NotificationType.STATUS_UPDATE);
+        this.push(trip?.driver?.user?.id, 'Unpaid seat released',
+          `${booking.seats} seat${booking.seats === 1 ? '' : 's'} you accepted was never paid for, so it is back on sale for that stretch.`,
+          NotificationType.STATUS_UPDATE);
+      }
+      if (stale.length) this.logger.log(`Released ${stale.length} unpaid seat hold(s)`);
+    } catch (e: any) {
+      this.logger.warn(`expireUnpaidSeatHolds sweep failed: ${e?.message ?? e}`);
+    }
+  }
+
+  // ── 5. The no-show clock, with evidence ──────────────────────────────
+
+  /**
+   * The rider is at the stop and the clock starts.
+   *
+   * The GPS fix is recorded because a forfeited fare will be disputed,
+   * and "I was at the stop" is a claim while a coordinate at a timestamp
+   * is something support can compare against the declared stop. Without
+   * it this is one person's word against another.
+   */
+  async markArrivedAtStop(driverUserId: string, bookingId: string, body: { lat?: number; lng?: number } = {}) {
+    const booking = await this.loadBooking(bookingId);
+    const trip: any = await this.assertTripDriver(booking.tripId, driverUserId);
+
+    if (booking.status !== SeatBookingStatus.BOOKED) {
+      throw new BadRequestException('That seat is not waiting to be picked up.');
+    }
+    if (booking.arrivedAt) {
+      return { arrivedAt: booking.arrivedAt, noShowDeadlineAt: booking.noShowDeadlineAt };
+    }
+
+    const waitMin  = await this.fee(FEE.NO_SHOW_WAIT_MIN);
+    const now      = new Date();
+    const deadline = new Date(now.getTime() + Math.max(1, waitMin) * 60_000);
+
+    await this.bookingsRepo.update(booking.id, {
+      arrivedAt:        now,
+      arrivedLat:       Number.isFinite(Number(body.lat)) ? Number(body.lat) : null,
+      arrivedLng:       Number.isFinite(Number(body.lng)) ? Number(body.lng) : null,
+      noShowDeadlineAt: deadline,
+    } as any);
+    await this.record(booking.id, 'arrived', 'driver', driverUserId, {
+      lat: body.lat, lng: body.lng,
+      meta: { waitMinutes: waitMin, deadlineAt: deadline.toISOString() },
+    });
+
+    const board = await this.stopsRepo.findOne({ where: { id: booking.boardStopId } as any });
+    // Push and in-trip chat are the only channels. No SMS.
+    this.push(booking.passengerId, 'Your ride is at the stop',
+      `The driver is waiting at ${board?.city ?? 'your stop'} and can leave in ${Math.round(waitMin)} minutes. Message them in the trip chat if you are close.`,
+      NotificationType.STATUS_UPDATE, booking.deliveryId ?? undefined);
+
+    return {
+      arrivedAt: now,
+      noShowDeadlineAt: deadline,
+      waitMinutes: waitMin,
+      // Told to BOTH sides: a countdown only one party can see is not a
+      // fair warning, it is an ambush.
+      passenger: passengerIdentityForDriver(await this.loadPassengerRow(booking.passengerId)),
+      trip: { id: trip.id },
+    };
+  }
+
+  /**
+   * The rider reached out. Recorded, one row per attempt.
+   *
+   * This is evidence, not decoration. When the fare is forfeited the
+   * passenger will say nobody tried to contact them, and a list of
+   * timestamped attempts is the only thing that answers that.
+   */
+  async recordContactAttempt(driverUserId: string, bookingId: string, body: { channel?: string; note?: string } = {}) {
+    const booking = await this.loadBooking(bookingId);
+    await this.assertTripDriver(booking.tripId, driverUserId);
+
+    if (![SeatBookingStatus.BOOKED, SeatBookingStatus.BOARDED].includes(booking.status)) {
+      throw new BadRequestException('That seat is not live.');
+    }
+
+    // Push and in-trip chat ONLY. SMS is a standing deferred decision at
+    // SEIRS, so there is no third channel to record and none is accepted.
+    const channel = body.channel === 'chat' ? 'chat' : 'push';
+    const note = (body.note ?? '').trim().slice(0, 300) || null;
+
+    await this.ds.query(
+      `UPDATE "seat_bookings" SET "contact_attempts" = "contact_attempts" + 1, "updated_at" = NOW() WHERE "id" = $1`,
+      [booking.id],
+    );
+    await this.record(booking.id, 'contact_attempt', 'driver', driverUserId, { note, meta: { channel } });
+
+    if (channel === 'push') {
+      this.push(booking.passengerId, 'Your driver is trying to reach you',
+        note ?? 'The driver is waiting at your boarding point. Open the trip chat to reply.',
+        NotificationType.STATUS_UPDATE, booking.deliveryId ?? undefined);
+    }
+
+    const fresh = await this.loadBooking(booking.id);
+    return { contactAttempts: fresh.contactAttempts, channel };
+  }
+
+  /**
+   * The clock ran out and the rider leaves. The fare is forfeit.
+   *
+   * The seat is NOT released. It stays held to the passenger's alight
+   * stop because the vehicle already committed to carrying that space
+   * empty, and selling it now would charge two people for one seat on
+   * the same stretch of road.
+   *
+   * The departure GPS and stamp are written for the dispute that is
+   * coming, alongside the arrival fix and every contact attempt.
+   */
+  async markNoShow(driverUserId: string, bookingId: string, body: { lat?: number; lng?: number; note?: string } = {}) {
+    const booking = await this.loadBooking(bookingId);
+    await this.assertTripDriver(booking.tripId, driverUserId);
+
+    if (booking.status !== SeatBookingStatus.BOOKED) {
+      throw new BadRequestException('That seat is not waiting to be picked up.');
+    }
+    if (!booking.arrivedAt || !booking.noShowDeadlineAt) {
+      throw new BadRequestException('Mark that you have arrived at the stop first. The wait has to be on the record before a fare can be forfeited.');
+    }
+    const deadline = new Date(booking.noShowDeadlineAt).getTime();
+    if (Date.now() < deadline) {
+      const leftMs = deadline - Date.now();
+      throw new BadRequestException(`The passenger still has ${Math.ceil(leftMs / 60_000)} minute(s) of the agreed wait.`);
+    }
+
+    const now = new Date();
+    await this.bookingsRepo.update(booking.id, {
+      status:      SeatBookingStatus.NO_SHOW,
+      noShowAt:    now,
+      departedLat: Number.isFinite(Number(body.lat)) ? Number(body.lat) : null,
+      departedLng: Number.isFinite(Number(body.lng)) ? Number(body.lng) : null,
+      refundNgn:   0,
+    } as any);
+    await this.record(booking.id, 'departed_no_show', 'driver', driverUserId, {
+      lat: body.lat, lng: body.lng,
+      note: (body.note ?? '').trim().slice(0, 300) || null,
+      meta: {
+        arrivedAt:        booking.arrivedAt,
+        deadlineAt:       booking.noShowDeadlineAt,
+        contactAttempts:  booking.contactAttempts,
+        forfeitedNgn:     kobo(Number(booking.priceNgn)),
+        seatHeldToStopId: booking.alightStopId,
+      },
+    });
+
+    /**
+     * The delivery closes as FAILED, and the money is NOT moved.
+     *
+     * FAILED is the honest record: the vehicle ran, the passenger did
+     * not travel. It is deliberately not DELIVERED, which would release
+     * escrow to the rider, and deliberately not CANCELLED, which is the
+     * shape a refund is issued against. Forfeit means the fare is not
+     * automatically returned, and doing nothing with it is exactly that:
+     * it stays in escrow with the evidence attached until the split
+     * between rider and platform on a no-show is decided, because that
+     * is a money policy and not something this method may invent.
+     */
+    if (booking.deliveryId) {
+      await this.deliveriesRepo.update(booking.deliveryId, {
+        cancellationReason: 'Passenger no-show: the fare is forfeit and held pending settlement.',
+      } as any).catch(() => {});
+      await this.setDeliveryStatus(booking.deliveryId, DeliveryStatus.FAILED);
+    }
+
+    this.push(booking.passengerId, 'The vehicle left without you',
+      `The driver waited the full agreed time at your boarding point and has gone on. The fare is forfeit under the no-show policy. If you believe this is wrong, raise it with support: the wait, the driver's position and every attempt to reach you are on the record.`,
+      NotificationType.STATUS_UPDATE, booking.deliveryId ?? undefined);
+
+    this.logger.warn(`Seat booking ${booking.id} marked no-show after ${booking.contactAttempts} contact attempt(s); seat stays held to stop ${booking.alightStopId}; fare held in escrow pending settlement`);
+    return { ok: true, seatReleased: false };
+  }
+
+  // ── 4. Board and drop ────────────────────────────────────────────────
+
+  /** Aboard. Stamped with time and a GPS fix, like every other step. */
+  async markBoarded(driverUserId: string, bookingId: string, body: { lat?: number; lng?: number } = {}) {
+    const booking = await this.loadBooking(bookingId);
+    await this.assertTripDriver(booking.tripId, driverUserId);
+
+    if (booking.status !== SeatBookingStatus.BOOKED) {
+      throw new BadRequestException('Only a paid, held seat can be boarded.');
+    }
+
+    await this.bookingsRepo.update(booking.id, {
+      status:    SeatBookingStatus.BOARDED,
+      boardedAt: new Date(),
+      boardLat:  Number.isFinite(Number(body.lat)) ? Number(body.lat) : null,
+      boardLng:  Number.isFinite(Number(body.lng)) ? Number(body.lng) : null,
+    } as any);
+    await this.record(booking.id, 'boarded', 'driver', driverUserId, { lat: body.lat, lng: body.lng });
+
+    await this.setDeliveryStatus(booking.deliveryId, DeliveryStatus.IN_TRANSIT);
+
+    this.push(booking.passengerId, 'You are marked aboard',
+      'Have a safe trip. Your seat is held to your drop-off point.',
+      NotificationType.STATUS_UPDATE, booking.deliveryId ?? undefined);
+    return { ok: true };
+  }
+
+  /**
+   * Dropped off. THIS is what frees the seat.
+   *
+   * The moment this lands, every segment after the passenger's alight
+   * stop stops counting them, which is the whole reason a passenger
+   * getting out at Osogbo can free a seat for somebody waiting in
+   * Lokoja. Nothing else has to happen and no counter has to be
+   * decremented: the capacity query simply stops seeing a dropped
+   * booking.
+   *
+   * A rider could abuse this by marking somebody dropped who is still
+   * aboard and then selling the seat twice. Three controls answer that,
+   * and NONE of them relies on trusting the rider:
+   *
+   *   1. The drop is geofenced. Marking it far from the alight stop is
+   *      allowed, because roads close and plans change, but the distance
+   *      is measured, stored and flagged.
+   *   2. Capacity is enforced per segment at booking time, so a
+   *      double-sold segment is refused when the second passenger books
+   *      rather than discovered by two people sharing a seat on the road.
+   *   3. The passenger confirms. An unconfirmed drop goes to a review
+   *      queue instead of blocking the rider mid-journey, because
+   *      freezing a moving vehicle over an unanswered phone punishes the
+   *      wrong person.
+   */
+  async markDropped(driverUserId: string, bookingId: string, body: { lat?: number; lng?: number } = {}) {
+    const booking = await this.loadBooking(bookingId);
+    await this.assertTripDriver(booking.tripId, driverUserId);
+
+    if (booking.status !== SeatBookingStatus.BOARDED) {
+      throw new BadRequestException('Only a passenger marked aboard can be dropped.');
+    }
+
+    const alight = await this.stopsRepo.findOne({ where: { id: booking.alightStopId } as any });
+    const geofenceM = await this.fee(FEE.DROP_GEOFENCE_M);
+
+    let distanceM: number | null = null;
+    let offGeofence = false;
+    if (alight && Number.isFinite(Number(body.lat)) && Number.isFinite(Number(body.lng))) {
+      distanceM = kobo(haversineM(
+        Number(body.lat), Number(body.lng),
+        Number(alight.latitude), Number(alight.longitude),
+      ));
+      offGeofence = distanceM > geofenceM;
+    }
+
+    const now = new Date();
+    await this.bookingsRepo.update(booking.id, {
+      status:          SeatBookingStatus.DROPPED,
+      droppedAt:       now,
+      dropLat:         Number.isFinite(Number(body.lat)) ? Number(body.lat) : null,
+      dropLng:         Number.isFinite(Number(body.lng)) ? Number(body.lng) : null,
+      dropDistanceM:   distanceM,
+      dropOffGeofence: offGeofence,
+      dropReviewReason: offGeofence
+        ? `Drop marked ${Math.round(distanceM ?? 0)}m from the declared stop.`
+        : distanceM === null
+          ? 'Drop marked with no position fix.'
+          : null,
+    } as any);
+    await this.record(booking.id, 'dropped', 'driver', driverUserId, {
+      lat: body.lat, lng: body.lng,
+      meta: { distanceM, geofenceM, offGeofence, alightStopId: booking.alightStopId },
+    });
+
+    /**
+     * DELIVERED is what pays the rider.
+     *
+     * updateStatus releases escrow to them, so this must not be an
+     * UPDATE against the table: a drop written behind that method's back
+     * would end the passenger's journey and leave the rider's fare
+     * locked in escrow with nothing left to release it. Rides are exempt
+     * from the proof-photo gate, so a seat closes cleanly here.
+     */
+    await this.setDeliveryStatus(booking.deliveryId, DeliveryStatus.DELIVERED);
+
+    this.push(booking.passengerId, 'Confirm you were dropped off',
+      `The driver marked you dropped at ${alight?.city ?? 'your stop'}. Confirm it in the app, or say it did not happen: an unconfirmed drop goes to our review queue.`,
+      NotificationType.STATUS_UPDATE, booking.deliveryId ?? undefined);
+
+    if (offGeofence) {
+      this.logger.warn(`Seat booking ${booking.id} dropped ${Math.round(distanceM ?? 0)}m from stop ${booking.alightStopId} (geofence ${geofenceM}m)`);
+    }
+    return { ok: true, seatReleasedFromSequence: booking.alightSequence, distanceM, flagged: offGeofence };
+  }
+
+  /** The passenger agrees they got out. Closes the review question. */
+  async confirmDrop(passengerUserId: string, bookingId: string) {
+    const booking = await this.loadBooking(bookingId);
+    this.assertPassenger(booking, passengerUserId);
+    if (booking.status !== SeatBookingStatus.DROPPED) {
+      throw new BadRequestException('That seat has not been marked dropped.');
+    }
+    await this.bookingsRepo.update(booking.id, {
+      dropConfirmedAt: new Date(),
+      dropDisputedAt:  null,
+      dropReviewReason: booking.dropOffGeofence ? booking.dropReviewReason : null,
+    } as any);
+    await this.record(booking.id, 'drop_confirmed', 'passenger', passengerUserId, {});
+    return { ok: true };
+  }
+
+  /**
+   * The passenger says the drop never happened.
+   *
+   * This does NOT reverse the seat release or stop the vehicle. It flags
+   * the booking for the review queue, which is the honest thing to do
+   * while a trip is still in motion: the rider may already have sold the
+   * freed segment to somebody now sitting in it.
+   */
+  async disputeDrop(passengerUserId: string, bookingId: string, body: { reason?: string } = {}) {
+    const booking = await this.loadBooking(bookingId);
+    this.assertPassenger(booking, passengerUserId);
+    if (booking.status !== SeatBookingStatus.DROPPED) {
+      throw new BadRequestException('That seat has not been marked dropped.');
+    }
+    const reason = (body.reason ?? '').trim().slice(0, 200) || 'The passenger says this drop did not happen.';
+    await this.bookingsRepo.update(booking.id, {
+      dropDisputedAt:   new Date(),
+      dropReviewReason: reason,
+    } as any);
+    await this.record(booking.id, 'drop_disputed', 'passenger', passengerUserId, { note: reason });
+    this.logger.warn(`Seat booking ${booking.id} drop disputed by passenger: ${reason}`);
+    return { ok: true, underReview: true };
+  }
+
+  /**
+   * Drops nobody vouched for.
+   *
+   * Unconfirmed after a grace window, marked outside the geofence, or
+   * actively disputed. Ops works this list; the rider is never blocked
+   * mid-journey by it.
+   */
+  async dropReviewQueue(limit = 50) {
+    const graceMin = await this.fee(FEE.NO_SHOW_WAIT_MIN);
+    const rows = await this.bookingsRepo
+      .createQueryBuilder('b')
+      .where('b.status = :dropped', { dropped: SeatBookingStatus.DROPPED })
+      .andWhere('b.dropConfirmedAt IS NULL')
+      .andWhere(
+        '(b.dropDisputedAt IS NOT NULL OR b.dropOffGeofence = true OR b.droppedAt < :cutoff)',
+        { cutoff: new Date(Date.now() - Math.max(1, graceMin) * 60_000) },
+      )
+      .orderBy('b.droppedAt', 'DESC')
+      .take(Math.min(200, Math.max(1, limit)))
+      .getMany();
+
+    return rows.map((b) => ({
+      id: b.id,
+      tripId: b.tripId,
+      passengerId: b.passengerId,
+      seats: b.seats,
+      droppedAt: b.droppedAt,
+      dropDistanceM: b.dropDistanceM === null ? null : Number(b.dropDistanceM),
+      dropOffGeofence: b.dropOffGeofence,
+      dropDisputedAt: b.dropDisputedAt,
+      reason: b.dropReviewReason,
+      priceNgn: kobo(Number(b.priceNgn)),
+    }));
+  }
+
+  // ── Passenger cancellation ───────────────────────────────────────────
+
+  /**
+   * The passenger pulls out.
+   *
+   * Before payment there is nothing to settle. After payment the
+   * published policy applies: outside the free window the fare comes
+   * back less the card processing already sunk, which is the same rule
+   * every other cancelled booking on the platform follows, and inside it
+   * only the admin-set share returns. Both numbers are Fee Catalogue
+   * rows so the published policy can move without a deploy.
+   */
+  async cancelByPassenger(passengerUserId: string, bookingId: string, body: { reason?: string } = {}) {
+    const booking = await this.loadBooking(bookingId);
+    this.assertPassenger(booking, passengerUserId);
+
+    if ([SeatBookingStatus.CANCELLED, SeatBookingStatus.DROPPED, SeatBookingStatus.NO_SHOW].includes(booking.status)) {
+      throw new BadRequestException('That booking is already closed.');
+    }
+    if (booking.status === SeatBookingStatus.BOARDED) {
+      throw new BadRequestException('You are marked aboard. Speak to the driver, or raise it with support.');
+    }
+
+    const trip: any = await this.loadTrip(booking.tripId);
+    const reason = (body.reason ?? '').trim().slice(0, 200) || 'The passenger cancelled.';
+    const now = new Date();
+
+    let refund = 0;
+    if (booking.paidAt) {
+      const freeHours = await this.fee(FEE.FREE_CANCEL_HOURS);
+      const hoursToDeparture = (new Date(trip.departAt).getTime() - now.getTime()) / 3_600_000;
+      const paid = kobo(Number(booking.priceNgn));
+      if (hoursToDeparture > freeHours) {
+        const processingPct = await this.fee(FEE.CANCEL_PROCESSING_PCT);
+        refund = kobo(paid * (1 - Math.max(0, Math.min(100, processingPct)) / 100));
+      } else {
+        const latePct = await this.fee(FEE.LATE_CANCEL_REFUND_PCT);
+        refund = kobo(paid * (Math.max(0, Math.min(100, latePct)) / 100));
+      }
+    }
+
+    await this.bookingsRepo.update(booking.id, {
+      status:             SeatBookingStatus.CANCELLED,
+      cancelledAt:        now,
+      cancellationReason: reason,
+      refundNgn:          refund,
+    } as any);
+    await this.record(booking.id, 'cancelled', 'passenger', passengerUserId, {
+      note: reason,
+      meta: { refundNgn: refund, paidNgn: kobo(Number(booking.priceNgn)), departAt: trip.departAt },
+    });
+
+    if (booking.deliveryId) {
+      const paid = kobo(Number(booking.priceNgn));
+      await this.deliveriesRepo.update(booking.deliveryId, {
+        cancelledAt:        now,
+        cancellationFeeNgn: kobo(paid - refund),
+        cancellationReason: reason,
+      } as any).catch(() => {});
+      await this.setDeliveryStatus(booking.deliveryId, DeliveryStatus.CANCELLED);
+      if (booking.paidAt && refund > 0) {
+        try {
+          await this.paymentsServiceRef?.refundEscrow?.(booking.deliveryId, booking.passengerId, kobo(paid - refund));
+        } catch (e: any) {
+          this.logger.error(`seat booking ${booking.id} cancelled but refund failed: ${e?.message ?? e}`);
+        }
+      }
+    }
+
+    this.push(trip.driver?.user?.id, 'A passenger cancelled',
+      `${booking.seats} seat${booking.seats === 1 ? '' : 's'} came free on your trip. That stretch is back on sale.`,
+      NotificationType.STATUS_UPDATE);
+
+    return { ok: true, refundNgn: refund };
+  }
+
+  // ── Reads ────────────────────────────────────────────────────────────
+
+  private async loadPassengerRow(userId: string) {
+    const rows = await this.ds.query(
+      `SELECT "id", "name", "firstName", "profilePhoto", "phone" FROM "users" WHERE "id" = $1`,
+      [userId],
+    );
+    return rows?.[0] ?? null;
+  }
+
+  private viewForPassenger(booking: SeatBooking, trip: any, board: TripStop, alight: TripStop) {
+    return {
+      id: booking.id,
+      tripId: booking.tripId,
+      status: booking.status,
+      seats: booking.seats,
+      segmentKm: Number(booking.segmentKm),
+      priceNgn: kobo(Number(booking.priceNgn)),
+      luggage: booking.luggage,
+      passengerNote: booking.passengerNote,
+      driverNote: booking.driverNote,
+      board:  { id: booking.boardStopId,  city: board?.city  ?? null, address: board?.address  ?? null, sequence: booking.boardSequence },
+      alight: { id: booking.alightStopId, city: alight?.city ?? null, address: alight?.address ?? null, sequence: booking.alightSequence },
+      requestedAt: booking.requestedAt,
+      acceptedAt: booking.acceptedAt,
+      paymentDueAt: booking.paymentDueAt,
+      paidAt: booking.paidAt,
+      arrivedAt: booking.arrivedAt,
+      noShowDeadlineAt: booking.noShowDeadlineAt,
+      deliveryId: booking.deliveryId,
+      // Whitelisted, never the raw driver row: that row carries bank
+      // details, home address and every KYC document URL.
+      driver: {
+        name:   trip?.driver?.user?.name ?? 'Driver',
+        rating: trip?.driver?.rating ?? null,
+        ...vehicleIdentityForPassenger(trip?.driver),
+      },
+    };
+  }
+
+  /** One booking, as either side of it may see it. */
+  async detail(bookingId: string, actorUserId?: string) {
+    const booking = await this.loadBooking(bookingId);
+    const trip: any = await this.loadTrip(booking.tripId);
+    const isPassenger = actorUserId ? booking.passengerId === actorUserId : true;
+    const isDriver    = actorUserId ? trip?.driver?.user?.id === actorUserId : false;
+    if (actorUserId && !isPassenger && !isDriver) {
+      throw new ForbiddenException('That booking is not yours.');
+    }
+
+    const board  = await this.stopsRepo.findOne({ where: { id: booking.boardStopId } as any });
+    const alight = await this.stopsRepo.findOne({ where: { id: booking.alightStopId } as any });
+    const view: any = this.viewForPassenger(booking, trip, board as TripStop, alight as TripStop);
+
+    if (isDriver) {
+      view.passenger = passengerIdentityForDriver(await this.loadPassengerRow(booking.passengerId));
+      view.driverEarningsNgn = kobo(Number(booking.driverEarningsNgn));
+      view.contactAttempts = booking.contactAttempts;
+    }
+    return view;
+  }
+
+  /** Every request and booking on a trip, for the driver who owns it. */
+  async listForDriver(driverUserId: string, tripId: string) {
+    await this.assertTripDriver(tripId, driverUserId);
+    const rows = await this.bookingsRepo.find({
+      where: { tripId } as any,
+      order: { createdAt: 'DESC' },
+      take: 200,
+    });
+    const stops = await this.stopsRepo.find({ where: { tripId } as any, order: { sequence: 'ASC' } });
+    const byId = new Map(stops.map((s) => [s.id, s]));
+    const out: any[] = [];
+    for (const b of rows) {
+      out.push({
+        id: b.id,
+        status: b.status,
+        seats: b.seats,
+        segmentKm: Number(b.segmentKm),
+        priceNgn: kobo(Number(b.priceNgn)),
+        driverEarningsNgn: kobo(Number(b.driverEarningsNgn)),
+        luggage: b.luggage,
+        passengerNote: b.passengerNote,
+        board:  { id: b.boardStopId,  city: byId.get(b.boardStopId)?.city ?? null,  sequence: b.boardSequence },
+        alight: { id: b.alightStopId, city: byId.get(b.alightStopId)?.city ?? null, sequence: b.alightSequence },
+        requestedAt: b.requestedAt,
+        acceptedAt: b.acceptedAt,
+        paidAt: b.paidAt,
+        arrivedAt: b.arrivedAt,
+        noShowDeadlineAt: b.noShowDeadlineAt,
+        contactAttempts: b.contactAttempts,
+        deliveryId: b.deliveryId,
+        passenger: passengerIdentityForDriver(await this.loadPassengerRow(b.passengerId)),
+      });
+    }
+    return out;
+  }
+
+  /** A passenger's own bookings. */
+  async listForPassenger(passengerUserId: string) {
+    const rows = await this.bookingsRepo.find({
+      where: { passengerId: passengerUserId } as any,
+      order: { createdAt: 'DESC' },
+      take: 100,
+    });
+    const out: any[] = [];
+    for (const b of rows) {
+      const trip: any = await this.loadTrip(b.tripId).catch(() => null);
+      const board  = await this.stopsRepo.findOne({ where: { id: b.boardStopId } as any });
+      const alight = await this.stopsRepo.findOne({ where: { id: b.alightStopId } as any });
+      out.push(this.viewForPassenger(b, trip, board as TripStop, alight as TripStop));
+    }
+    return out;
+  }
+
+  /** The evidence trail, for the two parties and for support. */
+  async evidence(bookingId: string, actorUserId: string) {
+    const booking = await this.loadBooking(bookingId);
+    const trip: any = await this.loadTrip(booking.tripId);
+    if (booking.passengerId !== actorUserId && trip?.driver?.user?.id !== actorUserId) {
+      throw new ForbiddenException('That booking is not yours.');
+    }
+    const rows = await this.eventsRepo.find({
+      where: { bookingId } as any,
+      order: { createdAt: 'ASC' },
+      take: 200,
+    });
+    return rows.map((e) => ({
+      type: e.type, actorRole: e.actorRole, at: e.createdAt,
+      lat: e.lat === null ? null : Number(e.lat),
+      lng: e.lng === null ? null : Number(e.lng),
+      note: e.note, meta: e.meta,
+    }));
+  }
+
+  /**
+   * What a segment would cost, before anyone commits to anything.
+   *
+   * Priced off the stretch between the two stops, so the Osogbo
+   * passenger sees the Osogbo fare rather than the Abuja one.
+   */
+  async quoteSegment(tripId: string, boardStopId: string, alightStopId: string, seats: number, luggage?: string) {
+    const trip: any = await this.loadTrip(tripId);
+    const board  = await this.stopsRepo.findOne({ where: { id: boardStopId, tripId } as any });
+    const alight = await this.stopsRepo.findOne({ where: { id: alightStopId, tripId } as any });
+    if (!board || !alight) throw new BadRequestException('Those stops are not on this trip.');
+    if (alight.sequence <= board.sequence) {
+      throw new BadRequestException('Your drop-off has to be further along the route than where you board.');
+    }
+    const n = Math.max(1, Math.round(Number(seats) || 1));
+    const segmentKm = kobo(Number(alight.kmFromOrigin) - Number(board.kmFromOrigin));
+    const quote = await this.priceSegment(trip, segmentKm, n, luggage);
+    const free = await this.seatsFreeAcross(trip, board.sequence, alight.sequence);
+    return {
+      tripId, seats: n, segmentKm,
+      fromCity: board.city, toCity: alight.city,
+      totalNgn: quote.totalNgn,
+      ratePerSeatKm: quote.ratePerSeatKm,
+      minimumAppliedNgn: quote.minimumApplied,
+      seatsLeftOnSegment: free,
+      // Whole-route km, purely so a passenger can see what they are NOT
+      // being charged for any more.
+      tripRouteKm: trip.routeKm != null ? Number(trip.routeKm) : null,
+    };
+  }
+}
