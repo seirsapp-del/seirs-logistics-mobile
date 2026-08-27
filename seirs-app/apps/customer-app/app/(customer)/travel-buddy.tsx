@@ -24,6 +24,42 @@ const VEHICLE_LABEL: Record<string, string> = {
   motorcycle: 'Okada', tricycle: 'Keke', car: 'Car', van: 'Danfo / Bus',
 };
 
+/**
+ * The colour, make and model of the machine, as one phrase.
+ *
+ * "Okada" is not an identification. At Ojota at 5am there are two
+ * hundred of them and the passenger has paid for exactly one, so the
+ * card has to say "Red Bajaj Boxer" or it has said nothing useful. This
+ * is a safety line before it is a convenience one: someone who cannot
+ * pick their vehicle out of the row also cannot tell it apart from a
+ * stranger offering a lift.
+ *
+ * Every part is optional on the driver's record, so this builds from
+ * whatever is actually filled in rather than printing separators around
+ * blanks.
+ */
+const vehicleDescription = (driver: any): string => {
+  const parts = [driver?.vehicleColor, driver?.vehicleMake, driver?.vehicleModel]
+    .map((w: any) => String(w ?? '').trim())
+    .filter(Boolean);
+  if (!parts.length) return '';
+  const phrase = parts.join(' ');
+  return phrase.charAt(0).toUpperCase() + phrase.slice(1);
+};
+
+/** One sentence for the booking dialogs, or an honest admission. */
+const vehicleSummary = (driver: any): string => {
+  const desc  = vehicleDescription(driver);
+  const plate = String(driver?.vehiclePlate ?? '').trim();
+  const kind  = VEHICLE_LABEL[driver?.vehicleType] ?? driver?.vehicleType ?? 'vehicle';
+  if (desc && plate) return `Look for a ${desc.toLowerCase()}, plate ${plate}.`;
+  if (desc)          return `Look for a ${desc.toLowerCase()}. The plate is not listed: ask before you board.`;
+  if (plate)         return `Look for plate ${plate} on a ${String(kind).toLowerCase()}.`;
+  // Saying so beats an empty line: the passenger knows to ask in chat
+  // instead of walking up to the first okada they see.
+  return `This driver has not listed the colour or plate. Ask them in chat before you board.`;
+};
+
 export default function TravelBuddyScreen() {
   const router = useRouter();
   const cs     = useColorScheme();
@@ -92,7 +128,10 @@ export default function TravelBuddyScreen() {
     }
     showDialog({
       title: 'How many seats?',
-      message: `${trip.seatsLeft} available on this trip.`,
+      // The vehicle goes in front of the seat count on purpose: this is
+      // the last screen before money moves, and the passenger should
+      // know what they are walking up to before they pay for it.
+      message: `${vehicleSummary(trip.driver)}\n\n${trip.seatsLeft} available on this trip.`,
       actions: [...seats, { text: 'Cancel', style: 'cancel' }],
     });
   };
@@ -194,7 +233,6 @@ export default function TravelBuddyScreen() {
                 <Text style={[styles.driverName, { color: theme.text }]}>{trip.driver?.name}</Text>
                 <Text style={[styles.tripMeta, { color: theme.textSecond }]}>
                   {VEHICLE_LABEL[trip.driver?.vehicleType] ?? trip.driver?.vehicleType}
-                  {trip.driver?.vehiclePlate ? ` · ${trip.driver.vehiclePlate}` : ''}
                   {trip.driver?.rating ? ` · ★ ${Number(trip.driver.rating).toFixed(1)}` : ''}
                 </Text>
                 <Text style={[styles.tripMeta, { color: theme.textThird }]}>
@@ -202,6 +240,37 @@ export default function TravelBuddyScreen() {
                     ? `Pickup: ${trip.pickupAddress}`
                     : 'Pickup along the route (agree in chat)'}
                 </Text>
+              </View>
+            </View>
+
+            {/*
+              Which car, in its own row rather than tucked into the grey
+              meta line. The plate moved out of that line and up here for
+              the same reason: at a motor park before dawn this is the
+              only thing that tells the right vehicle from a stranger's,
+              so it has to be the part of the card that is easy to read.
+            */}
+            <View style={[styles.vehicleId, { backgroundColor: theme.primary + '10' }]}>
+              <Ionicons name="eye-outline" size={15} color={theme.primary} />
+              <View style={{ flex: 1 }}>
+                {vehicleDescription(trip.driver) ? (
+                  <Text style={[styles.vehicleDesc, { color: theme.text }]}>
+                    Look for a {vehicleDescription(trip.driver).toLowerCase()}
+                  </Text>
+                ) : (
+                  <Text style={[styles.vehicleDesc, { color: theme.textSecond }]}>
+                    Colour and model not listed: ask in chat
+                  </Text>
+                )}
+                {trip.driver?.vehiclePlate ? (
+                  <Text style={[styles.vehiclePlate, { color: theme.text }]}>
+                    {trip.driver.vehiclePlate}
+                  </Text>
+                ) : (
+                  <Text style={[styles.tripMeta, { color: theme.textThird }]}>
+                    No plate on file: confirm it with the driver before you board
+                  </Text>
+                )}
               </View>
             </View>
 
@@ -265,6 +334,10 @@ const styles = StyleSheet.create({
   tripMeta:  { fontSize: FontSize.xs, marginTop: 1 },
   driverRow: { borderTopWidth: 1, paddingTop: 10 },
   driverName:{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  vehicleId:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: 10, borderRadius: Radius.md },
+  vehicleDesc: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  // Plates are read at a distance, so they get the letter spacing.
+  vehiclePlate:{ fontSize: FontSize.base, fontWeight: '700', letterSpacing: 1, marginTop: 1 },
   tripFoot:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   seatsLeft: { fontSize: FontSize.sm, fontWeight: '700' },
   bookBtn:   { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999 },

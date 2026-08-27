@@ -62,9 +62,13 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'interstate_match_bonus', name: 'Interstate trip match bonus',
     description: 'Matching score added when a booking route matches a driver declared intercity trip departing within 24h (scores are 0-1).',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 0.25 },
+  // 72, not 2. Lagos to Ibadan is a three hour drive, so a 2 hour corridor
+  // expired before the rider arrived, and a trip declared the night before
+  // was dead by departure. Founder 2026-08-27: "people declare trips days
+  // before, especially for long trips like that, so i will say 3 day."
   { key: 'corridor_max_hours', name: 'Corridor max hours',
-    description: 'Longest a declared corridor can stay active. A corridor is one trip, not a shift.',
-    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.HOURS, value: 2 },
+    description: 'Longest a declared corridor can stay active. Three days, because interstate trips are declared days ahead.',
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.HOURS, value: 72 },
   { key: 'driver_level_id_gate', name: 'Level ID-verification gate',
     description: 'Levels at or above this require verified identity (per the identity policy). Auto-raise stops below it for unverified drivers.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 6 },

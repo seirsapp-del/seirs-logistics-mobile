@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { In, LessThan, Repository } from 'typeorm';
 import { Driver, DriverStatus, VehicleType } from './driver.entity';
+import { TripStop } from './trip-stop.entity';
 import { DriverTrip, DriverTripStatus } from './driver-trip.entity';
 import { DriverStatusBroadcast, DriverStatusBroadcastType } from './driver-status-broadcast.entity';
 import { DriverSubscription, DriverSubscriptionStatus } from './driver-subscription.entity';
@@ -14,6 +15,7 @@ import { FraudService } from '../fraud/fraud.service';
 import { TrackingGateway } from '../tracking/tracking.gateway';
 import { FeesService } from '../fees/fees.service';
 import { SupportTicket, TicketStatus, TicketTopic } from '../support/support-ticket.entity';
+import { vehicleIdentityForPassenger } from '../common/redact-driver';
 
 // Spec V8 §2.1 - recognised KYC document IDs
 const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
@@ -26,6 +28,24 @@ const KYC_DOC_FIELD_MAP: Record<string, keyof Driver> = {
   selfie:            'selfieUrl',
   guarantor:         'guarantorUrl',
 };
+
+/**
+ * Great-circle distance in km.
+ *
+ * Multiplied by the road factor at the call site, which is the same
+ * approximation the delivery pricing floor uses. Two engines measuring
+ * the distance between the same two points must not disagree.
+ */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
 
 @Injectable()
 export class DriversService {
@@ -41,6 +61,7 @@ export class DriversService {
     @InjectRepository(Delivery)               private deliveriesRepo: Repository<Delivery>,
     @InjectRepository(Wallet)                 private walletsRepo:    Repository<Wallet>,
     @InjectRepository(DriverTrip)             private tripsRepo:      Repository<DriverTrip>,
+    @InjectRepository(TripStop)               private tripStopsRepo:  Repository<TripStop>,
     @InjectRepository(DriverStatusBroadcast)  private broadcastsRepo: Repository<DriverStatusBroadcast>,
     @InjectRepository(DriverSubscription)     private subsRepo:       Repository<DriverSubscription>,
     @InjectRepository(DriverLevelChange)      private levelChangesRepo: Repository<DriverLevelChange>,
@@ -58,7 +79,13 @@ export class DriversService {
 
   /**
    * Declare a corridor. Hours are clamped by the corridor_max_hours fee
-   * row (default 2): a corridor is a trip, not a shift.
+   * row, now 72.
+   *
+   * The default was 2, on the reasoning that a corridor is one trip and
+   * not a shift. True, but a Lagos to Ibadan trip IS three hours, so the
+   * corridor died before the rider arrived, and a trip declared the night
+   * before was expired by departure. Interstate trips are declared days
+   * ahead, which is the whole point of declaring one.
    */
   async setCorridor(userId: string, params: { destLat: number; destLng: number; label?: string; hours?: number }) {
     const driver = await this.findByUserId(userId);
@@ -67,7 +94,7 @@ export class DriversService {
     if (!Number.isFinite(destLat) || !Number.isFinite(destLng) || Math.abs(destLat) > 90 || Math.abs(destLng) > 180) {
       throw new BadRequestException('A real destination is required.');
     }
-    const maxHours = await this.feesService.getValueOr('corridor_max_hours', 2);
+    const maxHours = await this.feesService.getValueOr('corridor_max_hours', 72);
     const hours = Math.min(Math.max(Number(params.hours ?? maxHours), 0.5), maxHours);
     await this.repo.update(driver.id, {
       corridorDestLat:   destLat,
@@ -319,6 +346,17 @@ export class DriversService {
     pickupMode?: 'fixed' | 'along_route'; pickupAddress?: string;
     pickupLat?: number; pickupLng?: number; routeKm?: number;
     destLat?: number; destLng?: number; destAddress?: string;
+    /**
+     * The route as a line, origin first and destination last, with every
+     * intermediate stop already on it. Optional so an older app build
+     * keeps declaring two-city trips, but this is the shape that makes
+     * segment pricing and honest distances possible.
+     */
+    stops?: Array<{
+      city?: string; address?: string;
+      latitude?: number; longitude?: number;
+      description?: string;
+    }>;
   }) {
     const driver = await this.findByUserId(userId);
     if (!driver) throw new NotFoundException('Driver profile not found.');
@@ -384,7 +422,90 @@ export class DriversService {
       destLng:         Number.isFinite(Number(body.destLng)) ? Number(body.destLng) : null,
       destAddress:     body.destAddress?.trim() || null,
     } as any);
-    return this.tripsRepo.save(trip);
+    const saved = (await this.tripsRepo.save(trip)) as unknown as DriverTrip;
+
+    /**
+     * Write the route as a line of real places.
+     *
+     * A trip used to be two city names and one free-text pickup note, so
+     * every distance was measured city centre to city centre and a
+     * passenger boarding 20km outside Ibadan paid from the middle of
+     * Ibadan. Stops carry coordinates, so the distance is the distance.
+     *
+     * Every stop arrives before departure, deliberately. The founder was
+     * explicit: people declare these trips days ahead, and a rider who
+     * only sets the next pickup after each drop cannot plan the trip
+     * they are selling.
+     */
+    const stops = Array.isArray(body.stops) ? body.stops : [];
+    if (stops.length >= 2) {
+      const clean = stops
+        .map((st) => ({
+          city:        (st.city ?? '').trim().slice(0, 120),
+          address:     (st.address ?? '').trim().slice(0, 400),
+          latitude:    Number(st.latitude),
+          longitude:   Number(st.longitude),
+          description: (st.description ?? '').trim().slice(0, 300) || null,
+        }))
+        .filter((st) =>
+          st.city && st.address &&
+          Number.isFinite(st.latitude) && Number.isFinite(st.longitude) &&
+          Math.abs(st.latitude) <= 90 && Math.abs(st.longitude) <= 180);
+
+      if (clean.length >= 2) {
+        /**
+         * Distance from the origin, measured once and stored.
+         *
+         * Segment pricing subtracts one stop's value from another's,
+         * which is only sound if both came from the same measurement. A
+         * seat quoted today must not reprice because a routing API
+         * answered differently tomorrow.
+         *
+         * Straight-line times the road factor, the same approximation
+         * the delivery pricing floor already uses, so the two engines
+         * cannot disagree about how far apart two points are.
+         */
+        const roadFactorRaw = Number(await this.feesService.getValueOr('pricing_road_factor', 1.3));
+        const roadFactor = Number.isFinite(roadFactorRaw) && roadFactorRaw >= 1 ? roadFactorRaw : 1.3;
+
+        let cumulative = 0;
+        const rows = clean.map((st, i) => {
+          if (i > 0) {
+            const prev = clean[i - 1];
+            cumulative += haversineKm(prev.latitude, prev.longitude, st.latitude, st.longitude) * roadFactor;
+          }
+          return {
+            tripId:       saved.id,
+            sequence:     i,
+            city:         st.city,
+            address:      st.address,
+            latitude:     st.latitude,
+            longitude:    st.longitude,
+            description:  st.description,
+            kmFromOrigin: Math.round(cumulative * 100) / 100,
+          };
+        });
+        await this.tripStopsRepo.save(rows as any[]);
+
+        // The trip's own route length is now a measured figure rather
+        // than whatever the app estimated between two city names.
+        const measuredKm = Math.round(cumulative * 100) / 100;
+        if (measuredKm > 0) {
+          await this.tripsRepo.update(saved.id, { routeKm: measuredKm } as any);
+          (saved as any).routeKm = measuredKm;
+        }
+      }
+    }
+
+    return saved;
+  }
+
+  /** Stops on a declared trip, in travel order. */
+  async tripStops(tripId: string) {
+    return this.tripStopsRepo.find({
+      where: { tripId } as any,
+      order: { sequence: 'ASC' },
+    });
   }
 
   /**
@@ -441,9 +562,12 @@ export class DriversService {
       driver: {
         name: t.driver?.user?.name ?? 'Driver',
         rating: t.driver?.rating ?? null,
-        vehicleType: t.driver?.vehicleType ?? null,
-        vehiclePlate: t.driver?.vehiclePlate ?? null,
-        vehiclePhotoUrl: t.driver?.vehiclePhotoUrl ?? null,
+        // Plate, colour, make and model, not just the class of machine:
+        // somebody standing in a motor park at 5am has to pick this
+        // vehicle out of the row and be sure it is the one they paid
+        // for. Whitelisted in one place so the driver row's bank
+        // details and home address cannot follow it out here.
+        ...vehicleIdentityForPassenger(t.driver),
       },
     }));
   }

@@ -272,6 +272,18 @@ export class RateCard {
   seatRates: Record<string, number> | null;
 
   /**
+   * The rider's share of the seat subtotal, as a percentage.
+   *
+   * Was a literal 0.75 inside computeSeatPrice while every other seat
+   * number lived here on the card. It is also the number most likely to
+   * move as SEIRS learns what riders accept on interstate work, and
+   * moving it should not need a deploy. Null keeps the 75% fallback, so
+   * nothing changes until an admin publishes a value.
+   */
+  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
+  seatDriverSharePct: number | null;
+
+  /**
    * Flat platform service fee per booking (founder 2026-08-22). Charged
    * AFTER discounts (promotions never erode it) and BEFORE VAT. Region
    * serviceFee*Override fields beat these baselines. rideNgn is

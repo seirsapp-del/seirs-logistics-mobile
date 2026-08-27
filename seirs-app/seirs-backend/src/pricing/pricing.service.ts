@@ -94,6 +94,13 @@ export const DEFAULT_MAX_PACKAGES: Record<string, number> = {
 /** Pump prices in naira per litre, as they are TODAY rather than as the rate card froze them. */
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/**
+ * The rider's cut of a Travel Buddy seat, if the card does not publish one.
+ * Kept at the old hardcoded value so lifting it onto the card changed
+ * nothing until an admin deliberately edits it.
+ */
+const SEAT_DRIVER_SHARE_PCT_FALLBACK = 75;
+
 export interface FuelPrices { petrol: number; diesel: number; }
 
 export interface PricingInput {
@@ -207,6 +214,7 @@ export class PricingService implements OnModuleInit {
   private async selfHealSchema() {
     const statements = [
       ['rate_cards.seatRates', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "seatRates" jsonb NULL`],
+      ['rate_cards.seatDriverSharePct', `ALTER TABLE "rate_cards" ADD COLUMN IF NOT EXISTS "seatDriverSharePct" numeric(5,2) NULL`],
       // Tuned to beat park fares (Ibadan->Lagos car seat ~= N3,500).
       ['rate_cards.seatRates backfill', `
         UPDATE "rate_cards"
@@ -711,10 +719,24 @@ export class PricingService implements OnModuleInit {
     const vatBase = seatSubtotal + luggageFee + serviceFee;
     const vat = vatBase * Number(card.vatRate);
     const total = Math.round((vatBase + vat) * 100) / 100;
-    // Driver share: seat revenue minus the ride commission row is
-    // settled by the earnings pipeline; for the quote we expose the
-    // customer side and a driver estimate at 75% of the seat subtotal.
-    const driverEstimate = Math.round(seatSubtotal * 0.75 * 100) / 100;
+    /**
+     * The rider's share of a seat comes off the rate card, not out of here.
+     *
+     * This was a literal 0.75 in a source file while every other seat
+     * number, the per-km rate, the luggage fee, the service fee, the VAT
+     * rate, was a published rate-card row an admin could change. It is
+     * also the number most likely to move as SEIRS learns what riders
+     * will accept on interstate work, and moving it should not need a
+     * deploy (founder rule: admin-tunable everything).
+     *
+     * seatDriverSharePct is a percentage on the card, falling back to 75
+     * so behaviour is identical until somebody deliberately changes it.
+     */
+    const sharePctRaw = Number((card as any).seatDriverSharePct);
+    const sharePct = Number.isFinite(sharePctRaw) && sharePctRaw > 0 && sharePctRaw <= 100
+      ? sharePctRaw
+      : SEAT_DRIVER_SHARE_PCT_FALLBACK;
+    const driverEstimate = Math.round(seatSubtotal * (sharePct / 100) * 100) / 100;
     return {
       kind: 'seat' as const, seats, km, ratePerSeatKm: rate,
       customer: { seatSubtotal: Math.round(seatSubtotal), luggageFee, serviceFee, vatBase: Math.round(vatBase), vat: Math.round(vat), total },

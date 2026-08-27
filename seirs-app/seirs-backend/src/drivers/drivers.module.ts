@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DriversController } from './drivers.controller';
 import { DriversService } from './drivers.service';
 import { Driver } from './driver.entity';
+import { TripStop } from './trip-stop.entity';
 import { DriverTrip } from './driver-trip.entity';
 import { DriverStatusBroadcast } from './driver-status-broadcast.entity';
 import { DriverSubscription } from './driver-subscription.entity';
@@ -20,7 +21,7 @@ import { FeesModule } from '../fees/fees.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Driver, DriverTrip, DriverStatusBroadcast, DriverSubscription, DriverLevelChange, DriverVehicleChange, Delivery, Wallet]),
+    TypeOrmModule.forFeature([Driver, DriverTrip, TripStop, DriverStatusBroadcast, DriverSubscription, DriverLevelChange, DriverVehicleChange, Delivery, Wallet]),
     TrackingModule,
     FraudModule,
     NotificationsModule,
@@ -155,6 +156,30 @@ export class DriversModule implements OnModuleInit {
           ADD COLUMN IF NOT EXISTS "destLng" double precision NULL,
           ADD COLUMN IF NOT EXISTS "destAddress" varchar(240) NULL
       `);
+
+      /**
+       * Trip stops. synchronize is off in production, so a new table has
+       * to be created here or the first declaration after deploy throws
+       * on an object that does not exist.
+       */
+      await this.ds.query(`
+        CREATE TABLE IF NOT EXISTS "trip_stops" (
+          "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "trip_id" uuid NOT NULL REFERENCES "driver_trips"("id") ON DELETE CASCADE,
+          "sequence" integer NOT NULL,
+          "city" varchar(120) NOT NULL,
+          "address" varchar(400) NOT NULL,
+          "latitude" numeric(10,7) NOT NULL,
+          "longitude" numeric(10,7) NOT NULL,
+          "description" varchar(300),
+          "km_from_origin" numeric(8,2) NOT NULL DEFAULT 0,
+          "arrived_at" TIMESTAMP WITH TIME ZONE,
+          "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+        )
+      `);
+      await this.ds.query(
+        `CREATE INDEX IF NOT EXISTS "trip_stops_trip_seq_idx" ON "trip_stops" ("trip_id", "sequence")`,
+      );
     } catch (e) {
       // A failed migration must not stop boot; the entity sync path
       // covers dev, and the next boot retries.
