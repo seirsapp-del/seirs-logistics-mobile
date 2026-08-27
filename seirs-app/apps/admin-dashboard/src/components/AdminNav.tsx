@@ -129,27 +129,53 @@ export default function AdminNav() {
       {/* Brand lockup. Matches the mobile-app okada mark + SEIRS wordmark.
           Collapsed sidebar shows the mark only; expanded shows mark + wordmark
           + "Admin Portal" tagline. Hub cutout colour matches the sidebar bg. */}
-      <div className={`flex items-center border-b border-white/10 px-3 shrink-0 ${collapsed ? 'justify-center h-14' : 'gap-3 h-16'}`}>
+      {/**
+        * Collapsed, the mark IS the expand control.
+        *
+        * Founder 2026-08-27: "i need a way to navigate out of here."
+        * The header used to render the 28px mark AND a 24px toggle side
+        * by side inside a 60px rail with px-3 padding. That needs 76px
+        * of the 60 available, and the <aside> is overflow-hidden, so the
+        * toggle was clipped off the edge of the sidebar entirely. There
+        * was no way to expand it again, and the collapsed state persists
+        * in localStorage, so once collapsed it stayed collapsed across
+        * every reload.
+        *
+        * One control at a time fixes it: collapsed shows only the mark,
+        * which expands on click; expanded shows the lockup and a chevron
+        * that now has real contrast rather than 40% white on navy.
+        */}
+      <div className={`flex items-center border-b border-white/10 shrink-0 ${collapsed ? 'justify-center px-0 h-14' : 'gap-3 px-3 h-16'}`}>
         {collapsed ? (
-          <SeirsMarkBold size={28} color="#FFFFFF" hubColor="#0F2B4C" />
+          <button
+            onClick={toggleCollapse}
+            className="w-full h-full flex items-center justify-center hover:bg-white/10 transition-colors"
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+          >
+            <SeirsMarkBold size={26} color="#FFFFFF" hubColor="#0F2B4C" />
+          </button>
         ) : (
-          <div className="flex-1 min-w-0">
-            <SeirsLockup
-              size={170}
-              color="#FFFFFF"
-              hubColor="#0F2B4C"
-              tagline="Admin Portal"
-              taglineColor="rgba(255,255,255,0.55)"
-            />
-          </div>
+          <>
+            <div className="flex-1 min-w-0">
+              <SeirsLockup
+                size={170}
+                color="#FFFFFF"
+                hubColor="#0F2B4C"
+                tagline="Admin Portal"
+                taglineColor="rgba(255,255,255,0.55)"
+              />
+            </div>
+            <button
+              onClick={toggleCollapse}
+              className="ml-auto w-7 h-7 rounded flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          </>
         )}
-        <button
-          onClick={toggleCollapse}
-          className="ml-auto w-6 h-6 flex items-center justify-center text-white/40 hover:text-white transition-colors shrink-0"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
       </div>
 
       {/* User profile */}
