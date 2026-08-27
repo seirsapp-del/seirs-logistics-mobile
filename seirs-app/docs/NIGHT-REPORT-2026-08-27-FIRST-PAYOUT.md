@@ -113,3 +113,67 @@ capped, audited, super-admin correction endpoint.
 Refunds, partner payouts and failed-trip compensation are **still
 unproven and share this code**. Assume they carry the same class of
 fault until each is run for real. That is the right order to test in.
+
+---
+
+## Audit of the paths that share this code
+
+Tonight showed how much hides on the far side of a provider call, so I
+audited the three untested money paths for the same class of fault.
+
+### Refund: had it, worse  `7d6e3cc`
+
+`refundEscrow` caught the Flutterwave error, logged it, and stamped
+`REFUNDED` anyway. A declined refund left the customer out of pocket
+while the row said their money was back. No balance for them to notice
+it in, no retry, and a record that states the opposite of the truth.
+
+Not hypothetical: Flutterwave refused us four times tonight over IP
+whitelisting, and refunds use the same provider from the same rotating
+egress address. The next IP change would have silently lost customer
+refunds.
+
+Now the escrow stays `HELD` on failure, which is truthful and
+retryable, and nothing downstream runs, so the customer keeps their
+loyalty points until they keep their money. Added
+`GET /admin/wallet/stuck-refunds` because both callers swallow the
+error, so it would otherwise be invisible. **That list should be empty.**
+
+### Partner payout: already correct
+
+Marks rows `processing` *before* the transfer, reverts to `pending` on
+failure, `paid` on success. That is the claim-and-release pattern the
+driver payout was missing. No change made.
+
+One residual subtlety, shared with the driver path: `transferToBank`
+catches internally and returns `success: false`, so a timeout *after*
+Flutterwave received the request looks identical to a clean refusal, and
+the rows go back to `pending`. The driver path now leaves an ambiguous
+throw in `paying` rather than releasing it; the partner path does not
+make that distinction. Low likelihood, real if it happens.
+
+### Failed-trip compensation: cannot have the transfer bug
+
+It only records an earning row; the money moves later through the payout
+path, which is now fixed.
+
+**Known fragility, deliberately not changed tonight.**
+`recordForDelivery` dedupes on `deliveryId` alone and returns the
+existing row. So any second earning for the same delivery is silently
+dropped, and compensation for a delivery that already earned would
+vanish with only a log line. The holdback carry-forward row added
+tonight also reuses `deliveryId`, which makes two rows per delivery
+normal and the dedupe more ambiguous than it was.
+
+I did not touch it. That dedupe is what stops riders being paid twice
+for one job, and rewriting it without tests at midnight trades a latent
+problem for a live one. It needs a `(deliveryId, purpose)` key and a
+proper test, in daylight.
+
+## Suggested order for tomorrow
+
+1. **Credit Emeka the ₦146.97** (endpoint deployed, needs a token)
+2. **Check `stuck-refunds` is empty** before testing anything else
+3. **Refund**, using a real booking, and confirm money actually returns
+4. **Partner payout**, which should behave since the code is already right
+5. **Failed-trip compensation**, watching whether the dedupe drops it
