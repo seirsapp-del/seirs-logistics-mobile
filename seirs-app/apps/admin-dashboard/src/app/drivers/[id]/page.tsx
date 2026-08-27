@@ -395,21 +395,18 @@ export default function DriverDetailPage() {
           ))}
         </div>
 
-        {(completedCount == null || inProgressCount == null) && (
-          <p className="mb-6 text-xs text-gray-500">
-            Completed and in-progress counts are not in the driver API response yet.
-            It returns a total across every status and a cancelled count, and nothing
-            else. Subtracting one from the other would fold pending, in-transit and
-            failed runs into &quot;completed&quot;, so this page leaves them blank rather
-            than showing a number that is wrong.
-          </p>
-        )}
 
-        {/* Money. Split off the work tiles because the two answer
-            different questions and sat side by side implying they
-            reconciled (founder 2026-08-25: Wallet reads 0.00 while Total
-            Earned reads 10,359.68, why do these not agree). They never
-            did agree and were never going to: see each caption. */}
+        {/* Money.
+            The legacy wallet tile is gone (founder 2026-08-27: "what is
+            with this legacy crap, we haven't launched and we are having
+            legacy build holding up space where the real function thing
+            should be"). He is right. drivers.walletBalance is a column
+            no earnings path has ever credited: zero at registration and
+            zero forever. Explaining a dead number at length is still
+            giving a dead number the best space on the page.
+
+            What SEIRS actually owes lives in the earnings ledger, so
+            that is what this shows, with the ledger one click away. */}
         <div className="grid gap-4 mb-6 md:grid-cols-2">
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
             <div className="text-xl font-bold text-gray-900">{naira(totalEarned)}</div>
@@ -421,14 +418,10 @@ export default function DriverDetailPage() {
             </p>
           </div>
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-            <div className="text-xl font-bold text-gray-400">{naira(driver.walletBalance)}</div>
-            <div className="text-xs font-semibold text-gray-600 mt-1">Wallet column (legacy, not a payable)</div>
+            <div className="text-xs font-semibold text-gray-600">Owed right now</div>
             <p className="mt-1.5 text-xs text-gray-500">
-              A column on the driver row that no earnings code path ever credits. It
-              is set to zero at registration and left there, so it reads 0.00 for
-              every real rider and always will. What SEIRS actually owes lives in the
-              earnings ledger, one row per delivered run, moving pending to available
-              to paid.
+              Pending, available and paid all live in the earnings ledger, one row
+              per delivered run. That is the only place a payable exists.
             </p>
             <Link href="/wallet" className="mt-2 inline-block text-xs font-semibold text-[#3A7BD5] hover:underline">
               Open Wallet and Payouts
@@ -481,7 +474,7 @@ export default function DriverDetailPage() {
           <Field label="Loyalty balance" value={`${(loyalty?.balance ?? 0).toLocaleString()} pts (${loyalty?.tier ?? 'Bronze'})`} />
           {/* Same legacy column as the tile above. Named the same way in
               both places so nobody reads one as a correction of the other. */}
-          <Field label="Wallet column (legacy)" value={naira(driver.walletBalance ?? 0)} />
+
           <Field label="Bank" value={driver.user?.bankAccountName ? `${driver.user.bankAccountName} · ${driver.user.bankAccountNumber?.slice(-4) ?? '****'} · ${driver.user.bankCode ?? ''}` : null} />
           <Field label="Bank verified" value={driver.user?.bankVerifiedAt ? fmtDate(driver.user.bankVerifiedAt) : null} />
         </Section>

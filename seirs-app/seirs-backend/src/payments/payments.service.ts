@@ -1370,6 +1370,51 @@ export class PaymentsService {
    *     payout theft. Payouts keep flowing to the OLD account until an
    *     admin approves the change.
    */
+  /**
+   * Tell the account holder their payout account was touched.
+   *
+   * updateBankDetails changed where a rider's money goes and told them
+   * nothing: not on first setup, not on replacement. The replacement
+   * path opens a support ticket, but that is addressed to SUPPORT, so
+   * the person whose money it is heard nothing either way.
+   *
+   * That is the payout-redirect vector in its plainest form. Someone
+   * gets into an account, points the payouts at their own bank, and the
+   * owner finds out when money stops arriving, which on a weekly payout
+   * cycle is up to a week later.
+   *
+   * Found 2026-08-27 when the founder changed his own payout account
+   * and observed: "i changed the payout bank account, but look at this
+   * no notifications."
+   *
+   * The message deliberately shows only the last four digits. It has to
+   * be specific enough that a real owner recognises their own change,
+   * and useless to anyone reading over a shoulder.
+   */
+  private async notifyBankChange(
+    userId: string,
+    accountNumber: string,
+    bankName: string,
+    pending: boolean,
+  ): Promise<void> {
+    const last4 = String(accountNumber ?? '').slice(-4);
+    const where = `${bankName ?? 'your bank'} ending ${last4}`;
+    try {
+      await this.notificationsService?.sendToUser({
+        userId,
+        title: pending ? 'Payout account change requested' : 'Payout account changed',
+        body: pending
+          ? `A request to send your payouts to ${where} is being reviewed. If this was not you, contact support now.`
+          : `Your payouts will now go to ${where}. If this was not you, contact support now.`,
+      });
+    } catch (e: any) {
+      // Never let a failed notification block the change itself: the
+      // holder asked for it and a silent notification outage must not
+      // look like a broken form.
+      this.logger.warn(`Bank-change notification failed for ${userId}: ${e?.message}`);
+    }
+  }
+
   async updateBankDetails(
     userId: string,
     data: { bankName: string; bankCode: string; bankAccountNumber: string; bankAccountName: string },
@@ -1400,6 +1445,7 @@ export class PaymentsService {
         bankAccountNumber: data.bankAccountNumber,
         bankAccountName:   data.bankAccountName,
       });
+      await this.notifyBankChange(userId, data.bankAccountNumber, data.bankName, false);
       return { message: 'Bank details updated.', pending: false };
     }
 
@@ -1453,6 +1499,10 @@ export class PaymentsService {
       pendingBankRequestedAt:   new Date(),
       pendingBankTicketId:      ticketId,
     });
+
+    // A pending change is exactly when the holder most needs telling:
+    // the ticket goes to support, not to them.
+    await this.notifyBankChange(userId, data.bankAccountNumber, data.bankName, true);
 
     return {
       message: 'Bank change submitted for review. It takes up to 3 business days; payouts continue to your current account until it is approved.',

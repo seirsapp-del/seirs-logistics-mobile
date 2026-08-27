@@ -1517,6 +1517,7 @@ export class AdminService {
       fraudFlags,
       sosAlerts,
       completedCount,
+      inProgressCount,
     ] = await Promise.all([
       this.deliveriesRepo.findAndCount({
         where: { driver: { id } as any },
@@ -1598,6 +1599,30 @@ export class AdminService {
       this.deliveriesRepo.count({
         where: { driver: { id } as any, status: DeliveryStatus.DELIVERED },
       }).catch(() => 0),
+      /**
+       * In progress: everything the rider is actually holding right now.
+       *
+       * This page used to apologise for not having it, and the apology
+       * outlived the fix: completedCount and cancelledCount WERE added,
+       * so the note claiming neither existed was wrong on two of three
+       * counts and stale on the third (2026-08-27).
+       *
+       * Counting the live statuses explicitly beats subtracting
+       * completed and cancelled from the total, because that arithmetic
+       * silently folds failed and returned runs into "in progress" and
+       * a driver page that lies is worse than one that says nothing.
+       */
+      this.deliveriesRepo.count({
+        where: {
+          driver: { id } as any,
+          status: In([
+            DeliveryStatus.PENDING,
+            DeliveryStatus.ASSIGNED,
+            DeliveryStatus.PICKED_UP,
+            DeliveryStatus.IN_TRANSIT,
+          ]),
+        },
+      }).catch(() => 0),
     ]);
 
     const [deliveries, deliveryCount] = deliveryPage as [any[], number];
@@ -1627,6 +1652,7 @@ export class AdminService {
       totalEarned,
       cancelledCount,
       completedCount,
+      inProgressCount,
       sosAlerts,
       loyalty:    { balance: loyaltyBalance, tier },
       identity,
