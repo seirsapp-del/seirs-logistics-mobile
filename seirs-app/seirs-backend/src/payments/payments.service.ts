@@ -1554,6 +1554,34 @@ export class PaymentsService {
       });
     }
 
+    /**
+     * Tell them the decision. This is the moment that matters.
+     *
+     * A notification was added to updateBankDetails this morning, which
+     * covers the REQUEST. Nothing covered the outcome, so an admin could
+     * approve a payout-account change and the account holder heard
+     * nothing at all (founder, having approved one: "the bank account
+     * changed but he didn't get a notification").
+     *
+     * Approval is the moment money starts going somewhere new. A rider
+     * who did not ask for this needs to find out now, not on payday.
+     * The message names the last four digits only: enough for a real
+     * owner to recognise their own account, useless over a shoulder.
+     */
+    const pendingLast4 = String(wallet.pendingBankAccountNumber ?? '').slice(-4);
+    const pendingBank  = wallet.pendingBankName ?? 'your bank';
+    try {
+      await this.notificationsService?.sendToUser({
+        userId,
+        title: approve ? 'Payout account updated' : 'Payout account change declined',
+        body: approve
+          ? `Your payouts now go to ${pendingBank} ending ${pendingLast4}. If you did not request this, contact support now.`
+          : `Your request to change payouts to ${pendingBank} ending ${pendingLast4} was not approved. Your current account is unchanged.`,
+      });
+    } catch (e: any) {
+      this.logger.warn(`Bank-resolution notification failed for ${userId}: ${e?.message}`);
+    }
+
     const ticketId = wallet.pendingBankTicketId;
     await this.walletsRepo.update(wallet.id, {
       pendingBankName:          null as any,
