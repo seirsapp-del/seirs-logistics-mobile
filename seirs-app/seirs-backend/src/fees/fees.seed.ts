@@ -72,9 +72,15 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'travel_buddy_free_cancel_hours', name: 'Travel Buddy free-cancel window (hours)',
     description: 'Hours before departure inside which a passenger cancellation stops being refunded in full. Outside it the fare returns less the sunk card processing (cancel_processing_pct).',
     category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.HOURS, value: 24 },
+  // 100, not 0. Founder 2026-08-28: "they get a refund minus the
+  // Flutterwave fee." A passenger who cancels in advance leaves a seat
+  // that can still be sold, which is nothing like a no-show where the
+  // vehicle waited and then carried the space empty. The card
+  // processing is still withheld through cancel_processing_pct, because
+  // that is a real sunk cost rather than a penalty.
   { key: 'travel_buddy_late_cancel_refund_pct', name: 'Travel Buddy late-cancel refund (%)',
-    description: 'Share of a paid seat fare returned when the passenger cancels INSIDE the free window. Zero mirrors the no-show rule, since the vehicle has already committed to carrying the space. Raise it here, never in code.',
-    category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.PERCENT, value: 0 },
+    description: 'Share of a paid seat fare returned when the passenger cancels INSIDE the free window, before card processing is deducted. 100 means they get their money back less the Flutterwave fee. Lower it here, never in code.',
+    category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.PERCENT, value: 100 },
   { key: 'travel_buddy_drop_geofence_m', name: 'Travel Buddy drop geofence (m)',
     description: 'Metres from the declared alight stop beyond which a drop is FLAGGED, never refused: roads close and plans change, so the distance is recorded for review rather than used to strand a rider mid-journey.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 1000 },

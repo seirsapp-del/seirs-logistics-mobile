@@ -697,6 +697,53 @@ export class TravelBuddyService {
       trackingCode: delivery.trackingCode,
       amountNgn:  kobo(Number(booking.priceNgn)),
       payWith:    'POST /api/v1/payments/initiate with this deliveryId',
+      // Shown on the payment screen, before the money moves. See paymentTerms.
+      terms:      await this.paymentTerms(),
+    };
+  }
+
+  /**
+   * The terms a passenger agrees to by paying, in their own words.
+   *
+   * A forfeited fare settles to the rider as a full fare: they made the
+   * journey, they waited the agreed wait, and they then carried the seat
+   * empty to the passenger's stop. That is defensible, and it is only
+   * defensible if the passenger was told BEFORE they paid rather than
+   * discovering it by losing money (founder, 2026-08-28: "that is why we
+   * need to give warning or something they consent to before paying").
+   *
+   * Built from the live catalogue rows rather than written as prose, so
+   * the sentence a passenger agreed to can never drift away from the
+   * rule the code enforces. Never promises an arrival time.
+   */
+  private async paymentTerms(): Promise<{
+    waitMinutes: number; freeCancelHours: number;
+    lines: string[]; summary: string;
+  }> {
+    const [waitMinutes, freeCancelHours, latePct, processingPct] = await Promise.all([
+      this.fee(FEE.NO_SHOW_WAIT_MIN),
+      this.fee(FEE.FREE_CANCEL_HOURS),
+      this.fee(FEE.LATE_CANCEL_REFUND_PCT),
+      this.fee(FEE.CANCEL_PROCESSING_PCT),
+    ]);
+    const lateShare = Number.isFinite(latePct) && latePct > 0 ? Math.min(100, latePct) : 100;
+    const keepsFee = processingPct > 0;
+
+    const lines = [
+      `The driver waits ${waitMinutes} minutes at your boarding point. Be there before that.`,
+      `If you are not there when the wait ends, the driver may leave and your fare is not refunded. They still made the journey and held your seat, so it is paid to them in full.`,
+      `Cancel more than ${freeCancelHours} hours before departure and you are refunded${keepsFee ? `, less the ${processingPct}% card charge we already paid` : ' in full'}.`,
+      lateShare >= 100
+        ? `Cancel closer to departure and you are still refunded${keepsFee ? `, less that same ${processingPct}% card charge` : ' in full'}.`
+        : `Cancel closer to departure and ${lateShare}% of the fare is returned${keepsFee ? `, less the ${processingPct}% card charge` : ''}.`,
+      `Your seat is only held once payment lands. Until then somebody else can take it.`,
+    ];
+
+    return {
+      waitMinutes,
+      freeCancelHours,
+      lines,
+      summary: `By paying you agree the driver waits ${waitMinutes} minutes, and that a missed pickup is not refunded because the journey was still made.`,
     };
   }
 
@@ -1053,30 +1100,43 @@ export class TravelBuddyService {
     });
 
     /**
-     * The delivery closes as FAILED, and the money is NOT moved.
+     * The fare settles exactly as though the journey had run.
      *
-     * FAILED is the honest record: the vehicle ran, the passenger did
-     * not travel. It is deliberately not DELIVERED, which would release
-     * escrow to the rider, and deliberately not CANCELLED, which is the
-     * shape a refund is issued against. Forfeit means the fare is not
-     * automatically returned, and doing nothing with it is exactly that:
-     * it stays in escrow with the evidence attached until the split
-     * between rider and platform on a no-show is decided, because that
-     * is a money policy and not something this method may invent.
+     * The rider took their vehicle to the agreed place at the agreed
+     * time, waited the agreed wait, and then carried that seat empty to
+     * the passenger's stop because it stays held. They did the work, so
+     * they are paid the work: the same share of the same fare they would
+     * have earned had the passenger boarded, and SEIRS keeps the same
+     * commission (founder, 2026-08-28: "driver gets his share as it was
+     * a full fare, and SEIRS gets theirs").
+     *
+     * DELIVERED is therefore correct here, and it has to go through
+     * setDeliveryStatus rather than an UPDATE, because that is what
+     * releases the escrow. Writing the status behind that method's back
+     * would mark the seat settled while the money stayed locked with
+     * nothing left to release it.
+     *
+     * Forfeit means the passenger is not refunded. It never meant the
+     * money sits nowhere. This is exactly why the consent line exists on
+     * the payment screen: nobody should discover this rule by losing a
+     * fare to it.
      */
     if (booking.deliveryId) {
       await this.deliveriesRepo.update(booking.deliveryId, {
-        cancellationReason: 'Passenger no-show: the fare is forfeit and held pending settlement.',
+        cancellationReason: 'Passenger no-show: fare forfeited and settled to the rider under the no-show policy.',
       } as any).catch(() => {});
-      await this.setDeliveryStatus(booking.deliveryId, DeliveryStatus.FAILED);
+      await this.setDeliveryStatus(booking.deliveryId, DeliveryStatus.DELIVERED);
     }
 
     this.push(booking.passengerId, 'The vehicle left without you',
-      `The driver waited the full agreed time at your boarding point and has gone on. The fare is forfeit under the no-show policy. If you believe this is wrong, raise it with support: the wait, the driver's position and every attempt to reach you are on the record.`,
+      `The driver waited the full agreed time at your boarding point and has gone on. Under the no-show policy you agreed to at payment, the fare is not refunded: the driver made the journey and held your seat. If you believe this is wrong, raise it with support. The wait, the driver's position and every attempt to reach you are on the record.`,
       NotificationType.STATUS_UPDATE, booking.deliveryId ?? undefined);
 
-    this.logger.warn(`Seat booking ${booking.id} marked no-show after ${booking.contactAttempts} contact attempt(s); seat stays held to stop ${booking.alightStopId}; fare held in escrow pending settlement`);
-    return { ok: true, seatReleased: false };
+    this.logger.warn(
+      `Seat booking ${booking.id} marked no-show after ${booking.contactAttempts} contact attempt(s); ` +
+      `seat stays held to stop ${booking.alightStopId}; fare settled to the rider as a full fare`,
+    );
+    return { ok: true, seatReleased: false, fareSettledToDriver: true };
   }
 
   // ── 4. Board and drop ────────────────────────────────────────────────
@@ -1299,12 +1359,36 @@ export class TravelBuddyService {
       const freeHours = await this.fee(FEE.FREE_CANCEL_HOURS);
       const hoursToDeparture = (new Date(trip.departAt).getTime() - now.getTime()) / 3_600_000;
       const paid = kobo(Number(booking.priceNgn));
+      /**
+       * A cancelled seat is refunded less what the card cost us.
+       *
+       * The late window used to return a flat percentage that defaulted
+       * to zero, mirroring the no-show rule. The founder rejected that
+       * (2026-08-28): "they get a refund minus the Flutterwave fee."
+       *
+       * That is the fairer rule and the cheaper one to run. A passenger
+       * who tells us in advance leaves a seat we can still sell, which
+       * is nothing like a no-show, where the vehicle waited and then
+       * carried the space empty. Keeping their whole fare for the
+       * courtesy of warning us is how a platform teaches people to go
+       * quiet instead.
+       *
+       * SEIRS does not profit from the cancellation either way. What is
+       * withheld is the processing already spent and not recoverable
+       * from the provider, which is a real cost, not a penalty. Both
+       * windows now use the same catalogue row, so there is one number
+       * an admin can see and set rather than two that can drift apart.
+       * Inside the free window it can still be tightened separately.
+       */
+      const processingPct = Math.max(0, Math.min(100, await this.fee(FEE.CANCEL_PROCESSING_PCT)));
       if (hoursToDeparture > freeHours) {
-        const processingPct = await this.fee(FEE.CANCEL_PROCESSING_PCT);
-        refund = kobo(paid * (1 - Math.max(0, Math.min(100, processingPct)) / 100));
+        refund = kobo(paid * (1 - processingPct / 100));
       } else {
         const latePct = await this.fee(FEE.LATE_CANCEL_REFUND_PCT);
-        refund = kobo(paid * (Math.max(0, Math.min(100, latePct)) / 100));
+        const lateShare = Number.isFinite(latePct) && latePct > 0
+          ? Math.max(0, Math.min(100, latePct)) / 100
+          : 1;
+        refund = kobo(paid * lateShare * (1 - processingPct / 100));
       }
     }
 
