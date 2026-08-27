@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { SuperAdminGuard } from '../common/guards/super-admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { User } from '../users/user.entity';
 import { FraudFlagStatus } from '../fraud/fraud-flag.entity';
 import { TicketStatus } from '../support/support-ticket.entity';
 
@@ -247,6 +248,33 @@ export class AdminController {
   @Patch('users/:id')
   updateUser(@Param('id') id: string, @Body() body: { isActive?: boolean }) {
     return this.adminService.updateUser(id, body);
+  }
+
+  // PATCH /api/v1/admin/users/:id/demo-flag  { "isDemo": false }
+  //
+  // Arms or disarms an account for real money. isDemo is what every
+  // payout, wallet and dispatch guard checks, so clearing it on a seeded
+  // account lets that account receive an actual bank transfer while
+  // Flutterwave is in live mode. Super admin only, and every call writes
+  // an audit row naming the actor. Restore the flag when the run is done.
+  @UseGuards(SuperAdminGuard)
+  @Patch('users/:id/demo-flag')
+  setDemoFlag(
+    @Param('id') id: string,
+    @Body() body: { isDemo?: boolean },
+    @CurrentUser() actor: User,
+    @Req() req: Request,
+  ) {
+    if (typeof body?.isDemo !== 'boolean') {
+      throw new BadRequestException('isDemo must be true or false');
+    }
+    const ip = (req.headers['x-forwarded-for'] as string) ?? req.ip ?? '';
+    return this.adminService.setUserDemoFlag(
+      id,
+      body.isDemo,
+      { id: actor.id, name: actor.name },
+      ip,
+    );
   }
 
   // Regenerate-account-id endpoint intentionally omitted. See

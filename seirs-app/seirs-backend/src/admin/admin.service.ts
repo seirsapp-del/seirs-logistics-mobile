@@ -1251,6 +1251,51 @@ export class AdminService {
     return this.usersRepo.findOne({ where: { id } });
   }
 
+  /**
+   * Lift or restore an account's demo flag.
+   *
+   * isDemo is the single flag every money guard checks: payouts, wallet
+   * credits, manual assignment and dispatch all refuse a demo account,
+   * because the seeded cohort carries real-looking bank details while
+   * Flutterwave runs in live mode. Clearing it therefore arms an account
+   * to move real money, which is why this is super-admin only, writes an
+   * audit row every time, and names the actor.
+   *
+   * Built 2026-08-27 so the founder could run the platform's first real
+   * withdrawal against a seeded rider. Restore the flag afterwards: an
+   * account that looks like demo data but can touch real money is worse
+   * than either one on its own.
+   */
+  async setUserDemoFlag(
+    id: string,
+    isDemo: boolean,
+    actor: { id: string; name?: string },
+    ip?: string,
+  ): Promise<{ id: string; email: string; name: string; isDemo: boolean; previous: boolean }> {
+    const user = await this.usersRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const previous = Boolean((user as any).isDemo);
+    await this.usersRepo.update(id, { isDemo } as any);
+
+    await this.auditRepo.save(this.auditRepo.create({
+      adminId:   actor.id,
+      adminName: actor.name ?? 'unknown',
+      action:    isDemo ? 'user.demo_flag.set' : 'user.demo_flag.cleared',
+      target:    id,
+      meta:      { email: user.email, name: user.name, previous, next: isDemo },
+      ip:        ip ?? '',
+    }));
+
+    return {
+      id,
+      email: user.email,
+      name:  user.name,
+      isDemo,
+      previous,
+    };
+  }
+
   // ── Admin management ──────────────────────────────────────────────────────
 
   async getAdmins() {
