@@ -27,6 +27,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet,
+  Keyboard, Dimensions,
 } from 'react-native';
 import { mapsApi } from '../services/api';
 
@@ -62,16 +63,21 @@ interface Props {
   };
   onFocus?: () => void;
   /**
-   * Fires when the suggestion list appears.
+   * Fires when the list appears, carrying how many pixels of it are
+   * hidden behind the keyboard. Zero means it already fits.
    *
-   * The host lifts a field on FOCUS, but the list only arrives about
-   * 350ms later once the fetch returns, so by then nothing re-scrolls
-   * and the suggestions sit behind the keyboard: present in the tree,
-   * invisible on the phone. Found by driving the declare screen on a
-   * real handset, 2026-08-27, and it is the same failure the customer
-   * app's StreetAutocomplete already documents hitting.
+   * The first version of this reported nothing and the host scrolled to
+   * a position measured with onLayout, which gives a y relative to the
+   * PARENT rather than the scroll content. Fields near the top happened
+   * to look right; the pickup point, deep in the form, scrolled to the
+   * wrong place and stayed under the keyboard (founder, on the handset:
+   * "when i try typing in the pickup point why is it under my
+   * keyboard").
+   *
+   * Measuring the rendered list against the real keyboard is the only
+   * version that works wherever the field happens to sit.
    */
-  onSuggestionsShown?: () => void;
+  onSuggestionsShown?: (hiddenPx: number) => void;
 }
 
 export function PlacePicker({
@@ -94,6 +100,37 @@ export function PlacePicker({
    */
   const pickedValue = useRef<string | null>(null);
   const timer      = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** The list's own view, so it can measure where it actually landed. */
+  const listRef = useRef<View>(null);
+  /** Live keyboard height; 0 when it is down. */
+  const kbH = useRef(0);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      kbH.current = e?.endCoordinates?.height ?? 0;
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => { kbH.current = 0; });
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  /**
+   * How much of the list the keyboard is covering, measured after it
+   * has actually rendered. A frame of delay is needed: measuring in the
+   * same tick returns the position from before the list existed.
+   */
+  const reportOverlap = () => {
+    if (!onSuggestionsShown) return;
+    requestAnimationFrame(() => {
+      listRef.current?.measureInWindow((_x, y, _w, h) => {
+        const screenH  = Dimensions.get('window').height;
+        const kbTop    = screenH - kbH.current;
+        const listBase = y + h;
+        // 12px so the last row is not flush against the keyboard.
+        const hidden   = Math.max(0, listBase - kbTop + 12);
+        onSuggestionsShown(hidden);
+      });
+    });
+  };
 
   useEffect(() => {
     if (pickedValue.current !== null && value.trim() === pickedValue.current) {
@@ -122,7 +159,7 @@ export function PlacePicker({
         const list = Array.isArray(res?.predictions) ? res.predictions : [];
         setSuggestions(list.slice(0, 5));
         setOpen(list.length > 0);
-        if (list.length > 0) onSuggestionsShown?.();
+        if (list.length > 0) reportOverlap();
       } catch {
         // Offline or a refused key. Say nothing and let them keep
         // typing: the field still works, it just stops suggesting.
@@ -187,7 +224,7 @@ export function PlacePicker({
       </View>
 
       {open && suggestions.length > 0 && (
-        <View style={[styles.list, {
+        <View ref={listRef} style={[styles.list, {
           backgroundColor: theme.surface,
           borderColor: theme.border,
         }]}>

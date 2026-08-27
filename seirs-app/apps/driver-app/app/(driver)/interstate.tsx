@@ -173,17 +173,23 @@ export default function InterstateScreen() {
   /**
    * Lift a picker clear of the keyboard when its suggestions arrive.
    *
-   * keyboardShouldPersistTaps already lets a tap land on a suggestion,
-   * but nothing scrolled, so on this screen the TO field sits right at
-   * the fold and its list rendered underneath the keyboard entirely.
+   * The first version scrolled to a y captured by onLayout, which is
+   * relative to the PARENT rather than the scroll content. FROM and TO
+   * sit near the top so it looked correct; the pickup point, deep in
+   * the form, scrolled to the wrong place and stayed buried (founder,
+   * on the handset: "when i try typing in the pickup point why is it
+   * under my keyboard").
+   *
+   * The picker now measures how much of its OWN list the keyboard is
+   * covering and hands back the number, so this just scrolls by that
+   * much from wherever the form currently is. Correct for any field at
+   * any depth, and it needs no layout bookkeeping at all.
    */
   const scrollRef = useRef<ScrollView>(null);
-  const fieldY    = useRef<Record<string, number>>({});
-  const liftField = (key: string) => {
-    const y = fieldY.current[key];
-    if (y == null) return;
-    // 90px of headroom so the label stays readable above the list.
-    scrollRef.current?.scrollTo({ y: Math.max(0, y - 90), animated: true });
+  const scrollY   = useRef(0);
+  const liftBy = (hiddenPx: number) => {
+    if (!(hiddenPx > 0)) return;
+    scrollRef.current?.scrollTo({ y: scrollY.current + hiddenPx, animated: true });
   };
 
   const [routeKm,        setRouteKm]        = useState('');
@@ -487,7 +493,13 @@ export default function InterstateScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={16}
+          onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+        >
 
           {myTrips.length > 0 && (
             <View style={{ gap: 8, marginBottom: 4 }}>
@@ -583,10 +595,10 @@ export default function InterstateScreen() {
               * server could not map and no passenger could book, and
               * the rider was told the PICKUP was the problem.
               */}
-            <View onLayout={(e) => { fieldY.current.from = e.nativeEvent.layout.y; }}>
+            <View>
             <PlacePicker
               label="FROM"
-              onSuggestionsShown={() => liftField('from')}
+              onSuggestionsShown={liftBy}
               value={from}
               onChangeText={(t) => { setFrom(t); setFromPlace(null); }}
               onPicked={(pl) => { setFrom(pl.primary); setFromPlace(pl); }}
@@ -601,10 +613,10 @@ export default function InterstateScreen() {
             <ArrowRight size={20} color={theme.textThird} />
           </View>
 
-          <View style={{ gap: 6 }} onLayout={(e) => { fieldY.current.to = e.nativeEvent.layout.y; }}>
+          <View style={{ gap: 6 }}>
             <PlacePicker
               label="TO"
-              onSuggestionsShown={() => liftField('to')}
+              onSuggestionsShown={liftBy}
               value={to}
               onChangeText={(t) => { setTo(t); setToPlace(null); }}
               onPicked={(pl) => { setTo(pl.primary); setToPlace(pl); }}
@@ -645,8 +657,33 @@ export default function InterstateScreen() {
                   longitudeDelta: Math.max(Math.abs(fromPlace.lng - toPlace.lng) * 1.8, 0.6),
                 }}
               >
-                <Marker coordinate={{ latitude: fromPlace.lat, longitude: fromPlace.lng }} pinColor="#2F6F4E" />
-                <Marker coordinate={{ latitude: toPlace.lat,   longitude: toPlace.lng }}   pinColor="#A8342A" />
+                <Marker
+                  coordinate={{ latitude: fromPlace.lat, longitude: fromPlace.lng }}
+                  pinColor="#2F6F4E"
+                  title={from.trim() || 'Start'}
+                />
+                <Marker
+                  coordinate={{ latitude: toPlace.lat, longitude: toPlace.lng }}
+                  pinColor="#A8342A"
+                  title={to.trim() || 'Destination'}
+                />
+                {/**
+                  * The meeting point, shown rather than described.
+                  *
+                  * Founder: "shouldn't we be able to see the exact pickup
+                  * point instead of a text that says this and that." A
+                  * passenger is going to stand somewhere on the strength
+                  * of this, so the rider should be able to see where they
+                  * have just sent them before they commit to it.
+                  */}
+                {pickupMode === 'fixed' && pickupPlace && (
+                  <Marker
+                    coordinate={{ latitude: pickupPlace.lat, longitude: pickupPlace.lng }}
+                    pinColor="#B8790C"
+                    title={pickupAddress.trim() || 'Pickup point'}
+                    description="Where passengers meet you"
+                  />
+                )}
                 <Polyline
                   coordinates={[
                     { latitude: fromPlace.lat, longitude: fromPlace.lng },
@@ -658,6 +695,14 @@ export default function InterstateScreen() {
               </MapView>
 
               <View style={{ padding: Spacing.md, gap: 10 }}>
+                {pickupMode === 'fixed' && pickupPlace && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#B8790C' }} />
+                    <Text style={{ color: theme.textThird, fontSize: FontSize.xs }}>
+                      Passengers meet you at {pickupAddress.trim()}
+                    </Text>
+                  </View>
+                )}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ color: theme.textSecond, fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 0.6 }}>
                     ROUTE DISTANCE
@@ -909,10 +954,10 @@ export default function InterstateScreen() {
                   : 'Passengers get a map pin and directions to this exact spot. Better for a busy park where "somewhere in Ibadan" helps nobody.'}
               </Text>
               {pickupMode === 'fixed' && (
-                <View style={{ gap: 6 }} onLayout={(e) => { fieldY.current.pickup = e.nativeEvent.layout.y; }}>
+                <View style={{ gap: 6 }}>
                   <PlacePicker
                     label="PICKUP POINT"
-                    onSuggestionsShown={() => liftField('pickup')}
+                    onSuggestionsShown={liftBy}
                     value={pickupAddress}
                     onChangeText={(t) => { setPickupAddress(t); setPickupPlace(null); }}
                     onPicked={(pl) => { setPickupAddress(pl.primary); setPickupPlace(pl); }}
