@@ -3,10 +3,12 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual, In } from 'typeorm';
 import { DriverEarning, DriverEarningStatus } from './driver-earning.entity';
+import { DriverPayout } from './driver-payout.entity';
 import { FlutterwaveService } from '../payments/flutterwave.service';
 import { FeesService } from '../fees/fees.service';
 import { User } from '../users/user.entity';
 import { AuditLogEntry } from '../admin/audit-log.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PLATFORM_COMMISSION } from '../common/constants/pricing';
 
 /**
@@ -86,6 +88,9 @@ export class EarningsService {
     private readonly fees: FeesService,
     @InjectRepository(AuditLogEntry)
     private readonly auditRepo: Repository<AuditLogEntry>,
+    @InjectRepository(DriverPayout)
+    private readonly payoutsRepo: Repository<DriverPayout>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -480,6 +485,9 @@ export class EarningsService {
       await this.recordPayoutFailure(
         driverId, driver.name ?? '', reference, payoutAmount, reason,
       );
+      try {
+        await this.notifications.notifyPayoutFailed(driverId, payoutAmount);
+      } catch { /* the dialog already told them; this is the durable copy */ }
       /**
        * The rider gets a plain, honest sentence they can act on. They do
        * not get the provider's reason: it describes OUR merchant account,
@@ -519,6 +527,48 @@ export class EarningsService {
      * rider was promised.
      */
     const withheld = round2(runningTotal - payoutAmount);
+
+    /**
+     * Record the transfer itself, separately from the earnings it settled.
+     *
+     * Admin figures were summed from earning rows, which report what a
+     * rider EARNED, not what SEIRS SENT. On the first real payout the
+     * bank moved 1,322.71 and the dashboard reported 1,469.68 against
+     * it. The books disagreed with the bank on transfer number one, and
+     * there was nowhere else to check.
+     */
+    try {
+      await this.payoutsRepo.save(this.payoutsRepo.create({
+        driverId,
+        driverName:            driver.name ?? null,
+        requestedNgn:          runningTotal.toFixed(2),
+        sentNgn:               payoutAmount.toFixed(2),
+        holdbackNgn:           withheld.toFixed(2),
+        reference,
+        flutterwaveTransferId: result.transferId ?? null,
+        earningCount:          toPayoutIds.length,
+      }));
+    } catch (e: any) {
+      // The money has already moved. Losing the record is a reconciliation
+      // problem, not a payment one, so it must be loud but not fatal.
+      this.logger.error(
+        `Payout ${reference} SENT NGN ${payoutAmount.toFixed(2)} but the ledger row failed: ${e?.message}`,
+      );
+    }
+
+    // The rider's receipt. Never blocks the payout: the money is gone
+    // either way, and a failed notification must not read as a failed
+    // transfer.
+    try {
+      const bankLabel = driver.bankAccountNumber
+        ? `your bank account ending ${String(driver.bankAccountNumber).slice(-4)}`
+        : 'your bank';
+      await this.notifications.notifyPayoutSent(
+        driverId, payoutAmount, bankLabel, reference,
+      );
+    } catch (e: any) {
+      this.logger.warn(`Payout ${reference} sent but the rider was not notified: ${e?.message}`);
+    }
     if (withheld > 0) {
       try {
         const lastRow = eligible.find((e) => e.id === toPayoutIds[toPayoutIds.length - 1]);

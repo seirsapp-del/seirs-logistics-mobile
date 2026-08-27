@@ -263,6 +263,55 @@ export class NotificationsService {
     );
   }
 
+  /**
+   * A payout left for the rider's bank.
+   *
+   * Riders were told when they EARNED and never when they were PAID.
+   * The credit notification above has existed all along; the moment
+   * money actually leaves the platform had nothing at all, no push, no
+   * in-app row, no email template. That is the one event most deserving
+   * of a receipt: it is the rider's proof, and the first thing they will
+   * look for if the bank is slow (founder, 2026-08-27, after the first
+   * real payout: "do they get an auto email").
+   *
+   * Never promises an arrival time. Nigerian bank settlement is not
+   * something SEIRS can commit to on a rider's behalf.
+   */
+  notifyPayoutSent(driverId: string, amount: number, bankLabel: string, reference: string) {
+    const naira = Number(amount ?? 0).toLocaleString('en-NG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return this.create(
+      driverId,
+      'Withdrawal sent',
+      `₦${naira} is on its way to ${bankLabel}. Arrival depends on your bank. ` +
+      `Reference ${reference}.`,
+      NotificationType.PAYMENT_RECEIVED,
+    );
+  }
+
+  /**
+   * A payout was refused. Says the money is safe, because the rider's
+   * first fear is that it vanished somewhere between the two.
+   *
+   * Carries no provider detail: why a transfer was declined describes
+   * the SEIRS merchant account, not the rider's withdrawal.
+   */
+  notifyPayoutFailed(driverId: string, amount: number) {
+    const naira = Number(amount ?? 0).toLocaleString('en-NG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return this.create(
+      driverId,
+      'Withdrawal did not go through',
+      `We could not send ₦${naira}. Your earnings are safe and still in your balance. ` +
+      `Please try again, and contact support if it keeps failing.`,
+      NotificationType.PAYMENT_RECEIVED,
+    );
+  }
+
   // ── Admin broadcast - Spec V8 §3.13 ──────────────────────────────────────
   // Fan-out for ops events (service interruptions, weather alerts).
   // Resolves the audience to a user-id list, persists one notification
