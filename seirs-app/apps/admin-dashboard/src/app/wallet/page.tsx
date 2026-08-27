@@ -29,16 +29,27 @@ interface RecentWithdrawal {
   id: string;
   driverId: string;
   driverName: string;
+  /** What the rider earned on the settled jobs. NOT what reached their bank. */
   driverNet: number;
+  /** What actually left SEIRS. Differs from driverNet when a holdback applied. */
+  sentNgn?: number;
+  requestedNgn?: number;
+  holdbackNgn?: number;
   paidAt: string;
+  reference?: string;
   flutterwaveTransferId: string | null;
-  deliveryId: string;
+  deliveryId?: string;
+  earningCount?: number;
+  /** True for rows predating the payout ledger: the figure is earned, not sent. */
+  estimated?: boolean;
 }
 
 interface Summary {
   pendingTotal: number; pendingCount: number;
   heldTotal: number;    heldCount: number;
   paidMtdTotal: number; paidMtdCount: number;
+  /** True while the total is derived from earnings rather than the payout ledger. */
+  paidMtdEstimated?: boolean;
 }
 
 /**
@@ -153,7 +164,22 @@ export default function WalletPage() {
       <div className="grid grid-cols-3 gap-4">
         <SummaryCard label="Available Payouts" sub={`${summary?.pendingCount ?? 0} earnings ready`} value={naira(summary?.pendingTotal ?? 0)} Icon={Clock}        color="text-yellow-600" />
         <SummaryCard label="Held Earnings"     sub={`${summary?.heldCount ?? 0} flagged for review`}  value={naira(summary?.heldTotal ?? 0)}    Icon={AlertCircle}   color="text-red-600" />
-        <SummaryCard label="Paid Out (MTD)"    sub={`${summary?.paidMtdCount ?? 0} transfers`}         value={naira(summary?.paidMtdTotal ?? 0)} Icon={TrendingUp}    color="text-green-600" />
+        {/*
+          Reads the payout ledger: money that actually left. While
+          paidMtdEstimated is true the figure is summed from earnings
+          instead, which is what riders earned on settled jobs and can
+          exceed what was sent, so the card says so rather than quietly
+          reporting a number the bank will not match.
+        */}
+        <SummaryCard
+          label="Paid Out (MTD)"
+          sub={summary?.paidMtdEstimated
+            ? `${summary?.paidMtdCount ?? 0} earnings settled, estimated`
+            : `${summary?.paidMtdCount ?? 0} transfer${summary?.paidMtdCount === 1 ? '' : 's'}`}
+          value={naira(summary?.paidMtdTotal ?? 0)}
+          Icon={TrendingUp}
+          color={summary?.paidMtdEstimated ? 'text-amber-600' : 'text-green-600'}
+        />
       </div>
 
       {/* Held earnings (urgent) */}
@@ -251,7 +277,8 @@ export default function WalletPage() {
               <thead>
                 <tr className="bg-gray-50 text-xs text-gray-500 font-semibold uppercase tracking-wide">
                   <th className="text-left px-4 py-3">Driver</th>
-                  <th className="text-left px-4 py-3">Net</th>
+                  <th className="text-left px-4 py-3">Sent to bank</th>
+                  <th className="text-left px-4 py-3">Held back</th>
                   <th className="text-left px-4 py-3">Paid</th>
                   <th className="text-left px-4 py-3">FLW Transfer</th>
                 </tr>
@@ -260,7 +287,20 @@ export default function WalletPage() {
                 {paid.map(w => (
                   <tr key={w.id}>
                     <td className="px-4 py-3"><DriverLink id={w.driverId} name={w.driverName} /></td>
-                    <td className="px-4 py-3 font-semibold text-gray-800">{naira(w.driverNet)}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-800">
+                      {naira(w.sentNgn ?? w.driverNet)}
+                      {w.estimated && (
+                        <span
+                          className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
+                          title="Predates the payout ledger. This is what the rider earned; if a holdback applied, less reached the bank. Check the Flutterwave reference before reconciling."
+                        >
+                          earned, not confirmed sent
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">
+                      {w.holdbackNgn && w.holdbackNgn > 0 ? naira(w.holdbackNgn) : '-'}
+                    </td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(w.paidAt)}</td>
                     <td className="px-4 py-3 text-gray-500 font-mono text-xs">{w.flutterwaveTransferId ?? '-'}</td>
                   </tr>

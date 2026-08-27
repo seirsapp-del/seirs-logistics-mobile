@@ -2581,7 +2581,55 @@ export class AdminService {
     return { ok: true };
   }
 
+  /**
+   * Transfers that actually left, read from the payout ledger.
+   *
+   * This listed EARNING rows marked paid and reported driverNet as the
+   * transfer amount. driverNet is what the rider earned, not what SEIRS
+   * sent, and the two differ by the new-rider holdback: the first real
+   * payout moved 1,322.71 and this screen showed 1,469.68 against it
+   * (founder, 2026-08-27). The row count was wrong in the same way, one
+   * line per earning rather than per transfer, so a single withdrawal
+   * settling three deliveries read as three transfers.
+   *
+   * driver_payouts records one row per transfer with the amount actually
+   * sent. Older payouts predate that table, so the earnings-derived view
+   * is kept as a labelled fallback rather than silently showing nothing:
+   * those rows carry `estimated: true` and should not be reconciled
+   * against the bank without checking the Flutterwave reference.
+   */
   async listRecentWithdrawals(limit = 50) {
+    try {
+      const payouts: Array<any> = await this.earningsRepo.manager.query(
+        `SELECT p.*, u."name" AS "userName"
+           FROM "driver_payouts" p
+           LEFT JOIN "users" u ON u.id = p."driver_id"
+          ORDER BY p."created_at" DESC
+          LIMIT $1`,
+        [limit],
+      );
+      if (payouts.length > 0) {
+        return payouts.map((p) => ({
+          id:                    p.id,
+          driverId:              p.driver_id,
+          driverName:            p.userName ?? p.driver_name ?? '-',
+          sentNgn:               Number(p.sent_ngn),
+          requestedNgn:          Number(p.requested_ngn),
+          holdbackNgn:           Number(p.holdback_ngn ?? 0),
+          // Kept so existing dashboard columns keep rendering, but it now
+          // carries what was SENT rather than what was earned.
+          driverNet:             Number(p.sent_ngn),
+          paidAt:                p.created_at,
+          reference:             p.reference,
+          flutterwaveTransferId: p.flutterwave_transfer_id,
+          earningCount:          Number(p.earning_count ?? 0),
+          estimated:             false,
+        }));
+      }
+    } catch {
+      // Table not created yet on this deploy: fall through.
+    }
+
     const rows = await this.earningsRepo
       .createQueryBuilder('e')
       .leftJoinAndSelect('e.driver', 'driver')
@@ -2595,9 +2643,13 @@ export class AdminService {
       driverId:              r.driverId,
       driverName:            r.driver?.name ?? '-',
       driverNet:             Number(r.driverNet),
+      sentNgn:               Number(r.driverNet),
       paidAt:                r.paidAt,
       flutterwaveTransferId: r.flutterwaveTransferId,
       deliveryId:            r.deliveryId,
+      // This figure is what the rider EARNED. If a holdback applied, less
+      // than this reached the bank.
+      estimated:             true,
     }));
   }
 
@@ -2614,13 +2666,45 @@ export class AdminService {
         .where('e.status = :s', { s: 'paid' })
         .andWhere(`e.paidAt >= DATE_TRUNC('month', NOW())`).getRawOne(),
     ]);
+
+    /**
+     * Paid Out reads the payout ledger, not the earnings rows.
+     *
+     * Summing driverNet over paid earnings answers "how much did riders
+     * earn on the jobs we settled", which is a different question from
+     * "how much money left SEIRS" whenever a holdback applied. The first
+     * real payout sent 1,322.71 and this reported 1,469.68. The count
+     * was wrong too: it counted earning rows, so one withdrawal settling
+     * three deliveries showed as three transfers.
+     */
+    let paidMtdTotal = Number(mtdPaid?.total ?? 0);
+    let paidMtdCount = Number(mtdPaid?.count ?? 0);
+    let paidMtdEstimated = true;
+    try {
+      const row = await this.earningsRepo.manager.query(
+        `SELECT COALESCE(SUM("sent_ngn"), 0) AS total, COUNT(*) AS count
+           FROM "driver_payouts"
+          WHERE "created_at" >= DATE_TRUNC('month', NOW())`,
+      );
+      if (row?.[0] && Number(row[0].count) > 0) {
+        paidMtdTotal     = Number(row[0].total);
+        paidMtdCount     = Number(row[0].count);
+        paidMtdEstimated = false;
+      }
+    } catch {
+      // Ledger table absent on this deploy: keep the earnings-derived figure.
+    }
+
     return {
       pendingTotal:  Number(pending?.total ?? 0),
       pendingCount:  Number(pending?.count ?? 0),
       heldTotal:     Number(held?.total ?? 0),
       heldCount:     Number(held?.count ?? 0),
-      paidMtdTotal:  Number(mtdPaid?.total ?? 0),
-      paidMtdCount:  Number(mtdPaid?.count ?? 0),
+      paidMtdTotal,
+      paidMtdCount,
+      // False once the ledger is answering. While true, the figure is what
+      // riders earned on settled jobs, which can exceed what was sent.
+      paidMtdEstimated,
     };
   }
 
