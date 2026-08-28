@@ -557,14 +557,55 @@ Nothing goes live yet. It fills the boxes on this page so you can check them, an
       </Card>
 
       {/* ── Service fee ───────────────────────────────────────────── */}
+      {/*
+        RESTORED 2026-08-28, an hour after I wrongly replaced it.
+        These fees ARE read by the engine. I removed the editor after a
+        search for `card.serviceFees` found nothing, because the three
+        real reads are written `(card as any).serviceFees?.rideNgn`, and
+        the cast plus the optional chain defeated the pattern. They are
+        at pricing.service lines 823 and 887 for rides and 1238 for
+        packages, and they land in vatBase, so this fee reaches every
+        customer bill.
+      */}
       <Card title="Service fee">
-        <p className="text-sm text-[#0F2B4C]/70">Set in the <a href="/fees" className="font-semibold text-[#3A7BD5] hover:underline">Fee Catalogue</a>, under <b>card_processing_pct</b> and <b>nipost_postal_fund_pct</b>.</p>
-        <p className="mt-2 text-xs text-[#0F2B4C]/45">The rate card carries a serviceFees block that no pricing code reads. What reaches a quote comes from the Fee Catalogue.</p>
+        <Row>
+          <FieldNumber label="Package service fee ₦"
+            value={card.serviceFees?.packageNgn ?? 0}
+            onChange={(v) => patchPath('serviceFees.packageNgn', v)}
+            hint="Flat platform fee on every package booking. Charged after discounts (promotions cannot erode it) and before VAT. 0 = no fee." />
+          <FieldNumber label="Ride service fee ₦"
+            value={card.serviceFees?.rideNgn ?? 0}
+            onChange={(v) => patchPath('serviceFees.rideNgn', v)}
+            hint="The same fee on a ride booking. Read by the ride pricing path." />
+        </Row>
       </Card>
 
+      {/*
+        RESTORED 2026-08-28, wrongly replaced the same hour and for the
+        same reason: the engine reads it as `(card as any).highValue`, at
+        pricing.service line 1269, which my search for `card.highValue`
+        could not see. The premium is charged in the engine so the quote
+        and the booking always agree.
+
+        The Fee Catalogue's high_value_threshold_ngn is a DIFFERENT
+        thing: it gates the handoff-signature requirement in deliveries.
+        Two thresholds, two jobs, and neither replaces the other.
+      */}
       <Card title="High-value premium">
-        <p className="text-sm text-[#0F2B4C]/70">Set in the <a href="/fees" className="font-semibold text-[#3A7BD5] hover:underline">Fee Catalogue</a>, under <b>high_value_threshold_ngn</b>.</p>
-        <p className="mt-2 text-xs text-[#0F2B4C]/45">The rate card also carries a highValue block and no pricing code reads it, so editing it here changed nothing. The Fee Catalogue value is the one the delivery flow actually checks.</p>
+        <Row>
+          <FieldNumber label="Threshold ₦ (declared value)"
+            value={card.highValue?.thresholdNgn ?? 50000}
+            onChange={(v) => patchPath('highValue.thresholdNgn', v)}
+            hint="Premium applies to the declared value ABOVE this. Over-declaring costs the premium, under-declaring caps the payout via the liability matrix." />
+          <FieldNumber label="Premium % of excess value"
+            value={card.highValue?.premiumPct ?? 0.5}
+            onChange={(v) => patchPath('highValue.premiumPct', v)}
+            hint="Charged in the engine, so quote and booking always match. 0 disables. Matching only offers such jobs to drivers whose level covers the value." />
+          <FieldNumber label="Driver share of premium %"
+            value={card.highValue?.driverSharePct ?? 0}
+            onChange={(v) => patchPath('highValue.driverSharePct', v)}
+            hint="Slice of the collected premium paid to the driver carrying the risk. 0 = all premium stays with SEIRS." />
+        </Row>
       </Card>
 
       {/* ── Stop & dwell ──────────────────────────────────────────── */}
