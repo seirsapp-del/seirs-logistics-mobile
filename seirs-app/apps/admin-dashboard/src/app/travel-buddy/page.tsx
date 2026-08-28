@@ -1,9 +1,8 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  Users, AlertTriangle, Clock, MapPin, Loader2, RefreshCw, ArrowRight,
-} from 'lucide-react';
+  Users, AlertTriangle, Clock, MapPin, Loader2, RefreshCw, ArrowRight, ChevronDown, ChevronRight} from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { naira } from '@/lib/money';
 import { seatStatus } from '@/lib/labels';
@@ -67,6 +66,16 @@ export default function TravelBuddyOpsPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  /**
+   * Which trips are opened out.
+   *
+   * The board printed "3" in a Stops column and nothing else, so a route
+   * the driver actually declared as Jos, then Ibadan, then Lagos read as
+   * a number. The founder's words: "i see 3 stops and we can't know
+   * which one they were, from where to where was actually book, who
+   * booked". The server sends the stops and the seats; this draws them.
+   */
+  const [open, setOpen] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,7 +98,9 @@ export default function TravelBuddyOpsPage() {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="space-y-5">
+    /* p-6 to match every other page. This one had no padding at all, so
+       the heading sat flush against the sidebar (founder screenshot). */
+    <div className="p-6 space-y-5">
       <div className="flex items-center gap-3">
         <div>
           <h1 className="text-xl font-semibold text-[#0F2B4C]">Travel Buddy</h1>
@@ -164,6 +175,7 @@ export default function TravelBuddyOpsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
               <tr>
+                <th className="w-8 px-2 py-3" />
                 <th className="px-4 py-3 text-left">Route</th>
                 <th className="px-4 py-3 text-left">Driver</th>
                 <th className="px-4 py-3 text-left">Departs</th>
@@ -174,7 +186,20 @@ export default function TravelBuddyOpsPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rows.map((t) => (
-                <tr key={t.id}>
+                <Fragment key={t.id}>
+                <tr className={open[t.id] ? 'bg-[#FAFAF7]' : undefined}>
+                  <td className="px-2 py-3 align-top">
+                    {/* Only offer to open what has something inside it. */}
+                    {((t.stops?.length ?? 0) > 0 || (t.seats?.length ?? 0) > 0) && (
+                      <button
+                        onClick={() => setOpen(m => ({ ...m, [t.id]: !m[t.id] }))}
+                        aria-label={open[t.id] ? 'Hide the detail' : 'Show the stops and who booked'}
+                        className="rounded p-1 text-[#3A7BD5] hover:bg-[#3A7BD5]/10"
+                      >
+                        {open[t.id] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </button>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-1.5 font-medium text-gray-800">
                       {t.fromCity} <ArrowRight size={12} className="text-gray-400" /> {t.toCity}
@@ -203,6 +228,120 @@ export default function TravelBuddyOpsPage() {
                     {t.routeKm == null ? '-' : `${t.routeKm} km`}
                   </td>
                 </tr>
+
+                {/*
+                  The route as declared, and who is on it.
+
+                  The Stops column said "3". A driver declaring Jos, then
+                  Ibadan, then Lagos is describing a road somebody has to
+                  be standing beside, and the board reduced it to a
+                  number. Every stop carries the address the driver
+                  actually pinned, so ops can tell a passenger where to
+                  wait rather than telling them the city.
+                */}
+                {open[t.id] && (
+                  <tr className="bg-[#FAFAF7]">
+                    <td />
+                    <td colSpan={5} className="px-4 pb-5 pt-1">
+                      <div className="grid gap-5 lg:grid-cols-2">
+                        <div>
+                          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                            The route, in order
+                          </p>
+                          {(t.stops?.length ?? 0) === 0 ? (
+                            <p className="text-sm text-gray-500">
+                              No stops were declared. This trip was created before stops existed,
+                              so its seats are priced across the whole route rather than by segment.
+                            </p>
+                          ) : (
+                            <ol className="space-y-2.5">
+                              {t.stops.map((st: any, i: number) => (
+                                <li key={st.sequence} className="flex gap-3">
+                                  <div className="flex flex-col items-center">
+                                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                                      i === 0 ? 'bg-emerald-100 text-emerald-700'
+                                        : i === t.stops.length - 1 ? 'bg-[#0F2B4C] text-white'
+                                        : 'bg-gray-200 text-gray-700'
+                                    }`}>
+                                      {i + 1}
+                                    </span>
+                                    {i < t.stops.length - 1 && <span className="mt-1 w-px flex-1 bg-gray-300" />}
+                                  </div>
+                                  <div className="min-w-0 pb-1">
+                                    <p className="text-sm font-semibold text-gray-800">
+                                      {st.city}
+                                      <span className="ml-2 text-xs font-normal text-gray-400">
+                                        {i === 0 ? 'start'
+                                          : i === t.stops.length - 1 ? 'end'
+                                          : 'stop'}
+                                        {st.kmFromOrigin != null && ` · ${Number(st.kmFromOrigin).toFixed(0)} km in`}
+                                      </span>
+                                    </p>
+                                    {st.address && (
+                                      <p className="text-xs text-gray-500">{st.address}</p>
+                                    )}
+                                    {st.description && (
+                                      <p className="text-xs italic text-gray-400">{st.description}</p>
+                                    )}
+                                    {st.arrivedAt && (
+                                      <p className="text-[11px] font-semibold text-emerald-700">
+                                        Reached {fmt(st.arrivedAt)}
+                                      </p>
+                                    )}
+                                  </div>
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+                        </div>
+
+                        <div>
+                          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+                            Who booked, and which leg
+                          </p>
+                          {(t.seats?.length ?? 0) === 0 ? (
+                            <p className="text-sm text-gray-500">
+                              Nobody has booked a seat on this trip yet.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {t.seats.map((b: any) => (
+                                <div key={b.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <PersonLink id={b.passengerUserId} name={b.passengerName ?? 'Unknown'} />
+                                    <StatusPill status={b.status} />
+                                    <span className="ml-auto font-semibold text-gray-800">
+                                      {naira(b.priceNgn ?? 0)}
+                                    </span>
+                                  </div>
+                                  <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-600">
+                                    <span className="font-medium">{b.boardCity ?? t.fromCity}</span>
+                                    <ArrowRight size={10} className="text-gray-400" />
+                                    <span className="font-medium">{b.alightCity ?? t.toCity}</span>
+                                    {b.segmentKm != null && (
+                                      <span className="text-gray-400">{Number(b.segmentKm).toFixed(0)} km of the route</span>
+                                    )}
+                                  </p>
+                                  {/* Ringing the passenger is the whole job when a
+                                      trip is about to leave and a seat is empty. */}
+                                  {b.passengerPhone && (
+                                    <a
+                                      href={`tel:${String(b.passengerPhone).replace(/[^+\d]/g, '')}`}
+                                      className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#3A7BD5] hover:underline"
+                                    >
+                                      {b.passengerPhone}
+                                    </a>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

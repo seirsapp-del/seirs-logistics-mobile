@@ -673,7 +673,7 @@ export class DriversService {
 
   // Admin board - Spec V8 §3.12. Returns trips with driver + user joined
   // for the UI to display "<name> | Lagos → Ibadan | <kg> free".
-  listAllInterstateTrips(opts: { status?: DriverTripStatus } = {}) {
+  async listAllInterstateTrips(opts: { status?: DriverTripStatus } = {}) {
     /**
      * Narrow selects (2026-08-28). leftJoinAndSelect pulled the whole
      * Driver and the whole User behind it, so an interstate trips list
@@ -693,7 +693,88 @@ export class DriversService {
       .orderBy('t.departAt', 'ASC')
       .limit(100);
     if (opts.status) qb.where('t.status = :status', { status: opts.status });
-    return qb.getMany();
+    const trips = await qb.getMany();
+
+    /**
+     * THE STOPS, AND WHO IS ON THE TRIP (founder, 2026-08-28).
+     *
+     * This board showed a from-city and a to-city, so a driver who
+     * declared Jos, then Ibadan, then Lagos appeared to be driving
+     * straight through. His words on the screenshot: "i created from jos
+     * to lagos and i am pretty sure i added a stop there would like to
+     * see that also people who book and the pickup, drop off all detail
+     * about that order".
+     *
+     * The board's own header says matching happens by contacting the
+     * driver, and you cannot have that conversation without knowing
+     * which towns the van passes through and which seats are already
+     * taken. Same two grouped queries the Travel Buddy board uses, so a
+     * page of a hundred trips costs three queries rather than 201.
+     */
+    const ids = trips.map(t => t.id);
+    if (!ids.length) return trips;
+
+    const stopRows: Array<any> = await this.tripsRepo.manager.query(
+      `SELECT s."trip_id" AS "tripId", s.sequence, s.city, s.address,
+              s.description, s."km_from_origin" AS "kmFromOrigin",
+              s."arrived_at" AS "arrivedAt"
+         FROM "trip_stops" s
+        WHERE s."trip_id" = ANY($1::uuid[])
+        ORDER BY s."trip_id", s.sequence ASC`,
+      [ids],
+    ).catch(() => []);
+
+    const seatRows: Array<any> = await this.tripsRepo.manager.query(
+      `SELECT sb."trip_id" AS "tripId", sb.id, sb.status,
+              sb."price_ngn" AS "priceNgn", sb."segment_km" AS "segmentKm",
+              bs.city AS "boardCity", als.city AS "alightCity",
+              bs.address AS "boardAddress", als.address AS "alightAddress",
+              pu.id AS "passengerUserId", pu.name AS "passengerName",
+              pu.phone AS "passengerPhone"
+         FROM "seat_bookings" sb
+         LEFT JOIN "trip_stops" bs  ON bs.id  = sb."board_stop_id"
+         LEFT JOIN "trip_stops" als ON als.id = sb."alight_stop_id"
+         LEFT JOIN "users" pu ON pu.id = sb."passenger_id"
+        WHERE sb."trip_id" = ANY($1::uuid[])
+        ORDER BY sb."trip_id", sb."board_sequence" ASC`,
+      [ids],
+    ).catch(() => []);
+
+    const byTrip = <T extends { tripId: string }>(rows: T[]) => {
+      const m = new Map<string, T[]>();
+      for (const r of rows) {
+        const list = m.get(r.tripId) ?? [];
+        list.push(r);
+        m.set(r.tripId, list);
+      }
+      return m;
+    };
+    const stopsFor = byTrip(stopRows);
+    const seatsFor = byTrip(seatRows);
+
+    return trips.map(t => Object.assign(t, {
+      stops: (stopsFor.get(t.id) ?? []).map((r: any) => ({
+        sequence:     Number(r.sequence ?? 0),
+        city:         r.city,
+        address:      r.address,
+        description:  r.description ?? null,
+        kmFromOrigin: r.kmFromOrigin == null ? null : Number(r.kmFromOrigin),
+        arrivedAt:    r.arrivedAt ?? null,
+      })),
+      seats: (seatsFor.get(t.id) ?? []).map((r: any) => ({
+        id:              r.id,
+        status:          r.status,
+        priceNgn:        r.priceNgn == null ? null : Number(r.priceNgn),
+        segmentKm:       r.segmentKm == null ? null : Number(r.segmentKm),
+        boardCity:       r.boardCity ?? null,
+        alightCity:      r.alightCity ?? null,
+        boardAddress:    r.boardAddress ?? null,
+        alightAddress:   r.alightAddress ?? null,
+        passengerUserId: r.passengerUserId ?? null,
+        passengerName:   r.passengerName ?? null,
+        passengerPhone:  r.passengerPhone ?? null,
+      })),
+    }));
   }
 
   /**

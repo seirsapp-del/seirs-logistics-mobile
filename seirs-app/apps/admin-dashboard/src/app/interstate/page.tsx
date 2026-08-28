@@ -1,9 +1,11 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Truck, MapPin, ArrowRight, AlertCircle, Loader2, RefreshCw, PhoneCall, Search, Clock } from 'lucide-react';
+import { Truck, MapPin, ArrowRight, AlertCircle, Loader2, RefreshCw, PhoneCall, Search, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { EmptyState } from '@/components/EmptyState';
+import { seatStatus } from '@/lib/labels';
+import { naira } from '@/lib/money';
 
 // Spec V8 §3.12 - interstate trip board. READ-ONLY: it surfaces
 // driver-declared intercity trips and their spare capacity so ops know
@@ -21,8 +23,21 @@ interface InterstateTrip {
   driver?: {
     id:           string;
     vehicleType?: string;
+    vehiclePlate?: string;
     user?: { id: string; name: string; phone?: string };
   };
+  /** The towns the van actually passes through, in order. */
+  stops?: Array<{
+    sequence: number; city: string; address?: string;
+    description?: string | null; kmFromOrigin?: number | null; arrivedAt?: string | null;
+  }>;
+  /** Who is riding, and between which two of those towns. */
+  seats?: Array<{
+    id: string; status: string; priceNgn?: number | null; segmentKm?: number | null;
+    boardCity?: string | null; alightCity?: string | null;
+    boardAddress?: string | null; alightAddress?: string | null;
+    passengerUserId?: string | null; passengerName?: string | null; passengerPhone?: string | null;
+  }>;
 }
 
 const POPULAR = [
@@ -49,6 +64,16 @@ export default function InterstateTripBoard() {
    * be a server search.
    */
   const [q, setQ] = useState('');
+  /**
+   * Which trips are opened out.
+   *
+   * The board showed a from-city and a to-city, so a driver who declared
+   * Jos, then Ibadan, then Lagos appeared to be driving straight
+   * through. The header says matching happens by contacting the driver,
+   * and that conversation is impossible without knowing which towns the
+   * van passes and which seats are gone.
+   */
+  const [open, setOpen] = useState<Record<string, boolean>>({});
 
   const shown = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -171,12 +196,36 @@ export default function InterstateTripBoard() {
           {shown.map(t => {
             const depart = new Date(t.departAt);
             return (
-              <div key={t.id} className="p-4 flex flex-wrap items-center gap-4">
+              <div key={t.id} className="p-4">
+               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
+                  {((t.stops?.length ?? 0) > 0 || (t.seats?.length ?? 0) > 0) ? (
+                    <button
+                      onClick={() => setOpen(m => ({ ...m, [t.id]: !m[t.id] }))}
+                      aria-label={open[t.id] ? 'Hide the route' : 'Show the stops and who is riding'}
+                      className="rounded p-0.5 text-[#3A7BD5] hover:bg-[#3A7BD5]/10"
+                    >
+                      {open[t.id] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    </button>
+                  ) : <span className="w-[22px]" />}
                   <MapPin size={14} className="text-[#16A34A]" />
                   <span className="font-semibold text-[#0F2B4C]">{t.fromCity}</span>
+                  {/* The towns in between, named on the row itself. A trip
+                      through Ibadan is a different trip from one that is
+                      not, and the board could not tell them apart. */}
+                  {(t.stops?.length ?? 0) > 2 && (
+                    <span className="flex items-center gap-1 text-xs text-[#0F2B4C]/45">
+                      <ArrowRight size={11} />
+                      {t.stops!.slice(1, -1).map(x => x.city).join(', ')}
+                    </span>
+                  )}
                   <ArrowRight size={14} className="text-gray-400" />
                   <span className="font-semibold text-[#0F2B4C]">{t.toCity}</span>
+                  {(t.seats?.length ?? 0) > 0 && (
+                    <span className="rounded bg-[#3A7BD5]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#3A7BD5]">
+                      {t.seats!.length} booked
+                    </span>
+                  )}
                 </div>
                 {/* The phone was typed on the interface and never
                     rendered, so ops could see who was driving to Kano and
@@ -228,6 +277,112 @@ export default function InterstateTripBoard() {
                 <span className="text-xs font-bold uppercase text-[#3A7BD5] bg-[#3A7BD5]/10 px-2 py-1 rounded">
                   {Number(t.spareCapacityKg).toFixed(0)} kg free
                 </span>
+               </div>
+
+               {open[t.id] && (
+                 <div className="mt-4 grid gap-5 border-t border-[#E5E7EB] pt-4 lg:grid-cols-2">
+                   <div>
+                     <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#0F2B4C]/45">
+                       The route, in order
+                     </p>
+                     {(t.stops?.length ?? 0) === 0 ? (
+                       <p className="text-sm text-[#0F2B4C]/50">
+                         Only two cities were declared, with no stops in between.
+                       </p>
+                     ) : (
+                       <ol className="space-y-2.5">
+                         {t.stops!.map((st, i) => (
+                           <li key={st.sequence} className="flex gap-3">
+                             <div className="flex flex-col items-center">
+                               <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                                 i === 0 ? 'bg-emerald-100 text-emerald-700'
+                                   : i === t.stops!.length - 1 ? 'bg-[#0F2B4C] text-white'
+                                   : 'bg-gray-200 text-gray-700'
+                               }`}>{i + 1}</span>
+                               {i < t.stops!.length - 1 && <span className="mt-1 w-px flex-1 bg-gray-300" />}
+                             </div>
+                             <div className="min-w-0 pb-1">
+                               <p className="text-sm font-semibold text-[#0F2B4C]">
+                                 {st.city}
+                                 <span className="ml-2 text-xs font-normal text-[#0F2B4C]/40">
+                                   {i === 0 ? 'start' : i === t.stops!.length - 1 ? 'end' : 'stop'}
+                                   {st.kmFromOrigin != null && ` · ${Number(st.kmFromOrigin).toFixed(0)} km in`}
+                                 </span>
+                               </p>
+                               {st.address && <p className="text-xs text-[#0F2B4C]/50">{st.address}</p>}
+                               {st.arrivedAt && (
+                                 <p className="text-[11px] font-semibold text-emerald-700">
+                                   Reached {new Date(st.arrivedAt).toLocaleString('en-NG')}
+                                 </p>
+                               )}
+                             </div>
+                           </li>
+                         ))}
+                       </ol>
+                     )}
+                   </div>
+
+                   <div>
+                     <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#0F2B4C]/45">
+                       Who is riding, and between where
+                     </p>
+                     {(t.seats?.length ?? 0) === 0 ? (
+                       <p className="text-sm text-[#0F2B4C]/50">
+                         Nobody has booked a seat on this trip yet, so all of the spare capacity is free.
+                       </p>
+                     ) : (
+                       <div className="space-y-2">
+                         {t.seats!.map(b => (
+                           <div key={b.id} className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2">
+                             <div className="flex flex-wrap items-center gap-2">
+                               {b.passengerUserId ? (
+                                 <Link href={`/users/${b.passengerUserId}`} className="text-sm font-semibold text-[#3A7BD5] hover:underline">
+                                   {b.passengerName ?? 'Unknown'}
+                                 </Link>
+                               ) : (
+                                 <span className="text-sm font-semibold text-[#0F2B4C]">{b.passengerName ?? 'Unknown'}</span>
+                               )}
+                               <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-gray-600">
+                                 {seatStatus(b.status)}
+                               </span>
+                               {b.priceNgn != null && (
+                                 <span className="ml-auto text-sm font-semibold text-[#0F2B4C]">
+                                   {naira(b.priceNgn)}
+                                 </span>
+                               )}
+                             </div>
+                             <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-[#0F2B4C]/65">
+                               <span className="font-medium">{b.boardCity ?? t.fromCity}</span>
+                               <ArrowRight size={10} className="text-gray-400" />
+                               <span className="font-medium">{b.alightCity ?? t.toCity}</span>
+                               {b.segmentKm != null && (
+                                 <span className="text-[#0F2B4C]/40">{Number(b.segmentKm).toFixed(0)} km of the route</span>
+                               )}
+                             </p>
+                             {/* Where they are actually standing, which is the
+                                 thing a driver rings to confirm. */}
+                             {(b.boardAddress || b.alightAddress) && (
+                               <p className="mt-0.5 text-[11px] leading-snug text-[#0F2B4C]/45">
+                                 {b.boardAddress && <>Picked up: {b.boardAddress}</>}
+                                 {b.boardAddress && b.alightAddress && <br />}
+                                 {b.alightAddress && <>Dropped at: {b.alightAddress}</>}
+                               </p>
+                             )}
+                             {b.passengerPhone && (
+                               <a
+                                 href={`tel:${String(b.passengerPhone).replace(/[^+\d]/g, '')}`}
+                                 className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#3A7BD5] hover:underline"
+                               >
+                                 <PhoneCall size={11} /> {b.passengerPhone}
+                               </a>
+                             )}
+                           </div>
+                         ))}
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               )}
               </div>
             );
           })}
