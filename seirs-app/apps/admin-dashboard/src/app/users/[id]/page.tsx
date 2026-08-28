@@ -160,9 +160,38 @@ export default function UserDetailPage() {
             nothing to click to leave (founder 2026-08-24: "why can't i
             click back here and it will take me back to the previous
             screen"). Same affordance as the delivery detail page. */}
-        <Link href="/users" className="inline-flex items-center gap-1 text-sm text-[#3A7BD5] hover:underline mb-4">
-          <ArrowLeft size={14} /> All customers
-        </Link>
+        {/*
+          "All customers" regardless of who this is (founder screenshot).
+          Every screen in the dashboard lands here, including the payouts
+          table, where clicking a RIDER took you to a page whose only
+          navigation called them a customer. He reasonably read that as
+          the rider having been filed as a customer, and asked whether
+          every driver gets a customer account. They do not: drivers and
+          customers are separate accounts by design. This page was just
+          lying about which list it belongs to.
+        */}
+        <div className="mb-4 flex flex-wrap items-center gap-4">
+          <Link
+            href={user.role === 'driver' ? '/drivers' : '/users'}
+            className="inline-flex items-center gap-1 text-sm text-[#3A7BD5] hover:underline"
+          >
+            <ArrowLeft size={14} />
+            {user.role === 'driver' ? 'All riders' : user.role === 'admin' ? 'All staff' : 'All customers'}
+          </Link>
+          {/*
+            The rider record is a different page with different facts on
+            it (KYC, vehicle, acceptance rate), and arriving here from a
+            payout meant there was no route to it at all.
+          */}
+          {driverRecord?.id && (
+            <Link
+              href={`/drivers/${driverRecord.id}`}
+              className="inline-flex items-center gap-1 rounded-lg border border-[#E5E7EB] px-2.5 py-1 text-xs font-semibold text-[#0F2B4C] hover:bg-gray-50"
+            >
+              Open their rider record
+            </Link>
+          )}
+        </div>
 
         {/* Profile card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 flex items-start gap-6">

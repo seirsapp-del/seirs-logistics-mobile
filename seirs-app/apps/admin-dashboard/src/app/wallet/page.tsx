@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { naira } from '@/lib/money';
-import { useConfirm } from '@/components/ConfirmDialog';
+import { useConfirm, usePrompt, useNotify } from '@/components/ConfirmDialog';
 import { PageIntro } from '@/components/PageIntro';
 import { EmptyState } from '@/components/EmptyState';
 import Link from 'next/link';
@@ -152,6 +152,8 @@ export default function WalletPage() {
    */
   const [stuck,      setStuck]      = useState<Array<any>>([]);
   const confirm                     = useConfirm();
+  const prompt                      = usePrompt();
+  const notify                      = useNotify();
 
   // Every call used to swallow its own failure, so a 403 or a cold
   // Railway boot rendered as an all-zero money summary: indistinguishable
@@ -180,6 +182,52 @@ export default function WalletPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  /**
+   * Turn an estimate into a fact.
+   *
+   * The figure entered is what Flutterwave says reached the bank. The
+   * server refuses anything above what the rider earned, works out the
+   * holdback as the difference, and writes a real ledger row, after
+   * which the summary stops saying "not confirmed sent" because it has
+   * something true to read.
+   */
+  const reconcile = async (w: RecentWithdrawal) => {
+    const earned = Number(w.driverNet ?? w.sentNgn ?? 0);
+    const typed = await prompt({
+      title:   `What actually reached ${w.driverName}'s bank?`,
+      message:
+        `SEIRS recorded ${naira(earned)} EARNED on this payout, and this row cannot say what was ` +
+        `transferred because it predates the payout ledger.
+
+` +
+        `Open Flutterwave, find ${w.flutterwaveTransferId ? `transfer ${w.flutterwaveTransferId}` : 'this transfer'}, ` +
+        `and type the amount that actually left. Anything held back is worked out as the difference ` +
+        `and stays available to the rider.
+
+` +
+        `This is recorded under your name and cannot be edited afterwards.`,
+      placeholder: earned.toFixed(2),
+      confirmLabel: 'Record it',
+    });
+    if (typed === null) return;
+    const sent = Number(String(typed).replace(/[^0-9.]/g, ''));
+    if (!Number.isFinite(sent) || sent <= 0) {
+      void notify({ title: 'Not recorded', message: 'Enter the amount as a number, for example 1322.71.', tone: 'error' });
+      return;
+    }
+    try {
+      const r = await adminApi.wallet.reconcilePayout({ earningId: w.id, sentNgn: sent });
+      void notify({
+        title: 'Recorded',
+        message: `${naira(r.sent)} sent, ${naira(r.holdback)} held back. The board now reads the ledger instead of estimating.`,
+        tone: 'success',
+      });
+      load();
+    } catch (e: any) {
+      void notify({ title: 'Not recorded', message: e?.message ?? 'The server refused it.', tone: 'error' });
+    }
+  };
 
   const release = async (h: HeldEarning) => {
     /**
@@ -501,6 +549,24 @@ export default function WalletPage() {
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(w.paidAt)}</td>
                     <td className="px-4 py-3 text-gray-500 font-mono text-xs">
                       {w.reference ?? w.flutterwaveTransferId ?? '-'}
+                      {/*
+                        The way out of "not confirmed sent".
+                        A payout made before the ledger existed has no
+                        record of what actually left, so this figure is
+                        the rider's EARNINGS and is usually higher than
+                        the transfer when a holdback applied. Rather than
+                        derive the real number, which would be a guess
+                        about money, somebody reads it off Flutterwave
+                        and enters it, and it is stored under their name.
+                      */}
+                      {w.estimated && (
+                        <button
+                          onClick={() => reconcile(w)}
+                          className="mt-1 block font-sans text-[11px] font-semibold text-[#3A7BD5] hover:underline"
+                        >
+                          Confirm what actually left
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

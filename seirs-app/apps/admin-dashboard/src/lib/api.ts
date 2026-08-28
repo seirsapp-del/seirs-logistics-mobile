@@ -821,6 +821,17 @@ export const adminApi = {
      * and nothing in this dashboard ever called it, so a refund that was
      * owed and never issued was invisible on every screen.
      */
+    /**
+     * Record what actually reached the bank for a payout made before the
+     * ledger existed. The figure is read off Flutterwave by a person and
+     * entered, never derived: a guess that reconciles is worse than a gap
+     * that does not, because it stops anybody looking.
+     */
+    reconcilePayout: (body: {
+      earningId: string; sentNgn: number; holdbackNgn?: number; flutterwaveTransferId?: string;
+    }) => req<{ ok: boolean; earned: number; sent: number; holdback: number }>(
+      '/admin/wallet/payouts/reconcile', { method: 'POST', body: JSON.stringify(body) }),
+
     stuckRefunds: () => req<Array<{
       paymentId: string; amountNgn: number;
       deliveryId: string; trackingCode: string; deliveryStatus: string;

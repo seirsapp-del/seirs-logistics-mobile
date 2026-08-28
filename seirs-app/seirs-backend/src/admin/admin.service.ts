@@ -3612,6 +3612,93 @@ export class AdminService {
   }
 
   /**
+   * Record what actually left the bank, for a payout made before the
+   * ledger existed (founder, 2026-08-28).
+   *
+   * driver_payouts records one row per transfer with the real amount
+   * sent. Payouts made before that table shipped have no row, so the
+   * dashboard falls back to summing EARNINGS, and an earning is what a
+   * rider was owed, not what SEIRS transferred. On the first real payout
+   * the rider earned 1,469.68, a 10% new-rider holdback kept 146.97, and
+   * 1,322.71 reached the bank. The board showed 1,469.68 under "sent",
+   * labelled "not confirmed sent" precisely because it could not know.
+   *
+   * The number is NOT inferred here. Deriving it as earned minus the
+   * holdback percentage would usually be right and would be a guess
+   * about money, and a guess that reconciles is worse than a gap that
+   * does not, because it stops anybody looking. So an admin reads the
+   * real figure off Flutterwave and enters it, and the row is written
+   * under their name.
+   *
+   * The unique index on reference is what stops the same transfer being
+   * recorded twice.
+   */
+  async reconcilePayout(
+    body: {
+      earningId: string;
+      sentNgn: number;
+      holdbackNgn?: number;
+      flutterwaveTransferId?: string;
+    },
+    actor: any,
+    ip?: string,
+  ) {
+    const earning = await this.earningsRepo.findOne({
+      where: { id: body.earningId },
+      relations: ['driver'],
+    });
+    if (!earning)                  throw new NotFoundException('No such earning.');
+    if (earning.status !== 'paid') throw new BadRequestException('That earning has not been paid out.');
+
+    const earned = Number(earning.driverNet ?? 0);
+    const sent   = Number(body.sentNgn);
+    if (!Number.isFinite(sent) || sent < 0) {
+      throw new BadRequestException('Enter the amount that actually reached the bank.');
+    }
+    if (sent > earned + 0.01) {
+      throw new BadRequestException(
+        `That is more than the rider earned on this payout (${earned.toFixed(2)}). Check the figure.`,
+      );
+    }
+    const holdback = body.holdbackNgn != null
+      ? Number(body.holdbackNgn)
+      : Math.round((earned - sent) * 100) / 100;
+
+    const reference = `RECON-${earning.id}`;
+    const existing = await this.earningsRepo.manager.query(
+      `SELECT id FROM "driver_payouts" WHERE "reference" = $1 LIMIT 1`, [reference],
+    ).catch(() => []);
+    if (existing?.length) {
+      throw new BadRequestException('This payout has already been reconciled.');
+    }
+
+    await this.earningsRepo.manager.query(
+      `INSERT INTO "driver_payouts"
+         ("driver_id","driver_name","requested_ngn","sent_ngn","holdback_ngn",
+          "reference","flutterwave_transfer_id","earning_count","created_at")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [
+        earning.driverId,
+        earning.driver?.name ?? null,
+        earned.toFixed(2),
+        sent.toFixed(2),
+        holdback.toFixed(2),
+        reference,
+        body.flutterwaveTransferId ?? earning.flutterwaveTransferId ?? null,
+        1,
+        earning.paidAt ?? new Date(),
+      ],
+    );
+
+    await this.logAudit(actor, 'payout.reconciled', `user:${earning.driverId}`, {
+      earningId: earning.id, earned, sent, holdback,
+      flutterwaveTransferId: body.flutterwaveTransferId ?? earning.flutterwaveTransferId ?? null,
+    }, ip);
+
+    return { ok: true, earned, sent, holdback, reference };
+  }
+
+  /**
    * Credit a rider's earnings balance to correct a settlement error.
    *
    * There was no way to put money back. Earnings could be held and

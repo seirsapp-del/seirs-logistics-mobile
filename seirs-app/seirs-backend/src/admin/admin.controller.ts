@@ -1088,6 +1088,23 @@ export class AdminController {
    * in escrow against a delivery that is cancelled or failed. Should be
    * empty. Anything here is a refund that was owed and never issued.
    */
+  /**
+   * POST /api/v1/admin/wallet/payouts/reconcile
+   *
+   * Record what actually reached the bank for a payout made before the
+   * ledger table existed. The figure is read off Flutterwave by a human
+   * and entered, never derived, because a guess that reconciles is worse
+   * than a gap that does not.
+   */
+  @Post('wallet/payouts/reconcile')
+  reconcilePayout(
+    @Body() body: { earningId: string; sentNgn: number; holdbackNgn?: number; flutterwaveTransferId?: string },
+    @CurrentUser() admin: any,
+    @Ip() ip?: string,
+  ) {
+    return this.adminService.reconcilePayout(body, admin, ip);
+  }
+
   @Get('wallet/stuck-refunds')
   stuckRefunds(@Query('limit') limit?: string) {
     return this.adminService.stuckRefunds(Number(limit ?? 100));
