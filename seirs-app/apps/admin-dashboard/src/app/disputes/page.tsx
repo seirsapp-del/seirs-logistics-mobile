@@ -307,6 +307,7 @@ function DisputesContent() {
                         loading={chainLoading}
                         error={chainError}
                         chain={chain}
+                        finishedAt={d?.deliveredAt ?? d?.cancelledAt ?? null}
                         onRetry={() => openChain(d.id, d)}
                       />
                     </div>
@@ -410,6 +411,7 @@ function DisputesContent() {
               loading={chainLoading}
               error={chainError}
               chain={chain}
+              finishedAt={(focusRow as any)?.deliveredAt ?? (focusRow as any)?.cancelledAt ?? null}
               onRetry={() => openChain(focusId, focusRow)}
             />
           </div>
@@ -451,13 +453,36 @@ function DisputesContent() {
  * lookup render the identical thing: an adjudicator should never have
  * two versions of the same evidence depending on how they arrived.
  */
+/**
+ * Was this delivery finished before SEIRS recorded handoffs at all?
+ *
+ * recordCustodyTransition shipped on 25 August 2026. Before it, only the
+ * two partner-store legs ever wrote a record, so an ordinary
+ * door-to-door run completed with no chain of any kind.
+ *
+ * The founder hit exactly this: a delivery he remembers handing over in
+ * person reads as "no handoff was ever recorded", which sounds like the
+ * feature is broken rather than like the run predates it. Both sentences
+ * are true and they mean opposite things to whoever is adjudicating, so
+ * the screen has to say which one applies.
+ */
+const CUSTODY_RECORDING_SINCE = Date.parse('2026-08-25T00:00:00Z');
+
+function predatesCustodyRecording(finishedAt?: string | null): boolean {
+  if (!finishedAt) return false;
+  const t = Date.parse(finishedAt);
+  return Number.isFinite(t) && t < CUSTODY_RECORDING_SINCE;
+}
+
 function ChainPanel({
-  loading, error, chain, onRetry,
+  loading, error, chain, onRetry, finishedAt,
 }: {
   loading: boolean;
   error:   string;
   chain:   Handoff[] | null;
   onRetry: () => void;
+  /** deliveredAt or cancelledAt, so an empty chain can say WHY it is empty. */
+  finishedAt?: string | null;
 }) {
   if (loading) {
     return (
@@ -480,8 +505,12 @@ function ChainPanel({
       <div className="rounded-lg border border-[#E5E7EB] bg-white">
         <EmptyState
           icon={<Package size={20} />}
-          title="No handoff was ever recorded for this delivery"
-          body="Either it has not changed hands yet, or it moved without anybody scanning. With no chain, the liability table cannot be applied and this has to be settled on the delivery's own evidence."
+          title={predatesCustodyRecording(finishedAt)
+            ? 'This delivery finished before SEIRS recorded handoffs'
+            : 'No handoff was ever recorded for this delivery'}
+          body={predatesCustodyRecording(finishedAt)
+            ? 'Handoff recording started on 25 August 2026, and this run completed before that, so there is no chain to read. That is a gap in the record, not a sign that nobody signed for it. Settle this one on the delivery’s own evidence: the proof photo, the timestamps, and who it was released to.'
+            : 'Either it has not changed hands yet, or it moved without anybody scanning. With no chain, the liability table cannot be applied and this has to be settled on the delivery’s own evidence.'}
         />
       </div>
     );
