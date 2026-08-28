@@ -1,10 +1,13 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Trash2, RotateCcw, AlertTriangle, ShieldAlert, Clock } from 'lucide-react';
 import { adminApi } from '@/lib/api';
-import { useConfirm } from '@/components/ConfirmDialog';
+import { useConfirm, useNotify } from '@/components/ConfirmDialog';
 import { HardDeleteModal } from '@/components/HardDeleteModal';
+import { PageIntro } from '@/components/PageIntro';
+import { EmptyState } from '@/components/EmptyState';
+import { roleLabel } from '@/lib/labels';
 import { canHardDeleteAccount } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
 
@@ -50,6 +53,7 @@ export default function RecycleBinPage() {
   const [purging, setPurging] = useState<PendingDeletion | null>(null);
   const [error,   setError]   = useState<string | null>(null);
   const confirm               = useConfirm();
+  const notify                = useNotify();
   // "Delete forever" is the same super_admin/support_agent NDPR path as
   // /users/[id]. Rendering it to every role that can reach this
   // compliance surface promised a purge the API then refused.
@@ -68,17 +72,21 @@ export default function RecycleBinPage() {
 
   const restore = async (row: PendingDeletion) => {
     const ok = await confirm({
-      title:        `Restore ${row.name}?`,
-      message:      'This cancels the pending deletion. The account returns to normal active state.',
-      confirmLabel: 'Restore',
+      title:        `Keep ${row.name}'s account?`,
+      message:
+        'The deletion is called off and the account goes back to normal straight away.\n\n' +
+        'They are told their account was kept. Their deliveries, points and history are all still there.\n\n' +
+        'Nothing is lost by doing this: it can be scheduled for deletion again later.',
+      confirmLabel: 'Keep the account',
     });
     if (!ok) return;
     setBusyId(row.id);
     try {
       await adminApi.pendingDeletions.cancel(row.id);
+      void notify({ title: 'Account kept', message: `${row.name} will not be deleted, and has been told.`, tone: 'success' });
       load();
     } catch (e: any) {
-      alert(e?.message ?? 'Restore failed');
+      void notify({ title: 'It was not restored', message: e?.message ?? 'The server refused it. The account is still scheduled for deletion.', tone: 'error' });
     } finally {
       setBusyId(null);
     }
@@ -97,10 +105,11 @@ export default function RecycleBinPage() {
     setBusyId(row.id);
     try {
       await adminApi.ndpr.hardDeleteUser(row.id, reason.trim());
+      void notify({ title: 'Erased', message: `${row.name}'s account is gone for good. Only the anonymous archive record remains.`, tone: 'success' });
       setPurging(null);
       load();
     } catch (e: any) {
-      alert(e?.message ?? 'Purge failed');
+      void notify({ title: 'Nothing was erased', message: e?.message ?? 'The server refused it. The account is untouched.', tone: 'error' });
     } finally {
       setBusyId(null);
     }
@@ -111,30 +120,40 @@ export default function RecycleBinPage() {
     return days <= 3;
   }).length;
 
+  /**
+   * Soonest to be erased, first. The rows arrived in whatever order the
+   * server returned, so the account with two days left could be below
+   * one with twenty-eight, on the one screen where the deadline is the
+   * entire point.
+   */
+  const sorted = useMemo(
+    () => [...rows].sort(
+      (a, b) => new Date(a.deletionScheduledAt).getTime() - new Date(b.deletionScheduledAt).getTime(),
+    ),
+    [rows],
+  );
+
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
-            <Trash2 size={18} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-[#0F2B4C]">Recycle Bin</h1>
-            <p className="text-sm text-gray-500">
-              Accounts scheduled for hard-delete. 30-day NDPR grace window.
-              Restore anytime before scheduled purge.
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-6 p-8">
+      <PageIntro
+        title="Recycle Bin"
+        purpose="Accounts on their way to being erased for good. Anybody here can still be saved, right up until the date shown."
+        storageKey="recycle-bin"
+        help={
+          <>
+            <p><strong>Keep the account</strong> calls the deletion off and tells the person. Nothing is lost, and it can be scheduled again later.</p>
+            <p><strong>Erase for good</strong> skips the rest of the waiting period and destroys the account now. It asks for a reason and then asks you to type the name, because it cannot be undone by anybody.</p>
+            <p>Doing nothing is also a decision: on the date shown, the account is erased automatically overnight.</p>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Pending deletions', value: loading ? '-' : rows.length,       icon: Trash2,     color: 'text-[#0F2B4C]' },
-          { label: 'Purging within 3 days', value: loading ? '-' : urgentCount,   icon: AlertTriangle, color: urgentCount > 0 ? 'text-red-600' : 'text-gray-400' },
-          { label: 'Grace window',          value: '30 days',                     icon: Clock,      color: 'text-[#3A7BD5]' },
+          { label: 'Accounts waiting to be erased', value: loading ? '-' : rows.length,     icon: Trash2,        color: 'text-[#0F2B4C]' },
+          { label: 'Gone within 3 days',            value: loading ? '-' : urgentCount,     icon: AlertTriangle, color: urgentCount > 0 ? 'text-red-600' : 'text-gray-400' },
+          { label: 'How long people get to change their mind', value: '30 days',            icon: Clock,         color: 'text-[#3A7BD5]' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[#0F2B4C]/8 flex items-center justify-center">
@@ -160,18 +179,20 @@ export default function RecycleBinPage() {
 
       {!canPurge && (
         <p className="text-xs text-gray-500">
-          Read-only: purging an account before its scheduled date needs a Super Admin or Support Agent role. Restore is available to you.
+          You can keep an account, but not erase one early: that needs a Super Admin or Support Agent.
         </p>
       )}
 
-      {/* Info banner */}
-      <div className="flex items-start gap-3 bg-[#3A7BD5]/8 border border-[#3A7BD5]/20 rounded-xl p-4">
-        <ShieldAlert size={16} className="text-[#3A7BD5] mt-0.5 shrink-0" />
+      {/* Info banner. "the daily 3 AM cron moves the account to
+          archived_users" was a sentence about a database table, aimed at
+          somebody who has never seen one. */}
+      <div className="flex items-start gap-3 rounded-xl border border-[#3A7BD5]/20 bg-[#3A7BD5]/[0.08] p-4">
+        <ShieldAlert size={16} className="mt-0.5 shrink-0 text-[#3A7BD5]" />
         <p className="text-sm text-[#0F2B4C]">
-          Users can also restore themselves by signing in during the grace window and tapping{' '}
-          <span className="font-semibold">Cancel Deletion</span> in the app.
-          Once the scheduled time passes, the daily 3 AM cron moves the account to{' '}
-          <span className="font-mono">archived_users</span> and purges from the live table.
+          People can also save themselves: signing in before the date and tapping{' '}
+          <span className="font-semibold">Cancel Deletion</span> in the app calls it off.
+          After that date the account is erased overnight, leaving only an anonymous record that an account of that
+          type existed. Name, email, phone and history all go.
         </p>
       </div>
 
@@ -179,36 +200,44 @@ export default function RecycleBinPage() {
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <span className="text-sm font-semibold text-[#0F2B4C]">
-            {loading ? 'Loading…' : `${rows.length} pending deletion${rows.length === 1 ? '' : 's'}`}
+            {loading
+              ? 'Loading'
+              : `${rows.length} account${rows.length === 1 ? '' : 's'} waiting to be erased, soonest first`}
           </span>
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-gray-400">Loading…</div>
+          <div className="py-12 text-center text-gray-400">Loading</div>
+        ) : error ? (
+          <EmptyState
+            icon={<AlertTriangle size={20} />}
+            title="The recycle bin could not be loaded"
+            body="This is a connection or permission problem. It does not mean nothing is scheduled for deletion."
+            action={{ label: 'Try again', onClick: load }}
+          />
         ) : rows.length === 0 ? (
-          <div className="text-center py-16">
-            <Trash2 size={40} className="text-gray-300 mx-auto mb-3" />
-            <h3 className="text-base font-semibold text-[#0F2B4C]">Recycle bin is empty</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              No accounts are scheduled for deletion right now.
-            </p>
-          </div>
+          <EmptyState
+            icon={<Trash2 size={20} />}
+            tone="good"
+            title="Nobody is waiting to be erased"
+            body="No account is scheduled for deletion. Accounts arrive here when somebody asks to leave, or when staff schedule it."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 text-xs text-gray-500 font-semibold uppercase tracking-wide">
-                  <th className="text-left px-4 py-3">User</th>
-                  <th className="text-left px-4 py-3">SEIRS ID</th>
-                  <th className="text-left px-4 py-3">Requested</th>
-                  <th className="text-left px-4 py-3">By</th>
-                  <th className="text-left px-4 py-3">Reason</th>
-                  <th className="text-left px-4 py-3">Purges</th>
-                  <th className="text-left px-4 py-3">Actions</th>
+                <tr className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left">Account</th>
+                  <th className="px-4 py-3 text-left">SEIRS ID</th>
+                  <th className="px-4 py-3 text-left">Asked for</th>
+                  <th className="px-4 py-3 text-left">Who asked</th>
+                  <th className="px-4 py-3 text-left">Why</th>
+                  <th className="px-4 py-3 text-left">Erased on</th>
+                  <th className="px-4 py-3 text-left" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {rows.map((r) => {
+                {sorted.map((r) => {
                   const days = Math.round((new Date(r.deletionScheduledAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
                   const urgent = days <= 3;
                   return (
@@ -216,6 +245,10 @@ export default function RecycleBinPage() {
                       <td className="px-4 py-3">
                         <Link href={`/users/${r.id}`} className="font-medium text-[#0F2B4C] hover:text-[#3A7BD5]">{r.name}</Link>
                         <div className="text-xs text-gray-500">{r.email}</div>
+                        {/* Whether this is a customer, a rider or a
+                            partner store changes what is being thrown
+                            away, and it was in the payload unused. */}
+                        {r.role && <div className="text-[10px] text-gray-400">{roleLabel(r.role)}</div>}
                       </td>
                       <td className="px-4 py-3 text-xs font-mono text-gray-600">{r.accountId ?? '-'}</td>
                       <td className="px-4 py-3 text-xs">
@@ -224,9 +257,9 @@ export default function RecycleBinPage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-600">
                         {r.deletionRequestedBy === 'self' ? (
-                          <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">Self</span>
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-700">They asked</span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-[#0F2B4C]/10 text-[#0F2B4C] font-medium">Admin</span>
+                          <span className="rounded-full bg-[#0F2B4C]/10 px-2 py-0.5 font-medium text-[#0F2B4C]">SEIRS staff</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-600 max-w-xs truncate" title={r.deletionReason ?? ''}>
@@ -244,17 +277,17 @@ export default function RecycleBinPage() {
                             className="inline-flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-200 font-medium disabled:opacity-50"
                           >
                             <RotateCcw size={12} />
-                            {busyId === r.id ? '…' : 'Restore'}
+                            {busyId === r.id ? 'Working' : 'Keep the account'}
                           </button>
                           {canPurge && (
                             <button
                               onClick={() => setPurging(r)}
                               disabled={busyId === r.id}
-                              className="inline-flex items-center gap-1 text-xs text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 font-medium disabled:opacity-50"
-                              title="Purge now instead of waiting for the scheduled date. Cannot be undone."
+                              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                              title="Erase now instead of waiting for the date. Nobody can undo this."
                             >
                               <Trash2 size={12} />
-                              Delete forever
+                              Erase for good
                             </button>
                           )}
                         </div>

@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { PageIntro } from '@/components/PageIntro';
+import { EmptyState } from '@/components/EmptyState';
 import { isSuperAdminFromUser } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
 import { HeroCardPreview, heroCardWarnings } from '@/components/HeroCardPreview';
@@ -58,9 +60,39 @@ const STATUS_STYLES: Record<string, string> = {
   archived:         'bg-red-100 text-red-600',
 };
 
+/**
+ * Every status was rendered raw except one, so the list said "draft"
+ * and "archived" at somebody whose question is "can customers see it".
+ * These answer that question instead.
+ */
 const STATUS_LABEL: Record<string, string> = {
+  draft:            'nobody can see it',
   pending_approval: 'awaiting approval',
+  scheduled:        'goes live later',
+  published:        'live now',
+  archived:         'retired',
 };
+
+/** The category pill was the stored key, e.g. "product_update". */
+const CATEGORY_LABEL: Record<string, string> = {
+  news:            'News',
+  press:           'Press release',
+  product_update:  'Product update',
+  guide:           'Guide',
+  story:           'Customer story',
+  impact:          'Impact',
+  getting_started: 'Getting started',
+  payments:        'Payments',
+  pickup:          'Pickup and delivery',
+  drivers:         'For riders',
+  partner:         'Partner stores',
+};
+
+const categoryWords = (c: string) =>
+  CATEGORY_LABEL[c] ?? c.replace(/[_-]+/g, ' ');
+
+/** The admin list is capped server-side and sends no total with it. */
+const SERVER_CAP = 200;
 
 export default function WebsiteCmsPage() {
   const [tab,      setTab]      = useState<WebType>('article');
@@ -158,44 +190,50 @@ export default function WebsiteCmsPage() {
   }, [rows, search]);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
-          <Globe size={18} className="text-white" />
-        </div>
-        <div className="flex-1">
-          <h1 className="text-lg font-bold text-[#0F2B4C]">App &amp; Website Content</h1>
-          {/* The old subtitle said "the public marketing site" and
-              nothing else, so nobody reading it would guess this is also
-              the only editor that reaches a phone. Founder 2026-08-26. */}
-          <p className="text-sm text-gray-500">
-            One story feeds three places: the app home carousel, the in-app Stories list, and seirs.app.
-            Website changes go live within 1 minute (ISR cached); the apps pick up new cards on next launch.
-          </p>
-        </div>
-        <button
-          onClick={load}
-          className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-white border border-[#E5E7EB] rounded-lg hover:bg-gray-50"
-        >
-          <RefreshCw size={14} /> Refresh
-        </button>
-        {superAdmin && (
-          <button
-            onClick={sweepUnusedMedia}
-            disabled={sweeping}
-            title="Delete stored images that no article, gallery or page block uses any more"
-            className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-white border border-[#E5E7EB] rounded-lg hover:bg-gray-50 disabled:opacity-50"
-          >
-            <Trash2 size={14} /> {sweeping ? 'Checking…' : 'Clean up unused images'}
-          </button>
-        )}
-        <button
-          onClick={() => setEditing('new')}
-          className="flex items-center gap-2 bg-[#3A7BD5] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#2f6cc0]"
-        >
-          <Plus size={15} /> New {TABS.find(t => t.key === tab)?.label.replace(/s$/, '') ?? 'Item'}
-        </button>
-      </div>
+    <div className="space-y-6 p-8">
+      {/* The old subtitle said "the public marketing site" and nothing
+          else, so nobody reading it would guess this is also the only
+          editor that reaches a phone. Founder 2026-08-26. */}
+      <PageIntro
+        title="App &amp; Website Content"
+        purpose="Write the stories, page copy and answers that customers read. One story feeds three places: the app home carousel, the in-app Stories list, and seirs.app."
+        storageKey="website"
+        help={
+          <>
+            <p><strong>Published</strong> is the only status customers ever see. Draft and Archived both take something offline.</p>
+            <p>The website updates within a minute. The apps pick up new carousel cards the next time somebody opens them.</p>
+            <p><strong>Take offline</strong> pulls an item straight back to draft, off the website and off the app carousel at once. Use it before correcting something that is live.</p>
+            <p>Anybody who already read a story keeps what they read. Taking it down stops new people seeing it, it does not unsend it.</p>
+          </>
+        }
+        actions={
+          <>
+            <button
+              onClick={load}
+              disabled={loading}
+              className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+            </button>
+            {superAdmin && (
+              <button
+                onClick={sweepUnusedMedia}
+                disabled={sweeping}
+                title="Delete stored images that no article, gallery or page block uses any more"
+                className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Trash2 size={14} /> {sweeping ? 'Checking' : 'Clean up unused images'}
+              </button>
+            )}
+            <button
+              onClick={() => setEditing('new')}
+              className="flex items-center gap-2 rounded-lg bg-[#3A7BD5] px-4 py-2 text-sm font-medium text-white hover:bg-[#2f6cc0]"
+            >
+              <Plus size={15} /> New {TABS.find(t => t.key === tab)?.label.replace(/s$/, '') ?? 'item'}
+            </button>
+          </>
+        }
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 bg-white p-1 rounded-xl border border-[#E5E7EB] w-fit">
@@ -210,12 +248,23 @@ export default function WebsiteCmsPage() {
               }`}
             >
               {t.label}
-              <span className="ml-1.5 text-[10px] opacity-60">({rows.filter(r => r.type === t.key).length || rows.length})</span>
+              {/* The count was `rows.filter(type === t.key).length ||
+                  rows.length`, and rows only ever holds the open tab.
+                  So every inactive tab fell through to the same number,
+                  and all five tabs claimed the same total. Only the tab
+                  actually loaded can honestly show a count. */}
+              {on && <span className="ml-1.5 text-[10px] opacity-60">({rows.length})</span>}
             </button>
           );
         })}
       </div>
-      <p className="text-xs text-gray-500 -mt-3">{TABS.find(t => t.key === tab)?.sub}</p>
+      <p className="-mt-3 text-xs text-gray-500">{TABS.find(t => t.key === tab)?.sub}</p>
+
+      {!loading && rows.length >= SERVER_CAP && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          This list stops at {SERVER_CAP} items and there may be more behind it. Use the search box to find something older.
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative max-w-sm">
@@ -229,22 +278,45 @@ export default function WebsiteCmsPage() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-          <AlertCircle size={16} /> {error}
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={load} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
         </div>
       )}
 
       {/* List */}
       {loading ? (
         <div className="flex items-center justify-center py-16 text-gray-400">
-          <Loader2 size={20} className="animate-spin mr-2" />
-          Loading…
+          <Loader2 size={20} className="mr-2 animate-spin" />
+          Loading
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-[#E5E7EB] bg-white">
+          <EmptyState
+            icon={<AlertCircle size={20} />}
+            title="This list could not be loaded"
+            body="A connection or permission problem, not an empty section. Nothing published has changed."
+            action={{ label: 'Try again', onClick: load }}
+          />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-[#E5E7EB] text-gray-400">
-          <Globe size={32} className="mx-auto mb-3 opacity-40" />
-          <p className="font-semibold">No {tab.replace('_', ' ')}s yet</p>
-          <p className="text-xs mt-1">Tap &ldquo;New&rdquo; above to create one.</p>
+        <div className="rounded-xl border border-[#E5E7EB] bg-white">
+          {search.trim() ? (
+            <EmptyState
+              icon={<Search size={20} />}
+              title={`Nothing here matches "${search.trim()}"`}
+              body="This searches the titles and web addresses in this tab only. Try another tab, or clear the search."
+              action={{ label: 'Clear the search', onClick: () => setSearch('') }}
+            />
+          ) : (
+            <EmptyState
+              icon={<Globe size={20} />}
+              title={`Nothing has been written under ${TABS.find(t => t.key === tab)?.label.toLowerCase() ?? 'this tab'}`}
+              body={TABS.find(t => t.key === tab)?.sub}
+              action={{ label: 'Write the first one', onClick: () => setEditing('new') }}
+            />
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-[#E5E7EB] divide-y divide-[#E5E7EB]">
@@ -276,7 +348,7 @@ export default function WebsiteCmsPage() {
                       {STATUS_LABEL[r.status] ?? r.status}
                     </span>
                     {r.category && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#3A7BD5]/10 text-[#3A7BD5] font-medium">{r.category}</span>
+                      <span className="rounded bg-[#3A7BD5]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#3A7BD5]">{categoryWords(r.category)}</span>
                     )}
                     {r.featureInApp && (
                       <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-[#C2410C]/10 text-[#C2410C] font-bold flex items-center gap-1">
@@ -433,6 +505,34 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   };
 
   const save = async () => {
+    /**
+     * Publishing put words in front of every customer in the country on
+     * one unconfirmed click, and ticking the carousel box put a card on
+     * the home screen of every app. Neither said so. The confirmation
+     * only appears when this save actually reaches somebody: saving a
+     * draft stays a single click, because a draft is private.
+     */
+    if (status === 'published' && superAdmin) {
+      const blockers = featureInApp ? cardWarnings : [];
+      const ok = await confirm({
+        title: featureInApp
+          ? 'Put this on every customer’s home screen?'
+          : 'Publish this to the website?',
+        message:
+          `"${title || 'Untitled'}" goes live on seirs.app within about a minute.\n\n` +
+          (featureInApp
+            ? 'It also becomes a slide on the home carousel in the customer and business apps, which everybody sees the next time they open the app.\n\n'
+            : '') +
+          (blockers.length
+            ? `WARNING before it reaches a phone:\n${blockers.map(b => `  - ${b}`).join('\n')}\n\n`
+            : '') +
+          'You can take it offline again from this screen, but anybody who has already read it keeps what they read.',
+        confirmLabel: featureInApp ? 'Publish and feature it' : 'Publish it',
+        danger:       blockers.length > 0,
+      });
+      if (!ok) return;
+    }
+
     setSaving(true); setErr(null);
     try {
       const payload = {
@@ -504,9 +604,12 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   const remove = async () => {
     if (!row) return;
     const ok = await confirm({
-      title:        `Delete "${row.title}"?`,
-      message:      'Permanently removes this content from the public website. If it was published, existing SEO links and social shares will start returning 404. Consider setting status to Draft instead if you might want it back.',
-      confirmLabel: 'Delete',
+      title:        `Delete "${row.title}" for good?`,
+      message:
+        'It is gone from the website and from the apps, and this cannot be undone.\n\n'
+        + 'Anyone who bookmarked or shared the link, and any search result pointing at it, will land on a "page not found" from now on.\n\n'
+        + 'If there is any chance you will want it back, set the status to Draft instead: that takes it offline and keeps the work.',
+      confirmLabel: 'Delete it for good',
       danger:       true,
     });
     if (!ok) return;
@@ -518,6 +621,19 @@ function EditorModal({ row, defaultType, onClose, onSaved }: {
   // Super-admin decision on a submitted page.
   const review = async (approve: boolean) => {
     if (!row) return;
+    // Approving publishes it outright, so it gets the same warning the
+    // Save path gives. Sending it back to draft harms nobody.
+    if (approve) {
+      const ok = await confirm({
+        title:   `Publish "${row.title}"?`,
+        message:
+          'It goes live on seirs.app within about a minute'
+          + (row.featureInApp ? ', and becomes a slide on the home carousel in every customer app.' : '.')
+          + '\n\nThe person who wrote it is not told either way. You can take it offline again from here.',
+        confirmLabel: 'Publish it',
+      });
+      if (!ok) return;
+    }
     setSaving(true); setErr(null);
     try { await adminApi.websiteContent.review(row.id, approve); onSaved(); }
     catch (e: any) { setErr(e?.message ?? 'Review failed'); setSaving(false); }

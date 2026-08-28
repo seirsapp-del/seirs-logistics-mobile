@@ -7,6 +7,9 @@ import {
 import { downloadExportCsv, type ExportKey } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { permsAllow, resolveSessionPerms } from '@/lib/rbac';
+import { PageIntro } from '@/components/PageIntro';
+import { EmptyState } from '@/components/EmptyState';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 /**
  * Data Exports.
@@ -136,6 +139,7 @@ export default function ExportsPage() {
   // so the decision cannot be made until after mount.
   const [perms, setPerms]     = useState<{ perms: string[]; slug?: string } | null>(null);
   const [ready, setReady]     = useState(false);
+  const confirm               = useConfirm();
 
   useEffect(() => {
     const resolved = resolveSessionPerms(getUser());
@@ -163,12 +167,29 @@ export default function ExportsPage() {
 
   const run = async (card: ExportCard) => {
     if (rangeError) { setError(rangeError); return; }
+    /**
+     * The operational files are whole tables of real people's names,
+     * phone numbers and emails leaving the building as a file on
+     * somebody's laptop. That deserves a sentence before the click, not
+     * a line of small print further up the page.
+     */
+    if (card.permission === OPERATIONAL_PERMISSION) {
+      const ok = await confirm({
+        title:        `Download ${card.title.toLowerCase()} to this computer?`,
+        message:      `This is a file of real people's personal details for ${from} to ${to}. Once it is on your machine SEIRS cannot recall it or delete it, so keep it off shared drives and delete it when you are done.
+
+Your name, the dates and the number of rows are written to the Audit Log.`,
+        confirmLabel: 'Download it',
+      });
+      if (!ok) return;
+    }
     setBusy(card.key);
     setError(null);
     setDone(null);
     try {
       await downloadExportCsv(card.key, from, to);
-      setDone(`${card.title} downloaded for ${from} to ${to}.`);
+      // "downloaded" alone left people hunting for the file.
+      setDone(`${card.title} for ${from} to ${to} has been saved to this computer's Downloads folder. It opens in Excel.`);
     } catch (e: any) {
       setError(`${card.title} failed: ${e?.message ?? 'unknown error'}`);
     } finally {
@@ -187,24 +208,26 @@ export default function ExportsPage() {
     setTo(lagosToday());
   };
 
-  if (!ready) return null;
+  // Returning null flashed a blank page while permissions were read.
+  if (!ready) return <div className="p-8 text-sm text-gray-400">Checking what you are allowed to download…</div>;
 
   const nothingGranted = money.length === 0 && operational.length === 0;
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
-          <Download size={18} className="text-white" />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold text-[#0F2B4C]">Data Exports</h1>
-          <p className="text-sm text-gray-500">
-            Date-ranged CSV, streamed straight from the database. Money is written to the kobo so the
-            figures reconcile.
-          </p>
-        </div>
-      </div>
+      <PageIntro
+        title="Download the numbers"
+        purpose="Take a dated slice of SEIRS out as a spreadsheet: what was paid in, what was paid out, and who did what."
+        storageKey="exports"
+        help={
+          <>
+            <p><b>Nothing here changes anything.</b> These buttons only read. No customer, rider or partner is affected by a download.</p>
+            <p><b>Money is written to the kobo</b> so a payout run adds up against the bank statement rather than being rounded into disagreement.</p>
+            <p><b>Dates are Nigerian dates.</b> Both ends are included, so "1 to 31 August" means the whole of August in Lagos, whatever timezone your laptop is in.</p>
+            <p><b>Every download is recorded</b> in the Audit Log with your name, the dates and the number of rows. The personal-data files are real people's contact details: keep them off shared drives.</p>
+          </>
+        }
+      />
 
       {/* Range picker */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
@@ -279,22 +302,19 @@ export default function ExportsPage() {
       )}
 
       {nothingGranted && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 mb-3">
-            <Lock size={24} className="text-gray-400" />
-          </div>
-          <h3 className="text-sm font-bold text-[#0F2B4C]">No exports on your role</h3>
-          <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto leading-relaxed">
-            Downloading data in bulk is granted separately from viewing it. Ask a Super Admin for
-            &quot;Export money data&quot; or &quot;Export operational data&quot; in Role Management.
-          </p>
+        <div className="bg-white rounded-xl border border-gray-200">
+          <EmptyState
+            icon={<Lock size={20} />}
+            title="Your account cannot download anything"
+            body={'Being allowed to read a screen and being allowed to download the whole table are granted separately. Ask a Super Admin to add "Export money data" or "Export operational data" to your role.'}
+          />
         </div>
       )}
 
       {money.length > 0 && (
         <Section
-          title="Money and reconciliation"
-          note="Amounts are naira to two decimal places. Bank account numbers are masked to the last 4 digits."
+          title="Money"
+          note="Every amount is in naira to two decimal places, the way Flutterwave reports it, so the figures reconcile against the bank. Bank account numbers show their last four digits only."
           cards={money}
           busy={busy}
           disabled={!!rangeError}
@@ -304,8 +324,8 @@ export default function ExportsPage() {
 
       {operational.length > 0 && (
         <Section
-          title="Operational"
-          note="Personal data. Every column is explicitly chosen: no credentials, no tokens, no document URLs."
+          title="People"
+          note="Real people's contact details. Only named columns are included: no passwords, no reset links, no ID documents, no live positions."
           cards={operational}
           busy={busy}
           disabled={!!rangeError}
@@ -353,7 +373,7 @@ function Section({
                 className="mt-auto flex items-center justify-center gap-1.5 bg-[#0F2B4C] text-white text-xs font-medium py-2 rounded-lg hover:bg-[#0F2B4C]/90 transition-colors disabled:opacity-50"
               >
                 <Download size={12} />
-                {running ? 'Preparing…' : 'Download CSV'}
+                {running ? 'Preparing…' : 'Download the spreadsheet'}
               </button>
             </div>
           );

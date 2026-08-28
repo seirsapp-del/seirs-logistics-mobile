@@ -17,9 +17,9 @@
  * platform-wide tune-up.
  */
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api';
-import { Save, RefreshCw, AlertCircle, History, TrendingUp, Loader2, Plus, Trash2, CheckCircle2 } from 'lucide-react';
+import { Save, RefreshCw, AlertCircle, History, TrendingUp, Loader2, Plus, Trash2, CheckCircle2, PencilLine } from 'lucide-react';
 import {
   NIGERIAN_STATES,
   GEOPOLITICAL_ZONES,
@@ -29,6 +29,8 @@ import {
   type StateCode,
 } from '@/lib/nigerianStates';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { PageIntro } from '@/components/PageIntro';
+import { EmptyState } from '@/components/EmptyState';
 
 const VEHICLE_ORDER = ['bicycle', 'motorcycle', 'tricycle', 'car', 'van', 'truck_small', 'truck_large'] as const;
 const VEHICLE_LABEL: Record<string, string> = {
@@ -50,6 +52,52 @@ interface SubZone {
 
 type RateCard = any;
 
+/**
+ * How many individual numbers the admin has actually changed.
+ *
+ * This screen is a draft editor pretending to be a settings page: typing
+ * in a box changes nothing anybody is charged until Publish is pressed,
+ * and until now the screen looked identical either way. An admin who
+ * edited nine fields, got called away and came back to a reloaded tab
+ * lost all nine with no warning, and an admin who edited one field and
+ * walked off believed the price had changed when it had not.
+ */
+function countChanges(before: any, after: any, path = ''): string[] {
+  if (before === after) return [];
+  const isObj = (v: any) => v && typeof v === 'object';
+  if (!isObj(before) || !isObj(after)) {
+    return String(before ?? '') === String(after ?? '') ? [] : [path];
+  }
+  const keys = new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]);
+  const out: string[] = [];
+  for (const k of keys) {
+    // Server-set bookkeeping. Not something an admin edited.
+    if (['id', 'version', 'isActive', 'activatedAt', 'activatedBy', 'deactivatedAt', 'createdAt', 'changeReason'].includes(k)) continue;
+    out.push(...countChanges(before?.[k], after?.[k], path ? `${path}.${k}` : k));
+  }
+  return out;
+}
+
+/** Turn a dot-path into something an ops person can read. */
+const SECTION_NAMES: Record<string, string> = {
+  fuelPrices:     'Fuel prices',
+  insurance:      'Goods-in-transit insurance',
+  vehicleRates:   'Per-vehicle delivery rates',
+  rideRates:      'Ride rates',
+  serviceFees:    'Service fee',
+  highValue:      'High-value premium',
+  stopAndDwell:   'Multi-stop and waiting',
+  weightTiers:    'Weight tiers',
+  dwellBuffers:   'Waiting-time buffers',
+  timeSurcharges: 'Night, peak and weekend surcharges',
+  zoneSurcharges: 'Distance and zone surcharges',
+  regions:        'Zones, states, hotspots and restricted areas',
+  discounts:      'Discounts',
+  feeRules:       'Cancellation, waiting and return fees',
+  partnerStore:   'Partner store economics',
+  vatRate:        'VAT',
+};
+
 export default function PricingPage() {
   const confirm               = useConfirm();
   const [card, setCard]       = useState<RateCard | null>(null);
@@ -60,6 +108,9 @@ export default function PricingPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [changeReason, setChangeReason] = useState('');
+  // The card exactly as the server sent it, so the screen can tell the
+  // admin what they have changed and what is still only a draft.
+  const [published, setPublished] = useState<RateCard | null>(null);
 
   // Reload + initial fetch
   const reload = async () => {
@@ -70,6 +121,7 @@ export default function PricingPage() {
         adminApi.rateCard.history().catch(() => []),
       ]);
       setCard(active);
+      setPublished(structuredClone(active));
       setHistory(hist);
       setError(null);
     } catch (e: any) {
@@ -78,6 +130,34 @@ export default function PricingPage() {
   };
 
   useEffect(() => { reload(); }, []);
+
+  const changedPaths = useMemo(
+    () => (card && published ? countChanges(published, card) : []),
+    [card, published],
+  );
+  const dirty = changedPaths.length > 0;
+
+  // The sections touched, in words, for the banner and the confirm.
+  const changedSections = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of changedPaths) {
+      const head = p.split('.')[0];
+      set.add(SECTION_NAMES[head] ?? head);
+    }
+    return [...set];
+  }, [changedPaths]);
+
+  /**
+   * Closing the tab mid-edit used to throw the work away in silence.
+   * Prices are typed in from a spreadsheet, one section at a time, so
+   * losing a half-finished card costs somebody their afternoon.
+   */
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
   // Generic patch helper. keeps nested keys editable via dot-path.
   // Auto-creates intermediate objects so new sections (regions, etc.) work
@@ -101,9 +181,31 @@ export default function PricingPage() {
   const publish = async () => {
     if (!card) return;
     if (!changeReason.trim()) {
-      alert('Please describe what you changed in this rate card update.');
+      setError('Say what you changed and why before publishing. The next person to open this page reads that line to understand why prices moved.');
       return;
     }
+    if (!dirty) {
+      setError('Nothing on this page differs from the version already live, so there is nothing to publish.');
+      return;
+    }
+
+    /**
+     * Publishing re-prices the whole country. It was a single click with
+     * no summary of what was about to change, on a page with roughly two
+     * hundred editable numbers on it.
+     */
+    const ok = await confirm({
+      title:        `Change prices for every new booking?`,
+      message:      [
+        `${changedPaths.length} value${changedPaths.length === 1 ? '' : 's'} changed, in: ${changedSections.join(', ')}.`,
+        'Every quote given from about five minutes after you publish uses these numbers, in the customer app, the business app and the rider app. Deliveries already booked and paid for keep the price they were quoted.',
+        'There is no undo button. The version live now is kept in the history below, but putting it back means typing the old numbers in again, so check the figures before you publish.',
+      ].join('\n\n'),
+      confirmLabel: 'Publish and go live',
+      danger:       true,
+    });
+    if (!ok) return;
+
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -134,9 +236,11 @@ export default function PricingPage() {
   const inflationBump = async (pct: number) => {
     if (!card) return;
     const ok = await confirm({
-      title:        `Bump all labour rates + base fares by ${pct}%?`,
-      message:      'Every vehicle labour-per-km and base-fare value gets multiplied by the new factor. Fuel pass-through is untouched. This is a draft. you still need to hit Publish to activate.',
-      confirmLabel: `Bump ${pct}%`,
+      title:        `Raise every vehicle rate by ${pct}%?`,
+      message:      `Each vehicle's base fare and per-kilometre labour rate, on both the customer side and the rider side, is multiplied by ${(1 + pct / 100).toFixed(2)}. Fuel is not touched: that is worked out from the pump prices at the top of the page.
+
+Nothing goes live yet. It fills the boxes on this page so you can check them, and you still have to press Publish.`,
+      confirmLabel: `Raise everything ${pct}%`,
       danger:       true,
     });
     if (!ok) return;
@@ -163,15 +267,13 @@ export default function PricingPage() {
   if (!card) {
     return (
       <div className="p-8 max-w-2xl">
-        <div className="p-6 bg-red-50 border border-red-200 rounded-lg flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-          <div>
-            <div className="font-semibold text-red-700">Could not load rate card</div>
-            <div className="text-sm text-red-600 mt-1">{error}</div>
-            <button onClick={reload} className="mt-3 px-3 py-1.5 bg-red-600 text-white rounded text-sm font-medium">
-              Retry
-            </button>
-          </div>
+        <div className="rounded-xl border border-red-200 bg-red-50">
+          <EmptyState
+            icon={<AlertCircle size={20} />}
+            title="The price list would not load"
+            body={`${error ?? 'The server did not answer.'} Nothing is broken for customers: the apps keep using the version they already have. Try again, and tell engineering if it keeps failing.`}
+            action={{ label: 'Try again', onClick: reload }}
+          />
         </div>
       </div>
     );
@@ -180,31 +282,73 @@ export default function PricingPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto pb-32 space-y-6">
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Pricing &amp; Rate Card</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Active version <b>{card.version}</b> · activated{' '}
-            {card.activatedAt ? new Date(card.activatedAt).toLocaleString() : '-'}.
-            Apps re-fetch within 5 minutes of publish.
-          </p>
-        </div>
-        <div className="flex gap-2">
+      {/*
+        Everything on this page is a draft until Publish. The old header
+        gave the version number and left the rest to be inferred, which
+        is how an admin ends up believing a price changed because they
+        typed it into a box.
+      */}
+      <PageIntro
+        title="Pricing engine"
+        purpose="The numbers SEIRS uses to work out what every delivery and every ride costs. Nothing you type here reaches a customer until you publish it."
+        storageKey="pricing"
+        help={
+          <>
+            <p><b>Typing changes nothing.</b> The whole page is a draft. Press <b>Publish new version</b> at the bottom and the three apps pick the new prices up within about five minutes.</p>
+            <p><b>Already-booked jobs are safe.</b> A delivery keeps the price it was quoted. Only new quotes use the new numbers.</p>
+            <p><b>There is no undo.</b> Old versions are kept for reading in History, but going back means typing the old numbers in again.</p>
+            <p>Fixed fees (commission, subscriptions, storage) live in the <a className="font-semibold text-[#3A7BD5] hover:underline" href="/fees">Fee catalogue</a>. Whether SEIRS operates in an area at all lives in <a className="font-semibold text-[#3A7BD5] hover:underline" href="/zones">Zones</a>.</p>
+          </>
+        }
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50"
+            >
+              <History className="w-4 h-4" /> Past versions ({history.length})
+            </button>
+            <button
+              onClick={() => inflationBump(5)}
+              title="Fills every vehicle rate box with a figure 5% higher. Still needs publishing."
+              className="px-3 py-2 bg-amber-100 border border-amber-300 text-amber-900 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-amber-200"
+            >
+              <TrendingUp className="w-4 h-4" /> Raise all rates 5%
+            </button>
+          </div>
+        }
+      />
+
+      <p className="-mt-2 text-sm text-gray-500">
+        Live now: version <b>{card.version}</b>, published{' '}
+        {card.activatedAt ? new Date(card.activatedAt).toLocaleString('en-NG') : 'at an unrecorded time'}.
+      </p>
+
+      {/* Unpublished-work warning. Without it the page looks identical
+          whether or not the admin has edited anything. */}
+      {dirty && (
+        <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+          <PencilLine size={16} className="shrink-0" />
+          <span className="flex-1">
+            <b>{changedPaths.length} value{changedPaths.length === 1 ? '' : 's'} changed and not published yet</b>
+            {' '}({changedSections.join(', ')}). Customers are still being charged the old prices until you publish.
+          </span>
           <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50"
+            onClick={async () => {
+              const ok = await confirm({
+                title:        'Throw away your changes?',
+                message:      `The ${changedPaths.length} value${changedPaths.length === 1 ? '' : 's'} you have edited go back to what is live now. This cannot be undone.`,
+                confirmLabel: 'Throw them away',
+                danger:       true,
+              });
+              if (ok && published) { setCard(structuredClone(published)); setChangeReason(''); }
+            }}
+            className="shrink-0 font-semibold underline hover:no-underline"
           >
-            <History className="w-4 h-4" /> History ({history.length})
-          </button>
-          <button
-            onClick={() => inflationBump(5)}
-            className="px-3 py-2 bg-amber-100 border border-amber-300 text-amber-900 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-amber-200"
-          >
-            <TrendingUp className="w-4 h-4" /> +5% inflation bump
+            Undo my changes
           </button>
         </div>
-      </div>
+      )}
 
       {/* Alerts */}
       {success && (
@@ -218,28 +362,47 @@ export default function PricingPage() {
         </div>
       )}
 
-      {/* History panel */}
-      {showHistory && history.length > 0 && (
+      {/* History panel. It used to render nothing at all when there was
+          no history, so the button looked broken on a fresh install. */}
+      {showHistory && (
         <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Recent versions</h3>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-500 border-b border-gray-200 text-left">
-                <th className="py-2">Version</th><th>Active</th><th>Activated</th><th>By</th><th>Reason</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.slice(0, 10).map((h: any) => (
-                <tr key={h.id} className="border-b border-gray-100">
-                  <td className="py-2 font-mono">v{h.version}</td>
-                  <td>{h.isActive ? <span className="text-green-700 font-bold">YES</span> : '-'}</td>
-                  <td>{h.activatedAt ? new Date(h.activatedAt).toLocaleString() : '-'}</td>
-                  <td>{h.activatedBy ?? '-'}</td>
-                  <td className="text-gray-600">{h.changeReason ?? '-'}</td>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <h3 className="font-semibold text-gray-900">Price lists SEIRS has used</h3>
+            <span className="text-xs text-gray-500">
+              {history.length === 0
+                ? 'Nothing published yet'
+                : `Showing the ${Math.min(10, history.length)} most recent of ${history.length}`}
+            </span>
+          </div>
+          {history.length === 0 ? (
+            <EmptyState
+              icon={<History size={20} />}
+              title="This is the first price list"
+              body="Nobody has published a change yet. Once somebody does, every version stays here with who published it and why."
+            />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-500 border-b border-gray-200 text-left">
+                  <th className="py-2">Version</th><th>Live now</th><th>Published</th><th>By</th><th>What changed and why</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {history.slice(0, 10).map((h: any) => (
+                  <tr key={h.id} className="border-b border-gray-100">
+                    <td className="py-2 font-mono">v{h.version}</td>
+                    <td>{h.isActive ? <span className="text-green-700 font-bold">Yes</span> : ''}</td>
+                    <td>{h.activatedAt ? new Date(h.activatedAt).toLocaleString('en-NG') : '-'}</td>
+                    {/* activatedBy is not filled in by the server yet, so
+                        this reads "not recorded" rather than a bare dash
+                        that looks like a rendering fault. */}
+                    <td className={h.activatedBy ? '' : 'text-gray-400'}>{h.activatedBy ?? 'not recorded'}</td>
+                    <td className="text-gray-600">{h.changeReason ?? '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
@@ -680,7 +843,7 @@ export default function PricingPage() {
           <FieldNumber label="Loyalty point value ₦"
             value={card.discounts.loyaltyPointValueNgn}
             onChange={(v) => patchPath('discounts.loyaltyPointValueNgn', v)}
-            hint="1 point earned per ₦100 wallet funding; this is what 1 point is worth at redemption." />
+            hint="What one reward point is worth when a customer spends points on a booking. Customers hold points, never a naira balance." />
         </Row>
         <Row>
           <FieldNumber label="Welcome offer %"
@@ -764,41 +927,70 @@ export default function PricingPage() {
       </Card>
 
       {/* ── VAT ───────────────────────────────────────────────────── */}
-      <Card title="Tax (VAT)">
+      <Card title="VAT">
         <Row>
-          <FieldNumber label="VAT rate (decimal)"
-            value={card.vatRate}
-            step={0.001}
-            onChange={(v) => patchPath('vatRate', v)}
-            hint="0.075 = 7.5% (current Nigerian VAT on services)." />
+          {/*
+            This asked for a decimal: 0.075 for 7.5%. Anybody typing what
+            they actually know, 7.5, set VAT to 750% on every booking in
+            the country. It takes and shows a percentage now, and stores
+            the decimal the engine wants.
+          */}
+          <FieldNumber label="VAT charged on the service fee (%)"
+            value={pctVal(card.vatRate, 0.075)}
+            step={0.1}
+            onChange={(v) => patchPath('vatRate', v / 100)}
+            hint="Nigerian VAT on services is 7.5%. Type 7.5, not 0.075." />
           <div className="flex-1" />
         </Row>
       </Card>
 
       {/* ── Publish bar (sticky at bottom) ─────────────────────────── */}
-      <div className="sticky bottom-0 left-0 right-0 -mx-6 px-6 py-4 bg-white border-t border-gray-200 shadow-lg flex items-center gap-4">
-        <input
-          type="text"
-          value={changeReason}
-          onChange={(e) => setChangeReason(e.target.value)}
-          placeholder="What changed and why? (required for audit log)"
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-        />
-        <button
-          onClick={reload}
-          disabled={saving}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50 disabled:opacity-50"
-        >
-          <RefreshCw className="w-4 h-4" /> Reload
-        </button>
-        <button
-          onClick={publish}
-          disabled={saving || !changeReason.trim()}
-          className="px-4 py-2 bg-navy-700 bg-[#0F2B4C] text-white rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Publish new version
-        </button>
+      <div className="sticky bottom-0 left-0 right-0 -mx-6 border-t border-gray-200 bg-white px-6 py-4 shadow-lg">
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            value={changeReason}
+            onChange={(e) => setChangeReason(e.target.value)}
+            placeholder="What did you change, and why? e.g. petrol at 1,100 per litre from Monday"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          />
+          <button
+            onClick={async () => {
+              // Reload used to silently discard an afternoon of typing.
+              if (dirty) {
+                const ok = await confirm({
+                  title:        'Throw away your changes and start again?',
+                  message:      `You have ${changedPaths.length} unpublished change${changedPaths.length === 1 ? '' : 's'}. Reloading fetches the live prices and loses them.`,
+                  confirmLabel: 'Reload and lose them',
+                  danger:       true,
+                });
+                if (!ok) return;
+              }
+              reload();
+            }}
+            disabled={saving}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className="w-4 h-4" /> Start again
+          </button>
+          <button
+            onClick={publish}
+            disabled={saving || !changeReason.trim() || !dirty}
+            className="px-4 py-2 bg-navy-700 bg-[#0F2B4C] text-white rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Publish new version
+          </button>
+        </div>
+        {/* A greyed-out button with no reason next to it is the single
+            most common "the dashboard is broken" report. */}
+        <p className="mt-2 text-xs text-gray-500">
+          {!dirty
+            ? 'Nothing has been changed yet, so there is nothing to publish.'
+            : !changeReason.trim()
+              ? 'Write one line about what you changed. It is kept forever and is what the next person reads when they ask why prices moved.'
+              : `Ready: ${changedPaths.length} change${changedPaths.length === 1 ? '' : 's'} will go live in all three apps within about five minutes.`}
+        </p>
       </div>
 
     </div>

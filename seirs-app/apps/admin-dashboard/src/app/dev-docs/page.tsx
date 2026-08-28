@@ -1,74 +1,79 @@
 'use client';
-// Newer lucide-react dropped the `Github` icon - use `GitBranch` as
-// the closest semantic equivalent. The button still opens the GitHub
-// repo URL; only the icon glyph changed.
-import { BookOpen, ExternalLink, GitBranch as Github, FileText, Zap } from 'lucide-react';
 
-// Spec V8 Tier 3 - link card to the public docs site. The actual
-// docs.seirs.app is a separate Vercel project (Mintlify or Nextra);
-// this admin page surfaces it + its publish status + lets staff jump
-// straight to the source repo.
+/**
+ * Developer documentation: planned, not published.
+ *
+ * One job: answer the question somebody opens this page with, which is
+ * "where do I send a developer who asks for the SEIRS documentation".
+ * Today the honest answer is "nowhere yet, send them to engineering",
+ * and the page says exactly that instead of describing a website that
+ * does not exist as though it did.
+ */
+// Newer lucide-react dropped the `Github` icon - use `GitBranch` as
+// the closest semantic equivalent.
+import Link from 'next/link';
+import { BookOpen, GitBranch as Github, FileText, Zap, Info } from 'lucide-react';
+import { PageIntro } from '@/components/PageIntro';
 
 export default function DevDocsPage() {
   return (
     <div className="p-6 space-y-6 max-w-3xl">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
-          <BookOpen size={18} className="text-white" />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold text-[#0F2B4C]">Developer Docs</h1>
-          <p className="text-sm text-gray-500">
-            Public documentation site for SEIRS Developer Platform integrators.
-          </p>
-        </div>
-      </div>
+      <PageIntro
+        title="Developer documentation"
+        purpose="The website that will tell outside developers how to plug their software into SEIRS. It has not been published yet."
+      />
 
-      {/* Status card */}
+      {/* Status card. The heading used to be the address of a site that
+          does not resolve, presented like a live link. */}
       <div className="bg-gradient-to-br from-[#0F2B4C] to-[#1a3d6b] text-white rounded-xl p-6">
         <div className="flex items-center gap-3 mb-2">
           <BookOpen size={20} />
-          <p className="text-xl font-bold">docs.seirs.app</p>
+          <p className="text-xl font-bold">Nothing is published yet</p>
         </div>
         <p className="text-sm opacity-80 mb-4">
-          Endpoints reference, SDKs, sample code, sandbox guide, changelog. Built with Mintlify (or Nextra) and deployed as a separate Vercel project.
+          There is no documentation site for developers to read. If somebody asks you for it, tell them
+          it is not available yet and pass the request to engineering. Do not give out the address below:
+          it is a name we have reserved, not a working site.
         </p>
-        {/* The button used to open docs.seirs.app, a domain this same page
-            admits is a placeholder: the nav's only primary action went
-            nowhere. Restore the link when the docs site is deployed. */}
-        <span className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white/60">
-          <ExternalLink size={14} />
-          Not deployed yet
+        <span className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 font-mono text-sm text-white/60">
+          docs.seirs.app (reserved, does not open)
         </span>
       </div>
 
-      {/* Sections */}
-      <div className="grid grid-cols-2 gap-4">
-        <SectionCard
-          title="API Reference"
-          description="Every endpoint under /v1/* with request/response schemas, error codes, rate limits."
-          Icon={FileText}
-        />
-        <SectionCard
-          title="SDKs"
-          description="@seirs/node, @seirs/php, @seirs/js - install snippets, type defs, sample integrations."
-          Icon={Github}
-        />
-        <SectionCard
-          title="Quickstart"
-          description="5-minute integration walkthrough: get a test key, create your first delivery, handle webhooks."
-          Icon={Zap}
-        />
-        <SectionCard
-          title="Changelog"
-          description="Versioned release notes. Notify-only API changes; breaking changes go through email + 90-day deprecation."
-          Icon={BookOpen}
-        />
+      <div>
+        <h2 className="text-sm font-bold text-[#0F2B4C]">What the site will hold when it exists</h2>
+        <p className="mb-3 text-xs text-gray-500">None of this is written yet. Nothing below is a link.</p>
+        <div className="grid grid-cols-2 gap-4">
+          <SectionCard
+            title="How each request works"
+            description="Every instruction a developer's software can send SEIRS, what it must include, and what comes back, including the errors."
+            Icon={FileText}
+          />
+          <SectionCard
+            title="Ready-made code"
+            description="Small packages a developer drops into their own system so they do not have to write the plumbing themselves."
+            Icon={Github}
+          />
+          <SectionCard
+            title="First delivery in five minutes"
+            description="A walkthrough: get a test key, book one delivery with it, and receive the updates SEIRS sends back."
+            Icon={Zap}
+          />
+          <SectionCard
+            title="What changed and when"
+            description="A dated list of changes. Anything that would break a partner's software gets an email and 90 days' notice first."
+            Icon={BookOpen}
+          />
+        </div>
       </div>
 
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <p className="text-xs text-yellow-800 leading-relaxed">
-          <strong>Build status:</strong> The docs site is a planned standalone Vercel project. URL above is placeholder - pointing it to a real deployment requires (1) creating the Mintlify/Nextra repo, (2) pushing initial content, (3) configuring DNS for docs.seirs.app. Roadmap: target v1 ship alongside the public <code className="bg-yellow-100 px-1 rounded">/v1/*</code> API surface.
+      <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+        <Info size={15} className="mt-0.5 shrink-0 text-yellow-700" />
+        <p className="text-xs leading-relaxed text-yellow-800">
+          Publishing it is engineering work, not something anybody can do from this dashboard: the site
+          has to be built, filled with content and pointed at the address above, alongside opening the
+          public API to outside traffic. Meanwhile, the businesses already connected to SEIRS are listed
+          on <Link href="/dev-accounts" className="font-semibold underline">Businesses plugged into SEIRS</Link>.
         </p>
       </div>
     </div>

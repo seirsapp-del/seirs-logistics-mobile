@@ -1,11 +1,23 @@
 'use client';
+
+/**
+ * The fee catalogue: every price SEIRS charges or pays, in one place.
+ *
+ * One job, and it is a live one: change a number here and the customer
+ * app, the business app and the rider app all start using it inside a
+ * minute. There is no staging copy and no publish step, so the screen
+ * has to say that out loud before somebody types into a box.
+ */
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { naira } from '@/lib/money';
 import FuelDriftBanner from '@/components/FuelDriftBanner';
+import { PageIntro } from '@/components/PageIntro';
+import { EmptyState } from '@/components/EmptyState';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { isSuperAdminFromUser } from '@/lib/rbac';
 import { getUser } from '@/lib/auth';
-import { DollarSign, Save, X, History, Search, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
+import { Save, X, History, Search, AlertCircle, CheckCircle2, Lock, SearchX } from 'lucide-react';
 
 interface Fee {
   key:               string;
@@ -57,6 +69,27 @@ const CATEGORY_ORDER = [
   'dev_platform', 'config',
 ];
 
+/**
+ * What the number in the box actually means, in words.
+ *
+ * The drawer labelled the field "Value . flat ngn" and "Value . per km",
+ * which are column values from the database. Somebody deciding whether
+ * to type 15 or 0.15 needs the sentence, not the slug.
+ */
+const UNIT_LABEL: Record<string, string> = {
+  flat_ngn:    'a fixed amount in naira',
+  percent:     'a percentage (type 15 for 15%)',
+  per_km:      'naira for every kilometre',
+  per_day:     'naira per day',
+  per_week:    'naira per week',
+  per_month:   'naira per month',
+  minutes:     'a number of minutes',
+  hours:       'a number of hours',
+  days:        'a number of days',
+  count:       'a plain count',
+  hour_of_day: 'an hour of the day, 0 to 23, Nigerian time',
+};
+
 // Format the raw stored value into the right human-readable string
 // based on the fee's unit. Negative values render with a leading minus.
 function formatValue(value: number, unit: string): string {
@@ -96,6 +129,8 @@ export default function FeeCataloguePage() {
   const [savedKey,    setSavedKey]    = useState<string | null>(null);
   const [error,       setError]       = useState<string | null>(null);
 
+  const confirm = useConfirm();
+
   // PATCH /fees/:key is super-admin only, but the nav grants this page to
   // ops_manager and finance_officer. They could open any fee, edit it,
   // hit an always-enabled Save and collect a 403 alert. Read-only for
@@ -114,8 +149,11 @@ export default function FeeCataloguePage() {
 
   useEffect(() => { load(); }, []);
 
-  // Group + filter for rendering
-  const grouped = useMemo(() => {
+  // Group + filter for rendering. matchCount is kept because a search
+  // that matched nothing used to render an empty page with no message:
+  // every category simply dropped out of the map and the admin was left
+  // looking at a search box above white space.
+  const { grouped, matchCount } = useMemo(() => {
     const filter = search.trim().toLowerCase();
     const visible = filter
       ? fees.filter(f =>
@@ -126,10 +164,11 @@ export default function FeeCataloguePage() {
       : fees;
     const byCat: Record<string, Fee[]> = {};
     for (const f of visible) (byCat[f.category] ??= []).push(f);
-    return byCat;
+    return { grouped: byCat, matchCount: visible.length };
   }, [fees, search]);
 
   const openEditor = async (fee: Fee) => {
+    setError(null);
     setEditing(fee);
     setNewValue(String(fee.value));
     setNewNote('');
@@ -142,20 +181,58 @@ export default function FeeCataloguePage() {
   };
 
   const closeEditor = () => {
+    setError(null);
     setEditing(null);
     setNewValue('');
     setNewNote('');
     setHistory([]);
   };
 
+  /**
+   * Saving is the whole point of the page and it was one unguarded
+   * click. A mistyped decimal here is a mistyped price in three phone
+   * apps a minute later, charged to real customers, with nothing on the
+   * screen having said so. The dialog states the before and the after,
+   * who it reaches, and that putting the old number back is the way to
+   * undo it (the history log keeps what it was).
+   */
   const handleSave = async () => {
     if (!editing) return;
     const numericValue = Number(newValue);
-    if (!Number.isFinite(numericValue)) {
-      alert('Value must be a number');
+    if (newValue.trim() === '' || !Number.isFinite(numericValue)) {
+      setError(`"${newValue}" is not a number. Type digits only, for example 1500 or 12.5.`);
       return;
     }
+
+    const valueChanged  = Number(editing.value) !== numericValue;
+    const activeChanged = editing.active !== newActive;
+    if (!valueChanged && !activeChanged && !newNote.trim()) {
+      setError('Nothing has changed, so there is nothing to save.');
+      return;
+    }
+
+    const lines: string[] = [];
+    if (valueChanged) {
+      lines.push(`${editing.name} changes from ${formatValue(Number(editing.value), editing.unit)} to ${formatValue(numericValue, editing.unit)}.`);
+    }
+    if (activeChanged) {
+      lines.push(newActive
+        ? `${editing.name} starts being applied again.`
+        : `${editing.name} stops being applied at all: it is charged as zero until somebody switches it back on.`);
+    }
+    lines.push('Every new booking made from about a minute after you save uses this, in the customer app, the business app and the rider app. Jobs already priced and paid for are not touched.');
+    lines.push('To undo it, set the old number back here: the change history keeps what it was and your name against both changes.');
+
+    const ok = await confirm({
+      title:        'Change what SEIRS charges?',
+      message:      lines.join('\n\n'),
+      confirmLabel: 'Save and go live',
+      danger:       true,
+    });
+    if (!ok) return;
+
     setSaving(true);
+    setError(null);
     try {
       const updated = await adminApi.fees.update(editing.key, {
         value:       numericValue,
@@ -167,7 +244,9 @@ export default function FeeCataloguePage() {
       setTimeout(() => setSavedKey(null), 2500);
       closeEditor();
     } catch (err: any) {
-      alert(`Save failed: ${err?.message ?? 'unknown error'}`);
+      // A browser alert can be suppressed after the first one, which on
+      // this page would read as "the new price saved" when it did not.
+      setError(`The price was NOT changed: ${err?.message ?? 'the server refused the request'}. It is still ${formatValue(Number(editing.value), editing.unit)}.`);
     } finally {
       setSaving(false);
     }
@@ -178,32 +257,42 @@ export default function FeeCataloguePage() {
       {/* The fuel rows live on this page, so the warning about them does too. */}
       <FuelDriftBanner />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
-            <DollarSign size={18} className="text-white" />
+      {/*
+        The old header said "single source of truth ... changes propagate
+        live within 60s", which is engineer's English for the one thing
+        the reader must understand: type here and real customers are
+        charged differently a minute later.
+      */}
+      <PageIntro
+        title="Fee catalogue"
+        purpose="Every price SEIRS charges a customer or pays a rider, in one list. Changing a number here changes what real people are charged, in all three apps, within about a minute."
+        storageKey="fees"
+        help={
+          <>
+            <p><b>There is no draft and no publish step.</b> Save is live. Bookings made after you save use the new number; anything already paid for keeps the price it was quoted.</p>
+            <p><b>Off is not deleted.</b> Switching a fee off makes it zero for every new booking and leaves the row here so it can be switched back on.</p>
+            <p><b>To undo, put the old number back.</b> Every change is kept with your name and the note you leave, in the history at the bottom of the drawer.</p>
+            <p>Only a Super Admin can save. Everyone else can read every value and its history.</p>
+          </>
+        }
+        actions={
+          <div className="flex items-center gap-3 text-sm text-gray-500">
+            {!canEdit && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">
+                <Lock size={11} /> You can read this, not change it
+              </span>
+            )}
+            <span>{fees.length} priced items, {fees.filter(f => f.active).length} switched on</span>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-[#0F2B4C]">Fee Catalogue</h1>
-            <p className="text-sm text-gray-500">
-              Single source of truth for every editable fee, multiplier, and rate. Changes propagate live within 60s.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-gray-500">
-          {!canEdit && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">
-              <Lock size={11} /> Read-only
-            </span>
-          )}
-          <span>{fees.length} fees · {fees.filter(f => f.active).length} active</span>
-        </div>
-      </div>
+        }
+      />
 
       {/* A 403 or a cold Railway boot used to render as "No fees
-          configured yet", which reads as a bad seed, not a bad request. */}
-      {error && (
+          configured yet", which reads as a bad seed, not a bad request.
+          Hidden while the drawer is open, because the drawer's overlay
+          covers this strip: a failed save is reported inside the drawer
+          instead, where the admin is actually looking. */}
+      {error && !editing && (
         <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
           <span className="flex-1">{error}</span>
@@ -211,22 +300,53 @@ export default function FeeCataloguePage() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search fees by name, key, or description…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#E5E7EB] text-sm focus:outline-none focus:border-[#3A7BD5]"
-        />
+      {/* Search. Every fee is loaded in one request, so this really does
+          search all of them, and the count says how many it found. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-md">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Find a fee by what it is called or what it does…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#E5E7EB] text-sm focus:outline-none focus:border-[#3A7BD5]"
+          />
+        </div>
+        {search.trim() && (
+          <span className="text-xs text-gray-500">
+            {matchCount} of {fees.length} match &quot;{search.trim()}&quot;
+          </span>
+        )}
+        {search.trim() && (
+          <button onClick={() => setSearch('')} className="text-xs font-semibold text-[#3A7BD5] hover:underline">
+            Clear
+          </button>
+        )}
       </div>
 
       {loading ? (
-        <div className="text-center py-20 text-gray-400">Loading fee catalogue…</div>
-      ) : fees.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">No fees configured yet - backend seed should have run on first deploy.</div>
+        <div className="text-center py-20 text-gray-400">Loading the fee catalogue…</div>
+      ) : fees.length === 0 && !error ? (
+        /* "backend seed should have run on first deploy" is a sentence
+           for the person who wrote it, not the person reading it. */
+        <div className="bg-white rounded-xl border border-[#E5E7EB]">
+          <EmptyState
+            icon={<AlertCircle size={20} />}
+            title="No prices are set up at all"
+            body="This is not normal: SEIRS cannot price a delivery without these. Report it to engineering rather than trying to add them here."
+            action={{ label: 'Try loading again', onClick: load }}
+          />
+        </div>
+      ) : matchCount === 0 ? (
+        <div className="bg-white rounded-xl border border-[#E5E7EB]">
+          <EmptyState
+            icon={<SearchX size={20} />}
+            title={`Nothing matches "${search.trim()}"`}
+            body="Try a shorter word, or part of what the fee does rather than its exact name."
+            action={{ label: 'Clear the search', onClick: () => setSearch('') }}
+          />
+        </div>
       ) : (
         <div className="space-y-6">
           {/* Anything the backend adds that CATEGORY_ORDER has not heard of
@@ -258,15 +378,27 @@ export default function FeeCataloguePage() {
                         )}
                       </div>
                       <p className="text-xs text-gray-500 line-clamp-1">{fee.description}</p>
-                      <p className="text-[10px] text-gray-400 mt-1 font-mono">{fee.key}</p>
+                      {/* The bare slug sat under every row unexplained.
+                          It is worth keeping (it is what engineering and
+                          the specs call this fee) but it now says so. */}
+                      <p
+                        className="text-[10px] text-gray-400 mt-1 font-mono"
+                        title="The name the apps and the specs use for this fee. Useful when reporting a problem."
+                      >
+                        {fee.key}
+                      </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className={`text-base font-bold ${fee.active ? 'text-[#0F2B4C]' : 'text-gray-400 line-through'}`}>
+                      <div className={`text-base font-bold tabular-nums ${fee.active ? 'text-[#0F2B4C]' : 'text-gray-400 line-through'}`}>
                         {formatValue(Number(fee.value), fee.unit)}
                       </div>
+                      {/* When a price last moved is the first thing asked
+                          when something looks wrong on a receipt, and the
+                          date was in the payload and drawn nowhere. */}
                       {fee.lastUpdatedByName && (
                         <div className="text-[10px] text-gray-400 mt-0.5">
-                          by {fee.lastUpdatedByName}
+                          last changed by {fee.lastUpdatedByName}
+                          {fee.updatedAt ? ` on ${new Date(fee.updatedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                         </div>
                       )}
                     </div>
@@ -298,7 +430,7 @@ export default function FeeCataloguePage() {
               {/* Value editor */}
               <div>
                 <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                  Value · {editing.unit.replace(/_/g, ' ')}
+                  What it costs: {UNIT_LABEL[editing.unit] ?? editing.unit.replace(/_/g, ' ')}
                 </label>
                 <input
                   type="number"
@@ -316,8 +448,12 @@ export default function FeeCataloguePage() {
               {/* Active toggle */}
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
-                  <p className="text-sm font-semibold text-[#0F2B4C]">Active</p>
-                  <p className="text-xs text-gray-500">Disable to stop applying this fee without deleting it.</p>
+                  <p className="text-sm font-semibold text-[#0F2B4C]">Charge this at all</p>
+                  {/* "Active / disable" left it open whether switching it
+                      off deletes the row or refunds anybody. Neither. */}
+                  <p className="text-xs text-gray-500">
+                    Switch off and this becomes zero on every new booking. The row and its history stay here, so it can be switched back on.
+                  </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -347,9 +483,43 @@ export default function FeeCataloguePage() {
                   className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:border-[#3A7BD5] disabled:bg-gray-50"
                 />
                 <p className="text-[11px] text-gray-500 mt-1">
-                  Captured in the history log alongside who changed it and when.
+                  Only other admins see this. It is kept forever, next to your name and the time, and is what the next person reads when they ask why the price moved.
                 </p>
               </div>
+
+              {/* A save that was refused has to be visible where the
+                  admin pressed Save, not on the page behind the overlay. */}
+              {error && (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                  <AlertCircle size={14} className="mt-0.5 shrink-0 text-red-600" />
+                  <p className="text-xs text-red-800">{error}</p>
+                </div>
+              )}
+
+              {/* The before-and-after used to sit UNDER the Save button,
+                  which is the one place an admin has already stopped
+                  reading by the time it matters. */}
+              {canEdit && Number(editing.value) !== Number(newValue) && (
+                <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <AlertCircle size={14} className="text-yellow-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-yellow-900">
+                    You are changing this from <strong>{formatValue(Number(editing.value), editing.unit)}</strong> to{' '}
+                    <strong>{formatValue(Number(newValue) || 0, editing.unit)}</strong>. Every booking made about a minute
+                    after you save is priced the new way, in all three apps. Jobs already paid for keep the old price.
+                  </p>
+                </div>
+              )}
+
+              {canEdit && editing.active !== newActive && (
+                <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <AlertCircle size={14} className="text-yellow-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-yellow-900">
+                    {newActive
+                      ? <>You are switching <strong>{editing.name}</strong> back on. It starts being charged again.</>
+                      : <>You are switching <strong>{editing.name}</strong> off. It is charged as nothing until somebody turns it back on.</>}
+                  </p>
+                </div>
+              )}
 
               {/* Save button. Hidden entirely rather than disabled: a
                   greyed-out Save invites a support ticket, a plain
@@ -361,23 +531,13 @@ export default function FeeCataloguePage() {
                   className="w-full bg-[#0F2B4C] text-white font-semibold py-2.5 rounded-lg hover:bg-[#1a3d6b] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                 >
                   <Save size={15} />
-                  {saving ? 'Saving…' : 'Save change'}
+                  {saving ? 'Saving…' : 'Save and make it live'}
                 </button>
               ) : (
                 <div className="flex items-start gap-2 p-3 bg-gray-50 border border-[#E5E7EB] rounded-lg">
                   <Lock size={14} className="text-gray-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-gray-600">
-                    Read-only. Fee values are editable by a Super Admin only. You can review the current value and its full change history here.
-                  </p>
-                </div>
-              )}
-
-              {canEdit && Number(editing.value) !== Number(newValue) && (
-                <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <AlertCircle size={14} className="text-yellow-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-yellow-900">
-                    Changing from <strong>{formatValue(Number(editing.value), editing.unit)}</strong> to{' '}
-                    <strong>{formatValue(Number(newValue) || 0, editing.unit)}</strong>. Live within 60s of save.
+                    Only a Super Admin can change a price. You can read the current value and the full history of who changed it and why.
                   </p>
                 </div>
               )}
@@ -388,7 +548,9 @@ export default function FeeCataloguePage() {
                   <History size={12} /> Change history
                 </h3>
                 {history.length === 0 ? (
-                  <p className="text-xs text-gray-400 py-4 text-center">No changes yet - this is the seed value.</p>
+                  <p className="text-xs text-gray-400 py-4 text-center">
+                    Nobody has ever changed this. It is still the value SEIRS launched with.
+                  </p>
                 ) : (
                   <ol className="space-y-2">
                     {history.map(h => (

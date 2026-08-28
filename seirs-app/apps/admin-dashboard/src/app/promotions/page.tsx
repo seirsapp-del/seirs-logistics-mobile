@@ -1,9 +1,24 @@
-﻿'use client';
-import { useEffect, useState } from 'react';
-import { Percent, Plus, Calendar, Users, Loader2, RefreshCw, X, AlertCircle } from 'lucide-react';
+'use client';
+import { useEffect, useMemo, useState } from 'react';
+import { Percent, Plus, Calendar, Users, Loader2, RefreshCw, X, AlertCircle, AlertTriangle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { naira, nairaFromKobo } from '@/lib/money';
-import { useConfirm } from '@/components/ConfirmDialog';
+import { PageIntro } from '@/components/PageIntro';
+import { EmptyState } from '@/components/EmptyState';
+import { useConfirm, useNotify } from '@/components/ConfirmDialog';
+
+/**
+ * Discount codes, and what they cost SEIRS.
+ *
+ * Every control on this page moves real money out of the business, and
+ * the page was silent about all of it. Creating a code was a single
+ * unconfirmed click with no statement of what it could cost; pausing a
+ * live campaign was another, with nothing saying that customers holding
+ * the code would be refused at checkout a second later. So both now say
+ * what happens first, and the create form works out the worst case
+ * before it is signed off, because "1,000 uses of 50% off, uncapped" is
+ * an arithmetic problem nobody should be doing in their head at 6pm.
+ */
 
 interface Promo {
   id:              string;
@@ -22,9 +37,17 @@ interface Promo {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  flat_discount: 'Flat Discount',
-  percent:       '% Discount',
-  free_delivery: 'Free Delivery',
+  flat_discount: 'Money off',
+  percent:       'Percentage off',
+  free_delivery: 'Delivery is free',
+};
+
+/** Plain words. "active" and "scheduled" are column values, not English. */
+const STATUS_LABEL: Record<string, string> = {
+  active:    'Live now',
+  scheduled: 'Starts later',
+  expired:   'Finished',
+  paused:    'Paused by staff',
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -34,190 +57,285 @@ const STATUS_STYLES: Record<string, string> = {
   paused:    'bg-yellow-100 text-yellow-700',
 };
 
+const TABS: Array<{ key: string; label: string }> = [
+  { key: '',          label: 'All codes'    },
+  { key: 'active',    label: 'Live now'     },
+  { key: 'scheduled', label: 'Starts later' },
+  { key: 'paused',    label: 'Paused'       },
+  { key: 'expired',   label: 'Finished'     },
+];
+
 export default function PromotionsPage() {
   const [promos,  setPromos]  = useState<Promo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const confirm                 = useConfirm();
+  const [tab,     setTab]     = useState('');
+  const confirm               = useConfirm();
+  const notify                = useNotify();
 
   const load = () => {
     setLoading(true);
     setError(null);
     adminApi.promotions.list()
       .then((data: any) => setPromos(Array.isArray(data) ? data : []))
-      .catch((e: any) => setError(e?.message ?? 'Could not load promotions'))
+      .catch((e: any) => setError(e?.message ?? 'Could not load the codes.'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
 
+  const visible = useMemo(
+    () => (tab ? promos.filter(p => p.status === tab) : promos),
+    [promos, tab],
+  );
+
   const renderValue = (p: Promo) => {
-    if (p.type === 'free_delivery') return '100% off delivery';
+    if (p.type === 'free_delivery') return 'The whole delivery fee';
     if (p.type === 'percent')       return `${p.value}% off`;
     return `${naira(p.value)} off`;
   };
 
-  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-NG', {
-    day: '2-digit', month: 'short', year: 'numeric',
+  const fmtDate = (iso: string) => new Date(iso).toLocaleString('en-NG', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 
   // Kobo is how the entity stores a cap. Divide down, then show the kobo:
-  // a ₦2,500.50 cap that renders as ₦2,501 is a cap nobody can reconcile.
+  // a 2,500.50 cap that renders as 2,501 is a cap nobody can reconcile.
   const ngn = nairaFromKobo;
 
   // An admin could not previously see that a percentage promo was
-  // uncapped, which is how a 50% code on a ₦40,000 delivery gets minted
-  // by accident. Uncapped percent promos are called out in red.
+  // uncapped, which is how a 50% code on a large delivery gets minted by
+  // accident. Uncapped percent promos are called out in red.
   const renderCap = (pr: Promo) => {
-    const floor = pr.minSubtotalKobo > 0 ? `min ${ngn(pr.minSubtotalKobo)}` : null;
+    const floor = pr.minSubtotalKobo > 0 ? `only on orders over ${ngn(pr.minSubtotalKobo)}` : null;
     if (pr.maxDiscountKobo != null) {
       return (
         <span className="text-gray-700">
-          max {ngn(pr.maxDiscountKobo)}
-          {floor ? <span className="text-gray-400"> · {floor}</span> : null}
+          never more than {ngn(pr.maxDiscountKobo)}
+          {floor ? <span className="text-gray-400">, {floor}</span> : null}
         </span>
       );
     }
     if (pr.type === 'percent') {
       return (
-        <span className="text-red-600 font-semibold">
-          Uncapped
-          {floor ? <span className="text-gray-400 font-normal"> · {floor}</span> : null}
+        <span className="font-semibold text-red-600">
+          No ceiling
+          {floor ? <span className="font-normal text-gray-400">, {floor}</span> : null}
         </span>
       );
     }
-    return <span className="text-gray-400">{floor ?? 'None'}</span>;
+    return <span className="text-gray-400">{floor ?? 'No ceiling needed'}</span>;
   };
 
+  const togglePause = async (p: Promo) => {
+    const pausing = p.status !== 'paused';
+    const ok = await confirm({
+      title: pausing ? `Pause "${p.code}"?` : `Put "${p.code}" back on?`,
+      message: pausing
+        ? `Anyone typing ${p.code} at checkout is refused from the moment you confirm, including customers who were told about it today. Bookings already paid for keep their discount.\n\nYou can put it back on from this page at any time.`
+        : `${p.code} starts working again immediately, within its dates and its remaining ${p.usageLimit ? `${Math.max(0, p.usageLimit - p.usageCount)} uses` : 'unlimited uses'}.`,
+      confirmLabel: pausing ? 'Pause it' : 'Put it back on',
+      danger:       pausing,
+    });
+    if (!ok) return;
+    try {
+      await adminApi.promotions.update(p.id, { status: pausing ? 'paused' : 'active' });
+      load();
+    } catch (e: any) {
+      void notify({ title: 'Could not change it', message: e?.message ?? 'The server refused it. The code is unchanged.', tone: 'error' });
+    }
+  };
+
+  const remove = async (p: Promo) => {
+    const ok = await confirm({
+      title:   `Delete "${p.code}" for good?`,
+      message: 'Nobody has used it, so there is nothing to keep. It disappears from this list and the code stops existing.\n\nThis cannot be undone, but you can always create the same code again.',
+      confirmLabel: 'Delete it',
+      danger:  true,
+    });
+    if (!ok) return;
+    try {
+      await adminApi.promotions.remove(p.id);
+      load();
+    } catch (e: any) {
+      void notify({ title: 'Delete failed', message: e?.message ?? 'The server refused it. Nothing was removed.', tone: 'error' });
+    }
+  };
+
+  const liveCount = promos.filter(p => p.status === 'active').length;
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
-            <Percent size={18} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-[#0F2B4C]">Promotions</h1>
-            <p className="text-sm text-gray-500">Manage discount codes, free delivery campaigns, and seasonal offers</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={load}
-            className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-white border border-[#E5E7EB] rounded-lg hover:bg-gray-50"
-          >
-            <RefreshCw size={14} /> Refresh
-          </button>
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 bg-[#3A7BD5] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#2f6cc0] transition-colors"
-          >
-            <Plus size={15} />
-            Create Promotion
-          </button>
-        </div>
-      </div>
+    <div className="p-8">
+      <PageIntro
+        title="Promotions"
+        purpose="Create and switch off the discount codes customers type at checkout. Every one of them is money SEIRS gives up, so the ceilings matter more than the codes."
+        storageKey="promotions"
+        help={
+          <>
+            <p><strong>Create a code</strong> works out the worst case before you sign it off. Read that figure: it is what this campaign can cost if everybody uses it.</p>
+            <p><strong>Pause</strong> stops the code working at checkout immediately, including for customers who were sent it. Bookings already paid for keep their discount.</p>
+            <p><strong>Delete</strong> is only offered while nobody has used a code. Once one person has, pause it instead so the receipts still make sense.</p>
+            <p>A percentage code with no ceiling is the one thing to avoid: half off a large booking is a large number.</p>
+          </>
+        }
+        actions={
+          <>
+            <button
+              onClick={load}
+              disabled={loading}
+              className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-2 rounded-lg bg-[#3A7BD5] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2f6cc0]"
+            >
+              <Plus size={15} /> Create a code
+            </button>
+          </>
+        }
+      />
 
       {error && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-          <AlertCircle size={16} /> {error}
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={load} className="shrink-0 font-semibold underline hover:no-underline">Retry</button>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="mb-6 grid grid-cols-3 gap-4">
         {[
-          { label: 'Active Campaigns', value: promos.filter(p => p.status === 'active').length,    icon: Percent,  color: 'text-green-600'  },
-          { label: 'Scheduled',        value: promos.filter(p => p.status === 'scheduled').length, icon: Calendar, color: 'text-[#3A7BD5]' },
-          { label: 'Total Uses',       value: promos.reduce((s, p) => s + p.usageCount, 0),         icon: Users,    color: 'text-gray-600'   },
+          { label: 'Live right now',        value: liveCount,                                              icon: Percent,  color: 'text-green-600'  },
+          { label: 'Waiting to start',      value: promos.filter(p => p.status === 'scheduled').length,    icon: Calendar, color: 'text-[#3A7BD5]' },
+          { label: 'Times a code was used', value: promos.reduce((s, p) => s + p.usageCount, 0),            icon: Users,    color: 'text-gray-600'   },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+          <div key={label} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-gray-50">
               <Icon size={18} className={color} />
             </div>
             <div>
-              <div className="text-xl font-bold text-[#0F2B4C]">{value}</div>
+              <div className="text-xl font-bold tabular-nums text-[#0F2B4C]">{value}</div>
               <div className="text-xs text-gray-500">{label}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <span className="text-sm font-semibold text-[#0F2B4C]">All Promotions</span>
-          <span className="text-xs text-gray-400">{promos.length} campaigns</span>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {TABS.map(t => (
+          <button
+            key={t.key || 'all'}
+            onClick={() => setTab(t.key)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              tab === t.key
+                ? 'border-[#3A7BD5] bg-[#3A7BD5] text-white'
+                : 'border-[#E5E7EB] bg-white text-[#0F2B4C]/50 hover:border-[#0F2B4C]/20'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <span className="text-sm font-semibold text-[#0F2B4C]">Discount codes</span>
+          <span className="text-xs text-gray-400 tabular-nums">
+            {loading ? 'Loading' : `Showing ${visible.length} of ${promos.length}`}
+          </span>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-12 text-gray-400">
-            <Loader2 size={20} className="animate-spin mr-2" />
-            Loading…
+            <Loader2 size={20} className="mr-2 animate-spin" /> Loading
           </div>
-        ) : promos.length === 0 ? (
-          <div className="py-16 text-center text-gray-400">
-            <Percent size={32} className="mx-auto mb-3 opacity-40" />
-            <p className="font-semibold">No promotions yet</p>
-            <p className="text-xs mt-1">Tap &ldquo;Create Promotion&rdquo; to add your first.</p>
-          </div>
+        ) : error ? (
+          <EmptyState
+            icon={<AlertCircle size={20} />}
+            title="The codes could not be loaded"
+            body="This is a connection or permission problem, not an empty list."
+            action={{ label: 'Try again', onClick: load }}
+          />
+        ) : visible.length === 0 ? (
+          promos.length === 0 ? (
+            <EmptyState
+              icon={<Percent size={20} />}
+              title="No discount code has been created"
+              body="Nothing is being given away. Create one when a campaign needs it."
+              action={{ label: 'Create a code', onClick: () => setShowForm(true) }}
+            />
+          ) : (
+            <EmptyState
+              icon={<Percent size={20} />}
+              title={`No codes are ${(TABS.find(t => t.key === tab)?.label ?? '').toLowerCase()}`}
+              body="Try another tab above."
+              action={{ label: 'Show all codes', onClick: () => setTab('') }}
+            />
+          )
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 text-xs text-gray-500 font-semibold uppercase tracking-wide">
-                  <th className="text-left px-4 py-3">Code</th>
-                  <th className="text-left px-4 py-3">Type</th>
-                  <th className="text-left px-4 py-3">Value</th>
-                  <th className="text-left px-4 py-3">Cap</th>
-                  <th className="text-left px-4 py-3">Uses / Limit</th>
-                  <th className="text-left px-4 py-3">Valid Period</th>
-                  <th className="text-left px-4 py-3">Status</th>
-                  <th className="text-left px-4 py-3">Actions</th>
+                <tr className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left">Code</th>
+                  <th className="px-4 py-3 text-left">What it gives</th>
+                  <th className="px-4 py-3 text-left">Ceiling</th>
+                  <th className="px-4 py-3 text-left">Used</th>
+                  <th className="px-4 py-3 text-left">Per person</th>
+                  <th className="px-4 py-3 text-left">Runs from, until</th>
+                  <th className="px-4 py-3 text-left">State</th>
+                  <th className="px-4 py-3 text-left" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {promos.map(p => (
-                  <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-mono font-bold text-[#0F2B4C] tracking-wider">{p.code}</td>
-                    <td className="px-4 py-3 text-gray-600">{TYPE_LABEL[p.type] ?? p.type}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-800">{renderValue(p)}</td>
-                    <td className="px-4 py-3 text-xs">{renderCap(p)}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.usageCount} / {p.usageLimit || '∞'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(p.validFrom)} to {fmtDate(p.validTo)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_STYLES[p.status]}`}>{p.status}</span>
+                {visible.map(p => (
+                  <tr key={p.id} className="transition-colors hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono font-bold tracking-wider text-[#0F2B4C]">
+                      {p.code}
+                      {p.description && <div className="mt-0.5 font-sans text-[11px] font-normal text-gray-400">{p.description}</div>}
                     </td>
-                    <td className="px-4 py-3 flex gap-2">
-                      <button
-                        onClick={async () => {
-                          const next = p.status === 'paused' ? 'active' : 'paused';
-                          await adminApi.promotions.update(p.id, { status: next });
-                          load();
-                        }}
-                        className="text-xs text-[#3A7BD5] hover:underline font-medium"
-                      >
-                        {p.status === 'paused' ? 'Resume' : 'Pause'}
-                      </button>
-                      {p.usageCount === 0 && (
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-gray-800">{renderValue(p)}</div>
+                      <div className="text-[11px] text-gray-400">{TYPE_LABEL[p.type] ?? p.type}</div>
+                    </td>
+                    <td className="px-4 py-3 text-xs">{renderCap(p)}</td>
+                    <td className="px-4 py-3 tabular-nums text-gray-600">
+                      {p.usageCount} of {p.usageLimit ? p.usageLimit.toLocaleString() : 'no limit'}
+                    </td>
+                    {/* The per-person limit is the anti-abuse knob and it
+                        was not on this screen at all. */}
+                    <td className="px-4 py-3 tabular-nums text-gray-600">
+                      {p.perUserLimit ? `${p.perUserLimit} time${p.perUserLimit === 1 ? '' : 's'}` : <span className="font-semibold text-red-600">unlimited</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {fmtDate(p.validFrom)}<br />{fmtDate(p.validTo)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[p.status]}`}>
+                        {STATUS_LABEL[p.status] ?? p.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-3">
                         <button
-                          onClick={async () => {
-                            const ok = await confirm({
-                              title:        `Delete promotion "${p.code}"?`,
-                              message:      'Only unused promotions can be deleted. If anyone has already redeemed it, pause it instead so historical records stay attached.',
-                              confirmLabel: 'Delete',
-                              danger:       true,
-                            });
-                            if (!ok) return;
-                            try { await adminApi.promotions.remove(p.id); load(); }
-                            catch (e: any) { alert(e?.message ?? 'Delete failed'); }
-                          }}
-                          className="text-xs text-red-500 hover:underline font-medium"
+                          onClick={() => togglePause(p)}
+                          className="text-xs font-medium text-[#3A7BD5] hover:underline"
                         >
-                          Delete
+                          {p.status === 'paused' ? 'Put it back on' : 'Pause'}
                         </button>
-                      )}
+                        {p.usageCount === 0 ? (
+                          <button onClick={() => remove(p)} className="text-xs font-medium text-red-500 hover:underline">
+                            Delete
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-300" title="Somebody has used this code, so the receipts need it to stay">
+                            Used, cannot delete
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -240,6 +358,8 @@ const DEFAULT_PERCENT_CAP_NGN = 2000;
 const PERCENT_CAP_FEE_KEY     = 'promo_max_discount_default_ngn';
 
 function CreatePromoModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const confirm = useConfirm();
+
   const [code, setCode]               = useState('');
   const [type, setType]               = useState<'flat_discount' | 'percent' | 'free_delivery'>('flat_discount');
   const [value, setValue]             = useState('500');
@@ -269,10 +389,60 @@ function CreatePromoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
     return () => { alive = false; };
   }, []);
 
-  const capNgn = Number(maxDiscount);
-  const capOk  = type !== 'percent' || (Number.isFinite(capNgn) && capNgn > 0);
+  const capNgn  = Number(maxDiscount);
+  const capOk   = type !== 'percent' || (Number.isFinite(capNgn) && capNgn > 0);
+  const uses    = Number(usageLimit);
+  const perUser = Number(perUserLimit);
+
+  /**
+   * What this campaign can cost if every use is taken.
+   *
+   * Nothing on this form did this arithmetic, so "50% off, 1,000 uses,
+   * no ceiling" looked exactly as harmless as "200 naira off, 50 uses".
+   */
+  const worstCase = useMemo(() => {
+    const unlimited = !Number.isFinite(uses) || uses <= 0;
+    if (type === 'free_delivery') {
+      return unlimited
+        ? { text: 'Unlimited free deliveries. There is no ceiling on this at all.', danger: true }
+        : { text: `Up to ${uses.toLocaleString()} free deliveries. The cost is whatever those deliveries would have earned.`, danger: uses > 500 };
+    }
+    const per = type === 'percent'
+      ? (Number.isFinite(capNgn) && capNgn > 0 ? capNgn : null)
+      : Number(value);
+    if (per === null) {
+      return { text: 'No ceiling per use, so this campaign has no maximum cost.', danger: true };
+    }
+    if (unlimited) {
+      return { text: `Up to ${naira(per)} per use, with no limit on the number of uses. No maximum cost.`, danger: true };
+    }
+    const total = per * uses;
+    return {
+      text: `Worst case ${naira(total)}: ${naira(per)} each, ${uses.toLocaleString()} times.`,
+      danger: total > 500_000,
+    };
+  }, [type, value, capNgn, uses]);
+
+  const datesOk = !!validFrom && !!validTo && new Date(validTo).getTime() > new Date(validFrom).getTime();
 
   const submit = async () => {
+    const ok = await confirm({
+      title:   `Create the code ${code.trim().toUpperCase()}?`,
+      message:
+        `${code.trim().toUpperCase()} gives ${
+          type === 'free_delivery' ? 'a free delivery'
+          : type === 'percent'     ? `${value}% off, never more than ${naira(capNgn)}`
+          : `${naira(Number(value))} off`
+        }.\n\n` +
+        `${worstCase.text}\n\n` +
+        `Each person can use it ${perUser > 0 ? `${perUser} time${perUser === 1 ? '' : 's'}` : 'as often as they like, which is usually a mistake'}.\n\n` +
+        `It works from ${validFrom ? new Date(validFrom).toLocaleString('en-NG') : 'the start date'} until ${validTo ? new Date(validTo).toLocaleString('en-NG') : 'the end date'}.\n\n` +
+        'Anybody who has the code can use it from the moment it starts. You can pause it later, but you cannot take back a discount already given.',
+      confirmLabel: 'Create the code',
+      danger:       worstCase.danger,
+    });
+    if (!ok) return;
+
     setSaving(true); setErr(null);
     try {
       const minNgn = Number(minSubtotal);
@@ -292,105 +462,123 @@ function CreatePromoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
       });
       onSaved();
     } catch (e: any) {
-      setErr(e?.message ?? 'Save failed');
+      setErr(e?.message ?? 'The code was not created.');
     } finally { setSaving(false); }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl w-full max-w-md shadow-xl">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-          <h2 className="font-bold text-[#0F2B4C]">Create Promotion</h2>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-700"><X size={18} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+          <h2 className="font-bold text-[#0F2B4C]">Create a discount code</h2>
+          <button onClick={onClose} aria-label="Close" className="p-1 text-gray-400 hover:text-gray-700"><X size={18} /></button>
         </div>
-        <div className="p-5 space-y-3 text-sm">
+        <div className="space-y-3 p-5 text-sm">
           {err && (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded px-3 py-2 text-xs text-red-700">
+            <div className="flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
               <AlertCircle size={14} /> {err}
             </div>
           )}
           <div>
-            <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Code</label>
+            <label className="text-xs font-bold uppercase tracking-wide text-gray-500">The code customers type</label>
             <input value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="WELCOME50"
-              className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg font-mono uppercase focus:outline-none focus:border-[#3A7BD5]" />
+              className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 font-mono uppercase focus:border-[#3A7BD5] focus:outline-none" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Type</label>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">What it gives</label>
               <select value={type} onChange={e => setType(e.target.value as any)}
-                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]">
-                <option value="flat_discount">Flat (₦)</option>
-                <option value="percent">Percent (%)</option>
-                <option value="free_delivery">Free delivery</option>
+                className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 focus:border-[#3A7BD5] focus:outline-none">
+                <option value="flat_discount">Money off</option>
+                <option value="percent">Percentage off</option>
+                <option value="free_delivery">Delivery is free</option>
               </select>
             </div>
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Value</label>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                {type === 'percent' ? 'How many percent' : type === 'flat_discount' ? 'How many naira' : 'Not needed'}
+              </label>
               <input value={value} onChange={e => setValue(e.target.value)} type="number" disabled={type === 'free_delivery'}
-                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg disabled:bg-gray-50 focus:outline-none focus:border-[#3A7BD5]" />
+                className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 focus:border-[#3A7BD5] focus:outline-none disabled:bg-gray-50" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Description</label>
-            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="₦500 off your first order"
-              className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+            <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Short description, for staff</label>
+            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="500 naira off a first order"
+              className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 focus:border-[#3A7BD5] focus:outline-none" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Valid From</label>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Starts</label>
               <input type="datetime-local" value={validFrom} onChange={e => setValidFrom(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+                className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 focus:border-[#3A7BD5] focus:outline-none" />
             </div>
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Valid To</label>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Stops</label>
               <input type="datetime-local" value={validTo} onChange={e => setValidTo(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+                className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 focus:border-[#3A7BD5] focus:outline-none" />
             </div>
           </div>
+          {validFrom && validTo && !datesOk && (
+            <p className="text-xs font-semibold text-red-600">The stop time has to be after the start time.</p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                Max discount (₦){type === 'percent' ? ' *' : ''}
+                Never give more than (naira){type === 'percent' ? ' *' : ''}
               </label>
               <input value={maxDiscount} onChange={e => setMaxDiscount(e.target.value)} type="number" min="0"
-                placeholder="0 = no cap"
-                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+                placeholder="0 means no ceiling"
+                className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 focus:border-[#3A7BD5] focus:outline-none" />
               <p className="mt-1 text-[11px] text-gray-400">
                 {type === 'percent'
-                  ? 'Required. Without it a 50% code on a large booking has no ceiling.'
-                  : 'Optional. A flat discount is already its own ceiling.'}
+                  ? 'Required. Without it, half off a large booking has no ceiling.'
+                  : 'Not needed here: an amount off is already its own ceiling.'}
               </p>
             </div>
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Min subtotal (₦)</label>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Only on orders over (naira)</label>
               <input value={minSubtotal} onChange={e => setMinSubtotal(e.target.value)} type="number" min="0"
-                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
-              <p className="mt-1 text-[11px] text-gray-400">0 means the code works on any order.</p>
+                className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 focus:border-[#3A7BD5] focus:outline-none" />
+              <p className="mt-1 text-[11px] text-gray-400">0 means it works on any order.</p>
             </div>
           </div>
           {type === 'percent' && !capOk && (
             <p className="text-xs font-semibold text-red-600">
-              A percentage promotion needs a maximum discount.
+              A percentage code needs a ceiling before it can be created.
             </p>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Total Uses (0 = ∞)</label>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Total uses (0 means no limit)</label>
               <input value={usageLimit} onChange={e => setUsageLimit(e.target.value)} type="number"
-                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+                className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 focus:border-[#3A7BD5] focus:outline-none" />
             </div>
             <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Per-User Uses</label>
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Uses per person</label>
               <input value={perUserLimit} onChange={e => setPerUserLimit(e.target.value)} type="number"
-                className="w-full mt-1 px-3 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#3A7BD5]" />
+                className="mt-1 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 focus:border-[#3A7BD5] focus:outline-none" />
             </div>
           </div>
+
+          {/* The number nobody was working out. */}
+          <div className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
+            worstCase.danger ? 'border-red-300 bg-red-50 text-red-800' : 'border-[#E5E7EB] bg-[#F5F5F0] text-[#0F2B4C]'
+          }`}>
+            <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+            <span>
+              <b>What this can cost SEIRS.</b> {worstCase.text}
+            </span>
+          </div>
         </div>
-        <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50">
+        <div className="flex justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-3">
           <button onClick={onClose} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
-          <button onClick={submit} disabled={saving || !code || !validFrom || !validTo || !capOk}
-            className="px-4 py-2 text-sm font-semibold bg-[#0F2B4C] text-white rounded-lg hover:bg-[#3A7BD5] disabled:opacity-50">
-            {saving ? 'Saving…' : 'Create'}
+          <button
+            onClick={submit}
+            disabled={saving || !code.trim() || !datesOk || !capOk}
+            className="rounded-lg bg-[#0F2B4C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3A7BD5] disabled:opacity-50"
+          >
+            {saving ? 'Creating' : 'Create the code'}
           </button>
         </div>
       </div>

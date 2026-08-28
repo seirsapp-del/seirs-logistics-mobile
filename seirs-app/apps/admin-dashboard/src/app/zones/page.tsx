@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import { naira } from '@/lib/money';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -130,6 +131,41 @@ function windowSummary(active: Zone['active']): string {
   return from + ' until ' + to;
 }
 
+/**
+ * What this zone does to a real bill, as one number.
+ *
+ * effectsSummary lists the knobs separately: "2.00x" sits next to
+ * "+10% surcharge" and the reader is left to multiply. Nobody
+ * multiplies. Victoria Island went live on production carrying both,
+ * which is 2.2x, and it read on this page as two unremarkable chips.
+ *
+ * Order matches the engine, verified against production on 2026-08-28
+ * by quoting the same distance inside and outside the zone: a 9.5km job
+ * inside cost 3600.82 against 1614.79 for 9.2km outside, which is 2.23x
+ * and matches multiplier THEN percentage.
+ *
+ * "About", and the word is load-bearing. Fitting both fare curves from
+ * production quotes gives inside 774.00 + 297.56/km against outside
+ * 322.50 + 140.47/km, so the effective multiplier is 2.27x over 2km and
+ * 2.15x over 20km: the base fare and the distance rate do not scale by
+ * quite the same amount. 2.20x is the middle of that and is right to
+ * within about three percent, which is the correct precision for a
+ * figure whose job is "somebody should look at this", not invoicing.
+ *
+ * Returns null when the zone does not touch price, so an open zone with
+ * no effects stays quiet instead of announcing "1.00x".
+ */
+function priceImpact(fx: ZoneEffects | undefined): number | null {
+  if (!fx) return null;
+  const m = Number(fx.rateMultiplier);
+  const p = Number(fx.surchargePct);
+  const mult = Number.isFinite(m) && m > 0 ? m : 1;
+  const pct  = Number.isFinite(p) ? p : 0;
+  const combined = mult * (1 + pct / 100);
+  if (!Number.isFinite(combined) || Math.abs(combined - 1) < 0.0001) return null;
+  return combined;
+}
+
 function effectsSummary(fx: ZoneEffects | undefined): string[] {
   const out: string[] = [];
   if (!fx) return out;
@@ -178,6 +214,13 @@ const BLANK = {
 
 export default function ZonesPage() {
   const [zones,   setZones]   = useState<Zone[]>([]);
+  /* The "what publishing does" note is taught once and then stays out of
+     the way. localStorage can throw outright in a locked-down browser,
+     so a failed read simply shows the note. */
+  const [helpDismissed, setHelpDismissed] = useState(false);
+  useEffect(() => {
+    try { setHelpDismissed(localStorage.getItem('seirs.intro.zones') === 'dismissed'); } catch { /* show it */ }
+  }, []);
   const [options, setOptions] = useState<{ states: Array<{ code: string; name: string; zone: string }>; geozones: string[]; statuses: ZoneStatus[] }>({ states: [], geozones: [], statuses: [] });
   const [perms,   setPerms]   = useState<{ canClose: boolean; canPrice: boolean }>({ canClose: false, canPrice: false });
   const [loading, setLoading] = useState(true);
@@ -420,6 +463,29 @@ export default function ZonesPage() {
             <p className="text-sm text-gray-500">
               One place to say what an area costs, and the only place that can say an area is closed.
             </p>
+            {/*
+              Publishing here changes what a customer is charged, live,
+              with no further step and no review. That was written down
+              nowhere on the screen that does it, which is how a test
+              zone doubling prices in Victoria Island stayed published
+              and unnoticed. Says it once, dismissible, remembered.
+            */}
+            {!helpDismissed && (
+              <div className="relative mt-2 max-w-2xl rounded-lg border border-[#3A7BD5]/25 bg-[#3A7BD5]/[0.05] px-3 py-2 pr-8 text-xs leading-relaxed text-[#0F2B4C]/75">
+                <p><strong>Publishing takes effect immediately.</strong> A live zone changes the
+                price every customer is quoted inside it, and a blocking one stops SEIRS
+                accepting jobs there at all. Nothing else has to be pressed.</p>
+                <p className="mt-1">Draft zones do nothing. Use <strong>Test a job</strong> to see
+                what a real booking would be told before you publish.</p>
+                <button
+                  onClick={() => { setHelpDismissed(true); try { localStorage.setItem('seirs.intro.zones', 'dismissed'); } catch {} }}
+                  aria-label="Hide this explanation"
+                  className="absolute right-1.5 top-1.5 rounded p-1 text-[#0F2B4C]/30 hover:bg-white hover:text-[#0F2B4C]"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -556,7 +622,49 @@ export default function ZonesPage() {
                 {effectsSummary(z.effects).length > 0 && (
                   <p className="text-xs text-gray-600 mt-1">{effectsSummary(z.effects).join(' · ')}</p>
                 )}
+                {/*
+                  The same thing again, in money, because the chips above
+                  are the settings and this is the consequence. A live
+                  zone that doubles a bill should be impossible to scroll
+                  past, and until now it was two mild chips.
+                */}
+                {(() => {
+                  const impact = priceImpact(z.effects);
+                  if (impact == null) return null;
+                  const example = Math.round(1000 * impact);
+                  const heavy   = impact >= 1.5 || impact <= 0.5;
+                  return (
+                    <p className={`mt-1.5 inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold ${
+                      !z.published ? 'bg-gray-100 text-gray-600'
+                        : heavy     ? 'bg-red-50 text-red-700'
+                        : 'bg-amber-50 text-amber-800'
+                    }`}>
+                      {z.published ? 'Charging now:' : 'Would charge:'} a {naira(1000)} job here
+                      {impact > 1 ? ' costs about ' : ' costs only about '}{naira(example)}
+                      <span className="font-normal opacity-70">({impact.toFixed(2)}x)</span>
+                    </p>
+                  );
+                })()}
                 {z.reason && <p className="text-xs text-gray-500 mt-1 italic">“{z.reason}”</p>}
+                {/*
+                  Configure here, see it there. The ops map draws these
+                  zones and this page never linked to it, so the only way
+                  to check that a closure landed where you meant was to
+                  open the map by hand and hunt for the shape. A circle
+                  carries coordinates so the map can centre on it; a
+                  state or geozone does not, so that link just opens the
+                  map with the zones layer on.
+                */}
+                <Link
+                  href={
+                    z.shape?.kind === 'circle' && z.shape.lat != null && z.shape.lng != null
+                      ? `/ops-map?lat=${z.shape.lat}&lng=${z.shape.lng}&label=${encodeURIComponent('Zone: ' + z.name)}&from=${encodeURIComponent('/zones')}&fromLabel=${encodeURIComponent('Back to Zones')}`
+                      : `/ops-map?from=${encodeURIComponent('/zones')}&fromLabel=${encodeURIComponent('Back to Zones')}`
+                  }
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[#3A7BD5] hover:underline"
+                >
+                  <MapIcon size={11} /> See it on the ops map
+                </Link>
               </div>
               <button onClick={() => togglePublish(z)} className="text-xs text-[#3A7BD5] font-semibold hover:underline shrink-0">
                 {z.published ? 'Unpublish' : 'Publish'}

@@ -1,8 +1,22 @@
 'use client';
+
+/**
+ * Developer accounts: the businesses plugged straight into SEIRS.
+ *
+ * One job: know which outside systems are calling SEIRS, and be able to
+ * cut one off, or give it more room, without waiting for an engineer.
+ *
+ * Suspending here is not a soft measure: the partner's own software
+ * starts failing on its next request, mid-day, without warning. The
+ * screen now says that before the button rather than after.
+ */
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import { Code2, AlertCircle, Loader2, RefreshCw, Pause, Play, Gauge, ChevronDown, ChevronRight } from 'lucide-react';
 import { useConfirm, useNotify, usePrompt } from '@/components/ConfirmDialog';
+import { PageIntro } from '@/components/PageIntro';
+import { EmptyState } from '@/components/EmptyState';
 
 // The owner block is what turns "suspend a UUID" into "suspend Ada
 // Okafor". The backend does not send it yet (dev-platform.service
@@ -47,7 +61,9 @@ export default function DevAccountsPage() {
     setError(null);
     adminApi.devPlatform.listAccounts()
       .then((list: any) => setKeys(Array.isArray(list) ? list : []))
-      .catch((e: any) => setError(e?.message ?? 'Could not load keys'))
+      // A failed read used to leave the page saying "No developer
+      // accounts yet", which reads as "nobody is integrated with us".
+      .catch((e: any) => { setKeys([]); setError(e?.message ?? 'Could not load keys'); })
       .finally(() => setLoading(false));
   };
 
@@ -56,7 +72,9 @@ export default function DevAccountsPage() {
   const suspend = async (ownerUserId: string, who: string) => {
     const reason = await prompt({
       title:        'Suspend this developer account?',
-      message:      `Every API key held by ${who} stops working immediately. Their live integration starts failing on the next request.`,
+      message:      `Every key held by ${who} stops working the moment you press this. Their own software starts getting refused on its very next request, with no warning to them, so ring them first unless this is an emergency.
+
+You can undo it with Resume on the same row.`,
       label:        'Suspend reason',
       placeholder:  'Repeated 429s from an unthrottled retry loop.',
       minLength:    4,
@@ -74,8 +92,8 @@ export default function DevAccountsPage() {
 
   const resume = async (ownerUserId: string) => {
     const ok = await confirm({
-      title:        'Resume this developer account?',
-      message:      'All previously-suspended API keys for this owner will be reactivated immediately. The owner will regain full API access with their existing quota.',
+      title:        'Let this business back in?',
+      message:      'Every key you suspended starts working again immediately, with the limits it had before. Their software will simply start succeeding again.',
       confirmLabel: 'Resume',
     });
     if (!ok) return;
@@ -89,8 +107,8 @@ export default function DevAccountsPage() {
   const setRateLimit = async (key: ApiKey) => {
     const current = key.rateLimitOverridePerMin == null ? '' : String(key.rateLimitOverridePerMin);
     const input = await prompt({
-      title:        'Rate-limit override',
-      message:      `How many requests per minute should "${key.name}" be allowed? Leave blank to revert to the default of 60.`,
+      title:        'How much traffic may this key send?',
+      message:      `How many requests a minute should "${key.name}" be allowed? Anything above the limit is refused, which their software sees as an error. Leave it blank to go back to the standard 60 a minute.`,
       label:        'Requests per minute',
       initialValue: current,
       placeholder:  '60',
@@ -122,24 +140,37 @@ export default function DevAccountsPage() {
     (acc[k.ownerUserId] ??= []).push(k);
     return acc;
   }, {});
-  const accounts = Object.entries(byOwner);
+  /**
+   * Busiest first. The rows arrived newest-key-first, which buries the
+   * partner hammering the API under whoever signed up most recently, and
+   * traffic is the only reason anybody opens this page in a hurry.
+   */
+  const accounts = Object.entries(byOwner).sort(
+    (a, b) =>
+      b[1].reduce((s, k) => s + (k.callsToday ?? 0), 0) -
+      a[1].reduce((s, k) => s + (k.callsToday ?? 0), 0),
+  );
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
-          <Code2 size={18} className="text-white" />
-        </div>
-        <div className="flex-1">
-          <h1 className="text-lg font-bold text-[#0F2B4C]">Developer Accounts</h1>
-          <p className="text-sm text-gray-500">
-            Every business holding ≥1 API key. Suspend instantly revokes all their keys; set per-key rate-limit overrides for high-volume partners.
-          </p>
-        </div>
-        <button onClick={load} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-white border border-[#E5E7EB] rounded-lg hover:bg-gray-50">
-          <RefreshCw size={14} /> Refresh
-        </button>
-      </div>
+      <PageIntro
+        title="Businesses plugged into SEIRS"
+        purpose="Companies whose own software books deliveries through SEIRS directly, how much traffic each is sending, and the switch that cuts one off."
+        storageKey="dev-accounts"
+        help={
+          <>
+            <p><b>A key is how a company&apos;s software signs in.</b> Live keys move real money and create real deliveries. Test keys do not.</p>
+            <p><b>Suspend is immediate and unannounced.</b> Their next request fails, in the middle of their working day. Ring them first unless it is an emergency. <b>Resume</b> puts everything back.</p>
+            <p><b>The traffic limit</b> is how many requests a minute a key may send. Above it, requests are refused. The standard is 60 a minute.</p>
+            <p>Calls today resets at midnight Nigerian time.</p>
+          </>
+        }
+        actions={
+          <button onClick={load} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold bg-white border border-[#E5E7EB] rounded-lg hover:bg-gray-50">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
+        }
+      />
 
       {error && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
@@ -148,9 +179,9 @@ export default function DevAccountsPage() {
       )}
 
       <div className="grid grid-cols-3 gap-4">
-        <Card label="Total Accounts" value={accounts.length}    accent="#3A7BD5" />
-        <Card label="Total Keys"     value={keys.length}        accent="#16A34A" />
-        <Card label="Live Keys"      value={keys.filter(k => k.mode === 'live' && k.active).length} accent="#D97706" />
+        <Card label="Businesses connected"      value={accounts.length} accent="#3A7BD5" />
+        <Card label="Keys they hold altogether" value={keys.length}     accent="#16A34A" />
+        <Card label="Keys creating real jobs"   value={keys.filter(k => k.mode === 'live' && k.active).length} accent="#D97706" />
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] overflow-hidden">
@@ -158,16 +189,30 @@ export default function DevAccountsPage() {
           <div className="flex items-center justify-center py-12 text-gray-400">
             <Loader2 size={20} className="animate-spin mr-2" /> Loading…
           </div>
+        ) : error ? (
+          <EmptyState
+            icon={<AlertCircle size={20} />}
+            title="The list of connected businesses would not load"
+            body="Nobody has been cut off. This is the dashboard failing to read the list."
+            action={{ label: 'Try again', onClick: load }}
+          />
         ) : accounts.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <AlertCircle size={28} className="mx-auto mb-3 opacity-40" />
-            <p>No developer accounts yet.</p>
-            <p className="text-xs mt-1">
-              Businesses can issue keys from <code className="bg-gray-100 px-1 rounded">/(business)/api-keys</code>.
-            </p>
-          </div>
+          <EmptyState
+            icon={<Code2 size={20} />}
+            title="No business is plugged into SEIRS yet"
+            body="A business creates its own key from the API keys screen in the SEIRS business app. They appear here the moment they do."
+          />
         ) : (
-          accounts.map(([ownerId, ownerKeys]) => {
+          <>
+          {/* The four columns below were unlabelled numbers. */}
+          <div className="grid grid-cols-12 gap-4 border-b border-[#F3F4F6] bg-gray-50 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+            <div className="col-span-5">Business</div>
+            <div className="col-span-2">Keys</div>
+            <div className="col-span-2 text-right">Creating real jobs</div>
+            <div className="col-span-1 text-right">Calls today</div>
+            <div className="col-span-2 text-right">Action</div>
+          </div>
+          {accounts.map(([ownerId, ownerKeys]) => {
             const open       = openOwner === ownerId;
             const callsToday = ownerKeys.reduce((s, k) => s + (k.callsToday ?? 0), 0);
             const liveCount  = ownerKeys.filter(k => k.mode === 'live' && k.active).length;
@@ -204,6 +249,17 @@ export default function DevAccountsPage() {
                         <p className="text-[11px] text-gray-500 truncate">
                           {ownerLine || <span className="font-mono">owner id {ownerId}</span>}
                         </p>
+                        {/* Suspending somebody's integration without being
+                            able to open their account first is guesswork.
+                            The owner id IS the user id, so this works even
+                            before the backend sends the owner block. */}
+                        <Link
+                          href={`/users/${ownerId}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[11px] font-semibold text-[#3A7BD5] hover:underline"
+                        >
+                          Open their SEIRS account
+                        </Link>
                       </div>
                     </div>
                     <div className="col-span-2 text-sm text-[#0F2B4C]">{ownerKeys.length} key{ownerKeys.length === 1 ? '' : 's'}</div>
@@ -244,12 +300,13 @@ export default function DevAccountsPage() {
                         <div className="text-xs text-gray-500 shrink-0">{k.callsToday.toLocaleString()} calls today</div>
                         <div className="text-xs text-gray-500 shrink-0">
                           {k.rateLimitOverridePerMin != null
-                            ? <span className="text-[#D97706] font-semibold">{k.rateLimitOverridePerMin}/min</span>
-                            : <span>default 60/min</span>}
+                            ? <span className="font-semibold text-[#D97706]">{k.rateLimitOverridePerMin} a minute</span>
+                            : <span>60 a minute (standard)</span>}
                         </div>
                         <button onClick={() => setRateLimit(k)}
+                          title="Change how many requests a minute this key may send"
                           className="flex items-center gap-1 text-xs font-semibold text-[#3A7BD5] hover:underline shrink-0">
-                          <Gauge size={12} /> Rate-limit
+                          <Gauge size={12} /> Change the limit
                         </button>
                       </div>
                     ))}
@@ -257,7 +314,8 @@ export default function DevAccountsPage() {
                 )}
               </div>
             );
-          })
+          })}
+          </>
         )}
       </div>
     </div>

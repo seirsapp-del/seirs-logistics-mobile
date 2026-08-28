@@ -1,36 +1,91 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
-import { Activity, CheckCircle2, AlertCircle, XCircle, RefreshCw } from 'lucide-react';
+import { PageIntro } from '@/components/PageIntro';
+import { Activity, CheckCircle2, AlertCircle, XCircle, Lock, RefreshCw } from 'lucide-react';
 
-// Spec V8 §3.11 - system health snapshot. Lightweight ops view that
-// times a real call against each SEIRS surface an admin depends on.
-//
-// It does NOT probe external dependencies. Nothing here touches
-// Flutterwave, Google Maps, R2 or email: the previous version of this
-// comment claimed it did, which is exactly the kind of thing someone
-// trusts at 2am. Real dependency probes need backend health endpoints.
-//
-// Real ops dashboards usually layer this on top of Grafana / Datadog;
-// this surface is for the times an admin needs to know "is anything
-// obviously down right now?"
+/**
+ * Is anything obviously broken right now.
+ *
+ * Two problems with the old version, both about the reader. Every row
+ * was named after the route it called ("Auth (admin/me)", "Ops Map
+ * (Postgres)", detail "GET /admin/stats"), which is a stack trace, not
+ * a status board. And a refusal was rendered as DOWN: a support agent
+ * has no right to the Fee Catalogue, so opening this page told them
+ * SEIRS was down when the only thing that had happened was the server
+ * correctly saying no. That is the worst possible false alarm on the
+ * one page people open to decide whether to panic.
+ *
+ * It still does NOT probe external dependencies: nothing here touches
+ * Flutterwave, Google Maps, R2 or email. Real dependency probes need
+ * backend health endpoints, and claiming otherwise is exactly what
+ * somebody trusts at 2am.
+ */
 
-type CheckStatus = 'ok' | 'warn' | 'down' | 'pending';
+type CheckStatus = 'ok' | 'slow' | 'down' | 'restricted' | 'pending';
 
 interface Check {
   key:    string;
   label:  string;
+  /** What being broken would mean for a customer or a rider. */
+  why:    string;
+  route:  string;
   status: CheckStatus;
   detail: string;
   ms?:    number;
 }
 
 const STATUS_META: Record<CheckStatus, { color: string; Icon: any; label: string }> = {
-  ok:      { color: '#16A34A', Icon: CheckCircle2, label: 'OK'      },
-  warn:    { color: '#D97706', Icon: AlertCircle,  label: 'Warn'    },
-  down:    { color: '#DC2626', Icon: XCircle,      label: 'Down'    },
-  pending: { color: '#9CA3AF', Icon: Activity,     label: 'Checking…'},
+  ok:         { color: '#16A34A', Icon: CheckCircle2, label: 'Working'        },
+  slow:       { color: '#D97706', Icon: AlertCircle,  label: 'Slow'           },
+  down:       { color: '#DC2626', Icon: XCircle,      label: 'Not answering'  },
+  restricted: { color: '#6B7280', Icon: Lock,         label: 'Not yours to see' },
+  pending:    { color: '#9CA3AF', Icon: Activity,     label: 'Checking'       },
 };
+
+const PROBES: Array<{ key: string; label: string; why: string; route: string; run: () => Promise<any> }> = [
+  {
+    key: 'api', label: 'The SEIRS server', route: 'GET /admin/stats',
+    why: 'If this is down, nothing in the apps works: no bookings, no tracking, no payments.',
+    run: () => adminApi.stats(),
+  },
+  {
+    key: 'auth', label: 'Your sign-in', route: 'GET /auth/me',
+    why: 'Checks that your own session is still good. If it fails you will be signed out shortly.',
+    // This row used to call adminApi.stats() as well, so two green rows
+    // came from one probe: a broken auth path would still have read OK.
+    run: () => adminApi.me(),
+  },
+  {
+    key: 'analytics', label: 'The reporting figures', route: 'GET /admin/analytics/revenue',
+    why: 'Only affects this dashboard. Customers and riders are unaffected if it fails.',
+    run: () => adminApi.analytics.revenue(7),
+  },
+  {
+    key: 'opsmap', label: 'The live delivery board', route: 'GET /admin/ops-map/deliveries',
+    why: 'If this fails, the ops map and dispatch cannot see which jobs are running.',
+    run: () => adminApi.opsMap.activeDeliveries(),
+  },
+  {
+    key: 'drivers', label: 'The rider records', route: 'GET /admin/drivers',
+    why: 'If this fails, riders cannot be approved, suspended or looked up.',
+    run: () => adminApi.drivers(1),
+  },
+  {
+    key: 'fees', label: 'The fee and price settings', route: 'GET /admin/fees',
+    why: 'If this fails, prices fall back to what is built into the apps rather than what is set here.',
+    run: () => adminApi.fees.list(),
+  },
+];
+
+/**
+ * A 403 is the server working correctly. Only a viewer without that
+ * grant sees it, and calling it "down" starts an incident that is not
+ * happening.
+ */
+function isRefusal(message: string): boolean {
+  return /forbidden|not allowed|no permission|access denied|restricted/i.test(message);
+}
 
 export default function HealthDashboardPage() {
   const [checks, setChecks] = useState<Check[]>(initialChecks());
@@ -41,17 +96,9 @@ export default function HealthDashboardPage() {
     setLoading(true);
     setChecks(initialChecks());
     const next: Check[] = [];
-
-    // Each check is a real API call timed end-to-end
-    next.push(await timeCheck('api',         'Backend API',          () => adminApi.stats()));
-    // This row used to call adminApi.stats() as well, so two green rows
-    // came from one probe: a broken auth path would still have read OK.
-    next.push(await timeCheck('auth',        'Auth (admin/me)',      () => adminApi.me()));
-    next.push(await timeCheck('analytics',   'Analytics endpoints',  () => adminApi.analytics.revenue(7)));
-    next.push(await timeCheck('opsmap',      'Ops Map (Postgres)',   () => adminApi.opsMap.activeDeliveries()));
-    next.push(await timeCheck('drivers',     'Drivers list',         () => adminApi.drivers(1)));
-    next.push(await timeCheck('fees',        'Fee Catalogue',        () => adminApi.fees.list()));
-
+    for (const p of PROBES) {
+      next.push(await timeCheck(p));
+    }
     setChecks(next);
     setLastRunAt(new Date());
     setLoading(false);
@@ -59,78 +106,93 @@ export default function HealthDashboardPage() {
 
   useEffect(() => { runChecks(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
-  const okCount   = checks.filter(c => c.status === 'ok').length;
-  const warnCount = checks.filter(c => c.status === 'warn').length;
-  const downCount = checks.filter(c => c.status === 'down').length;
-  const overall: CheckStatus = downCount > 0 ? 'down' : warnCount > 0 ? 'warn' : 'ok';
+  const okCount      = checks.filter(c => c.status === 'ok').length;
+  const slowCount    = checks.filter(c => c.status === 'slow').length;
+  const downCount    = checks.filter(c => c.status === 'down').length;
+  const lockedCount  = checks.filter(c => c.status === 'restricted').length;
+  const overall: CheckStatus = downCount > 0 ? 'down' : slowCount > 0 ? 'slow' : 'ok';
   const overallMeta = STATUS_META[overall];
 
+  const headline =
+    downCount > 0
+      ? `${downCount} thing${downCount === 1 ? ' is' : 's are'} not answering`
+      : slowCount > 0
+        ? `Everything works, ${slowCount} of them slowly`
+        : 'Everything is working';
+
+  const advice =
+    downCount > 0
+      ? 'Check Railway logs and the API deployment. Customers may be seeing errors in the apps right now.'
+      : slowCount > 0
+        ? 'The server is answering but taking over two seconds. Usually a cold start after a quiet period. Re-run the checks in a minute.'
+        : 'Nothing to do. This is a snapshot, not a monitor: it only checks when you ask it to.';
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#0F2B4C] flex items-center justify-center">
-            <Activity size={18} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-[#0F2B4C]">System Health</h1>
-            <p className="text-sm text-gray-500">
-              Live ops view of backend dependencies. Refresh to re-run all checks.
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={runChecks}
-          disabled={loading}
-          className="flex items-center gap-2 bg-[#3A7BD5] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#2f6cc0] disabled:opacity-50 transition-colors"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Running…' : 'Re-run checks'}
-        </button>
-      </div>
+    <div className="p-8">
+      <PageIntro
+        title="System Health"
+        purpose="Ask SEIRS a few questions right now and see which parts answer, so you know whether a problem is real before you chase it."
+        storageKey="health"
+        help={
+          <>
+            <p>Each row is one real request made from your browser, just now. Green means it answered; it is not a promise that nothing is wrong.</p>
+            <p><strong>Not yours to see</strong> means the server refused because your role does not include that area. That is normal and not a fault.</p>
+            <p>This checks SEIRS only. Card payments, maps, photo storage and email are not tested here.</p>
+            <p>Nothing on this page changes anything. Re-run it as often as you like.</p>
+          </>
+        }
+        actions={
+          <button
+            onClick={runChecks}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg bg-[#3A7BD5] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2f6cc0] disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            {loading ? 'Checking' : 'Check again'}
+          </button>
+        }
+      />
 
       {/* Overall summary */}
       <div
-        className="rounded-xl p-6 border-2"
+        className="rounded-xl border-2 p-6"
         style={{ borderColor: overallMeta.color, backgroundColor: overallMeta.color + '08' }}
       >
-        <div className="flex items-center gap-4">
-          <overallMeta.Icon size={36} color={overallMeta.color} />
+        <div className="flex items-start gap-4">
+          <overallMeta.Icon size={36} color={overallMeta.color} className="mt-1 shrink-0" />
           <div className="flex-1">
-            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: overallMeta.color }}>
-              {overallMeta.label.toUpperCase()}
-            </p>
-            <p className="text-xl font-bold text-[#0F2B4C] mt-1">
-              {downCount > 0
-                ? `${downCount} system${downCount === 1 ? '' : 's'} down`
-                : warnCount > 0
-                  ? `${warnCount} system${warnCount === 1 ? '' : 's'} warning`
-                  : 'All systems operational'}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              {okCount} healthy · {warnCount} warning · {downCount} down
-              {lastRunAt && ` · last checked ${lastRunAt.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}`}
+            <p className="text-xl font-bold text-[#0F2B4C]">{headline}</p>
+            <p className="mt-1 text-sm text-[#0F2B4C]/60">{advice}</p>
+            <p className="mt-2 text-xs text-gray-500">
+              {okCount} working, {slowCount} slow, {downCount} not answering
+              {lockedCount > 0 && `, ${lockedCount} your role cannot see`}
+              {lastRunAt && ` · checked at ${lastRunAt.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}`}
             </p>
           </div>
         </div>
       </div>
 
       {/* Checks table */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] divide-y divide-[#E5E7EB]">
+      <div className="mt-6 divide-y divide-[#E5E7EB] rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
         {checks.map(c => {
           const meta = STATUS_META[c.status];
           return (
-            <div key={c.key} className="px-4 py-3 flex items-center gap-4">
-              <meta.Icon size={20} color={meta.color} />
-              <div className="flex-1 min-w-0">
+            <div key={c.key} className="flex items-start gap-4 px-4 py-3">
+              <meta.Icon size={20} color={meta.color} className="mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-[#0F2B4C]">{c.label}</p>
-                <p className="text-xs text-gray-500 truncate">{c.detail}</p>
+                <p className="text-xs text-gray-600">{c.detail}</p>
+                {/* What it means for a real person, rather than the URL. */}
+                <p className="mt-0.5 text-xs text-gray-400">{c.why}</p>
+                <p className="mt-0.5 font-mono text-[10px] text-gray-300">{c.route}</p>
               </div>
               {c.ms != null && (
-                <span className="text-xs font-mono text-gray-500">{c.ms}ms</span>
+                <span className="shrink-0 font-mono text-xs text-gray-500">
+                  {c.ms < 1000 ? `${c.ms}ms` : `${(c.ms / 1000).toFixed(1)}s`}
+                </span>
               )}
               <span
-                className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded"
+                className="shrink-0 rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wide"
                 style={{ backgroundColor: meta.color + '20', color: meta.color }}
               >
                 {meta.label}
@@ -140,42 +202,46 @@ export default function HealthDashboardPage() {
         })}
       </div>
 
-      {/* Footnote */}
-      <p className="text-xs text-gray-400 text-center">
-        Lightweight checks only - for deep observability use Grafana / Railway logs / Sentry.
+      <p className="mt-6 text-center text-xs text-gray-400">
+        A snapshot taken when you asked, not continuous monitoring. For that, use Railway logs and Sentry.
       </p>
     </div>
   );
 }
 
 function initialChecks(): Check[] {
-  return [
-    { key: 'api',       label: 'Backend API',         status: 'pending', detail: 'GET /admin/stats' },
-    { key: 'auth',      label: 'Auth (admin/me)',     status: 'pending', detail: 'GET /admin/stats' },
-    { key: 'analytics', label: 'Analytics endpoints', status: 'pending', detail: 'GET /admin/analytics/revenue' },
-    { key: 'opsmap',    label: 'Ops Map (Postgres)',  status: 'pending', detail: 'GET /admin/ops-map/deliveries' },
-    { key: 'drivers',   label: 'Drivers list',        status: 'pending', detail: 'GET /admin/drivers' },
-    { key: 'fees',      label: 'Fee Catalogue',       status: 'pending', detail: 'GET /admin/fees' },
-  ];
+  return PROBES.map(p => ({
+    key: p.key, label: p.label, why: p.why, route: p.route,
+    status: 'pending' as CheckStatus,
+    detail: 'Asking now',
+  }));
 }
 
-async function timeCheck(key: string, label: string, fn: () => Promise<any>): Promise<Check> {
+async function timeCheck(p: typeof PROBES[number]): Promise<Check> {
+  const base = { key: p.key, label: p.label, why: p.why, route: p.route };
   const start = Date.now();
   try {
-    await fn();
+    await p.run();
     const ms = Date.now() - start;
     return {
-      key, label,
-      status: ms > 2000 ? 'warn' : 'ok',
-      detail: ms > 2000 ? 'Responded but slowly' : 'Healthy',
+      ...base,
+      status: ms > 2000 ? 'slow' : 'ok',
+      detail: ms > 2000
+        ? 'It answered, but took longer than two seconds.'
+        : 'Answered normally.',
       ms,
     };
   } catch (e: any) {
-    return {
-      key, label,
-      status: 'down',
-      detail: e?.message ?? 'Request failed',
-      ms: Date.now() - start,
-    };
+    const message = e?.message ?? 'The request failed with no explanation.';
+    const ms = Date.now() - start;
+    if (isRefusal(message)) {
+      return {
+        ...base,
+        status: 'restricted',
+        detail: 'Your role does not cover this area, so the server refused. Nothing is broken.',
+        ms,
+      };
+    }
+    return { ...base, status: 'down', detail: message, ms };
   }
 }
