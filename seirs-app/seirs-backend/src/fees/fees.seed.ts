@@ -126,9 +126,6 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'storage_24_72hr',             name: 'Storage Fee (24-72hr)',
     description: 'Daily fee charged to sender when their package overstays at a partner store between 24 and 72 hours.',
     category: FeeCategory.STORAGE,      unit: FeeUnit.PER_DAY,    value: 200 },
-  { key: 'storage_return_fee',          name: 'Storage Return Fee',
-    description: 'One-time fee for returning an unclaimed package to the sender after 72 hours of overstay.',
-    category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 500 },
 
   // Founder decision 2026-08-16: whenever a partner counter touches a
   // parcel, the counter gets paid. Charged PER PARCEL PER COUNTER, so a
@@ -317,15 +314,6 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Minutes a paid booking may wait for a driver before it auto-cancels with a full refund.',
     category: FeeCategory.CONFIG, unit: FeeUnit.MINUTES, value: 60 },
 
-  { key: 'night_fee_pct',               name: 'Night Delivery Fee',
-    description: 'Surcharge on pickups requested inside the night window. Passed to the driver in FULL to encourage night coverage (Lagos and Kano never sleep; interstate runs overnight). Set 0 to disable.',
-    category: FeeCategory.SURGE,        unit: FeeUnit.PERCENT,    value: 15 },
-  { key: 'night_window_start_hour',     name: 'Night Window Start (hour 0-23)',
-    description: 'Hour of day (Africa/Lagos) when the night window opens. Value is an HOUR, not naira.',
-    category: FeeCategory.SURGE,        unit: FeeUnit.HOUR_OF_DAY,   value: 21 },
-  { key: 'night_window_end_hour',       name: 'Night Window End (hour 0-23)',
-    description: 'Hour of day (Africa/Lagos) when the night window closes. Value is an HOUR, not naira.',
-    category: FeeCategory.SURGE,        unit: FeeUnit.HOUR_OF_DAY,   value: 5 },
   { key: 'failed_delivery_redirect_fee', name: 'Failed-Delivery Redirect Fee',
     description: 'Transport fee owed when a failed door delivery is rerouted to a partner store (nobody home, no sender response). Store identity + collection code stay hidden until settled.',
     category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.FLAT_NGN,   value: 1000 },
@@ -376,17 +364,11 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     category: FeeCategory.PARTNER,      unit: FeeUnit.PERCENT,    value: 12 },
 
   // ── Pool & multi-stop ──────────────────────────────────────────────────
-  { key: 'multi_stop_discount',         name: 'Multi-stop Discount (per extra stop)',
-    description: 'Customer discount for each additional stop beyond the first - encourages bundling.',
-    category: FeeCategory.POOL,         unit: FeeUnit.PERCENT,    value: -10 },
   { key: 'pool_ride_discount',          name: 'Pool Ride Discount',
     description: 'Discount applied when customer accepts corridor-pool matching (Spec V8 §1).',
     category: FeeCategory.POOL,         unit: FeeUnit.PERCENT,    value: -20 },
 
   // ── Zone ───────────────────────────────────────────────────────────────
-  { key: 'lekki_zone_surcharge',        name: 'Lekki / VI Zone Surcharge',
-    description: 'Premium pricing applied to base fare in affluent Lagos zones.',
-    category: FeeCategory.ZONE,         unit: FeeUnit.PERCENT,    value: 30 },
 
   // ── Financial services ─────────────────────────────────────────────────
   { key: 'driver_microloan_interest',   name: 'Driver Micro-loan Interest',

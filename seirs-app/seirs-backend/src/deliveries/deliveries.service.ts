@@ -563,20 +563,18 @@ export class DeliveriesService {
     // retired from this path: adding both would charge the customer twice
     // for the same dark sky. nightFeeNgn on the row stays for reporting,
     // fed from the card's own night line when present.
-    let nightFee = 0;
-    const RATE_CARD_OWNS_NIGHT = true;
-    if (this.feesServiceRef) {
-      try {
-        const pct   = await this.feesServiceRef.getValueOr('night_fee_pct', 15);
-        const start = await this.feesServiceRef.getValueOr('night_window_start_hour', 21);
-        const end   = await this.feesServiceRef.getValueOr('night_window_end_hour', 5);
-        const effective = scheduledFor ?? new Date();
-        // Africa/Lagos = UTC+1, no DST.
-        const hour = (effective.getUTCHours() + 1) % 24;
-        const inWindow = start > end ? (hour >= start || hour < end) : (hour >= start && hour < end);
-        if (!RATE_CARD_OWNS_NIGHT && pct > 0 && inWindow) nightFee = +(pricing.price * (pct / 100)).toFixed(2);
-      } catch { /* night fee is best-effort; base pricing always stands */ }
-    }
+    /**
+     * Night pricing lives in the rate card's timeSurcharges, priced and
+     * driver-allocated there.
+     *
+     * This block used to read night_fee_pct and two window hours from the
+     * Fee Catalogue, compute a fee, and then discard it behind a
+     * hardcoded RATE_CARD_OWNS_NIGHT = true, which existed to stop the
+     * customer being charged twice for the same dark sky. Three fee rows
+     * an admin could edit therefore did nothing at all. The rows are
+     * deleted and the dead computation with them (2026-08-28).
+     */
+    const nightFee = 0;
 
     const delivery = this.repo.create({
       termsAcceptedAt,

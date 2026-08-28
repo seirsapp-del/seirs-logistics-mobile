@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In} from 'typeorm';
 import { Fee, FeeCategory, FeeUnit } from './fee.entity';
 import { FeeHistory } from './fee-history.entity';
 import { RedisService } from '../tracking/redis.service';
@@ -22,7 +22,47 @@ export class FeesService implements OnModuleInit {
 
   // Idempotent seed - only inserts rows that don't already exist by key.
   // Existing fees are NEVER overwritten so production values persist.
+  /**
+   * Rows that were editable in the Fee Catalogue and enforced nowhere.
+   *
+   * Removing a key from the seed stops it being RE-created; it does not
+   * remove the row that is already there, so without this the catalogue
+   * keeps offering a number that changes nothing. An admin-tunable knob
+   * wired to no consumer is worse than a missing feature, because
+   * somebody sets it and believes the platform changed.
+   *
+   * Each of these was checked for consumers across the whole backend
+   * before deletion (2026-08-28):
+   *   multi_stop_discount, lekki_zone_surcharge, storage_return_fee
+   *     appeared in the seed and nowhere else.
+   *   night_fee_pct, night_window_start_hour, night_window_end_hour
+   *     were read by deliveries.service and then thrown away, because
+   *     RATE_CARD_OWNS_NIGHT is hardcoded true and the rate card's
+   *     timeSurcharges owns night pricing. Editing them changed nothing.
+   *
+   * Anything genuinely superseded rather than dead has a live home:
+   * area pricing is the Zones page, night is the Pricing Engine's time
+   * surcharges, returns are return_to_sender_fee.
+   */
+  private static readonly RETIRED_KEYS = [
+    'multi_stop_discount',
+    'lekki_zone_surcharge',
+    'storage_return_fee',
+    'night_fee_pct',
+    'night_window_start_hour',
+    'night_window_end_hour',
+  ];
+
   async onModuleInit() {
+    try {
+      const res = await this.feesRepo.delete({ key: In(FeesService.RETIRED_KEYS) } as any);
+      if (res.affected) {
+        this.logger?.log?.(`Removed ${res.affected} retired fee rows that no code reads.`);
+      }
+    } catch (e: any) {
+      this.logger?.warn?.(`Could not prune retired fee rows: ${e?.message ?? e}`);
+    }
+
     /**
      * Postgres enums do not grow by themselves and production runs with
      * schema sync off, so a new FeeCategory value has to be added by

@@ -462,50 +462,31 @@ export class PricingService implements OnModuleInit {
    * Returns a flat, fully-resolved view ready to apply to a quote.
    */
   resolveRegion(
-    card: RateCard,
-    stateCode: StateCode | null,
-    pickupCoords?: { latitude: number; longitude: number } | null,
+    _card: RateCard,
+    _stateCode: StateCode | null,
+    _pickupCoords?: { latitude: number; longitude: number } | null,
   ): ResolvedRegion {
-    if (!card.regions) return { rateMultiplier: 1 };
-
     /**
-     * Hotspot circles (founder 2026-08-22: "we also have other busy
-     * places in Nigeria, why not set radius km... individually for
-     * different places and different values"). Admin draws a circle
-     * (centre + radius km + multiplier); a pickup inside it takes that
-     * multiplier over anything the state or zone says. Overlapping
-     * circles: the SMALLEST containing circle wins, since the tighter
-     * circle is the more deliberate call.
+     * The rate card's own region block is GONE (2026-08-28).
+     *
+     * This merged four things off `card.regions`: hotspot circles,
+     * geopolitical zone overrides, state overrides and restricted
+     * sub-zones. On the live card `regions` is NULL, so all four did
+     * nothing, and together they were a second area-pricing system
+     * competing with the Zones page, which is real and enforced:
+     * Victoria Island is published at 2.2x and was measured against
+     * production.
+     *
+     * Two systems for "what does this area cost" is how an operator
+     * closes an area in one place and watches nothing happen. Zones wins
+     * because it is the one that works, and the four editors that fed
+     * this are deleted from the Pricing Engine.
+     *
+     * The function survives as the identity baseline that
+     * applyZoneEffects layers a Zone decision onto, which is the live
+     * path and the reason this is not simply deleted.
      */
-    const circles = Array.isArray((card.regions as any).hotspots)
-      ? ((card.regions as any).hotspots as Array<{
-          name?: string; lat: number; lng: number; radiusKm: number; rateMultiplier: number;
-        }>)
-      : [];
-    if (pickupCoords && circles.length > 0) {
-      const inside = circles
-        .filter(c =>
-          Number.isFinite(c.lat) && Number.isFinite(c.lng) &&
-          Number(c.radiusKm) > 0 && Number(c.rateMultiplier) > 0 &&
-          haversineKmLocal(pickupCoords.latitude, pickupCoords.longitude, c.lat, c.lng) <= Number(c.radiusKm))
-        .sort((a, b) => Number(a.radiusKm) - Number(b.radiusKm));
-      if (inside.length > 0) {
-        return { rateMultiplier: Number(inside[0].rateMultiplier) };
-      }
-    }
-
-    if (!stateCode) return { rateMultiplier: 1 };
-    const zone = getStateZone(stateCode);
-    const fromZ = (zone && card.regions.zoneOverrides?.[zone]) ?? {};
-    const fromS = card.regions.stateOverrides?.[stateCode] ?? {};
-    return {
-      rateMultiplier:           fromS.rateMultiplier ?? fromZ.rateMultiplier ?? 1,
-      fuelPrices:               { ...(fromZ.fuelPrices ?? {}), ...(fromS.fuelPrices ?? {}) },
-      serviceFeeRideOverride:   fromS.serviceFeeRideOverride    ?? fromZ.serviceFeeRideOverride,
-      serviceFeePackageOverride: fromS.serviceFeePackageOverride ?? fromZ.serviceFeePackageOverride,
-      dwellBufferMin:           fromS.dwellBufferMin ?? fromZ.dwellBufferMin,
-      vehicleOverrides:         { ...(fromZ.vehicleOverrides ?? {}), ...(fromS.vehicleOverrides ?? {}) },
-    };
+    return { rateMultiplier: 1 };
   }
 
   /**
@@ -675,13 +656,10 @@ export class PricingService implements OnModuleInit {
 
     // Restricted: prefer richer v2 sub-zones (admin-addable), fall back to v1 array.
     let restrictedPct = 0;
-    const subZone = card.regions?.restrictedSubZones?.find(
-      sz => sz.active && (sz.stateCode === pickupState || sz.stateCode === dropoffState),
-    );
-    if (subZone) {
-      restrictedPct = subZone.surchargePct;
-      labels.push(`restricted:${subZone.name}`);
-    } else if (input.isRestrictedZone) {
+    /* Restricted sub-zones read card.regions, which is null and no longer
+       consulted. Closing or surcharging an area is the Zones page's job,
+       and it is the one that is enforced. */
+    if (input.isRestrictedZone) {
       const legacy = z.restrictedZones?.find(r => r.state === input.isRestrictedZone!.state);
       if (legacy) {
         restrictedPct = legacy.surchargePercent;
