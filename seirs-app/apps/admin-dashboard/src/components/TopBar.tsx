@@ -1,7 +1,9 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, User as UserIcon, Truck, Package, X, Loader2 } from 'lucide-react';
+import { Search, User as UserIcon, Truck, Package, X, Loader2, Compass } from 'lucide-react';
+import { NAV_SECTIONS, isNavItemVisible, canAccessFromUser, isSuperAdminFromUser } from '@/lib/rbac';
+import { getUser } from '@/lib/auth';
 import { adminApi } from '@/lib/api';
 
 /**
@@ -17,7 +19,7 @@ import { adminApi } from '@/lib/api';
  */
 
 type Hit = {
-  type:     'user' | 'driver' | 'delivery';
+  type:     'user' | 'driver' | 'delivery' | 'page';
   id:       string;
   label:    string;
   sublabel: string;
@@ -28,13 +30,62 @@ const ICON_FOR_TYPE = {
   user:     UserIcon,
   driver:   Truck,
   delivery: Package,
+  page:     Compass,
 };
 
 const TYPE_ACCENT = {
   user:     'text-blue-600 bg-blue-50',
   driver:   'text-orange-600 bg-orange-50',
   delivery: 'text-emerald-600 bg-emerald-50',
+  page:     'text-[#0F2B4C] bg-[#0F2B4C]/5',
 };
+
+/**
+ * The palette could find a RECORD and not a PAGE.
+ *
+ * Ctrl+K searched users, drivers and deliveries, which is the right
+ * half of the job. The other half is getting somewhere: the sidebar is
+ * ten sections and forty four rows, and somebody who wants Zones has to
+ * know it lives under OPERATIONS and not, say, PRICING, which is
+ * exactly the kind of thing a non-technical hire has no reason to know.
+ *
+ * Pages are matched locally, so they appear instantly with no request,
+ * and they are filtered through the same permission check the sidebar
+ * uses. A palette that offers you a page you would be refused is worse
+ * than one that offers nothing: it teaches people the tool is broken.
+ *
+ * The section name rides along as the sublabel, so the palette also
+ * teaches where a page lives rather than just teleporting you there.
+ */
+function matchPages(term: string, allowed: (permission: string) => boolean): Hit[] {
+  const q = term.trim().toLowerCase();
+  if (!q) return [];
+  const out: Hit[] = [];
+  for (const section of NAV_SECTIONS) {
+    for (const item of section.items) {
+      if (!isNavItemVisible(item.href)) continue;
+      if (!allowed(item.permission)) continue;
+      const hay = `${item.label} ${section.title}`.toLowerCase();
+      if (!hay.includes(q)) continue;
+      out.push({
+        type:     'page',
+        id:       item.href,
+        label:    item.label,
+        sublabel: section.title,
+        href:     item.href,
+      });
+    }
+  }
+  /* A page whose name starts with what was typed is almost always the
+     one meant, so "dr" offers Drivers before Fraud and Duplicates. */
+  return out
+    .sort((a, b) => {
+      const as = a.label.toLowerCase().startsWith(q) ? 0 : 1;
+      const bs = b.label.toLowerCase().startsWith(q) ? 0 : 1;
+      return as - bs || a.label.localeCompare(b.label);
+    })
+    .slice(0, 6);
+}
 
 export default function TopBar() {
   const router  = useRouter();
@@ -45,6 +96,14 @@ export default function TopBar() {
   const [open,     setOpen]     = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [activeIx, setActiveIx] = useState(0);
+
+  /* Same gate the sidebar applies, so the palette can never offer a
+     page the middleware would then refuse. */
+  const allowPage = useCallback((permission: string) => {
+    const user = getUser();
+    if (permission === 'super_admin_only') return isSuperAdminFromUser(user as any);
+    return canAccessFromUser(user as any, permission);
+  }, []);
 
   // Cmd/Ctrl+K to focus, Escape to close, arrow keys + Enter for nav
   useEffect(() => {
@@ -75,7 +134,10 @@ export default function TopBar() {
     setLoading(true);
     const t = setTimeout(() => {
       adminApi.search(term)
-        .then(r => { setHits(r?.hits ?? []); setActiveIx(0); })
+        /* Pages first: they resolve locally and they are usually what a
+           short query means. "del" is far more often Deliveries than a
+           person called Delia. */
+        .then(r => { setHits([...matchPages(term, allowPage), ...(r?.hits ?? [])]); setActiveIx(0); })
         .catch(() => setHits([]))
         .finally(() => setLoading(false));
     }, 300);
@@ -105,7 +167,7 @@ export default function TopBar() {
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => { if (q.trim().length >= 2) setOpen(true); }}
           onKeyDown={onInputKeyDown}
-          placeholder="Search users, drivers, deliveries, SEIRS IDs, tracking codes..."
+          placeholder="Search a page, a person, a rider or a tracking code..."
           className="w-full pl-9 pr-14 py-2.5 rounded-lg border border-[#E5E7EB] text-sm bg-[#F8F9FB] text-[#0F2B4C] focus:outline-none focus:ring-2 focus:ring-[#3A7BD5] placeholder:text-[#0F2B4C]/40"
         />
         {/* Right-side controls: loader when searching, clear button, or Cmd+K hint */}
