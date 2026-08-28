@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { MailService } from './mail.service';
 import { EmailTemplatesService } from './email-templates.service';
+import { EmailCampaignsService } from './email-campaigns.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -12,7 +13,44 @@ export class EmailTemplatesController {
   constructor(
     private readonly svc: EmailTemplatesService,
     private readonly mail: MailService,
+    private readonly campaigns: EmailCampaignsService,
   ) {}
+
+  /**
+   * The scheduler. Declared above the :key routes so 'campaigns' is not
+   * read as a template key.
+   *
+   * GET  campaigns                what is queued and what already went
+   * GET  campaigns/audience-size  how many this reaches, before sending
+   * POST campaigns                queue one
+   * POST campaigns/:id/cancel     call one off while it is still queued
+   */
+  @Get('campaigns')
+  listCampaigns() {
+    return this.campaigns.list();
+  }
+
+  @Get('campaigns/audience-size')
+  async audienceSize(@Query('audience') audience?: string) {
+    return { audience: audience ?? 'all_customers', count: await this.campaigns.audienceSize(audience ?? 'all_customers') };
+  }
+
+  @Post('campaigns')
+  scheduleCampaign(
+    @Body() body: { templateKey: string; audience: string; scheduledAt: string },
+    @CurrentUser() user: User,
+  ) {
+    return this.campaigns.schedule({ ...body, createdByUserId: user.id });
+  }
+
+  @Post('campaigns/:id/cancel')
+  cancelCampaign(
+    @Param('id') id: string,
+    @Body() body: { note?: string },
+    @CurrentUser() user: User,
+  ) {
+    return this.campaigns.cancel(id, user.id, body?.note);
+  }
 
   // GET /api/v1/admin/email-templates
   // Returns the full catalogue merged with any persisted overrides.

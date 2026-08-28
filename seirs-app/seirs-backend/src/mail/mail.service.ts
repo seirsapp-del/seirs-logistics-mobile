@@ -229,6 +229,34 @@ export class MailService {
     return { delivered: true, usedOverride: false, subject: seeded.subject };
   }
 
+  /**
+   * Send one campaign email to one person.
+   *
+   * Public because the scheduler needs it and `send` is private. It
+   * carries no [TEST] prefix and no fallback subject, unlike
+   * sendTemplateTest and deliverWithOverride: a campaign is a template
+   * somebody chose deliberately, so if that template has gone missing
+   * the right answer is to fail loudly and let the campaign record the
+   * failure, not to quietly post the built-in copy of something else.
+   */
+  async sendCampaignEmail(
+    key: string,
+    to: string,
+    vars: Record<string, string | number>,
+  ): Promise<void> {
+    const row = await this.templates.render(key, vars);
+    if (row) {
+      await this.send(to, row.subject, baseTemplate(row.html, undefined, {
+        bannerImageUrl: row.bannerImageUrl,
+        accentColor:    row.accentColor,
+      }));
+      return;
+    }
+    const seeded = await this.templates.seedBodyFor(key);
+    if (!seeded) throw new BadRequestException(`No template named '${key}'.`);
+    await this.send(to, seeded.subject, baseTemplate(seeded.bodyHtml));
+  }
+
   private async deliverWithOverride(
     key: string,
     vars: Record<string, string | number>,

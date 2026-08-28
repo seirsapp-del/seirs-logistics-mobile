@@ -37,6 +37,20 @@ export interface TemplateSeed {
  */
 const SAMPLE_VARS: Record<string, string> = {
   name:         'Chinelo Okafor',
+  /**
+   * Added 2026-08-28 after the gallery went in and showed them raw.
+   *
+   * fillSamples leaves an unknown placeholder visibly as {{itself}},
+   * which is the right default (blanking it would hide that a template
+   * asks for something nobody supplies) but it means a preview of the
+   * birthday, payout and refund emails displayed the braces to whoever
+   * was approving the wording. Caught by diffing every placeholder used
+   * in a subject or body against the samples defined here: three had
+   * none.
+   */
+  firstName:    'Chinelo',
+  amount:       '12,450.00',
+  reference:    'SEIRS-PO-4417',
   driverName:   'Ibrahim Musa',
   otp:          '284915',
   trackingCode: 'SRS-9CJ7LJP2',
