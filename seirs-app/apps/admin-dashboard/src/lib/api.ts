@@ -101,6 +101,12 @@ export const adminApi = {
    */
   queues: () => req<any[]>('/admin/queues'),
 
+  /**
+   * Published zones shaped for the operations map. A closure could be
+   * declared and the screen ops actually watches showed nothing.
+   */
+  zonesMap: () => req<any[]>('/admin/zones/map'),
+
   /** What SEIRS has already promised, day by day for the week ahead. */
   forwardBook: (days = 7) => req<any[]>(`/admin/forward-book?days=${days}`),
 

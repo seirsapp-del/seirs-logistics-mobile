@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
-  Map as MapIcon, Radio, AlertTriangle, Truck, CircleDot, Store, Flame, Route,
+  Map as MapIcon, Radio, AlertTriangle, Truck, CircleDot, Store, Flame, Route, ShieldAlert,
   Search, Ruler, X, ArrowLeft,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
@@ -52,10 +52,14 @@ function esc(v: unknown): string {
 
 // Layer registry: which overlays are on. Persisted per-admin in
 // localStorage so the ops person's preferred view survives reloads.
-type LayerKey = 'online' | 'offline' | 'requests' | 'stores' | 'routes' | 'heat';
+type LayerKey = 'online' | 'offline' | 'requests' | 'stores' | 'routes' | 'heat' | 'zones';
 const LAYER_STORAGE = 'seirs_opsmap_layers';
 const DEFAULT_LAYERS: Record<LayerKey, boolean> = {
   online: true, offline: false, requests: true, stores: true, routes: true, heat: false,
+  // On by default. Every other layer is information; this one is whether
+  // SEIRS is allowed to work somewhere, and an operator should not have
+  // to remember to switch that on.
+  zones: true,
 };
 
 export default function OpsMapPage() {
@@ -64,6 +68,17 @@ export default function OpsMapPage() {
   const markersRef   = useRef<globalThis.Map<string, any>>(new globalThis.Map());
   const polylinesRef = useRef<any[]>([]);
   const heatmapRef   = useRef<any>(null);
+  /**
+   * Zone overlays, kept so they can be cleared before redrawing.
+   *
+   * A closure could be declared in the Zones admin and this map, the
+   * screen ops actually watches, showed nothing: it had layers for
+   * drivers, requests, routes, stores and demand and none for zones
+   * (2026-08-28). An area could be closed and the live view of the
+   * platform looked exactly as it had before, which defeats the point
+   * of being able to close one.
+   */
+  const zoneShapesRef = useRef<any[]>([]);
   const infoRef      = useRef<any>(null); // singleton InfoWindow
   const searchInputRef  = useRef<HTMLInputElement>(null);
   const searchMarkerRef = useRef<any>(null);   // the temporary "found it" pin
@@ -76,6 +91,7 @@ export default function OpsMapPage() {
   const [deliveries, setDeliveries] = useState<DeliveryPin[]>([]);
   const [stores,     setStores]     = useState<StorePin[]>([]);
   const [pending,    setPending]    = useState<PendingPin[]>([]);
+  const [zones,      setZones]      = useState<any[]>([]);
   const [heatPts,    setHeatPts]    = useState<Array<{ lat: number; lng: number }>>([]);
   const [sosAlerts,  setSosAlerts]  = useState<any[]>([]);
   const [missingCoords, setMissingCoords] = useState(0);
@@ -184,18 +200,20 @@ export default function OpsMapPage() {
 
     async function refresh() {
       try {
-        const [d, ds, st, dm, sos] = await Promise.all([
+        const [d, ds, st, dm, sos, zn] = await Promise.all([
           adminApi.opsMap.onlineDrivers().catch(() => []),
           adminApi.opsMap.activeDeliveries().catch(() => []),
           adminApi.opsMap.stores().catch(() => null),
           adminApi.opsMap.demand().catch(() => null),
           adminApi.sos.active().catch(() => [] as any[]),
+          adminApi.zonesMap().catch(() => [] as any[]),
         ]);
         if (Array.isArray(d))  setDrivers(d as DriverPin[]);
         if (Array.isArray(ds)) setDeliveries(ds as DeliveryPin[]);
         if (st) { setStores(st.stores ?? []); setMissingCoords(st.missingCoords ?? 0); }
         if (dm) { setPending(dm.pending ?? []); setHeatPts(dm.heat ?? []); }
         if (Array.isArray(sos)) setSosAlerts(sos.filter((a: any) => a.lat != null));
+        if (Array.isArray(zn)) setZones(zn);
       } catch { /* stale data beats a blank map */ }
     }
     refresh();
@@ -381,6 +399,61 @@ export default function OpsMapPage() {
     } catch { /* demand layer is decoration; the map must survive it */ }
   }, [layers.heat, heatPts]);
 
+  /**
+   * Draw published zones.
+   *
+   * The spec's palette, and red covers every blocking state because at a
+   * glance the question is only "can we work here": blue under 1.0
+   * multiplier, green open, amber surcharged, red blocking. A closed
+   * zone gets a heavier stroke so it separates from the one-directional
+   * blocks without adding a fourth colour to scan.
+   *
+   * State and geozone shapes carry no geometry here, so they are listed
+   * in the panel rather than drawn: shipping Nigerian state boundaries
+   * to draw an outline would be a large payload for a shape the operator
+   * already knows.
+   */
+  useEffect(() => {
+    try {
+      const g = (window as any).google;
+      if (!g || !mapRef.current) return;
+
+      zoneShapesRef.current.forEach((sh) => sh.setMap(null));
+      zoneShapesRef.current = [];
+      if (!layers.zones) return;
+
+      for (const z of zones) {
+        const colour = z.blocking
+          ? '#DC2626'
+          : z.status === 'surcharged'
+            ? '#F59E0B'
+            : (z.effects?.rateMultiplier ?? 1) < 1
+              ? '#3A7BD5'
+              : '#16A34A';
+        const closed = z.status === 'closed';
+        const common = {
+          map: mapRef.current,
+          fillColor: colour, fillOpacity: z.blocking ? 0.18 : 0.10,
+          strokeColor: colour, strokeOpacity: 0.85,
+          strokeWeight: closed ? 3 : 1.5,
+          clickable: false,
+        };
+        if (z.shape?.kind === 'circle') {
+          zoneShapesRef.current.push(new g.maps.Circle({
+            ...common,
+            center: { lat: Number(z.shape.lat), lng: Number(z.shape.lng) },
+            radius: Math.max(50, Number(z.shape.radiusKm) * 1000),
+          }));
+        } else if (z.shape?.kind === 'polygon' && Array.isArray(z.shape.points)) {
+          zoneShapesRef.current.push(new g.maps.Polygon({
+            ...common,
+            paths: z.shape.points.map((pt: any) => ({ lat: Number(pt.lat), lng: Number(pt.lng) })),
+          }));
+        }
+      }
+    } catch { /* a zone that will not draw must not take the map with it */ }
+  }, [layers.zones, zones]);
+
   // ── Search: address autocomplete + raw "lat, lng" jump ──
   function dropSearchPin(g: any, pos: { lat: number; lng: number }, label: string) {
     searchMarkerRef.current?.setMap(null);
@@ -510,6 +583,16 @@ export default function OpsMapPage() {
 
   const onlineCount  = drivers.filter((d) => d.isOnline).length;
   const offlineCount = drivers.length - onlineCount;
+  const blockingZones = zones.filter((z: any) => z.blocking).length;
+  /**
+   * Online but not heard from. The dashboard showed 7 online and 6
+   * stale side by side, which makes "online" very nearly a lie: a rider
+   * whose last ping was hours ago is a pin in a place they have left.
+   */
+  const STALE_MIN = 15;
+  const staleOnline = drivers.filter((d: any) =>
+    d.isOnline && d.lastSeen &&
+    (Date.now() - new Date(d.lastSeen).getTime()) / 60000 > STALE_MIN).length;
 
   const CHIPS: Array<{ key: LayerKey; label: string; count?: number; color: string; Icon: any; title: string }> = [
     { key: 'online',   label: 'Online',   count: onlineCount,   color: '#16A34A', Icon: Truck,     title: 'Live driver positions' },
@@ -518,6 +601,10 @@ export default function OpsMapPage() {
     { key: 'stores',   label: 'Stores',   count: stores.length,  color: '#0F2B4C', Icon: Store,     title: 'Partner store locations' },
     { key: 'routes',   label: 'Routes',   count: deliveries.length, color: '#3A7BD5', Icon: Route,  title: 'Active routes: blue/amber = packages, indigo = rides' },
     { key: 'heat',     label: 'Demand',                          color: '#DC2626', Icon: Flame,     title: 'Pickup density over the last 24h - where the volume is' },
+    { key: 'zones',    label: 'Zones',    count: zones.length,   color: blockingZones > 0 ? '#DC2626' : '#16A34A', Icon: ShieldAlert,
+      title: blockingZones > 0
+        ? `${blockingZones} zone(s) blocking: SEIRS is not operating there`
+        : 'Published zones. Red blocking, amber surcharged, blue cheaper, green open' },
   ];
 
   return (
@@ -539,6 +626,29 @@ export default function OpsMapPage() {
             )}
           </div>
           <div className="ml-auto flex items-center gap-2">
+            {/*
+              A blocking zone outranks everything else on this bar. The
+              whole point of being able to close an area is that somebody
+              watching operations knows it is closed.
+            */}
+            {blockingZones > 0 && (
+              <Link href="/zones"
+                className="rounded-full border border-red-300 bg-red-50 px-2 py-1 text-[10px] font-semibold text-red-700 hover:bg-red-100"
+                title="A published zone is refusing pickups, dropoffs or both">
+                {blockingZones} zone{blockingZones === 1 ? '' : 's'} blocking
+              </Link>
+            )}
+            {/*
+              Online is nearly a lie without this. A rider whose last ping
+              was hours ago is a pin sitting in a place they have left, and
+              the dashboard was showing 7 online beside 6 stale.
+            */}
+            {staleOnline > 0 && (
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] text-amber-700"
+                title={`Marked online but no GPS ping in over ${STALE_MIN} minutes. Their pin is a last-known position, not a live one.`}>
+                {staleOnline} online but not reporting
+              </span>
+            )}
             {missingCoords > 0 && (
               <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full"
                 title="Stores without coordinates cannot appear on the map. New partner applications capture coords automatically.">

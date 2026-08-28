@@ -49,6 +49,46 @@ export class ZonesAdminController {
   }
 
   /**
+   * GET /api/v1/admin/zones/map
+   *
+   * Published zones, shaped for drawing on the operations map.
+   *
+   * A closure could be declared here and the screen an ops manager
+   * actually watches showed nothing: the ops map has layers for online
+   * drivers, offline drivers, requests, routes, stores and demand, and
+   * had none for zones (found 2026-08-28). So an area could be closed
+   * and the live view of the platform would look exactly as it did
+   * before, which defeats the point of being able to close one.
+   *
+   * Only published zones, because a draft is a plan rather than a fact.
+   * Circles and polygons carry geometry the map can draw directly;
+   * state and geozone shapes are returned with their code so the client
+   * can label them without this endpoint shipping a boundary file.
+   */
+  @Get('map')
+  async mapLayer() {
+    const zones = await this.svc.publishedZones();
+    return zones.map((z) => ({
+      id:       z.id,
+      name:     z.name,
+      status:   z.status,
+      reason:   z.reason ?? null,
+      colour:   z.colour ?? null,
+      priority: z.priority,
+      shape:    z.shape,
+      /**
+       * Red covers every blocking state, because at a glance the
+       * question is "can we work here" and the detail belongs in the
+       * panel. The spec's palette: blue under 1.0, green open, amber
+       * surcharged, red blocking.
+       */
+      blocking: z.status === 'closed' || z.status === 'no_pickup' || z.status === 'no_dropoff',
+      effects:  z.effects ?? null,
+      active:   z.active ?? null,
+    }));
+  }
+
+  /**
    * What the signed-in admin may actually do here, so the page can
    * disable a control instead of offering it and then refusing the save.
    * A fully enabled screen whose every action 403s is its own bug.
