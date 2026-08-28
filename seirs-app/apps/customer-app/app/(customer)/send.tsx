@@ -223,6 +223,40 @@ const TIME_SLOTS = Array.from({ length: 24 }, (_, hour) => {
  * rather than constants, so an app left open across midnight does not
  * keep yesterday's answer.
  */
+/**
+ * A keyboard hint is not validation (2026-08-29).
+ *
+ * keyboardType only suggests which keys to show. It is bypassed by voice
+ * input, a swipe keyboard, a paste, an external keyboard, and by any
+ * automation. Typed on the device: weight took "3Chidinma", the phone
+ * field took ",2Adeola Odeku", and the surname took "08034567890".
+ *
+ * Weight matters most, because pricing reads it: parseFloat("3Chidinma")
+ * is NaN, and NaN is how a fare quietly becomes nothing. This is the
+ * same defect that produced "4Chidinma" in the business app.
+ *
+ * Filtered on the way in rather than rejected on submit, so the field
+ * simply cannot hold a wrong value and nobody is told off after typing.
+ */
+const onlyDecimal = (v: string) => {
+  const cleaned = v.replace(/[^0-9.]/g, '');
+  const [head, ...rest] = cleaned.split('.');      // at most one point
+  return rest.length ? `${head}.${rest.join('')}` : head;
+};
+
+/** Digits, plus a leading +, spaces and dashes people actually type. */
+const onlyPhone = (v: string) => {
+  const plus = v.trimStart().startsWith('+') ? '+' : '';
+  return plus + v.replace(/[^0-9]/g, '');
+};
+
+/**
+ * Names are not numbers. Letters, spaces, apostrophes and hyphens, so
+ * N'Diaye and Obi-Chukwu both survive, and Yoruba, Igbo and Hausa
+ * diacritics are kept by allowing anything that is not a digit.
+ */
+const onlyName = (v: string) => v.replace(/[0-9]/g, '');
+
 const LAGOS_OFFSET_MS = 60 * 60 * 1000;
 const lagosNow      = () => new Date(Date.now() + LAGOS_OFFSET_MS);
 const todayIsoLagos = () => lagosNow().toISOString().slice(0, 10);
@@ -1399,7 +1433,7 @@ export default function SendScreen() {
                   placeholderTextColor={theme.textThird}
                   keyboardType="decimal-pad"
                   value={weightKg}
-                  onChangeText={v => { updatePkg(pkgIndex, { weightKg: v }); if (invalidField === 'weight') { setInvalidField(null); setError(''); } }}
+                  onChangeText={v => { updatePkg(pkgIndex, { weightKg: onlyDecimal(v) }); if (invalidField === 'weight') { setInvalidField(null); setError(''); } }}
                 />
                 {invalidField === 'weight' && (
                   <Text style={[styles.fieldError, { color: theme.error }]}>{error}</Text>
@@ -1444,7 +1478,7 @@ export default function SendScreen() {
                     placeholder={t('send.receiverFirst', { defaultValue: 'First name' })}
                     placeholderTextColor={theme.textThird}
                     value={receiverFirst}
-                    onChangeText={v => { updatePkg(pkgIndex, { receiverFirst: v }); if (invalidField === 'receiver') { setInvalidField(null); setError(''); } }}
+                    onChangeText={v => { updatePkg(pkgIndex, { receiverFirst: onlyName(v) }); if (invalidField === 'receiver') { setInvalidField(null); setError(''); } }}
                   />
                   <TextInput
                     onFocus={handleFieldFocus}
@@ -1452,7 +1486,7 @@ export default function SendScreen() {
                     placeholder={t('send.receiverLast', { defaultValue: 'Last name' })}
                     placeholderTextColor={theme.textThird}
                     value={receiverLast}
-                    onChangeText={v => updatePkg(pkgIndex, { receiverLast: v })}
+                    onChangeText={v => updatePkg(pkgIndex, { receiverLast: onlyName(v) })}
                   />
                 </View>
                 {invalidField === 'receiver' && (
@@ -1469,7 +1503,7 @@ export default function SendScreen() {
                 placeholderTextColor={theme.textThird}
                 keyboardType="phone-pad"
                 value={receiverPhone}
-                onChangeText={v => updatePkg(pkgIndex, { receiverPhone: v })}
+                onChangeText={v => updatePkg(pkgIndex, { receiverPhone: onlyPhone(v) })}
               />
 
               <Text style={[styles.label, { color: theme.textSecond }]}>
