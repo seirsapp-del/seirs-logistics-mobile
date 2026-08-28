@@ -1,10 +1,12 @@
 import {
-  Body, Controller, Delete, Get, Param, Patch, Post, UseGuards,
+  Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, Ip,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { SuperAdminGuard } from '../common/guards/super-admin.guard';
 import { RolesService } from './roles.service';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { User } from '../users/user.entity';
 
 /**
  * Admin role management.
@@ -44,26 +46,40 @@ export class RolesController {
 
   @UseGuards(SuperAdminGuard)
   @Post()
-  create(@Body() body: { name: string; description?: string; permissions: string[]; badgeColor?: string }) {
-    return this.svc.create(body);
+  create(
+    @Body() body: { name: string; description?: string; permissions: string[]; badgeColor?: string },
+    @CurrentUser() actor: User,
+    @Ip() ip?: string,
+  ) {
+    return this.svc.create(body, actor, ip);
   }
 
   @UseGuards(SuperAdminGuard)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.svc.update(id, body);
+  update(
+    @Param('id') id: string,
+    @Body() body: any,
+    @CurrentUser() actor: User,
+    @Ip() ip?: string,
+  ) {
+    return this.svc.update(id, body, actor, ip);
   }
 
   @UseGuards(SuperAdminGuard)
   @Delete(':id')
-  delete(@Param('id') id: string) {
-    return this.svc.delete(id);
+  delete(@Param('id') id: string, @CurrentUser() actor: User, @Ip() ip?: string) {
+    return this.svc.delete(id, actor, ip);
   }
 
   // The shortest escalation path of the lot: grant yourself a role.
   @UseGuards(SuperAdminGuard)
   @Post(':roleId/assign/:userId')
-  assign(@Param('roleId') roleId: string, @Param('userId') userId: string) {
-    return this.svc.assignToUser(userId, roleId);
+  assign(
+    @Param('roleId') roleId: string,
+    @Param('userId') userId: string,
+    @CurrentUser() actor: User,
+    @Ip() ip?: string,
+  ) {
+    return this.svc.assignToUser(userId, roleId, actor, ip);
   }
 }

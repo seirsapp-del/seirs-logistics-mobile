@@ -143,6 +143,14 @@ export default function WalletPage() {
   const [loading,    setLoading]    = useState(true);
   const [busyId,     setBusyId]     = useState<string | null>(null);
   const [error,      setError]      = useState<string | null>(null);
+  /**
+   * Money owed to CUSTOMERS, which this page never showed.
+   *
+   * Everything else here is what SEIRS owes its riders. This is the
+   * opposite: a payment still held against a delivery that was cancelled
+   * or failed, which is a refund that was owed and never issued.
+   */
+  const [stuck,      setStuck]      = useState<Array<any>>([]);
   const confirm                     = useConfirm();
 
   // Every call used to swallow its own failure, so a 403 or a cold
@@ -153,16 +161,18 @@ export default function WalletPage() {
     setError(null);
     const failures: string[] = [];
     try {
-      const [s, p, h, w] = await Promise.all([
+      const [s, p, h, w, sr] = await Promise.all([
         adminApi.wallet.summary().catch(() => { failures.push('the totals'); return null; }),
         adminApi.wallet.pendingPayouts().catch(() => { failures.push('the ready-to-withdraw list'); return []; }),
         adminApi.wallet.heldEarnings().catch(() => { failures.push('the frozen earnings'); return []; }),
         adminApi.wallet.recentWithdrawals().catch(() => { failures.push('the transfers already sent'); return []; }),
+        adminApi.wallet.stuckRefunds().catch(() => { failures.push('refunds owed to customers'); return []; }),
       ]);
       setSummary(s);
       setPending(p ?? []);
       setHeld(h ?? []);
       setPaid(w ?? []);
+      setStuck(sr ?? []);
       if (failures.length) {
         setError(`Could not load ${failures.join(', ')}. The figures below are incomplete: do not reconcile against them until this loads cleanly.`);
       }
@@ -238,6 +248,52 @@ export default function WalletPage() {
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
           <span className="flex-1">{error}</span>
           <button onClick={() => load()} className="shrink-0 font-semibold underline hover:no-underline">Try again</button>
+        </div>
+      )}
+
+      {/*
+        Above the rider figures on purpose. Everything else on this page
+        is money SEIRS owes its own riders, which is normal business.
+        This is money SEIRS is sitting on that belongs to a CUSTOMER
+        whose delivery never happened, which is not. The endpoint has
+        existed since the refund-honesty fix and no screen called it, so
+        a refund owed and never issued could only be found by querying
+        the database.
+      */}
+      {stuck.length > 0 ? (
+        <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4">
+          <p className="text-sm font-bold text-red-800">
+            {stuck.length} customer{stuck.length === 1 ? '' : 's'} {stuck.length === 1 ? 'is' : 'are'} owed a refund that was never issued, totalling{' '}
+            {naira(stuck.reduce((t: number, r: any) => t + Number(r.amountNgn ?? 0), 0))}
+          </p>
+          <p className="mt-1 text-xs text-red-700">
+            Their delivery was cancelled or failed and SEIRS still holds the payment. This list
+            should be empty. Each one needs the refund re-issued in Flutterwave against the
+            reference shown.
+          </p>
+          <div className="mt-3 space-y-1.5">
+            {stuck.map((r: any) => (
+              <div key={r.paymentId} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-white px-3 py-2 text-xs">
+                <a href={`/deliveries/${r.deliveryId}`} className="font-mono font-bold text-[#3A7BD5] hover:underline">
+                  {r.trackingCode}
+                </a>
+                <span className="font-semibold text-red-700">{naira(r.amountNgn)}</span>
+                <a href={`/users/${r.customerId}`} className="text-[#0F2B4C] hover:underline">{r.customerName}</a>
+                <span className="text-[#0F2B4C]/45">{r.deliveryStatus}</span>
+                {r.providerReference && (
+                  <span className="font-mono text-[#0F2B4C]/45">{r.providerReference}</span>
+                )}
+                <span className="ml-auto text-[#0F2B4C]/40">
+                  {new Date(r.createdAt).toLocaleDateString('en-NG')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : !loading && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <span className="font-semibold">No customer is owed a refund.</span>{' '}
+          Every payment on a cancelled or failed delivery has been returned.
         </div>
       )}
 

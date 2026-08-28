@@ -200,8 +200,16 @@ export const adminApi = {
     req<any>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   changeRole: (id: string, role: string) =>
     req<any>(`/admin/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
-  suspendUser: (id: string) =>
-    req<any>(`/admin/users/${id}/suspend`, { method: 'PATCH' }),
+  /**
+   * The reason is now stored. suspendUser has always written one to the
+   * audit log and the route never read one from the body, so every
+   * suspension was recorded as anonymous and the fraud desk was told to
+   * write the reason on a support ticket instead.
+   */
+  suspendUser: (id: string, reason?: string) =>
+    req<any>(`/admin/users/${id}/suspend`, {
+      method: 'PATCH', body: JSON.stringify({ reason }),
+    }),
 
   admins: {
     list:          ()                          => req<any[]>('/admin/admins'),
@@ -768,6 +776,20 @@ export const adminApi = {
     heldEarnings:      () => req<any[]>('/admin/wallet/held-earnings'),
     recentWithdrawals: () => req<any[]>('/admin/wallet/recent-withdrawals'),
     releaseHeld:       (id: string) => req<any>(`/admin/wallet/earnings/${id}/release`, { method: 'PATCH' }),
+
+    /**
+     * Money SEIRS is holding that belongs to a CUSTOMER, not a rider: a
+     * payment still held in escrow against a delivery that was cancelled
+     * or failed. The endpoint has existed since the refund-honesty fix
+     * and nothing in this dashboard ever called it, so a refund that was
+     * owed and never issued was invisible on every screen.
+     */
+    stuckRefunds: () => req<Array<{
+      paymentId: string; amountNgn: number;
+      deliveryId: string; trackingCode: string; deliveryStatus: string;
+      customerId: string; customerName: string; customerEmail: string | null;
+      providerReference: string | null; createdAt: string;
+    }>>('/admin/wallet/stuck-refunds'),
   },
 
   driverCompliance: () => req<{ drivers: Array<{

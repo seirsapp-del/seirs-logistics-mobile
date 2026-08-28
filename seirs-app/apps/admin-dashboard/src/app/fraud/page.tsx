@@ -7,7 +7,7 @@ import { naira } from '@/lib/money';
 import { roleLabel } from '@/lib/labels';
 import { PageIntro } from '@/components/PageIntro';
 import { EmptyState } from '@/components/EmptyState';
-import { useConfirm, useNotify } from '@/components/ConfirmDialog';
+import { useConfirm, usePrompt, useNotify } from '@/components/ConfirmDialog';
 
 /**
  * The automatic-suspicion queue.
@@ -93,6 +93,7 @@ export default function FraudPage() {
   const [rawOpen, setRawOpen] = useState<string | null>(null);
   const confirm               = useConfirm();
   const notify                = useNotify();
+  const prompt                = usePrompt();
 
   const load = (p = 1) => {
     setLoading(true);
@@ -140,20 +141,29 @@ export default function FraudPage() {
       void notify({ title: 'No account on this flag', message: 'This flag is not attached to an account, so there is nothing to suspend.', tone: 'error' });
       return;
     }
-    const ok = await confirm({
+    /* The reason is captured and stored now. This was a confirm that
+       told the operator to write the reason on a support ticket,
+       because the route dropped it: the audit row recorded who
+       suspended an account and never why. */
+    const reason = await prompt({
       title:   `Suspend ${flag.user?.name ?? 'this account'}?`,
       message:
         'They are signed out on their next request and cannot use the app until somebody lifts it.\n\n' +
         'They are told their account was suspended. Their deliveries, earnings and history are all kept.\n\n' +
         'Your name and the time go into the audit log. The REASON is not stored anywhere, so write it on their support ticket.\n\n' +
         'This can be undone: use Lift the suspension on this flag, or the account page.',
+      placeholder: 'e.g. Three accounts on one phone number, all claiming the sign-up bonus.',
       confirmLabel: 'Suspend account',
       danger:       true,
     });
-    if (!ok) return;
+    if (reason === null) return;
+    if (!String(reason).trim()) {
+      void notify({ title: 'Not suspended', message: 'A reason is needed. Somebody has to be able to review this later.', tone: 'error' });
+      return;
+    }
     setBusyId(flag.id);
     try {
-      await adminApi.suspendUser(userId);
+      await adminApi.suspendUser(userId, String(reason).trim());
       await adminApi.fraud.resolve(flag.id, 'actioned');
       void notify({ title: 'Account suspended', message: `${flag.user?.name ?? 'The account'} can no longer sign in, and has been told.`, tone: 'success' });
       load(page);

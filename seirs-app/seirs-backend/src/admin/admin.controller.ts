@@ -756,8 +756,16 @@ export class AdminController {
 
   // PATCH /api/v1/admin/users/:id/suspend
   @Patch('users/:id/suspend')
-  suspendUser(@Param('id') id: string, @CurrentUser() admin: any, @Req() req: Request) {
-    return this.adminService.suspendUser(id, admin, req.ip);
+  // WHY, not just that it happened. suspendUser has always accepted a
+  // reason and written it to the audit log, and this route never read
+  // one from the body, so every suspension was recorded as anonymous.
+  suspendUser(
+    @Param('id') id: string,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+    @Body('reason') reason?: string,
+  ) {
+    return this.adminService.suspendUser(id, admin, req.ip, reason);
   }
 
   // PATCH /api/v1/admin/drivers/:id/reject  { reason? }

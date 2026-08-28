@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { Role } from './role.entity';
 import { User, UserRole } from '../users/user.entity';
 import { SYSTEM_ROLES, PERMISSION_CATALOGUE, SYSTEM_ROLE_RECONCILE } from './roles.seed';
+import { AuditLogEntry } from '../admin/audit-log.entity';
 
 @Injectable()
 export class RolesService implements OnModuleInit {
@@ -14,6 +15,7 @@ export class RolesService implements OnModuleInit {
   constructor(
     @InjectRepository(Role) private rolesRepo: Repository<Role>,
     @InjectRepository(User) private usersRepo: Repository<User>,
+    @InjectRepository(AuditLogEntry) private auditRepo: Repository<AuditLogEntry>,
   ) {}
 
   // Idempotent - only inserts roles whose slug isn't already present.
@@ -93,7 +95,44 @@ export class RolesService implements OnModuleInit {
 
   // ── Writes ─────────────────────────────────────────────────────────────
 
-  async create(data: { name: string; description?: string; permissions: string[]; badgeColor?: string }) {
+  /**
+   * Write what happened to a role, and by whom.
+   *
+   * Nothing in this service wrote an audit row, so who widened a role,
+   * who created one, and who deleted one were all unanswerable. On the
+   * screen that governs what every member of staff can reach, that was
+   * the largest gap in the dashboard: a permission change is exactly the
+   * action an audit log exists for, and only the legacy adminRole path
+   * was logging anything.
+   *
+   * Permission diffs are recorded rather than the final list, because
+   * "gained fees, refunds" is the reviewable fact and "now holds 14
+   * permissions" is not.
+   */
+  private async audit(
+    actor: { id?: string; name?: string } | undefined,
+    action: string,
+    roleId: string,
+    meta: Record<string, any>,
+    ip?: string,
+  ) {
+    try {
+      await this.auditRepo.save(this.auditRepo.create({
+        adminId:   actor?.id ?? '',
+        adminName: actor?.name ?? 'unknown',
+        action,
+        target:    `role:${roleId}`,
+        meta,
+        ip: ip ?? '',
+      }));
+    } catch {
+      /* Never let an audit write failure block the change itself: a role
+         edit that half-applies is worse than one that is under-recorded. */
+    }
+  }
+
+  async create(data: { name: string; description?: string; permissions: string[]; badgeColor?: string },
+               actor?: { id?: string; name?: string }, ip?: string) {
     const slug = this.toSlug(data.name);
     const dupe = await this.rolesRepo.findOne({ where: { slug } });
     if (dupe) throw new BadRequestException('A role with this name already exists');
@@ -106,11 +145,16 @@ export class RolesService implements OnModuleInit {
       isSystemRole: false,
       badgeColor:  data.badgeColor ?? 'gray',
     }));
+    await this.audit(actor, 'role.created', row.id, {
+      slug: row.slug, name: row.name, permissions: row.permissions,
+    }, ip);
     return row;
   }
 
-  async update(id: string, data: { name?: string; description?: string; permissions?: string[]; badgeColor?: string }) {
+  async update(id: string, data: { name?: string; description?: string; permissions?: string[]; badgeColor?: string },
+               actor?: { id?: string; name?: string }, ip?: string) {
     const role = await this.getOne(id);
+    const before: string[] = role.permissions ?? [];
     if (role.isSystemRole && data.name && data.name !== role.name) {
       throw new ForbiddenException('Cannot rename a system role');
     }
@@ -120,10 +164,22 @@ export class RolesService implements OnModuleInit {
       permissions: data.permissions ? this.dedupePermissions(data.permissions) : role.permissions,
       badgeColor:  data.badgeColor  ?? role.badgeColor,
     });
+
+    const after: string[] = data.permissions ? this.dedupePermissions(data.permissions) : before;
+    const gained = after.filter(p => !before.includes(p));
+    const lost   = before.filter(p => !after.includes(p));
+    /* How many people this just changed. A role edit is not one person's
+       permissions, it is everybody holding that role, and the log should
+       say how far it reached. */
+    const holders = await this.usersRepo.count({ where: { roleId: id } }).catch(() => 0);
+    await this.audit(actor, 'role.updated', id, {
+      slug: role.slug, name: data.name ?? role.name,
+      gained, lost, holders,
+    }, ip);
     return this.getOne(id);
   }
 
-  async delete(id: string) {
+  async delete(id: string, actor?: { id?: string; name?: string }, ip?: string) {
     const role = await this.getOne(id);
     if (role.isSystemRole) throw new ForbiddenException('System roles cannot be deleted');
 
@@ -136,12 +192,16 @@ export class RolesService implements OnModuleInit {
     }
 
     await this.rolesRepo.delete(id);
+    await this.audit(actor, 'role.deleted', id, {
+      slug: role.slug, name: role.name, permissions: role.permissions,
+    }, ip);
     return { deleted: true };
   }
 
   // ── User assignment ────────────────────────────────────────────────────
 
-  async assignToUser(userId: string, roleId: string) {
+  async assignToUser(userId: string, roleId: string,
+                     actor?: { id?: string; name?: string }, ip?: string) {
     const role = await this.getOne(roleId);
     const user = await this.usersRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
@@ -168,7 +228,13 @@ export class RolesService implements OnModuleInit {
       }
     }
 
+    const previousRoleId = (await this.usersRepo.findOne({ where: { id: userId } }))?.roleId ?? null;
     await this.usersRepo.update(userId, { roleId });
+    /* The comment above calls this the shortest escalation path of the
+       lot, and it was the one action here writing no record at all. */
+    await this.audit(actor, 'role.assigned', roleId, {
+      userId, userName: user.name, roleSlug: role.slug, previousRoleId,
+    }, ip);
     return { assigned: true, roleSlug: role.slug };
   }
 
