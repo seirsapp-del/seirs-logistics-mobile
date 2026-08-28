@@ -249,9 +249,13 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Tighter daily ceiling while a driver is still inside the new-driver period.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.FLAT_NGN, value: 50000 },
 
+  // Days, carrying the naira unit, so the catalogue rendered a 30-day
+  // window as a price of 30.00 (audit, 2026-08-28). This is the exact
+  // bug the unit resync was written for and this row was missed by it,
+  // because the seed itself was wrong rather than the stored row.
   { key: 'driver_new_period_days',      name: 'New Driver Period (days)',
-    description: 'How long a driver counts as new for withdrawal caps and holdback.',
-    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.FLAT_NGN, value: 30 },
+    description: 'How long a rider counts as new, which is how long the holdback and the tighter daily withdrawal ceiling apply. Counted from the day the rider account was created.',
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.DAYS, value: 30 },
 
   { key: 'driver_new_holdback_pct',     name: 'New Driver Holdback',
     description: 'Share of a new driver payout held back against chargebacks and disputes.',
