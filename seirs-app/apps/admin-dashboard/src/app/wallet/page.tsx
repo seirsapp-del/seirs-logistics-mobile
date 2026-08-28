@@ -34,6 +34,12 @@ interface PendingPayout {
   driverNet: number;
   availableAt: string;
   deliveryId: string;
+  /**
+   * The delivery behind this row ALREADY has a paid earning, so paying
+   * this one pays the rider twice for the same job. Residue of the
+   * double-credit bug fixed 2026-08-27.
+   */
+  alreadyPaidForDelivery?: boolean;
 }
 
 interface HeldEarning {
@@ -447,6 +453,15 @@ export default function WalletPage() {
           <Clock size={15} className="text-yellow-600" />
           <span className="text-sm font-semibold text-[#0F2B4C]">Ready for riders to withdraw</span>
           <RowCount shown={pending.length} total={summary?.pendingCount} noun="earnings" />
+          {pending.some(p => p.alreadyPaidForDelivery) && (
+            <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-900">
+              <b>One or more of these deliveries has already been paid in full.</b> Those rows are
+              marked below. They are left over from a bug where a single job could write two
+              earning rows, fixed on 27 August, and they are not money anybody is owed. Paying one
+              pays the rider twice for the same job. Decide whether to write it off or settle it,
+              but do not clear it as routine.
+            </p>
+          )}
         </div>
         {/* The subtitle used to read "drivers self-serve via
             /payments/withdraw", an API path on a screen read by people
@@ -479,10 +494,35 @@ export default function WalletPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
+                {/*
+                  A row whose delivery has ALREADY been paid is a ghost
+                  (2026-08-28). Delivery 9bf32bd4 carries two earning
+                  rows: 1,469.68 paid in full, matching the delivery's
+                  booked figure exactly, and 146.97 still sitting here
+                  looking like ordinary work.
+
+                  It is not work. That job is settled, and 146.97 is
+                  exactly 10 percent of the payout, the new-rider
+                  holdback rate: residue of the double-credit bug fixed
+                  on 2026-08-27. The idempotency guard stops new
+                  duplicates and does nothing about the rows already in
+                  the table.
+
+                  Marked rather than hidden. Hiding it would leave the
+                  totals unexplained and the row undiscoverable, and
+                  somebody still has to decide what happens to it.
+                */}
                 {pending.map(p => (
-                  <tr key={p.id}>
+                  <tr key={p.id} className={p.alreadyPaidForDelivery ? 'bg-red-50/60' : undefined}>
                     <td className="px-4 py-3"><DriverLink id={p.driverId} name={p.driverName} /></td>
-                    <td className="px-4 py-3 font-semibold text-gray-800 tabular-nums">{naira(p.driverNet)}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-800 tabular-nums">
+                      {naira(p.driverNet)}
+                      {p.alreadyPaidForDelivery && (
+                        <span className="ml-2 whitespace-nowrap rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700">
+                          already paid
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-gray-600 tabular-nums">{p.grossAmount == null ? '-' : naira(p.grossAmount)}</td>
                     <td className="px-4 py-3 text-gray-600 tabular-nums">{p.seirsCut == null ? '-' : naira(p.seirsCut)}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(p.availableAt)}</td>

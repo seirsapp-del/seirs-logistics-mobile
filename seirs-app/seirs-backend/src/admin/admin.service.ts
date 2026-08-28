@@ -3512,13 +3512,55 @@ export class AdminService {
   // ── Wallet / Payouts (admin ops view) ───────────────────────────────────
 
   async listPendingPayouts(limit = 50) {
+    /**
+     * leftJoin with named columns, not leftJoinAndSelect.
+     *
+     * `driver` is a User relation, so AndSelect loaded the whole row:
+     * bank account, BVN, date of birth, home address, next of kin,
+     * device hashes, lockout state. Only the name is used. The mapping
+     * below happens to hide it, which is one refactor away from not
+     * hiding it, and this is the payouts screen.
+     */
     const rows = await this.earningsRepo
       .createQueryBuilder('e')
-      .leftJoinAndSelect('e.driver', 'driver')
+      .leftJoin('e.driver', 'driver')
+      .addSelect(['driver.id', 'driver.name'])
       .where('e.status = :status', { status: 'available' })
       .orderBy('e.availableAt', 'ASC')
       .limit(limit)
       .getMany();
+
+    /**
+     * Does this delivery ALREADY have a paid earning? (2026-08-28)
+     *
+     * Found live: delivery 9bf32bd4 carried two earning rows. One was
+     * paid in full, 1,469.68, matching the delivery's booked
+     * driverEarnings exactly. The other, 146.97, was sitting in this
+     * queue looking like ordinary work waiting to be paid.
+     *
+     * It is not. That job is settled. Paying it would pay the rider
+     * twice, and 146.97 is exactly 10 percent of the payout, which is
+     * the new-rider holdback rate: the residue of the double-credit bug
+     * fixed on 2026-08-27, from before recordForDelivery became
+     * idempotent on deliveryId.
+     *
+     * The idempotency guard stops NEW duplicates. It does nothing about
+     * the ones already in the table, and nothing on this screen said a
+     * word. An operator clearing a payout queue has no way to know a row
+     * is a ghost, so the screen has to tell them.
+     */
+    const deliveryIds = rows.map(r => r.deliveryId).filter(Boolean) as string[];
+    let settled = new Set<string>();
+    if (deliveryIds.length > 0) {
+      const paid = await this.earningsRepo
+        .createQueryBuilder('e')
+        .select('e.deliveryId', 'deliveryId')
+        .where('e.deliveryId IN (:...ids)', { ids: deliveryIds })
+        .andWhere('e.status = :paid', { paid: 'paid' })
+        .getRawMany();
+      settled = new Set(paid.map((x: any) => x.deliveryId));
+    }
+
     return rows.map(r => ({
       id:             r.id,
       driverId:       r.driverId,
@@ -3528,13 +3570,16 @@ export class AdminService {
       driverNet:      Number(r.driverNet),
       availableAt:    r.availableAt,
       deliveryId:     r.deliveryId,
+      /** This delivery already has a PAID earning. Paying this pays twice. */
+      alreadyPaidForDelivery: r.deliveryId ? settled.has(r.deliveryId) : false,
     }));
   }
 
   async listHeldEarnings(limit = 50) {
     const rows = await this.earningsRepo
       .createQueryBuilder('e')
-      .leftJoinAndSelect('e.driver', 'driver')
+      .leftJoin('e.driver', 'driver')
+      .addSelect(['driver.id', 'driver.name'])
       .where('e.status = :status', { status: 'held' })
       .orderBy('e.updatedAt', 'DESC')
       .limit(limit)
@@ -3610,7 +3655,8 @@ export class AdminService {
 
     const rows = await this.earningsRepo
       .createQueryBuilder('e')
-      .leftJoinAndSelect('e.driver', 'driver')
+      .leftJoin('e.driver', 'driver')
+      .addSelect(['driver.id', 'driver.name'])
       .where('e.status = :status', { status: 'paid' })
       .andWhere('e.paidAt IS NOT NULL')
       .orderBy('e.paidAt', 'DESC')
