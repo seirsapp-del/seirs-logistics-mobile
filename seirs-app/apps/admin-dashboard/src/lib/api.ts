@@ -793,7 +793,16 @@ export const adminApi = {
   // ServiceCategory catalog. /config/* endpoints are public so apps can
   // fetch on boot; /admin/* endpoints are auth'd for publishing changes.
   rateCard: {
-    getActive: () => req<any>('/config/rate-card'),
+    /**
+     * The ADMIN card, not the public one.
+     *
+     * This called /config/rate-card, which is public and redacted: it
+     * strips baseFareDriver, labourPerKmDriver and every other
+     * driver-side number. So the editor showed blank driver columns, and
+     * publishing would have written that redacted shape back over the
+     * real card and turned driver pay into NaN.
+     */
+    getActive: () => req<any>('/admin/rate-card/active'),
     history:   () => req<any[]>('/admin/rate-cards'),
     publish:   (body: any) => req<any>('/admin/rate-card', {
       method: 'PUT', body: JSON.stringify(body),

@@ -238,9 +238,38 @@ export class PricingController {
       });
     }
 
+    /**
+     * Merge the nested price maps per entry, do not replace them.
+     *
+     * `...body` is a shallow spread, so a submitted vehicleRates object
+     * replaced the stored one wholesale. Any key the caller happened not
+     * to send was therefore deleted, and the dashboard was submitting a
+     * REDACTED card with the entire driver cost basis missing. That is a
+     * belt-and-braces guard alongside the real fix, which is that the
+     * editor now loads the unredacted card: a partial payload should
+     * never be able to silently drop driver pay, whoever sends it.
+     */
+    const mergeRates = (stored: any, sent: any) => {
+      if (!sent || typeof sent !== 'object') return stored;
+      if (!stored || typeof stored !== 'object') return sent;
+      const out: any = { ...stored };
+      for (const [k, v] of Object.entries(sent)) {
+        out[k] = (v && typeof v === 'object' && !Array.isArray(v) &&
+                  stored[k] && typeof stored[k] === 'object')
+          ? { ...stored[k], ...v }
+          : v;
+      }
+      return out;
+    };
+
     const fresh = this.rateCardRepo.create({
       ...current,           // copy unchanged fields
       ...body,              // override only what admin sent
+      vehicleRates:   mergeRates(current?.vehicleRates,   (body as any).vehicleRates),
+      rideRates:      mergeRates(current?.rideRates,      (body as any).rideRates),
+      stopAndDwell:   { ...(current?.stopAndDwell   ?? {}), ...((body as any).stopAndDwell   ?? {}) },
+      timeSurcharges: mergeRates(current?.timeSurcharges, (body as any).timeSurcharges),
+      highValue:      { ...(current?.highValue      ?? {}), ...((body as any).highValue      ?? {}) },
       id: undefined,
       version: nextVersion,
       isActive: true,
@@ -249,6 +278,41 @@ export class PricingController {
       createdAt: undefined,
     });
     return this.rateCardRepo.save(fresh as any);
+  }
+
+  /**
+   * GET /api/v1/admin/rate-card/active
+   *
+   * The WHOLE card, driver cost basis included (2026-08-28).
+   *
+   * The dashboard's rate-card editor was loading /config/rate-card,
+   * which is @Public() and deliberately redacted: it strips
+   * baseFareDriver, labourPerKmDriver, the ride equivalents, the stop
+   * and dwell driver bonuses, every driverSharePercent and the
+   * high-value driver share, because that route has no token and the
+   * driver cost basis is the margin on every vehicle SEIRS runs.
+   *
+   * Two consequences, one visible and one not.
+   *
+   * The visible one: the founder screenshotted the vehicle table with
+   * every driver column blank and asked what they were. They were blank
+   * because they had been stripped on the way to his browser.
+   *
+   * The dangerous one: publish spreads the submitted body over the
+   * current card, and vehicleRates is a single jsonb object, so a
+   * shallow spread REPLACES it. Publishing from that page would have
+   * written the redacted shape back, dropping baseFareDriver entirely.
+   * Not to zero: to undefined, which makes dBase = undefined * mult =
+   * NaN, and NaN propagates through driverTotal into seirsNet. One press
+   * of Publish new version and every quote returns NaN for driver pay.
+   *
+   * Nobody has pressed it: v1 and v2 both still carry motorcycle
+   * baseFareDriver 200 and labourPerKmDriver 80.
+   */
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get('admin/rate-card/active')
+  async getActiveRateCardForAdmin() {
+    return this.pricing.getActiveRateCard();
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
