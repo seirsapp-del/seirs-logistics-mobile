@@ -413,16 +413,41 @@ export const adminApi = {
 
   // Spec V8 §3.13. email template catalogue + override layer.
   emailTemplates: {
+    /**
+     * Every template now arrives with `renderedHtml`: the finished email
+     * as baseTemplate() will actually send it, so the gallery draws a
+     * true thumbnail instead of a list of slugs.
+     */
     list: () => req<Array<{
       key:      string;
       name:     string;
       vars:     string[];
+      category: 'transactional' | 'security' | 'seasonal' | 'campaign';
+      isCustom: boolean;
       defaults: { subject: string; bodyHtml: string };
+      renderedSubject: string;
+      renderedHtml:    string;
+      previewText:     string | null;
       override: {
         subject: string; bodyHtml: string; active: boolean; updatedAt: string;
         bannerImageUrl?: string | null; accentColor?: string | null;
+        previewText?: string | null;
       } | null;
     }>>('/admin/email-templates'),
+
+    /** The email as it will arrive, for unsaved edits. */
+    preview: (body: { bodyHtml?: string; bannerImageUrl?: string | null; accentColor?: string | null }) =>
+      req<{ html: string }>('/admin/email-templates/preview', {
+        method: 'POST', body: JSON.stringify(body),
+      }),
+
+    create: (body: {
+      name: string; subject?: string; bodyHtml?: string; category?: string;
+      bannerImageUrl?: string | null; accentColor?: string | null; previewText?: string | null;
+    }) => req<any>('/admin/email-templates', { method: 'POST', body: JSON.stringify(body) }),
+
+    remove: (key: string) =>
+      req<any>(`/admin/email-templates/${encodeURIComponent(key)}`, { method: 'DELETE' }),
     testSend: (key: string, to?: string) =>
       req<{ delivered: boolean; usedOverride: boolean; subject: string }>(
         `/admin/email-templates/${key}/test-send`,
@@ -431,6 +456,7 @@ export const adminApi = {
     update: (key: string, body: {
       subject?: string; bodyHtml?: string; active?: boolean;
       bannerImageUrl?: string | null; accentColor?: string | null;
+      previewText?: string | null; name?: string; category?: string;
     }) =>
       req<any>(`/admin/email-templates/${key}`, { method: 'PATCH', body: JSON.stringify(body) }),
   },
