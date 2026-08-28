@@ -500,9 +500,23 @@ export class AdminService {
       deliveriesToday,
       pendingDeliveries,
     ] = await Promise.all([
-      this.usersRepo.count({ where: { role: 'customer' as any } }),
-      this.driversRepo.count(),
-      this.driversRepo.count({ where: { status: DriverStatus.PENDING } }),
+      /**
+       * Real accounts only. 25 customers and 9 drivers were nearly all
+       * seeded, so the front page counted a test cohort as a business.
+       * isDemo is the flag every money guard already reads.
+       */
+      this.usersRepo.count({ where: { role: 'customer' as any, isDemo: false } as any }),
+      this.driversRepo
+        .createQueryBuilder('dr')
+        .leftJoin('dr.user', 'u')
+        .where('COALESCE(u."isDemo", false) = false')
+        .getCount(),
+      this.driversRepo
+        .createQueryBuilder('dr')
+        .leftJoin('dr.user', 'u')
+        .where('dr.status = :st', { st: DriverStatus.PENDING })
+        .andWhere('COALESCE(u."isDemo", false) = false')
+        .getCount(),
       this.deliveriesRepo.count(),
       this.deliveriesRepo.count({
         where: [
@@ -530,6 +544,26 @@ export class AdminService {
      * number from a constant is exactly what the admin-tunable rule
      * exists to prevent.
      */
+    /**
+     * Revenue means money SEIRS RECEIVED, not deliveries that completed.
+     *
+     * This summed d.price over every DELIVERED delivery, whoever booked
+     * it and whether or not anybody paid. On 2026-08-28 that put
+     * 15,309.06 on the front page of the admin while the platform had
+     * actually taken 2,609.06: one real payment out of fourteen rows,
+     * every other one pending, and almost all of them seeded demo data.
+     * A headline overstated six times over, on the first screen an
+     * investor sees.
+     *
+     * It is the same fault the Wallet page had, which reported what
+     * riders EARNED as what SEIRS SENT. Booked and banked are different
+     * numbers and the dashboard has to say which one it is showing.
+     *
+     * Received is now the headline, read from payments that genuinely
+     * reached the processor. Booked is kept beside it, clearly named, so
+     * the pipeline is still visible and the gap between the two is
+     * itself the useful figure: it is what is owed to SEIRS.
+     */
     const revenueResult = await this.deliveriesRepo
       .createQueryBuilder('d')
       .select('SUM(d.price)', 'total')
@@ -537,8 +571,42 @@ export class AdminService {
       .where('d.status = :status', { status: DeliveryStatus.DELIVERED })
       .getRawOne();
 
-    const revenueTotal = Number(revenueResult?.total ?? 0);
-    const driverTotal  = Number(revenueResult?.driverTotal ?? 0);
+    const bookedTotal      = Number(revenueResult?.total ?? 0);
+    const bookedDriverCut  = Number(revenueResult?.driverTotal ?? 0);
+
+    /**
+     * Demo rows are excluded from every headline.
+     *
+     * 41 deliveries, 25 customers and 9 drivers are nearly all seeded, so
+     * the front page described a test cohort rather than a business.
+     * isDemo is the flag every money guard already reads, so it is the
+     * honest scope here too. The demo figures are returned separately
+     * rather than dropped, so a toggle can show them deliberately.
+     */
+    const receivedRow: Array<{ total: string; cnt: string }> = await this.usersRepo.manager.query(
+      `SELECT COALESCE(SUM(p."amountKobo"), 0) AS total, COUNT(*) AS cnt
+         FROM "payments" p
+         LEFT JOIN "deliveries" d ON d.id = p."deliveryId"
+         LEFT JOIN "users" u ON u.id = d."customerId"
+        WHERE p.status = 'success'
+          AND COALESCE(u."isDemo", false) = false`,
+    ).catch(() => [{ total: '0', cnt: '0' }]);
+
+    const receivedTotal = Number(receivedRow?.[0]?.total ?? 0) / 100;
+    const receivedCount = Number(receivedRow?.[0]?.cnt ?? 0);
+
+    // Driver share of what was actually received, so commission is a
+    // real margin rather than a margin on money nobody paid.
+    const realCutRow: Array<{ driverTotal: string }> = await this.usersRepo.manager.query(
+      `SELECT COALESCE(SUM(d."driverEarnings"), 0) AS "driverTotal"
+         FROM "deliveries" d
+         JOIN "payments" p ON p."deliveryId" = d.id AND p.status = 'success'
+         LEFT JOIN "users" u ON u.id = d."customerId"
+        WHERE COALESCE(u."isDemo", false) = false`,
+    ).catch(() => [{ driverTotal: '0' }]);
+
+    const revenueTotal = receivedTotal;
+    const driverTotal  = Number(realCutRow?.[0]?.driverTotal ?? 0);
     const commission   = +(revenueTotal - driverTotal).toFixed(2);
 
     return {
@@ -554,7 +622,17 @@ export class AdminService {
         pending: pendingDeliveries,
       },
       revenue: {
+        // Money that reached the processor. THIS is the headline.
         total:          +revenueTotal.toFixed(2),
+        received:       +revenueTotal.toFixed(2),
+        receivedCount,
+        // Delivered but not necessarily paid, and including demo rows.
+        // Named so nobody mistakes it for cash again.
+        booked:         +bookedTotal.toFixed(2),
+        bookedDriverShare: +bookedDriverCut.toFixed(2),
+        // What has been delivered and not yet collected: the gap that
+        // matters, because it is money owed to SEIRS.
+        outstanding:    +Math.max(0, bookedTotal - revenueTotal).toFixed(2),
         driverShare:    +driverTotal.toFixed(2),
         commission,
         // The rate the books actually show, not a constant. Null rather
@@ -563,6 +641,63 @@ export class AdminService {
         commissionRate: revenueTotal > 0 ? +(commission / revenueTotal).toFixed(4) : null,
       },
     };
+  }
+
+  /**
+   * The work waiting, with how long it has been waiting.
+   *
+   * The dashboard showed queues as bare counts: "Pending KYC Reviews: 2".
+   * Two from this morning and two from three weeks ago are the same
+   * number and opposite problems, and an unassigned delivery forty
+   * minutes old is an emergency while one forty seconds old is normal.
+   * A queue without an age cannot be triaged, so an operator had to open
+   * every list to find out whether anything was actually wrong.
+   *
+   * Each entry carries its count, the age of its OLDEST item in minutes,
+   * and where to go to work it. Oldest rather than average, because the
+   * thing that has been ignored longest is the thing that hurts.
+   */
+  async queueAges() {
+    const q = async (sql: string, params: any[] = []) => {
+      const r: Array<{ cnt: string; oldest: string | null }> =
+        await this.usersRepo.manager.query(sql, params).catch(() => []);
+      return {
+        count:        Number(r?.[0]?.cnt ?? 0),
+        oldestMinutes: r?.[0]?.oldest == null ? null : Math.floor(Number(r[0].oldest) / 60),
+      };
+    };
+
+    const [kyc, unassigned, tickets, identity, dropReview, stuckRefunds] = await Promise.all([
+      q(`SELECT COUNT(*) AS cnt, MAX(EXTRACT(EPOCH FROM (NOW() - dr."createdAt"))) AS oldest
+           FROM "drivers" dr LEFT JOIN "users" u ON u.id = dr."userId"
+          WHERE dr.status = 'pending' AND COALESCE(u."isDemo", false) = false`),
+      q(`SELECT COUNT(*) AS cnt, MAX(EXTRACT(EPOCH FROM (NOW() - d."createdAt"))) AS oldest
+           FROM "deliveries" d WHERE d.status = 'pending'`),
+      q(`SELECT COUNT(*) AS cnt, MAX(EXTRACT(EPOCH FROM (NOW() - t."createdAt"))) AS oldest
+           FROM "support_tickets" t
+          WHERE t.status IN ('open','awaiting_agent')`),
+      // identity_verifications, and the waiting state is 'submitted'
+      // (UserVerificationService.adminList defaults to it), not 'pending'.
+      q(`SELECT COUNT(*) AS cnt, MAX(EXTRACT(EPOCH FROM (NOW() - v."submittedAt"))) AS oldest
+           FROM "identity_verifications" v WHERE v.status = 'submitted'`),
+      q(`SELECT COUNT(*) AS cnt, MAX(EXTRACT(EPOCH FROM (NOW() - b."dropped_at"))) AS oldest
+           FROM "seat_bookings" b
+          WHERE b.status = 'dropped' AND b."drop_confirmed_at" IS NULL`),
+      // Money SEIRS is holding that belongs to a customer. This one should
+      // always be zero, so any age at all is the story.
+      q(`SELECT COUNT(*) AS cnt, MAX(EXTRACT(EPOCH FROM (NOW() - p."createdAt"))) AS oldest
+           FROM "payments" p JOIN "deliveries" d ON d.id = p."deliveryId"
+          WHERE p."escrowStatus" = 'held' AND d.status IN ('cancelled','failed')`),
+    ]);
+
+    return [
+      { key: 'kyc',          label: 'Driver KYC reviews',   href: '/kyc',          ...kyc,          warnAfterMin: 60 * 24 },
+      { key: 'unassigned',   label: 'Unassigned deliveries', href: '/deliveries?status=pending', ...unassigned, warnAfterMin: 15 },
+      { key: 'tickets',      label: 'Open support tickets', href: '/support',      ...tickets,      warnAfterMin: 60 * 4 },
+      { key: 'identity',     label: 'Customer ID queue',    href: '/identity',     ...identity,     warnAfterMin: 60 * 24 },
+      { key: 'dropReview',   label: 'Drops awaiting confirmation', href: '/travel-buddy', ...dropReview, warnAfterMin: 60 * 2 },
+      { key: 'stuckRefunds', label: 'Refunds owed and unissued',   href: '/wallet',       ...stuckRefunds, warnAfterMin: 0 },
+    ];
   }
 
   // ── Live ops dashboard ────────────────────────────────────────────────────

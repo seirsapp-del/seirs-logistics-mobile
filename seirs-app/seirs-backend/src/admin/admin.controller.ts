@@ -39,6 +39,16 @@ export class AdminController {
   getStats() { return this.adminService.getDashboardStats(); }
 
   /**
+   * GET /api/v1/admin/queues
+   *
+   * Every queue with the age of its OLDEST item, because a count alone
+   * cannot be triaged: two KYC reviews from this morning and two from
+   * three weeks ago are the same number and opposite problems.
+   */
+  @Get('queues')
+  queues() { return this.adminService.queueAges(); }
+
+  /**
    * GET /api/v1/admin/egress-ip
    *
    * The address this server appears to come from, which is the one that
