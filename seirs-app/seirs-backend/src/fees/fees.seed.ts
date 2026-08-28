@@ -175,10 +175,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
    * difference matters: deleting an unimplemented requirement makes the
    * gap invisible instead of closing it.
    */
-  { key: 'storage_return_fee',          name: 'Storage Return Fee',
-    description: 'One-time fee for returning an unclaimed package to the sender after 72 hours of overstay. SPECIFIED BUT NOT YET ENFORCED: no code reads this row.',
-    category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 500 },
-
+  
   // Founder decision 2026-08-16: whenever a partner counter touches a
   // parcel, the counter gets paid. Charged PER PARCEL PER COUNTER, so a
   // parcel dropped at counter A and delivered to counter B carries two

@@ -100,6 +100,26 @@ export class FeesService implements OnModuleInit {
      */
     'customer_booking_fee',
     'surge_multiplier_peak',
+    /*
+     * storage_return_fee, settled against the approved spec (2026-08-28).
+     *
+     * I removed this once for having no consumer, restored it because the
+     * "When Delivery Fails" artifact appeared to name it, and left it as
+     * an open question in this audit. Reading the artifact properly
+     * settles it: its authoritative fee table lists ELEVEN rows under
+     * "All eleven rows now have consumers", and storage_return_fee is
+     * not one of them. Its only appearance is a build-state line pairing
+     * it with storage_24_72hr, which the fee table does not support.
+     *
+     * The involuntary overstay path it was supposed to price is priced,
+     * by return_to_sender_fee, live at partner-store.service.ts:1649.
+     * Voluntary recalls are trip-priced per the same spec and take no
+     * flat fee at all.
+     *
+     * So it is a leftover from an earlier draft of a design that
+     * replaced it, which is the one case where this list applies.
+     */
+    'storage_return_fee',
     /* The instant-withdrawal feature was removed by founder decision
        (2026-08-27: "the first false promise i noticed"). The option is
        gone from the rider app; these are its leftover knobs. */

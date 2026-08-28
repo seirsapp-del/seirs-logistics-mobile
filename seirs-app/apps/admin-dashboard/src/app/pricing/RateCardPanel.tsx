@@ -920,25 +920,40 @@ Nothing goes live yet. It fills the boxes on this page so you can check them, an
           <FieldNumber label="Driver gets on post-assign cancel ₦"
             value={card.feeRules.cancelPostAssignDriver}
             onChange={(v) => patchPath('feeRules.cancelPostAssignDriver', v)} />
-          <FieldNumber label="Sender no-show fee ₦ (not wired)"
-            value={card.feeRules.senderNoShowFlat}
-            onChange={(v) => patchPath('feeRules.senderNoShowFlat', v)} />
-        </Row>
-        <Row>
-          <FieldNumber label="No-show wait window (minutes) (not wired)"
-            value={card.feeRules.senderNoShowWaitMinutes}
-            onChange={(v) => patchPath('feeRules.senderNoShowWaitMinutes', v)} />
-          <FieldNumber label="Return trip base fee ₦ (not wired)"
-            value={card.feeRules.returnTripBaseFee}
-            onChange={(v) => patchPath('feeRules.returnTripBaseFee', v)} />
-        </Row>
-        <Row>
-          <FieldNumber label="Recipient call attempts (not wired)"
-            value={card.feeRules.returnCallAttempts}
-            onChange={(v) => patchPath('feeRules.returnCallAttempts', v)}
-            hint="How many tries before declaring recipient unreachable." />
           <div className="flex-1" />
         </Row>
+        {/*
+          The four dead fields are gone from this panel (2026-08-28).
+          Labelling them "(not wired)" left four boxes an operator could
+          still type into for no effect, which is the disabled-field
+          state the founder rejected: it either works or it is not
+          offered. The stored values are untouched, so nothing is lost if
+          any of them is ever built.
+
+          They were also superseded rather than merely unbuilt. The
+          approved "When Delivery Fails" design (21 Aug) replaced the flat
+          return fee with trip pricing from the parcel's current position
+          back to the immutable original pickup, and moved the waiting
+          windows into the Fee Catalogue.
+        */}
+        <div className="mt-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3 text-xs leading-relaxed text-[#0F2B4C]/70">
+          <p className="font-semibold text-[#0F2B4C]">Waiting, no-shows and returns are set below, not here.</p>
+          <p className="mt-1">
+            This card used to offer a sender no-show fee, a no-show wait window, a flat return
+            trip fee and a recipient call-attempt count. None of them were read by anything, and
+            each disagreed with the row that actually runs. They have been removed rather than
+            left as boxes that do nothing:
+          </p>
+          <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
+            <li>Waiting on a sender: <b>sender_response_window_minutes</b>, 15 minutes.</li>
+            <li>A wasted trip pays the rider <b>driver_failed_trip_base_ngn</b> plus fuel for
+              the distance actually ridden, not a flat fee.</li>
+            <li>A return is priced as a <b>real trip</b> from where the parcel is back to the
+              original pickup address, plus any storage accrued. The pickup address cannot be
+              changed, which is what stops a short delivery being redirected across Lagos.</li>
+            <li>Nothing counts recipient call attempts.</li>
+          </ul>
+        </div>
       </Card>
 
       {/* ── Partner store ─────────────────────────────────────────── */}
