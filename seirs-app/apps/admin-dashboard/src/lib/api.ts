@@ -614,8 +614,16 @@ export const adminApi = {
   // Spec V8 identity policy. customer identity verification queue.
   // Distinct from driver KYC (which lives under /admin/drivers).
   identityVerifications: {
-    list:    (status: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | 'revoked' | 'expired' = 'submitted') =>
-      req<any[]>(`/admin/identity-verifications?status=${status}`),
+    /**
+     * Returns { items, total, page, limit } as of 2026-08-28. It used to
+     * return a bare array capped at 100 with no total, so past a hundred
+     * waiting submissions the rest were unreachable and the screen could
+     * not say they existed.
+     */
+    list:    (status: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | 'revoked' | 'expired' = 'submitted',
+              page = 1, limit = 50) =>
+      req<{ items: any[]; total: number; page: number; limit: number }>(
+        `/admin/identity-verifications?status=${status}&page=${page}&limit=${limit}`),
     get:     (id: string) =>
       req<any>(`/admin/identity-verifications/${id}`),
     approve: (id: string, adminNote?: string) =>

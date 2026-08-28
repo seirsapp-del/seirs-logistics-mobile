@@ -2308,8 +2308,35 @@ export class AdminService {
     };
   }
 
-  async updateDriverStatus(id: string, status: string, rejectionReason?: string) {
-    await this.driversRepo.update(id, { status: status as DriverStatus });
+  /**
+   * Change a rider's status, and RECORD WHY (2026-08-28).
+   *
+   * This accepted a rejectionReason, sent it in an email and discarded
+   * it. The reason then existed only in the rider's inbox: no admin
+   * screen could show it, a second reviewer could not see what the first
+   * one objected to, and when the rider rang to ask why, whoever
+   * answered could not tell them. Suspension took no reason at all.
+   *
+   * Now persisted with the actor and the timestamp, so the decision has
+   * a record attached to the person it was made about.
+   */
+  async updateDriverStatus(
+    id: string,
+    status: string,
+    rejectionReason?: string,
+    actor?: { id?: string; name?: string },
+    ip?: string,
+  ) {
+    const reason = String(rejectionReason ?? '').trim();
+    await this.driversRepo.update(id, {
+      status: status as DriverStatus,
+      /* Keep the previous reason when a status moves for a reason nobody
+         gave, rather than blanking the record of why they were rejected
+         in the first place. */
+      ...(reason ? { statusReason: reason.slice(0, 2000) } : {}),
+      statusChangedByUserId: actor?.id ?? null,
+      statusChangedAt: new Date(),
+    } as any);
     const driver = await this.driversRepo.findOne({ where: { id }, relations: ['user'] });
 
     if (driver?.user) {
@@ -2319,6 +2346,20 @@ export class AdminService {
         this.mailService.sendDriverRejected(driver.user.email, driver.user.name, rejectionReason).catch(() => {});
       }
     }
+
+    /**
+     * On the rider's own admin timeline, so "why is this person
+     * suspended" is answerable from their record rather than from
+     * whoever remembers.
+     */
+    await this.auditRepo.save(this.auditRepo.create({
+      adminId:   actor?.id ?? '',
+      adminName: actor?.name ?? 'unknown',
+      action:    `driver.${status}`,
+      target:    `user:${driver?.user?.id ?? ''}`,
+      meta:      { driverId: id, status, reason: reason || null },
+      ip:        ip ?? '',
+    })).catch((e) => this.logger.error(`driver status audit failed: ${e?.message}`));
 
     return driver;
   }

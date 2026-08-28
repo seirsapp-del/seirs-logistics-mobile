@@ -1329,11 +1329,103 @@ export class TravelBuddyService {
         LIMIT $1`,
       [limit],
     ).catch(() => []);
+    /**
+     * NAME THE STOPS AND THE PEOPLE (founder, 2026-08-28).
+     *
+     * This returned stopCount: 3 and seatBookings: 2, which tells an
+     * operator that something happened and nothing about what. His
+     * words: "i see 3 stops and we can't know which one they were, from
+     * where to where was actually book, who booked". A count is the one
+     * fact about a route that cannot be acted on.
+     *
+     * Two follow-up queries rather than N+1: every stop and every seat
+     * for the whole page is fetched once by trip id and grouped in
+     * memory. A trips page of fifty therefore costs three queries, not
+     * a hundred and one.
+     *
+     * Passenger identity is deliberately included. This is the product
+     * where SEIRS is carrying a person rather than a parcel, and where
+     * a fare can be forfeited on one party's word, so "who was on that
+     * bus and which leg did they pay for" is the question every dispute
+     * on this board turns into.
+     */
+    const tripIds = trips.map((t) => t.id);
+
+    const stopRows: Array<any> = tripIds.length
+      ? await this.bookingsRepo.manager.query(
+          `SELECT s."trip_id" AS "tripId", s.sequence, s.city, s.address,
+                  s.description, s."km_from_origin" AS "kmFromOrigin",
+                  s."arrived_at" AS "arrivedAt"
+             FROM "trip_stops" s
+            WHERE s."trip_id" = ANY($1::uuid[])
+            ORDER BY s."trip_id", s.sequence ASC`,
+          [tripIds],
+        ).catch(() => [])
+      : [];
+
+    const seatRows: Array<any> = tripIds.length
+      ? await this.bookingsRepo.manager.query(
+          `SELECT sb."trip_id" AS "tripId", sb.id, sb.status,
+                  sb."price_ngn"      AS "priceNgn",
+                  sb."segment_km"     AS "segmentKm",
+                  sb."board_sequence" AS "boardSequence",
+                  sb."alight_sequence" AS "alightSequence",
+                  bs.city AS "boardCity", als.city AS "alightCity",
+                  pu.id AS "passengerUserId", pu.name AS "passengerName",
+                  pu."accountId" AS "passengerAccountId", pu.phone AS "passengerPhone"
+             FROM "seat_bookings" sb
+             LEFT JOIN "trip_stops" bs  ON bs.id  = sb."board_stop_id"
+             LEFT JOIN "trip_stops" als ON als.id = sb."alight_stop_id"
+             LEFT JOIN "users" pu ON pu.id = sb."passenger_id"
+            WHERE sb."trip_id" = ANY($1::uuid[])
+            ORDER BY sb."trip_id", sb."board_sequence" ASC`,
+          [tripIds],
+        ).catch(() => [])
+      : [];
+
+    const stopsByTrip = new Map<string, any[]>();
+    for (const r of stopRows) {
+      const list = stopsByTrip.get(r.tripId) ?? [];
+      list.push({
+        sequence:     Number(r.sequence ?? 0),
+        city:         r.city,
+        address:      r.address,
+        description:  r.description ?? null,
+        kmFromOrigin: r.kmFromOrigin == null ? null : Number(r.kmFromOrigin),
+        arrivedAt:    r.arrivedAt ?? null,
+      });
+      stopsByTrip.set(r.tripId, list);
+    }
+
+    const seatsByTrip = new Map<string, any[]>();
+    for (const r of seatRows) {
+      const list = seatsByTrip.get(r.tripId) ?? [];
+      list.push({
+        id:                 r.id,
+        status:             r.status,
+        priceNgn:           r.priceNgn == null ? null : Number(r.priceNgn),
+        segmentKm:          r.segmentKm == null ? null : Number(r.segmentKm),
+        boardSequence:      r.boardSequence == null ? null : Number(r.boardSequence),
+        alightSequence:     r.alightSequence == null ? null : Number(r.alightSequence),
+        boardCity:          r.boardCity ?? null,
+        alightCity:         r.alightCity ?? null,
+        passengerUserId:    r.passengerUserId ?? null,
+        passengerName:      r.passengerName ?? null,
+        passengerAccountId: r.passengerAccountId ?? null,
+        passengerPhone:     r.passengerPhone ?? null,
+      });
+      seatsByTrip.set(r.tripId, list);
+    }
+
     return trips.map((t) => ({
       ...t,
       routeKm:      t.routeKm == null ? null : Number(t.routeKm),
       stopCount:    Number(t.stopCount ?? 0),
       seatBookings: Number(t.seatBookings ?? 0),
+      /** The actual route, in order, instead of how many of them there are. */
+      stops:        stopsByTrip.get(t.id) ?? [],
+      /** Who is on this trip and which leg each of them paid for. */
+      seats:        seatsByTrip.get(t.id) ?? [],
       // A two-city trip that never got stops is an old declaration, and
       // its seats are still priced on the whole route.
       legacyTwoCity: Number(t.stopCount ?? 0) < 2,

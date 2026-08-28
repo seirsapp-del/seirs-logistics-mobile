@@ -125,16 +125,69 @@ export class UserVerificationService {
 
   // ── Admin review ──────────────────────────────────────────────────────
 
-  async adminList(status: VerificationStatus = 'submitted', limit = 100) {
-    return this.repo.find({
+  /**
+   * NARROW SELECT, and a real total (2026-08-28).
+   *
+   * This was `relations: ['user']`, which loads every column of User, so
+   * the Customer ID queue was serving bank account name, number and
+   * code, date of birth, home address, next of kin, device hashes, FCM
+   * token, Google and Apple ids and lockout state, for a screen that
+   * draws a name, an email and a phone number. Same fault as the seven
+   * admin endpoints fixed in 2dc3eba and f32b241; this one survived
+   * because that sweep enumerated routes out of admin.controller.ts
+   * alone and this lives in its own controller. The lesson is in the
+   * sweep, not the fix: scope it by guard, not by file.
+   *
+   * The old signature also took a hard 100 with no total and no offset,
+   * so past a hundred waiting submissions the rest were unreachable and
+   * nothing on screen could say they existed. It pages now and returns
+   * the count, so the queue can say "showing 1-50 of 214".
+   */
+  async adminList(
+    status: VerificationStatus = 'submitted',
+    limit = 50,
+    page = 1,
+  ) {
+    const take = Math.min(Math.max(Number(limit) || 50, 1), 200);
+    const skip = (Math.max(Number(page) || 1, 1) - 1) * take;
+
+    const [rows, total] = await this.repo.findAndCount({
       where: { status },
       order: { submittedAt: status === 'submitted' ? 'ASC' : 'DESC' },
-      take:  limit,
+      take,
+      skip,
       relations: ['user'],
+      select: {
+        user: { id: true, name: true, email: true, phone: true, accountId: true },
+      },
     });
+
+    return { items: rows, total, page: Math.max(Number(page) || 1, 1), limit: take };
   }
 
+  /**
+   * Same narrowing for the single-record read. A reviewer is deciding
+   * whether a document matches a face; none of that decision needs the
+   * submitter's bank details or their home address.
+   */
   async adminGetOne(id: string) {
+    const row = await this.repo.findOne({
+      where: { id },
+      relations: ['user'],
+      select: {
+        user: { id: true, name: true, email: true, phone: true, accountId: true },
+      },
+    });
+    if (!row) throw new NotFoundException('Submission not found');
+    return row;
+  }
+
+  /**
+   * Internal reads that legitimately need the whole user row (approve
+   * and reject both touch the User record), kept separate so the two
+   * intentions cannot be confused at a call site.
+   */
+  private async adminGetOneFull(id: string) {
     const row = await this.repo.findOne({ where: { id }, relations: ['user'] });
     if (!row) throw new NotFoundException('Submission not found');
     return row;

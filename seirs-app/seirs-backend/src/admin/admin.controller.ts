@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete, Param, Body,
-  UseGuards, Query, Req, BadRequestException,
+  UseGuards, Query, Req, Ip, BadRequestException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
@@ -467,14 +467,21 @@ export class AdminController {
 
   // PATCH /api/v1/admin/drivers/:id/approve
   @Patch('drivers/:id/approve')
-  approveDriver(@Param('id') id: string) {
-    return this.adminService.updateDriverStatus(id, 'approved');
+  approveDriver(@Param('id') id: string, @CurrentUser() actor: User, @Ip() ip?: string) {
+    return this.adminService.updateDriverStatus(id, 'approved', undefined, actor, ip);
   }
 
   // PATCH /api/v1/admin/drivers/:id/suspend
+  // Suspension takes a reason now: stopping somebody earning without
+  // recording why is not a decision anybody can review later.
   @Patch('drivers/:id/suspend')
-  suspendDriver(@Param('id') id: string) {
-    return this.adminService.updateDriverStatus(id, 'suspended');
+  suspendDriver(
+    @Param('id') id: string,
+    @CurrentUser() actor: User,
+    @Body('reason') reason?: string,
+    @Ip() ip?: string,
+  ) {
+    return this.adminService.updateDriverStatus(id, 'suspended', reason, actor, ip);
   }
 
   // ── Partner Store applications (hybrid-account redesign 2026-05-11) ───────
@@ -757,9 +764,11 @@ export class AdminController {
   @Patch('drivers/:id/reject')
   rejectDriver(
     @Param('id') id: string,
+    @CurrentUser() actor: User,
     @Body('reason') reason?: string,
+    @Ip() ip?: string,
   ) {
-    return this.adminService.updateDriverStatus(id, 'rejected', reason);
+    return this.adminService.updateDriverStatus(id, 'rejected', reason, actor, ip);
   }
 
   // ── Support Tickets ───────────────────────────────────────────────────────

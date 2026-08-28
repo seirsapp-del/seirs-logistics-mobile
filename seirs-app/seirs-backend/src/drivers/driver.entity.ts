@@ -224,6 +224,29 @@ export class Driver {
   @Column({ type: 'timestamptz', nullable: true })
   vehicleOwnerConsentAt: Date | null;
 
+  /**
+   * WHY the status is what it is, and who decided (2026-08-28).
+   *
+   * updateDriverStatus has always accepted a rejectionReason, put it in
+   * an email and thrown it away. A rider turned down therefore had a
+   * reason that existed only in their inbox: no screen could show it,
+   * nobody reviewing the decision later could read it, and if the rider
+   * rang to ask why, the person answering the phone could not tell them.
+   * The same held for suspension, which took no reason at all.
+   *
+   * Also records who did it and when. A rider's livelihood stops when
+   * somebody presses suspend, and the record said only that it had
+   * happened.
+   */
+  @Column({ type: 'text', nullable: true })
+  statusReason: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  statusChangedByUserId: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  statusChangedAt: Date | null;
+
   @OneToMany(() => Delivery, (d) => d.driver)
   deliveries: Delivery[];
 

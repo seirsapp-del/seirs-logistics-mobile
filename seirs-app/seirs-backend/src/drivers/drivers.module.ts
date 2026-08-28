@@ -40,6 +40,23 @@ export class DriversModule implements OnModuleInit {
 
   // Wire the auto-checkin cron's push channel without a circular import.
   async onModuleInit() {
+    /**
+     * Why a driver's status is what it is. Added 2026-08-28: the
+     * rejection reason was emailed and never stored, so nobody could
+     * answer a rider asking why they were turned down. Self-heal rather
+     * than a migration file, matching the rest of this module.
+     */
+    try {
+      await this.ds.query(`
+        ALTER TABLE "drivers"
+          ADD COLUMN IF NOT EXISTS "statusReason" text NULL,
+          ADD COLUMN IF NOT EXISTS "statusChangedByUserId" uuid NULL,
+          ADD COLUMN IF NOT EXISTS "statusChangedAt" timestamptz NULL
+      `);
+    } catch (e: any) {
+      console.error(`drivers status-reason self-heal failed: ${e?.message ?? e}`);
+    }
+
     this.driversService.notificationsService = this.notificationsService;
 
     // Value levels (2026-08-22): additive migrations, safe to re-run.

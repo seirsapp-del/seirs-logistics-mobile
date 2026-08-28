@@ -61,8 +61,13 @@ const STATUS_STYLES: Record<Status, string> = {
 const statusLabel = (s: Status | string) =>
   TABS.find(t => t.key === s)?.label ?? String(s);
 
-/** The server caps this queue at 100 rows and sends no total with it. */
-const SERVER_CAP = 100;
+/**
+ * Rows per page. The endpoint used to hard-cap at 100 with no total and
+ * no offset, so past a hundred waiting submissions the rest were
+ * unreachable and nothing could say they existed. It pages now, so this
+ * is a page size rather than a ceiling.
+ */
+const SERVER_CAP = 50;
 
 interface Row {
   id:                   string;
@@ -97,6 +102,10 @@ export default function IdentityVerificationPage() {
 
   const [status, setStatus]     = useState<Status>('submitted');
   const [items,  setItems]      = useState<Row[]>([]);
+  /* The server sends a real count now, so the queue stops guessing from
+     the rows it happens to be holding. */
+  const [total,  setTotal]      = useState(0);
+  const [page,   setPage]       = useState(1);
   const [loading, setLoading]   = useState(true);
   const [error,   setError]     = useState<string | null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
@@ -109,12 +118,21 @@ export default function IdentityVerificationPage() {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    adminApi.identityVerifications.list(status)
-      .then(list => setItems(Array.isArray(list) ? list : []))
+    adminApi.identityVerifications.list(status, page, SERVER_CAP)
+      /* Returns { items, total, page, limit } now. The array fallback
+         stays so a stale deploy of either side degrades to a list rather
+         than an empty queue, which on a review board would read as
+         "nobody is waiting". */
+      .then((res: any) => {
+        const list = Array.isArray(res) ? res : (res?.items ?? []);
+        setItems(list);
+        setTotal(typeof res?.total === 'number' ? res.total : list.length);
+      })
       .catch((e: any) => setError(e?.message ?? 'Could not load the queue.'))
       .finally(() => setLoading(false));
-  }, [status]);
+  }, [status, page]);
 
+  useEffect(() => { setPage(1); }, [status]);
   useEffect(() => { load(); }, [load]);
 
   const visible = useMemo(() => {
@@ -298,12 +316,37 @@ export default function IdentityVerificationPage() {
         )}
       </div>
 
-      {/* The endpoint returns at most 100 rows and no total, so a full
-          queue can be hiding more and nothing else on the page would
-          say so. */}
-      {!loading && items.length >= SERVER_CAP && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          This list stops at {SERVER_CAP} rows and there may be more waiting behind it. Work the oldest first and refresh as you clear them.
+      {/* Was a warning that the list "stops at 100 and there may be more".
+          There is a real count and real paging now, so it says which
+          slice you are on instead of apologising for hiding the rest. */}
+      {!loading && total > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#0F2B4C]/60">
+          <span className="tabular-nums">
+            Showing {((page - 1) * SERVER_CAP + 1).toLocaleString()}-
+            {Math.min(page * SERVER_CAP, total).toLocaleString()} of {total.toLocaleString()}
+            {status === 'submitted' ? ' waiting' : ''}
+          </span>
+          {total > SERVER_CAP && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-xs font-medium disabled:opacity-40 hover:bg-gray-50"
+              >
+                Prev
+              </button>
+              <span className="text-xs tabular-nums">
+                Page {page} of {Math.max(1, Math.ceil(total / SERVER_CAP))}
+              </span>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page >= Math.ceil(total / SERVER_CAP)}
+                className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-xs font-medium disabled:opacity-40 hover:bg-gray-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 
