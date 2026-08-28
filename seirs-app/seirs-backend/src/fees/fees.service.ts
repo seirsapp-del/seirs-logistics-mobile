@@ -33,8 +33,14 @@ export class FeesService implements OnModuleInit {
    *
    * Each of these was checked for consumers across the whole backend
    * before deletion (2026-08-28):
-   *   multi_stop_discount, lekki_zone_surcharge, storage_return_fee
-   *     appeared in the seed and nowhere else.
+   *   multi_stop_discount and lekki_zone_surcharge appeared in the seed
+   *     and nowhere else.
+   *
+   * storage_return_fee was in this list for a few minutes and was taken
+   * out again: it has no consumer either, but the approved
+   * exception-path spec names it, so it is unwired rather than dead.
+   * Deleting an unimplemented requirement hides the gap instead of
+   * closing it.
    *   night_fee_pct, night_window_start_hour, night_window_end_hour
    *     were read by deliveries.service and then thrown away, because
    *     RATE_CARD_OWNS_NIGHT is hardcoded true and the rate card's
@@ -47,7 +53,16 @@ export class FeesService implements OnModuleInit {
   private static readonly RETIRED_KEYS = [
     'multi_stop_discount',
     'lekki_zone_surcharge',
-    'storage_return_fee',
+    /* Superseded: platform_commission_pct is what payments.service
+       actually reads when splitting a booking. */
+    'driver_commission_packages',
+    'driver_commission_rides',
+    /* The instant-withdrawal feature was removed by founder decision
+       (2026-08-27: "the first false promise i noticed"). The option is
+       gone from the rider app; these are its leftover knobs. */
+    'instant_cashout_fee',
+    'instant_payout_fee_pct',
+    'instant_payout_min_age_hours',
     'night_fee_pct',
     'night_window_start_hour',
     'night_window_end_hour',

@@ -105,12 +105,6 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 6 },
 
   // ── Commission ─────────────────────────────────────────────────────────
-  { key: 'driver_commission_rides',     name: 'Driver Commission (rides)',
-    description: 'Platform cut on every ride fare after Flutterwave deduction.',
-    category: FeeCategory.COMMISSION,   unit: FeeUnit.PERCENT,    value: 25 },
-  { key: 'driver_commission_packages',  name: 'Driver Commission (packages)',
-    description: 'Platform cut on every package delivery - slightly lower than rides to attract package supply.',
-    category: FeeCategory.COMMISSION,   unit: FeeUnit.PERCENT,    value: 20 },
 
   // ── Customer-side fees ─────────────────────────────────────────────────
   { key: 'customer_booking_fee',        name: 'Customer Booking Fee',
@@ -118,14 +112,30 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     category: FeeCategory.CUSTOMER_FEE, unit: FeeUnit.FLAT_NGN,   value: 100 },
 
   // ── Driver-side fees ───────────────────────────────────────────────────
-  { key: 'instant_cashout_fee',         name: 'Instant Cash-out Fee',
-    description: 'Charged when a driver requests instant payout instead of the free weekly batch.',
-    category: FeeCategory.DRIVER_FEE,   unit: FeeUnit.PERCENT,    value: 1 },
 
   // ── Storage (partner stores) ───────────────────────────────────────────
   { key: 'storage_24_72hr',             name: 'Storage Fee (24-72hr)',
     description: 'Daily fee charged to sender when their package overstays at a partner store between 24 and 72 hours.',
     category: FeeCategory.STORAGE,      unit: FeeUnit.PER_DAY,    value: 200 },
+
+  /**
+   * RESTORED 2026-08-28, having been wrongly deleted the same day.
+   *
+   * It was removed as "seed only, no consumer", which was true and was
+   * the wrong test. The founder-approved exception-path spec ("When
+   * Delivery Fails", 21 Aug) names this row explicitly and separately
+   * from return_to_sender_fee: this is the one-time charge for returning
+   * a package after it has overstayed, and return_to_sender_fee prices
+   * the return TRIP. Two different charges in the same story.
+   *
+   * So it is not a duplicate that nothing reads. It is a spec'd knob
+   * nobody has wired yet, which is a build item, not a deletion. The
+   * difference matters: deleting an unimplemented requirement makes the
+   * gap invisible instead of closing it.
+   */
+  { key: 'storage_return_fee',          name: 'Storage Return Fee',
+    description: 'One-time fee for returning an unclaimed package to the sender after 72 hours of overstay. SPECIFIED BUT NOT YET ENFORCED: no code reads this row.',
+    category: FeeCategory.STORAGE,      unit: FeeUnit.FLAT_NGN,   value: 500 },
 
   // Founder decision 2026-08-16: whenever a partner counter touches a
   // parcel, the counter gets paid. Charged PER PARCEL PER COUNTER, so a
@@ -246,9 +256,6 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Share of a new driver payout held back against chargebacks and disputes.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.PERCENT, value: 10 },
 
-  { key: 'instant_payout_min_age_hours', name: 'Instant Payout Minimum Age (hours)',
-    description: 'How old an uncleared earning must be before it can be pulled forward for the instant fee.',
-    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.FLAT_NGN, value: 24 },
 
   // ── Loyalty, which is a liability ──────────────────────────────────────
   // Every point issued is a discount owed later, so the earn rate and the
@@ -395,9 +402,6 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'platform_commission_pct',     name: 'Platform Commission',
     description: 'SEIRS cut of each delivery fare, applied at escrow release when the driver is paid. The remainder is the driver share. Changing this affects NEW settlements only, never already-recorded earnings.',
     category: FeeCategory.COMMISSION,   unit: FeeUnit.PERCENT,    value: 30 },
-  { key: 'instant_payout_fee_pct',      name: 'Instant Withdrawal Fee',
-    description: 'Percent charged on the not-yet-cleared portion of a driver instant withdrawal. Standard clearance is 2 business days after delivery (free); instant unlocks earnings 24h+ old for this fee (2026-08-09 policy, founder set 5%).',
-    category: FeeCategory.DRIVER_FEE,   unit: FeeUnit.PERCENT,    value: 5 },
 
   // ── Developer Platform tiers ───────────────────────────────────────────
   { key: 'dev_growth_tier_monthly',     name: 'Dev Platform - Growth Tier',
