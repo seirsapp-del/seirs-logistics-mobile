@@ -305,15 +305,15 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   // abuse ceilings belong on the dashboard rather than in a deploy.
   { key: 'loyalty_points_per_1000_ngn', name: 'Points per NGN 1,000 Spent',
     description: 'Base earn rate before any tier multiplier.',
-    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 10 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.POINTS, value: 10 },
 
   { key: 'loyalty_referral_bonus',      name: 'Referral Bonus (points)',
     description: 'Points awarded when a referred user completes their first qualifying delivery.',
-    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 200 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.POINTS, value: 200 },
 
   { key: 'loyalty_max_referrals_month', name: 'Referral Cap per Month',
     description: 'Most referral bonuses one account can earn in a calendar month.',
-    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 10 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.COUNT, value: 10 },
 
   { key: 'loyalty_referral_min_ngn',    name: 'Referral Qualifying Delivery',
     description: 'Minimum delivery value before a referral counts, so a token order cannot farm bonuses.',
@@ -325,23 +325,23 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
 
   { key: 'loyalty_streak_bonus',        name: 'Monthly Streak Bonus (points)',
     description: 'Points for hitting the monthly delivery streak target.',
-    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 50 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.POINTS, value: 50 },
 
   { key: 'loyalty_streak_target',       name: 'Monthly Streak Target',
     description: 'Deliveries in a calendar month that earn the streak bonus.',
-    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 5 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.COUNT, value: 5 },
 
   { key: 'loyalty_bank_transfer_bonus', name: 'Bank Transfer Bonus (points)',
     description: 'Small nudge toward the payment method that costs least to process.',
-    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 5 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.POINTS, value: 5 },
 
   { key: 'loyalty_rate_driver_bonus',   name: 'Rate a Driver Bonus (points)',
     description: 'Points for leaving a driver rating.',
-    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 5 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.POINTS, value: 5 },
 
   { key: 'loyalty_point_lifetime_months', name: 'Point Lifetime (months)',
     description: 'How long an unspent point survives before expiring.',
-    category: FeeCategory.LOYALTY, unit: FeeUnit.FLAT_NGN, value: 12 },
+    category: FeeCategory.LOYALTY, unit: FeeUnit.MONTHS, value: 12 },
 
   // ── Payout timing ──────────────────────────────────────────────────────
   // Both were constants in code. They are here so the launch policy and

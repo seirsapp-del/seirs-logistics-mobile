@@ -76,6 +76,27 @@ export class LoyaltyService {
    * pattern showed up (audit 2026-08-18). Each keeps its shipped value
    * as a fallback, so nothing changes until somebody decides it should.
    */
+  /**
+   * Points earned for a naira spend, at the rate an admin set.
+   *
+   * The business side computed this as `naira / 100` in three separate
+   * places, with a comment saying it mirrored the customer rate. It
+   * mirrors it only while loyalty_points_per_1000_ngn sits at 10, where
+   * both happen to give 1 point per 100 naira. Move the row to 15 and
+   * customers earn 15 per thousand while business accounts still earn
+   * 10, from a knob that says it governs the earn rate (audit,
+   * 2026-08-28).
+   *
+   * Same arithmetic as the customer path, so nothing changes at today's
+   * value and everything follows the row from now on.
+   */
+  async pointsForSpend(naira: number): Promise<number> {
+    const n = Number(naira);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    const pol = await this.policy();
+    return Math.floor((n / 1000) * pol.pointsPer1000);
+  }
+
   private async policy() {
     const [
       pointsPer1000, bankTransferBonus, referralBonus, rateDriverBonus,
@@ -533,7 +554,7 @@ export class LoyaltyService {
     if ((delivery as any).source === 'business_app'
         && delivery.customer?.id
         && delivery.paymentHeldAt) {
-      const pts = Math.floor(Number(delivery.price ?? 0) / 100);
+      const pts = await this.pointsForSpend(Number(delivery.price ?? 0));
       if (pts > 0) {
         await this.deliveriesRepo.manager.query(
           `UPDATE business_accounts

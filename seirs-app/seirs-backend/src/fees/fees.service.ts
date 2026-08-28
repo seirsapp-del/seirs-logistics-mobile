@@ -138,7 +138,7 @@ export class FeesService implements OnModuleInit {
     // rendering them as naira put "N7" on the abandonment threshold.
     // Must run BEFORE the seed below, or a fresh database rejects the
     // first row carrying one of these labels.
-    for (const label of ['minutes', 'hours', 'days', 'count', 'hour_of_day']) {
+    for (const label of ['minutes', 'hours', 'days', 'count', 'hour_of_day', 'points', 'months']) {
       try {
         await this.feesRepo.query(
           `ALTER TYPE "fees_unit_enum" ADD VALUE IF NOT EXISTS '${label}'`,

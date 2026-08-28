@@ -18,6 +18,18 @@ export enum FeeUnit {
   COUNT    = 'count',
   // An hour on the 24h clock (Africa/Lagos), not a duration.
   HOUR_OF_DAY = 'hour_of_day',
+  /**
+   * Loyalty points, which are NOT naira (audit, 2026-08-28).
+   *
+   * Eight of the ten loyalty rows stored points, counts or months as
+   * FLAT_NGN, so a 200-point referral bonus rendered as a price of
+   * 200.00 and a 12-month point lifetime as 12.00. On this product that
+   * is worse than an ordinary units bug: customers never hold naira, and
+   * the one screen that configures their rewards was denominating those
+   * rewards in it.
+   */
+  POINTS   = 'points',
+  MONTHS   = 'months',
 }
 
 // Logical grouping for the admin Fee Catalogue UI tabs/filters.

@@ -970,7 +970,10 @@ export class PaymentsService {
         try {
           await this.dataSource.query(
             `UPDATE business_accounts SET "loyaltyPoints" = "loyaltyPoints" + $2 WHERE "ownerId" = $1`,
-            [payment.customer.id, Math.floor(toNaira(payment.amountKobo) / 100)],
+            // Through the loyalty service, so the earn rate follows the
+            // Fee Catalogue row rather than a hardcoded 1-per-100 that
+            // only matches it at today's value (audit, 2026-08-28).
+            [payment.customer.id, await this.loyaltyService.pointsForSpend(toNaira(payment.amountKobo))],
           );
         } catch (e: any) {
           this.logger.warn(`Business loyalty award failed for ${txRef}: ${e.message}`);

@@ -948,9 +948,20 @@ export class BusinessService {
 
       const balBefore = liveBalance;
       const balAfter  = balBefore - total;
-      // Loyalty accrues here, on spend, per the agreed plan: 1 point per
-      // ₦100 of delivery spend, mirroring the customer-side rate.
-      const earnedPoints = Math.floor(total / 100);
+      /**
+       * At the rate the Fee Catalogue sets, not a hardcoded one.
+       *
+       * This was `total / 100` with a comment saying it mirrored the
+       * customer-side rate. It mirrors it only while
+       * loyalty_points_per_1000_ngn is 10, which is the one value where
+       * 1 point per 100 naira and 10 points per 1,000 are the same
+       * number (audit, 2026-08-28). Unchanged today, correct if the row
+       * ever moves.
+       */
+      const pointsPer1000 = Number(
+        await this.fees.getValueOr('loyalty_points_per_1000_ngn', 10),
+      );
+      const earnedPoints = Math.floor((total / 1000) * pointsPer1000);
       await mgr.update(BusinessAccount, biz.id, {
         walletBalance: balAfter,
         loyaltyPoints: biz.loyaltyPoints + earnedPoints,

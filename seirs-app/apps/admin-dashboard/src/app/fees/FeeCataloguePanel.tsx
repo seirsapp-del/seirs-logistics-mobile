@@ -249,6 +249,10 @@ function formatValue(value: number, unit: string): string {
     case 'hours':     return `${n} ${n === 1 ? 'hour' : 'hours'}`;
     case 'days':      return `${n} ${n === 1 ? 'day' : 'days'}`;
     case 'count':     return String(n);
+    // Points are not money. Customers never hold naira on SEIRS, so the
+    // screen that sets their rewards must not denominate them in it.
+    case 'points':    return `${n} ${n === 1 ? 'point' : 'points'}`;
+    case 'months':    return `${n} ${n === 1 ? 'month' : 'months'}`;
     case 'hour_of_day': {
       const h = ((Math.round(n) % 24) + 24) % 24;
       const display = h % 12 === 0 ? 12 : h % 12;
