@@ -1111,6 +1111,10 @@ export class AdminService {
             driverId: r.driverId, acceptedLastHour: Number(r.accepted),
           })),
         },
+        // The five money and safety watches built just above. Without
+        // this spread they were computed on every poll and thrown away,
+        // which is exactly how the panel kept saying "All clear".
+        ...moneyAndZoneAnomalies,
       },
       hourly: hourlyBookings.map((r: any) => ({
         hour: r.hour instanceof Date ? r.hour.toISOString() : String(r.hour),
