@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { naira, nairaAxis } from "@/lib/money";
@@ -14,11 +15,31 @@ import {
 } from 'recharts';
 
 
+/** One queue from GET /admin/queues, with the age of its oldest item. */
+interface QueueRow {
+  key: string;
+  label: string;
+  href: string;
+  count: number;
+  /** Null when the queue is empty. */
+  oldestMinutes: number | null;
+  /** Past this age the queue is behind, and the card says so. */
+  warnAfterMin: number;
+}
+
 interface Stats {
   users:      { total: number };
   drivers:    { total: number; pendingKyc: number };
   deliveries: { total: number; active: number; today: number; pending: number };
-  revenue:    { total: number; commission: number; commissionRate?: number };
+  revenue: {
+    total: number; commission: number; commissionRate?: number;
+    /** Money that actually reached the processor. The headline. */
+    received?: number; receivedCount?: number;
+    /** Delivered but not necessarily paid, and including demo rows. */
+    booked?: number;
+    /** booked minus received: what SEIRS is still owed. */
+    outstanding?: number;
+  };
 }
 
 export default function DashboardPage() {
@@ -30,6 +51,7 @@ export default function DashboardPage() {
   const [error,   setError]   = useState<string | null>(null);
   const [liveUpdatedAt, setLiveUpdatedAt] = useState<Date | null>(null);
   const [drill, setDrill] = useState<DrillKey | null>(null);
+  const [queues, setQueues] = useState<QueueRow[]>([]);
 
   /**
    * Explain the bounce. middleware.ts redirects a role that opens a page
@@ -55,23 +77,7 @@ export default function DashboardPage() {
     } catch { /* no query string is the normal case */ }
   }, []);
 
-  /**
-   * Open support tickets, surfaced on the landing page so nothing sits
-   * unanswered (founder 2026-08-16: "the number of ticket should be
-   * visible in the dasboard and we can click it so we dont forget or
-   * miss any tickets"). Silent on failure: an admin without the support
-   * permission simply does not see the card.
-   */
-  const [openTickets, setOpenTickets] = useState<number | null>(null);
 
-  const loadTickets = () => {
-    adminApi.support
-      .queue({ limit: 100 })
-      .then((list: any[]) => setOpenTickets(
-        (list ?? []).filter((t) => t.status === 'open' || t.status === 'awaiting_agent').length,
-      ))
-      .catch(() => setOpenTickets(null));
-  };
 
   const load = () => {
     setLoading(true);
@@ -88,7 +94,17 @@ export default function DashboardPage() {
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadTickets(); }, []);
+
+  /**
+   * Queues are polled with the live panel rather than loaded once: an
+   * operator leaves this page open, and a queue that was empty when they
+   * opened it is exactly the one they need to be told about.
+   */
+  const loadQueues = () => {
+    adminApi.queues()
+      .then((rows: QueueRow[]) => setQueues(Array.isArray(rows) ? rows : []))
+      .catch(() => setQueues([]));
+  };
 
   const loadLive = () => {
     adminApi.liveDashboard().then((d) => {
@@ -97,10 +113,10 @@ export default function DashboardPage() {
     }).catch(() => {});
   };
 
-  useEffect(() => { load(); loadLive(); }, []);
+  useEffect(() => { load(); loadLive(); loadQueues(); }, []);
   // Auto-refresh live panel every 30 seconds while the page is visible
   useEffect(() => {
-    const id = setInterval(loadLive, 30_000);
+    const id = setInterval(() => { loadLive(); loadQueues(); }, 30_000);
     return () => clearInterval(id);
   }, []);
 
@@ -116,16 +132,29 @@ export default function DashboardPage() {
    */
   const cards: {
     label: string; value: string; sub?: string; Icon: LucideIcon;
-    color: string; bg: string; drill?: DrillKey;
+    color: string; bg: string;
+    /** Opens the drawer, for queues with an action attached. */
+    drill?: DrillKey;
+    /**
+     * Navigates instead, for totals whose detail lives on its own page.
+     * A number you cannot click is a number you have to go and look up
+     * somewhere else, which is the whole complaint that produced the
+     * drill keys in the first place. Six of these tiles still had
+     * neither (2026-08-28).
+     */
+    href?: string;
   }[] = stats ? [
     {
       label: 'Total Customers', value: stats.users.total.toLocaleString(),
+      sub: 'demo accounts excluded',
       Icon: Users, color: 'text-[#3A7BD5]', bg: 'bg-[#3A7BD5]/10',
+      href: '/users',
     },
     {
       label: 'Total Drivers', value: stats.drivers.total.toLocaleString(),
       sub: `${stats.drivers.pendingKyc} pending KYC`,
       Icon: Truck, color: 'text-violet-600', bg: 'bg-violet-100',
+      href: '/drivers',
     },
     {
       label: 'Active Deliveries', value: stats.deliveries.active.toLocaleString(),
@@ -142,15 +171,34 @@ export default function DashboardPage() {
     {
       label: 'Total Deliveries', value: stats.deliveries.total.toLocaleString(),
       Icon: Package, color: 'text-[#0F2B4C]', bg: 'bg-[#0F2B4C]/10',
+      href: '/deliveries',
     },
     {
       label: 'Pending KYC', value: stats.drivers.pendingKyc.toLocaleString(),
       Icon: ClipboardList, color: 'text-orange-600', bg: 'bg-orange-100',
       drill: 'kyc',
     },
+    /**
+     * Three money tiles, and the labels are the whole point.
+     *
+     * "Total Revenue" used to sum every DELIVERED delivery whether or not
+     * anybody paid, so this read 15,309.06 while SEIRS had banked
+     * 2,609.06. Booked and banked are different numbers and the front
+     * page has to say which one it is showing (2026-08-28).
+     */
     {
-      label: 'Total Revenue', value: naira(stats.revenue.total),
+      label: 'Revenue received', value: naira(stats.revenue.received ?? stats.revenue.total),
+      sub: `${stats.revenue.receivedCount ?? 0} payment${(stats.revenue.receivedCount ?? 0) === 1 ? '' : 's'} settled`,
       Icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-100',
+      href: '/wallet',
+    },
+    {
+      label: 'Owed to SEIRS', value: naira(stats.revenue.outstanding ?? 0),
+      sub: `${naira(stats.revenue.booked ?? 0)} delivered, not all collected`,
+      Icon: Clock,
+      color: (stats.revenue.outstanding ?? 0) > 0 ? 'text-amber-600' : 'text-gray-400',
+      bg:    (stats.revenue.outstanding ?? 0) > 0 ? 'bg-amber-100'   : 'bg-gray-100',
+      href: '/deliveries?status=delivered',
     },
     {
       label: 'Platform Commission', value: naira(stats.revenue.commission),
@@ -159,9 +207,10 @@ export default function DashboardPage() {
       // 15% rendered as "15.0%". Round the percentage instead and drop the
       // trailing zero only when there is one.
       sub: stats.revenue.commissionRate != null
-        ? `${Number((stats.revenue.commissionRate * 100).toFixed(1))}% of gross revenue`
-        : 'of gross revenue',
+        ? `${Number((stats.revenue.commissionRate * 100).toFixed(1))}% of money received`
+        : 'of money received',
       Icon: TrendingUp, color: 'text-[#3A7BD5]', bg: 'bg-[#3A7BD5]/10',
+      href: '/wallet',
     },
   ] : [];
 
@@ -271,12 +320,13 @@ export default function DashboardPage() {
             {/* Stats grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {cards.map((c) => {
-                const clickable = !!c.drill;
-                const Tag = clickable ? 'button' : 'div';
+                const clickable = !!c.drill || !!c.href;
+                const Tag: any = c.href ? Link : c.drill ? 'button' : 'div';
                 return (
                   <Tag
                     key={c.label}
-                    {...(clickable ? { onClick: () => setDrill(c.drill!), type: 'button' as const } : {})}
+                    {...(c.href ? { href: c.href } : {})}
+                    {...(!c.href && c.drill ? { onClick: () => setDrill(c.drill!), type: 'button' as const } : {})}
                     className={`bg-white rounded-xl p-5 shadow-sm border border-gray-100 text-left w-full ${
                       clickable
                         ? 'hover:border-[#3A7BD5] hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#3A7BD5]'
@@ -407,38 +457,33 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Quick actions */}
+            {/*
+              The work waiting, with how long it has been waiting.
+
+              These were four hardcoded cards showing bare counts. Two
+              numbers that look identical can be opposite problems: an
+              unassigned delivery forty minutes old is an emergency and
+              one forty seconds old is normal, and on the live database
+              this panel immediately showed two driver KYC reviews that
+              had been sitting for 109 days behind a tile that just said
+              "2" (2026-08-28).
+
+              Driven by GET /admin/queues so a new queue appears here by
+              being added server-side, rather than by somebody
+              remembering to hardcode a fifth card.
+            */}
+            <div className="mb-2 flex items-baseline gap-2">
+              <h2 className="text-sm font-semibold text-[#0F2B4C]">Work waiting</h2>
+              <span className="text-xs text-[#0F2B4C]/40">oldest item in each queue</span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <QuickCard
-                title="Pending KYC Reviews"
-                count={stats?.drivers.pendingKyc ?? 0}
-                desc="Drivers awaiting document verification"
-                href="/drivers?status=pending"
-                urgent={(stats?.drivers.pendingKyc ?? 0) > 0}
-              />
-              <QuickCard
-                title="Unassigned Deliveries"
-                count={stats?.deliveries.pending ?? 0}
-                desc="Deliveries without an assigned driver"
-                href="/deliveries?status=pending"
-                urgent={(stats?.deliveries.pending ?? 0) > 5}
-              />
-              {openTickets !== null && (
-                <QuickCard
-                  title="Open Support Tickets"
-                  count={openTickets}
-                  desc="Waiting on a reply from support"
-                  href="/support"
-                  urgent={openTickets > 0}
-                />
+              {queues.length === 0 ? (
+                <div className="md:col-span-3 rounded-xl border border-gray-100 bg-white p-5 text-sm text-[#0F2B4C]/40">
+                  Nothing waiting anywhere. Every queue is clear.
+                </div>
+              ) : (
+                queues.map((q) => <QueueCard key={q.key} q={q} />)
               )}
-              <QuickCard
-                title="Active Deliveries"
-                count={stats?.deliveries.active ?? 0}
-                desc="Currently in progress across the platform"
-                href="/deliveries?status=assigned"
-                urgent={false}
-              />
             </div>
           </>
         )}
@@ -806,29 +851,64 @@ function AnomalyPanel({ anomalies }: { anomalies: any }) {
   );
 }
 
-function QuickCard({ title, count, desc, href, urgent }: {
-  title: string; count: number; desc: string; href: string; urgent: boolean;
-}) {
+/**
+ * A queue, its size, and how long the oldest item has been sitting.
+ *
+ * The age is the point. Two identical counts can be opposite problems,
+ * and the old cards showed only the count: on the live database this
+ * panel immediately surfaced two driver KYC reviews that had been
+ * waiting 109 days behind a tile that just said "2".
+ *
+ * Oldest rather than average, because the thing ignored longest is the
+ * thing that hurts, and an average hides it behind everything handled
+ * promptly since.
+ */
+function QueueCard({ q }: { q: QueueRow }) {
+  const empty   = q.count === 0;
+  const overdue = !empty && q.oldestMinutes != null && q.oldestMinutes >= q.warnAfterMin;
+
+  const age = q.oldestMinutes == null
+    ? null
+    : q.oldestMinutes < 60
+      ? `${q.oldestMinutes}m`
+      : q.oldestMinutes < 60 * 48
+        ? `${Math.floor(q.oldestMinutes / 60)}h ${q.oldestMinutes % 60}m`
+        : `${Math.floor(q.oldestMinutes / 1440)} days`;
+
   return (
-    <a
-      href={href}
-      className={`group block bg-white rounded-xl p-5 shadow-sm border hover:shadow-md transition-all ${
-        urgent && count > 0 ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100'
+    <Link
+      href={q.href}
+      className={`group block rounded-xl border p-5 shadow-sm transition-all hover:shadow-md ${
+        overdue ? 'border-red-200 bg-red-50/40'
+        : empty  ? 'border-gray-100 bg-white'
+                 : 'border-amber-200 bg-amber-50/30'
       }`}
     >
-      <div className="flex items-start justify-between mb-2">
-        <h3 className="font-semibold text-[#0F2B4C] text-sm">{title}</h3>
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <h3 className="text-sm font-semibold text-[#0F2B4C]">{q.label}</h3>
         <div className="flex items-center gap-1.5">
-          {urgent && count > 0 && <AlertTriangle size={14} className="text-amber-500" />}
-          <span className={`text-2xl font-bold ${urgent && count > 0 ? 'text-amber-600' : 'text-[#0F2B4C]'}`}>
-            {count}
+          {overdue && <AlertTriangle size={14} className="text-red-500" />}
+          <span className={`text-2xl font-bold ${
+            overdue ? 'text-red-600' : empty ? 'text-[#0F2B4C]/25' : 'text-amber-600'
+          }`}>
+            {q.count}
           </span>
         </div>
       </div>
-      <p className="text-sm text-[#0F2B4C]/40">{desc}</p>
-      <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#3A7BD5] group-hover:gap-2 transition-all">
-        View all <ChevronRight size={13} />
+
+      {empty ? (
+        <p className="text-sm text-[#0F2B4C]/35">Nothing waiting.</p>
+      ) : (
+        <p className={`text-sm ${overdue ? 'text-red-700' : 'text-[#0F2B4C]/55'}`}>
+          Oldest has been waiting <strong>{age}</strong>
+          {overdue ? '. That is past the point it should have been handled.' : '.'}
+        </p>
+      )}
+
+      <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#3A7BD5] transition-all group-hover:gap-2">
+        {empty ? 'Open' : 'Work this queue'} <ChevronRight size={13} />
       </div>
-    </a>
+    </Link>
   );
 }
+

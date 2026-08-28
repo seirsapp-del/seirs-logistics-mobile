@@ -94,6 +94,13 @@ export const adminApi = {
 
   stats: () => req<any>('/admin/stats'),
 
+  /**
+   * Every queue with the age of its oldest item. A bare count cannot be
+   * triaged: two KYC reviews from this morning and two from three weeks
+   * ago are the same number and opposite problems.
+   */
+  queues: () => req<any[]>('/admin/queues'),
+
   // GET /auth/me. Used by the Health page so the Auth row is a genuinely
   // separate probe from the Backend API row.
   me: () => req<any>('/auth/me'),
