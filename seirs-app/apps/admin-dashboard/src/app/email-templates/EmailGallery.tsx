@@ -35,12 +35,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Mail, Plus, Search, Send, Trash2, Save, X, Eye, Palette,
-  Image as ImageIcon, Sparkles, Lock, Code2, RotateCcw, Loader2,
+  Image as ImageIcon, Sparkles, Lock, Code2, RotateCcw, Loader2, CalendarClock,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { PageIntro } from '@/components/PageIntro';
 import { EmptyState } from '@/components/EmptyState';
 import { useConfirm, usePrompt, useNotify } from '@/components/ConfirmDialog';
+import { ScheduleSend, CampaignList } from './ScheduleSend';
 
 type Tpl = Awaited<ReturnType<typeof adminApi.emailTemplates.list>>[number];
 
@@ -126,8 +127,19 @@ export default function EmailGallery() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
   const [q, setQ]             = useState('');
-  const [group, setGroup]     = useState<'browse' | 'auto'>('browse');
+  const [group, setGroup]     = useState<'browse' | 'auto' | 'sends'>('browse');
   const [openKey, setOpenKey] = useState<string | null>(null);
+  /** Queued and past sends. Loaded only when that view is opened. */
+  const [camps, setCamps]     = useState<Awaited<ReturnType<typeof adminApi.emailTemplates.campaigns.list>>>([]);
+  const [campBusy, setCampBusy] = useState<string | null>(null);
+  const [scheduling, setScheduling] = useState<{ key: string; name: string } | null>(null);
+
+  const loadCamps = useCallback(() => {
+    adminApi.emailTemplates.campaigns.list()
+      .then(r => setCamps(Array.isArray(r) ? r : []))
+      .catch(() => setCamps([]));
+  }, []);
+  useEffect(() => { if (group === 'sends') loadCamps(); }, [group, loadCamps]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -199,7 +211,11 @@ export default function EmailGallery() {
 
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <div className="flex overflow-hidden rounded-lg border border-[#E5E7EB]">
-            {([['browse', 'Seasonal and campaigns'], ['auto', 'Sent automatically']] as const).map(([g, label]) => (
+            {([
+              ['browse', 'Seasonal and campaigns'],
+              ['auto',   'Sent automatically'],
+              ['sends',  'Scheduled sends'],
+            ] as const).map(([g, label]) => (
               <button
                 key={g}
                 onClick={() => setGroup(g)}
@@ -211,7 +227,7 @@ export default function EmailGallery() {
               </button>
             ))}
           </div>
-          <div className="relative min-w-[240px] flex-1 max-w-md">
+          <div className={`relative min-w-[240px] flex-1 max-w-md ${group === 'sends' ? 'hidden' : ''}`}>
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#0F2B4C]/30" />
             <input
               value={q}
@@ -221,7 +237,9 @@ export default function EmailGallery() {
             />
           </div>
           <span className="text-xs text-[#0F2B4C]/50">
-            {shown.length} of {all.length}
+            {group === 'sends'
+              ? `${camps.filter(c => c.status === 'scheduled').length} waiting to go`
+              : `${shown.length} of ${all.length}`}
           </span>
         </div>
 
@@ -231,7 +249,40 @@ export default function EmailGallery() {
           </div>
         )}
 
-        {loading ? (
+        {group === 'sends' ? (
+          camps.length === 0 ? (
+            <div className="rounded-xl border border-[#E5E7EB] bg-white">
+              <EmptyState
+                icon={<CalendarClock size={20} />}
+                title="Nothing is queued"
+                body="Open an email and choose Send later to queue one. Queued sends can be called off any time before they start."
+                tone="good"
+              />
+            </div>
+          ) : (
+            <CampaignList
+              rows={camps}
+              busyId={campBusy}
+              onCancel={async (id, name) => {
+                const ok = await confirm({
+                  title: `Call off the "${name}" send?`,
+                  message: 'Nobody receives it. You can queue it again afterwards.',
+                  confirmLabel: 'Call it off',
+                  danger: true,
+                });
+                if (!ok) return;
+                setCampBusy(id);
+                try {
+                  await adminApi.emailTemplates.campaigns.cancel(id);
+                  notify({ title: 'Called off', message: 'It will not be sent.', tone: 'success' });
+                  loadCamps();
+                } catch (e: any) {
+                  notify({ title: 'Not called off', message: e?.message ?? 'Something went wrong.', tone: 'error' });
+                } finally { setCampBusy(null); }
+              }}
+            />
+          )
+        ) : loading ? (
           <div className="flex items-center justify-center gap-2 py-20 text-[#0F2B4C]/40">
             <Loader2 size={16} className="animate-spin" /> Loading the emails
           </div>
@@ -304,7 +355,18 @@ export default function EmailGallery() {
           onClose={() => setOpenKey(null)}
           onSaved={() => { load(); }}
           onDeleted={() => { setOpenKey(null); load(); }}
+          onSchedule={(key, name) => setScheduling({ key, name })}
           confirm={confirm}
+          notify={notify}
+        />
+      )}
+
+      {scheduling && (
+        <ScheduleSend
+          templateKey={scheduling.key}
+          templateName={scheduling.name}
+          onClose={() => setScheduling(null)}
+          onScheduled={() => { setGroup('sends'); loadCamps(); }}
           notify={notify}
         />
       )}
@@ -316,12 +378,13 @@ export default function EmailGallery() {
    The editor. Text on the left, the real email on the right.
    ──────────────────────────────────────────────────────────────────── */
 function Editor({
-  tpl, onClose, onSaved, onDeleted, confirm, notify,
+  tpl, onClose, onSaved, onDeleted, onSchedule, confirm, notify,
 }: {
   tpl: Tpl;
   onClose: () => void;
   onSaved: () => void;
   onDeleted: () => void;
+  onSchedule: (key: string, name: string) => void;
   confirm: ReturnType<typeof useConfirm>;
   notify: ReturnType<typeof useNotify>;
 }) {
@@ -569,6 +632,13 @@ function Editor({
               className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm font-semibold text-[#0F2B4C] hover:bg-gray-50 disabled:opacity-50"
             >
               <Send size={14} /> Send it to me
+            </button>
+            <button
+              onClick={() => onSchedule(tpl.key, tpl.name)}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm font-semibold text-[#0F2B4C] hover:bg-gray-50 disabled:opacity-50"
+            >
+              <CalendarClock size={14} /> Send later
             </button>
             {tpl.isCustom && (
               <button

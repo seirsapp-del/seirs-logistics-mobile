@@ -448,6 +448,35 @@ export const adminApi = {
 
     remove: (key: string) =>
       req<any>(`/admin/email-templates/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+
+    /**
+     * Scheduled sends. A campaign is its own record rather than a field
+     * on the template, because one template goes out many times and the
+     * record of who was mailed has to survive the template being
+     * reworded afterwards.
+     */
+    campaigns: {
+      list: () => req<Array<{
+        id: string; templateKey: string; templateName: string; templateMissing: boolean;
+        subjectAtSend: string; audience: string; scheduledAt: string;
+        status: 'scheduled' | 'sending' | 'sent' | 'cancelled' | 'failed';
+        recipients: number; delivered: number; failed: number;
+        note: string | null; finishedAt: string | null;
+      }>>('/admin/email-templates/campaigns'),
+
+      /** Counts the same people the send will actually reach. */
+      audienceSize: (audience: string) =>
+        req<{ audience: string; count: number }>(
+          `/admin/email-templates/campaigns/audience-size?audience=${encodeURIComponent(audience)}`),
+
+      schedule: (body: { templateKey: string; audience: string; scheduledAt: string }) =>
+        req<any>('/admin/email-templates/campaigns', { method: 'POST', body: JSON.stringify(body) }),
+
+      cancel: (id: string, note?: string) =>
+        req<any>(`/admin/email-templates/campaigns/${id}/cancel`, {
+          method: 'POST', body: JSON.stringify({ note }),
+        }),
+    },
     testSend: (key: string, to?: string) =>
       req<{ delivered: boolean; usedOverride: boolean; subject: string }>(
         `/admin/email-templates/${key}/test-send`,
