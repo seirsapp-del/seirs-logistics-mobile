@@ -172,6 +172,37 @@ export class HealthController {
           webhookHashSet: Boolean(process.env.FLW_WEBHOOK_HASH),
         };
       })(),
+
+      /**
+       * Whether a push notification can leave this server at all.
+       *
+       * FcmService disables itself with a log line when
+       * FIREBASE_SERVICE_ACCOUNT_JSON is unset, and every send after
+       * that is a silent no-op. Nothing outside the process could tell,
+       * and the broadcast composer was reporting those no-ops as
+       * successful deliveries (fixed the same day). Read straight from
+       * the env rather than through the service, so this stays a
+       * Public health route with no injection.
+       */
+      push: (() => {
+        const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON ?? '';
+        if (!raw) {
+          return {
+            provider: 'fcm',
+            configured: false,
+            note: 'FIREBASE_SERVICE_ACCOUNT_JSON is not set. In-app notifications still save; no phone will buzz.',
+          };
+        }
+        let projectId: string | null = null;
+        let parses = true;
+        try { projectId = JSON.parse(raw)?.project_id ?? null; } catch { parses = false; }
+        return {
+          provider: 'fcm',
+          configured: parses,
+          projectId,
+          note: parses ? undefined : 'FIREBASE_SERVICE_ACCOUNT_JSON is set but is not valid JSON, so push is off.',
+        };
+      })(),
     };
   }
 }

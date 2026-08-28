@@ -392,14 +392,25 @@ export class NotificationsService {
     zone?: string;
     title: string;
     body:  string;
-  }): Promise<{ recipients: number; pushed: number }> {
+  }): Promise<{
+    recipients: number;
+    pushed: number;
+    /** Recipients with no device token saved: they get the in-app row only. */
+    noToken: number;
+    /** Had a token and the push still did not go. */
+    failed: number;
+    /** False means this server cannot send push at all, so pushed is 0 by definition. */
+    pushEnabled: boolean;
+  }> {
     const { audience, zone, title, body } = input;
     if (!title?.trim() || !body?.trim()) {
       throw new Error('Title and body required.');
     }
 
     const recipients = await this.resolveAudience(audience, zone);
-    if (recipients.length === 0) return { recipients: 0, pushed: 0 };
+    if (recipients.length === 0) {
+      return { recipients: 0, pushed: 0, noToken: 0, failed: 0, pushEnabled: this.fcm.isEnabled };
+    }
 
     // Persist one Notification per recipient. Chunk inserts so we
     // don't blow the parameter limit on huge audiences.
@@ -415,16 +426,45 @@ export class NotificationsService {
       await this.repo.save(rows);
     }
 
-    // FCM push - best-effort, ignore individual failures.
+    /**
+     * Count what was actually sent (2026-08-28).
+     *
+     * This counted `!stale`, and sendToToken returns "not stale" when
+     * the send succeeded, when it failed for a reason that is not the
+     * token's fault, AND when push is switched off entirely. So with
+     * FIREBASE_SERVICE_ACCOUNT_JSON unset, a broadcast to five hundred
+     * people reported five hundred pushed while no phone rang, which is
+     * the worst possible failure on a screen whose whole job is telling
+     * an operator that their message went out.
+     */
     let pushed = 0;
+    let failed = 0;
     const tokens = recipients.map(r => r.fcmToken).filter((t): t is string => !!t);
     await Promise.all(tokens.map(async token => {
-      const stale = await this.fcm.sendToToken(token, title, body, { type: 'broadcast' }).catch(() => true);
-      if (!stale) pushed++;
+      const r = await this.fcm
+        .sendToTokenDetailed(token, title, body, { type: 'broadcast' })
+        .catch(() => ({ sent: false, stale: false } as { sent: boolean; stale: boolean }));
+      if (r.sent) pushed++; else failed++;
     }));
 
-    this.logger.log(`Broadcast to ${audience}${zone ? `:${zone}` : ''} - ${recipients.length} users, ${pushed} pushed`);
-    return { recipients: recipients.length, pushed };
+    const noToken = recipients.length - tokens.length;
+    if (!this.fcm.isEnabled) {
+      this.logger.warn(
+        `Broadcast to ${audience} reached ${recipients.length} in-app inboxes and sent NO push: ` +
+        `FIREBASE_SERVICE_ACCOUNT_JSON is not set on this server.`,
+      );
+    }
+    this.logger.log(
+      `Broadcast to ${audience}${zone ? `:${zone}` : ''} - ${recipients.length} users, ` +
+      `${pushed} pushed, ${failed} failed, ${noToken} without a device token`,
+    );
+    return {
+      recipients: recipients.length,
+      pushed,
+      noToken,
+      failed,
+      pushEnabled: this.fcm.isEnabled,
+    };
   }
 
   private async resolveAudience(audience: BroadcastAudience, zone?: string): Promise<Array<Pick<User, 'id' | 'fcmToken'>>> {

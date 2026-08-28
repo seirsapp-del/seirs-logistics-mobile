@@ -30,14 +30,40 @@ export class FcmService implements OnModuleInit {
     }
   }
 
-  // Returns true if token should be removed (invalid/unregistered)
-  async sendToToken(
+  /**
+   * Whether push can actually leave this server.
+   *
+   * FIREBASE_SERVICE_ACCOUNT_JSON unset means every send is a silent
+   * no-op, and nothing outside this class could tell. Exposed so the
+   * broadcast composer and /health can say so out loud rather than
+   * letting an operator believe five hundred phones buzzed.
+   */
+  get isEnabled(): boolean {
+    return !!this.messaging;
+  }
+
+  /**
+   * Send, and say honestly what happened (2026-08-28).
+   *
+   * sendToToken answers one question, "should this token be deleted",
+   * and returns false for all three of: it worked, it failed for a
+   * reason that is not the token's fault, and push is switched off
+   * entirely. broadcastToAudience was counting `!stale` as `pushed`, so
+   * with FIREBASE_SERVICE_ACCOUNT_JSON unset a broadcast to five
+   * hundred people reported five hundred delivered and not one phone
+   * rang. A delivery report that cannot fail is not a delivery report.
+   *
+   * sendToToken keeps its old meaning so its other callers are
+   * untouched; it now just reads its answer out of this.
+   */
+  async sendToTokenDetailed(
     fcmToken: string,
     title: string,
     body: string,
     data?: Record<string, string>,
-  ): Promise<boolean> {
-    if (!this.messaging || !fcmToken) return false;
+  ): Promise<{ sent: boolean; stale: boolean; reason?: string }> {
+    if (!this.messaging) return { sent: false, stale: false, reason: 'push-disabled' };
+    if (!fcmToken)       return { sent: false, stale: false, reason: 'no-token' };
 
     try {
       await this.messaging.send({
@@ -52,7 +78,7 @@ export class FcmService implements OnModuleInit {
           payload: { aps: { sound: 'default', badge: 1 } },
         },
       });
-      return false;
+      return { sent: true, stale: false };
     } catch (e) {
       const isStaleToken =
         e.code === 'messaging/registration-token-not-registered' ||
@@ -60,12 +86,23 @@ export class FcmService implements OnModuleInit {
 
       if (isStaleToken) {
         this.logger.log(`Stale FCM token removed for prefix ${fcmToken.slice(0, 10)}...`);
-        return true; // caller should clear this token
+        return { sent: false, stale: true, reason: 'stale-token' };
       }
 
       this.logger.warn(`FCM send failed: ${e.message}`);
-      return false;
+      return { sent: false, stale: false, reason: e.message };
     }
+  }
+
+  // Returns true if token should be removed (invalid/unregistered)
+  async sendToToken(
+    fcmToken: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>,
+  ): Promise<boolean> {
+    const r = await this.sendToTokenDetailed(fcmToken, title, body, data);
+    return r.stale;
   }
 
   async sendToMultiple(
