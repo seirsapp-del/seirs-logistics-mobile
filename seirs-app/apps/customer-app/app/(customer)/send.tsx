@@ -255,9 +255,10 @@ export default function SendScreen() {
   // high-value threshold the driver must ID-verify the recipient.
   // Receiver system (founder 2026-08-11): who collects + fallback plan.
   // Above this declared value the recipient must show physical ID, and
-  // gate/neighbour drop-off is refused. The number is policy, so it
-  // comes from the Fee Catalogue (high_value_threshold_ngn) rather
-  // than a constant that silently drifts when admin edits it.
+  // gate/neighbour drop-off is refused. The number is policy, so it is
+  // resolved the same way the server resolves it: the rate card's
+  // highValue.thresholdNgn first, then the Fee Catalogue row, then this
+  // compiled fallback. See the fetch below for why the order matters.
   const [highValueNgn,   setHighValueNgn]   = useState(100000);
   // Service catalogue drives the category chips. Business does the
   // same (configApi.serviceCatalog), which is why its chips carry
@@ -527,9 +528,51 @@ export default function SendScreen() {
     configApi.serviceCatalog()
       .then(c => { if (Array.isArray(c) && c.length) setCatalog(c); })
       .catch(() => { /* fall back to PACKAGE_CATEGORIES below */ });
-    feesApi.get('high_value_threshold_ngn')
-      .then(r => { const v = Number(r?.value); if (v > 0) setHighValueNgn(v); })
-      .catch(() => { /* keep the 100000 fallback, same as the backend's */ });
+    /**
+     * The RATE CARD decides what counts as high value, then the
+     * catalogue row, then 100,000. Exactly the chain the server uses.
+     *
+     * This read the Fee Catalogue row on its own, and the server does
+     * not: deliveries.service.ts and pricing.service.ts both take the
+     * card's highValue.thresholdNgn first and fall back to the row only
+     * when the card has none published (fixed 2026-08-28).
+     *
+     * The live card publishes 50,000 and the row holds 100,000, so the
+     * two disagreed by the whole band between them. Found on the device
+     * on 2026-08-29 by declaring 75,000: the app offered "Leave at gate"
+     * and "Leave with neighbour", because 75,000 is under its 100,000,
+     * while the server treats the same parcel as high value and refuses
+     * exactly those two.
+     *
+     * That is the worst shape for this bug. The customer is not merely
+     * shown the wrong rule, they are invited to choose an option the
+     * booking will then be rejected for, after they have filled in
+     * everything else.
+     *
+     * The threshold is public on /config/rate-card, redacted of nothing
+     * that matters here, so the app can read the same number rather than
+     * keeping its own opinion.
+     */
+    configApi.rateCard()
+      .then((card: any) => {
+        const fromCard = Number(card?.highValue?.thresholdNgn);
+        if (Number.isFinite(fromCard) && fromCard > 0) {
+          setHighValueNgn(fromCard);
+          return null;
+        }
+        return feesApi.get('high_value_threshold_ngn');
+      })
+      .then((r: any) => {
+        if (!r) return;
+        const v = Number(r?.value);
+        if (v > 0) setHighValueNgn(v);
+      })
+      .catch(() => {
+        // Card unreachable: try the catalogue row, then keep 100,000.
+        feesApi.get('high_value_threshold_ngn')
+          .then(r => { const v = Number(r?.value); if (v > 0) setHighValueNgn(v); })
+          .catch(() => { /* keep the compiled fallback, same as the server's */ });
+      });
   }, []);
 
   const mapRef   = useRef<MapView>(null);
@@ -857,19 +900,86 @@ export default function SendScreen() {
   };
 
   // ── Photo picker ─────────────────────────────────────────────────────────
-  const addPhoto = async (pkgIndex = 0) => {
-    if ((packages[pkgIndex]?.photos.length ?? 0) >= 5) return;
+  /**
+   * Camera first, library second (2026-08-29).
+   *
+   * This went straight to launchImageLibraryAsync, so the only way to add
+   * the REQUIRED parcel photo was to browse the phone's whole media
+   * library. For an app whose entire premise is a person standing over a
+   * parcel with a phone in their hand, the camera was not offered at all.
+   *
+   * Two things were wrong with that, found by tapping Add on a real
+   * device rather than reading the code:
+   *
+   *   The obvious one: the sender has to leave, open the camera, take a
+   *   picture, come back and hunt for it. Nobody does that. They pick
+   *   any old image, and the photo stops being evidence of the parcel.
+   *
+   *   The one that matters more: the picker opened into the sender's
+   *   private photo library. On the founder's own device the first
+   *   screen included a screenshot of card details and another of
+   *   saved wifi passwords. SEIRS should not be routing anybody through
+   *   that to send a package.
+   *
+   * The library stays as the second option, because a photo taken
+   * earlier is legitimate, but it now asks for images only rather than
+   * every file on the device.
+   */
+  const pickFromLibrary = async (pkgIndex: number) => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== 'granted') {
       showDialog({ title: t('send.alertPermissionTitle'), message: t('send.alertPermissionBody') });
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      quality: 0.8,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    });
     if (!result.canceled && result.assets[0]) {
       updatePkg(pkgIndex, {
         photos: [...(packages[pkgIndex]?.photos ?? []), result.assets[0].uri],
       });
     }
+  };
+
+  const takePhoto = async (pkgIndex: number) => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (perm.status !== 'granted') {
+      showDialog({
+        title: t('send.alertCameraTitle', { defaultValue: 'Camera not allowed' }),
+        message: t('send.alertCameraBody', {
+          defaultValue: 'SEIRS needs the camera to photograph your parcel. You can turn it on in your phone settings, or choose a photo you already have.',
+        }),
+      });
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    if (!result.canceled && result.assets[0]) {
+      updatePkg(pkgIndex, {
+        photos: [...(packages[pkgIndex]?.photos ?? []), result.assets[0].uri],
+      });
+    }
+  };
+
+  const addPhoto = async (pkgIndex = 0) => {
+    if ((packages[pkgIndex]?.photos.length ?? 0) >= 5) return;
+    showDialog({
+      title: t('send.photoSourceTitle', { defaultValue: 'Add a photo of your parcel' }),
+      message: t('send.photoSourceBody', {
+        defaultValue: 'A clear photo of the parcel protects you if anything is disputed later.',
+      }),
+      actions: [
+        {
+          text: t('send.photoTake', { defaultValue: 'Take a photo' }),
+          style: 'primary',
+          onPress: () => { void takePhoto(pkgIndex); },
+        },
+        {
+          text: t('send.photoChoose', { defaultValue: 'Choose an existing one' }),
+          onPress: () => { void pickFromLibrary(pkgIndex); },
+        },
+      ],
+    });
   };
 
   // ── Step navigation ──────────────────────────────────────────────────────
