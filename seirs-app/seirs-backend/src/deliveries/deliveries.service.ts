@@ -4142,8 +4142,25 @@ export class DeliveriesService {
         );
         if (Number(rows?.[0]?.c ?? 0) > Number(freePerDay)) {
           const pauseHours = await this.feesServiceRef.getValueOr('driver_cancel_pause_hours', 2);
+          /**
+           * GREATEST, so a penalty can only ever be extended.
+           *
+           * priorityPenaltyUntil carries two unrelated penalties: this
+           * one, and the wind-down penalty in drivers.service.ts, which
+           * runs to end-of-tomorrow. This wrote NOW() + 2 hours
+           * unconditionally, so a rider already penalised until tomorrow
+           * evening who then blew through their cancel allowance had that
+           * penalty CUT to two hours (audit, 2026-08-28).
+           *
+           * Cancelling jobs was a way to shorten a penalty for not
+           * cancelling jobs. Whichever penalty ends later now wins.
+           */
           await this.repo.manager.query(
-            `UPDATE "drivers" SET "priorityPenaltyUntil" = NOW() + ($1 || ' hours')::interval WHERE "id" = $2`,
+            `UPDATE "drivers"
+                SET "priorityPenaltyUntil" = GREATEST(
+                      COALESCE("priorityPenaltyUntil", NOW()),
+                      NOW() + ($1 || ' hours')::interval)
+              WHERE "id" = $2`,
             [String(pauseHours), driverId],
           );
           this.logger.warn(`Driver ${driverId} exceeded the daily cancel allowance: offers paused ${pauseHours}h`);

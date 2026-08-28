@@ -84,11 +84,25 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
   { key: 'travel_buddy_drop_geofence_m', name: 'Travel Buddy drop geofence (m)',
     description: 'Metres from the declared alight stop beyond which a drop is FLAGGED, never refused: roads close and plans change, so the distance is recorded for review rather than used to strand a rider mid-journey.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 1000 },
+  /**
+   * The Last-Order Compliance board reads this key and there was no row
+   * for it, so the board silently used its code fallback of 80 and the
+   * threshold could not be moved from the dashboard (audit, 2026-08-28).
+   * The page's own comment said the live number comes from the Fee
+   * Catalogue, which was the intent and not the behaviour.
+   *
+   * A review threshold, not an enforcement: nothing in the backend acts
+   * on it. It decides which riders the board asks you to look at.
+   */
+  { key: 'last_order_min_acceptance_pct', name: 'Last-order minimum acceptance',
+    description: 'Acceptance rate below which a rider is flagged on the Last-Order Compliance board for review. A review threshold only: nothing is charged, paused or suspended automatically.',
+    category: FeeCategory.DRIVER_FEE, unit: FeeUnit.PERCENT, value: 80 },
+
   { key: 'driver_cancel_free_per_day', name: 'Driver cancels: free per day',
-    description: 'Accepted-job cancels a driver may make per 24h before offers pause. Safety ("felt unsafe") never counts.',
+    description: 'Accepted-job cancels a rider may make per 24 hours before a ranking penalty applies. Safety (\"felt unsafe\") never counts. The penalty lowers their place in dispatch, it does not stop offers: in a thin market they will still be matched whenever no unpenalised rider is closer.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.COUNT, value: 2 },
-  { key: 'driver_cancel_pause_hours', name: 'Driver cancels: pause hours',
-    description: 'How long dispatch offers pause after a driver exceeds the daily cancel allowance.',
+  { key: 'driver_cancel_pause_hours', name: 'Driver cancels: ranking penalty hours',
+    description: 'How long a rider is ranked lower in dispatch after exceeding the daily cancel allowance. Named a pause historically; matching applies a score penalty rather than an exclusion, so the rider keeps receiving offers when nobody better is nearby.',
     category: FeeCategory.DRIVER_FEE, unit: FeeUnit.HOURS, value: 2 },
   { key: 'interstate_match_bonus', name: 'Interstate trip match bonus',
     description: 'Matching score added when a booking route matches a driver declared intercity trip departing within 24h (scores are 0-1).',
