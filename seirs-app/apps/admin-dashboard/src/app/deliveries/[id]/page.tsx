@@ -970,6 +970,17 @@ export default function DeliveryDetailPage() {
                   </span>
                 }
               />
+              {/*
+                The margin floor, which until now enforced nothing and
+                showed nowhere. It is a warning, not a block: a thin job
+                still runs, and the operator gets told it was thin.
+              */}
+              {d.receipt.belowFloor && (
+                <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-900">
+                  Below your margin floor of {naira(d.receipt.marginFloorNgn)}. This job ran, and it
+                  kept less than the minimum set in Pricing.
+                </p>
+              )}
             </div>
           </div>
           {Array.isArray(d.receipt.payments) && d.receipt.payments.length > 0 && (

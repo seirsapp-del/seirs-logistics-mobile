@@ -93,10 +93,29 @@ const startsWith = (...prefixes: string[]) =>
   (k: string) => prefixes.some(p => k.startsWith(p));
 const oneOf = (...keys: string[]) => (k: string) => keys.includes(k);
 
+/**
+ * Four rows carry the stored category `commission` and have nothing to do
+ * with what SEIRS takes: they size a journey, they do not price one.
+ * `circuity_*` is the road-versus-straight-line ratio and
+ * `routes_api_monthly_cap` is the monthly Google Directions budget, all
+ * four consumed in route-distance.service.ts and never in the pricing
+ * engine.
+ *
+ * They surfaced under "What SEIRS takes" because the group below claimed
+ * the whole `commission` category before the corridor group was reached
+ * (audit, 2026-08-28). Excluded by name here rather than by reordering
+ * the list, because the order of this array is also the order of the
+ * page, and revenue belongs at the top of it.
+ */
+const DISTANCE_KEYS = [
+  'circuity_default_pct', 'circuity_min_pct', 'circuity_max_pct',
+  'routes_api_monthly_cap',
+];
+
 const FEE_GROUPS: FeeGroup[] = [
   { id: 'money-in', label: 'What SEIRS takes',
     hint: 'Commission and the processing costs that come off every booking.',
-    match: (k, c) => c === 'commission' ||
+    match: (k, c) => (c === 'commission' && !DISTANCE_KEYS.includes(k)) ||
       oneOf('card_processing_pct', 'nipost_postal_fund_pct', 'min_job_margin_ngn',
             'door_delivery_failure_pct')(k) },
 

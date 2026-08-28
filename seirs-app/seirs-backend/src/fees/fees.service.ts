@@ -122,7 +122,7 @@ export class FeesService implements OnModuleInit {
       }
     }
 
-    const existing  = await this.feesRepo.find({ select: ['key', 'unit'] });
+    const existing  = await this.feesRepo.find({ select: ['key', 'unit', 'description'] });
     const existingKeys = new Set(existing.map(f => f.key));
     const toInsert  = FEE_SEEDS.filter(f => !existingKeys.has(f.key!));
     if (toInsert.length > 0) {
@@ -137,20 +137,43 @@ export class FeesService implements OnModuleInit {
     // row whose stored unit disagrees with the seed is simply stale.
     // Production rows all predate the non-monetary units, which is how
     // "7 days" came to render as a price.
-    const unitByKey = new Map(existing.map(f => [f.key, String(f.unit)]));
+    /**
+     * The DESCRIPTION is synced for the same reason as the unit, and it
+     * matters more (audit, 2026-08-28).
+     *
+     * The catalogue has no description editor: the text is read-only in
+     * the dashboard, written here, and describes what the code does. So a
+     * stored description that no longer matches the code is stale by
+     * definition, and nobody can correct it from the admin side.
+     *
+     * Two were actively lying. platform_commission_pct said "applied at
+     * escrow release when the driver is paid", which stopped being true
+     * when driver pay moved to the rate card and left the percentage as a
+     * fallback for legacy rows. min_job_margin_ngn called itself a floor
+     * that quotes are held to; it set a flag nothing read. Both invited
+     * an operator to change a number and expect the platform to move.
+     *
+     * The VALUE is still never touched. That belongs to the admin.
+     */
+    const metaByKey = new Map(existing.map(f => [f.key, f]));
     let fixed = 0;
     for (const seed of FEE_SEEDS) {
-      const stored = unitByKey.get(seed.key!);
-      if (stored && seed.unit && stored !== String(seed.unit)) {
-        try {
-          await this.feesRepo.update(seed.key!, { unit: seed.unit });
-          fixed++;
-        } catch (e: any) {
-          this.logger.error(`unit sync failed for ${seed.key}: ${e?.message ?? e}`);
-        }
+      const stored = metaByKey.get(seed.key!);
+      if (!stored) continue;
+      const patch: Partial<Fee> = {};
+      if (seed.unit && String(stored.unit) !== String(seed.unit)) patch.unit = seed.unit;
+      if (seed.description && stored.description !== seed.description) {
+        patch.description = seed.description;
+      }
+      if (Object.keys(patch).length === 0) continue;
+      try {
+        await this.feesRepo.update(seed.key!, patch);
+        fixed++;
+      } catch (e: any) {
+        this.logger.error(`metadata sync failed for ${seed.key}: ${e?.message ?? e}`);
       }
     }
-    if (fixed) this.logger.log(`Corrected the unit on ${fixed} existing fee row(s)`);
+    if (fixed) this.logger.log(`Refreshed code-owned metadata on ${fixed} fee row(s)`);
   }
 
   // ── Public read path (cached) ──────────────────────────────────────────

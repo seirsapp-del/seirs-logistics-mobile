@@ -167,7 +167,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     category: FeeCategory.CONFIG, unit: FeeUnit.PERCENT, value: 8 },
 
   { key: 'min_job_margin_ngn',          name: 'Minimum Job Margin',
-    description: 'The least SEIRS may keep on a job after every real cost. Quotes below this are flagged. Set to 0 to disable the floor.',
+    description: 'A warning line, not a limit. A job that keeps less than this still runs and is flagged on its delivery receipt so you can see which work came in thin. Set to 0 to stop flagging.',
     category: FeeCategory.CONFIG, unit: FeeUnit.FLAT_NGN, value: 150 },
 
   // ── Counter economics ──────────────────────────────────────────────────
@@ -400,7 +400,7 @@ export const FEE_SEEDS: Array<Partial<Fee>> = [
     description: 'Flat transport fee owed by the sender when a partner-store package passes 5 working days uncollected and is returned. Storage itself is free (2026-08-09 policy: 3 working days free, warning at 3, return at 5, no fee build-up).',
     category: FeeCategory.CONFIG,       unit: FeeUnit.FLAT_NGN,   value: 1500 },
   { key: 'platform_commission_pct',     name: 'Platform Commission',
-    description: 'SEIRS cut of each delivery fare, applied at escrow release when the driver is paid. The remainder is the driver share. Changing this affects NEW settlements only, never already-recorded earnings.',
+    description: 'FALLBACK ONLY. A driver is normally paid the figure quoted from the rate card, whose per-vehicle driver base and per-km set the real split; this percentage applies only to old jobs recorded before that figure was stored. Editing it will not change what riders earn on new work: the rate card does that.',
     category: FeeCategory.COMMISSION,   unit: FeeUnit.PERCENT,    value: 30 },
 
   // ── Developer Platform tiers ───────────────────────────────────────────

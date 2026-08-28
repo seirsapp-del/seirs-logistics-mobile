@@ -54,7 +54,11 @@ const WHERE_THINGS_LIVE: Array<{ topic: string; card?: string; fees?: string }> 
   { topic: 'High-value premium',            card: 'High-value premium', fees: 'high_value_threshold_ngn gates the signature' },
   { topic: 'Cancellation, waiting, returns', card: 'Cancellation / wait / return', fees: 'cancel_processing_pct, return_to_sender_fee, storage_*' },
   { topic: 'Partner stores and counters',   fees: 'partner_store_handling_ngn, counter_fee_*' },
-  { topic: 'Driver pay, caps and levels',   fees: 'driver_commission via platform_commission_pct, driver_level_*' },
+  // Corrected by the audit of 2026-08-28: a rider's pay comes from the
+  // card's per-vehicle driver base and per-km, NOT from
+  // platform_commission_pct, which now only settles legacy jobs.
+  { topic: 'What a rider earns per job',    card: 'Per-vehicle rates, driver columns' },
+  { topic: 'Rider caps, levels and holdbacks', fees: 'driver_level_*, driver_daily_cap_ngn, driver_new_holdback_pct' },
   { topic: 'Card processing and postal levy', fees: 'card_processing_pct, nipost_postal_fund_pct' },
   { topic: 'VAT',                           card: 'VAT' },
 ];

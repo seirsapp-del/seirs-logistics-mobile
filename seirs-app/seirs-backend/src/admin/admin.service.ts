@@ -2595,9 +2595,10 @@ export class AdminService {
       .filter(p => p.status === 'success')
       .reduce((sum, p) => sum + Number(p.amountKobo ?? 0) / 100, 0);
 
-    const [processorPct, levyPct] = await Promise.all([
+    const [processorPct, levyPct, marginFloor] = await Promise.all([
       this.feesService.getValueOr('card_processing_pct', 1.4),
       this.feesService.getValueOr('nipost_postal_fund_pct', 2),
+      this.feesService.getValueOr('min_job_margin_ngn', 0),
     ]);
     const r2 = (n: number) => Math.round(n * 100) / 100;
     const processorCost = r2(price * (processorPct / 100));
@@ -2658,6 +2659,25 @@ export class AdminService {
         grossMargin,
         contribution,
         contributionPct: price > 0 ? Math.round((contribution / price) * 1000) / 10 : 0,
+        /**
+         * The margin floor, surfaced (audit, 2026-08-28).
+         *
+         * `min_job_margin_ngn` is described in the Fee Catalogue as "the
+         * least SEIRS may keep on a job after every real cost". It was
+         * read in exactly one place, the quote engine, where it set a
+         * `belowFloor` boolean that no screen and no caller ever looked
+         * at. A number that names a limit and enforces nothing is worse
+         * than no number: it reads as a guardrail on the settings page
+         * while jobs run under it unremarked.
+         *
+         * It stays a WARNING rather than a block. Refusing to price a
+         * job because it clears NGN 140 instead of NGN 150 would reject
+         * short okada runs that are perfectly good business; what the
+         * operator needs is to see which jobs came in thin. Enforcement,
+         * if it is ever wanted, is a separate founder decision.
+         */
+        marginFloorNgn: marginFloor,
+        belowFloor:     marginFloor > 0 && contribution < marginFloor,
         unpaid:         collected <= 0,
         payments,
       },
